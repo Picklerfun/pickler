@@ -26,3 +26,4 @@ apps/mobile/android/
 apps/mobile/.expo/
 apps/mobile/build/
 apps/mobile/.env.asc
+.claude/settings.local.json
