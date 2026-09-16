@@ -2,7 +2,7 @@ import { ScrollView, View } from "react-native";
 import type { AppCtx } from "../ctx";
 import { AGENTS, type Agent, KINDS, POSTS, type Stage } from "../mock/data";
 import { pill } from "../mock/helpers";
-import type { AgentTab, Sort } from "../store";
+import type { Sort } from "../store";
 import { Avatar, EmptyPanel, Segmented, StatGrid, T, Tag, Touch, TouchCard } from "../ui/primitives";
 import { C } from "../ui/theme";
 
