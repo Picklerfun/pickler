@@ -15,3 +15,7 @@ coverage/
 # Video de referencia de la landing (~20 MB). Vive en disco, fuera de git.
 # Los frames clave sí están versionados en docs/fuentes/landing-frames/.
 docs/fuentes/*.mp4
+
+# Worktrees de Claude y scratch de superpowers
+.claude/worktrees/
+.superpowers/
