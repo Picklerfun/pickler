@@ -43,6 +43,11 @@ export function Home({ account, onUnlock, onLock, onSignOut }: Props) {
     setError("");
     setNotice("");
     try {
+      const fresh = await readBalances(address);
+      setBalances(fresh);
+      if (fresh.mon === 0n) {
+        throw new Error("You need test MON for gas. Get some at the Monad faucet and try again.");
+      }
       let wallet: Wallet;
       if (account.status === "unlocked") {
         wallet = account.wallet;
@@ -51,9 +56,6 @@ export function Home({ account, onUnlock, onLock, onSignOut }: Props) {
         if (!unlocked) throw new Error("No stored account. Sign out and sign in again.");
         wallet = unlocked;
         onUnlock(wallet);
-      }
-      if (balances && balances.mon === 0n) {
-        throw new Error("You need test MON for gas. Get some at the Monad faucet and try again.");
       }
       const hash = await requestAusdFromFaucet(wallet);
       setNotice(`Sent: ${hash}`);
@@ -77,6 +79,7 @@ export function Home({ account, onUnlock, onLock, onSignOut }: Props) {
       <Button title="Copy address" variant="secondary" onPress={() => Clipboard.setStringAsync(address)} />
       <Field label="AUSD" value={balances ? formatAusd(balances.ausd) : "—"} />
       <Field label="MON (gas)" value={balances ? formatMon(balances.mon) : "—"} />
+      <Button title="Refresh balances" variant="secondary" onPress={refresh} />
       {rpcError ? (
         <>
           <Text style={styles.error}>{rpcError}</Text>
