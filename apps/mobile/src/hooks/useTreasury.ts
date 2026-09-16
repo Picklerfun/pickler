@@ -58,16 +58,10 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
       void refreshMovements();
       return;
     }
-    const [result] = await Promise.all([
-      readBalances(address).then((b) => ({ ok: true as const, b })).catch((e: unknown) => ({ ok: false as const, e })),
+    await Promise.all([
+      readBalances(address).then(setBalances, (e: unknown) => { setBalances(null); setRpcError(describeError(e)); }),
       refreshMovements(),
     ]);
-    if (result.ok) {
-      setBalances(result.b);
-    } else {
-      setBalances(null);
-      setRpcError(describeError(result.e));
-    }
   }, [address, refreshMovements]);
 
   const refresh = useCallback(async () => {

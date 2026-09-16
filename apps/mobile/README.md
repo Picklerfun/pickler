@@ -54,6 +54,8 @@ abajo); no crea el App ID ni la capability.
 (override con `PICKLER_MONADSCAN_KEY`). Es una key pública de solo lectura; si se
 agota la cuota (100k llamadas/día) se crea otra en https://etherscan.io/myapikey.
 El RPC público no sirve para esto: `eth_getLogs` está limitado a 100 bloques.
+En un dev-client ya instalado, `expo start` no refresca `extra` de `app.config.ts`;
+para que la app vea otra key hay que rehacer `expo run:ios`.
 
 ## Subir a TestFlight
 

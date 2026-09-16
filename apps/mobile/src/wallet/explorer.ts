@@ -41,7 +41,7 @@ export function parseTokenTxResponse(body: unknown): Transfer[] {
 
 export async function fetchAusdTransfers(address: Address, key: string): Promise<Transfer[]> {
   const url = `${MONADSCAN_API}?chainid=${MONADSCAN_CHAIN_ID}&module=account&action=tokentx&contractaddress=${AUSD_ADDRESS}&address=${address}&sort=desc&apikey=${key}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`Explorer responded ${res.status}`);
   return parseTokenTxResponse(await res.json());
 }

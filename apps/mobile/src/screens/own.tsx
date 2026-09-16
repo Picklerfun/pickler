@@ -1,9 +1,9 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { ActivityIndicator, Linking, TextInput, View } from "react-native";
-import type { Address, Hex } from "viem";
+import { formatUnits, type Address, type Hex } from "viem";
 import { accountAddress } from "../account";
-import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
+import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import type { AgentId } from "../mock/data";
 import { money } from "../mock/helpers";
@@ -137,7 +137,7 @@ export function PositionScreen({ agent: a, nav }: AppCtx) {
 }
 
 function movementDate(when: number): string {
-  return new Date(when * 1000).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(when * 1000).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 }
 
 const STATUS_FG: Record<Movement["status"], string> = { Complete: C.up, Confirming: C.warn, Reverted: C.down };
@@ -411,7 +411,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
             autoCorrect={false}
             style={[textStyle(500, 12.5, { mono: true, color: C.ink }), { flex: 1, paddingVertical: 6 }]}
           />
-          <Touch onPress={() => { void Clipboard.getStringAsync().then((s) => setTo(s.trim())); }} style={chipBtn}>
+          <Touch onPress={() => { void Clipboard.getStringAsync().then((s) => setTo(s.trim())).catch(() => {}); }} style={chipBtn}>
             <T w={600} s={12}>Paste</T>
           </Touch>
         </View>
@@ -428,7 +428,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
             style={[textStyle(800, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]}
           />
           <T w={500} s={14} mono color={C.mute}>AUSD</T>
-          <Touch onPress={() => setAmount(formatAusd(ausd))} style={chipBtn}>
+          <Touch onPress={() => setAmount(formatUnits(ausd, AUSD_DECIMALS))} style={chipBtn}>
             <T w={600} s={12}>Max</T>
           </Touch>
         </View>
