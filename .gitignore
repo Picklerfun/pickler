@@ -19,3 +19,10 @@ docs/fuentes/*.mp4
 # Worktrees de Claude y scratch de superpowers
 .claude/worktrees/
 .superpowers/
+
+.wrangler/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.expo/
+apps/mobile/build/
+apps/mobile/.env.asc

@@ -1,0 +1,37 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@category-labs/mera": "0.2.0",
+    "@scure/base": "2.3.0",
+    "@scure/bip32": "2.3.0",
+    "@scure/bip39": "2.3.0",
+    "expo": "57.0.23",
+    "expo-clipboard": "57.0.2",
+    "expo-constants": "57.0.18",
+    "expo-crypto": "57.0.3",
+    "expo-secure-store": "57.0.4",
+    "expo-status-bar": "57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-passkey": "3.6.1",
+    "react-native-safe-area-context": "5.7.0",
+    "viem": "2.55.13"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/react": "19.2.2",
+    "jest": "29.7.0",
+    "jest-expo": "57.0.5",
+    "typescript": "6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "jest"
+  },
+  "private": true
+}
