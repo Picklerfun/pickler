@@ -47,6 +47,16 @@ el registro de la app en App Store Connect. El build de device solo crea o
 refresca el perfil de aprovisionamiento (con `-allowProvisioningUpdates`, ver
 abajo); no crea el App ID ni la capability.
 
+### Historial de movimientos (MonadScan)
+
+*Wallet → Movements* lee las transferencias AUSD de la dirección desde Etherscan V2
+(`chainid=10143`, MonadScan). La key va en `app.config.ts` → `extra.monadscanKey`
+(override con `PICKLER_MONADSCAN_KEY`). Es una key pública de solo lectura; si se
+agota la cuota (100k llamadas/día) se crea otra en https://etherscan.io/myapikey.
+El RPC público no sirve para esto: `eth_getLogs` está limitado a 100 bloques.
+En un dev-client ya instalado, `expo start` no refresca `extra` de `app.config.ts`;
+para que la app vea otra key hay que rehacer `expo run:ios`.
+
 ## Subir a TestFlight
 
 Requiere `apps/mobile/.env.asc` (gitignored, **nunca se commitea**) con:

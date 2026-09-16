@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from "react";
 import { Image, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { AppCtx } from "./ctx";
 import { DevControls } from "./DevControls";
 import { pill } from "./mock/helpers";
@@ -20,7 +21,13 @@ const SCREENS: Record<Screen, (ctx: AppCtx) => ReactElement> = {
   deposit: DepositScreen, withdraw: WithdrawScreen,
 };
 
-const BOTTOM_TABS: readonly [Screen, string][] = [["market", "Market"], ["activity", "Activity"], ["portfolio", "Portfolio"], ["wallet", "Wallet"]];
+type TabIcon = "storefront" | "pulse" | "pie-chart" | "wallet";
+const BOTTOM_TABS: readonly [Screen, string, TabIcon][] = [
+  ["market", "Market", "storefront"],
+  ["activity", "Activity", "pulse"],
+  ["portfolio", "Portfolio", "pie-chart"],
+  ["wallet", "Wallet", "wallet"],
+];
 
 type HeaderAction = { label: string; active?: boolean; go: () => void };
 
@@ -82,12 +89,12 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
       {/* bottom tab bar */}
       {ctx.showTabs ? (
         <View style={{ flexDirection: "row", borderTopWidth: 1, borderTopColor: C.hairSoft, backgroundColor: C.phone, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 6 }}>
-          {BOTTOM_TABS.map(([k, label]) => {
+          {BOTTOM_TABS.map(([k, label, icon]) => {
             const on = S.screen === k || (k === "portfolio" && S.screen === "position") || (k === "market" && S.screen === "search");
             const fg = on ? C.lime : C.mute;
             return (
               <Touch key={k} onPress={() => requireAccount(k)} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 6 }}>
-                <View style={{ width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, borderColor: fg, backgroundColor: on ? C.lime : "transparent" }} />
+                <Ionicons name={on ? icon : `${icon}-outline`} size={20} color={fg} />
                 <T w={600} s={11} color={fg}>{label}</T>
               </Touch>
             );

@@ -4,9 +4,12 @@ import {
   AUSD_FAUCET_ADDRESS,
   CHAIN,
   EXPLORER_TX_URL,
+  ERC20_ABI,
   ausdToNumber,
   formatAusd,
   formatMon,
+  parseAusd,
+  shortHash,
 } from "../src/config/chain";
 
 test("chain is Monad Testnet", () => {
@@ -39,4 +42,28 @@ test("ausdToNumber turns 6-decimal units into a plain number", () => {
   expect(ausdToNumber(1_240_000_000n)).toBe(1240);
   expect(ausdToNumber(318_400_000n)).toBe(318.4);
   expect(ausdToNumber(0n)).toBe(0);
+});
+
+test("parseAusd turns decimal text into 6-decimal units", () => {
+  expect(parseAusd("12")).toBe(12_000_000n);
+  expect(parseAusd("12.5")).toBe(12_500_000n);
+  expect(parseAusd("0.000001")).toBe(1n);
+  expect(parseAusd(" 1,5 ")).toBe(1_500_000n);
+});
+
+test("parseAusd rejects empty, negative, too precise and non-numeric text", () => {
+  expect(parseAusd("")).toBeUndefined();
+  expect(parseAusd("-1")).toBeUndefined();
+  expect(parseAusd("1.1234567")).toBeUndefined();
+  expect(parseAusd("abc")).toBeUndefined();
+  expect(parseAusd("1e3")).toBeUndefined();
+  expect(parseAusd(".")).toBeUndefined();
+});
+
+test("shortHash keeps the first six and last four characters", () => {
+  expect(shortHash("0x7ef471355eeca24d0ea11638b40140e57c0a42d2955652d0a1bd45b4dd962ef1")).toBe("0x7ef4…2ef1");
+});
+
+test("ERC20 ABI has transfer", () => {
+  expect(ERC20_ABI.some((f) => f.type === "function" && f.name === "transfer")).toBe(true);
 });
