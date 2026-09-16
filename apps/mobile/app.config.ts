@@ -8,6 +8,8 @@ const config: ExpoConfig = {
   slug: "pickler-mobile",
   version: "0.1.0",
   orientation: "portrait",
+  // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
+  icon: "./assets/icon.png",
   ios: {
     bundleIdentifier,
     buildNumber: "1",
