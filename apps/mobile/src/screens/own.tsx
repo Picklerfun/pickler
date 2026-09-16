@@ -2,12 +2,13 @@ import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { ActivityIndicator, Linking, View } from "react-native";
 import { accountAddress } from "../account";
-import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL } from "../config/chain";
+import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import type { AgentId } from "../mock/data";
 import { money } from "../mock/helpers";
 import { EmptyPanel, KV, StatGrid, T, Touch, TouchCard } from "../ui/primitives";
 import { C } from "../ui/theme";
+import type { Movement } from "../wallet/explorer";
 
 type PositionRow = { initial: string; name: string; ticker: string; qty: string; avg: string; value: string; pl: string; plFg: string; agentId: AgentId };
 
@@ -132,22 +133,37 @@ export function PositionScreen({ agent: a, nav }: AppCtx) {
   );
 }
 
-type Move = { kind: string; amount: string; fg: string; when: string; ref: string; status: string; stFg: string };
+function movementDate(when: number): string {
+  return new Date(when * 1000).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+const STATUS_FG: Record<Movement["status"], string> = { Complete: C.up, Confirming: C.warn, Reverted: C.down };
+
+function MovementRow({ m }: { m: Movement }) {
+  return (
+    <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(m.hash)); }} style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+        <T w={600} s={13} lh={1.2}>{m.kind}</T>
+        <T w={500} s={13} lh={1.2} mono color={m.sign === "+" ? C.up : C.ink}>{m.sign === "+" ? "+" : "−"}{formatAusd(m.amount)} AUSD</T>
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 5 }}>
+        <T w={400} s={11} lh={1.3} mono color={C.mute}>{movementDate(m.when)} · {shortHash(m.hash)}</T>
+        <T w={500} s={11} lh={1.3} color={STATUS_FG[m.status]}>{m.status}</T>
+      </View>
+    </Touch>
+  );
+}
 
 const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
 const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
 
-export function WalletScreen({ balance, nav, account, treasury, lock, signOut, resetTo }: AppCtx) {
+export function WalletScreen({ nav, account, treasury, lock, signOut, resetTo }: AppCtx) {
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) + " AUSD" : "—";
-  const pending = balance === 0
-    ? "Nothing pending. Nothing has ever arrived in this wallet."
-    : "50.00 AUSD pending · a deposit is still confirming";
-  const moves: Move[] = [
-    { kind: "Deposit", amount: "+500.00 AUSD", fg: C.up, when: "Sep 15, 09:20", ref: "0x7ac4…e0b3", status: "Confirming", stFg: C.warn },
-    { kind: "Bought PKL", amount: "−250.00 AUSD", fg: C.ink, when: "Sep 15, 09:42", ref: "0x4d1a…77c", status: "Complete", stFg: C.up },
-    { kind: "Sold MOSS", amount: "+58.20 AUSD", fg: C.up, when: "Aug 02, 16:10", ref: "0x88fd…1a4", status: "Complete", stFg: C.up },
-    { kind: "Withdrawal", amount: "−120.00 AUSD", fg: C.ink, when: "Jul 28, 10:02", ref: "0x12cc…903", status: "Complete", stFg: C.up },
-  ];
+  const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
+  const pending = confirming === 0
+    ? "Nothing pending."
+    : `${confirming} transfer${confirming === 1 ? "" : "s"} confirming`;
+  const rows = [...treasury.pending, ...(treasury.movements ?? [])];
   const txHash = treasury.notice.split(": ")[1];
   const unlocked = account.status === "unlocked";
 
@@ -206,18 +222,21 @@ export function WalletScreen({ balance, nav, account, treasury, lock, signOut, r
       <View>
         <T w={500} s={11} mono color={C.mute} style={{ marginBottom: 7 }}>MOVEMENTS</T>
         <View style={{ gap: 6 }}>
-          {moves.map((m, i) => (
-            <View key={i} style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                <T w={600} s={13} lh={1.2}>{m.kind}</T>
-                <T w={500} s={13} lh={1.2} mono color={m.fg}>{m.amount}</T>
-              </View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 5 }}>
-                <T w={400} s={11} lh={1.3} mono color={C.mute}>{m.when} · {m.ref}</T>
-                <T w={500} s={11} lh={1.3} color={m.stFg}>{m.status}</T>
-              </View>
+          {treasury.movementsError ? (
+            <View style={{ paddingVertical: 11, paddingHorizontal: 13, borderWidth: 1, borderColor: "rgba(245,195,91,0.5)", backgroundColor: "rgba(245,195,91,0.1)", borderRadius: 12, gap: 8 }}>
+              <T w={400} s={12} lh={1.4} color={C.warn}>Couldn't load movements. {treasury.movementsError}</T>
+              <Touch onPress={() => { void treasury.refreshMovements(); }} style={{ alignSelf: "flex-start", ...chipBtn }}>
+                <T w={600} s={12}>Retry</T>
+              </Touch>
             </View>
-          ))}
+          ) : null}
+          {treasury.movements === null && !treasury.movementsError ? (
+            <T w={400} s={12} lh={1.4} color={C.mute}>Loading movements…</T>
+          ) : null}
+          {treasury.movements !== null && rows.length === 0 ? (
+            <T w={400} s={12} lh={1.4} color={C.mute}>Nothing has ever arrived in this wallet.</T>
+          ) : null}
+          {rows.map((m) => <MovementRow key={m.hash} m={m} />)}
         </View>
       </View>
 
