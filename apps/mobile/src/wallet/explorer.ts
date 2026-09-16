@@ -3,6 +3,7 @@ import { AUSD_ADDRESS, AUSD_FAUCET_ADDRESS } from "../config/chain";
 
 export const MONADSCAN_API = "https://api.etherscan.io/v2/api";
 export const MONADSCAN_CHAIN_ID = 10143;
+const EXPLORER_TIMEOUT_MS = 15_000;
 
 export type Transfer = { hash: Hex; block: bigint; timestamp: number; from: Address; to: Address; value: bigint };
 export type MovementKind = "Faucet" | "Deposit" | "Withdrawal";
@@ -41,9 +42,15 @@ export function parseTokenTxResponse(body: unknown): Transfer[] {
 
 export async function fetchAusdTransfers(address: Address, key: string): Promise<Transfer[]> {
   const url = `${MONADSCAN_API}?chainid=${MONADSCAN_CHAIN_ID}&module=account&action=tokentx&contractaddress=${AUSD_ADDRESS}&address=${address}&sort=desc&apikey=${key}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`Explorer responded ${res.status}`);
-  return parseTokenTxResponse(await res.json());
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), EXPLORER_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Explorer responded ${res.status}`);
+    return parseTokenTxResponse(await res.json());
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
