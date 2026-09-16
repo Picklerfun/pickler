@@ -40,7 +40,7 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
   useEffect(() => {
     setNotice("");
     setError("");
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const getTestAusd = useCallback(async () => {
