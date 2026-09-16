@@ -2,7 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { ActivityIndicator, Linking, View } from "react-native";
 import { accountAddress } from "../account";
-import { EXPLORER_TX_URL, formatMon, MON_FAUCET_URL } from "../config/chain";
+import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import type { AgentId } from "../mock/data";
 import { money } from "../mock/helpers";
@@ -138,7 +138,7 @@ const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWid
 const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
 
 export function WalletScreen({ balance, nav, account, treasury, lock, signOut, resetTo }: AppCtx) {
-  const available = treasury.balances ? money(balance) + " AUSD" : "—";
+  const available = treasury.balances ? formatAusd(treasury.balances.ausd) + " AUSD" : "—";
   const pending = balance === 0
     ? "Nothing pending. Nothing has ever arrived in this wallet."
     : "50.00 AUSD pending · a deposit is still confirming";
