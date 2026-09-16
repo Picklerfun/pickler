@@ -34,3 +34,8 @@ export function formatAusd(raw: bigint): string {
 export function formatMon(raw: bigint): string {
   return truncate(formatUnits(raw, CHAIN.nativeCurrency.decimals), 4);
 }
+
+/** AUSD como número para la UI (saldo "available", umbral de compra). */
+export function ausdToNumber(raw: bigint): number {
+  return Number(formatUnits(raw, AUSD_DECIMALS));
+}

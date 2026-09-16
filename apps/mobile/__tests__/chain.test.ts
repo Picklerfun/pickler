@@ -4,6 +4,7 @@ import {
   AUSD_FAUCET_ADDRESS,
   CHAIN,
   EXPLORER_TX_URL,
+  ausdToNumber,
   formatAusd,
   formatMon,
 } from "../src/config/chain";
@@ -32,4 +33,10 @@ test("formatMon shows four decimals", () => {
 
 test("explorer url points to a tx", () => {
   expect(EXPLORER_TX_URL("0xabc")).toBe("https://testnet.monadexplorer.com/tx/0xabc");
+});
+
+test("ausdToNumber turns 6-decimal units into a plain number", () => {
+  expect(ausdToNumber(1_240_000_000n)).toBe(1240);
+  expect(ausdToNumber(318_400_000n)).toBe(318.4);
+  expect(ausdToNumber(0n)).toBe(0);
 });
