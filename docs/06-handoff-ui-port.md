@@ -24,9 +24,10 @@ tres de ellas. Rama `feat/mobile-ui-port`, base `cfe3efa` (fin de fase 1).
 - **`ios.backgroundColor` sin `expo-system-ui`.** Prebuild avisa que ese campo requiere el
   plugin, pero no se agregó (la app ya pinta su propio fondo; YAGNI). Si el ruling está mal,
   el costo es un flash claro al arrancar, corregible después.
-- **Hooks en `src/hooks/`, no en `src/account/`/`src/wallet/` como decía el spec.** Se
-  mantuvo la ubicación real del código existente en vez de moverlo; si esto complica un
-  futuro refactor, el costo es solo reorganizar imports, sin riesgo funcional.
+- **Hooks en `src/hooks/`, no en `src/account/`/`src/wallet/` como decía el spec.** Ya
+  existe el archivo `src/account.ts`; un directorio `src/account/` habría hecho ambiguo el
+  import `"../account"`. Si algún día conviene moverlos, el costo es solo reorganizar
+  imports, sin riesgo funcional.
 - **El store recibe `hasAccount` (booleano), no `account` (el objeto completo).** Simplifica
   las funciones puras (`deriveUser`, `deriveBalance`, `deriveTradeHolds`) y sus tests; si el
   store necesitara más adelante otros campos de `account`, habría que ampliar la firma.
