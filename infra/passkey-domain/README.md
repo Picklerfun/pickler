@@ -36,8 +36,13 @@ El dominio personalizado `pickler.fun` se asocia desde el dashboard
 (Workers & Pages → `pickler-passkeys` → Custom domains → Set up →
 `pickler.fun`) o vía la API de Cloudflare Pages
 (`POST /accounts/{account_id}/pages/projects/pickler-passkeys/domains`
-con `{"name":"pickler.fun"}`). Cloudflare crea el registro DNS y el
-certificado automáticamente porque la zona vive en la misma cuenta.
+con `{"name":"pickler.fun"}`). Pages **no** crea el registro DNS solo:
+después de adjuntar el dominio hay que crear a mano, en la zona `pickler.fun`,
+un **CNAME `pickler.fun` → `pickler-passkeys.pages.dev`, proxied** (nube
+naranja) — desde el dashboard de DNS de la zona o vía la API con un token de
+DNS de esa zona. Hasta que ese CNAME exista, el dominio queda en estado
+`pending` en Pages con el motivo "CNAME record not set"; una vez creado el
+registro, el certificado tarda unos minutos en activarse.
 
 ## Verificar
 

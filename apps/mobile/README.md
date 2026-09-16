@@ -39,8 +39,10 @@ curl -sI https://pickler.fun/.well-known/apple-app-site-association | head -5
 ```
 
 El App ID `fun.pickler.app` tiene la capability **Associated Domains** habilitada
-en developer.apple.com (Identifiers). Se registra sola la primera vez que se hace
-un build de device o un archive con `-allowProvisioningUpdates` (ver abajo).
+en developer.apple.com (Identifiers → App IDs); se registró a mano ahí, igual que
+el registro de la app en App Store Connect. El build de device solo crea o
+refresca el perfil de aprovisionamiento (con `-allowProvisioningUpdates`, ver
+abajo); no crea el App ID ni la capability.
 
 ## Subir a TestFlight
 
@@ -80,7 +82,9 @@ La cuenta necesita gas (MON) antes de poder pedir AUSD del faucet:
 1. Copiar la dirección desde la pantalla *Treasury* (botón "Copy address").
 2. `https://faucet.monad.xyz` → pegar la dirección → pedir MON de testnet.
    (O que alguien con MON de testnet te transfiera ~0.1 MON directo.)
-3. Refrescar el balance en la app (botón "Retry" si hubo error de RPC, o
-   reabrir la app) hasta ver MON > 0.
-4. *Get test AUSD* pide una firma (Face ID) y manda la tx al faucet de AUSD
+3. Refrescar el balance en la app (botón "Refresh balances", o "Retry" si
+   hubo error de RPC) hasta ver MON > 0.
+4. *Get test AUSD* ya lee el balance de MON fresco antes de pedir Face ID:
+   si sigue en 0 avisa sin abrir el prompt biométrico. Con MON > 0 pide una
+   firma (Face ID) y manda la tx al faucet de AUSD
    (`0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C`); espera "Confirmed: 0x…".
