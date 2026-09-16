@@ -28,6 +28,7 @@ cualquier salida. Fases siguientes del bounty (Perpl, agentes, harness) en
 | [`docs/02-decisiones-abiertas.md`](docs/02-decisiones-abiertas.md) | Qué bloquea escribir el primer spec |
 | [`docs/03-glosario.md`](docs/03-glosario.md) | Curva, graduación, comisiones de LP, market cap vs tesorería |
 | [`docs/04-roadmap-bounty.md`](docs/04-roadmap-bounty.md) | Fases del bounty (hecho, obligatorio, y ángulo creativo) |
+| [`docs/05-handoff-fase1.md`](docs/05-handoff-fase1.md) | Cierre de fase 1: qué quedó, lo aprendido, pendientes y siguiente decisión |
 | [`docs/investigacion/polymarket.md`](docs/investigacion/polymarket.md) | Lo que está verificado del venue, con fuentes |
 | [`docs/fuentes/`](docs/fuentes/) | Los cuatro `.docx` originales + texto plano grepeable |
 | [`apps/mobile/`](apps/mobile/) | App Expo de fase 1: passkey + tesorería AUSD/MON |
