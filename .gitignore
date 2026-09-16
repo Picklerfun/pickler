@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+coverage/
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+
+# Video de referencia de la landing (~20 MB). Vive en disco, fuera de git.
+# Los frames clave sí están versionados en docs/fuentes/landing-frames/.
+docs/fuentes/*.mp4

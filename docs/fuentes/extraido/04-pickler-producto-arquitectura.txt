@@ -1,0 +1,414 @@
+
+### [Title] Pickler Producto y arquitectura
+Launcher de agentes en Monad para alinear producto e ingeniería
+Pickler es un launcher de agentes en Monad que conecta identidad, comunidad, actividad verificable y economía del token. La V1 permite que agentes de prediction markets operen desde pre-grad con un presupuesto limitado aportado por el creador. Las compras del token no financian predicciones en esta etapa. Post-grad se propone una pequeña asignación publicada de fondos para su desempeño, pendiente de cuantificar. Parte del excedente neto disponible puede recomprar el token según la política elegida por el creador.
+El ingreso de la plataforma proviene del launcher y las comisiones de negociación; el desempeño del agente aporta evidencia y puede financiar buybacks. La compra del token expresa exposición especulativa a su trayectoria y economía. No establece automáticamente una participación rescatable en su tesorería ni dividendos. La marca adoptada es Pickler y el dominio elegido es pickler.fun. El primer agente se llama Pickle y su token asociado usa el ticker $PICK. Este documento no introduce un token adicional de plataforma ni afirma que el dominio o el token ya estén desplegados.
+
+### [Heading2] Qué debe conseguir este documento
+Dar al equipo una definición común del producto, explicar cómo se comunica y delimitar qué se construye primero. También separa lo acordado en la conversación de las propuestas de implementación y las decisiones que todavía condicionan un lanzamiento con dinero real.
+
+[TABLA]
+Estado | Contenido
+Dirección acordada | Pickler y pickler.fun; Pickle con $PICK; Monad; creador financia pre-grad; reservas del token separadas del gasto del agente.
+Propuesta de este documento | Pequeña asignación operativa post-grad; launcher propio y pool en Uniswap v4; Studio, App y harness; buybacks bajo políticas públicas.
+Por resolver | Montos y desglose del pago inicial; curva, par, comisiones; asignación post-grad; autoridad de firma, mercado y destino de recompras.
+[/TABLA]
+
+
+### [Heading2] La hipótesis de producto
+Un agente con personalidad y decisiones comprobables puede dar a una comunidad más motivos para volver que un lanzamiento que solo ofrece una narrativa inicial. Si esa continuidad produce actividad económica sostenible, Pickler puede capturar parte de las comisiones. Esta relación entre actividad del agente, retención y trading sigue por demostrar.
+Lectura sugerida: definición y usuarios; economía y graduación; presupuesto y buybacks; arquitectura en Monad; identidad y ejecución; oficio de Pickle; experiencia, MVP y categorías técnicas; validación y decisiones.
+
+### [Heading1] 1 Problema usuarios y propuesta de valor
+
+### [Heading2] El problema que elegimos resolver
+Para un creador, convertir un agente en un producto público exige conectar identidad, ejecución, wallet, publicación, distribución y monetización. Para una comunidad, un nombre y un token dicen poco sobre qué hace el agente, qué decisiones son suyas o quién puede modificarlo. Pickler reúne esas piezas y hace visible la relación entre configuración, actividad y resultados.
+
+[TABLA]
+Participante | Qué busca | Qué debe poder hacer
+Desarrollador o creador | Lanzar un agente diferenciado y monetizar su comunidad. | Crear o conectar lógica, configurar personalidad y datos, probar, publicar y consultar sus ingresos.
+Participante del token | Exposición especulativa y pertenencia a una comunidad. | Entender el token, comprar o vender, seguir al agente y distinguir precio de desempeño.
+Miembro o colaborador | Seguir una personalidad, aportar información y participar. | Explorar sin comprar, enviar fuentes y conocer el estado de sus aportaciones.
+Operador de Pickler | Mantener ejecución, registro y economía operando. | Reconciliar transacciones, gestionar incidentes, revisar permisos y medir costos.
+Desarrollador de herramientas | Integrar una capacidad o fuente reutilizable. | Implementar contratos de herramientas y probarlas. Un marketplace abierto de skills queda para después.
+[/TABLA]
+
+
+### [Heading2] Cómo lo vendemos
+Mensaje general: “Lanza un agente con identidad propia, comunidad y un historial público de decisiones”. En inglés: “Launch an agent with its own identity, community, and public track record.” El creador configura su enfoque, herramientas y economía; la plataforma aporta el lanzamiento, la ejecución controlada y las superficies para seguirlo.
+Para participantes: “Descubre agentes, evalúa sus picks y su historial, y participa en sus comunidades”. Si la política está habilitada: “Parte del excedente neto disponible se destina a recomprar el token bajo reglas públicas”. Evitar “Pickle hace rendir tu dinero” o “cobra dividendos” cuando el mecanismo solo ofrece un token negociable y recompras.
+
+### [Heading2] Por qué importa
+El producto reduce el trabajo necesario para pasar de un experimento a un agente público operable. Para Pickler, la infraestructura reutilizable está en identidad, permisos, evidencia y distribución. La interfaz debe hacer comprensible esa infraestructura sin exigir que la comunidad aprenda a configurar un runtime.
+
+### [Heading1] 2 Especulación herramientas y negocio
+
+[TABLA]
+Capa | Valor que ofrece | Qué no demuestra
+Token y launcher | Lanzamiento, negociación y exposición al precio de mercado. | Propiedad del agente, rescate de tesorería o pagos directos a holders.
+Herramientas para agentes | Acceso a datos, decisiones, ejecución con límites y publicación. | Que la estrategia sea buena o que la comunidad vaya a crecer.
+Identidad y comunidad | Continuidad, personalidad, aportaciones e historia compartida. | Que popularidad, capital aportado y calidad de información sean equivalentes.
+Evidencia y reputación | Contexto para evaluar actividad y resultados atribuibles. | Un sello universal de seguridad o una garantía de comportamiento futuro.
+[/TABLA]
+
+
+### [Heading2] Dónde captura ingresos Pickler
+Pre-grad: comisión de compras y ventas en la curva, con reparto publicado. Post-grad: participación en las comisiones devengadas por la posición de liquidez inicial administrada por el sistema. La tasa, los beneficiarios y la asignación a tesorería siguen pendientes. No se cobra por todas las operaciones del token en cualquier mercado: solo por los mecanismos que controlamos o donde tenemos derechos de cobro.
+Usar Uniswap no otorga una comisión por ser el launcher. La propuesta exige conservar y administrar la posición LP inicial mediante un contrato con reglas de cobro. El ingreso depende de su liquidez activa, el volumen del pool y las condiciones efectivas. Otros proveedores reciben las comisiones de sus propias posiciones. La arquitectura toma como referencia el esquema post-grad documentado por HeyAnon. [7]
+
+### [Heading2] Dos conexiones entre desempeño y token
+La conexión de expectativas ocurre cuando las decisiones, personalidad e historial cambian el interés de la comunidad. La conexión de caja ocurre cuando excedentes netos financian compras efectivas del token. Ninguna impone una relación proporcional entre aciertos y precio. Si el agente opera poco capital, los buybacks pueden ser pequeños frente a su valoración; esta diferencia debe modelarse.
+
+### [Heading2] Qué debemos medir por separado
+Volumen; comisiones de la curva; comisiones de la posición LP; ingresos de plataforma y creador; tesorería; resultado de predicciones; gastos; buybacks ejecutados. Los aportes de capital y las reservas del mercado no son ganancias del agente ni ingresos propios de la plataforma. Cobrar consumo de herramientas puede cubrir costos, pero no sustituye el modelo principal elegido.
+
+### [Heading2] La tensión que debe reconocer el equipo
+Pickler se beneficia del trading aunque un agente no mejore. Por eso el producto debe mostrar métricas de mercado y actividad por separado, identificar promociones pagadas y evitar rankings donde pagar o generar volumen compre reputación técnica. El componente especulativo es central en la economía; las herramientas deben tener funcionamiento verificable por sí mismas.
+
+### [Heading1] 3 Lanzamiento y graduación
+Pre-grad y post-grad describen etapas económicas del token. El agente opera, publica y construye hitos desde el primer día con fondos del creador. Los hitos prueban funcionamiento e historial; por sí solos no autorizan gastar reservas del token. La graduación conserva identidad e historial; modifica mercado, liquidez y asignación de capital. No certifica habilidad ni demuestra por sí sola cuántas personas independientes confían en él.
+
+[TABLA]
+Aspecto | Pre grad | Post grad
+Mercado del token | Curva de lanzamiento con compras y ventas. | Pool en Monad; Uniswap v4 es la base propuesta.
+Actividad del agente | Picks y ejecuciones reales bajo un presupuesto inicial. | Continúa el historial; saldo limitado para desempeño bajo reglas publicadas.
+Fuente de capital | Wallet del creador; presupuesto separado del costo de despliegue y de la curva. | Pequeña asignación al graduar, si se adopta; fuentes posteriores declaradas.
+Ingresos del launcher | Comisiones del mecanismo de curva. | Participación en comisiones de la posición LP inicial.
+Permisos | Acciones, exposición y destinatarios limitados. | Se mantienen los controles; graduar no concede firma irrestricta.
+[/TABLA]
+
+
+### [Heading2] Qué activa la transición
+Propuesta: fijar un estado objetivo de la curva que corresponda a reservas reales suficientes para la liquidez posterior, la tesorería prevista y los costos de migración. La interfaz muestra progreso en la unidad real de financiación. Si muestra market cap, debe distinguirlo de capital recaudado y explicar su relación con la curva. No hemos elegido montos ni porcentajes.
+Reservas reales disponibles al graduar
+→ asignación de liquidez + tokens reservados → pool post grad
+→ pequeña asignación propuesta de tesorería → presupuesto restringido
+→ costos y asignaciones expresamente publicados
+La transacción de graduación debe completar el reparto y la migración de forma atómica o revertir, evitando un estado en que se retire capital y no exista pool. El diseño cubrirá la última compra, exceso de aporte, redondeos, cotizaciones obsoletas y protección de precio.
+
+### [Heading2] Condición económica que debe resolverse antes de programar
+Separar capital para tesorería reduce lo disponible para el pool. No se puede conservar a la vez una asignación arbitraria de tokens al pool, retirar cualquier cantidad de la reserva y asumir continuidad del precio. La curva, el suministro reservado y la liquidez deben calcularse juntos para evitar un salto no previsto al graduarse. En pre-grad, el importe neto de compras, después de comisiones publicadas, permanece en el mecanismo del token; no paga predicciones, datos ni gas del agente. Esto evita consumir esas reservas operando, pero no elimina pérdidas del comprador por precio, comisiones o falta de liquidez.
+
+### [Heading1] 4 Tesorería presupuestos y ampliación de capacidad
+
+[TABLA]
+Concepto | Qué representa | Qué puede usar el agente
+Market cap | Precio de referencia por suministro circulante; FDV usa suministro total. | Ninguno de los dos es un saldo gastable.
+Liquidez | Activos reservados en curva o pool para intercambios. | No se consideran presupuesto de predicciones.
+Tesorería | Capital real asignado al agente, más resultados y cobros correspondientes. | Solo lo autorizado por las políticas de presupuesto.
+Presupuesto habilitado | Parte de la tesorería disponible para una finalidad. | Operación, gas, datos y predicciones con topes separados.
+[/TABLA]
+
+Ejemplo conceptual: un token puede mostrar 100 000 de market cap y el agente tener 1 000 en tesorería. Perder 10 en una posición reduce sus fondos en 10; no resta automáticamente 10 al market cap. Una subida del precio del token tampoco deposita nuevos fondos en la wallet.
+
+### [Heading2] Ampliación después de graduar
+Post-grad puede habilitar una pequeña asignación para desempeño conforme a reglas fijadas al lanzar. El importe y su base de cálculo siguen abiertos; no es permiso para usar libremente liquidez del pool. Aumentar presupuesto total, exposición máxima y tamaño por predicción son cambios diferentes. Una tesorería mayor puede sostener más posiciones pequeñas sin multiplicar el riesgo permitido en una sola.
+No desbloqueamos capacidad únicamente por ejecutar cierto número de picks. Ese incentivo puede provocar operaciones innecesarias. La evaluación propuesta combina historial resuelto, duración y diversidad, resultados netos, pérdidas, posiciones correlacionadas y disciplina operativa. La política puede recomendar ampliar; la autorización de permisos se comprueba por separado. Una racha de aciertos o el precio del token no sustituyen ese proceso.
+
+### [Heading2] Origen y destino de cada fondo
+El creador fondea desde su wallet el despliegue y el presupuesto pre-grad. El checkout desglosa gas y costos técnicos, tarifa de creación si aplica, saldo para datos y operación, y saldo de predicciones. Solo lo devengado como tarifa es ingreso; el saldo del agente sigue siendo capital asignado. Si se agota, se pausa la capacidad afectada o repone el creador; no se toman reservas de la curva. Fijar antes de lanzar el destino de saldos al retirar el agente.
+Self-custodial exige especificar control efectivo: poseer una wallet no basta. Si una llave del creador o de la plataforma puede retirar libremente la tesorería, debemos mostrarlo; si prometemos restricciones, estas deben ser exigibles también frente a esos actores según el modelo elegido.
+
+### [Heading2] Escenarios para elegir montos
+Modelar ganancia, equilibrio y pérdida, además de bajo volumen del token y caída de MON si es el activo de reserva. Medir continuidad operativa, exposición, caja disponible y capacidad de buyback. La graduación se basa en fondos existentes; la suficiencia del presupuesto depende de costos reales.
+
+### [Heading1] 5 Política de buybacks y responsabilidades
+La dirección de producto permite al creador definir cómo una parte de los excedentes de su agente se conecta con recompras de su token. El creador selecciona una política; la plataforma aplica límites comunes y el ejecutor actúa dentro de esas reglas. Las recompras son una asignación de caja, no un dividendo directo ni un precio mínimo garantizado.
+
+[TABLA]
+Responsable | Puede definir o ejecutar | Límite
+Creador | Fracción del excedente, reserva objetivo y destino de tokens recomprados. | Plantillas permitidas y cambios públicos con demora; sin acceso arbitrario a fondos comprometidos.
+Plataforma | Fuentes elegibles, reglas contables, permisos y comprobantes. | No convierte aportaciones o liquidez en ganancias distribuibles.
+Ejecutor | Órdenes dentro de condiciones de precio, liquidez, presupuesto y vencimiento. | Sin obligación de comprar a cualquier precio ni alterar la política.
+[/TABLA]
+
+
+### [Heading2] Del resultado al presupuesto de recompra
+Resultados resueltos y cobrados → conciliación de ganancias y pérdidas
+→ costos, pérdidas previas, obligaciones y reserva operativa
+→ excedente elegible disponible → fracción asignada a buybacks
+→ ejecución protegida → comprobante y destino de tokens
+Una victoria no basta para activar reparto. Se debe recuperar el déficit acumulado según la metodología y preservar fondos para posiciones abiertas, costos y obligaciones. Las nuevas aportaciones no se contabilizan como beneficio. Cada asignación queda marcada para impedir que el mismo excedente financie más de un buyback. Se publican por separado los buybacks financiados por desempeño y los financiados por comisiones del token.
+
+### [Heading2] Cuándo se ejecuta
+No obligar a comprar inmediatamente tras cada resultado ni a una hora fija con importe predecible. La política es pública, pero su presupuesto se ejecuta bajo condiciones de liquidez y precio, límites de impacto y protecciones compatibles con la red. Puede quedar pendiente. Fragmentar compras o variar horarios por sí solo no elimina anticipación ni MEV. [10, 11]
+El mercado puede anticipar futuros buybacks y reflejarlos en el precio. Esto es distinto de permitir que terceros exploten una orden forzada. El objetivo de ejecución es evitar desperdiciar fondos, no provocar una vela verde tras una victoria. No ocultamos resultados para negociar con información privilegiada.
+
+### [Heading2] Qué recibe el holder
+En una recompra recibe dinero quien vende al mecanismo; quien mantiene sus tokens no cobra automáticamente. Quemar lo comprado reduce suministro; conservarlo en tesorería permite una futura redistribución o venta y debe revelarse. El destino final sigue abierto. Distribuciones directas o derechos de rescate necesitarían otro diseño y no forman parte de la base actual.
+
+### [Heading1] 6 Arquitectura del launcher en Monad
+Monad es la red elegida para el lanzamiento. La propuesta de implementación es un launcher propio que migra a Uniswap v4 en Monad, cuyos contratos aparecen en la documentación oficial. Confirmar los contratos del entorno del hackathon: un despliegue mainnet documentado no acredita un despliegue equivalente en testnet. [8]
+Wallet del creador → despliegue + presupuesto pre grad separado
+Creación de Pickle y $PICK → curva pre grad
+Curva → graduación → posición LP inicial en Uniswap v4
+→ tesorería restringida del agente
+Comisiones de curva y posición LP → contrato de reparto
+Tesorería → harness → adaptador de prediction market
+Excedente elegible → ejecutor de buybacks → mercado del token
+
+### [Heading2] Qué tomamos de las referencias
+HeyAnon documenta en Robinhood Chain una curva contra ANON con suministro dividido 78% para curva y 22% para migración. Cobra 1% pre-grad, dividido por igual entre creador y protocolo. Post-grad usa Uniswap v4 y divide por igual los ingresos de la posición LP inicial; las posiciones de otros proveedores generan ingresos para ellos. Son referencias de arquitectura, no parámetros adoptados por Pickler. [6, 7]
+ClawPump integra proveedores: pump.fun y Metaplex Genesis en Solana, Pons en Robinhood Chain y pools.trade para lanzamientos en Uniswap. No necesitamos reproducir todos esos destinos. Nad.fun ofrece una alternativa de integración local; su documentación V2 contempla asignaciones de creator fees a vaults, pero su flujo de graduación destina la liquidez restante al LP manager. No asumimos que permita nuestro reparto de recaudación a tesorería. [1, 9]
+
+### [Heading2] Qué construimos y qué reutilizamos
+Propio: curva o configuración de lanzamiento adecuada, controlador de graduación, tesorería, administrador de LP, reparto de ingresos, políticas y ejecución de buybacks. Reutilizable: núcleo de swaps del DEX, bibliotecas y componentes compatibles una vez revisadas sus condiciones. Nuestra interfaz de compra y venta puede operar sobre esos contratos sin crear un exchange completo.
+El par inicial, comisión del pool y rango de liquidez quedan abiertos; candidatos son WMON y un stablecoin compatible. Debemos definir custodia de la posición LP, facultades de retiro o cambio de rango y reparto de comisiones. Los ingresos dependen de liquidez activa y flujo por ese pool; otros pools y rutas pueden competir. La presencia del DEX no aporta compradores ni liquidez inicial automáticamente.
+
+### [Heading2] La red del token y la red de ejecución
+El prediction market aún no está elegido. Si vive fuera de Monad, hará falta un diseño explícito de custodia y transferencia entre redes, fondos preposicionados, conciliación y tiempos de retorno para buybacks. Esto es una dependencia de alcance, no un detalle del frontend. El MVP debe usar una sola ruta definida o simularla con etiquetas claras.
+
+### [Heading1] 7 Identidad ERC 8004 y Trust8004
+ERC-8004 propone registros de identidad, reputación y validación. Permite identificar un agente y asociarle metadata y señales públicas. El texto consultado sigue marcado como Draft; la implementación debe fijar red, contratos y versión. El estándar no crea el token del launcher, no certifica solvencia y no determina derechos económicos. [4]
+
+### [Heading2] Cómo lo integramos
+Cada agente de Pickler tendrá un identificador interno estable y un enlace verificable a su registro ERC-8004. Separaremos propietario, operador, wallets de ejecución, token del lanzamiento y versiones de configuración. Enlazar una wallet requiere prueba de control apropiada; compartir nombre o avatar no prueba pertenencia.
+Identidad registrada → perfil del agente en Pickler
+Configuración versionada → decisión → ejecución y resultado
+Evidencia reconciliada → métricas públicas de actividad
+Señales compatibles → registros ERC 8004 y vistas de Trust8004
+No subiremos cada log ni cada opinión al registro. El ledger de actividad de Pickler conservará decisiones y evidencias; publicaremos señales seleccionadas con metodología y procedencia. El feedback de reputación exige respetar las reglas del registro, incluida la restricción de que el propietario u operador aprobado no emita su propio feedback. [4]
+
+### [Heading2] Qué significa reputación aquí
+Mostraremos quién emitió una señal, qué mide, sobre qué período y con cuántas observaciones. Un resultado resuelto de un mercado, una opinión de un usuario y una validación externa son evidencias distintas. Comprar tokens no habilita a convertir popularidad en una evaluación técnica favorable.
+ERC-8004 permite vincular un agente registrado en una cadena con actividad en otras. Si token, registro y prediction market están en redes distintas, Pickler tendrá que demostrar esos vínculos e indexarlos; el estándar no resuelve por sí solo la ejecución entre cadenas. [4]
+
+### [Heading2] La continuidad con Trust8004
+El equipo señala que construyó el explorer Trust8004. Es una base concreta de experiencia en identidad e indexación y una posible superficie de descubrimiento. La documentación referenciada del producto incluye API, modelo de indexación y trust score. Su reutilización en Pickler requiere revisar código, cobertura, compatibilidad de componentes y capacidad operativa; este documento no acredita adopción comercial ni una integración ya implementada. [5]
+La oportunidad es conectar descubrimiento con una vida observable del agente. La misión empresarial propuesta es facilitar que más creadores publiquen agentes útiles y que las comunidades puedan entender lo que hacen. La transparencia de identidad, control y actividad debe permanecer aunque cambie el mecanismo del token.
+
+### [Heading1] 8 Arquitectura y desarrollo de herramientas
+
+### [Heading2] Arquitectura funcional propuesta
+CREADORES → Studio                 COMUNIDAD → App pública
+↓                                  ↓
+API de Pickler • identidad • configuración • permisos • actividad
+↓ agente propio o runtime del desarrollador
+Datos y aportaciones → agente propone → harness valida
+↓
+wallet y controles → prediction market
+↓
+reconciliación → evidencia → perfil y publicación
+Launcher y token → indexador económico → mercado y comisiones
+ERC 8004 y Trust8004 ↔ identidad y señales de reputación
+El runtime organiza modelos, memoria y workflows. El harness financiero recibe propuestas estructuradas y gobierna su ejecución. Hospedar el runtime en un VPS de Pickler es una modalidad; un desarrollador externo también puede proponer acciones a través de la misma API. El alcance verificable cubre las wallets y acciones conectadas, no toda la actividad externa del creador.
+
+### [Heading2] Qué es una skill y qué es una herramienta
+Una skill describe una capacidad y cómo usarla: por ejemplo, evaluar mercados de deportes con ciertas fuentes. Una herramienta es una operación concreta: consultar un mercado, simular una orden, proponer una posición o publicar un mensaje. Habilitar una skill no debe conceder de forma implícita permisos de firma o acceso ilimitado a fondos.
+
+[TABLA]
+Contrato de integración | Contenido mínimo
+Agent Manifest | Identidad, versión, operador, runtime, capacidades, fuentes y configuración pública.
+Tool Definition | Entradas y salidas, permisos, costos, límites, errores y versión de adaptador.
+Action Intent | Agente, mercado, acción, monto, límite de precio, vencimiento, versión y clave de idempotencia.
+Execution Receipt | Solicitud, decisión de política, estado, orden o transacción, gasto y evidencia.
+Community Submission | Autor, fuente, fecha, mercado relacionado y estado de revisión.
+[/TABLA]
+
+
+### [Heading1] 9 Control del dinero y componentes técnicos
+El agente propone operaciones; no recibe una llave maestra que le permita disponer libremente de los fondos. Las políticas del servidor se complementan con permisos efectivos en la wallet o contrato. Antes de dinero real debemos comprobar qué restricciones admite la cadena y el venue elegidos.
+
+[TABLA]
+Componente | Responsabilidad en V1
+Agent Registry y Config Store | Identidad, vínculos de wallets y token, manifest y versiones.
+Runtime Gateway y Scheduler | Recibir propuestas, disparar rutinas, limitar consumo y mostrar disponibilidad.
+Tool Registry y adaptadores | Datos de mercado, simulación, ejecución, resolución y publicación en X.
+Policy Engine y Wallet Controller | Validar acciones, firmar dentro de permisos y revocar capacidades.
+Launch Controller y LP Manager | Curva, graduación, asignación de tesorería, posición LP y cobro de comisiones.
+Treasury y Buyback Executor | Presupuestos, excedentes asignados, recompras y destino de tokens.
+Activity Ledger y Evidence Store | Decisiones, aportaciones, referencias de fuentes y comprobantes.
+Event Indexer y Reconciler | Resolver estados de órdenes y transacciones; deduplicar y reconstruir actividad.
+Metrics Service y Publisher | Historial, posiciones, métricas y publicaciones vinculadas a evidencia.
+[/TABLA]
+
+
+### [Heading2] Controles mínimos de ejecución
+Allowlist de contratos, mercados y acciones; tamaño máximo por orden; exposición acumulada por mercado y evento; límite global de posiciones y órdenes abiertas; límites de precio, vencimiento y gasto operativo. También se restringen destinatarios, approvals y firma de mensajes. Bloquear transferencias simples no basta para impedir una salida indirecta.
+Los límites deben contar ejecuciones pendientes y ser resistentes a propuestas simultáneas. Los reintentos reutilizan un identificador para no duplicar una apuesta. Ante un timeout, reconciliamos el estado antes de reenviar. Las pruebas deben cubrir acumulación de órdenes, cambios de precio, firmas no permitidas y fallos de proveedores.
+
+### [Heading2] Cambios de control e incidentes
+El creador puede proponer cambios de configuración; las ampliaciones de permisos requieren una autorización separada y un registro visible. Pausar nuevas posiciones debe permitir, cuando sea técnicamente posible, cancelar órdenes y cerrar exposición. Una pausa no garantiza detener pérdidas de posiciones ya abiertas.
+
+### [Heading2] Qué vive onchain y qué vive offchain
+Onchain: registros compatibles de identidad, token y pool, permisos aplicables, transferencias, transacciones y asignaciones contractuales de fondos. Offchain: lógica del agente, prompts, claves protegidas, datos privados, moderación, logs y métricas derivadas. La evidencia pública puede publicarse con hash; su disponibilidad debe mantenerse y un hash no demuestra que el contenido sea verdadero.
+
+### [Heading1] 10 Vida del agente y participación comunitaria
+
+### [Heading2] Tres estados independientes
+Un token puede seguir negociándose aunque el agente esté pausado. Por eso lanzamiento, operación y predicciones tienen estados distintos y visibles. No se mostrará “activo” como sustituto de los tres.
+Token: Borrador → Preparado → Pre grad → Post grad
+Excepciones del token: fallo o cancelación según el mecanismo
+Agente: Configurado → Prueba → Activo ↔ Pausado → Retirado
+Sin presupuesto: impide nuevas acciones; no elimina posiciones abiertas
+Predicción: Propuesta → Validada → Enviada → Abierta → Resuelta
+Excepciones de ejecución: rechazo, fallo, cancelación o cierre anticipado
+Preparado exige identidad y configuración completas, pruebas de herramientas, permisos y economía publicada. Graduado exige confirmar la transición del venue y la liquidez resultante. Activo exige runtime disponible y presupuesto habilitado; no depende de que el token ya se haya graduado. El agente opera desde pre-grad y mantiene su historia al migrar. Un token puede seguir negociándose con un agente sin presupuesto; ambas condiciones deben quedar visibles.
+
+### [Heading2] Recorrido completo
+El creador define nombre, personalidad, fuentes y enfoque; conecta su runtime o una plantilla; prueba herramientas y límites; revisa el perfil público y términos del lanzamiento. Después publica el agente y habilita el lanzamiento. La comunidad puede seguirlo, aportar información y negociar el token. El agente genera una propuesta, el harness la acepta o rechaza, se registra lo ejecutado y se publica una explicación basada en evidencia. Al resolverse el mercado se actualiza el historial.
+
+### [Heading2] Aportaciones y transparencia
+Cada aportación debe mostrar recibida, en revisión, incorporada, descartada o insuficiente, con un motivo breve cuando exista. Incorporada significa que el agente la usó, no que Pickler haya demostrado su veracidad. Las correcciones conservan el vínculo con el contenido anterior. Las fuentes privadas se protegen; la comunidad ve una explicación pública suficiente sin exponer secretos ni datos personales.
+El creador decide cómo incorporar aportaciones y publica esa política. El capital aportado puede ser una señal de compromiso o una regla de participación declarada; no equivale a precisión. En la V1 propuesta no ponderamos automáticamente la verdad de una fuente por la cantidad de tokens del remitente.
+
+### [Heading2] Una personalidad con memoria comprobable
+El agente puede explicar su postura, responder a críticas y publicar resultados con su voz. Debe distinguir opinión, intención y ejecución confirmada. No se fabrican trades ni se reescriben derrotas como victorias; se identifica una intervención humana. Mantener el historial permite que la cultura se forme alrededor de acciones que realmente ocurrieron.
+
+### [Heading1] 11 El oficio de Pickle y la investigación del usuario
+Pickle será el agente de referencia con el que probaremos el recorrido. Su valor depende de un proceso reconocible para investigar, seleccionar, publicar y dar seguimiento a picks. Una personalidad escrita en un prompt y acceso a una wallet no bastan para definir ese oficio. No necesitamos que todos los agentes sean variantes del mismo personaje.
+
+### [Heading2] Investigación pendiente antes de especializarlo
+Proponemos observar y entrevistar a personas que publican picks, a miembros que los siguen y a quienes envían información. Comparar analistas especializados, creadores de comunidad y pronosticadores sistemáticos como hipótesis de segmentos, sin asumir todavía que describen a nuestros usuarios. Revisar ejemplos fechados de investigación, pick, cambio de postura y resultado, además del tiempo y herramientas que requieren.
+
+[TABLA]
+Dimensión | Pregunta de investigación | Capacidad que puede resultar
+Especialidad | Qué mercados conocen y cuándo prefieren abstenerse. | Mandato de Pickle y reglas de no participación.
+Fuentes | Cómo contrastan datos, rumores, opiniones y actualidad. | Adaptadores, procedencia, fechas y contraste.
+Selección | Cómo comparan probabilidad, precio y nueva información. | Tesis, precio aceptable, vigencia y decisión de actuar.
+Comunicación | Cómo publican incertidumbre, cambios y derrotas. | Voz, memoria, seguimiento y correcciones visibles.
+Comunidad | Quién aporta, con qué incentivos y cómo obtiene respuesta. | Aportaciones con autor, estado, motivo y atribución.
+Rendición de cuentas | Cómo conservan resultados y diferencian picks de apuestas. | Historial íntegro con ejecución y resultado separados.
+[/TABLA]
+
+
+### [Heading2] Contrato mínimo de un pick
+Identificador; mercado y evento; selección; tesis breve y fuentes; hora de publicación; precio observado y límite aceptable; vigencia; condiciones para cambiar de postura; estado de ejecución y resultado cuando exista. Si declara una probabilidad, se registra antes del desenlace y se evalúa posteriormente. No presentar una explicación generada después como razonamiento documentado antes de operar.
+Un pick publicado puede no convertirse en una posición: falta liquidez, cambió el precio, expiró la tesis o el agente se abstuvo. La interfaz debe distinguir opinión, intención, orden y posición confirmada. Un mensaje comunitario o documento externo se trata como datos no confiables, nunca como autorización para firmar o cambiar reglas.
+
+### [Heading2] Personalidad y herramientas separadas
+El creador decide enfoque, voz, fuentes y lógica del agente. Las herramientas exponen operaciones verificables y permisos explícitos; la personalidad no modifica límites de fondos. La ponderación por capital de un miembro queda como investigación P2. Recibir aportaciones y mostrar qué se utilizó forma parte del piloto. Capital, contribución útil y calidad predictiva son señales distintas.
+
+### [Heading1] 12 Qué debemos diseñar y construir en producto
+
+[TABLA]
+Superficie | Pantallas necesarias | Criterio de claridad
+App pública | Descubrimiento, perfil, actividad, comunidad y token. | Se entiende qué hace el agente antes de operar su token.
+Studio del creador | Crear o conectar, configurar, probar, lanzar, operar e ingresos. | El desarrollador puede llegar de la configuración a una primera acción verificable.
+Consola operativa | Permisos, órdenes, incidentes, reconciliación y comisiones. | Se puede explicar un fallo y actuar sin alterar el historial.
+[/TABLA]
+
+
+### [Heading2] La página del agente como centro del producto
+Debe mostrar identidad y creador, personalidad y enfoque, capacidades habilitadas, versión vigente, estado operativo y límites. Su feed conecta publicaciones, aportaciones, decisiones, comprobantes y resultados. La sección del token muestra precio, liquidez, etapa, reservas hacia graduación, distribución, comisiones y derechos. Tesorería muestra capital disponible, exposición, reserva y política de buyback; distingue presupuesto asignado de recompra ejecutada. El presupuesto operativo aparece como una cifra distinta del valor de mercado del token.
+Las métricas iniciales incluyen número de predicciones resueltas, victorias y derrotas, período, capital expuesto, resultado neto de costos y posiciones abiertas. Separar simulación de ejecución real. El win rate aislado es insuficiente: varios aciertos pequeños pueden no compensar una sola pérdida grande. Deben verse todas las operaciones cubiertas por el historial y sus condiciones.
+
+### [Heading2] El flujo del creador
+1. Identidad y enfoque. 2. Runtime, fuentes y skills. 3. Wallet, límites y fondeo del creador con costos desglosados. 4. Prueba de extremo a extremo. 5. Token, asignación post-grad y buybacks. 6. Revisión pública. 7. Lanzamiento y operación. El editor guarda borradores y muestra bloqueos concretos, no un porcentaje abstracto de completitud.
+El control de preparación del lanzamiento identifica bloqueos concretos: faltan credenciales, una herramienta falló, no hay saldo operativo o la política permite una acción no aprobada. “Listo para lanzar” debe derivarse de comprobaciones observables y de la configuración congelada que se publica.
+
+### [Heading2] Principios de interfaz
+Separar acciones del creador y de la comunidad; no poner credenciales, modelos y permisos en la navegación principal del participante.
+Destacar la siguiente acción pertinente al estado. Crear agente, lanzar token y reactivar operación son tareas distintas.
+Usar tablas y estados legibles para operación prolongada. Reservar la personalidad visual para perfiles, comunidad y momentos de lanzamiento.
+Mostrar actividad reciente y continuidad antes de recompensas por visitas. En V1 no necesitamos leaderboard de puntos, streaks ni un marketplace genérico de skills.
+
+### [Heading1] 13 Alcance del MVP y activos reutilizables
+
+### [Heading2] Demostración completa para el hackathon
+Un creador configura un agente de referencia con identidad ERC-8004 vinculada; define personalidad y fuentes; prueba una predicción; ve una acción rechazada por exceder un límite y otra aceptada; consulta un comprobante y el perfil actualizado antes de graduar. El lanzamiento demuestra fondeo pre-grad del creador, separación de reservas, migración y una asignación post-grad de prueba, comisiones y recompra bajo política. Una aportación comunitaria tiene estado visible y una publicación se vincula a una decisión.
+Se debe etiquetar claramente qué funciona en testnet, simulación o sandbox, qué usa APIs reales y qué está preparado para producción. La demo de graduación no debe presentarse como liquidez real si se usan fondos de prueba. La publicación en X puede demostrarse con vista previa si falta la integración autorizada.
+
+[TABLA]
+Incluir primero | Dejar para después
+Un tipo de agente y un adaptador de prediction markets. | Agentes de vaults, gestión de posiciones y estrategias DeFi generales.
+Launcher en Monad y una ruta de ejecución definida. | Varios launchers y rutas generales de puentes entre redes.
+Agente propio y contrato de integración documentado. | Autoservicio irrestricto y ecosistema abierto de plugins.
+Perfil, feed, token, aportaciones y panel operativo. | Chat social completo, gobernanza compleja y gamificación.
+Presupuestos por etapa y una plantilla de buyback con comprobantes. | Derechos pro rata, dividendos directos y optimización avanzada de recompras.
+[/TABLA]
+
+
+### [Heading2] Lo que el equipo ya reporta tener
+Trust8004 aporta el explorer y experiencia de indexación. El Agentic Center de Juvenal aporta master wallets y agentic wallets. El trabajo de Gilbert aporta ejecución de tareas financieras específicas. Son activos reportados en la conversación; no hemos auditado sus repositorios en esta especificación. El primer trabajo de ingeniería es mapear interfaces, permisos reales, redes y pruebas reutilizables.
+
+### [Heading2] Orden de implementación
+Primero, cerrar economía y ruta de ejecución, investigar el oficio de Pickle y revisar componentes existentes. Segundo, construir identidad → propuesta → política → ejecución → evidencia. Tercero, implementar curva, graduación, tesorería, LP y comisiones. Cuarto, conectar perfil, comunidad, publicación y una política de recompra. Quinto, probar un piloto limitado con creadores externos. Las interfaces pueden avanzar en paralelo con datos de ejemplo claramente etiquetados.
+Para producción con fondos reales se requiere verificar contratos y autoridades, controles efectivos, recuperación ante fallos y compatibilidad con las condiciones del venue y los mercados de destino. Estas condiciones son una puerta de lanzamiento; no hacen falta para simular honestamente el recorrido del hackathon.
+
+### [Heading1] 14 Categorías técnicas y priorización del desarrollo
+El backlog se organiza por categoría técnica principal. El área de producto funciona como etiqueta transversal: identidad, comunidad, economía o historial. La categoría no determina prioridad. Una tarea pequeña de permisos puede bloquear el lanzamiento aunque una función de personalización requiera más trabajo.
+
+[TABLA]
+Categoría técnica | Alcance
+Smart contracts y blockchain | Token, curva, graduación, LP, reparto, eventos e integración ERC-8004.
+Wallets y seguridad | Custodia, firmantes, permisos, límites, secretos, revocación y recuperación.
+Backend y APIs | Servicios, autenticación, configuración y contratos de integración.
+Runtime y lógica del agente | Modelos, memoria, investigación, decisión y selección de herramientas.
+Integraciones y herramientas | Mercados, fuentes, simulación, órdenes, resolución y publicación en X.
+Datos e indexación | Ingesta, históricos, conciliación, resultados y métricas.
+Frontend y experiencia | Studio, perfil, feed, token, tesorería y estados.
+Infraestructura y operación | Despliegue, colas, jobs, disponibilidad, costos y monitoreo.
+Evaluaciones y QA | Contratos, integración, invariantes económicas y regresiones del agente.
+[/TABLA]
+
+
+### [Heading2] Campos de cada tarea
+ID, resultado esperado, categoría técnica, área de producto, tipo de trabajo, prioridad, etapa objetivo, dependencias, responsable y criterio de aceptación. El tipo distingue investigación técnica, diseño, implementación, validación y operación. La investigación de usuarios sobre tipsters se gestiona como descubrimiento de producto y alimenta tareas técnicas posteriores.
+
+[TABLA]
+Prioridad | Significado
+P0 | Bloquea el recorrido central o la etapa que maneja fondos bajo las reglas declaradas.
+P1 | Necesario para continuidad y uso del piloto por creadores y comunidad.
+P2 | Mejora calidad, personalización o participación después de validar la base.
+P3 | Expande tipos de agentes, redes, mercados o capacidades.
+[/TABLA]
+
+Ejemplos: definir autoridad de firma y límites de tesorería es P0 para fondos reales; recibir aportaciones y mostrar su uso es P1 del piloto; ponderarlas por capital del miembro es P2. Mostrar el primer comprobante puede ser P0 de la demo aunque la analítica avanzada del historial sea P2. Estas reglas preparan el desglose posterior; no inventan estimaciones ni asignan trabajo a personas sin revisar la capacidad del equipo.
+
+### [Heading1] 15 Validación y decisiones del equipo
+
+### [Heading2] Cómo sabremos si vale la pena
+El indicador comercial principal es ingreso neto del launcher después de subsidios y costos atribuibles. Lo acompañamos con retención de participantes y continuidad de agentes para distinguir un pico de lanzamiento de un producto que mantiene actividad. El volumen bruto por sí solo no demuestra demanda ni margen.
+
+[TABLA]
+Hipótesis | Medición propuesta
+Los creadores pueden publicar sin ayuda constante. | Tiempo a primera acción verificable, bloqueos y minutos de soporte por lanzamiento.
+La actividad del agente hace volver a la comunidad. | Retención a 7 y 30 días, visitas al historial y participación después del lanzamiento.
+La actividad económica cubre la operación. | Comisiones netas y continuidad bajo poco volumen; costos y subsidios por agente.
+El vínculo con buybacks es material. | Excedentes frente a costos, fondos recomprados e impacto de ejecución; sin equipararlos a retorno del holder.
+La comunidad aporta información útil. | Aportaciones revisadas, incorporadas y corregidas; procedencia y efectos observables.
+El sistema controla y explica su ejecución. | Acciones reconciliadas, duplicados, incumplimientos y tiempo de recuperación.
+[/TABLA]
+
+Analizar por cohortes de lanzamiento y separar incentivos pagados, cuentas del equipo y actividad potencialmente circular cuando sea identificable. No fijamos aquí umbrales comerciales inventados: el equipo los define antes del piloto y los contrasta con costos reales.
+
+### [Heading2] Decisiones que bloquean una implementación concreta
+Producto y negocio: qué derechos tiene el token; por qué alguien lo compra; comisión, beneficiarios y conflictos de interés visibles.
+Producto e ingeniería: parámetros de curva, umbral, suministro reservado, par y rango del pool; montos de tesorería y mercado inicial de predicciones.
+Ingeniería: custodia y firma efectivas, LP Manager, contabilidad de excedentes, destino de tokens recomprados, ruta externa de ejecución y recuperación.
+Diseño y producto: oficio y voz de Pickle, fuentes, estados independientes, política de recompra visible y distinción entre pick y posición.
+Equipo fundador: quién opera incidentes, quién puede ampliar permisos y quién aprueba salir del entorno de prueba.
+
+### [Heading2] Criterio para ampliar o detener
+Ampliar si creadores independientes completan el recorrido, la comunidad vuelve por la actividad y los ingresos netos justifican operar el servicio. Si solo se negocia durante el lanzamiento y nadie sigue al agente, la hipótesis de identidad viva no estará demostrada. En ese caso habrá que reconocer que el negocio funciona como launcher especulativo, o reducir alcance; añadir más skills no resuelve automáticamente el problema.
+
+### [Heading1] 16 Vocabulario referencias y límites de esta versión
+
+[TABLA]
+Término | Significado en Pickler
+Agente | Identidad persistente con configuración versionada, lógica de decisión y capacidades; puede operar en runtime propio o externo.
+Launcher | Sistema para publicar el token y gestionar su mecanismo de lanzamiento y transición de mercado.
+Token del agente | Activo negociable asociado al agente; los derechos provienen de reglas explícitas, no del nombre.
+Harness financiero | Capa que recibe propuestas, comprueba políticas, gobierna ejecución y registra comprobantes.
+Graduation | Paso económico de pre-grad a post-grad; under-grad y over-grad son los nombres usados inicialmente. No inicia ni reinicia al agente.
+Tesorería y presupuesto | Capital asignado al agente y parte habilitada para usarlo; separados de market cap y liquidez.
+Buyback | Compra del token con fondos elegibles; no es pago directo a todos los holders.
+Track record | Historial atribuible con decisiones, ejecuciones, resultados y alcance de cobertura visible.
+[/TABLA]
+
+
+### [Heading1] 17 Fuentes y procedencia
+Esta versión adopta Pickler y pickler.fun, con Pickle y su token $PICK como primer lanzamiento. El creador financia la operación pre-grad; las compras netas de comisiones permanecen en el mecanismo del token. La pequeña asignación post-grad queda propuesta y pendiente de cuantificar. Monad es la red elegida; launcher propio y Uniswap v4 son la propuesta técnica base. Los parámetros no están aprobados ni desplegados. Los flujos, pantallas, componentes y alcance son propuestas de especificación. Las fuentes externas respaldan únicamente las descripciones atribuidas a ellas; no validan la demanda de Pickler.
+[1] ClawPump — integraciones de launchers y API
+[2] pump.fun — estructura de comisiones
+[3] pump.fun — bonding curve y graduación
+[4] ERC 8004 — Trustless Agents
+[5] Trust8004 — documentación del explorer
+[6] HeyAnon — curva pre grad en Robinhood Chain
+[7] HeyAnon — post grad y comisiones de la posición LP
+[8] Uniswap v4 — despliegues oficiales incluido Monad
+[9] Nad.fun V2 — curva graduación y asignaciones de fees
+[10] Uniswap — funcionamiento de pools y price impact
+[11] Ethereum — MEV y ataques sándwich
+Fuentes externas consultadas durante el análisis del 9 de septiembre de 2026. La documentación de Trust8004 es una referencia aportada por el equipo y revisada en el trabajo previo; no fue recuperable en la consulta web de esta actualización. No se verificaron despliegues, contratos ni métricas de uso mediante una auditoría independiente.

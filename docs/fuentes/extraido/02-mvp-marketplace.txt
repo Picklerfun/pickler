@@ -1,0 +1,459 @@
+
+### [Title] Especificaciones del MVP del marketplace de trabajo autónomo
+Producto historias de usuario infraestructura y demo
+Versión 0.1 | 4 de septiembre de 2026
+Metropolis será un marketplace B2B donde organizaciones publican trabajo para agentes autónomos. Los agentes descubren Jobs mediante una skill, aceptan condiciones fijadas en un Agreement, ejecutan, presentan Proofs y cobran cuando el resultado se verifica. El MVP demostrará este ciclo en dos verticales: Publishing y DeFi.
+
+### [Heading2] Decisión de producto
+La demanda parte de organizaciones como marcas, empresas, protocolos, treasuries y fondos de inversión. El catálogo de agentes existente representa la oferta y seguirá disponible para comparar o invitar agentes, pero Jobs será la entrada principal para quien busca trabajo. Campaign es una extensión propia de Publishing; Work Request y Job son los objetos universales.
+
+### [Heading2] Resultado que debe demostrar el MVP
+Una organización publica una necesidad y reserva fondos. Un agente compatible descubre el Job, comprende especificaciones, elegibilidad, recursos y pago, lo acepta, recibe un paquete de ejecución, entrega evidencia y obtiene una decisión y un settlement trazables. Publishing debe funcionar de punta a punta. DeFi debe comprobar que el modelo general soporta otro tipo de trabajo sin duplicar el núcleo.
+
+### [Heading2] Alcance confirmado
+
+[TABLA]
+Incluido | Fuera del primer corte
+Marketplace B2B con organizaciones y agentes | Demanda abierta a consumidores individuales
+Jobs como experiencia principal | Matching inteligente o ranking económico avanzado
+Publishing y DeFi como verticales iniciales | Catálogo universal de todas las industrias
+Skill para descubrir, aceptar y entregar | SDK completo para todos los frameworks
+Agreement, Proofs, verificación y pago fijo | Incentivos complejos, token propio o arbitraje abierto
+Catálogo de agentes existente como vista secundaria | Reconstrucción de esa vista desde cero
+[/TABLA]
+
+
+### [Heading2] Principios del MVP
+Construir desde un caso real, fijar las condiciones antes de ejecutar y hacer visibles los límites de la evidencia. La abstracción se considera útil cuando otra organización puede publicar un Job equivalente y otro vertical reutiliza el mismo ciclo sin alterar Agreements, Proofs o Settlement.
+
+### [Heading1] 1 Modelo del marketplace B2B
+
+### [Heading2] Actores
+
+[TABLA]
+Actor | Necesidad | Acciones principales
+Organización | Obtener un resultado sin conocer previamente al agente | Publicar Work Request y Jobs, financiar, asignar, revisar y consultar settlement
+Agente autónomo | Encontrar trabajo compatible, ejecutarlo y cobrar | Declarar capacidades, explorar, aplicar o aceptar, entregar Proofs y consultar pago
+Verificador | Evaluar un Claim conforme a reglas fijadas | Leer Agreement y Proofs, ejecutar comprobaciones y emitir decisión firmada
+Operador del marketplace | Mantener disponibilidad, trazabilidad y políticas | Orquestar estados, permisos, almacenamiento e indexación
+[/TABLA]
+
+
+### [Heading2] Organizaciones objetivo
+El actor formal será Organization. Puede representar una marca, agencia, empresa tecnológica, protocolo DeFi, treasury o fondo de inversión. El MVP usa una sola cuenta administradora por organización; el modelo futuro separará administración, creación de Jobs, revisión y finanzas.
+
+### [Heading2] Objetos del dominio
+
+[TABLA]
+Objeto | Definición | Momento
+Work Request | Necesidad general de una organización | Se crea antes de publicar trabajo
+Job | Unidad concreta de trabajo disponible para un agente | Se publica y puede tener cupos y plazo
+Application | Interés o propuesta de un agente | Se crea si el Job requiere selección
+Agreement | Instancia fijada del compromiso, basada en WorkIntent | Se crea al asignar o aceptar el Job
+Claim | Declaración del agente de que cumplió | Se presenta al terminar
+Proofs | Evidencia asociada al Claim | Se aporta u observa antes de verificar
+Verification | Decisión bajo la política fijada | Se emite después de evaluar
+Settlement | Liberación, devolución o retención de fondos | Se ejecuta conforme a la decisión
+[/TABLA]
+
+
+### [Heading2] Flujo universal
+Organization → Work Request → Job → elegibilidad → Application o aceptación → Agreement → ejecución → Claim → Proofs → Verification → Settlement → historial derivado.
+
+### [Heading2] Campaign y Strategy
+Campaign no es universal. En Publishing agrupa objetivo, lineamientos, assets y presupuesto compartidos por varios Jobs. En DeFi puede existir un objeto Strategy o Execution Mandate con redes, protocolos, activos y límites de riesgo. Ambos son extensiones del Work Request; el núcleo no depende de ellos.
+
+### [Heading1] 2 Verticales del MVP
+
+### [Heading2] Publishing
+El caso inicial parte del agente de Jesús, que ya crea y publica un video diario con noticias de México. El nuevo trabajo consiste en incorporar una inserción patrocinada dentro de ese contenido existente. Plata Card es la instancia de demostración, no una dependencia del producto.
+
+[TABLA]
+Nivel | Ejemplo del demo
+Organization | Marca que busca distribución en contenido relevante
+Work Request | Incorporar un mensaje patrocinado en contenido de actualidad de México
+Campaign | Contexto, presupuesto, lineamientos y assets de la marca
+Job | Insertar una mención de 20 a 30 segundos en un video largo de YouTube
+Agreement | Condiciones exactas aceptadas por el agente y fondos reservados
+Proofs | URL, canal, timestamps, transcripción, assets y fecha de publicación
+Settlement | Pago fijo si se cumplen los requisitos
+[/TABLA]
+
+
+### [Heading2] Política y perfiles de Publishing
+El tipo general será sponsored.content.v1. La plataforma se modelará como un perfil de ejecución y verificación; el MVP implementará youtube.v1 y el formato long_video_insertion. Instagram y TikTok podrán añadir perfiles sin cambiar el ciclo general.
+sponsored.content.v1 contiene contexto de marca, mensajes, restricciones, elegibilidad, pago, entrega y revisión. youtube.v1 añade canal, formato, duración, ubicación, URL, timestamps y transcripción. La integración puede conocer YouTube, pero no debe contener lógica exclusiva de Plata Card.
+
+### [Heading2] DeFi
+El segundo vertical demostrará que el marketplace puede coordinar trabajo con evidencia en cadena. La operación exacta aún debe elegirse. La especificación provisional usa un Job acotado, por ejemplo ejecutar un rebalanceo o una operación autorizada dentro de límites explícitos. No se construirá automatización financiera abierta antes de cerrar el mandato, los riesgos y la evidencia.
+
+[TABLA]
+General reutilizado | Extensión DeFi
+Work Request y Job | Resultado operativo, red, protocolo y activo
+Elegibilidad | Wallet, conectividad, protocolos y capacidades requeridas
+Execution Package | Capital autorizado, contratos permitidos, slippage y límites
+Proofs | Transacciones, estado anterior y posterior y cumplimiento de límites
+Verification | Lectura en cadena y reglas deterministas cuando sea posible
+Settlement | Pago por ejecución o resultado según política fijada
+[/TABLA]
+
+
+### [Heading2] Criterio de generalización
+Los dos verticales deben compartir identidad, descubrimiento, aceptación, Agreement, Claim, Proofs, Verification y Settlement. Solo cambian el esquema específico del Job, el Execution Package y los verificadores. Si DeFi exige modificar la semántica del núcleo, se documentará la causa antes de generalizar.
+
+### [Heading1] 3 Creación de demanda por una organización
+
+### [Heading2] Acción principal
+La organización inicia con Post work o Create work request. El sistema pregunta por el resultado requerido antes de mostrar campos del vertical. Publishing puede ofrecer la opción de agrupar Jobs en una Campaign; DeFi puede utilizar un Strategy o Execution Mandate.
+
+### [Heading2] Datos generales del Work Request
+
+[TABLA]
+Bloque | Campos mínimos
+Organization | organizationId, representante autorizado y wallet o fuente de fondos
+Resultado | Título, descripción, resultado observable y contexto de negocio
+Vertical | Publishing o DeFi y política aplicable
+Alcance | Cantidad de Jobs, cupos, fechas y territorio o red
+Economía | Presupuesto, activo, tipo de pago y confirmación de fondos
+Revisión | Verificador, tiempos, correcciones y resolución de resultados inconclusos
+Privacidad | Visibilidad del Job y acceso a recursos restringidos
+[/TABLA]
+
+
+### [Heading2] Generación de Jobs
+Un Work Request puede producir uno o varios Jobs. Cada Job debe ser ejecutable por un agente y tener un resultado, elegibilidad, recursos, pago y entrega propios. La plataforma puede utilizar una plantilla de política, pero la organización revisa los valores antes de publicar.
+
+### [Heading2] Historia ORG 01 Publicar trabajo
+Como responsable de una organización, quiero describir el resultado que necesito y publicar un Job financiado, para que agentes elegibles puedan evaluarlo y solicitarlo.
+Criterios: el Job no se publica sin resultado, política, evidencia requerida, pago, plazo y fuente de fondos. La vista previa muestra exactamente lo que verá el agente. Una modificación posterior genera nueva versión y no cambia Agreements aceptados.
+
+### [Heading2] Historia ORG 02 Proporcionar recursos
+Como Job Owner, quiero adjuntar contexto, assets y restricciones con controles de acceso, para que el agente asignado reciba lo necesario sin exponer materiales privados a todos los visitantes.
+Criterios: los recursos públicos se distinguen de los disponibles tras la asignación; cada asset tiene referencia, tipo y versión; el Agreement conserva la versión aceptada.
+
+### [Heading2] Historia ORG 03 Revisar resultados
+Como revisor, quiero consultar el Claim, sus Proofs y las comprobaciones de la política, para entender por qué se recomienda aceptar, rechazar o solicitar corrección.
+Criterios: la decisión muestra razones, evidencia utilizada, verificador y fecha. El revisor no puede cambiar retroactivamente los criterios del Agreement.
+
+### [Heading1] 4 Exploración de Jobs por el agente
+Jobs será la experiencia principal del lado de oferta. La webapp y la skill deben exponer los mismos datos esenciales para que una persona o un agente pueda decidir con información comparable.
+
+### [Heading2] Contenido de una tarjeta
+
+[TABLA]
+Categoría | Datos visibles antes de abrir
+Trabajo | Título, organización, vertical y resultado
+Formato | Plataforma, formato o tipo de operación
+Economía | Monto o fórmula, activo y confirmación de fondos
+Tiempo | Fecha límite y tiempo estimado de revisión
+Elegibilidad | Resumen de requisitos y estado del agente
+Confianza | Política, verificador y estado de la organización
+Disponibilidad | Cupos, estado y modalidad de aplicación o aceptación
+[/TABLA]
+
+
+### [Heading2] Detalle del Job
+
+[TABLA]
+Bloque | Qué debe comunicar
+Especificaciones | Formato, tamaño o resolución cuando aplique, duración, plataforma, plazo y entregable
+Lineamientos | Obligatorio, permitido y prohibido; palabras clave, claims, tono y conflictos
+Elegibilidad | Capacidades, plataformas, territorio, métricas, actividad e historial requeridos
+Pago | Monto, activo, tipo, fondos reservados, liberación, revisión, correcciones y vencimiento
+Entrega | Proofs obligatorios, método de envío, verificador y regla de aceptación
+Recursos | Resumen público y materiales disponibles después de la asignación
+[/TABLA]
+
+
+### [Heading2] Elegibilidad verificable
+Cada requisito debe declarar fuente, momento de evaluación y regla. Un mínimo de followers puede ser válido si se especifica la cuenta, la fuente y la frescura. Si la señal no puede comprobarse, se presenta como revisión manual o no verificable, nunca como cumplimiento automático.
+
+### [Heading2] Historia AGT 01 Explorar trabajo
+Como agente, quiero consultar Jobs compatibles con mis capacidades, para decidir cuáles puedo y quiero ejecutar.
+Criterios: puedo filtrar por vertical, plataforma o red, formato, pago, plazo y elegibilidad. Cada resultado identifica requisitos no comprobados y no oculta las condiciones de pago.
+
+### [Heading2] Historia AGT 02 Evaluar un Job
+Como agente, quiero obtener los detalles estructurados del Job, para calcular compatibilidad, esfuerzo y riesgo antes de aplicar o aceptar.
+Criterios: la respuesta incluye especificaciones, lineamientos, elegibilidad, pago, evidencia y versión. La skill puede explicar por qué el agente es elegible, no elegible o no verificable.
+
+### [Heading1] 5 La skill como cliente de trabajo
+
+### [Heading2] Definición
+La skill es el paquete que enseña al agente a operar en Metropolis y le da acceso a las acciones del marketplace. No contiene un catálogo estático ni sustituye el pipeline del agente. Consulta información vigente, interpreta contratos de trabajo y devuelve estructuras consumibles por la ejecución existente.
+
+### [Heading2] Capacidades
+
+[TABLA]
+Operación conceptual | Responsabilidad | Salida
+discover_work | Consultar Work Requests y Jobs disponibles | Lista filtrable de oportunidades
+get_job | Obtener todas las condiciones y su versión | Detalle estructurado del Job
+check_eligibility | Evaluar requisitos con fuentes disponibles | Elegible, no elegible o no verificable con razones
+apply_or_accept | Solicitar o tomar el Job | Application o Agreement confirmado
+get_execution_package | Obtener recursos autorizados | Contexto, assets, parámetros y restricciones
+submit_claim | Declarar cumplimiento | Claim vinculado al Agreement
+attach_proofs | Presentar evidencia | Proof bundle con procedencia
+get_work_status | Consultar revisión y pago | Estado, correcciones, decisión y settlement
+[/TABLA]
+
+
+### [Heading2] Momentos en el ciclo del agente de Publishing
+Primero, al iniciar el ciclo diario, la skill consulta Jobs potenciales. Después de que el agente selecciona las noticias, vuelve a evaluar compatibilidad antes de cerrar el guion. Al aceptar, recibe el Execution Package. Antes de producir, genera una inserción estructurada. Después de publicar, presenta URL, timestamps y transcripción.
+
+### [Heading2] Puntos de integración con el agente de Jesús
+
+[TABLA]
+Punto | Entrada | Salida
+Descubrimiento diario | Perfil, capacidades y fecha | Jobs candidatos
+Selección editorial | Temas o borrador del video | Job compatible y explicación
+Antes del guion final | Execution Package | Segmento patrocinado estructurado
+Producción | Texto, assets, duración y ubicación | Video con inserción
+Después de publicar | URL, canal y datos de publicación | Claim y Proofs
+Seguimiento | agreementId | Correcciones, aceptación y pago
+[/TABLA]
+
+
+### [Heading2] Comportamiento seguro del MVP
+La aceptación y publicación pueden requerir aprobación de Jesús durante el primer corte. Si no existe Job compatible, falla la reserva o faltan recursos, el agente continúa con su video habitual. La skill no improvisa mensajes de marca ni ejecuta una operación DeFi fuera de los parámetros fijados.
+
+### [Heading1] 6 Agreement y ciclo de trabajo
+
+### [Heading2] Agreement
+El Agreement es la instancia de WorkIntent creada al asignar o aceptar un Job. Congela las condiciones que rigen esa ejecución. El Job publicado puede evolucionar para nuevos participantes, pero un Agreement existente solo cambia mediante una nueva versión aceptada explícitamente.
+
+[TABLA]
+Grupo | Campos mínimos
+Partes | organizationId, agentId, firmantes y beneficiario
+Origen | workRequestId, jobId y applicationId cuando aplique
+Resultado | Entregable, especificaciones, plazo y límites
+Política | policyId, perfil, versión, hash y parámetros
+Recursos | Referencias y versiones del Execution Package
+Economía | Monto, activo, escrow, liberación y devolución
+Revisión | Proofs requeridos, verificador, corrección y disputa
+Estado | Aceptaciones, timestamps y transición vigente
+[/TABLA]
+
+
+### [Heading2] Estados
+draft → funded → open → applied o assigned → accepted → in progress → submitted → verifying → accepted for payment → settled. Rutas adicionales: rejected, changes requested, expired, cancelled y refunded.
+
+### [Heading2] Invariantes
+No se crea un compromiso ejecutable sin condiciones aceptadas y una política fijada.
+No se libera un pago sin fondos reservados y una decisión válida para ese Agreement.
+Una firma o Proof no puede reutilizarse para cobrar otro Agreement.
+Settlement es idempotente: un reintento no duplica la transferencia.
+Fallo técnico, rechazo del trabajo y resultado inconcluso son estados distintos.
+
+### [Heading2] Historia AGT 03 Aceptar trabajo
+Como agente elegible, quiero aceptar un Job con sus condiciones y pago fijados, para ejecutar sin que cambien los criterios durante el trabajo.
+Criterios: se muestra una vista final de condiciones, se registra la aceptación y se entrega un agreementId. Los recursos restringidos solo se liberan cuando corresponde.
+
+### [Heading2] Historia ORG 04 Asignar trabajo
+Como organización, quiero seleccionar una Application o permitir aceptación directa, para crear un Agreement con el agente elegido.
+Criterios: el Job respeta cupos, no produce asignaciones incompatibles y vincula la reserva de fondos al Agreement.
+
+### [Heading1] 7 Claims Proofs y verificación
+
+### [Heading2] Claim
+El agente declara que cumplió el resultado de un Agreement específico. La declaración identifica entregable, versión y momento. Presentar un Claim inicia la evaluación; no implica aceptación.
+
+### [Heading2] Proofs
+Los Proofs permiten reconstruir qué ocurrió y por qué se tomó una decisión. Se distinguen por origen: aportados por el agente, observados por la plataforma o generados por un verificador.
+
+[TABLA]
+Origen | Publishing | DeFi
+Agente | URL, timestamps, transcripción y assets utilizados | Hash de transacción y parámetros ejecutados
+Plataforma | Accesibilidad, canal y momento observado | Lectura de red, contratos y estado
+Verificador | Keywords, duración, restricciones y revisión editorial | Estado anterior y posterior, slippage y límites
+[/TABLA]
+
+
+### [Heading2] Modelo mínimo de Proof
+
+[TABLA]
+Campo | Propósito
+proofId y agreementId | Evitar ambigüedad y reutilización
+type y schemaVersion | Interpretar la evidencia
+source y subject | Indicar quién aporta y qué demuestra
+capturedAt y validFrom | Evaluar frescura y periodo
+artifactRef y contentHash | Localizar y comprobar integridad
+metadata | Conservar plataforma, red y contexto específico
+signature | Atribuir la presentación u observación
+[/TABLA]
+
+
+### [Heading2] Verificación
+El Proof Engine valida estructura, firmas y política; invoca verificadores enchufables; aplica Acceptance Rule y emite una decisión con razones. El MVP de Publishing puede combinar comprobaciones deterministas con revisión humana delimitada. DeFi debe privilegiar señales en cadena cuando la tarea elegida lo permita.
+
+### [Heading2] Historia AGT 04 Entregar trabajo
+Como agente, quiero presentar un Claim con los Proofs requeridos, para que mi trabajo sea evaluado y pueda cobrar.
+Criterios: el sistema valida campos y procedencia, muestra faltantes y evita la presentación contra otro Agreement.
+
+### [Heading2] Historia VER 01 Evaluar
+Como verificador, quiero recibir Agreement, política y Proofs en un contrato estable, para emitir una decisión reproducible y explicable.
+Criterios: devuelve accepted, rejected o inconclusive; incluye comprobaciones, razones, versión, referencias y firma.
+
+### [Heading1] 8 Experiencia y pantallas del MVP
+
+### [Heading2] Navegación
+Jobs | Post Work | My Work | Agents | Validate. Campaigns vive dentro de Publishing o como agrupador de Work Requests. Agents reutiliza el catálogo existente y no es la página principal.
+
+[TABLA]
+Pantalla | Usuario | Propósito
+Jobs | Agente | Descubrir demanda y filtrar compatibilidad
+Job detail | Agente | Entender condiciones, elegibilidad y pago
+Post Work | Organización | Crear Work Request y Jobs financiados
+My Work | Ambos | Seguir Applications y Agreements
+Agreement detail | Ambos | Consultar condiciones fijadas y actividad
+Proofs | Ambos y verificador | Inspeccionar evidencia y procedencia
+Validate | Verificador o reviewer | Evaluar Claims y emitir decisión
+Payment | Ambos | Consultar escrow, settlement o devolución
+Agents | Organización | Comparar oferta e invitar agentes
+[/TABLA]
+
+
+### [Heading2] Detalle de Agreement
+La vista muestra el estado general y pestañas Overview, Agreement, Assets, Proofs, Verification, Payment y Activity. La línea de progreso usa Agreed → In progress → Submitted → Verifying → Accepted → Paid, además de estados de excepción.
+
+### [Heading2] Demo de Publishing
+Una organización publica un Job con el ejemplo de Plata Card. La skill lo muestra al agente de noticias, evalúa compatibilidad y crea el Agreement. El agente recibe el paquete, incorpora el segmento y publica. Presenta los Proofs, se muestran las comprobaciones y se libera el pago fijo. Una segunda entrega inválida demuestra rechazo o solicitud de cambios.
+
+### [Heading2] Demo de DeFi
+Una organización publica un Job DeFi acotado. Un agente con capacidades compatibles lo acepta, ejecuta bajo límites y entrega referencias en cadena. La plataforma verifica el estado y muestra el settlement. La operación exacta, el activo y la política se mantienen como decisiones abiertas hasta completar la prueba técnica.
+
+### [Heading2] Uso del catálogo existente
+Al final de ambas demos, Agents muestra que los resultados verificados enriquecen el perfil del agente. La organización también puede iniciar desde Agents e invitar a un Job, pero ese recorrido no define la narrativa principal.
+
+### [Heading1] 9 Arquitectura de infraestructura
+
+[TABLA]
+Módulo | Responsabilidad | Entregable técnico
+Identity and Organizations | Identidades, membresía, capacidades y autorizaciones | Perfiles resolubles y permisos mínimos
+Work Marketplace | Work Requests, Jobs, Applications y búsqueda | Modelo, API e índice consultable
+Agreement Service | Crear y versionar WorkIntents aceptados | Máquina de estados y firmas
+Asset Service | Guardar recursos y controlar acceso | Referencias versionadas y URLs autorizadas
+Proof Service | Recibir Claims y Proof bundles | Esquemas, integridad y procedencia
+Proof Engine | Orquestar políticas y verificadores | Decisión firmada con razones
+Settlement | Reservar y liberar o devolver fondos | Escrow y recibos idempotentes
+Indexer and History | Reconstruir actividad y reputación derivada | Vistas consultables y recuperación
+[/TABLA]
+
+
+### [Heading2] Distribución de datos
+En cadena: compromisos necesarios del Agreement, autorizaciones, fondos y eventos de settlement. Fuera de cadena: videos, imágenes, briefs privados, evidencia extensa e inferencia de verificadores. Los hashes ayudan a comprobar integridad, pero no demuestran veracidad ni disponibilidad.
+
+### [Heading2] Interfaces mínimas
+Listar Jobs, consultar Job, comprobar elegibilidad, aplicar o aceptar, consultar Agreement, obtener Execution Package, presentar Claim, adjuntar Proofs, solicitar o consultar Verification y consultar Settlement. Webapp y skill deben consumir la misma semántica aunque usen adaptadores diferentes.
+
+### [Heading2] Separación por vertical
+El núcleo maneja estados y referencias. Plugins o módulos de política manejan campos específicos de sponsored.content.v1, youtube.v1 y la política DeFi elegida. El Proof Engine recibe una interfaz común y no contiene lógica de Plata Card, YouTube o un protocolo concreto.
+
+### [Heading2] Seguridad y fallos mínimos
+Autorización separada para publicar, ejecutar, verificar y liquidar.
+Protección contra doble asignación, doble settlement y reutilización de Proofs.
+Vencimientos y devolución definidos para impedir fondos bloqueados indefinidamente.
+Resultados inconclusos cuando una fuente no está disponible.
+Versiones fijadas para políticas, recursos y Agreements.
+
+### [Heading1] 10 Entregables de infraestructura
+
+[TABLA]
+ID | Entregable | Responsable | Aceptación
+INF 01 | Esquema común de Work Request, Job y Agreement | Gilbert con Juvenal | Versionado y probado con Publishing y DeFi provisional
+INF 02 | Organización, agente y capacidades mínimas | Gilbert | Autorizaciones y asociación entre identidades funcionan
+INF 03 | API de descubrimiento y detalle de Jobs | Gilbert | Filtra y devuelve condiciones completas y vigentes
+INF 04 | Motor de elegibilidad | Gilbert | Explica eligible, ineligible o unverifiable
+INF 05 | Applications, asignación y aceptación | Gilbert | Respeta cupos y crea Agreement fijado
+INF 06 | Asset Service y Execution Package | Gilbert | Controla acceso y preserva versiones
+INF 07 | Claim y Proof Service | Gilbert | Valida esquema, firma, procedencia e integridad
+INF 08 | Proof Engine y verificador youtube.v1 | Gilbert | Decisión explicable para caso válido e inválido
+INF 09 | Escrow y Settlement | Gilbert | Pago y devolución sin duplicación
+INF 10 | Política DeFi mínima | Gilbert con Juvenal | Operación seleccionada puede probarse de punta a punta
+[/TABLA]
+
+
+### [Heading2] Orden técnico recomendado
+Primero cerrar esquemas y ejemplos de ambos verticales. Después implementar descubrimiento y Agreement. Conectar Publishing hasta Proofs y Settlement. Probar fallos. Finalmente añadir el adaptador DeFi sin cambiar el núcleo, registrando cualquier excepción que revele una abstracción prematura.
+
+### [Heading1] 11 Entregables de webapp skill y demo
+
+[TABLA]
+ID | Entregable | Responsable | Aceptación
+APP 01 | Post Work y vista previa del Job | Jesús | Una organización publica un Job válido
+APP 02 | Jobs y Job detail | Jesús | El agente comprende especificaciones, elegibilidad y pago
+APP 03 | My Work y Agreement detail | Jesús | Estados, condiciones fijadas y recursos son visibles
+APP 04 | Proofs y Verification | Jesús | Evidencia y razones se entienden sin leer logs
+APP 05 | Payment y Activity | Jesús | Settlement y trazabilidad se muestran por separado
+SKL 01 | Skill con operaciones mínimas | Jesús con Gilbert | Descubre, consulta, acepta, recibe paquete y entrega
+SKL 02 | Integración con el agente de noticias | Jesús | Transforma el Job en inserción consumible
+DEM 01 | Demo Publishing positiva | Jesús con equipo | Job de muestra termina en pago trazable
+DEM 02 | Demo Publishing negativa | Jesús con Gilbert | Entrega inválida no cobra y muestra la razón
+DEM 03 | Demo DeFi acotada | Gilbert con Jesús | Job demuestra reutilización del ciclo general
+[/TABLA]
+
+
+### [Heading2] Entregables de producto y negocio
+
+[TABLA]
+ID | Entregable | Responsable | Aceptación
+PRD 01 | Plantilla de Work Request y Job | Juvenal | Campos generales y extensiones se distinguen
+PRD 02 | sponsored.content.v1 y youtube.v1 | Juvenal con Jesús | Dos marcas pueden usar la misma integración
+PRD 03 | Selección de tarea DeFi | Juvenal con Gilbert | Resultado, límites, evidencia y pago definidos
+BIZ 01 | Brief Publishing con una marca | Cofounder | Representa una necesidad por la que pagaría
+BIZ 02 | Brief DeFi con organización objetivo | Cofounder con Juvenal | Define comprador, riesgo y valor del trabajo
+BIZ 03 | Narrativa B2B del marketplace | Cofounder | Explica demanda, agentes, pruebas y pago en un minuto
+[/TABLA]
+
+
+### [Heading1] 12 Pruebas y criterios del MVP
+
+### [Heading2] Escenarios obligatorios
+
+[TABLA]
+Escenario | Resultado esperado
+Job incompleto o sin fondos | No puede publicarse o asignarse
+Agente elegible | Puede aplicar o aceptar y recibe Agreement
+Requisito no verificable | Se explica y deriva a revisión según política
+Cambio del Job después de aceptar | No altera el Agreement existente
+Publishing válido | Proofs aceptados y pago liberado una sola vez
+Publishing inválido | Rechazo o corrección, sin pago automático
+Fuente temporalmente caída | Resultado inconcluso y fondos tratados según plazo
+Proof reutilizado | Se rechaza para otro Agreement
+Reintento de settlement | No produce pago duplicado
+DeFi dentro de límites | Evidence en cadena produce decisión trazable
+DeFi fuera de límites | No se acepta aunque la transacción exista
+[/TABLA]
+
+
+### [Heading2] Criterios de salida
+El problema B2B se entiende en menos de un minuto.
+Publishing funciona desde Post Work hasta Settlement con un caso válido y uno inválido.
+La skill completa descubrimiento, elegibilidad, aceptación, paquete y entrega.
+Otra campaña de Publishing usa sponsored.content.v1 sin lógica específica nueva.
+DeFi reutiliza Jobs, Agreements, Proofs y Settlement con una extensión específica.
+El catálogo existente muestra resultados verificados sin convertirse en la entrada principal.
+Las intervenciones manuales y limitaciones del demo están declaradas.
+
+### [Heading1] 13 Decisiones abiertas y siguiente paso
+
+[TABLA]
+Decisión | Responsable | Evidencia necesaria
+Operación exacta del Job DeFi | Juvenal y Gilbert | Resultado acotado, límites, red, protocolo y Proofs accesibles
+Aplicación o aceptación directa por Job | Juvenal | Riesgo, cupos y necesidad de selección
+Fuente de métricas de Publishing | Jesús | Acceso real, frescura y fallos observados
+Aprobación antes de publicar | Juvenal y Jesús | Riesgo de marca y confiabilidad de la generación
+Verificador y correcciones | Juvenal y Gilbert | Casos válidos, inválidos e inconclusos
+Activo y entorno de settlement | Gilbert | Prueba de reserva, pago y devolución
+Visibilidad de assets privados | Gilbert y Jesús | Modelo de acceso y recuperación
+Roles internos de Organization | Juvenal | Necesidades de los primeros compradores
+Compatibilidad con estándares de agentes | Gilbert | Revisión técnica vigente y alcance real
+[/TABLA]
+
+
+### [Heading2] Primer experimento
+Crear dos fixtures completos: un Job de Publishing para una inserción en YouTube y un Job DeFi provisional. Ejecutar discover_work, get_job y check_eligibility contra ambos. Después conectar el Job de Publishing al pipeline de Jesús antes de implementar una experiencia amplia de publicación.
+
+### [Heading2] Definition of Done del primer corte
+Un agente consulta demanda real o simulada mediante la skill, entiende por qué puede ejecutar el Job de Publishing, acepta condiciones fijadas y recibe un Execution Package que su pipeline utiliza para producir una inserción. La entrega genera Proofs visibles y una decisión que controla un pago fijo. El equipo conserva un registro de las decisiones que todavía son simuladas.
+
+### [Heading2] Siguiente revisión del documento
+Cerrar el Job DeFi exacto y documentar el pipeline actual del agente de Jesús desde selección de noticias hasta publicación. Esos dos insumos permitirán convertir las historias en contratos de interfaz y un backlog de implementación con dependencias definitivas.
