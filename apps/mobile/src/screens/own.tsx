@@ -1,14 +1,17 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { ActivityIndicator, Linking, View } from "react-native";
+import { ActivityIndicator, Linking, TextInput, View } from "react-native";
+import type { Address, Hex } from "viem";
 import { accountAddress } from "../account";
 import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import type { AgentId } from "../mock/data";
 import { money } from "../mock/helpers";
 import { EmptyPanel, KV, StatGrid, T, Touch, TouchCard } from "../ui/primitives";
-import { C } from "../ui/theme";
+import { C, textStyle } from "../ui/theme";
 import type { Movement } from "../wallet/explorer";
+import { describeError } from "../wallet/wallet";
+import { validateWithdraw } from "../wallet/withdraw";
 
 type PositionRow = { initial: string; name: string; ticker: string; qty: string; avg: string; value: string; pl: string; plFg: string; agentId: AgentId };
 
@@ -291,34 +294,146 @@ export function DepositScreen({ S, nav, account }: AppCtx) {
   );
 }
 
-export function WithdrawScreen({ balance, nav }: AppCtx) {
-  const rows = [
-    { label: "Network", value: "Monad", fg: C.ink },
-    { label: "Network fee · example", value: "−0.15 AUSD", fg: C.dim },
-    { label: "Platform fee", value: "0.00 AUSD", fg: C.dim },
-    { label: "You receive", value: "399.85 AUSD", fg: C.lime },
-  ];
+type WithdrawStep = { step: "edit" } | { step: "review"; to: Address; amount: bigint; fee: bigint | null } | { step: "sent"; hash: Hex } | { step: "done"; hash: Hex } | { step: "failed"; hash: Hex };
+
+const inputStyle = { paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: C.hair2, borderRadius: 11, backgroundColor: C.surf } as const;
+
+export function WithdrawScreen({ nav, treasury }: AppCtx) {
+  const ausd = treasury.balances?.ausd ?? 0n;
+  const [to, setTo] = useState("");
+  const [amount, setAmount] = useState("");
+  const [st, setSt] = useState<WithdrawStep>({ step: "edit" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const check = validateWithdraw({ to, amount, ausd });
+
+  const review = async () => {
+    if (!check.ok) return;
+    setError("");
+    setSt({ step: "review", to: check.to, amount: check.amount, fee: null });
+    try {
+      const fee = await treasury.estimateFee(check.to, check.amount);
+      setSt((s) => s.step === "review" ? { ...s, fee } : s);
+    } catch (e) {
+      setError(describeError(e) || "Couldn't estimate the network fee.");
+    }
+  };
+
+  const confirm = async () => {
+    if (st.step !== "review") return;
+    setBusy(true);
+    setError("");
+    try {
+      const status = await treasury.withdraw(st.to, st.amount, (hash) => setSt({ step: "sent", hash }));
+      setSt((s) => s.step === "sent" ? { step: status === "success" ? "done" : "failed", hash: s.hash } : s);
+    } catch (e) {
+      const msg = describeError(e);
+      if (msg) setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (st.step === "sent" || st.step === "done" || st.step === "failed") {
+    const tone = st.step === "done" ? { title: "Withdrawal complete", fg: C.lime, bd: "rgba(200,240,58,0.45)", bg: "rgba(200,240,58,0.07)" }
+      : st.step === "failed" ? { title: "Withdrawal reverted", fg: C.down, bd: "rgba(242,119,122,0.5)", bg: "rgba(242,119,122,0.08)" }
+      : { title: "Sent · waiting for confirmation", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" };
+    return (
+      <View style={{ padding: 16, gap: 13 }}>
+        <View style={{ padding: 14, borderWidth: 1, borderColor: tone.bd, backgroundColor: tone.bg, borderRadius: 14, gap: 8 }}>
+          <T w={700} s={14} color={tone.fg}>{tone.title}</T>
+          <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(st.hash)); }}>
+            <T w={400} s={11.5} lh={1.4} mono color={C.dim}>{st.hash}</T>
+          </Touch>
+        </View>
+        {st.step !== "sent" ? (
+          <Touch onPress={() => nav("wallet")} style={{ paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: "center" }}>
+            <T w={700} s={14.5} color={C.onLime}>Back to wallet</T>
+          </Touch>
+        ) : <ActivityIndicator color={C.lime} />}
+      </View>
+    );
+  }
+
+  if (st.step === "review") {
+    const rows = [
+      { label: "Network", value: "Monad", fg: C.ink },
+      { label: "Network fee", value: st.fee === null ? "estimating…" : `~${formatMon(st.fee)} MON`, fg: C.dim },
+      { label: "Platform fee", value: "0.00 AUSD", fg: C.dim },
+      { label: "You receive", value: `${formatAusd(st.amount)} AUSD`, fg: C.lime },
+    ];
+    return (
+      <View style={{ padding: 16, gap: 13 }}>
+        <View style={{ padding: 13, borderWidth: 1, borderColor: C.hair, borderRadius: 13, backgroundColor: C.surf }}>
+          <T w={400} s={11} color={C.mute}>Destination address</T>
+          <T w={500} s={12.5} lh={1.45} mono style={{ marginTop: 6 }}>{st.to}</T>
+        </View>
+        <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.surf2 }}>
+          <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>Amount to withdraw</T>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+            <T w={800} s={30} lh={1} ls={-0.03}>{formatAusd(st.amount)}</T>
+            <T w={500} s={14} mono color={C.mute}>AUSD</T>
+          </View>
+        </View>
+        <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, gap: 9 }}>
+          {rows.map((r, i) => <KV key={i} label={r.label} value={r.value} fg={r.fg} />)}
+        </View>
+        {error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Touch onPress={() => { setError(""); setSt({ step: "edit" }); }} disabled={busy} style={secondaryBtn}>
+            <T w={700} s={13.5}>Edit</T>
+          </Touch>
+          <Touch onPress={() => { void confirm(); }} disabled={busy} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: "center", opacity: busy ? 0.6 : 1 }}>
+            {busy ? <ActivityIndicator color={C.onLime} /> : <T w={700} s={13.5} color={C.onLime}>Confirm withdrawal</T>}
+          </Touch>
+        </View>
+        <T w={400} s={11.5} lh={1.45} color={C.mute}>Gas is paid in MON from this wallet. The AUSD amount arrives in full.</T>
+      </View>
+    );
+  }
+
   return (
     <View style={{ padding: 16, gap: 13 }}>
-      <View style={{ padding: 13, borderWidth: 1, borderColor: C.hair2, borderRadius: 13, backgroundColor: C.surf2 }}>
+      <View style={inputStyle}>
         <T w={400} s={11} color={C.mute}>Destination address</T>
-        <T w={500} s={12.5} lh={1.4} mono color={C.mute} style={{ marginTop: 6 }}>Paste or scan an address</T>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <TextInput
+            value={to}
+            onChangeText={setTo}
+            placeholder="Paste a Monad address"
+            placeholderTextColor={C.mute}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={[textStyle(500, 12.5, { mono: true, color: C.ink }), { flex: 1, paddingVertical: 6 }]}
+          />
+          <Touch onPress={() => { void Clipboard.getStringAsync().then((s) => setTo(s.trim())); }} style={chipBtn}>
+            <T w={600} s={12}>Paste</T>
+          </Touch>
+        </View>
       </View>
       <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.surf2 }}>
         <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>Amount to withdraw</T>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <T w={800} s={30} lh={1} ls={-0.03}>400.00</T>
+          <TextInput
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="0.00"
+            placeholderTextColor={C.mute}
+            keyboardType="decimal-pad"
+            style={[textStyle(800, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]}
+          />
           <T w={500} s={14} mono color={C.mute}>AUSD</T>
+          <Touch onPress={() => setAmount(formatAusd(ausd))} style={chipBtn}>
+            <T w={600} s={12}>Max</T>
+          </Touch>
         </View>
-        <T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 10 }}>{money(balance)} AUSD available</T>
+        <T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 10 }}>{formatAusd(ausd)} AUSD available</T>
       </View>
-      <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, gap: 9 }}>
-        {rows.map((r, i) => <KV key={i} label={r.label} value={r.value} fg={r.fg} />)}
-      </View>
-      <Touch onPress={() => nav("wallet")} style={{ paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: "center" }}>
-        <T w={700} s={14.5} color={C.onLime}>Review withdrawal</T>
+      {!check.ok && (to !== "" || amount !== "") ? <T w={400} s={12} lh={1.4} color={C.warn}>{check.error}</T> : null}
+      <Touch onPress={() => { void review(); }} disabled={!check.ok} style={{ paddingVertical: 15, borderRadius: 14, backgroundColor: check.ok ? C.lime : C.tile, alignItems: "center" }}>
+        <T w={700} s={14.5} color={check.ok ? C.onLime : C.disabled}>Review withdrawal</T>
       </Touch>
-      <T w={400} s={11.5} lh={1.45} color={C.mute}>Network fee shown as an example. Who pays gas, and in what asset, is an open dependency.</T>
+      <T w={400} s={11.5} lh={1.45} color={C.mute}>Only AUSD on Monad. Gas is paid in MON from this wallet.</T>
     </View>
   );
 }
