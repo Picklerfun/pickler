@@ -10,16 +10,20 @@ const config: ExpoConfig = {
   orientation: "portrait",
   // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
   icon: "./assets/icon.png",
+  userInterfaceStyle: "dark",
+  backgroundColor: "#08080A",
   ios: {
     bundleIdentifier,
     buildNumber: "1",
     supportsTablet: false,
+    backgroundColor: "#08080A",
     associatedDomains: [`webcredentials:${rpId}`],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
   },
   plugins: [
+    "expo-font",
     [
       "expo-secure-store",
       {
