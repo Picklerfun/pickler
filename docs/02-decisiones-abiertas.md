@@ -1,6 +1,6 @@
 # Decisiones abiertas
 
-Última actualización: 2026-09-11.
+Última actualización: 2026-09-16.
 
 Convención: **D-0x** bloqueantes (impiden escribir el primer spec) · **D-1x**
 necesarias antes del piloto.
@@ -133,3 +133,15 @@ declaran explícitamente como diferidos o simulados.
 | ✅ | **Venue: Polymarket** | 2026-09-10 |
 | ✅ | Arrancar por el sub-proyecto 1 (harness + venue) | 2026-09-11 |
 | ✅ | Repo `predict`, producto `Pickler` | 2026-09-11 |
+| ✅ | Participar en el bounty **Agora "Best Mobile Trading App on Monad"** (Mera + AUSD + Perpl), deadline 2026-10-13 | 2026-09-15 |
+| ✅ | App móvil en **React Native / Expo** (Mera no tiene SDK Swift); Jesús lleva móvil | 2026-09-15 |
+| ✅ | Relying party de passkeys: **`pickler.fun`** (cuenta Cloudflare "Pickler"); bundle `fun.pickler.app` | 2026-09-15 |
+| ✅ | Fase 1 = passkey + tesorería AUSD en **Monad Testnet**; construida y en TestFlight | 2026-09-16 |
+
+## Lo que la fase 2 reabre (2026-09-16)
+
+El bounty exige **al menos un trade en Perpl** (perps en Monad, colateral AUSD). Eso
+choca con "Venue: Polymarket" y reabre **D-01, D-02 y D-12**: si el venue es Perpl,
+todo vive en Monad (una sola cadena), los caps pueden respaldarse on-chain y
+desaparece el cross-chain. Sigue siendo decisión del equipo, no de ingeniería.
+Detalle en `04-roadmap-bounty.md` y `05-handoff-fase1.md`.
