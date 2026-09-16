@@ -85,6 +85,16 @@ export function deriveUser(hasAccount: boolean, mockHolder: boolean): UserKind {
   return mockHolder ? "holder" : "funded";
 }
 
+export function deriveBalance(hasAccount: boolean, ausd: number): number {
+  return hasAccount ? ausd : 0;
+}
+
+/** El wireframe trata una compra recién completada como tenencia (para Sell / posición); nunca sin cuenta. */
+export function deriveTradeHolds(hasAccount: boolean, mockHolder: boolean, phase: Phase, mode: Mode): boolean {
+  if (!hasAccount) return false;
+  return deriveUser(hasAccount, mockHolder) === "holder" || (phase === "done" && mode === "buy");
+}
+
 const CAN_BACK: readonly Screen[] = ["agent", "trade", "post", "ask", "position", "deposit", "withdraw", "search", "signin"];
 const SHOW_TABS: readonly Screen[] = ["market", "activity", "portfolio", "wallet", "search", "position"];
 
@@ -152,10 +162,9 @@ export function useAppStore({ hasAccount, ausd }: StoreInput): AppStore {
 
   const agent = AGENTS[S.agentId];
   const user = deriveUser(hasAccount, S.mockHolder);
-  const balance = hasAccount ? ausd : 0;
+  const balance = deriveBalance(hasAccount, ausd);
   const holds = user === "holder";
-  // El wireframe trata una compra recién completada como tenencia (para Sell / posición).
-  const tradeHolds = holds || (S.phase === "done" && S.mode === "buy");
+  const tradeHolds = deriveTradeHolds(hasAccount, S.mockHolder, S.phase, S.mode);
   const post = POSTS.find((p) => p.id === S.postId) ?? POSTS[0];
   const [headerTitle, headerSub] = headerFor(S.screen, agent, post, S.mode, balance);
 

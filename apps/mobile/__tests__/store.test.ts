@@ -1,6 +1,8 @@
 import {
   afterSigninState,
   backState,
+  deriveBalance,
+  deriveTradeHolds,
   deriveUser,
   INITIAL,
   navState,
@@ -82,4 +84,17 @@ test("reset clears the stack, resume and the mock holder flag", () => {
   const dirty = { ...navState(INITIAL, "agent"), resume: true, mockHolder: true };
   const s = resetState(dirty, "market");
   expect(s).toMatchObject({ screen: "market", stack: [], resume: false, mockHolder: false });
+});
+
+test("a completed buy never counts as holding without an account", () => {
+  expect(deriveTradeHolds(false, false, "done", "buy")).toBe(false);
+  expect(deriveTradeHolds(false, true, "done", "buy")).toBe(false);
+  expect(deriveTradeHolds(true, false, "done", "buy")).toBe(true);
+  expect(deriveTradeHolds(true, true, "quote", "buy")).toBe(true);
+  expect(deriveTradeHolds(true, false, "done", "sell")).toBe(false);
+});
+
+test("balance is 0 without an account even if AUSD was read", () => {
+  expect(deriveBalance(false, 1240)).toBe(0);
+  expect(deriveBalance(true, 1240)).toBe(1240);
 });
