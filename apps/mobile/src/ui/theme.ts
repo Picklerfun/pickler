@@ -63,16 +63,3 @@ export function textStyle(weight: number, size: number, { lh, ls = 0, mono = fal
   if (ls) style.letterSpacing = +(size * ls).toFixed(2);
   return style;
 }
-
-// --- Paleta de la fase 1. La usan Welcome/Home/Button/Field; se retira en la Task 10. ---
-export const palette = {
-  bg: "#0B0B0F",
-  card: "#16161D",
-  text: "#F4F4F5",
-  muted: "#9A9AA6",
-  accent: "#8B5CF6",
-  danger: "#F87171",
-  success: "#4ADE80",
-};
-
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };

@@ -1,8 +1,11 @@
 # Pickler mobile
 
-Fase 1: cuenta EVM derivada de una passkey (mera + PRF), guardada con gate
-biométrico en el dispositivo, con balances de AUSD/MON en Monad Testnet y un
-botón para pedir AUSD de prueba al faucet de Agora.
+App Expo/iOS de Pickler. UI portada del prototipo
+[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `365585e`):
+13 pantallas en TypeScript con datos de ejemplo, salvo lo que ya es real: cuenta EVM
+derivada de una passkey (mera + PRF) guardada con gate biométrico, saldos de AUSD/MON en
+Monad Testnet y faucet de AUSD, todo dentro de *Wallet access*, *Wallet* y *Deposit*.
+El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado del prototipo.
 
 ## Correr en simulador
 
@@ -24,7 +27,7 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 ## Tests
 
 ```bash
-npm test          # jest, 19/19 esperado
+npm test          # jest, 39/39 esperado
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -79,10 +82,10 @@ testers al grupo interno correspondiente.
 
 La cuenta necesita gas (MON) antes de poder pedir AUSD del faucet:
 
-1. Copiar la dirección desde la pantalla *Treasury* (botón "Copy address").
+1. Copiar la dirección desde *Wallet → Deposit* (botón "Copy address").
 2. `https://faucet.monad.xyz` → pegar la dirección → pedir MON de testnet.
    (O que alguien con MON de testnet te transfiera ~0.1 MON directo.)
-3. Refrescar el balance en la app (botón "Refresh balances", o "Retry" si
+3. Refrescar en *Wallet → TESTNET* (botón "Refresh", o "Retry" si
    hubo error de RPC) hasta ver MON > 0.
 4. *Get test AUSD* ya lee el balance de MON fresco antes de pedir Face ID:
    si sigue en 0 avisa sin abrir el prompt biométrico. Con MON > 0 pide una

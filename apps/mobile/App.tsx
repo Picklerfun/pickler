@@ -1,68 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StatusBar, StyleSheet, View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import type { AccountState } from "./src/account";
-import { Home } from "./src/screens/Home";
-import { Welcome } from "./src/screens/Welcome";
-import { clearStoredAccount, loadStoredAccount } from "./src/storage/storage";
-import { palette } from "./src/ui/theme";
-import type { Wallet } from "./src/wallet/wallet";
+import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from "@expo-google-fonts/manrope";
+import { useFonts } from "expo-font";
+import { ActivityIndicator, StatusBar, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ausdToNumber } from "./src/config/chain";
+import type { AppCtx } from "./src/ctx";
+import { useAccount } from "./src/hooks/useAccount";
+import { useTreasury } from "./src/hooks/useTreasury";
+import { Shell } from "./src/Shell";
+import { useAppStore } from "./src/store";
+import { C } from "./src/ui/theme";
+
+const NONE = { status: "none" } as const;
 
 export default function App() {
-  const [account, setAccount] = useState<AccountState | null>(null);
-  const ref = useRef(account);
-  ref.current = account;
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold,
+    JetBrainsMono_400Regular, JetBrainsMono_500Medium,
+  });
+  const { account, onWallet, lock, signOut } = useAccount();
+  const treasury = useTreasury(account ?? NONE, onWallet);
+  const store = useAppStore({
+    hasAccount: account !== null && account.status !== "none",
+    ausd: treasury.balances ? ausdToNumber(treasury.balances.ausd) : 0,
+  });
 
-  // Termina la sesión de firma saliente cuando la wallet deja el estado.
-  const replace = useCallback((next: AccountState) => {
-    const cur = ref.current;
-    if (cur?.status === "unlocked" && (next.status !== "unlocked" || next.wallet !== cur.wallet)) {
-      cur.wallet.session.end();
-    }
-    ref.current = next;
-    setAccount(next);
-  }, []);
+  if (!fontsLoaded || account === null) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={C.lime} />
+      </View>
+    );
+  }
 
-  // Arranque: solo la dirección (sin gate). Nada de Face ID aquí.
-  useEffect(() => {
-    let stale = false;
-    loadStoredAccount()
-      .then((s) => !stale && setAccount(s ? { status: "locked", ...s } : { status: "none" }))
-      .catch(() => !stale && setAccount({ status: "none" }));
-    return () => {
-      stale = true;
-    };
-  }, []);
-
-  const onWallet = (wallet: Wallet) => replace({ status: "unlocked", wallet });
-  const onLock = () => {
-    const cur = ref.current;
-    if (cur?.status === "unlocked") {
-      replace({ status: "locked", address: cur.wallet.address, credentialId: cur.wallet.credentialId });
-    }
-  };
-  const onSignOut = async () => {
-    await clearStoredAccount();
-    replace({ status: "none" });
-  };
+  const ctx: AppCtx = { ...store, account, treasury, onWallet, lock, signOut };
 
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" />
-      <SafeAreaView style={styles.root}>
-        {account === null ? (
-          <View style={styles.center}><ActivityIndicator color={palette.text} /></View>
-        ) : account.status === "none" ? (
-          <Welcome onWallet={onWallet} />
-        ) : (
-          <Home account={account} onUnlock={onWallet} onLock={onLock} onSignOut={onSignOut} />
-        )}
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <Shell ctx={ctx} />
+      </View>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.bg },
-  center: { flex: 1, justifyContent: "center" },
-});
