@@ -79,7 +79,8 @@ tres de ellas. Rama `feat/mobile-ui-port`, base `cfe3efa` (fin de fase 1).
 Copy congelado por el spec — no se tocó en esta rama:
 
 - `pickler-mark.png` truncado: reemplazar el asset en `pickler-mobile` o directamente aquí.
-  Bloquea TestFlight, no bloquea el merge.
+  El build 2 de TestFlight salió con el hueco en el header de Market; el build 3 debería
+  llevar el PNG bueno.
 - Línea "50.00 AUSD pending · a deposit is still confirming" bajo el saldo real en Wallet.
 - Subtítulo "One step, then back to your purchase" en Wallet access aunque se entre desde la
   tab (no solo desde una compra en curso).
@@ -92,8 +93,9 @@ Copy congelado por el spec — no se tocó en esta rama:
 
 Pendientes técnicos:
 
-- **Build 2 a TestFlight** llevaría ya esta UI — aplica la regla de `ios.buildNumber` de la
-  fase 1 (`docs/05-handoff-fase1.md`).
+- **Build 0.1.0 (2) subido a TestFlight el 2026-09-16** con esta UI (commit `63adccd`,
+  Delivery UUID `e8b64d34-5b48-4f23-9fa6-f0202adac1c9`). La próxima subida necesita
+  `ios.buildNumber: "3"` (regla de `docs/05-handoff-fase1.md`).
 - Recomendaciones de la revisión final para fase 2: un slot `quote` en `AppCtx` o un hook
   `useQuote`; conservar el `bigint` de AUSD en `AppCtx` para calcular tamaños de orden sin
   pasar por `number`; un slot `positions` real del que derive `holds` (hoy `holds` depende de
