@@ -321,9 +321,10 @@ Run: `npm test -- chain` → Expected: 5 passed.
 
 Cambiar temporalmente `AUSD_DECIMALS = 18` y correr: Expected: fallan "decimals" y "formatAusd". Revertir.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Borrar el smoke test de Task 1 (ya hay tests reales) y commit**
 
 ```bash
+git rm apps/mobile/__tests__/smoke.test.ts
 git add apps/mobile/src/config/chain.ts apps/mobile/__tests__/chain.test.ts
 git commit -m "feat(mobile): config de Monad testnet, AUSD y faucet"
 ```
@@ -882,7 +883,7 @@ Nota: `describeError` devuelve `""` cuando el usuario canceló; la UI (Task 8) t
 
 - [ ] **Step 3: Typecheck y tests existentes**
 
-Run: `npx tsc --noEmit && npm test` → Expected: sin errores de tipo; los 18 tests anteriores siguen en verde.
+Run: `npx tsc --noEmit && npm test` → Expected: sin errores de tipo; los 17 tests anteriores siguen en verde.
 
 - [ ] **Step 4: Commit**
 
@@ -1337,7 +1338,7 @@ cd apps/mobile && npx tsc --noEmit && npm test
 npx expo prebuild --platform ios --clean && npx expo run:ios --device "iPhone 16"
 ```
 
-Expected: tipos limpios, 20 tests en verde, app abre en Welcome. En el simulador iOS 18.6: *Create account* → hoja de passkey de iOS → Home con dirección y balances `0.00` / `0.0000`. Tomar captura (`xcrun simctl io booted screenshot /tmp/claude-501/.../welcome.png` y `home.png`). Cerrar y reabrir la app: debe abrir en Home **sin** pedir Face ID (estado Locked).
+Expected: tipos limpios, 19 tests en verde, app abre en Welcome. En el simulador iOS 18.6: *Create account* → hoja de passkey de iOS → Home con dirección y balances `0.00` / `0.0000`. Tomar captura (`xcrun simctl io booted screenshot /tmp/claude-501/.../welcome.png` y `home.png`). Cerrar y reabrir la app: debe abrir en Home **sin** pedir Face ID (estado Locked).
 
 Si el simulador no ofrece PRF (error `PRF_UNAVAILABLE` o `RequestFailed`), anotar el mensaje exacto y pasar a device en Task 9 — no "arreglar" a ciegas.
 
@@ -1529,4 +1530,4 @@ git commit -m "docs: roadmap del bounty y estado del repo"
 
 ## Handoff al cerrar la fase
 
-Evidencia que debe existir antes de decir "fase 1 lista": salida de `npm test` (20 tests), `curl -sI https://pickler.fun/.well-known/apple-app-site-association`, capturas de simulador y device, hash de la tx del faucet en el explorer, build visible en TestFlight. Pendientes conocidos: fase 2 (Perpl) es obligatoria para el bounty; decisión de venue en el equipo.
+Evidencia que debe existir antes de decir "fase 1 lista": salida de `npm test` (19 tests), `curl -sI https://pickler.fun/.well-known/apple-app-site-association`, capturas de simulador y device, hash de la tx del faucet en el explorer, build visible en TestFlight. Pendientes conocidos: fase 2 (Perpl) es obligatoria para el bounty; decisión de venue en el equipo.
