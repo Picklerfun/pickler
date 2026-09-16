@@ -50,15 +50,14 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
     }
   }, [address]);
 
-  const refresh = useCallback(async () => {
+  /** Lee saldos + movimientos en paralelo. No toca `pending`: eso es responsabilidad de `refresh`/`track`. */
+  const load = useCallback(async () => {
     setRpcError("");
     if (!address) {
       setBalances(null);
-      setPending([]);
       void refreshMovements();
       return;
     }
-    setPending((p) => p.filter((m) => m.status === "Confirming")); // las Reverted viven hasta el siguiente refresh
     const [result] = await Promise.all([
       readBalances(address).then((b) => ({ ok: true as const, b })).catch((e: unknown) => ({ ok: false as const, e })),
       refreshMovements(),
@@ -70,6 +69,12 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
       setRpcError(describeError(result.e));
     }
   }, [address, refreshMovements]);
+
+  const refresh = useCallback(async () => {
+    // las Reverted viven hasta el siguiente refresh manual; Sign out vacía pending
+    setPending((p) => (address ? p.filter((m) => m.status === "Confirming") : []));
+    await load();
+  }, [address, load]);
 
   useEffect(() => {
     setNotice("");
@@ -86,15 +91,21 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
     return unlocked;
   }, [account, onUnlock]);
 
-  /** Registra la tx en vuelo, espera el recibo y refresca. Quita la fila si confirmó; la deja como Reverted si no. */
+  /** Registra la tx en vuelo, espera el recibo y recarga (sin tocar `pending` de otras filas). Quita la fila si confirmó; la deja como Reverted si no; la quita también si esperar el recibo falla (timeout/RPC), y relanza. */
   const track = useCallback(async (kind: MovementKind, amount: bigint, hash: Hex): Promise<"success" | "reverted"> => {
     const row = pendingMovement(kind, amount, hash);
     setPending((p) => [row, ...p]);
-    const status = await waitForReceipt(hash);
+    let status: "success" | "reverted";
+    try {
+      status = await waitForReceipt(hash);
+    } catch (e) {
+      setPending((p) => p.filter((m) => m.hash !== hash));
+      throw e;
+    }
     setPending((p) => status === "success" ? p.filter((m) => m.hash !== hash) : p.map((m) => m.hash === hash ? { ...m, status: "Reverted" } : m));
-    await refresh();
+    await load();
     return status;
-  }, [refresh]);
+  }, [load]);
 
   const getTestAusd = useCallback(async () => {
     if (!address) return;
