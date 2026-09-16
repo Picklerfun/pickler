@@ -166,7 +166,8 @@ export function WalletScreen({ nav, account, treasury, lock, signOut, resetTo }:
   const pending = confirming === 0
     ? "Nothing pending."
     : `${confirming} transfer${confirming === 1 ? "" : "s"} confirming`;
-  const rows = [...treasury.pending, ...(treasury.movements ?? [])];
+  const seen = new Set(treasury.pending.map((m) => m.hash));
+  const rows = [...treasury.pending, ...(treasury.movements ?? []).filter((m) => !seen.has(m.hash))];
   const txHash = treasury.notice.split(": ")[1];
   const unlocked = account.status === "unlocked";
 
@@ -294,7 +295,7 @@ export function DepositScreen({ S, nav, account }: AppCtx) {
   );
 }
 
-type WithdrawStep = { step: "edit" } | { step: "review"; to: Address; amount: bigint; fee: bigint | null } | { step: "sent"; hash: Hex } | { step: "done"; hash: Hex } | { step: "failed"; hash: Hex };
+type WithdrawStep = { step: "edit" } | { step: "review"; to: Address; amount: bigint; fee: bigint | null } | { step: "sent"; hash: Hex } | { step: "done"; hash: Hex } | { step: "failed"; hash: Hex } | { step: "unknown"; hash: Hex };
 
 const inputStyle = { paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: C.hair2, borderRadius: 11, backgroundColor: C.surf } as const;
 
@@ -329,14 +330,16 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
     } catch (e) {
       const msg = describeError(e);
       if (msg) setError(msg);
+      setSt((s) => s.step === "sent" ? { step: "unknown", hash: s.hash } : s);
     } finally {
       setBusy(false);
     }
   };
 
-  if (st.step === "sent" || st.step === "done" || st.step === "failed") {
+  if (st.step === "sent" || st.step === "done" || st.step === "failed" || st.step === "unknown") {
     const tone = st.step === "done" ? { title: "Withdrawal complete", fg: C.lime, bd: "rgba(200,240,58,0.45)", bg: "rgba(200,240,58,0.07)" }
       : st.step === "failed" ? { title: "Withdrawal reverted", fg: C.down, bd: "rgba(242,119,122,0.5)", bg: "rgba(242,119,122,0.08)" }
+      : st.step === "unknown" ? { title: "Sent · confirmation not received", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" }
       : { title: "Sent · waiting for confirmation", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" };
     return (
       <View style={{ padding: 16, gap: 13 }}>
@@ -345,6 +348,8 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
           <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(st.hash)); }}>
             <T w={400} s={11.5} lh={1.4} mono color={C.dim}>{st.hash}</T>
           </Touch>
+          {st.step === "unknown" && error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
+          {st.step === "unknown" ? <T w={400} s={12} lh={1.4} color={C.mute}>Check the movements list — it may still confirm.</T> : null}
         </View>
         {st.step !== "sent" ? (
           <Touch onPress={() => nav("wallet")} style={{ paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: "center" }}>
@@ -358,7 +363,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
   if (st.step === "review") {
     const rows = [
       { label: "Network", value: "Monad", fg: C.ink },
-      { label: "Network fee", value: st.fee === null ? "estimating…" : `~${formatMon(st.fee)} MON`, fg: C.dim },
+      { label: "Network fee", value: st.fee !== null ? `~${formatMon(st.fee)} MON` : error ? "unavailable" : "estimating…", fg: C.dim },
       { label: "Platform fee", value: "0.00 AUSD", fg: C.dim },
       { label: "You receive", value: `${formatAusd(st.amount)} AUSD`, fg: C.lime },
     ];
