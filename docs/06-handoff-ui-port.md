@@ -73,6 +73,21 @@ tres de ellas. Rama `feat/mobile-ui-port`, base `cfe3efa` (fin de fase 1).
    solo contra el flujo feliz.** El caso de `tradeHolds` (Task 9) pasó su propia revisión
    porque analizó cómo se llega a `phase: "done"`, pero no cómo `resetState` deja de limpiarlo;
    la revisión final de rama sí lo encontró.
+6. **Bitwarden (y otros gestores de terceros) no devuelven el PRF del passkey en iOS.** El
+   passkey se crea, pero `mera` lanza `PRF_UNAVAILABLE` y la app muestra el mensaje de
+   "iOS 18 or newer", que en ese caso es falso. Probado el 2026-09-16 con Juvenal (iPhone 17
+   Pro, iOS 26.6): con Bitwarden como proveedor de passkeys falló; con Apple Passwords /
+   Llavero de iCloud (desactivando Bitwarden en *Ajustes → General → Autorrelleno y
+   contraseñas* y creando de nuevo) funcionó. El passkey fallido queda guardado en el gestor
+   y conviene borrarlo para que "I already have one" no lo ofrezca. La app no puede forzar el
+   proveedor; lo elige iOS.
+7. **"Get test MON" abre el faucet sin pasar la dirección.** A quien ya la pegó antes Safari
+   se la autocompleta; a un tester nuevo no. La dirección está en *Wallet → Deposit → Copy
+   address*.
+8. **Testers internos de TestFlight**: el correo debe ser primero usuario del equipo en App
+   Store Connect (*Users and Access*, rol Developer basta), aceptar la invitación de Apple y
+   después entrar al grupo *Equipo*; al agregarlo al grupo App Store Connect manda solo el
+   correo de TestFlight (estado `INVITED`, no hizo falta `betaTesterInvitations`).
 
 ## Pendientes que decide Jesús
 
@@ -96,6 +111,20 @@ Pendientes técnicos:
 - **Build 0.1.0 (2) subido a TestFlight el 2026-09-16** con esta UI (commit `63adccd`,
   Delivery UUID `e8b64d34-5b48-4f23-9fa6-f0202adac1c9`). La próxima subida necesita
   `ios.buildNumber: "3"` (regla de `docs/05-handoff-fase1.md`).
+- **Testers del build 2** (2026-09-16): jjaf051094@gmail.com y ctjuvenal@gmail.com, ambos
+  `INSTALLED` en el grupo interno *Equipo*. Juvenal creó cuenta, pidió MON y AUSD de prueba y
+  todo funcionó una vez resuelto lo de Bitwarden (ver "Lo aprendido" 6 y 7).
+- **Build 3, cambios acordados con Jesús** (pendientes de ejecutar, en worktree nuevo):
+  1. Mensaje de `PRF_UNAVAILABLE` que diga la causa real ("Your passkey provider didn't
+     return the secret Pickler needs. Save the passkey with Apple Passwords (iCloud Keychain),
+     not a third-party manager, and try again."), y mencionar iOS 18 solo si
+     `Platform.Version` es menor que 18.
+  2. Mínimo de iOS del build en 18.0 vía `expo-build-properties` (hoy 16.4).
+  3. "Get test MON" copia la dirección al portapapeles antes de abrir el faucet y lo dice en
+     el botón; dirección abreviada visible en el bloque TESTNET.
+  4. README: Bitwarden y gestores sin PRF no sirven como proveedor del passkey de Pickler.
+  5. Reemplazar `pickler-mark.png` (sigue truncado) cuando Jesús pase el original.
+  Sube `ios.buildNumber` a `"3"` antes de archivar.
 - Recomendaciones de la revisión final para fase 2: un slot `quote` en `AppCtx` o un hook
   `useQuote`; conservar el `bigint` de AUSD en `AppCtx` para calcular tamaños de orden sin
   pasar por `number`; un slot `positions` real del que derive `holds` (hoy `holds` depende de
@@ -103,6 +132,8 @@ Pendientes técnicos:
 
 ## Siguiente punto de decisión
 
-**Merge de `feat/mobile-ui-port` a `main`** — decisión de Jesús; no se hizo push desde esta
-rama. Después de eso, **fase 2 = Perpl** y la decisión de venue (Perpl vs. Polymarket), sin
-cambios respecto a lo que ya dejó `docs/05-handoff-fase1.md`.
+El merge a `main` y el push ya se hicieron (`63adccd`) y el build 2 está en TestFlight
+probado por dos testers. Lo que sigue, en este orden: (1) **build 3** con la lista de arriba,
+que Jesús aprueba tarea por tarea; (2) el copy congelado de "Pendientes que decide Jesús";
+(3) **fase 2 = Perpl** y la decisión de venue (Perpl vs. Polymarket), sin cambios respecto a
+`docs/05-handoff-fase1.md`.
