@@ -68,10 +68,10 @@ async function storeAndOpen(result: StoredPrf): Promise<Wallet> {
 
 /** Limpia los buffers de llave tras derivar. */
 function toWallet({ credentialId, prfOutput }: StoredPrf): Wallet {
-  const seed = mnemonicToSeed(prfOutputToMnemonic(prfOutput));
-  prfOutput.fill(0);
+  let seed: Uint8Array | undefined;
   let privateKey: Uint8Array | undefined;
   try {
+    seed = mnemonicToSeed(prfOutputToMnemonic(prfOutput));
     privateKey = deriveEvmPrivateKey(seed, 0);
     const session = createSecp256k1SigningSession({ privateKey });
     return {
@@ -81,7 +81,8 @@ function toWallet({ credentialId, prfOutput }: StoredPrf): Wallet {
       account: toViemAccount(session),
     };
   } finally {
-    seed.fill(0);
+    prfOutput.fill(0);
+    seed?.fill(0);
     privateKey?.fill(0);
   }
 }
@@ -102,6 +103,8 @@ export function describeError(error: unknown): string {
     }
   }
   if (error instanceof ViemError) return error.shortMessage;
+  // expo-secure-store lanza "User canceled the operation." en iOS cuando se cancela el prompt biométrico.
+  if (error instanceof Error && /cancel/i.test(error.message)) return "";
   return error instanceof Error ? error.message : String(error);
 }
 
