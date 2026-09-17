@@ -1,6 +1,10 @@
 // Tipos y parsers del WebSocket de trading de Perpl. Puro: sin react-native.
 // Formas verificadas contra frames reales (__tests__/fixtures/perpl/ws-frames.json).
 
+import { signWsSignin } from "./apiKey";
+import { ORDER_TIMEOUT_MS, PING_MS, RECONNECT_DELAYS_MS } from "./config";
+import { describeOrderStatus, type OrderIntent, orderFrame } from "./orders";
+
 export type Account = { id: number; frozen: boolean; fw: boolean; lfr: number; b: bigint; lb: bigint };
 export type Order = { rq: number; mkt: number; oid: number; st: number; sr: number; fr?: number; t: number; os: number; fp: number; fs: number; f: bigint; lv: number; r: boolean };
 export type Position = { pid: number; mkt: number; sd: 1 | 2; st: number; s: number; ep: number; c: bigint; lv: number; fee: bigint; dpnl: bigint; xp?: number };
@@ -135,5 +139,190 @@ export function applyFrame(state: TradingState, frame: Frame): TradingState {
       return { ...state, positions };
     }
     default: return state;
+  }
+}
+
+export type SocketStatus = "connecting" | "live" | "reconnecting" | "closed";
+export type OrderOutcome =
+  | { kind: "filled"; order: Order }
+  | { kind: "open"; order: Order }
+  | { kind: "failed"; order?: Order; text: string }
+  | { kind: "unknown" };
+export type SocketEvent =
+  | { type: "status"; status: SocketStatus }
+  | { type: "state"; state: TradingState }
+  | { type: "keyRejected" };
+export type WebSocketLike = {
+  readyState: number;
+  send(data: string): void;
+  close(): void;
+  onopen: ((ev: unknown) => void) | null;
+  onmessage: ((ev: { data: unknown }) => void) | null;
+  onclose: ((ev: { code: number; reason: string }) => void) | null;
+  onerror: ((ev: unknown) => void) | null;
+};
+export type SocketOptions = {
+  url: string; chainId: number; apiKey: string; privateKey: Uint8Array;
+  onEvent: (e: SocketEvent) => void;
+  createSocket?: (url: string) => WebSocketLike;
+  now?: () => number;
+};
+
+type Pending = { intent: OrderIntent; sn: number; rq: number; retried: boolean; timer: ReturnType<typeof setTimeout>; resolve: (o: OrderOutcome) => void; reject: (e: Error) => void };
+
+const OPEN = 1;
+const AUTH_FAILED = 3401;
+
+/** Un socket por sesión de la pestaña Trade. Sin React: se prueba con un WebSocket falso y timers falsos. */
+export class TradingSocket {
+  private ws: WebSocketLike | null = null;
+  private _status: SocketStatus = "closed";
+  private _state: TradingState = EMPTY_STATE;
+  private sn = 0;
+  private lastRq = 0;
+  private attempt = 0;
+  private authFailures = 0;
+  private closedByUser = false;
+  private ping: ReturnType<typeof setInterval> | null = null;
+  private retry: ReturnType<typeof setTimeout> | null = null;
+  private pending = new Map<number, Pending>(); // por sn
+  private readonly createSocket: (url: string) => WebSocketLike;
+  private readonly now: () => number;
+
+  constructor(private readonly opts: SocketOptions) {
+    this.createSocket = opts.createSocket ?? ((url) => new WebSocket(url) as unknown as WebSocketLike);
+    this.now = opts.now ?? (() => Date.now());
+  }
+
+  get status(): SocketStatus { return this._status; }
+  get state(): TradingState { return this._state; }
+
+  connect(): void {
+    this.closedByUser = false;
+    this.setStatus(this.attempt === 0 ? "connecting" : "reconnecting");
+    const ws = this.createSocket(this.opts.url);
+    this.ws = ws;
+    ws.onopen = () => {
+      // Primer frame: sign-in firmado (idle 10 s en testnet).
+      const { timestamp, nonce, signature } = signWsSignin(this.opts.privateKey, this.opts.chainId, this.now());
+      ws.send(JSON.stringify({ mt: 29, chain_id: this.opts.chainId, api_key: this.opts.apiKey, timestamp, nonce, signature }));
+      this.stopPing();
+      this.ping = setInterval(() => { if (ws.readyState === OPEN) ws.send(JSON.stringify({ mt: 1, t: this.now() })); }, PING_MS);
+    };
+    ws.onmessage = (ev) => this.handle(ev.data);
+    ws.onerror = () => { /* onclose sigue */ };
+    ws.onclose = (ev) => { if (this.ws === ws) this.handleClose(ev.code); };
+  }
+
+  close(): void {
+    this.closedByUser = true;
+    if (this.retry) { clearTimeout(this.retry); this.retry = null; }
+    this.stopPing();
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+    this.failPending();
+    this.setStatus("closed");
+  }
+
+  placeOrder(intent: OrderIntent): Promise<OrderOutcome> {
+    const ws = this.ws;
+    if (this._status !== "live" || !ws || ws.readyState !== OPEN || !this._state.account) {
+      return Promise.reject(new Error("Not connected to Perpl. Wait for the Live badge and try again."));
+    }
+    return new Promise<OrderOutcome>((resolve, reject) => {
+      const sn = ++this.sn;
+      const rq = this.nextRq();
+      const timer = setTimeout(() => this.settle(sn, { kind: "unknown" }), ORDER_TIMEOUT_MS);
+      this.pending.set(sn, { intent, sn, rq, retried: false, timer, resolve, reject });
+      ws.send(JSON.stringify(orderFrame(intent, { sn, rq, head: this._state.head })));
+    });
+  }
+
+  private nextRq(): number {
+    this.lastRq = Math.max(this.lastRq, this._state.account?.lfr ?? 0) + 1;
+    return this.lastRq;
+  }
+
+  private handle(data: unknown): void {
+    const frame = parseFrame(data);
+    if (frame === null) return;
+    this._state = applyFrame(this._state, frame);
+    if (frame.mt === 19) {
+      this.attempt = 0;
+      this.authFailures = 0;
+      this.setStatus("live");
+    }
+    if (frame.mt === 3) {
+      const p = frame.cid === undefined ? undefined : this.pending.get(frame.cid);
+      if (p && frame.code !== 0) this.fail(p, new Error(frame.error || `Perpl rejected the order (${frame.code})`));
+    }
+    if (frame.mt === 24) {
+      for (const order of frame.orders) {
+        const p = [...this.pending.values()].find((x) => x.rq === order.rq);
+        if (!p) continue;
+        const { kind, text } = describeOrderStatus(order.st, order.sr, order.fr);
+        if (kind === "failed" && order.sr === 32 && !p.retried) { this.resend(p); continue; }
+        if (kind === "sent") continue; // pending/untriggered: seguimos esperando
+        this.settle(p.sn, kind === "filled" ? { kind, order } : kind === "open" ? { kind, order } : { kind: "failed", order, text });
+      }
+    }
+    if (frame.mt !== 2 && frame.mt !== 3) this.opts.onEvent({ type: "state", state: this._state });
+  }
+
+  /** sr 32: un reintento con rq nuevo y sn nuevo (el sn debe ser único por frame). */
+  private resend(p: Pending): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== OPEN) { this.settle(p.sn, { kind: "unknown" }); return; }
+    this.pending.delete(p.sn);
+    const sn = ++this.sn;
+    const rq = this.nextRq();
+    const next: Pending = { ...p, sn, rq, retried: true };
+    this.pending.set(sn, next);
+    ws.send(JSON.stringify(orderFrame(p.intent, { sn, rq, head: this._state.head })));
+  }
+
+  private settle(sn: number, outcome: OrderOutcome): void {
+    const p = this.pending.get(sn);
+    if (!p) return;
+    clearTimeout(p.timer);
+    this.pending.delete(sn);
+    p.resolve(outcome);
+  }
+
+  private fail(p: Pending, error: Error): void {
+    clearTimeout(p.timer);
+    this.pending.delete(p.sn);
+    p.reject(error);
+  }
+
+  private failPending(): void {
+    for (const sn of [...this.pending.keys()]) this.settle(sn, { kind: "unknown" });
+  }
+
+  private handleClose(code: number): void {
+    this.stopPing();
+    this.ws = null;
+    this.failPending();
+    if (this.closedByUser) return;
+    if (code === AUTH_FAILED && ++this.authFailures >= 2) {
+      this.setStatus("closed");
+      this.opts.onEvent({ type: "keyRejected" });
+      return;
+    }
+    this.setStatus("reconnecting");
+    const delay = RECONNECT_DELAYS_MS[Math.min(this.attempt, RECONNECT_DELAYS_MS.length - 1)];
+    this.attempt += 1;
+    this.retry = setTimeout(() => { this.retry = null; this.connect(); }, delay);
+  }
+
+  private stopPing(): void {
+    if (this.ping) { clearInterval(this.ping); this.ping = null; }
+  }
+
+  private setStatus(status: SocketStatus): void {
+    if (this._status === status) return;
+    this._status = status;
+    this.opts.onEvent({ type: "status", status });
   }
 }
