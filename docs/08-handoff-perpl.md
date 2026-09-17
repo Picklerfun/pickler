@@ -148,7 +148,14 @@ Jesús aprobó merge + TestFlight:
    del copy de regiones.
 2. "locked in positions" calculado como Σ `c` de las posiciones (el `lb` de Perpl no lo es).
 3. Fees con 4 decimales (hoy "0.00 AUSD").
-4. Minors diferidos de las revisiones (sección "Pendientes") a criterio.
+4. **Tras Sign out + sign in, Trade vuelve a pedir "Enable trading" con 100 AUSD** aunque la cuenta de
+   Perpl ya exista (reportado por Jesús). No es un bug de la key: Sign out la borra a propósito (spec §4)
+   y cerrar/reabrir la app sí conserva el estado (verificado en el simulador: Live con 104.92 al
+   relanzar). El hueco es de UX: en estado `none`, si `readAccountId(address) > 0`, mostrar
+   "Reconnect trading" sin monto (solo reenrola la key y reenvía forwarding), en vez del formulario de
+   100 AUSD. Hoy, si el usuario pulsa Enable con la cuenta existente, `runEnable` NO vuelve a mover AUSD
+   (salta approve/createAccount), pero el copy lo sugiere.
+5. Minors diferidos de las revisiones (sección "Pendientes") a criterio.
 
 ### Fase 3 (agente como operador delegado)
 
