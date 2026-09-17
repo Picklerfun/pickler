@@ -3,6 +3,9 @@ import type { ExpoConfig } from "expo/config";
 const rpId = process.env.PICKLER_RP_ID ?? "pickler.fun";
 // Key de MonadScan (Etherscan V2). Pública, solo lectura, testnet; se rota desde etherscan.io.
 const monadscanKey = process.env.PICKLER_MONADSCAN_KEY ?? "AHQMBTI74BYK33SZS47XF49SIADAG9VUYW";
+// Perpl: vacío = testnet (src/perpl/config.ts). Para mainnet se fijan ambas.
+const perplRest = process.env.PICKLER_PERPL_REST ?? "";
+const perplWs = process.env.PICKLER_PERPL_WS ?? "";
 const bundleIdentifier = "fun.pickler.app";
 
 const config: ExpoConfig = {
@@ -34,7 +37,7 @@ const config: ExpoConfig = {
       },
     ],
   ],
-  extra: { rpId, monadscanKey },
+  extra: { rpId, monadscanKey, perplRest, perplWs },
 };
 
 export default config;

@@ -11,6 +11,8 @@ export const AUSD_FAUCET_ADDRESS: Address = "0xd236c18D274E54FAccC3dd9DDA4b27965
 export const ERC20_ABI = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
   "function transfer(address to, uint256 value) returns (bool)",
+  "function approve(address spender, uint256 value) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
 ]);
 
 export const FAUCET_ABI = parseAbi([
