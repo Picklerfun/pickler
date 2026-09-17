@@ -104,6 +104,8 @@ Copy congelado y build 3: sin cambios respecto a `docs/06-handoff-ui-port.md`; e
 
 ## Siguiente punto de decisión
 
+(Superado el 2026-09-16 por la noche: ver "Cierre" abajo. Se conserva el texto original.)
+
 La rama está lista para merge a `main` (revisión final con fixes re-revisados, 164/164, flujo completo
 verificado en el simulador con tx reales). Decide Jesús: (1) merge + push; (2) si va a TestFlight,
 sumar la lista del build 3 y subir `ios.buildNumber`; (3) fase 3 = agente como operador delegado
@@ -129,3 +131,26 @@ Jesús aprobó merge + TestFlight:
   firmas dentro de ±30 s). Con "Ajustar automáticamente" activado, pasó a Live. Pendiente: detectar el
   desfase (comparar el header `Date` de `pub/context` con `Date.now()`) y decir "Your phone's clock is
   off by N s" en vez del copy de regiones.
+
+## Estado al cerrar la sesión (2026-09-16, ~21:10)
+
+- `main` = `20ac1fa`, igual que `origin/main`. Worktrees limpios: `mobile-perpl` (en `feat/mobile-build3`,
+  ya mergeada), `mobile-wallet`, `mobile-ui-port` (todas mergeadas; se pueden borrar con
+  `git worktree remove`).
+- TestFlight: build **0.1.0 (3)** `VALID`, `IN_BETA_TESTING` para el grupo interno "Equipo" (acceso
+  automático a todos los builds). Probado por Jesús en su iPhone: onboarding de Perpl OK (cuenta #621);
+  el `3401` fue por reloj desfasado (arreglado al activar hora automática).
+- Sin procesos de build/Metro corriendo. `.env.asc` copiado (gitignored) al worktree `mobile-perpl`.
+
+### Lista propuesta para el build 4 (decide Jesús)
+
+1. Detectar desfase de reloj (header `Date` de `pub/context` vs `Date.now()`) y aviso específico en vez
+   del copy de regiones.
+2. "locked in positions" calculado como Σ `c` de las posiciones (el `lb` de Perpl no lo es).
+3. Fees con 4 decimales (hoy "0.00 AUSD").
+4. Minors diferidos de las revisiones (sección "Pendientes") a criterio.
+
+### Fase 3 (agente como operador delegado)
+
+Reutiliza `src/perpl/*` (puro) y `usePerpl`; la decisión D-02 (caps) se reabre con las cuentas de Perpl.
+Spec por escribir con brainstorming; el spike de Perpl y los fixtures reales ya cubren el protocolo.

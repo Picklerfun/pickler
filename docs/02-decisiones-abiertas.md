@@ -141,6 +141,7 @@ declaran explícitamente como diferidos o simulados.
 | ✅ | **Venue: Perpl. Polymarket sale del proyecto.** Todo (trading, token, tesorería) en Monad. Reemplaza la decisión del 2026-09-10 | 2026-09-16 (Jesús + Juvenal) |
 | ✅ | El perp lo operan **tanto el agente como una persona** desde la app; se empieza por el **manual** (fase 2); el agente como operador delegado, después (fase 3) | 2026-09-16 (Jesús + Juvenal) |
 | ✅ | Fase 2: pestaña nueva **Trade**; apalancamiento 1x–5x (default 1x); fondos completos (enable ≥100, add ≥10, withdraw); solo órdenes de mercado y cierre total | 2026-09-16 (Jesús) |
+| ✅ | Fase 2 construida, en `main` y en **TestFlight build 3** (con los cambios acordados del build 3); apalancamiento capado por mercado (`initial_margin/100`, MON 3x) | 2026-09-16 (noche) |
 
 ## Lo que la fase 2 reabrió (2026-09-16) — resuelto
 
