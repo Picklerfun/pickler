@@ -108,3 +108,18 @@ La rama está lista para merge a `main` (revisión final con fixes re-revisados,
 verificado en el simulador con tx reales). Decide Jesús: (1) merge + push; (2) si va a TestFlight,
 sumar la lista del build 3 y subir `ios.buildNumber`; (3) fase 3 = agente como operador delegado
 (caps, D-02) sobre esta misma pestaña.
+
+## Cierre (misma sesión, 2026-09-16 20:45)
+
+Jesús aprobó merge + TestFlight:
+
+- `main` = `35649b6` (merge de `feat/mobile-perpl` `5f76811` y de `feat/mobile-build3`), pusheado a
+  `origin` junto con las ramas `feat/mobile-perpl`, `feat/mobile-wallet` y `feat/mobile-build3`.
+- **Build 3** (`feat/mobile-build3`, revisión independiente + 1 fix): mensaje real de `PRF_UNAVAILABLE`
+  (`src/wallet/prfMessage.ts`, iOS 18 solo si la versión es menor), `expo-build-properties` 57.0.20 con
+  `deploymentTarget` 18.0, "Get test MON · copies address" + fila "Your address", README con la nota de
+  proveedores de passkey, `ios.buildNumber` "3". 168/168.
+- `.ipa` 0.1.0 (3), `MinimumOSVersion` 18.0, subido con `altool`: **UPLOAD SUCCEEDED**, Delivery UUID
+  `3e4260cd-b9dd-48bb-a5cb-219ed050a434`. Falta que App Store Connect lo procese y añadir el build al
+  grupo de testers (Jesús, Juvenal).
+- Pendiente del build 3 no incluido: nada (el logo ya se arregló en la fase wallet).
