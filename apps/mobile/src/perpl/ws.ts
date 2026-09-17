@@ -199,6 +199,13 @@ export class TradingSocket {
 
   connect(): void {
     this.closedByUser = false;
+    if (this.retry) { clearTimeout(this.retry); this.retry = null; }
+    if (this.ws) {
+      const old = this.ws;
+      this.ws = null; // primero: que su onclose no dispare otra reconexión
+      this.stopPing();
+      old.close();
+    }
     this.setStatus(this.attempt === 0 ? "connecting" : "reconnecting");
     const ws = this.createSocket(this.opts.url);
     this.ws = ws;
@@ -209,7 +216,7 @@ export class TradingSocket {
       this.stopPing();
       this.ping = setInterval(() => { if (ws.readyState === OPEN) ws.send(JSON.stringify({ mt: 1, t: this.now() })); }, PING_MS);
     };
-    ws.onmessage = (ev) => this.handle(ev.data);
+    ws.onmessage = (ev) => { if (this.ws === ws) this.handle(ev.data); };
     ws.onerror = () => { /* onclose sigue */ };
     ws.onclose = (ev) => { if (this.ws === ws) this.handleClose(ev.code); };
   }
@@ -274,10 +281,12 @@ export class TradingSocket {
   private resend(p: Pending): void {
     const ws = this.ws;
     if (!ws || ws.readyState !== OPEN) { this.settle(p.sn, { kind: "unknown" }); return; }
+    clearTimeout(p.timer);
     this.pending.delete(p.sn);
     const sn = ++this.sn;
     const rq = this.nextRq();
-    const next: Pending = { ...p, sn, rq, retried: true };
+    const timer = setTimeout(() => this.settle(sn, { kind: "unknown" }), ORDER_TIMEOUT_MS);
+    const next: Pending = { ...p, sn, rq, retried: true, timer };
     this.pending.set(sn, next);
     ws.send(JSON.stringify(orderFrame(p.intent, { sn, rq, head: this._state.head })));
   }

@@ -209,3 +209,37 @@ test("close() closes the socket for good: no ping, no reconnect", () => {
   expect(fake.sent.length).toBe(sent);
   expect(fakes).toHaveLength(1);
 });
+
+test("a retried order (sr 32) still times out after 30 s of silence", async () => {
+  const { socket, fake } = boot();
+  const p = socket.placeOrder(openIntent(MON, 619, "long", 100, 1));
+  fake.receive({ ...frames.orderFailedTooLow, d: [{ ...frames.orderFailedTooLow.d[0], rq: 6 }] });
+  expect(fake.frames().filter((f) => f.mt === 22)).toHaveLength(2);
+  jest.advanceTimersByTime(30_000);
+  await expect(p).resolves.toEqual({ kind: "unknown" });
+});
+
+test("a stale onmessage from a closed socket does not mutate state or flip status", () => {
+  const { socket, fakes, fake } = boot();
+  socket.close();
+  socket.connect();
+  const newFake = fakes[1];
+  fake.receive(frames.walletSnapshot);
+  expect(socket.status).not.toBe("live");
+  expect(["connecting", "reconnecting"]).toContain(socket.status);
+  newFake.open();
+  newFake.receive(frames.walletSnapshot);
+  newFake.receive(frames.ordersSnapshotEmpty);
+  newFake.receive(frames.positionsSnapshotEmpty);
+  newFake.receive({ ...frames.heartbeat, sn: HEAD, h: HEAD });
+  expect(socket.status).toBe("live");
+  expect(socket.state.account?.id).toBe(619);
+});
+
+test("connect() while a retry is scheduled does not create a duplicate socket", () => {
+  const { socket, fakes, fake } = boot(false);
+  fake.drop();
+  socket.connect();
+  jest.advanceTimersByTime(5000);
+  expect(fakes).toHaveLength(2);
+});
