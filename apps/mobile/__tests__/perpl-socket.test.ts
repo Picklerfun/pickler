@@ -119,7 +119,7 @@ test("a second sr 32 fails the order instead of retrying again", async () => {
   fake.receive({ ...frames.orderFailedTooLow, d: [{ ...frames.orderFailedTooLow.d[0], rq: 6 }] });
   fake.receive({ ...frames.orderFailedTooLow, d: [{ ...frames.orderFailedTooLow.d[0], rq: 7 }] });
   expect(fake.frames().filter((f) => f.mt === 22)).toHaveLength(2);
-  await expect(p).resolves.toMatchObject({ kind: "failed", text: "Order id too low — retrying" });
+  await expect(p).resolves.toMatchObject({ kind: "failed", text: "Order id too low — try again" });
 });
 
 test("other failures resolve failed with the described reason (sr 34)", async () => {
@@ -242,4 +242,17 @@ test("connect() while a retry is scheduled does not create a duplicate socket", 
   socket.connect();
   jest.advanceTimersByTime(5000);
   expect(fakes).toHaveLength(2);
+});
+
+test("heartbeats (mt 100) update head but do not emit a state event; account updates (mt 21) do", () => {
+  const { socket, fake, events } = boot();
+  const count = () => events.filter((e) => e.type === "state").length;
+  const before = count();
+  fake.receive({ ...frames.heartbeat, sn: HEAD + 1, h: HEAD + 1 });
+  fake.receive({ ...frames.heartbeat, sn: HEAD + 2, h: HEAD + 2 });
+  fake.receive({ ...frames.heartbeat, sn: HEAD + 3, h: HEAD + 3 });
+  expect(count()).toBe(before);
+  expect(socket.state.head).toBe(HEAD + 3);
+  fake.receive(frames.accountAfterOpen);
+  expect(count()).toBe(before + 1);
 });

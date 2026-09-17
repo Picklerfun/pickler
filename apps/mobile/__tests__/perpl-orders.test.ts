@@ -70,7 +70,7 @@ test("closeIntent closes the whole position on the opposite side", () => {
 });
 
 test.each([
-  [7, 32, undefined, "failed", "Order id too low — retrying"],
+  [7, 32, undefined, "failed", "Order id too low — try again"],
   [7, 34, undefined, "failed", "One-click trading is off. Enable trading again"],
   [2, 35, undefined, "open", "Placed"],
   [7, 44, 8, "failed", "Not enough collateral for this size"],

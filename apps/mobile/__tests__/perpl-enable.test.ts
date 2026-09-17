@@ -6,6 +6,7 @@ const KEY: TradingKey = { address: "0x29458C602E3DB4fC3b54EC2bbEE26Dbe64C7779f",
 function deps(over: Partial<EnableDeps> = {}) {
   const d = {
     readAccountId: jest.fn(async () => 0n),
+    walletAusd: jest.fn(async () => 1_000_000_000n),
     readAllowance: jest.fn(async () => 0n),
     approve: jest.fn(async () => {}),
     createAccount: jest.fn(async () => {}),
@@ -77,4 +78,25 @@ test("retry after a step-4 failure does not create the account twice", async () 
   await expect(runEnable(d, 100_000_000n, () => {})).resolves.toEqual(KEY);
   expect(d.createAccount).toHaveBeenCalledTimes(1);
   expect(d.allowForwarding).toHaveBeenCalledTimes(2); // sin getter: se reenvía (ruling 5)
+});
+
+test("fresh wallet below the amount fails at step 1 with the wallet copy", async () => {
+  const d = deps({ readAccountId: jest.fn(async () => 0n), walletAusd: jest.fn(async () => 50_000_000n) });
+  const err = await runEnable(d, 100_000_000n, () => {}).catch((e: unknown) => e);
+  expect(err).toBeInstanceOf(EnableError);
+  expect((err as EnableError).step).toBe(1);
+  expect((err as EnableError).message).toBe("That is more than the AUSD in your wallet.");
+  expect(d.approve).not.toHaveBeenCalled();
+  expect(d.createAccount).not.toHaveBeenCalled();
+});
+
+test("retry after a step-3 failure with the wallet drained does not re-check the wallet", async () => {
+  // Tras createAccount el AUSD ya está en el exchange: la wallet queda en 0 y el retry no debe morir en el paso 1.
+  const allow = jest.fn(async () => {}).mockRejectedValueOnce(new Error("User canceled the operation."));
+  const d = deps({ readAccountId: jest.fn(async () => 619n), walletAusd: jest.fn(async () => 0n), allowForwarding: allow });
+  const err = await runEnable(d, 100_000_000n, () => {}).catch((e: unknown) => e);
+  expect((err as EnableError).step).toBe(3);
+  await expect(runEnable(d, 100_000_000n, () => {})).resolves.toEqual(KEY);
+  expect(d.walletAusd).not.toHaveBeenCalled();
+  expect(d.approve).not.toHaveBeenCalled();
 });

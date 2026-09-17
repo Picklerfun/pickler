@@ -71,7 +71,7 @@ export function orderFrame(intent: OrderIntent, seq: { sn: number; rq: number; h
 export type OrderStatusKind = "sent" | "filled" | "open" | "failed";
 
 const FAILED_COPY: Record<number, string> = {
-  32: "Order id too low — retrying",
+  32: "Order id too low — try again",
   34: "One-click trading is off. Enable trading again",
   37: "Not enough collateral for this size",
   39: "Below the market minimum",

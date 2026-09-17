@@ -74,8 +74,12 @@ export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
   const notional = notionalAusd(size, market.mark, market.priceDecimals, market.sizeDecimals);
   const fee = takerFee(notional, market.takerFeeMicros);
   const liq = liquidationPrice(market.mark, lvUsed, side, market.maintenanceBps, market.maxLeverage);
-  const error = amount === "" ? "" : units === undefined || units === 0n ? "Enter an amount above zero." : units > free ? `That is more than the ${formatAusd(free)} AUSD free.` : size <= 0 ? "That amount is below one unit of this market." : "";
-  const ok = units !== undefined && units > 0n && units <= free && size > 0;
+  // El exchange cobra la fee además del margen: units + fee debe caber en el saldo libre.
+  const error = amount === "" ? "" : units === undefined || units === 0n ? "Enter an amount above zero." : units > free ? `That is more than the ${formatAusd(free)} AUSD free.` : size <= 0 ? "That amount is below one unit of this market." : units + fee > free ? `That leaves no room for the ${formatAusd(fee)} AUSD fee.` : "";
+  const ok = units !== undefined && units > 0n && units + fee <= free && size > 0;
+  // Max deja sitio a la fee: fee(free × lv) acota la fee real (nominal ≤ Max × lv < free × lv), así que Max pasa la validación.
+  const maxFee = takerFee(free * BigInt(lvUsed), market.takerFeeMicros);
+  const max = free > maxFee ? free - maxFee : 0n;
   const live = perpl.live?.status === "live";
   const sym = market.symbol;
 
@@ -139,7 +143,7 @@ export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
           <TextInput value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.mute} keyboardType="decimal-pad" style={[textStyle(800, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]} />
           <T w={500} s={14} mono color={C.mute}>AUSD</T>
-          <Touch onPress={() => setAmount(formatUnits(free, AUSD_DECIMALS))} style={chipBtn}><T w={600} s={12}>Max</T></Touch>
+          <Touch onPress={() => setAmount(formatUnits(max, AUSD_DECIMALS))} style={chipBtn}><T w={600} s={12}>Max</T></Touch>
         </View>
         <T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 10 }}>{formatAusd(free)} AUSD free in trading</T>
       </View>

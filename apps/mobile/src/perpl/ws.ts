@@ -274,7 +274,8 @@ export class TradingSocket {
         this.settle(p.sn, kind === "filled" ? { kind, order } : kind === "open" ? { kind, order } : { kind: "failed", order, text });
       }
     }
-    if (frame.mt !== 2 && frame.mt !== 3) this.opts.onEvent({ type: "state", state: this._state });
+    // El heartbeat (100) solo mueve `head`, que el socket usa internamente para `lb`; no re-renderiza a nadie.
+    if (frame.mt !== 2 && frame.mt !== 3 && frame.mt !== 100) this.opts.onEvent({ type: "state", state: this._state });
   }
 
   /** sr 32: un reintento con rq nuevo y sn nuevo (el sn debe ser único por frame). */

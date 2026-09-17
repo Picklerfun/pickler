@@ -11,7 +11,7 @@ import {
 } from "../perpl/onboarding";
 import { closeIntent, openIntent, type Side, sizeFromAusd } from "../perpl/orders";
 import { type Account, type OrderOutcome, type Position, type SocketStatus, TradingSocket, type TradingState } from "../perpl/ws";
-import { clearTradingKey, loadTradingKey, saveTradingKey, type TradingKey } from "../storage/perpl";
+import { loadTradingKey, saveTradingKey, type TradingKey } from "../storage/perpl";
 import { readBalances, waitForReceipt } from "../wallet/chain";
 import { describeError, type Wallet } from "../wallet/wallet";
 import type { Treasury } from "./useTreasury";
@@ -47,7 +47,9 @@ const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCas
 
 function describeTxError(e: unknown): string {
   const msg = describeError(e instanceof EnableError ? e.cause : e);
-  return /rejected/i.test(msg) ? "Network refused the transaction — try again in a moment." : msg;
+  // El RPC de Monad devuelve "…rejected…" cuando descarta una tx (nonce/fee); los errores de enroll
+  // ("Perpl rejected the enrolment (500).") también dicen "rejected" pero deben mostrarse tal cual.
+  return /rejected/i.test(msg) && !/perpl/i.test(msg) ? "Network refused the transaction — try again in a moment." : msg;
 }
 
 async function confirm(hash: Hex): Promise<void> {
@@ -144,10 +146,10 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
     try {
       const fresh = await readBalances(address);
       if (fresh.mon === 0n) throw new EnableError(1, new Error(NO_MON));
-      if (amount > fresh.ausd) throw new EnableError(1, new Error("That is more than the AUSD in your wallet."));
       const wallet = await openWallet();
       const result = await runEnable({
         readAccountId: () => readAccountId(address),
+        walletAusd: async () => (await readBalances(address)).ausd,
         readAllowance: () => readAllowance(address),
         approve: async (a) => confirm(await approveExchange(wallet, a)),
         createAccount: async (a) => confirm(await createExchangeAccount(wallet, a)),
@@ -227,8 +229,7 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
   const resetKey = useCallback(async () => {
     if (!address || !key) return;
     const wallet = await openWallet();
-    await clearTradingKey();
-    const pair = generateTradingKey();
+    const pair = generateTradingKey(); // saveTradingKey sobrescribe: si el enroll falla, la key anterior sigue guardada
     const apiKey = await enrollTradingKey(wallet, pair.publicKeyHex, pair.privateKey, PERPL_URLS.rest);
     const stored: TradingKey = { address, accountId: key.accountId, apiKey, privateKey: pair.privateKey };
     await saveTradingKey(stored);

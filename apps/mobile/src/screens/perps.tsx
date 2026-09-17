@@ -10,6 +10,7 @@ import { change24h, formatPrice, formatSize, liquidationPrice, positionPnl } fro
 import type { Position } from "../perpl/ws";
 import { EmptyPanel, T, Tag, Touch, TouchCard } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
+import { describeError } from "../wallet/wallet";
 import { OrderResultCard, type OrderResult } from "./perpsMarket";
 
 const primaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: "center" } as const;
@@ -85,7 +86,17 @@ export function PerpsScreen(ctx: AppCtx) {
   const noMon = treasury.balances?.mon === 0n;
   const [amount, setAmount] = useState<string | null>(null);
   const [closing, setClosing] = useState<Closing | null>(null);
+  const [actionError, setActionError] = useState("");
   const text = amount ?? formatUnits(minOpen, AUSD_DECIMALS);
+  // Reset key / Enable forwarding: sin catch la promesa rechazada se perdía. "" = Face ID cancelado (sin aviso).
+  const runAction = async (action: () => Promise<void>) => {
+    setActionError("");
+    try {
+      await action();
+    } catch (e) {
+      setActionError(describeError(e));
+    }
+  };
   const units = parseAusd(text);
   const enableError = units === undefined || units === 0n ? "Enter an amount." : units < minOpen ? `Minimum is ${formatAusd(minOpen)} AUSD.` : units > walletAusd ? `That is more than the ${formatAusd(walletAusd)} AUSD in your wallet.` : "";
 
@@ -195,15 +206,17 @@ export function PerpsScreen(ctx: AppCtx) {
         <View style={warnBox}>
           <T w={400} s={12} lh={1.4} color={C.warn}>Trading key rejected. Perpl isn't available in some regions (see testnet.perpl.xyz).</T>
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Touch onPress={() => { void perpl.resetKey(); }} style={{ alignSelf: "flex-start", ...chipBtn }}><T w={600} s={12}>Reset trading key</T></Touch>
+            <Touch onPress={() => { void runAction(perpl.resetKey); }} style={{ alignSelf: "flex-start", ...chipBtn }}><T w={600} s={12}>Reset trading key</T></Touch>
             <Touch onPress={() => { void Linking.openURL(PERPL_WEB); }} style={{ alignSelf: "flex-start", ...chipBtn }}><T w={600} s={12}>Open Perpl</T></Touch>
           </View>
+          {actionError ? <T w={400} s={12} lh={1.4} color={C.down}>{actionError}</T> : null}
         </View>
       ) : null}
       {acc && !acc.fw ? (
         <View style={warnBox}>
           <T w={400} s={12} lh={1.4} color={C.warn}>One-click trading is off. Orders will be rejected until it's enabled.</T>
-          <Touch onPress={() => { void perpl.enableForwardingOnly(); }} style={{ alignSelf: "flex-start", ...chipBtn }}><T w={600} s={12}>Enable</T></Touch>
+          <Touch onPress={() => { void runAction(perpl.enableForwardingOnly); }} style={{ alignSelf: "flex-start", ...chipBtn }}><T w={600} s={12}>Enable</T></Touch>
+          {actionError ? <T w={400} s={12} lh={1.4} color={C.down}>{actionError}</T> : null}
         </View>
       ) : null}
 
