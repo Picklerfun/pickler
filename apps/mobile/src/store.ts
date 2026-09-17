@@ -6,7 +6,8 @@ export type Screen =
   | "market" | "search" | "agent"
   | "trade" | "signin"
   | "activity" | "post" | "ask"
-  | "portfolio" | "position" | "wallet" | "deposit" | "withdraw";
+  | "portfolio" | "position" | "wallet" | "deposit" | "withdraw"
+  | "perps" | "perpsMarket" | "perpsFunds";
 export type Phase = "quoting" | "quote" | "insufficient" | "expired" | "confirm" | "sent" | "done" | "failed" | "unknown";
 export type Mode = "buy" | "sell";
 export type UserKind = "new" | "funded" | "holder";
@@ -34,6 +35,10 @@ export type StoreState = {
   /** A dónde ir al terminar Wallet access, y con qué patch. */
   next?: Screen;
   nextPatch?: Patch;
+  /** Pestaña Trade (Perpl): mercado y lado elegidos, y modo de la pantalla de fondos. */
+  perpsMarketId?: number;
+  perpsSide?: "long" | "short";
+  fundsMode?: "add" | "withdraw";
 };
 
 export type Patch = Partial<Omit<StoreState, "stack">>;
@@ -58,7 +63,7 @@ export function backState(s: StoreState): StoreState {
 }
 
 /** Pantallas que exigen cuenta. Leer, seguir y preguntar nunca la piden. */
-export const GATED: readonly Screen[] = ["wallet", "portfolio", "position", "deposit", "withdraw", "trade"];
+export const GATED: readonly Screen[] = ["wallet", "portfolio", "position", "deposit", "withdraw", "trade", "perps", "perpsMarket", "perpsFunds"];
 
 export function requireAccountState(s: StoreState, hasAccount: boolean, target: Screen, patch: Patch = {}): StoreState {
   if (hasAccount || !GATED.includes(target)) return navState(s, target, patch);
@@ -95,10 +100,10 @@ export function deriveTradeHolds(hasAccount: boolean, mockHolder: boolean, phase
   return deriveUser(hasAccount, mockHolder) === "holder" || (phase === "done" && mode === "buy");
 }
 
-const CAN_BACK: readonly Screen[] = ["agent", "trade", "post", "ask", "position", "deposit", "withdraw", "search", "signin"];
-const SHOW_TABS: readonly Screen[] = ["market", "activity", "portfolio", "wallet", "search", "position"];
+export const CAN_BACK: readonly Screen[] = ["agent", "trade", "post", "ask", "position", "deposit", "withdraw", "search", "signin", "perpsMarket", "perpsFunds"];
+export const SHOW_TABS: readonly Screen[] = ["market", "activity", "portfolio", "wallet", "search", "position", "perps"];
 
-export function headerFor(screen: Screen, agent: Agent, post: Post, mode: Mode, balance: number): [string, string] {
+export function headerFor(screen: Screen, agent: Agent, post: Post, mode: Mode, balance: number, perpsSymbol?: string): [string, string] {
   switch (screen) {
     case "market": return ["Market", "Discover agents and their tokens"];
     case "search": return ["Search", "Name, ticker, specialty"];
@@ -113,6 +118,9 @@ export function headerFor(screen: Screen, agent: Agent, post: Post, mode: Mode, 
     case "wallet": return ["Wallet", "AUSD available and movements"];
     case "deposit": return ["Deposit AUSD", "Monad network"];
     case "withdraw": return ["Withdraw AUSD", "To an external address"];
+    case "perps": return ["Trade", "Perps on Perpl · Monad"];
+    case "perpsMarket": return [perpsSymbol ? `${perpsSymbol} Perp` : "Perp", "Market order"];
+    case "perpsFunds": return ["Trading funds", "Between wallet and trading"];
   }
 }
 
@@ -121,6 +129,8 @@ export type StoreInput = {
   hasAccount: boolean;
   /** AUSD real como número; 0 si no cargó. */
   ausd: number;
+  /** Mercados de Perpl disponibles para resolver el símbolo del header. */
+  perpsMarkets?: { id: number; symbol: string }[];
 };
 
 export type AppStore = {
@@ -147,7 +157,7 @@ export type AppStore = {
   showAgentBar: boolean;
 };
 
-export function useAppStore({ hasAccount, ausd }: StoreInput): AppStore {
+export function useAppStore({ hasAccount, ausd, perpsMarkets }: StoreInput): AppStore {
   const [S, setS] = useState<StoreState>(INITIAL);
 
   const set = useCallback((patch: Patch) => setS((s) => ({ ...s, ...patch })), []);
@@ -166,7 +176,8 @@ export function useAppStore({ hasAccount, ausd }: StoreInput): AppStore {
   const holds = user === "holder";
   const tradeHolds = deriveTradeHolds(hasAccount, S.mockHolder, S.phase, S.mode);
   const post = POSTS.find((p) => p.id === S.postId) ?? POSTS[0];
-  const [headerTitle, headerSub] = headerFor(S.screen, agent, post, S.mode, balance);
+  const perpsSymbol = (perpsMarkets ?? []).find((m) => m.id === S.perpsMarketId)?.symbol;
+  const [headerTitle, headerSub] = headerFor(S.screen, agent, post, S.mode, balance, perpsSymbol);
 
   return {
     S, set, nav, back, requireAccount, finishSignin, resetTo,
