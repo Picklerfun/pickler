@@ -47,6 +47,11 @@ el registro de la app en App Store Connect. El build de device solo crea o
 refresca el perfil de aprovisionamiento (con `-allowProvisioningUpdates`, ver
 abajo); no crea el App ID ni la capability.
 
+**Proveedor del passkey:** Pickler necesita la extensión PRF. Apple Passwords
+(iCloud Keychain) la soporta; Bitwarden y otros gestores de terceros no
+devuelven el secreto y el alta falla con «Your passkey provider didn't return
+the secret…». Al crear la cuenta, elegir Apple Passwords.
+
 ### Historial de movimientos (MonadScan)
 
 *Wallet → Movements* lee las transferencias AUSD de la dirección desde Etherscan V2

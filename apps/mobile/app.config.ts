@@ -19,7 +19,7 @@ const config: ExpoConfig = {
   backgroundColor: "#08080A",
   ios: {
     bundleIdentifier,
-    buildNumber: "2",
+    buildNumber: "3",
     supportsTablet: false,
     backgroundColor: "#08080A",
     associatedDomains: [`webcredentials:${rpId}`],
@@ -36,6 +36,7 @@ const config: ExpoConfig = {
           "Pickler uses Face ID to unlock the account stored on this device.",
       },
     ],
+    ["expo-build-properties", { ios: { deploymentTarget: "18.0" } }],
   ],
   extra: { rpId, monadscanKey, perplRest, perplWs },
 };

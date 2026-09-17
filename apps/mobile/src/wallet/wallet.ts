@@ -9,6 +9,7 @@ import {
 } from "@category-labs/mera";
 import { reactNativeWebAuthnClient } from "@category-labs/mera/react-native-webauthn-client";
 import { toViemAccount } from "@category-labs/mera/viem";
+import { Platform } from "react-native";
 import type { PasskeyError } from "react-native-passkey";
 import { BaseError as ViemError, type LocalAccount } from "viem";
 import { RP_ID, RP_NAME } from "../config/rp";
@@ -19,6 +20,7 @@ import {
   type StoredPrf,
   storePrfResult,
 } from "../storage/storage";
+import { prfUnavailableMessage } from "./prfMessage";
 
 export type Wallet = {
   address: EvmAddress;
@@ -87,11 +89,17 @@ function toWallet({ credentialId, prfOutput }: StoredPrf): Wallet {
   }
 }
 
+function iosMajor(): number | undefined {
+  if (Platform.OS !== "ios") return undefined;
+  const parsed = parseInt(String(Platform.Version), 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
 export function describeError(error: unknown): string {
   if (isMeraError(error)) {
     switch (error.code) {
       case "PRF_UNAVAILABLE":
-        return "This device can't create a passkey with PRF. Use an iPhone with iOS 18 or newer.";
+        return prfUnavailableMessage(iosMajor());
       case "PASSKEY_OPERATION_FAILED":
         return describePasskeyFailure(error.cause);
       case "SESSION_ENDED":

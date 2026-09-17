@@ -161,6 +161,7 @@ const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWid
 const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
 
 export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, resetTo }: AppCtx) {
+  const address = accountAddress(account) ?? "";
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) + " AUSD" : "—";
   const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
   const pending = confirming === 0
@@ -202,12 +203,21 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
             <T w={600} s={13}>MON (gas)</T>
             <T w={500} s={13} mono>{treasury.balances ? formatMon(treasury.balances.mon) : "—"}</T>
           </View>
+          <View style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf, flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+            <T w={600} s={13}>Your address</T>
+            <T w={500} s={13} mono>{shortHash(address)}</T>
+          </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Touch onPress={() => { void treasury.getTestAusd(); }} disabled={treasury.busy} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: "center", opacity: treasury.busy ? 0.6 : 1 }}>
               {treasury.busy ? <ActivityIndicator color={C.onLime} /> : <T w={700} s={13.5} color={C.onLime}>Get test AUSD</T>}
             </Touch>
-            <Touch onPress={() => { void Linking.openURL(MON_FAUCET_URL); }} style={secondaryBtn}>
-              <T w={700} s={13.5}>Get test MON</T>
+            <Touch
+              onPress={() => {
+                void Clipboard.setStringAsync(address).then(() => { void Linking.openURL(MON_FAUCET_URL); });
+              }}
+              style={secondaryBtn}
+            >
+              <T w={700} s={13.5}>Get test MON · copies address</T>
             </Touch>
           </View>
           <Touch onPress={() => { void treasury.refresh(); }} style={secondaryBtn}>
