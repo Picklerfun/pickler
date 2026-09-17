@@ -4,7 +4,8 @@ import { accountAddress, type AccountState } from "../account";
 import { MONADSCAN_KEY } from "../config/explorer";
 import { estimateAusdTransferFee, readBalances, requestAusdFromFaucet, sendAusd, waitForReceipt } from "../wallet/chain";
 import { fetchAusdTransfers, type Movement, type MovementKind, pendingMovement, toMovements } from "../wallet/explorer";
-import { describeError, unlockStoredWallet, type Wallet } from "../wallet/wallet";
+import { describeError, type Wallet } from "../wallet/wallet";
+import { useUnlock } from "./useUnlock";
 
 export type Balances = { ausd: bigint; mon: bigint };
 
@@ -76,14 +77,7 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
     void refresh();
   }, [refresh]);
 
-  /** Wallet desbloqueada: la de la cuenta, o la guardada (pide Face ID) avisando a useAccount. */
-  const openWallet = useCallback(async (): Promise<Wallet> => {
-    if (account.status === "unlocked") return account.wallet;
-    const unlocked = await unlockStoredWallet();
-    if (!unlocked) throw new Error("No stored account. Sign out and sign in again.");
-    onUnlock(unlocked);
-    return unlocked;
-  }, [account, onUnlock]);
+  const openWallet = useUnlock(account, onUnlock);
 
   /** Registra la tx en vuelo, espera el recibo y recarga (sin tocar `pending` de otras filas). Quita la fila si confirmó; la deja como Reverted si no; la quita también si esperar el recibo falla (timeout/RPC), y relanza. */
   const track = useCallback(async (kind: MovementKind, amount: bigint, hash: Hex): Promise<"success" | "reverted"> => {

@@ -1,14 +1,19 @@
 import {
   afterSigninState,
   backState,
+  CAN_BACK,
   deriveBalance,
   deriveTradeHolds,
   deriveUser,
+  GATED,
+  headerFor,
   INITIAL,
   navState,
   requireAccountState,
   resetState,
+  SHOW_TABS,
 } from "../src/store";
+import { AGENTS, POSTS } from "../src/mock/data";
 
 test("nav pushes the current screen and applies the patch", () => {
   const s = navState(INITIAL, "agent", { agentId: "hld", tab: "about" });
@@ -97,4 +102,33 @@ test("a completed buy never counts as holding without an account", () => {
 test("balance is 0 without an account even if AUSD was read", () => {
   expect(deriveBalance(false, 1240)).toBe(0);
   expect(deriveBalance(true, 1240)).toBe(1240);
+});
+
+test("the three Perpl screens need an account; only the tab shows the tab bar; subscreens can go back", () => {
+  for (const s of ["perps", "perpsMarket", "perpsFunds"] as const) expect(GATED).toContain(s);
+  expect(SHOW_TABS).toContain("perps");
+  expect(SHOW_TABS).not.toContain("perpsMarket");
+  expect(SHOW_TABS).not.toContain("perpsFunds");
+  expect(CAN_BACK).toContain("perpsMarket");
+  expect(CAN_BACK).toContain("perpsFunds");
+  expect(CAN_BACK).not.toContain("perps");
+});
+
+test("without an account the Trade tab asks for access and comes back to it", () => {
+  const s = afterSigninState(requireAccountState(INITIAL, false, "perps"));
+  expect(s.screen).toBe("perps");
+});
+
+test("headers of the Perpl screens", () => {
+  const agent = AGENTS.pkl, post = POSTS[0];
+  expect(headerFor("perps", agent, post, "buy", 0)).toEqual(["Trade", "Perps on Perpl · Monad"]);
+  expect(headerFor("perpsMarket", agent, post, "buy", 0, "MON")).toEqual(["MON Perp", "Market order"]);
+  expect(headerFor("perpsMarket", agent, post, "buy", 0)).toEqual(["Perp", "Market order"]);
+  expect(headerFor("perpsFunds", agent, post, "buy", 0)).toEqual(["Trading funds", "Between wallet and trading"]);
+});
+
+test("nav to a market keeps the chosen market and side in the state", () => {
+  const s = navState(INITIAL, "perpsMarket", { perpsMarketId: 64, perpsSide: "short" });
+  expect(s).toMatchObject({ screen: "perpsMarket", perpsMarketId: 64, perpsSide: "short" });
+  expect(navState(INITIAL, "perpsFunds", { fundsMode: "withdraw" }).fundsMode).toBe("withdraw");
 });

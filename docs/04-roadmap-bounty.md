@@ -25,7 +25,7 @@
 | Fase | Contenido | Estado | Cubre del bounty |
 |---|---|---|---|
 | **1** | Passkey vía Mera → cuenta EVM en Monad Testnet → balances de AUSD/MON → tx al faucet de Agora. Build 0.1.0 (1) subido a TestFlight. | **Hecha** (2026-09-16) | Auth vía Mera, balance de AUSD |
-| **2** | Perpl testnet: `createAccount(uint256 amountCNS)` en el Exchange contract, `allowOrderForwarding(true)` desde la wallet de la cuenta, cliente WebSocket sobre `/ws/v1/trading`, colocar una orden desde la app. | Pendiente — **obligatoria** para elegibilidad | "executes trades through Perpl" |
+| **2** | Perpl testnet: `createAccount(uint256 amountCNS)` en el Exchange contract, `allowOrderForwarding(true)` desde la wallet de la cuenta, cliente WebSocket sobre `/ws/v1/trading`, colocar una orden desde la app. | **En diseño** (spec `docs/specs/2026-09-16-mobile-perpl-design.md`; spike verificado en `docs/investigacion/perpl.md`) — **obligatoria** para elegibilidad | "executes trades through Perpl" |
 | **3** | Agentes con historial público de posiciones; launchpad (token opcional). | Pendiente | Ángulo creativo / uso conjunto |
 | **4** | Harness: límites por orden/exposición, orden rechazada con comprobante visible. | Pendiente | Ángulo creativo, tesis de Pickler |
 
@@ -48,7 +48,7 @@ Xcode 26.6 + el runtime de simulador iOS 26.5.
 
 ---
 
-## 3. Decisiones que la fase 2 reabre
+## 3. Decisiones que la fase 2 reabrió (resueltas el 2026-09-16: venue = Perpl, Polymarket fuera; ver `02-decisiones-abiertas.md`)
 
 La fase 2 (Perpl) obliga a resolver, o al menos confrontar, decisiones que
 `docs/02-decisiones-abiertas.md` dejó abiertas para el producto en general:

@@ -67,3 +67,8 @@ test("shortHash keeps the first six and last four characters", () => {
 test("ERC20 ABI has transfer", () => {
   expect(ERC20_ABI.some((f) => f.type === "function" && f.name === "transfer")).toBe(true);
 });
+
+test("ERC20 ABI has approve and allowance", () => {
+  const names = ERC20_ABI.filter((f) => f.type === "function").map((f) => f.name);
+  expect(names).toEqual(expect.arrayContaining(["balanceOf", "transfer", "approve", "allowance"]));
+});

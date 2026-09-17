@@ -1,0 +1,96 @@
+{
+  "typed_data": {
+    "types": {
+      "EIP712Domain": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "version",
+          "type": "string"
+        },
+        {
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "name": "verifyingContract",
+          "type": "address"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32"
+        }
+      ],
+      "PerplRegisterApiKey": [
+        {
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "name": "statement",
+          "type": "string"
+        },
+        {
+          "name": "publicKey",
+          "type": "string"
+        },
+        {
+          "name": "scope",
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "type": "string"
+        },
+        {
+          "name": "expiresAt",
+          "type": "string"
+        },
+        {
+          "name": "ipCidrs",
+          "type": "string"
+        },
+        {
+          "name": "origin",
+          "type": "string"
+        },
+        {
+          "name": "builderId",
+          "type": "string"
+        },
+        {
+          "name": "maxBuilderFeePer100K",
+          "type": "string"
+        },
+        {
+          "name": "time",
+          "type": "uint64"
+        }
+      ]
+    },
+    "primaryType": "PerplRegisterApiKey",
+    "domain": {
+      "name": "perpl.xyz",
+      "version": "1",
+      "chainId": "0x279f",
+      "verifyingContract": "0x0000000000000000000000000000000000000000",
+      "salt": "0x00000000000000000000000000000000000000006aab3c1edef173c38d161569"
+    },
+    "message": {
+      "builderId": "0",
+      "expiresAt": "0",
+      "ipCidrs": "",
+      "label": "Pickler iOS",
+      "maxBuilderFeePer100K": "0",
+      "origin": "",
+      "publicKey": "3r6jSbM7a0vlC5tcmLL_qxfhaTZVtRkHsvU5yagYJOM",
+      "scope": "3",
+      "signer": "0x29458C602E3DB4fC3b54EC2bbEE26Dbe64C7779f",
+      "statement": "I authorize the creation of Perpl API key with the specified scope and parameters",
+      "time": "0x1a0ace2d7c9"
+    }
+  },
+  "mac": "0xe1ecb62465489e9baa7fc16d7548bff9033864d946d4d68176b8305c9b0f3d22"
+}
