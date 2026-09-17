@@ -123,3 +123,9 @@ Jesús aprobó merge + TestFlight:
   `3e4260cd-b9dd-48bb-a5cb-219ed050a434`. Falta que App Store Connect lo procese y añadir el build al
   grupo de testers (Jesús, Juvenal).
 - Pendiente del build 3 no incluido: nada (el logo ya se arregló en la fase wallet).
+- **Primer uso en teléfono real (Jesús, iPhone, WiFi Totalplay CDMX):** Enable trading OK (cuenta Perpl
+  #621, 100 AUSD, tx 20:48) pero el WebSocket devolvió `3401` dos veces → aviso "Trading key rejected.
+  Perpl isn't available in some regions". Causa real: **reloj del iPhone desfasado** (Perpl exige
+  firmas dentro de ±30 s). Con "Ajustar automáticamente" activado, pasó a Live. Pendiente: detectar el
+  desfase (comparar el header `Date` de `pub/context` con `Date.now()`) y decir "Your phone's clock is
+  off by N s" en vez del copy de regiones.
