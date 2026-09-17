@@ -8,6 +8,9 @@ import { pill } from "./mock/helpers";
 import { AgentScreen, MarketScreen, SearchScreen } from "./screens/discover";
 import { ActivityScreen, AskScreen, PostScreen } from "./screens/follow";
 import { DepositScreen, PortfolioScreen, PositionScreen, WalletScreen, WithdrawScreen } from "./screens/own";
+import { PerpsScreen } from "./screens/perps";
+import { PerpsFundsScreen } from "./screens/perpsFunds";
+import { PerpsMarketScreen } from "./screens/perpsMarket";
 import { SigninScreen, TradeScreen } from "./screens/trade";
 import type { Screen } from "./store";
 import { T, Touch } from "./ui/primitives";
@@ -19,11 +22,13 @@ const SCREENS: Record<Screen, (ctx: AppCtx) => ReactElement> = {
   activity: ActivityScreen, post: PostScreen, ask: AskScreen,
   portfolio: PortfolioScreen, position: PositionScreen, wallet: WalletScreen,
   deposit: DepositScreen, withdraw: WithdrawScreen,
+  perps: PerpsScreen, perpsMarket: PerpsMarketScreen, perpsFunds: PerpsFundsScreen,
 };
 
-type TabIcon = "storefront" | "pulse" | "pie-chart" | "wallet";
+type TabIcon = "storefront" | "trending-up" | "pulse" | "pie-chart" | "wallet";
 const BOTTOM_TABS: readonly [Screen, string, TabIcon][] = [
   ["market", "Market", "storefront"],
+  ["perps", "Trade", "trending-up"],
   ["activity", "Activity", "pulse"],
   ["portfolio", "Portfolio", "pie-chart"],
   ["wallet", "Wallet", "wallet"],

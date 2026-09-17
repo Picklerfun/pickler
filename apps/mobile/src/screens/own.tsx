@@ -160,7 +160,7 @@ function MovementRow({ m }: { m: Movement }) {
 const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
 const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
 
-export function WalletScreen({ nav, account, treasury, lock, signOut, resetTo }: AppCtx) {
+export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, resetTo }: AppCtx) {
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) + " AUSD" : "—";
   const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
   const pending = confirming === 0
@@ -177,6 +177,13 @@ export function WalletScreen({ nav, account, treasury, lock, signOut, resetTo }:
         <T w={400} s={11.5} color={C.mute}>Available to spend</T>
         <T w={800} s={30} lh={1} ls={-0.04} style={{ marginTop: 8 }}>{available}</T>
         <T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 8 }}>{pending}</T>
+        {perpl.state.status === "ready" ? (
+          <Touch onPress={() => nav("perps")}>
+            <T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 4 }}>
+              {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? "" : perpl.lastBalance !== null ? " · last seen" : ""} · Trade tab
+            </T>
+          </Touch>
+        ) : null}
       </View>
 
       <View style={{ flexDirection: "row", gap: 8 }}>

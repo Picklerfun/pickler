@@ -57,6 +57,21 @@ El RPC público no sirve para esto: `eth_getLogs` está limitado a 100 bloques.
 En un dev-client ya instalado, `expo start` no refresca `extra` de `app.config.ts`;
 para que la app vea otra key hay que rehacer `expo run:ios`.
 
+## Perpl (pestaña Trade)
+
+Trading manual de perps en Perpl testnet (`https://testnet.perpl.xyz`). Sin backend: las tres tx de
+onboarding (`approve`, `createAccount ≥ 100 AUSD`, `allowOrderForwarding`) y la firma EIP-712 de la
+API key las hace la wallet de Mera; las órdenes van por WebSocket firmadas con una llave Ed25519 que
+vive en SecureStore (`pickler.perpl.v1`, sin Face ID: solo puede operar, nunca retirar). Sign out la
+borra; "Reset trading key" enrola otra (máx. 16 por cuenta; revocar en `testnet.perpl.xyz/apikeys`).
+
+- Colateral: el mismo AUSD de la wallet. Mínimos (100 / 10 / 0.01) se leen de `pub/context`.
+- Apalancamiento: 1x–5x, capado por mercado (`initial_margin / 100`; MON permite 3x).
+- URLs con override para mainnet: `PICKLER_PERPL_REST` / `PICKLER_PERPL_WS` en `app.config.ts`
+  (`extra` solo se refresca con `expo run:ios`).
+- Perpl geobloquea US, GB, UA, RU, BY, CU, IR, KP, SY: el sign-in del WS falla con `3401`.
+- Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
+
 ## Subir a TestFlight
 
 Requiere `apps/mobile/.env.asc` (gitignored, **nunca se commitea**) con:
