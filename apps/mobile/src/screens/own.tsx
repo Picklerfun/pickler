@@ -205,7 +205,7 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
           </View>
           <View style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf, flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
             <T w={600} s={13}>Your address</T>
-            <T w={500} s={13} mono>{shortHash(address)}</T>
+            <T w={500} s={13} mono>{address ? shortHash(address) : "—"}</T>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Touch onPress={() => { void treasury.getTestAusd(); }} disabled={treasury.busy} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: "center", opacity: treasury.busy ? 0.6 : 1 }}>
@@ -213,7 +213,8 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
             </Touch>
             <Touch
               onPress={() => {
-                void Clipboard.setStringAsync(address).then(() => { void Linking.openURL(MON_FAUCET_URL); });
+                void Clipboard.setStringAsync(address).catch(() => {});
+                void Linking.openURL(MON_FAUCET_URL);
               }}
               style={secondaryBtn}
             >
