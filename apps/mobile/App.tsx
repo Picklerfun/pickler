@@ -7,17 +7,20 @@ import {
   Manrope_800ExtraBold,
 } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
+import { useEffect } from "react";
 import { ActivityIndicator, StatusBar, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ausdToNumber } from "./src/config/chain";
 import type { AppCtx } from "./src/ctx";
 import { useAccount } from "./src/hooks/useAccount";
+import { usePerpl } from "./src/hooks/usePerpl";
 import { useTreasury } from "./src/hooks/useTreasury";
 import { Shell } from "./src/Shell";
-import { useAppStore } from "./src/store";
+import { type Screen, useAppStore } from "./src/store";
 import { C } from "./src/ui/theme";
 
 const NONE = { status: "none" } as const;
+const PERPL_SCREENS: readonly Screen[] = ["perps", "perpsMarket", "perpsFunds"];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -26,10 +29,15 @@ export default function App() {
   });
   const { account, onWallet, lock, signOut } = useAccount();
   const treasury = useTreasury(account ?? NONE, onWallet);
+  const perpl = usePerpl(account ?? NONE, onWallet, treasury);
   const store = useAppStore({
     hasAccount: account !== null && account.status !== "none",
     ausd: treasury.balances ? ausdToNumber(treasury.balances.ausd) : 0,
+    perpsMarkets: perpl.context?.markets ?? [],
   });
+  const perpsActive = PERPL_SCREENS.includes(store.S.screen);
+  const { setActive } = perpl;
+  useEffect(() => { setActive(perpsActive); }, [perpsActive, setActive]);
 
   if (!fontsLoaded || account === null) {
     return (
@@ -39,7 +47,7 @@ export default function App() {
     );
   }
 
-  const ctx: AppCtx = { ...store, account, treasury, onWallet, lock, signOut };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, onWallet, lock, signOut };
 
   return (
     <SafeAreaProvider>
