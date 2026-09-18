@@ -29,6 +29,11 @@
 | **3** | Agentes con historial público de posiciones; launchpad (token opcional). | Pendiente | Ángulo creativo / uso conjunto |
 | **4** | Harness: límites por orden/exposición, orden rechazada con comprobante visible. | Pendiente | Ángulo creativo, tesis de Pickler |
 
+Estado vivo de cada sub-proyecto y build en el catálogo `docs/overview/index.html` (abrir en el
+navegador): overviews de [fase 1](overview/2026-09-15-mobile-fase1.html), [UI
+port](overview/2026-09-16-mobile-ui-port.html), [wallet](overview/2026-09-16-mobile-wallet.html) y
+[Perpl](overview/2026-09-16-mobile-perpl.html), y trackers de TestFlight en `docs/overview/dev/`.
+
 Cada fase pasa por su propio brainstorm → spec → plan (ver `docs/00-historia.md`
 §Flujo de trabajo en el README raíz).
 
