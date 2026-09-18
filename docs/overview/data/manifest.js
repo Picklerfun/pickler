@@ -28,6 +28,20 @@
 window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
+    date: '2026-09-18',
+    title: 'Sistema de documentación con manifest (modelo Proflores)',
+    summary: 'Manifest, overviews, dev trackers, specs/planes con HTML autogenerado y un audit por fase — el modelo completo de documentación de Proflores, adoptado para que el estado de Pickler viva en un solo lugar máquina-legible.',
+    file: '2026-09-18-docs-manifest.html',
+    types: ['spec', 'plan'],
+    status: 'active',
+    tags: ['docs', 'tooling', 'agentes', 'skills'],
+    phases: [
+      { num: 1, status: 'completed' },
+      { num: 2, status: 'completed' },
+      { num: 3, status: 'in_progress' },
+    ],
+  },
+  {
     date: '2026-09-17',
     title: 'TestFlight build 4',
     summary: 'Lista propuesta tras probar el build 3 en teléfono real (desfase de reloj, "locked in positions", fees a 4 decimales, "Reconnect trading" tras Sign out); decide Jesús qué entra.',
