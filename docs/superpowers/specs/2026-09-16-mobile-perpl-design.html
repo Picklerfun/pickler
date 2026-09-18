@@ -1,0 +1,422 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-16-mobile-perpl-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Fase 2: trading manual en Perpl (pestaña Trade) · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-16-mobile-perpl-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-16-mobile-perpl-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Fase 2: trading manual en Perpl (pestaña Trade)</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-16-mobile-perpl-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</a></li><li><a href="#2-unidades">2. Unidades</a></li><li><a href="#21-perplconfigts">2.1 `perpl/config.ts`</a></li><li><a href="#22-perplcontextts">2.2 `perpl/context.ts`</a></li><li><a href="#23-perplonboardingts">2.3 `perpl/onboarding.ts`</a></li><li><a href="#24-perplapikeyts">2.4 `perpl/apiKey.ts`</a></li><li><a href="#25-perplordersts-puro">2.5 `perpl/orders.ts` (puro)</a></li><li><a href="#26-perplwsts">2.6 `perpl/ws.ts`</a></li><li><a href="#27-storageperplts">2.7 `storage/perpl.ts`</a></li><li><a href="#28-hooksuseperplts">2.8 `hooks/usePerpl.ts`</a></li><li><a href="#29-screensperpstsx-y-shelltsx">2.9 `screens/perps.tsx` y `Shell.tsx`</a></li><li><a href="#3-pantallas">3. Pantallas</a></li><li><a href="#31-trade-sin-cuenta-statestatus-none">3.1 Trade — sin cuenta (`state.status === &quot;none&quot;`)</a></li><li><a href="#32-trade-listo">3.2 Trade — listo</a></li><li><a href="#33-mercado-orden-perpsmarket">3.3 Mercado → orden (`perpsMarket`)</a></li><li><a href="#34-close">3.4 Close</a></li><li><a href="#35-trading-funds-perpsfunds">3.5 Trading funds (`perpsFunds`)</a></li><li><a href="#36-wallet">3.6 Wallet</a></li><li><a href="#4-estado-y-datos">4. Estado y datos</a></li><li><a href="#5-errores">5. Errores</a></li><li><a href="#6-pruebas">6. Pruebas</a></li><li><a href="#7-fuera-de-alcance">7. Fuera de alcance</a></li><li><a href="#8-fuentes-verificadas-2026-09-16">8. Fuentes verificadas (2026-09-16)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-16-mobile-perpl-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-fase-2-trading-manual-en-perpl-pestana-trade">App móvil Pickler — Fase 2: trading manual en Perpl (pestaña Trade)</h1>
+<p><strong>Fecha</strong>: 2026-09-16 <strong>Estado</strong>: aprobado por Jesús (diseño en chat), pendiente de plan <strong>Slug</strong>: <code>mobile-perpl</code> <strong>Rama</strong>: <code>feat/mobile-perpl</code>, base <code>main</code> (<code>2d928fc</code>, merge de <code>feat/mobile-wallet</code>) <strong>Contexto</strong>: el bounty exige &quot;executes trades through Perpl&quot;. El equipo decidió el 2026-09-16 que el venue es Perpl (Polymarket sale), que el perp lo operan tanto una persona como un agente, y que se empieza por el manual. Esta fase es ese manual. Verificación previa contra la testnet: <code>docs/investigacion/perpl.md</code> (cuenta #619, API key, WS y orden real).</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<p>Una pestaña nueva <strong>Trade</strong> donde el usuario, con su cuenta de Mera y su AUSD:</p>
+<ol>
+<li><strong>Habilita trading</strong> (una vez): <code>approve</code> + <code>createAccount(≥100 AUSD)</code> +</li>
+<p><code>allowOrderForwarding(true)</code> + registro de una <strong>API key</strong> Ed25519 firmada con la wallet.</p>
+<li>Ve <strong>saldo de trading</strong>, <strong>mercados</strong> (precio de marca y cambio 24h) y <strong>posiciones</strong></li>
+<p>con PnL y precio de liquidación.</p>
+<li><strong>Abre</strong> un perp (Long/Short, monto en AUSD, 1x–5x) con orden de mercado por WebSocket,</li>
+<p>y lo <strong>cierra</strong> completo.</p>
+<li><strong>Mueve fondos</strong> entre la wallet y la cuenta de trading (Add funds ≥10, Withdraw).</li>
+</ol>
+<p>Sin backend. Todo firma en el teléfono: secp256k1 (sesión de Mera / viem) para las tx y el EIP-712; Ed25519 (<code>@noble/curves</code>, ya en <code>node_modules</code> vía viem) para la API key.</p>
+<hr>
+<h2 id="1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</h2>
+<table>
+<thead>
+<tr><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>Dónde vive</td><td>Pestaña <strong>Trade</strong> nueva (5.ª tab, icono Ionicons <code>trending-up</code>, entre Market y Activity). Market, Trade-de-tokens (<code>screen: &quot;trade&quot;</code>), Portfolio, Activity, Wallet <strong>no cambian</strong> de copy ni de flujo.</td><td>Jesús: &quot;pestaña totalmente nueva&quot;; lo del token es F3.</td></tr>
+<tr><td>Nombre interno</td><td>Pantallas <code>perps</code>, <code>perpsMarket</code>, <code>perpsFunds</code>; la pantalla existente <code>trade</code> (compra de tokens) <strong>conserva su id</strong>.</td><td>Evitar renombrar lo que no se toca.</td></tr>
+<tr><td>Colateral</td><td><strong>AUSD de Agora testnet</strong> (<code>0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC</code>, 6 decimales) — el mismo de la wallet.</td><td>Verificado en <code>GET /api/v1/pub/context</code> → <code>tokens[0]</code>.</td></tr>
+<tr><td>Contrato</td><td>Exchange proxy <code>0x1964c32f0be608e7d29302aff5e61268e72080cc</code> (Monad Testnet 10143). Funciones: <code>createAccount(uint256)</code>, <code>allowOrderForwarding(bool)</code>, <code>getAccountByAddr(address) → uint256</code> (<strong>revierte</strong> si no hay cuenta), <code>depositCollateral(uint256)</code>, <code>withdrawCollateral(uint256)</code>.</td><td>Selectores confirmados en la implementación <code>0xbcbd37…adbb</code>; <code>withdrawCollateral</code> simulado OK. Los mínimos (<code>min_account_open_amount</code> 100, <code>min_deposit_amount</code> 10, <code>min_withdraw_amount</code> 0.01 AUSD) <strong>se leen de <code>context.instances[0]</code></strong>, no se fijan.</td></tr>
+<tr><td>API</td><td>REST <code>https://testnet.perpl.xyz/api</code>, WS <code>wss://testnet.perpl.xyz/ws/v1/trading</code>. Constantes en <code>perpl/config.ts</code>, con override por <code>app.config.ts → extra</code> para mainnet después.</td><td>Spike.</td></tr>
+<tr><td>API key</td><td>Generada en el teléfono; enrolada con <code>POST /v1/api-key/payload</code> + <code>/enroll</code> <strong>sin header <code>Origin</code></strong>, <code>scope_mask: 3</code>, <code>label: &quot;Pickler iOS&quot;</code>. Guardada en SecureStore <code>pickler.perpl.v1</code> <strong>sin gate biométrico</strong>.</td><td>Sin <code>Origin</code> funciona (200); con <code>Origin</code> propio da 422. La llave <strong>no puede retirar ni transferir</strong> (regla de Perpl), solo operar; gate por Face ID obligaría a un prompt en cada conexión. Riesgo aceptado para testnet; se revisa antes de mainnet.</td></tr>
+<tr><td>Apalancamiento</td><td>Selector <strong>1x · 2x · 3x · 5x</strong>, default <strong>1x</strong>. Con <code>lv &gt; 1</code> se muestra advertencia y el precio de liquidación se resalta.</td><td>Jesús eligió B.</td></tr>
+<tr><td>Órdenes</td><td>Solo <strong>mercado</strong> (<code>p: 0</code>, <code>fl: 4</code> IOC, <code>ms</code> = <code>order_max_market_slippage_bps</code> del mercado). Cierre <strong>total</strong> (<code>CloseLong</code>/<code>CloseShort</code>, <code>s</code> = tamaño de la posición).</td><td>F3: límite, TP/SL, parcial.</td></tr>
+<tr><td>Mercados</td><td>Todos los que devuelva <code>context.markets</code> con <code>config.is_open</code>. Lista ordenada por <code>id</code>.</td><td>Sin lista fija.</td></tr>
+<tr><td>Captura del monto</td><td>En <strong>AUSD</strong> (colateral). Tamaño = <code>floor(ausd × lv × 10^(pd+sd) / (mrk × 10^6))</code> unidades escaladas (<code>pd</code> = <code>price_decimals</code>, <code>sd</code> = <code>size_decimals</code>, <code>mrk</code> = precio de marca escalado). Se muestra el tamaño resultante en unidades del activo.</td><td>El usuario piensa en dólares; Perpl en unidades.</td></tr>
+<tr><td>Fondos</td><td><strong>Enable trading</strong>: monto editable ≥ mínimo (default = mínimo). <strong>Add funds</strong>: ≥ <code>min_deposit_amount</code>, ≤ AUSD en wallet. <strong>Withdraw to wallet</strong>: ≥ <code>min_withdraw_amount</code>, ≤ saldo libre (<code>b − lb</code>). Las tres son tx de la wallet con Face ID si está <code>locked</code>.</td><td>Jesús eligió &quot;A completo&quot;.</td></tr>
+<tr><td>Fuente de verdad</td><td><strong>WebSocket de trading</strong> para cuenta, órdenes, posiciones (snapshots <code>mt: 19/23/26</code> + updates <code>21/24/25/27</code>). <code>pub/context</code> para precios (polling cada 5 s solo con la pestaña abierta). REST firmado <strong>no se usa</strong> en F2.</td><td>Sin <code>mt: 3/24</code> no hay forma limpia de saber qué pasó con una orden.</td></tr>
+<tr><td><code>rq</code> y <code>lb</code></td><td><code>rq</code> = <code>max(lfr, último enviado) + 1</code>, semilla <code>as[0].lfr</code> del snapshot, actualizado con <code>mt: 21</code>. <code>lb</code> = <code>head + order_ttl_blocks</code> del mercado, <code>head</code> = <code>h</code> del último heartbeat. <strong>Nunca</strong> timestamp ni <code>lb: 0</code>.</td><td>Trampas medidas en el spike (<code>sr: 32</code>; <code>lb: 0</code> no se forwardea).</td></tr>
+<tr><td>Conexión</td><td>El socket vive mientras la pestaña Trade (o sus subpantallas) está activa; ping <code>mt: 1</code> cada 3 s (idle 10 s testnet, 5 s mainnet); reconexión con backoff 1·2·4·8·16·30 s. Sign out y &quot;Reset trading key&quot; lo cierran.</td><td>Ahorra batería y evita estados fantasma.</td></tr>
+<tr><td>Copy</td><td>Inglés, mismo tono que el resto de la app. Números: AUSD con <code>formatAusd</code>; precios con <code>price_decimals</code> del mercado; PnL con signo y color <code>C.up</code>/<code>C.down</code>.</td><td>Consistencia.</td></tr>
+</tbody>
+</table>
+<p><strong>Lo que este spec NO decide:</strong> cómo opera el agente (F3), caps, token, mainnet.</p>
+<hr>
+<h2 id="2-unidades">2. Unidades</h2>
+<p>Todo lo nuevo en <code>apps/mobile/src/perpl/</code> es <strong>puro</strong> (sin <code>react-native</code> ni <code>expo-constants</code>; solo <code>fetch</code>, <code>WebSocket</code> global de RN y viem/noble), testeable en Jest.</p>
+<h3 id="21-perplconfigts">2.1 <code>perpl/config.ts</code></h3>
+<p><code>PERPL_CHAIN_ID = 10143</code>, <code>PERPL_REST</code>, <code>PERPL_WS</code>, <code>EXCHANGE_ADDRESS</code>, <code>EXCHANGE_ABI</code> (<code>parseAbi</code> con las 5 funciones), <code>TRADING_KEY_LABEL = &quot;Pickler iOS&quot;</code>, <code>PING_MS = 3000</code>, <code>ORDER_TIMEOUT_MS = 30_000</code>, <code>CONTEXT_POLL_MS = 5000</code>, <code>LEVERAGES = [1, 2, 3, 5]</code>.</p>
+<h3 id="22-perplcontextts">2.2 <code>perpl/context.ts</code></h3>
+<pre><code class="language-ts">type Market = { id; symbol; name; priceDecimals; sizeDecimals; ttlBlocks; maxSlippageBps; maintenanceMarginBps; takerFeeMicros; isOpen; mark: bigint; prev: bigint };
+type Instance = { exchange: Address; minAccountOpen: bigint; minDeposit: bigint; minWithdraw: bigint };
+parseContext(body: unknown): { markets: Market[]; instance: Instance; geoBlock: string[] }   // pura, lanza si falta algo
+fetchContext(): Promise&lt;...&gt;                                                                    // GET /v1/pub/context, timeout 15 s (AbortController)</code></pre>
+<h3 id="23-perplonboardingts">2.3 <code>perpl/onboarding.ts</code></h3>
+<p>Calldata puro + envío con la sesión de Mera, mismo patrón que <code>wallet/chain.ts</code>:</p>
+<pre><code class="language-ts">readAccountId(address): Promise&lt;bigint&gt;            // getAccountByAddr; revert → 0n
+readAllowance(address): Promise&lt;bigint&gt;
+approveCalldata(amount) / createAccountCalldata(amount) / allowForwardingCalldata() / depositCalldata(amount) / withdrawCalldata(amount): Hex
+approveExchange(wallet, amount) / createExchangeAccount(wallet, amount) / enableForwarding(wallet) / depositCollateral(wallet, amount) / withdrawCollateral(wallet, amount): Promise&lt;Hex&gt;</code></pre>
+<p>Cada <code>send*</code> usa <code>maxPriorityFeePerGas</code> explícito (20 gwei) para que un reintento reemplace una tx descartada (lección del spike).</p>
+<h3 id="24-perplapikeyts">2.4 <code>perpl/apiKey.ts</code></h3>
+<pre><code class="language-ts">generateTradingKey(): { privateKey: Uint8Array; publicKeyHex: Hex }        // ed25519 de @noble/curves
+wsSigninCanonical(chainId, timestampMs, nonce): string                              // 4 campos
+signWsSignin(privateKey, chainId): { timestamp; nonce; signature }                  // base64url sin padding
+normalizeTypedData(typed_data): TypedDataDefinition   // quita EIP712Domain de types; chainId y message.time de hex a bigint
+enrollTradingKey(wallet: Wallet, publicKeyHex): Promise&lt;string&gt;   // payload → signTypedData → PoP ed25519 sobre hashTypedData → enroll → api_key</code></pre>
+<p>Errores de enroll con significado: 404 → &quot;Create the trading account first&quot; (orden de pasos); 409 → generar otro par; 423 → &quot;Too many trading keys; revoke one at testnet.perpl.xyz/apikeys&quot;.</p>
+<h3 id="25-perplordersts-puro">2.5 <code>perpl/orders.ts</code> (puro)</h3>
+<pre><code class="language-ts">sizeFromAusd(ausd: bigint, lv: number, mark: bigint, pd: number, sd: number): bigint
+notionalAusd(size, mark, pd, sd): bigint
+takerFee(notional, takerFeeMicros): bigint
+liquidationPrice(entry: bigint, lv: number, side: &quot;long&quot; | &quot;short&quot;, maintenanceBps: number): bigint
+   // long: entry × (1 − 1/lv + mm); short: entry × (1 + 1/lv − mm). Estimación; se rotula &quot;est.&quot;
+orderFrame({ sn, rq, mkt, acc, type, size, ms, lv, lb }): OrderRequest
+closeFrame(position, { sn, rq, ms, lb }): OrderRequest      // CloseLong (3) si sd = long, CloseShort (4) si short
+describeOrderStatus(st, sr?, fr?): { kind: &quot;sent&quot; | &quot;filled&quot; | &quot;open&quot; | &quot;failed&quot;; text: string }</code></pre>
+<p>Tabla mínima de <code>sr</code>/<code>fr</code> con copy: <code>32</code> &quot;Order id too low — retrying&quot;, <code>34</code> &quot;One-click trading is off. Enable trading again&quot;, <code>35</code> &quot;Placed&quot;, <code>37</code>/<code>fr 8</code> &quot;Not enough collateral for this size&quot;, <code>39</code> &quot;Below the market minimum&quot;, <code>40</code> &quot;Price out of range&quot;, <code>42</code> &quot;Size out of range&quot;, <code>43</code> &quot;Filled&quot;, <code>44</code> &quot;Couldn&#39;t settle — try a smaller size&quot;; default: <code>Failed (sr N)</code>.</p>
+<h3 id="26-perplwsts">2.6 <code>perpl/ws.ts</code></h3>
+<p><code>class TradingSocket</code> (sin React):</p>
+<ul>
+<li><code>connect({ apiKey, privateKey, onEvent })</code> → abre, manda <code>mt: 29</code> como primer frame, arranca ping.</li>
+<li>Estado interno: <code>status: &quot;connecting&quot; | &quot;live&quot; | &quot;reconnecting&quot; | &quot;closed&quot;</code>, <code>head</code>, <code>lfr</code>,</li>
+<p><code>account</code>, <code>orders: Map&lt;oid, Order&gt;</code>, <code>positions: Map&lt;pid, Position&gt;</code>, <code>pending: Map&lt;sn, PendingOrder&gt;</code>.</p>
+<li><code>placeOrder(frame)</code> → asigna <code>sn</code>, <code>rq = max(lfr, lastRq) + 1</code>, <code>lb = head + ttl</code>; devuelve</li>
+<p><code>Promise&lt;OrderOutcome&gt;</code> que resuelve con el primer <code>mt: 24</code> no-fallo para ese <code>rq</code> (o el primer fallo si solo hay fallos), rechaza si <code>mt: 3 code ≠ 0</code>, y resuelve <code>unknown</code> a los 30 s. Un <code>sr: 32</code> reintenta <strong>una vez</strong> con <code>rq</code> nuevo.</p>
+<li>Parsers puros exportados: <code>parseFrame(json)</code>, <code>applyFrame(state, frame)</code> (para tests con</li>
+<p>fixtures del spike).</p>
+<li>Reconexión: backoff hasta 30 s; al reconectar, snapshots frescos reemplazan el estado;</li>
+<p>pendientes sin resolver pasan a <code>unknown</code>. Dos <code>3401</code> seguidos → evento <code>keyRejected</code>.</p>
+</ul>
+<h3 id="27-storageperplts">2.7 <code>storage/perpl.ts</code></h3>
+<p><code>pickler.perpl.v1</code> (SecureStore, <code>WHEN_UNLOCKED_THIS_DEVICE_ONLY</code>, sin <code>requireAuthentication</code>): <code>{ accountId: string; apiKey: string; privateKey: base64url }</code>. <code>loadTradingKey</code>, <code>saveTradingKey</code>, <code>clearTradingKey</code> (se llama desde <code>signOut</code> junto a <code>clearStoredAccount</code>). Entrada malformada → se borra y se lee como ausente (misma regla que <code>storage.ts</code>).</p>
+<h3 id="28-hooksuseperplts">2.8 <code>hooks/usePerpl.ts</code></h3>
+<pre><code class="language-ts">type PerplState =
+  | { status: &quot;loading&quot; }
+  | { status: &quot;none&quot; }                                   // sin cuenta en Perpl o sin key guardada
+  | { status: &quot;onboarding&quot;; step: 1 | 2 | 3 | 4; error?: string }
+  | { status: &quot;ready&quot;; accountId: bigint; key: TradingKey };
+type Perpl = {
+  state; context: Context | null; contextError: string;
+  live: { status; account; positions: Position[]; orders: Order[] } | null;
+  enable(amount: bigint): Promise&lt;void&gt;;      // pasos 1–4, reanudable
+  addFunds(amount): Promise&lt;Hex&gt;; withdraw(amount): Promise&lt;Hex&gt;;
+  open(market, side, ausd, lv): Promise&lt;OrderOutcome&gt;; close(position): Promise&lt;OrderOutcome&gt;;
+  resetKey(): Promise&lt;void&gt;;                  // genera + enrola otra key
+  setActive(active: boolean);                 // la pestaña avisa; controla socket y polling
+};</code></pre>
+<p>Reglas: <code>enable</code> verifica antes de cada paso (<code>readAccountId</code>, <code>readAllowance</code>, <code>fw</code> del snapshot o <code>getAccountByAddr</code> + reintento, <code>loadTradingKey</code>) y <strong>nunca repite <code>createAccount</code></strong> si ya hay id. Desbloqueo con el mismo <code>openWallet</code> de <code>useTreasury</code> (se extrae a <code>hooks/useUnlock.ts</code> compartido). Tras <code>addFunds</code>/<code>withdraw</code> → <code>treasury.refresh()</code>.</p>
+<h3 id="29-screensperpstsx-y-shelltsx">2.9 <code>screens/perps.tsx</code> y <code>Shell.tsx</code></h3>
+<ul>
+<li><code>Screen</code> gana <code>&quot;perps&quot; | &quot;perpsMarket&quot; | &quot;perpsFunds&quot;</code>; <code>GATED</code> los incluye; <code>SHOW_TABS</code></li>
+<p>incluye <code>perps</code>; <code>CAN_BACK</code> incluye <code>perpsMarket</code> y <code>perpsFunds</code>; <code>headerFor</code>: <code>perps</code> → [&quot;Trade&quot;, &quot;Perps on Perpl · Monad&quot;], <code>perpsMarket</code> → [<code>${symbol} Perp</code>, &quot;Market order&quot;], <code>perpsFunds</code> → [&quot;Trading funds&quot;, &quot;Between wallet and trading&quot;].</p>
+<li><code>BOTTOM_TABS</code>: <code>[&quot;market&quot;,&quot;Market&quot;,&quot;storefront&quot;], [&quot;perps&quot;,&quot;Trade&quot;,&quot;trending-up&quot;], [&quot;activity&quot;,…], [&quot;portfolio&quot;,…], [&quot;wallet&quot;,…]</code>.</li>
+<li><code>StoreState</code> gana <code>perpsMarketId?: number</code>, <code>perpsSide?: &quot;long&quot; | &quot;short&quot;</code>, <code>fundsMode?: &quot;add&quot; | &quot;withdraw&quot;</code>.</li>
+</ul>
+<hr>
+<h2 id="3-pantallas">3. Pantallas</h2>
+<h3 id="31-trade-sin-cuenta-statestatus-none">3.1 Trade — sin cuenta (<code>state.status === &quot;none&quot;</code>)</h3>
+<p>Tarjeta: &quot;Enable trading&quot; / &quot;Moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps.&quot; Campo de monto (default = <code>minAccountOpen</code>, validación ≥ mínimo y ≤ AUSD en wallet; sin MON → mensaje del faucet). Botón <strong>Enable trading</strong>. Durante <code>onboarding</code>: lista de 4 pasos con check/spinner/error (Approve AUSD · Create trading account · Allow one-click trading · Register trading key) y botón <strong>Retry</strong> en el paso fallido. Debajo, MARKETS en modo solo lectura (precios) para que la pestaña no esté vacía.</p>
+<h3 id="32-trade-listo">3.2 Trade — listo</h3>
+<ul>
+<li>Tarjeta &quot;Trading balance&quot;: <code>formatAusd(b)</code> grande; línea &quot;<code>formatAusd(lb)</code> locked in</li>
+<p>positions · <code>formatAusd(b − lb)</code> free&quot;; chip de conexión (&quot;Live&quot; lima / &quot;Reconnecting…&quot; ámbar / &quot;Offline&quot; gris).</p>
+<li>Botones <strong>Add funds</strong> (→ <code>perpsFunds</code>, <code>fundsMode: &quot;add&quot;</code>) y <strong>Withdraw to wallet</strong> (<code>&quot;withdraw&quot;</code>).</li>
+<li><strong>MARKETS</strong>: fila por mercado: símbolo + nombre, precio de marca formateado, cambio 24h</li>
+<p><code>(mark − prev)/prev</code> con signo y color; tap → <code>perpsMarket</code>.</p>
+<li><strong>POSITIONS</strong>: vacío → &quot;No open positions. Pick a market above.&quot;; fila: <code>LONG</code>/<code>SHORT</code> (tag</li>
+<p>lima/rojo), &quot;<code>size</code> <code>symbol</code> · <code>lv</code>x&quot;, entrada → marca, PnL no realizado (signo, color), &quot;Liq. est. <code>price</code>&quot;, botón <strong>Close</strong>.</p>
+</ul>
+<h3 id="33-mercado-orden-perpsmarket">3.3 Mercado → orden (<code>perpsMarket</code>)</h3>
+<p>Segmento <strong>Long / Short</strong>. Monto en AUSD (TextInput <code>decimal-pad</code>, <code>Max</code> = libre). Selector 1x · 2x · 3x · 5x. Tarjeta resumen: &quot;Size ≈ N <code>symbol</code>&quot;, &quot;Est. price <code>mark</code>&quot;, &quot;Fee ≈ <code>fee</code> AUSD&quot;, &quot;Liquidation est. <code>price</code>&quot; (resaltado si <code>lv &gt; 1</code>, con &quot;Higher leverage means a closer liquidation price.&quot;). Validación: monto &gt; 0, ≤ libre, tamaño &gt; 0. Botón <strong>Review</strong> → tarjeta de confirmación → <strong>Confirm long/short</strong> → estados: <em>Sent</em> (&quot;Order accepted — waiting for the fill&quot;, spinner) → <em>Filled</em> (&quot;Filled <code>fs</code> <code>symbol</code> at <code>fp</code> · fee <code>f</code> AUSD&quot;, botón &quot;Back to Trade&quot;) / <em>Failed</em> (razón de <code>describeOrderStatus</code>, botones &quot;Edit&quot; y &quot;Back&quot;) / <em>Unknown</em> a los 30 s (&quot;No confirmation yet. Check your positions.&quot;).</p>
+<h3 id="34-close">3.4 Close</h3>
+<p>Desde la fila de posición: hoja de confirmación &quot;Close <code>size</code> <code>symbol</code> <code>LONG</code> at market · Est. PnL <code>±x</code> AUSD&quot; → <strong>Close position</strong> → mismos estados que 3.3 con copy de cierre (&quot;Closed · realised <code>±x</code> AUSD&quot;).</p>
+<h3 id="35-trading-funds-perpsfunds">3.5 Trading funds (<code>perpsFunds</code>)</h3>
+<p>Cabecera con los dos saldos (Wallet <code>formatAusd(treasury.ausd)</code> · Trading free). Monto con <code>Max</code>; validación por modo (add: ≥ <code>minDeposit</code>, ≤ wallet; withdraw: ≥ <code>minWithdraw</code>, ≤ free). <strong>Review</strong> → <strong>Confirm</strong> → Face ID si <code>locked</code> → &quot;Sent: 0x…&quot; → &quot;Confirmed&quot; y ambos saldos refrescados. Add funds hace <code>approve</code> solo si la allowance es insuficiente.</p>
+<h3 id="36-wallet">3.6 Wallet</h3>
+<p>Bajo &quot;Available to spend&quot; se añade la línea &quot;<code>formatAusd(b)</code> AUSD in trading · Trade tab&quot; cuando <code>perpl.state.status === &quot;ready&quot;</code> (si el socket no está vivo, se muestra el último valor conocido con &quot;· last seen&quot;). Nada más cambia en Wallet.</p>
+<hr>
+<h2 id="4-estado-y-datos">4. Estado y datos</h2>
+<ul>
+<li><code>PerplState</code> sale de <code>storage/perpl.ts</code> al arrancar (<code>loading</code> → <code>none</code>/<code>ready</code>), en</li>
+<p>paralelo con <code>useAccount</code>; <code>ready</code> no implica socket abierto.</p>
+<li><code>usePerpl.setActive(true)</code> cuando <code>S.screen ∈ {perps, perpsMarket, perpsFunds}</code>; el hook</li>
+<p>abre el socket y el polling de <code>context</code>; <code>false</code> los cierra (con 2 s de gracia para navegaciones internas).</p>
+<li>Órdenes en vuelo: <code>TradingSocket.pending</code> por <code>sn</code>; la pantalla espera la promesa.</li>
+<li>Sign out: <code>clearTradingKey()</code>, socket cerrado, <code>state = none</code>. Cambio de cuenta (otra</li>
+<p>passkey): la key guardada pertenece a otra <code>address</code> → se detecta (<code>address</code> guardada ≠ actual) y se trata como <code>none</code>.</p>
+<li><code>AppCtx</code> gana <code>perpl: Perpl</code>.</li>
+</ul>
+<hr>
+<h2 id="5-errores">5. Errores</h2>
+<table>
+<thead>
+<tr><th>Caso</th><th>Comportamiento</th></tr>
+</thead>
+<tbody>
+<tr><td><code>context</code> no carga</td><td>Trade muestra &quot;Couldn&#39;t load markets · Retry&quot;; el resto de la pestaña sigue (saldo por WS).</td></tr>
+<tr><td>Socket cerrado (1008 idle, red)</td><td>&quot;Reconnecting…&quot;, backoff; snapshots al volver.</td></tr>
+<tr><td><code>3401</code> dos veces</td><td>Aviso &quot;Trading key rejected&quot; + botón <strong>Reset trading key</strong> (<code>resetKey</code>).</td></tr>
+<tr><td><code>mt: 3 code ≠ 0</code></td><td><em>Failed</em> inmediato con el <code>error</code> del gateway; nunca se espera <code>mt: 24</code>.</td></tr>
+<tr><td><code>sr: 32</code></td><td>Un reintento automático con <code>rq</code> nuevo; si repite, <em>Failed</em>.</td></tr>
+<tr><td><code>sr: 34</code></td><td><em>Failed</em> &quot;One-click trading is off&quot; + botón <strong>Enable</strong> que corre solo el paso 3.</td></tr>
+<tr><td>Sin <code>mt: 24</code> en 30 s</td><td><em>Unknown</em>; al siguiente snapshot se reconcilia.</td></tr>
+<tr><td>Onboarding falla en el paso N</td><td>Se queda en <code>onboarding</code> con <code>error</code>; <strong>Retry</strong> reanuda en N. Cancelar Face ID → sin aviso, vuelve a <code>none</code> con lo hecho conservado on-chain.</td></tr>
+<tr><td>Tx descartada (nonce vivo)</td><td>El reintento lleva <code>maxPriorityFeePerGas</code> 20 gwei; si el nodo responde <code>rejected</code>, se muestra &quot;Network refused the transaction — try again in a moment&quot;.</td></tr>
+<tr><td>Sin MON</td><td>Antes de cualquier tx: mensaje del faucet (mismo que hoy).</td></tr>
+<tr><td>Geo-bloqueo</td><td>La app no conoce el país. Tras 3 fallos de auth seguidos (<code>3401</code>/<code>403</code>) con una key recién enrolada, el aviso incluye &quot;Perpl isn&#39;t available in some regions (see testnet.perpl.xyz)&quot;.</td></tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-pruebas">6. Pruebas</h2>
+<p>Unitarias (Jest), contra el defecto:</p>
+<ul>
+<li><code>wsSigninCanonical</code> con vector fijo; firma Ed25519 verificable con la pública; base64url</li>
+<p>sin padding.</p>
+<li><code>normalizeTypedData</code> con el <code>typed_data</code> real del spike (chainId <code>0x279f</code> → 10143n, <code>time</code> hex → bigint).</li>
+<li><code>parseContext</code> con el JSON real de testnet (mercado 64: pd 5, sd 0, ttl 20, mm 500, taker 345).</li>
+<li><code>sizeFromAusd</code> (11.1 AUSD a 1x con mark 2220 → 500 MON; BTC con sd 5), <code>takerFee</code></li>
+<p>(11.1 AUSD × 345 micros → 3830), <code>liquidationPrice</code> (long 1x ≈ 0.05×entry; 5x ≈ 0.85×entry).</p>
+<li><code>orderFrame</code>/<code>closeFrame</code>: <code>rq = lfr + 1</code>, <code>lb = head + ttl</code>, <code>t</code> 3/4 según lado, <code>p: 0</code>, <code>fl: 4</code>.</li>
+<li><code>applyFrame</code> con los frames reales del spike: <code>mt: 19</code> (cuenta 619, <code>lfr</code>), <code>mt: 24</code></li>
+<p>filled (<code>st: 4, sr: 43</code>), failed (<code>st: 7, sr: 32</code>), <code>mt: 27</code> apertura y cierre, <code>mt: 21</code> actualiza <code>lfr</code> y saldo.</p>
+<li><code>describeOrderStatus</code> para 32/34/35/43/44 y desconocido.</li>
+<li>Onboarding: máquina de pasos con mocks de <code>readAccountId</code>/<code>readAllowance</code>/<code>loadTradingKey</code></li>
+<p>— reanuda en el paso correcto y nunca llama <code>createAccount</code> dos veces.</p>
+<li>Store: <code>GATED</code>, <code>SHOW_TABS</code>, <code>CAN_BACK</code>, <code>headerFor</code> para las tres pantallas nuevas.</li>
+</ul>
+<p><code>npx tsc --noEmit</code> limpio y <code>npm test</code> completo.</p>
+<p>Manual en simulador (cuenta nueva o la del simulador <code>0xe371…</code>, fondeada desde la KAT): Enable trading con 100 AUSD (4 pasos, Face ID) → long 1x de 10 AUSD en MON → Filled → posición con PnL → Close → Add funds 10 → Withdraw 5 → Wallet muestra &quot;in trading&quot;. Capturas y hashes como evidencia; la cuenta KAT #619 sirve de respaldo para probar el socket sin repetir el onboarding.</p>
+<hr>
+<h2 id="7-fuera-de-alcance">7. Fuera de alcance</h2>
+<p>Agente como operador delegado y caps (F3); órdenes límite, TP/SL, cierre parcial; historial de fills (REST firmado); conectar Market/Portfolio/Trade-de-tokens a Perpl; token/launchpad; mainnet (URLs y contrato cambian; la key en SecureStore sin gate se revisa); Android.</p>
+<hr>
+<h2 id="8-fuentes-verificadas-2026-09-16">8. Fuentes verificadas (2026-09-16)</h2>
+<ul>
+<li><code>GET https://testnet.perpl.xyz/api/v1/pub/context</code>: instancia 12, exchange</li>
+<p><code>0x1964c3…80cc</code>, token AUSD <code>0xa9012a…</code>, mínimos 100/10/0.01, 7 mercados (BTC 16, ETH 32, SOL 48, MON 64, ZEC 256, LIT 272, PUMP 320), <code>geo_block</code>.</p>
+<li>Implementación del Exchange <code>0xbcbd3701ed0bde8acbb727f0d92a8b85a169adbb</code> (slot EIP-1967):</li>
+<p>selectores <code>cab13915 createAccount</code>, <code>7962f910 allowOrderForwarding</code>, <code>12e8eb2c getAccountByAddr</code>, <code>bad4a01f depositCollateral</code>, <code>6112fe2e withdrawCollateral</code>.</p>
+<li>Tx reales: createAccount <code>0xda6803…cd86</code>, forwarding <code>0xafcdaf…7590</code>, fill</li>
+<p><code>0x3469a0…6323</code>, cierre <code>0xdd6bf9…e1ad</code>, cancel <code>0xf8234d…55e1</code>.</p>
+<li>API docs: <code>PerplFoundation/api-docs</code> (README, authentication, integrations, websocket,</li>
+<p>types, rest-endpoints); desactualizado en el token de testnet y en <code>rq: Date.now()</code> / <code>lb: 0</code>.</p>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-16-mobile-perpl-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-16-mobile-perpl-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

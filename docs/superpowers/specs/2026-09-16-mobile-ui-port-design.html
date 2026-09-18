@@ -1,0 +1,426 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-16-mobile-ui-port-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Port de la UI de `pickler-mobile` · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-16-mobile-ui-port-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-16-mobile-ui-port-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Port de la UI de `pickler-mobile`</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-16-mobile-ui-port-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</a></li><li><a href="#2-estado-y-navegacion">2. Estado y navegación</a></li><li><a href="#21-useaccount-srcaccountuseaccountts">2.1 `useAccount` — `src/account/useAccount.ts`</a></li><li><a href="#22-usetreasuryaddress-srcwalletusetreasuryts">2.2 `useTreasury(address)` — `src/wallet/useTreasury.ts`</a></li><li><a href="#23-useappstoreinput-srcstorets">2.3 `useAppStore(input)` — `src/store.ts`</a></li><li><a href="#24-gate-de-acceso-requireaccounttarget-patch">2.4 Gate de acceso — `requireAccount(target, patch)`</a></li><li><a href="#3-las-tres-pantallas-que-tocan-lo-real">3. Las tres pantallas que tocan lo real</a></li><li><a href="#31-wallet-access-signin">3.1 Wallet access (`signin`)</a></li><li><a href="#32-wallet-wallet">3.2 Wallet (`wallet`)</a></li><li><a href="#33-deposit-deposit">3.3 Deposit (`deposit`)</a></li><li><a href="#34-todo-lo-demas">3.4 Todo lo demás</a></li><li><a href="#4-archivos">4. Archivos</a></li><li><a href="#41-nuevos-en-appsmobilesrc">4.1 Nuevos en `apps/mobile/src`</a></li><li><a href="#42-se-borran">4.2 Se borran</a></li><li><a href="#43-dependencias-versiones-fijas-como-el-resto-del-packagejson">4.3 Dependencias (versiones fijas, como el resto del `package.json`)</a></li><li><a href="#44-appconfigts">4.4 `app.config.ts`</a></li><li><a href="#5-tipos-minimos">5. Tipos mínimos</a></li><li><a href="#6-errores">6. Errores</a></li><li><a href="#7-verificacion">7. Verificación</a></li><li><a href="#8-fuera-de-alcance">8. Fuera de alcance</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-16-mobile-ui-port-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-port-de-la-ui-de-pickler-mobile">App móvil Pickler — Port de la UI de <code>pickler-mobile</code></h1>
+<p><strong>Fecha</strong>: 2026-09-16 <strong>Estado</strong>: aprobado por Jesús (diseño en chat), pendiente de plan <strong>Slug</strong>: <code>mobile-ui-port</code> <strong>Contexto</strong>: cierre de fase 1 (<code>docs/05-handoff-fase1.md</code>). Antes de la fase 2 (Perpl) la app adopta la UI completa del prototipo <code>jjesusaf/pickler-mobile</code>, que implementa los <em>Pickler Mobile Wireframes</em>.</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<p>Se reemplaza la app de dos pantallas (<code>Welcome</code>, <code>Home</code>) por las <strong>13 pantallas del prototipo <code>pickler-mobile</code></strong>, portadas a TypeScript dentro de <code>apps/mobile/src</code>. El flujo real que ya funciona (passkey, saldos AUSD/MON, faucet, Lock, Sign out) se inyecta en <strong>tres pantallas</strong>: <em>Wallet access</em>, <em>Wallet</em> y <em>Deposit</em>. Todo lo demás queda idéntico al prototipo, con sus datos de ejemplo. <strong>Solo UI: no se agrega funcionamiento nuevo.</strong></p>
+<hr>
+<h2 id="1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</h2>
+<table>
+<thead>
+<tr><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>Modelo de acceso</td><td><strong>El de la UI</strong>: la app abre en <em>Market</em>; Market, Search, Agent, Activity, Post y Ask no piden cuenta. <em>Wallet access</em> aparece al tocar Wallet, Portfolio o Buy sin cuenta.</td><td>Es el producto dibujado (&quot;leer y seguir nunca requieren wallet&quot;). Jesús lo eligió el 2026-09-16.</td></tr>
+<tr><td>Saldos y faucet</td><td>Dentro de la pantalla <strong>Wallet</strong>, en un bloque <em>TESTNET</em> debajo de Deposit/Withdraw. Lock/Sign out en una fila <em>SESSION</em> al final.</td><td>La UI no tiene sitio para MON, faucet ni sesión; Jesús pidió meterlos en Wallet.</td></tr>
+<tr><td>Panel &quot;Prototype controls&quot; (⚙)</td><td>Se conserva <strong>solo con <code>__DEV__</code></strong>. Sus botones de <em>user state</em> ya no gobiernan cuenta ni saldo (siempre reales); solo <code>holder</code> sigue activando las posiciones de ejemplo. Se quita la barra falsa &quot;9:41&quot;.</td><td>Sirve para llegar a pantallas sin entrada real todavía (9 estados de compra, post detail). En TestFlight no aparece.</td></tr>
+<tr><td>Lenguaje</td><td><strong>TypeScript</strong> (<code>.ts</code>/<code>.tsx</code>), tipos ligeros para store, contexto de pantalla y primitivas.</td><td><code>tsc --noEmit</code> limpio es parte de la verificación del repo; los tipos del contexto (agente, saldo, fase) evitan errores al conectar datos reales en fase 2.</td></tr>
+<tr><td>Navegación</td><td>Máquina de estados con back-stack, <strong>como el prototipo</strong>. Sin react-navigation.</td><td>Cambiarla rompe el &quot;idéntico&quot; y no aporta nada ahora.</td></tr>
+<tr><td>Copy</td><td>Idéntico al prototipo salvo <strong>una línea</strong>: se quita el párrafo &quot;Dependency: whether access is email, passkey or an external wallet is not decided&quot; de <em>Wallet access</em>.</td><td>Esa decisión ya está tomada (passkey vía Mera).</td></tr>
+<tr><td>Ícono, bundle id, rpId, passkeys</td><td><strong>No se tocan.</strong></td><td>Fuera del alcance.</td></tr>
+</tbody>
+</table>
+<p><strong>Lo que este spec NO decide:</strong> venue (Perpl vs Polymarket), trades reales, posiciones reales. Ver <code>docs/04-roadmap-bounty.md</code>.</p>
+<hr>
+<h2 id="2-estado-y-navegacion">2. Estado y navegación</h2>
+<p>Tres unidades, cada una con una responsabilidad:</p>
+<h3 id="21-useaccount-srcaccountuseaccountts">2.1 <code>useAccount</code> — <code>src/account/useAccount.ts</code></h3>
+<p>Extraído de <code>App.tsx</code> <strong>sin cambiar lógica</strong>:</p>
+<ul>
+<li>Al arrancar carga la cuenta guardada (<code>loadStoredAccount</code>) sin gate biométrico.</li>
+<li>Expone <code>account: AccountState | null</code> (<code>null</code> = cargando; <code>none</code> / <code>locked</code> /</li>
+<p><code>unlocked</code>) y las acciones <code>onWallet(wallet)</code>, <code>lock()</code>, <code>signOut()</code>.</p>
+<li>Mantiene la regla actual: al salir del estado <code>unlocked</code> se llama</li>
+<p><code>wallet.session.end()</code>.</p>
+</ul>
+<h3 id="22-usetreasuryaddress-srcwalletusetreasuryts">2.2 <code>useTreasury(address)</code> — <code>src/wallet/useTreasury.ts</code></h3>
+<p>Extraído de <code>Home.tsx</code> <strong>sin cambiar lógica</strong>:</p>
+<ul>
+<li><code>balances: { ausd, mon } | null</code>, <code>rpcError</code>, <code>refresh()</code>.</li>
+<li><code>getTestAusd()</code>: refresca saldos, exige MON &gt; 0, desbloquea con Face ID si la</li>
+<p>cuenta está <code>locked</code> (y avisa a <code>useAccount</code> vía <code>onUnlock</code>), manda la tx al faucet, espera el recibo y refresca. <code>busy</code>, <code>notice</code> (con hash) y <code>error</code>.</p>
+<li>Con <code>address</code> indefinida (sin cuenta) no consulta nada y devuelve <code>balances: null</code>.</li>
+</ul>
+<h3 id="23-useappstoreinput-srcstorets">2.3 <code>useAppStore(input)</code> — <code>src/store.ts</code></h3>
+<p>Portado de <code>store.js</code> y tipado. Recibe <code>{ account, ausd }</code> y devuelve el contexto que consumen <code>Shell</code> y las pantallas.</p>
+<p>Estado propio (idéntico al prototipo): <code>screen</code>, <code>stack</code> (máx. 8), <code>agentId</code>, <code>tab</code>, <code>postId</code>, <code>mode</code>, <code>phase</code>, <code>amount</code>, <code>sort</code>, <code>sellPct</code>, <code>following</code>, <code>resume</code>, <code>askCtx</code>, <code>dataCase</code>, y un <code>mockHolder: boolean</code> que sustituye al <code>user</code> ficticio.</p>
+<p>Derivados que <strong>dejan de ser ficticios</strong>:</p>
+<table>
+<thead>
+<tr><th>Derivado</th><th>Valor</th></tr>
+</thead>
+<tbody>
+<tr><td><code>hasAccount</code></td><td><code>account.status !== &quot;none&quot;</code></td></tr>
+<tr><td><code>user</code></td><td>sin cuenta → <code>&quot;new&quot;</code>; con cuenta → <code>mockHolder ? &quot;holder&quot; : &quot;funded&quot;</code></td></tr>
+<tr><td><code>balance</code></td><td>AUSD real como número (6 decimales); <code>0</code> si no hay cuenta o no cargó</td></tr>
+<tr><td><code>address</code></td><td>la real, o <code>undefined</code></td></tr>
+<tr><td><code>holds</code> / <code>tradeHolds</code></td><td>como el prototipo, calculados a partir de <code>user</code></td></tr>
+</tbody>
+</table>
+<p><code>nav(screen, patch)</code> y <code>back()</code> no cambian. Se añade <code>next?: Screen</code> al estado: lo fija <code>requireAccount</code> y lo consume <em>Wallet access</em>.</p>
+<h3 id="24-gate-de-acceso-requireaccounttarget-patch">2.4 Gate de acceso — <code>requireAccount(target, patch)</code></h3>
+<p>Función del store. Si <code>hasAccount</code>, equivale a <code>nav(target, patch)</code>. Si no, <code>nav(&quot;signin&quot;, { next: target, resume: target === &quot;trade&quot; })</code> y guarda <code>patch</code> para aplicarlo al llegar.</p>
+<p>Quién la usa:</p>
+<ul>
+<li>Tab bar: <strong>Wallet</strong> y <strong>Portfolio</strong>.</li>
+<li>Barra del agente: <strong>Buy</strong> (el prototipo ya manda a <code>trade</code> con</li>
+<p><code>phase: balance === 0 ? &quot;insufficient&quot; : &quot;quote&quot;</code>; ahora <code>balance</code> es real).</p>
+<li>Panel de dev: saltar a <code>wallet</code>, <code>portfolio</code>, <code>position</code>, <code>deposit</code>,</li>
+<p><code>withdraw</code> sin cuenta pasa por el gate también.</p>
+</ul>
+<p>Market, Search, Agent, Activity, Post y Ask <strong>nunca</strong> piden cuenta.</p>
+<hr>
+<h2 id="3-las-tres-pantallas-que-tocan-lo-real">3. Las tres pantallas que tocan lo real</h2>
+<h3 id="31-wallet-access-signin">3.1 Wallet access (<code>signin</code>)</h3>
+<ul>
+<li>Layout idéntico: tarjeta violeta &quot;Your purchase is being held&quot; solo si</li>
+<p><code>resume</code>, texto explicativo, dos botones.</p>
+<li>&quot;Create a wallet&quot; → <code>createAccount()</code>. &quot;I already have one&quot; → <code>signIn()</code>.</li>
+<p>Spinner en el botón en curso, ambos deshabilitados mientras corre, error debajo con <code>describeError</code> (misma regla que <code>Welcome</code>: cancelación biométrica no es error).</p>
+<li>Éxito → <code>onWallet(wallet)</code> y <code>nav(next ?? &quot;wallet&quot;, patchGuardado)</code>. Si venía</li>
+<p>de una compra sin saldo, <code>next</code> es <code>deposit</code> con <code>resume: true</code>, como el wireframe.</p>
+<li>Se elimina el párrafo &quot;Dependency: …&quot; (ver §1).</li>
+</ul>
+<h3 id="32-wallet-wallet">3.2 Wallet (<code>wallet</code>)</h3>
+<p>De arriba abajo:</p>
+<ol>
+<li>Tarjeta &quot;Available to spend&quot; con <strong>AUSD real</strong> (<code>formatAusd</code>); mientras carga,</li>
+<p>&quot;—&quot;. El texto de <em>pending</em> queda como en el prototipo (ejemplo).</p>
+<li>Botones Deposit / Withdraw, idénticos.</li>
+<li><strong>Bloque nuevo <code>TESTNET</code></strong> (etiqueta mono como <code>MOVEMENTS</code>, tarjetas con el</li>
+<p>estilo de la UI):</p>
+<ul>
+<li><code>MON (gas)</code> con su valor (<code>formatMon</code>) o &quot;—&quot;.</li>
+<li>Botón primario &quot;Get test AUSD&quot; (<code>getTestAusd</code>, spinner con <code>busy</code>).</li>
+<li>Botón secundario &quot;Get test MON&quot; (abre <code>MON_FAUCET_URL</code>).</li>
+<li>Botón secundario &quot;Refresh&quot;.</li>
+<li>Aviso de tx (<code>notice</code>, tocable → <code>EXPLORER_TX_URL(hash)</code>) o <code>error</code> /</li>
+<p><code>rpcError</code> con botón &quot;Retry&quot;.</p>
+</ul>
+<li>Lista <code>MOVEMENTS</code> con los movimientos de ejemplo, idéntica.</li>
+<li><strong>Fila nueva <code>SESSION</code></strong>: &quot;Locked&quot; / &quot;Unlocked&quot;; botón &quot;Lock&quot; solo si</li>
+<p><code>unlocked</code>; botón &quot;Sign out&quot;. Sign out → <code>signOut()</code> y <code>nav(&quot;market&quot;)</code> con stack vacío.</p>
+</ol>
+<h3 id="33-deposit-deposit">3.3 Deposit (<code>deposit</code>)</h3>
+<ul>
+<li>Idéntico, con la <strong>dirección real</strong> completa en mono.</li>
+<li>&quot;Copy address&quot; → <code>Clipboard.setStringAsync(address)</code> y <strong>se queda</strong> en la</li>
+<p>pantalla (en el prototipo navegaba a <code>trade</code>; eso era atajo de demo).</p>
+<li>&quot;I&#39;ve sent it&quot; mantiene la navegación del prototipo</li>
+<p>(<code>trade</code>, <code>phase: &quot;quote&quot;</code>, <code>resume: true</code>).</p>
+<li>El cuadro punteado &quot;QR code · deposit address&quot; queda como placeholder.</li>
+</ul>
+<h3 id="34-todo-lo-demas">3.4 Todo lo demás</h3>
+<p>Market, Search, Agent, Trade (9 estados con cotización de ejemplo), Activity, Post, Ask, Portfolio, Position, Withdraw: <strong>idénticos</strong> al prototipo, datos de ejemplo intactos.</p>
+<hr>
+<h2 id="4-archivos">4. Archivos</h2>
+<h3 id="41-nuevos-en-appsmobilesrc">4.1 Nuevos en <code>apps/mobile/src</code></h3>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Origen</th><th>Contenido</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ui/theme.ts</code></td><td><code>theme.js</code></td><td>Tokens <code>C</code>, fuentes <code>F</code>, <code>fam()</code>, <code>type()</code>. Reemplaza la paleta actual.</td></tr>
+<tr><td><code>ui/primitives.tsx</code></td><td><code>ui.js</code></td><td><code>T</code>, <code>Touch</code>, <code>Tag</code>, <code>Hair</code>, <code>StatGrid</code>, <code>KV</code>, <code>Avatar</code>, <code>Segmented</code>, <code>EmptyPanel</code>, <code>TouchCard</code>.</td></tr>
+<tr><td><code>mock/data.ts</code></td><td><code>data.js</code></td><td><code>AGENTS</code>, <code>POSTS</code>, <code>KINDS</code>.</td></tr>
+<tr><td><code>mock/helpers.ts</code></td><td><code>helpers.js</code></td><td><code>money</code>, <code>quoteFor</code>, <code>sellQuoteFor</code>, <code>pill</code>. (<code>balanceFor</code> desaparece: el saldo es real.)</td></tr>
+<tr><td><code>store.ts</code></td><td><code>store.js</code></td><td>§2.3 y §2.4.</td></tr>
+<tr><td><code>account/useAccount.ts</code></td><td><code>App.tsx</code></td><td>§2.1.</td></tr>
+<tr><td><code>wallet/useTreasury.ts</code></td><td><code>screens/Home.tsx</code></td><td>§2.2.</td></tr>
+<tr><td><code>Shell.tsx</code></td><td><code>Shell.js</code></td><td>Header, cuerpo, barra del agente, tab bar. Sin barra &quot;9:41&quot;. Monta <code>DevControls</code> solo si <code>__DEV__</code>.</td></tr>
+<tr><td><code>DevControls.tsx</code></td><td><code>Shell.js</code> (ControlsModal)</td><td>Panel ⚙: <code>mockHolder</code>, agente sin historial, <code>dataCase</code>, pantallas, estados de compra, journeys.</td></tr>
+<tr><td><code>screens/discover.tsx</code></td><td><code>discover.js</code></td><td>Market, Search, Agent.</td></tr>
+<tr><td><code>screens/trade.tsx</code></td><td><code>trade.js</code></td><td>Trade, Wallet access (§3.1).</td></tr>
+<tr><td><code>screens/follow.tsx</code></td><td><code>follow.js</code></td><td>Activity, Post, Ask.</td></tr>
+<tr><td><code>screens/own.tsx</code></td><td><code>own.js</code></td><td>Portfolio, Position, Wallet (§3.2), Deposit (§3.3), Withdraw.</td></tr>
+<tr><td><code>assets/pickler-mark.png</code></td><td>igual</td><td>Marca del header en Market.</td></tr>
+</tbody>
+</table>
+<p><code>App.tsx</code>: carga de fuentes (<code>useFonts</code>, spinner lima mientras tanto), <code>useAccount</code>, <code>useTreasury</code>, <code>useAppStore</code>, <code>Shell</code>. <code>SafeAreaProvider</code> y <code>StatusBar</code> como hoy.</p>
+<h3 id="42-se-borran">4.2 Se borran</h3>
+<p><code>screens/Welcome.tsx</code>, <code>screens/Home.tsx</code>, <code>ui/Button.tsx</code>, <code>ui/Field.tsx</code>. La paleta vieja de <code>ui/theme.ts</code> se sustituye por completo.</p>
+<h3 id="43-dependencias-versiones-fijas-como-el-resto-del-packagejson">4.3 Dependencias (versiones fijas, como el resto del <code>package.json</code>)</h3>
+<table>
+<thead>
+<tr><th>Paquete</th><th>Versión</th></tr>
+</thead>
+<tbody>
+<tr><td><code>expo-font</code></td><td>57.0.4</td></tr>
+<tr><td><code>@expo-google-fonts/manrope</code></td><td>0.4.2</td></tr>
+<tr><td><code>@expo-google-fonts/jetbrains-mono</code></td><td>0.4.1</td></tr>
+</tbody>
+</table>
+<p><code>expo-font</code> es módulo nativo: tras instalar, <code>npx pod-install</code> (o el <code>expo run:ios</code> que lo hace) y rebuild.</p>
+<h3 id="44-appconfigts">4.4 <code>app.config.ts</code></h3>
+<p>Se agregan <code>userInterfaceStyle: &quot;dark&quot;</code>, <code>backgroundColor: &quot;#08080A&quot;</code> (raíz e <code>ios</code>) y el plugin <code>&quot;expo-font&quot;</code>. Nada más cambia.</p>
+<hr>
+<h2 id="5-tipos-minimos">5. Tipos mínimos</h2>
+<ul>
+<li><code>Screen</code>: unión de los 13 ids (<code>&quot;market&quot; | &quot;search&quot; | … | &quot;withdraw&quot;</code>).</li>
+<li><code>Phase</code>: los 9 estados de compra. <code>Mode</code>: <code>&quot;buy&quot; | &quot;sell&quot;</code>. <code>UserKind</code>:</li>
+<p><code>&quot;new&quot; | &quot;funded&quot; | &quot;holder&quot;</code>. <code>DataCase</code>: <code>&quot;normal&quot; | &quot;loading&quot; | &quot;empty&quot; | &quot;stale&quot;</code>.</p>
+<li><code>Agent</code>, <code>Post</code> según <code>data.js</code> (campos tal cual).</li>
+<li><code>StoreState</code> (estado propio) y <code>AppCtx</code> (lo que devuelve <code>useAppStore</code>, más</li>
+<p><code>account</code>, <code>treasury</code> y las acciones de cuenta). Las pantallas reciben <code>AppCtx</code>.</p>
+<li>Primitivas: props explícitas (<code>T</code> con <code>w</code>, <code>s</code>, <code>lh</code>, <code>ls</code>, <code>mono</code>, <code>color</code>,</li>
+<p><code>style</code>, <code>numberOfLines</code>). Sin <code>any</code> fuera de lo estrictamente necesario.</p>
+</ul>
+<hr>
+<h2 id="6-errores">6. Errores</h2>
+<ul>
+<li>Passkey: misma política que hoy (<code>describeError</code>; cancelación → sin mensaje).</li>
+<li>RPC caído: &quot;Available to spend&quot; muestra &quot;—&quot; y el bloque TESTNET muestra</li>
+<p><code>rpcError</code> + &quot;Retry&quot;. El resto de la app sigue usable.</p>
+<li>Faucet sin MON: mismo mensaje de hoy (&quot;You need test MON for gas…&quot;).</li>
+<li>Fuentes que no cargan: spinner indefinido, como el prototipo. (Fuentes locales</li>
+<p>al bundle; no hay red de por medio.)</p>
+</ul>
+<hr>
+<h2 id="7-verificacion">7. Verificación</h2>
+<ol>
+<li><code>npx tsc --noEmit</code> limpio.</li>
+<li><code>npm test</code>: los 19 tests actuales (account, chain, faucet, hd, storage) sin</li>
+<p>tocar, más nuevos:</p>
+<ul>
+<li><code>store</code>: <code>nav</code>/<code>back</code> y límite del stack; <code>requireAccount</code> sin cuenta manda</li>
+<p>a <code>signin</code> con <code>next</code> y <code>resume</code>; con cuenta navega directo; <code>user</code> derivado (<code>new</code> sin cuenta aunque <code>mockHolder</code> sea true; <code>holder</code> solo con cuenta); <code>balance</code> 0 sin saldo.</p>
+<li><code>mock/helpers</code>: <code>money</code>, <code>quoteFor</code>, <code>sellQuoteFor</code>.</li>
+<li>Cada test se corre también contra el defecto (rompiendo la regla) para</li>
+<p>comprobar que detecta.</p>
+</ul>
+<li>Prueba manual en simulador con Face ID inscrito, con capturas:</li>
+<ul>
+<li>Abre en Market sin cuenta; Activity y Agent navegan sin pedir cuenta.</li>
+<li>Wallet → Wallet access → &quot;Create a wallet&quot; → Face ID → Wallet con AUSD real.</li>
+<li>Bloque TESTNET: MON visible; &quot;Get test AUSD&quot; pide Face ID si está locked y</li>
+<p>muestra el hash; &quot;Refresh&quot; actualiza.</p>
+<li>Deposit muestra la dirección real y &quot;Copy address&quot; copia.</li>
+<li>Lock cambia a &quot;Locked&quot;; Sign out regresa a Market y Wallet vuelve a pedir</li>
+<p>acceso.</p>
+<li>Panel ⚙ visible en dev; los estados de compra y journeys navegan.</li>
+</ul>
+<li>Revisión independiente por subagente antes de entregar.</li>
+</ol>
+<hr>
+<h2 id="8-fuera-de-alcance">8. Fuera de alcance</h2>
+<p>Trades reales, posiciones reales, movimientos reales, QR de depósito, Withdraw real, notificaciones, build 2 a TestFlight, Android. Todo eso es fase 2 o posterior (<code>docs/04-roadmap-bounty.md</code>).</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-16-mobile-ui-port-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-16-mobile-ui-port-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

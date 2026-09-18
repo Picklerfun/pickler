@@ -1,0 +1,2137 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-16-mobile-ui-port.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Port de la UI de `pickler-mobile` — plan de implementación · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-16-mobile-ui-port">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-16-mobile-ui-port.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Port de la UI de `pickler-mobile` — plan de implementación</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-16-mobile-ui-port.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#reglas-de-porte-aplican-a-las-tasks-69-cada-una-las-incluye-implicitamente">Reglas de porte (aplican a las Tasks 6–9; cada una las incluye implícitamente)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-prototipo-de-referencia-dependencias-y-config">Task 1: Prototipo de referencia, dependencias y config</a></li><li><a href="#task-2-tema-y-primitivas">Task 2: Tema y primitivas</a></li><li><a href="#task-3-datos-de-ejemplo-y-helpers">Task 3: Datos de ejemplo y helpers</a></li><li><a href="#task-4-store-de-navegacion-con-gate-de-cuenta">Task 4: Store de navegación con gate de cuenta</a></li><li><a href="#task-5-hooks-de-cuenta-y-tesoreria-y-appctx">Task 5: Hooks de cuenta y tesorería, y `AppCtx`</a></li><li><a href="#task-6-pantallas-discover-y-follow-port-identico">Task 6: Pantallas Discover y Follow (port idéntico)</a></li><li><a href="#task-7-pantallas-trade-y-wallet-access-passkey-real">Task 7: Pantallas Trade y Wallet access (passkey real)</a></li><li><a href="#task-8-pantallas-own-wallet-y-deposit-con-datos-reales">Task 8: Pantallas Own (Wallet y Deposit con datos reales)</a></li><li><a href="#task-9-shell-y-panel-de-dev">Task 9: Shell y panel de dev</a></li><li><a href="#task-10-conectar-apptsx-borrar-la-ui-vieja-y-verificar-en-simulador">Task 10: Conectar `App.tsx`, borrar la UI vieja y verificar en simulador</a></li><li><a href="#task-11-revision-independiente-y-handoff">Task 11: Revisión independiente y handoff</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-16-mobile-ui-port.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="port-de-la-ui-de-pickler-mobile-plan-de-implementacion">Port de la UI de <code>pickler-mobile</code> — plan de implementación</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> La app móvil adopta las 13 pantallas del prototipo <code>jjesusaf/pickler-mobile</code> en TypeScript, y el flujo real que ya funciona (passkey, saldos AUSD/MON, faucet, Lock, Sign out) queda inyectado en <em>Wallet access</em>, <em>Wallet</em> y <em>Deposit</em>. Solo UI: nada de funcionamiento nuevo.</p>
+<p><strong>Architecture:</strong> La UI del prototipo (tema, primitivas, datos de ejemplo, store de navegación por máquina de estados con back-stack, Shell y pantallas) se porta a <code>apps/mobile/src</code>. El estado de cuenta se extrae de <code>App.tsx</code> a <code>useAccount</code>; la lógica de saldos/faucet se extrae de <code>Home.tsx</code> a <code>useTreasury</code>. El store recibe <code>{ hasAccount, ausd }</code> y deriva <code>user</code>, <code>balance</code> y el gate <code>requireAccount</code>. Tres pantallas consumen lo real; las otras diez son idénticas al prototipo.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / React Native 0.86 / React 19.2 / TypeScript 6 (ya instalados). Nuevos: <code>expo-font</code> 57.0.4, <code>@expo-google-fonts/manrope</code> 0.4.2, <code>@expo-google-fonts/jetbrains-mono</code> 0.4.1. Tests con Jest (<code>jest-expo</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-16-mobile-ui-port-design.md</code></p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Prototipo de referencia: <code>https://github.com/jjesusaf/pickler-mobile.git</code> en el commit <strong><code>365585e90cece741a957c358ff7fcd7b9aa25799</code></strong>, clonado en <code>.superpowers/pickler-mobile/</code> (raíz del worktree; ese directorio está en <code>.gitignore</code>). Es la <strong>única</strong> fuente de verdad para copy, estilos y datos de ejemplo.</li>
+<li>Versiones <strong>exactas</strong> en <code>package.json</code> (sin <code>^</code> ni <code>~</code>).</li>
+<li>Copy idéntico al prototipo salvo la línea &quot;Dependency: whether access is email, passkey or an external wallet is not decided. This screen is a placeholder for that decision.&quot; en <em>Wallet access</em>, que <strong>se elimina</strong>.</li>
+<li>Todo el código nuevo es <code>.ts</code>/<code>.tsx</code>, comillas dobles, sin <code>import React</code> (el transform JSX de Expo no lo necesita; el código actual tampoco lo importa). <code>npx tsc --noEmit</code> debe salir limpio en <strong>cada</strong> tarea. Sin <code>any</code> salvo que una tarea lo indique.</li>
+<li>Los módulos <code>config/</code>, <code>wallet/</code>, <code>storage/</code>, <code>hd/</code>, <code>store.ts</code>, <code>mock/</code> no importan <code>react-native</code>. <code>ui/</code> no importa viem ni mera.</li>
+<li>Ícono, <code>bundleIdentifier</code>, <code>associatedDomains</code>, <code>rpId</code>, <code>version</code> y <code>buildNumber</code> en <code>app.config.ts</code> <strong>no cambian</strong>.</li>
+<li>Trabajo en el worktree <code>.claude/worktrees/mobile-ui-port</code> (rama <code>feat/mobile-ui-port</code>). Comandos de <code>npm</code>/<code>npx</code> se corren desde <code>apps/mobile/</code> de ese worktree. <strong>Nunca <code>git add -A</code></strong>; se agregan archivos por nombre. Los pasos &quot;Commit&quot; asumen la autorización de commit que Jesús dio al arrancar la ejecución; no hay push.</li>
+<li>Toolchain: Xcode 26.6 (<code>/Applications/Xcode-26.6.0.app</code>, <code>sudo xcodes select 26.6</code> si <code>xcodebuild -version</code> no dice 26.6), simulador &quot;iPhone 17 Pro&quot; iOS 26.5 con Face ID inscrito (ver <code>docs/05-handoff-fase1.md</code> §3). Node 22.</li>
+</ul>
+<h3 id="reglas-de-porte-aplican-a-las-tasks-69-cada-una-las-incluye-implicitamente">Reglas de porte (aplican a las Tasks 6–9; cada una las incluye implícitamente)</h3>
+<ol>
+<li>Fuente: el archivo <code>.js</code> correspondiente en <code>.superpowers/pickler-mobile/src/</code>. Se copia <strong>entero</strong> al destino <code>.tsx</code> y se aplican <strong>solo</strong> los cambios de la tarea. Nada de &quot;mejorar&quot; estilos, copy ni estructura.</li>
+<li>Imports: <code>&#39;../theme&#39;</code> → <code>&quot;../ui/theme&quot;</code>; <code>&#39;../ui&#39;</code> → <code>&quot;../ui/primitives&quot;</code>; <code>&#39;../data&#39;</code> → <code>&quot;../mock/data&quot;</code>; <code>&#39;../helpers&#39;</code> → <code>&quot;../mock/helpers&quot;</code>; se quita <code>import React from &#39;react&#39;</code>; comillas simples → dobles.</li>
+<li>Firma de pantalla: <code>export function XScreen({ …campos… }: AppCtx)</code>, donde <code>AppCtx</code> viene de <code>&quot;../ctx&quot;</code>. Los subcomponentes internos reciben props tipadas explícitas.</li>
+<li><code>S.user</code> deja de existir. Donde el prototipo lee <code>S.user</code> se usa <code>user</code> del contexto. Donde un <code>nav</code>/<code>set</code> lleva <code>user: &#39;holder&#39;</code> se pone <code>mockHolder: true</code>; <code>user: &#39;funded&#39;</code> y <code>user: &#39;new&#39;</code> <strong>se eliminan</strong> del patch.</li>
+<li>Objetos literales indexados por una clave de unión (<code>{...}[p]</code>) se tipan con <code>Record&lt;…&gt;</code> o <code>Partial&lt;Record&lt;…&gt;&gt;</code> (cada tarea indica cuál).</li>
+<li>Arreglos de tuplas que alimentan <code>set({ tab: k })</code> o similares se escriben <code>as const</code> para que <code>k</code> tenga el tipo de la unión.</li>
+</ol>
+<hr>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<p><strong>Se crean</strong> (<code>apps/mobile/</code>):</p>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>src/ui/theme.ts</code></td><td>Tokens <code>C</code>, fuentes <code>F</code>, <code>fam()</code>, <code>textStyle()</code>. (Reemplaza <code>palette</code>/<code>spacing</code>; se retiran en Task 10.)</td></tr>
+<tr><td><code>src/ui/primitives.tsx</code></td><td><code>T</code>, <code>Touch</code>, <code>Tag</code>, <code>Hair</code>, <code>StatGrid</code>, <code>KV</code>, <code>Avatar</code>, <code>Segmented</code>, <code>EmptyPanel</code>, <code>TouchCard</code>.</td></tr>
+<tr><td><code>src/mock/data.ts</code></td><td><code>AGENTS</code>, <code>POSTS</code>, <code>KINDS</code> y sus tipos. Datos de ejemplo.</td></tr>
+<tr><td><code>src/mock/helpers.ts</code></td><td><code>money</code>, <code>quoteFor</code>, <code>sellQuoteFor</code>, <code>pill</code>.</td></tr>
+<tr><td><code>src/store.ts</code></td><td>Tipos de navegación, funciones puras (<code>navState</code>, <code>backState</code>, <code>requireAccountState</code>, <code>afterSigninState</code>, <code>resetState</code>, <code>deriveUser</code>, <code>headerFor</code>) y el hook <code>useAppStore</code>.</td></tr>
+<tr><td><code>src/hooks/useAccount.ts</code></td><td>Estado de cuenta (<code>none</code>/<code>locked</code>/<code>unlocked</code>) y acciones. Extraído de <code>App.tsx</code>.</td></tr>
+<tr><td><code>src/hooks/useTreasury.ts</code></td><td>Saldos, refresh, faucet. Extraído de <code>Home.tsx</code>.</td></tr>
+<tr><td><code>src/ctx.ts</code></td><td><code>AppCtx = AppStore &amp; AccountActions &amp; { account; treasury }</code>.</td></tr>
+<tr><td><code>src/Shell.tsx</code></td><td>Header, cuerpo con scroll, barra Buy/Sell del agente, tab bar.</td></tr>
+<tr><td><code>src/DevControls.tsx</code></td><td>Panel ⚙ (solo <code>__DEV__</code>).</td></tr>
+<tr><td><code>src/screens/discover.tsx</code></td><td>Market, Search, Agent.</td></tr>
+<tr><td><code>src/screens/trade.tsx</code></td><td>Trade, Wallet access.</td></tr>
+<tr><td><code>src/screens/follow.tsx</code></td><td>Activity, Post, Ask.</td></tr>
+<tr><td><code>src/screens/own.tsx</code></td><td>Portfolio, Position, Wallet, Deposit, Withdraw.</td></tr>
+<tr><td><code>assets/pickler-mark.png</code></td><td>Copia del prototipo.</td></tr>
+<tr><td><code>__tests__/theme.test.ts</code>, <code>__tests__/helpers.test.ts</code>, <code>__tests__/store.test.ts</code></td><td>Tests nuevos.</td></tr>
+</tbody>
+</table>
+<p><strong>Se modifican:</strong> <code>package.json</code>, <code>app.config.ts</code>, <code>App.tsx</code>, <code>src/config/chain.ts</code> (+<code>ausdToNumber</code>), <code>__tests__/chain.test.ts</code>, <code>README.md</code>.</p>
+<p><strong>Se borran (Task 10):</strong> <code>src/screens/Welcome.tsx</code>, <code>src/screens/Home.tsx</code>, <code>src/ui/Button.tsx</code>, <code>src/ui/Field.tsx</code>.</p>
+<p>Notas respecto al spec (precisiones, no cambios de diseño):</p>
+<ul>
+<li>El spec decía <code>src/account/useAccount.ts</code> y <code>src/wallet/useTreasury.ts</code>. Como ya existe el archivo <code>src/account.ts</code>, un directorio <code>src/account/</code> haría ambiguo el import <code>&quot;../account&quot;</code>. Los dos hooks van en <code>src/hooks/</code>.</li>
+<li>El spec describía <code>useAppStore({ account, ausd })</code>. El store solo necesita saber si hay cuenta, así que recibe <code>{ hasAccount, ausd }</code>; <code>App.tsx</code> calcula <code>hasAccount</code> y las funciones puras se prueban con un booleano.</li>
+<li><code>useTreasury</code> recibe <code>account</code> y <code>onUnlock</code> (no solo <code>address</code>) porque el faucet necesita la wallet desbloqueada y avisar a <code>useAccount</code>, igual que <code>Home.tsx</code> hoy.</li>
+</ul>
+<hr>
+<h3 id="task-1-prototipo-de-referencia-dependencias-y-config">Task 1: Prototipo de referencia, dependencias y config</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>.superpowers/pickler-mobile/</code> (clon, gitignored), <code>apps/mobile/assets/pickler-mark.png</code></li>
+<li>Modify: <code>apps/mobile/package.json</code>, <code>apps/mobile/package-lock.json</code>, <code>apps/mobile/app.config.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: el clon en <code>.superpowers/pickler-mobile/src/*.js</code> que las Tasks 2–9 copian; las fuentes <code>Manrope_*</code> y <code>JetBrainsMono_*</code> disponibles para <code>useFonts</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Clonar el prototipo en el commit fijado</strong></label></li>
+</ul>
+<p>Desde la raíz del worktree:</p>
+<pre><code class="language-bash">git clone https://github.com/jjesusaf/pickler-mobile.git .superpowers/pickler-mobile
+git -C .superpowers/pickler-mobile checkout 365585e90cece741a957c358ff7fcd7b9aa25799
+git -C .superpowers/pickler-mobile rev-parse HEAD
+git status --short   # .superpowers/ no debe aparecer</code></pre>
+<p>Expected: la última línea imprime <code>365585e90cece741a957c358ff7fcd7b9aa25799</code> y <code>git status</code> no lista <code>.superpowers/</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Instalar dependencias base del worktree y las tres nuevas</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd apps/mobile
+npm ci
+npm install --save-exact expo-font@57.0.4 @expo-google-fonts/manrope@0.4.2 @expo-google-fonts/jetbrains-mono@0.4.1
+grep -E &#39;&quot;(expo-font|@expo-google-fonts/manrope|@expo-google-fonts/jetbrains-mono)&quot;&#39; package.json</code></pre>
+<p>Expected: las tres líneas con versión exacta, sin <code>^</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Copiar la marca</strong></label></li>
+</ul>
+<pre><code class="language-bash">cp ../../.superpowers/pickler-mobile/assets/pickler-mark.png assets/pickler-mark.png
+ls -la assets/pickler-mark.png</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Ajustar <code>app.config.ts</code></strong></label></li>
+</ul>
+<p>Reemplazar el archivo completo por:</p>
+<pre><code class="language-ts">import type { ExpoConfig } from &quot;expo/config&quot;;
+
+const rpId = process.env.PICKLER_RP_ID ?? &quot;pickler.fun&quot;;
+const bundleIdentifier = &quot;fun.pickler.app&quot;;
+
+const config: ExpoConfig = {
+  name: &quot;Pickler&quot;,
+  slug: &quot;pickler-mobile&quot;,
+  version: &quot;0.1.0&quot;,
+  orientation: &quot;portrait&quot;,
+  // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
+  icon: &quot;./assets/icon.png&quot;,
+  userInterfaceStyle: &quot;dark&quot;,
+  backgroundColor: &quot;#08080A&quot;,
+  ios: {
+    bundleIdentifier,
+    buildNumber: &quot;1&quot;,
+    supportsTablet: false,
+    backgroundColor: &quot;#08080A&quot;,
+    associatedDomains: [`webcredentials:${rpId}`],
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
+  },
+  plugins: [
+    &quot;expo-font&quot;,
+    [
+      &quot;expo-secure-store&quot;,
+      {
+        faceIDPermission:
+          &quot;Pickler uses Face ID to unlock the account stored on this device.&quot;,
+      },
+    ],
+  ],
+  extra: { rpId },
+};
+
+export default config;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Prebuild, build nativo y verificación de que la app vieja sigue arrancando</strong></label></li>
+</ul>
+<pre><code class="language-bash">xcodebuild -version            # debe decir Xcode 26.6; si no: sudo xcodes select 26.6
+npx expo prebuild --platform ios --clean
+npx expo run:ios --device &quot;iPhone 17 Pro&quot;</code></pre>
+<p>Expected: compila, instala y abre la pantalla <em>Welcome</em> actual (Pickler, &quot;Create account&quot;). Cerrar metro después.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: tsc y tests</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -5</code></pre>
+<p>Expected: tsc sin salida; <code>Tests: 19 passed, 19 total</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add package.json package-lock.json app.config.ts assets/pickler-mark.png
+git commit -m &quot;chore(mobile): fuentes Manrope/JetBrains Mono y config oscura para la UI nueva&quot;</code></pre>
+<hr>
+<h3 id="task-2-tema-y-primitivas">Task 2: Tema y primitivas</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/theme.ts</code></li>
+<li>Create: <code>apps/mobile/src/ui/primitives.tsx</code></li>
+<li>Test: <code>apps/mobile/__tests__/theme.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>C</code> (tokens de color, <code>as const</code>), <code>F</code>, <code>fam(weight: number, mono?: boolean): string</code>, <code>textStyle(weight: number, size: number, opts?: TypeOpts): TextStyle</code>; y los componentes <code>T</code>, <code>Touch</code>, <code>Tag</code>, <code>Hair</code>, <code>StatGrid</code>, <code>KV</code>, <code>Avatar</code>, <code>Segmented</code>, <code>EmptyPanel</code>, <code>TouchCard</code> con las props listadas abajo. <code>palette</code> y <code>spacing</code> siguen exportados hasta la Task 10.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test de <code>fam</code> y <code>textStyle</code></strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/theme.test.ts</code>:</p>
+<pre><code class="language-ts">import { C, fam, textStyle } from &quot;../src/ui/theme&quot;;
+
+test(&quot;weights map to the loaded Manrope families&quot;, () =&gt; {
+  expect(fam(400)).toBe(&quot;Manrope_400Regular&quot;);
+  expect(fam(500)).toBe(&quot;Manrope_500Medium&quot;);
+  expect(fam(600)).toBe(&quot;Manrope_600SemiBold&quot;);
+  expect(fam(700)).toBe(&quot;Manrope_700Bold&quot;);
+  expect(fam(800)).toBe(&quot;Manrope_800ExtraBold&quot;);
+});
+
+test(&quot;mono ignores weight except the medium cut&quot;, () =&gt; {
+  expect(fam(400, true)).toBe(&quot;JetBrainsMono_400Regular&quot;);
+  expect(fam(800, true)).toBe(&quot;JetBrainsMono_500Medium&quot;);
+});
+
+test(&quot;textStyle converts lh ratio and ls em to pixels&quot;, () =&gt; {
+  expect(textStyle(700, 14, { lh: 1.2, ls: -0.03 })).toEqual({
+    fontFamily: &quot;Manrope_700Bold&quot;,
+    fontSize: 14,
+    color: C.ink,
+    lineHeight: 17,
+    letterSpacing: -0.42,
+  });
+});
+
+test(&quot;textStyle omits lineHeight and letterSpacing when not given&quot;, () =&gt; {
+  expect(textStyle(400, 13)).toEqual({ fontFamily: &quot;Manrope_400Regular&quot;, fontSize: 13, color: C.ink });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo y verlo fallar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/theme.test.ts</code></pre>
+<p>Expected: FAIL, <code>fam</code> / <code>textStyle</code> no exportados.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Escribir <code>src/ui/theme.ts</code></strong></label></li>
+</ul>
+<p>Reemplazar el archivo completo por (los valores de <code>C</code> y <code>F</code> se copian <strong>exactos</strong> de <code>.superpowers/pickler-mobile/src/theme.js</code>):</p>
+<pre><code class="language-ts">import type { TextStyle } from &quot;react-native&quot;;
+
+// Tokens de diseño portados de &quot;Pickler Mobile Wireframes.dc.html&quot; vía pickler-mobile@365585e.
+export const C = {
+  lime: &quot;#C8F03A&quot;,
+  violet: &quot;#7A5CFF&quot;,
+  ink: &quot;#F3F1EC&quot;,
+  dim: &quot;#B9B9B4&quot;,
+  mute: &quot;#8C8C88&quot;,
+  up: &quot;#7BE38A&quot;,
+  down: &quot;#F2777A&quot;,
+  warn: &quot;#F5C35B&quot;,
+  violetInk: &quot;#B7A8FF&quot;,
+  blue: &quot;#5AD8FF&quot;,
+  blueBd: &quot;rgba(90,216,255,0.5)&quot;,
+  blueBg: &quot;rgba(90,216,255,0.1)&quot;,
+
+  hair: &quot;rgba(243,241,236,0.14)&quot;,
+  hair2: &quot;rgba(243,241,236,0.22)&quot;,
+  hairSoft: &quot;rgba(243,241,236,0.12)&quot;,
+  hairFaint: &quot;rgba(243,241,236,0.10)&quot;,
+
+  bg: &quot;#08080A&quot;,
+  phone: &quot;#0B0B0E&quot;,
+  panel: &quot;#0D0D10&quot;,
+  surf: &quot;#0F0F13&quot;,
+  surf2: &quot;#121216&quot;,
+  chip: &quot;#17171B&quot;,
+  tile: &quot;#1C1C22&quot;,
+
+  onLime: &quot;#0B0F00&quot;,
+  onInk: &quot;#08080A&quot;,
+  disabled: &quot;#55555C&quot;,
+} as const;
+
+// Nombres de familia que exportan @expo-google-fonts/*.
+export const F = {
+  r: &quot;Manrope_400Regular&quot;,
+  m: &quot;Manrope_500Medium&quot;,
+  sb: &quot;Manrope_600SemiBold&quot;,
+  b: &quot;Manrope_700Bold&quot;,
+  xb: &quot;Manrope_800ExtraBold&quot;,
+  mono: &quot;JetBrainsMono_400Regular&quot;,
+  monoM: &quot;JetBrainsMono_500Medium&quot;,
+} as const;
+
+/** Peso numérico de Manrope (como en el wireframe) → familia cargada. */
+export function fam(weight: number, mono?: boolean): string {
+  if (mono) return weight &gt;= 500 ? F.monoM : F.mono;
+  if (weight &gt;= 800) return F.xb;
+  if (weight &gt;= 700) return F.b;
+  if (weight &gt;= 600) return F.sb;
+  if (weight &gt;= 500) return F.m;
+  return F.r;
+}
+
+export type TypeOpts = { lh?: number; ls?: number; mono?: boolean; color?: string };
+
+/** `font: &lt;weight&gt; &lt;size&gt;/&lt;lh&gt; &lt;family&gt;` del wireframe. `ls` en em, convertido a px. */
+export function textStyle(weight: number, size: number, { lh, ls = 0, mono = false, color }: TypeOpts = {}): TextStyle {
+  const style: TextStyle = { fontFamily: fam(weight, mono), fontSize: size, color: color ?? C.ink };
+  if (lh) style.lineHeight = Math.round(size * lh);
+  if (ls) style.letterSpacing = +(size * ls).toFixed(2);
+  return style;
+}
+
+// --- Paleta de la fase 1. La usan Welcome/Home/Button/Field; se retira en la Task 10. ---
+export const palette = {
+  bg: &quot;#0B0B0F&quot;,
+  card: &quot;#16161D&quot;,
+  text: &quot;#F4F4F5&quot;,
+  muted: &quot;#9A9AA6&quot;,
+  accent: &quot;#8B5CF6&quot;,
+  danger: &quot;#F87171&quot;,
+  success: &quot;#4ADE80&quot;,
+};
+
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr el test y verlo pasar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/theme.test.ts</code></pre>
+<p>Expected: 4 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Escribir <code>src/ui/primitives.tsx</code></strong></label></li>
+</ul>
+<p>Port tipado de <code>.superpowers/pickler-mobile/src/ui.js</code>. Los estilos se copian exactos; solo se agregan tipos:</p>
+<pre><code class="language-tsx">import type { ReactNode } from &quot;react&quot;;
+import { Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle } from &quot;react-native&quot;;
+import { C, textStyle } from &quot;./theme&quot;;
+
+export type TProps = {
+  w?: number;
+  s?: number;
+  lh?: number;
+  ls?: number;
+  mono?: boolean;
+  color?: string;
+  style?: StyleProp&lt;TextStyle&gt;;
+  numberOfLines?: number;
+  children?: ReactNode;
+};
+
+/** Texto con el shorthand `font:` del wireframe: w=peso, s=tamaño, lh=ratio, ls=em. */
+export function T({ w = 400, s = 13, lh, ls, mono, color, style, numberOfLines, children }: TProps) {
+  return (
+    &lt;Text numberOfLines={numberOfLines} style={[textStyle(w, s, { lh, ls, mono, color }), style]}&gt;
+      {children}
+    &lt;/Text&gt;
+  );
+}
+
+export type TouchProps = {
+  onPress?: () =&gt; void;
+  style?: StyleProp&lt;ViewStyle&gt;;
+  children?: ReactNode;
+  disabled?: boolean;
+};
+
+export function Touch({ onPress, style, children, disabled }: TouchProps) {
+  return (
+    &lt;Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) =&gt; [style, pressed &amp;&amp; !disabled ? { opacity: 0.72 } : null]}
+    &gt;
+      {children}
+    &lt;/Pressable&gt;
+  );
+}
+
+export type TagProps = {
+  label: string;
+  fg?: string;
+  bd?: string;
+  bg?: string;
+  dashed?: boolean;
+  dot?: boolean;
+  style?: StyleProp&lt;ViewStyle&gt;;
+  size?: number;
+};
+
+export function Tag({ label, fg = C.mute, bd = C.hair, bg = &quot;transparent&quot;, dashed, dot, style, size = 10.5 }: TagProps) {
+  return (
+    &lt;View
+      style={[
+        {
+          flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 6,
+          paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999,
+          borderWidth: 1, borderColor: bd, backgroundColor: bg,
+          borderStyle: dashed ? &quot;dashed&quot; : &quot;solid&quot;,
+        },
+        style,
+      ]}
+    &gt;
+      {dot ? &lt;View style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: fg }} /&gt; : null}
+      &lt;T w={600} s={size} color={fg}&gt;{label}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+export function Hair({ color = C.hairSoft, style }: { color?: string; style?: StyleProp&lt;ViewStyle&gt; }) {
+  return &lt;View style={[{ height: 1, backgroundColor: color }, style]} /&gt;;
+}
+
+export type StatItem = { label: string; value: string; fg?: string };
+
+export function StatGrid({ items }: { items: StatItem[] }) {
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 14, overflow: &quot;hidden&quot; }}&gt;
+      {items.map((it, i) =&gt; (
+        &lt;View
+          key={i}
+          style={{
+            width: &quot;50%&quot;, backgroundColor: C.surf, padding: 12, paddingHorizontal: 13,
+            borderColor: C.hairSoft,
+            borderTopWidth: i &gt;= 2 ? 1 : 0,
+            borderLeftWidth: i % 2 === 1 ? 1 : 0,
+          }}
+        &gt;
+          &lt;T w={400} s={11} color={C.mute}&gt;{it.label}&lt;/T&gt;
+          &lt;T w={500} s={13.5} mono color={it.fg ?? C.ink} style={{ marginTop: 5 }}&gt;{it.value}&lt;/T&gt;
+        &lt;/View&gt;
+      ))}
+    &lt;/View&gt;
+  );
+}
+
+export function KV({ label, value, fg = C.ink, top = true }: { label: string; value: string; fg?: string; top?: boolean }) {
+  return (
+    &lt;View
+      style={{
+        flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, gap: 10, alignItems: &quot;baseline&quot;,
+        borderTopWidth: top ? 1 : 0, borderTopColor: &quot;rgba(243,241,236,0.08)&quot;, paddingTop: top ? 8 : 0,
+      }}
+    &gt;
+      &lt;T w={400} s={12.5} lh={1.3} color={C.dim} style={{ flex: 1 }}&gt;{label}&lt;/T&gt;
+      &lt;T w={500} s={12.5} lh={1.3} mono color={fg} style={{ textAlign: &quot;right&quot; }}&gt;{value}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+export function Avatar({ initial, size = 38, radius = 11, fontSize = 14 }: { initial: string; size?: number; radius?: number; fontSize?: number }) {
+  return (
+    &lt;View
+      style={{
+        width: size, height: size, borderRadius: radius, backgroundColor: C.tile,
+        borderWidth: 1, borderColor: C.hair, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;,
+      }}
+    &gt;
+      &lt;T w={800} s={fontSize} color={C.dim}&gt;{initial}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+export type SegmentOption = {
+  label: string;
+  bg: string;
+  fg: string;
+  onPress?: () =&gt; void;
+  disabled?: boolean;
+  strong?: boolean;
+};
+
+export function Segmented({ options }: { options: SegmentOption[] }) {
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, gap: 4, padding: 3, borderRadius: 999, borderWidth: 1, borderColor: C.hair, backgroundColor: C.surf2 }}&gt;
+      {options.map((o, i) =&gt; (
+        &lt;Touch
+          key={i}
+          onPress={o.onPress}
+          disabled={o.disabled}
+          style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 999, backgroundColor: o.bg, alignItems: &quot;center&quot; }}
+        &gt;
+          &lt;T w={o.strong ? 700 : 600} s={o.strong ? 13 : 12.5} color={o.fg}&gt;{o.label}&lt;/T&gt;
+        &lt;/Touch&gt;
+      ))}
+    &lt;/View&gt;
+  );
+}
+
+export function EmptyPanel({ children }: { children: ReactNode }) {
+  return (
+    &lt;View style={{ padding: 26, paddingHorizontal: 18, borderWidth: 1, borderColor: C.hair2, borderStyle: &quot;dashed&quot;, borderRadius: 16, alignItems: &quot;center&quot; }}&gt;
+      {children}
+    &lt;/View&gt;
+  );
+}
+
+export function TouchCard({ onPress, children, style }: TouchProps) {
+  return (
+    &lt;Touch onPress={onPress} style={[{ borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, padding: 13, paddingHorizontal: 14 }, style]}&gt;
+      {children}
+    &lt;/Touch&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: tsc y suite completa</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -5</code></pre>
+<p>Expected: tsc limpio; <code>Tests: 23 passed</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/ui/theme.ts src/ui/primitives.tsx __tests__/theme.test.ts
+git commit -m &quot;feat(mobile): tokens y primitivas de la UI de pickler-mobile&quot;</code></pre>
+<hr>
+<h3 id="task-3-datos-de-ejemplo-y-helpers">Task 3: Datos de ejemplo y helpers</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/mock/data.ts</code>, <code>apps/mobile/src/mock/helpers.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/helpers.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: tipos <code>AgentId</code>, <code>Stage</code>, <code>Op</code>, <code>Agent</code>, <code>PostKind</code>, <code>Post</code>; constantes <code>AGENTS: Record&lt;AgentId, Agent&gt;</code>, <code>POSTS: Post[]</code>, <code>KINDS: Record&lt;PostKind, { label; fg; bd }&gt;</code>; funciones <code>money(n: number, d?: number): string</code>, <code>quoteFor(agent: Agent, amount: number): Quote</code>, <code>sellQuoteFor(agent: Agent, sellPct: number): SellQuote</code>, <code>pill(active: boolean, activeBg?: string): Pill</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test de helpers</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/helpers.test.ts</code>:</p>
+<pre><code class="language-ts">import { AGENTS } from &quot;../src/mock/data&quot;;
+import { money, pill, quoteFor, sellQuoteFor } from &quot;../src/mock/helpers&quot;;
+import { C } from &quot;../src/ui/theme&quot;;
+
+test(&quot;money formats with two decimals by default and thousands separators&quot;, () =&gt; {
+  expect(money(1240)).toBe(&quot;1,240.00&quot;);
+  expect(money(318.4)).toBe(&quot;318.40&quot;);
+  expect(money(5998.2, 1)).toBe(&quot;5,998.2&quot;);
+});
+
+test(&quot;buy quote takes 1% fee and 0.15 network from the gross&quot;, () =&gt; {
+  const q = quoteFor(AGENTS.pkl, 250);
+  expect(q.gross).toBe(250);
+  expect(q.fee).toBeCloseTo(2.5);
+  expect(q.network).toBe(0.15);
+  expect(q.tokens).toBeCloseTo((250 - 2.5 - 0.15) / 0.0412, 3);
+});
+
+test(&quot;sell quote sells a percentage of the example 4,820 holding&quot;, () =&gt; {
+  const sq = sellQuoteFor(AGENTS.pkl, 50);
+  expect(sq.qty).toBe(2410);
+  expect(sq.gross).toBeCloseTo(2410 * 0.0412);
+  expect(sq.net).toBeCloseTo(sq.gross - sq.fee - 0.15);
+});
+
+test(&quot;pill returns the wireframe&#39;s active/inactive colours&quot;, () =&gt; {
+  expect(pill(false)).toEqual({ bg: &quot;transparent&quot;, fg: C.dim, bd: C.hair2 });
+  expect(pill(true)).toEqual({ bg: C.ink, fg: C.onInk, bd: C.ink });
+  expect(pill(true, C.lime)).toEqual({ bg: C.lime, fg: C.onLime, bd: C.lime });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo y verlo fallar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/helpers.test.ts</code></pre>
+<p>Expected: FAIL, módulos <code>../src/mock/data</code> / <code>../src/mock/helpers</code> no existen.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Escribir <code>src/mock/data.ts</code></strong></label></li>
+</ul>
+<p>Encabezado con tipos, y después <code>AGENTS</code>, <code>KINDS</code>, <code>POSTS</code> copiados <strong>verbatim</strong> de <code>.superpowers/pickler-mobile/src/data.js</code> (mismos valores, mismo orden, comillas dobles; el <code>import { C } from &#39;./theme&#39;</code> pasa a <code>&quot;../ui/theme&quot;</code>):</p>
+<pre><code class="language-ts">// Datos de ejemplo portados verbatim de pickler-mobile@365585e (src/data.js).
+// Cada cifra es ejemplo, nunca una condición del producto.
+import { C } from &quot;../ui/theme&quot;;
+
+export type AgentId = &quot;pkl&quot; | &quot;hld&quot; | &quot;kite&quot; | &quot;moss&quot; | &quot;roon&quot;;
+export type Stage = &quot;Pre-grad&quot; | &quot;Post-grad&quot;;
+export type Op = &quot;Active&quot; | &quot;Paused&quot; | &quot;No budget&quot;;
+
+export type Agent = {
+  id: AgentId;
+  initial: string;
+  name: string;
+  ticker: string;
+  tickerBare: string;
+  what: string;
+  bio: string;
+  creator: string;
+  price: string;
+  change: string;
+  up: boolean;
+  stage: Stage;
+  op: Op;
+  market?: string;
+  liquidity?: string;
+  gradPct?: `${number}%`;
+  gradText?: string;
+  signal: string;
+  noHistory: boolean;
+  stats: { label: string; value: string }[];
+  about: { label: string; value: string }[];
+};
+
+export const AGENTS: Record&lt;AgentId, Agent&gt; = {
+  // … los cinco agentes (pkl, hld, kite, moss, roon) exactamente como en data.js …
+};
+
+export const KINDS = {
+  prediction: { label: &quot;Prediction&quot;, fg: C.violetInk, bd: &quot;rgba(122,92,255,0.55)&quot; },
+  update: { label: &quot;Update&quot;, fg: C.dim, bd: &quot;rgba(243,241,236,0.28)&quot; },
+  opened: { label: &quot;Trade opened&quot;, fg: C.lime, bd: &quot;rgba(200,240,58,0.5)&quot; },
+  closed: { label: &quot;Trade closed&quot;, fg: C.lime, bd: &quot;rgba(200,240,58,0.5)&quot; },
+  result: { label: &quot;Result&quot;, fg: C.up, bd: &quot;rgba(123,227,138,0.5)&quot; },
+  change: { label: &quot;Strategy change&quot;, fg: C.warn, bd: &quot;rgba(245,195,91,0.5)&quot; },
+} as const;
+
+export type PostKind = keyof typeof KINDS;
+
+export type Post = {
+  id: string;
+  agent: AgentId;
+  kind: PostKind;
+  when: string;
+  date: string;
+  claim: string;
+  why: string;
+  status: string;
+  money: string;
+};
+
+export const POSTS: Post[] = [
+  // … los seis posts (p1–p6) exactamente como en data.js …
+];</code></pre>
+<p>Comprobación de fidelidad, desde <code>apps/mobile/</code>:</p>
+<pre><code class="language-bash">grep -c &quot;label:&quot; ../../.superpowers/pickler-mobile/src/data.js; grep -c &quot;label:&quot; src/mock/data.ts
+grep -c &quot;id: &#39;p&quot; ../../.superpowers/pickler-mobile/src/data.js; grep -c &#39;id: &quot;p&#39; src/mock/data.ts</code></pre>
+<p>Expected: las dos parejas de conteos coinciden (mismo número de <code>label:</code> y de posts).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Escribir <code>src/mock/helpers.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { C } from &quot;../ui/theme&quot;;
+import type { Agent } from &quot;./data&quot;;
+
+export function money(n: number, d?: number): string {
+  const digits = d === undefined ? 2 : d;
+  return n.toLocaleString(&quot;en-US&quot;, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+export type Quote = { price: number; gross: number; fee: number; network: number; tokens: number };
+
+export function quoteFor(agent: Agent, amount: number): Quote {
+  const price = parseFloat(agent.price);
+  const gross = amount;
+  const fee = gross * 0.01;
+  const net = gross - fee - 0.15;
+  return { price, gross, fee, network: 0.15, tokens: net / price };
+}
+
+export type SellQuote = { price: number; qty: number; gross: number; fee: number; network: number; net: number };
+
+export function sellQuoteFor(agent: Agent, sellPct: number): SellQuote {
+  const price = parseFloat(agent.price);
+  const qty = 4820 * (sellPct / 100);
+  const gross = qty * price;
+  const fee = gross * 0.01;
+  return { price, qty, gross, fee, network: 0.15, net: gross - fee - 0.15 };
+}
+
+export type Pill = { bg: string; fg: string; bd: string };
+
+/** pill(active, activeBg) → { bg, fg, bd } exactamente como el wireframe. */
+export function pill(active: boolean, activeBg?: string): Pill {
+  return active
+    ? { bg: activeBg ?? C.ink, fg: activeBg ? C.onLime : C.onInk, bd: activeBg ?? C.ink }
+    : { bg: &quot;transparent&quot;, fg: C.dim, bd: C.hair2 };
+}</code></pre>
+<p><code>balanceFor</code> y <code>agentById</code> del prototipo <strong>no</strong> se portan: el saldo es real y <code>agentById</code> no se usa.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Correr el test y verlo pasar; tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/helpers.test.ts &amp;&amp; npx tsc --noEmit</code></pre>
+<p>Expected: 4 passed; tsc limpio.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/mock/data.ts src/mock/helpers.ts __tests__/helpers.test.ts
+git commit -m &quot;feat(mobile): datos de ejemplo y helpers de cotización del prototipo&quot;</code></pre>
+<hr>
+<h3 id="task-4-store-de-navegacion-con-gate-de-cuenta">Task 4: Store de navegación con gate de cuenta</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/store.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AGENTS</code>, <code>POSTS</code>, <code>Agent</code>, <code>AgentId</code>, <code>Post</code> de <code>./mock/data</code>; <code>money</code> de <code>./mock/helpers</code>.</li>
+<li>Produces (todo exportado de <code>src/store.ts</code>):</li>
+<ul>
+<li>Tipos <code>Screen</code>, <code>Phase</code>, <code>Mode</code>, <code>UserKind</code>, <code>DataCase</code>, <code>Sort</code>, <code>AgentTab</code>, <code>StoreState</code>, <code>Patch</code>, <code>StoreInput</code>, <code>AppStore</code>.</li>
+<li><code>INITIAL: StoreState</code>.</li>
+<li>Puras: <code>navState(s, screen, patch?)</code>, <code>backState(s)</code>, <code>requireAccountState(s, hasAccount, target, patch?)</code>, <code>afterSigninState(s)</code>, <code>resetState(s, screen)</code>, <code>deriveUser(hasAccount, mockHolder)</code>, <code>headerFor(screen, agent, post, mode, balance): [string, string]</code>.</li>
+<li>Hook <code>useAppStore({ hasAccount, ausd }): AppStore</code>.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests del store</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/store.test.ts</code>:</p>
+<pre><code class="language-ts">import {
+  afterSigninState,
+  backState,
+  deriveUser,
+  INITIAL,
+  navState,
+  requireAccountState,
+  resetState,
+} from &quot;../src/store&quot;;
+
+test(&quot;nav pushes the current screen and applies the patch&quot;, () =&gt; {
+  const s = navState(INITIAL, &quot;agent&quot;, { agentId: &quot;hld&quot;, tab: &quot;about&quot; });
+  expect(s.screen).toBe(&quot;agent&quot;);
+  expect(s.stack).toEqual([&quot;market&quot;]);
+  expect(s.agentId).toBe(&quot;hld&quot;);
+  expect(s.tab).toBe(&quot;about&quot;);
+});
+
+test(&quot;the back-stack keeps only the last 8 screens&quot;, () =&gt; {
+  let s = INITIAL;
+  for (let i = 0; i &lt; 10; i++) s = navState(s, i % 2 ? &quot;market&quot; : &quot;activity&quot;);
+  expect(s.stack).toHaveLength(8);
+});
+
+test(&quot;back pops the stack and falls back to market when empty&quot;, () =&gt; {
+  const s = navState(navState(INITIAL, &quot;agent&quot;), &quot;trade&quot;);
+  expect(backState(s).screen).toBe(&quot;agent&quot;);
+  expect(backState(INITIAL).screen).toBe(&quot;market&quot;);
+  expect(backState(INITIAL).stack).toEqual([]);
+});
+
+test(&quot;without an account, Wallet asks for access and remembers where to go&quot;, () =&gt; {
+  const s = requireAccountState(INITIAL, false, &quot;wallet&quot;);
+  expect(s.screen).toBe(&quot;signin&quot;);
+  expect(s.resume).toBe(false);
+  expect(s.next).toBe(&quot;wallet&quot;);
+  expect(s.nextPatch).toEqual({});
+});
+
+test(&quot;without an account, Buy holds the purchase and resumes in Deposit&quot;, () =&gt; {
+  const s = requireAccountState(INITIAL, false, &quot;trade&quot;, { mode: &quot;buy&quot;, phase: &quot;insufficient&quot; });
+  expect(s.screen).toBe(&quot;signin&quot;);
+  expect(s.resume).toBe(true);
+  expect(s.next).toBe(&quot;deposit&quot;);
+  expect(s.nextPatch).toEqual({ mode: &quot;buy&quot;, phase: &quot;insufficient&quot;, resume: true });
+});
+
+test(&quot;with an account the gate navigates straight to the target&quot;, () =&gt; {
+  const s = requireAccountState(INITIAL, true, &quot;wallet&quot;);
+  expect(s.screen).toBe(&quot;wallet&quot;);
+  expect(s.next).toBeUndefined();
+});
+
+test(&quot;reading screens never ask for an account&quot;, () =&gt; {
+  for (const target of [&quot;market&quot;, &quot;search&quot;, &quot;agent&quot;, &quot;activity&quot;, &quot;post&quot;, &quot;ask&quot;] as const) {
+    expect(requireAccountState(INITIAL, false, target).screen).toBe(target);
+  }
+});
+
+test(&quot;after sign-in the app lands on next without leaving signin in the stack&quot;, () =&gt; {
+  const s = afterSigninState(requireAccountState(INITIAL, false, &quot;wallet&quot;));
+  expect(s.screen).toBe(&quot;wallet&quot;);
+  expect(s.stack).toEqual([&quot;market&quot;]);
+  expect(s.next).toBeUndefined();
+  expect(s.nextPatch).toBeUndefined();
+});
+
+test(&quot;after sign-in from Buy the deposit screen resumes the purchase&quot;, () =&gt; {
+  const s = afterSigninState(requireAccountState(INITIAL, false, &quot;trade&quot;, { mode: &quot;buy&quot;, phase: &quot;insufficient&quot; }));
+  expect(s.screen).toBe(&quot;deposit&quot;);
+  expect(s.resume).toBe(true);
+  expect(s.phase).toBe(&quot;insufficient&quot;);
+});
+
+test(&quot;user is new without an account even when the dev panel marks holder&quot;, () =&gt; {
+  expect(deriveUser(false, true)).toBe(&quot;new&quot;);
+  expect(deriveUser(true, false)).toBe(&quot;funded&quot;);
+  expect(deriveUser(true, true)).toBe(&quot;holder&quot;);
+});
+
+test(&quot;reset clears the stack, resume and the mock holder flag&quot;, () =&gt; {
+  const dirty = { ...navState(INITIAL, &quot;agent&quot;), resume: true, mockHolder: true };
+  const s = resetState(dirty, &quot;market&quot;);
+  expect(s).toMatchObject({ screen: &quot;market&quot;, stack: [], resume: false, mockHolder: false });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlos y verlos fallar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts</code></pre>
+<p>Expected: FAIL, <code>../src/store</code> no existe.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Escribir <code>src/store.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { useCallback, useState } from &quot;react&quot;;
+import { AGENTS, type Agent, type AgentId, POSTS, type Post } from &quot;./mock/data&quot;;
+import { money } from &quot;./mock/helpers&quot;;
+
+export type Screen =
+  | &quot;market&quot; | &quot;search&quot; | &quot;agent&quot;
+  | &quot;trade&quot; | &quot;signin&quot;
+  | &quot;activity&quot; | &quot;post&quot; | &quot;ask&quot;
+  | &quot;portfolio&quot; | &quot;position&quot; | &quot;wallet&quot; | &quot;deposit&quot; | &quot;withdraw&quot;;
+export type Phase = &quot;quoting&quot; | &quot;quote&quot; | &quot;insufficient&quot; | &quot;expired&quot; | &quot;confirm&quot; | &quot;sent&quot; | &quot;done&quot; | &quot;failed&quot; | &quot;unknown&quot;;
+export type Mode = &quot;buy&quot; | &quot;sell&quot;;
+export type UserKind = &quot;new&quot; | &quot;funded&quot; | &quot;holder&quot;;
+export type DataCase = &quot;normal&quot; | &quot;loading&quot; | &quot;empty&quot; | &quot;stale&quot;;
+export type Sort = &quot;trending&quot; | &quot;volume&quot; | &quot;new&quot;;
+export type AgentTab = &quot;token&quot; | &quot;activity&quot; | &quot;about&quot;;
+
+export type StoreState = {
+  screen: Screen;
+  stack: Screen[];
+  agentId: AgentId;
+  tab: AgentTab;
+  postId: string;
+  mode: Mode;
+  phase: Phase;
+  amount: number;
+  sort: Sort;
+  sellPct: number;
+  following: boolean;
+  resume: boolean;
+  askCtx: string;
+  dataCase: DataCase;
+  /** Solo el panel de dev lo enciende: activa las posiciones de ejemplo. Nunca gobierna cuenta ni saldo. */
+  mockHolder: boolean;
+  /** A dónde ir al terminar Wallet access, y con qué patch. */
+  next?: Screen;
+  nextPatch?: Patch;
+};
+
+export type Patch = Partial&lt;Omit&lt;StoreState, &quot;stack&quot;&gt;&gt;;
+
+export const INITIAL: StoreState = {
+  screen: &quot;market&quot;, stack: [], dataCase: &quot;normal&quot;,
+  agentId: &quot;pkl&quot;, tab: &quot;token&quot;, postId: &quot;p1&quot;,
+  mode: &quot;buy&quot;, phase: &quot;quote&quot;, amount: 250, sort: &quot;trending&quot;, sellPct: 50,
+  following: true, resume: false, askCtx: &quot;Pickle&quot;, mockHolder: false,
+};
+
+const STACK_MAX = 8;
+
+export function navState(s: StoreState, screen: Screen, patch: Patch = {}): StoreState {
+  return { ...s, ...patch, stack: [...s.stack, s.screen].slice(-STACK_MAX), screen };
+}
+
+export function backState(s: StoreState): StoreState {
+  const stack = [...s.stack];
+  const prev = stack.pop() ?? &quot;market&quot;;
+  return { ...s, stack, screen: prev };
+}
+
+/** Pantallas que exigen cuenta. Leer, seguir y preguntar nunca la piden. */
+export const GATED: readonly Screen[] = [&quot;wallet&quot;, &quot;portfolio&quot;, &quot;position&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;trade&quot;];
+
+export function requireAccountState(s: StoreState, hasAccount: boolean, target: Screen, patch: Patch = {}): StoreState {
+  if (hasAccount || !GATED.includes(target)) return navState(s, target, patch);
+  const buying = target === &quot;trade&quot;;
+  return navState(s, &quot;signin&quot;, {
+    resume: buying,
+    next: buying ? &quot;deposit&quot; : target,
+    nextPatch: buying ? { ...patch, resume: true } : patch,
+  });
+}
+
+/** Tras el login aterriza en `next` sin dejar `signin` en el stack (como si se hubiera navegado directo). */
+export function afterSigninState(s: StoreState): StoreState {
+  const { next, nextPatch, ...rest } = s;
+  return { ...rest, ...(nextPatch ?? {}), screen: next ?? &quot;wallet&quot; };
+}
+
+export function resetState(s: StoreState, screen: Screen): StoreState {
+  return { ...s, screen, stack: [], resume: false, mockHolder: false, next: undefined, nextPatch: undefined };
+}
+
+export function deriveUser(hasAccount: boolean, mockHolder: boolean): UserKind {
+  if (!hasAccount) return &quot;new&quot;;
+  return mockHolder ? &quot;holder&quot; : &quot;funded&quot;;
+}
+
+const CAN_BACK: readonly Screen[] = [&quot;agent&quot;, &quot;trade&quot;, &quot;post&quot;, &quot;ask&quot;, &quot;position&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;search&quot;, &quot;signin&quot;];
+const SHOW_TABS: readonly Screen[] = [&quot;market&quot;, &quot;activity&quot;, &quot;portfolio&quot;, &quot;wallet&quot;, &quot;search&quot;, &quot;position&quot;];
+
+export function headerFor(screen: Screen, agent: Agent, post: Post, mode: Mode, balance: number): [string, string] {
+  switch (screen) {
+    case &quot;market&quot;: return [&quot;Market&quot;, &quot;Discover agents and their tokens&quot;];
+    case &quot;search&quot;: return [&quot;Search&quot;, &quot;Name, ticker, specialty&quot;];
+    case &quot;agent&quot;: return [agent.name, agent.ticker + &quot; · &quot; + agent.what.split(&quot; — &quot;)[0]];
+    case &quot;trade&quot;: return [(mode === &quot;buy&quot; ? &quot;Buy &quot; : &quot;Sell &quot;) + agent.tickerBare, &quot;Balance &quot; + money(balance) + &quot; AUSD&quot;];
+    case &quot;signin&quot;: return [&quot;Wallet access&quot;, &quot;One step, then back to your purchase&quot;];
+    case &quot;activity&quot;: return [&quot;Activity&quot;, &quot;What the agents you follow are doing&quot;];
+    case &quot;post&quot;: return [&quot;Activity&quot;, AGENTS[post.agent].name];
+    case &quot;ask&quot;: return [&quot;Ask &quot; + agent.name, &quot;Questions only — never trades&quot;];
+    case &quot;portfolio&quot;: return [&quot;Portfolio&quot;, &quot;Your token positions&quot;];
+    case &quot;position&quot;: return [&quot;Your &quot; + agent.tickerBare, &quot;Position detail&quot;];
+    case &quot;wallet&quot;: return [&quot;Wallet&quot;, &quot;AUSD available and movements&quot;];
+    case &quot;deposit&quot;: return [&quot;Deposit AUSD&quot;, &quot;Monad network&quot;];
+    case &quot;withdraw&quot;: return [&quot;Withdraw AUSD&quot;, &quot;To an external address&quot;];
+  }
+}
+
+export type StoreInput = {
+  /** `account.status !== &quot;none&quot;`. */
+  hasAccount: boolean;
+  /** AUSD real como número; 0 si no cargó. */
+  ausd: number;
+};
+
+export type AppStore = {
+  S: StoreState;
+  set: (patch: Patch) =&gt; void;
+  nav: (screen: Screen, patch?: Patch) =&gt; void;
+  back: () =&gt; void;
+  requireAccount: (target: Screen, patch?: Patch) =&gt; void;
+  finishSignin: () =&gt; void;
+  resetTo: (screen: Screen) =&gt; void;
+  hasAccount: boolean;
+  user: UserKind;
+  agent: Agent;
+  balance: number;
+  holds: boolean;
+  tradeHolds: boolean;
+  scr: Screen;
+  buying: boolean;
+  post: Post;
+  headerTitle: string;
+  headerSub: string;
+  canBack: boolean;
+  showTabs: boolean;
+  showAgentBar: boolean;
+};
+
+export function useAppStore({ hasAccount, ausd }: StoreInput): AppStore {
+  const [S, setS] = useState&lt;StoreState&gt;(INITIAL);
+
+  const set = useCallback((patch: Patch) =&gt; setS((s) =&gt; ({ ...s, ...patch })), []);
+  const nav = useCallback((screen: Screen, patch?: Patch) =&gt; setS((s) =&gt; navState(s, screen, patch)), []);
+  const back = useCallback(() =&gt; setS(backState), []);
+  const requireAccount = useCallback(
+    (target: Screen, patch?: Patch) =&gt; setS((s) =&gt; requireAccountState(s, hasAccount, target, patch)),
+    [hasAccount],
+  );
+  const finishSignin = useCallback(() =&gt; setS(afterSigninState), []);
+  const resetTo = useCallback((screen: Screen) =&gt; setS((s) =&gt; resetState(s, screen)), []);
+
+  const agent = AGENTS[S.agentId];
+  const user = deriveUser(hasAccount, S.mockHolder);
+  const balance = hasAccount ? ausd : 0;
+  const holds = user === &quot;holder&quot;;
+  // El wireframe trata una compra recién completada como tenencia (para Sell / posición).
+  const tradeHolds = holds || (S.phase === &quot;done&quot; &amp;&amp; S.mode === &quot;buy&quot;);
+  const post = POSTS.find((p) =&gt; p.id === S.postId) ?? POSTS[0];
+  const [headerTitle, headerSub] = headerFor(S.screen, agent, post, S.mode, balance);
+
+  return {
+    S, set, nav, back, requireAccount, finishSignin, resetTo,
+    hasAccount, user, agent, balance, holds, tradeHolds,
+    scr: S.screen, buying: S.mode === &quot;buy&quot;, post, headerTitle, headerSub,
+    canBack: CAN_BACK.includes(S.screen),
+    showTabs: SHOW_TABS.includes(S.screen),
+    showAgentBar: S.screen === &quot;agent&quot;,
+  };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr los tests y verlos pasar; tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts &amp;&amp; npx tsc --noEmit</code></pre>
+<p>Expected: 11 passed; tsc limpio.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Probar contra el defecto</strong></label></li>
+</ul>
+<p>Cambiar temporalmente en <code>requireAccountState</code> la línea <code>if (hasAccount || !GATED.includes(target))</code> por <code>if (true)</code> y correr <code>npx jest __tests__/store.test.ts</code>. Expected: fallan los tests &quot;without an account…&quot; (2) y &quot;after sign-in…&quot; (2). Revertir el cambio y confirmar 11 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/store.ts __tests__/store.test.ts
+git commit -m &quot;feat(mobile): store de navegación del prototipo con gate de cuenta real&quot;</code></pre>
+<hr>
+<h3 id="task-5-hooks-de-cuenta-y-tesoreria-y-appctx">Task 5: Hooks de cuenta y tesorería, y <code>AppCtx</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hooks/useAccount.ts</code>, <code>apps/mobile/src/hooks/useTreasury.ts</code>, <code>apps/mobile/src/ctx.ts</code></li>
+<li>Modify: <code>apps/mobile/src/config/chain.ts</code>, <code>apps/mobile/__tests__/chain.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AccountState</code>, <code>accountAddress</code> de <code>../account</code>; <code>loadStoredAccount</code>, <code>clearStoredAccount</code> de <code>../storage/storage</code>; <code>readBalances</code>, <code>requestAusdFromFaucet</code>, <code>waitForReceipt</code> de <code>../wallet/chain</code>; <code>describeError</code>, <code>unlockStoredWallet</code>, <code>Wallet</code> de <code>../wallet/wallet</code>; <code>AppStore</code> de <code>../store</code>.</li>
+<li>Produces:</li>
+<ul>
+<li><code>ausdToNumber(raw: bigint): number</code> en <code>config/chain.ts</code>.</li>
+<li><code>useAccount(): { account: AccountState | null } &amp; AccountActions</code> con <code>AccountActions = { onWallet(wallet: Wallet): void; lock(): void; signOut(): Promise&lt;void&gt; }</code>.</li>
+<li><code>useTreasury(account: AccountState, onUnlock: (w: Wallet) =&gt; void): Treasury</code> con <code>Treasury = { balances: { ausd: bigint; mon: bigint } | null; rpcError: string; busy: boolean; notice: string; error: string; refresh(): Promise&lt;void&gt;; getTestAusd(): Promise&lt;void&gt; }</code>.</li>
+<li><code>AppCtx = AppStore &amp; AccountActions &amp; { account: AccountState; treasury: Treasury }</code>.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test de <code>ausdToNumber</code></strong></label></li>
+</ul>
+<p>Agregar al final de <code>apps/mobile/__tests__/chain.test.ts</code> (y <code>ausdToNumber</code> al import de <code>../src/config/chain</code> que ya existe en ese archivo):</p>
+<pre><code class="language-ts">test(&quot;ausdToNumber turns 6-decimal units into a plain number&quot;, () =&gt; {
+  expect(ausdToNumber(1_240_000_000n)).toBe(1240);
+  expect(ausdToNumber(318_400_000n)).toBe(318.4);
+  expect(ausdToNumber(0n)).toBe(0);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo y verlo fallar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/chain.test.ts</code></pre>
+<p>Expected: FAIL, <code>ausdToNumber</code> no exportado.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Agregar <code>ausdToNumber</code> a <code>src/config/chain.ts</code></strong></label></li>
+</ul>
+<p>Después de <code>formatMon</code>:</p>
+<pre><code class="language-ts">/** AUSD como número para la UI (saldo &quot;available&quot;, umbral de compra). */
+export function ausdToNumber(raw: bigint): number {
+  return Number(formatUnits(raw, AUSD_DECIMALS));
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr el test y verlo pasar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/chain.test.ts</code></pre>
+<p>Expected: 6 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Escribir <code>src/hooks/useAccount.ts</code></strong> (lógica movida de <code>App.tsx</code>, sin cambios)</label></li>
+</ul>
+<pre><code class="language-ts">import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import type { AccountState } from &quot;../account&quot;;
+import { clearStoredAccount, loadStoredAccount } from &quot;../storage/storage&quot;;
+import type { Wallet } from &quot;../wallet/wallet&quot;;
+
+export type AccountActions = {
+  onWallet: (wallet: Wallet) =&gt; void;
+  lock: () =&gt; void;
+  signOut: () =&gt; Promise&lt;void&gt;;
+};
+
+/** Cuenta guardada en el dispositivo. `null` mientras carga; después `none` / `locked` / `unlocked`. */
+export function useAccount(): { account: AccountState | null } &amp; AccountActions {
+  const [account, setAccount] = useState&lt;AccountState | null&gt;(null);
+  const ref = useRef(account);
+  ref.current = account;
+
+  // Termina la sesión de firma saliente cuando la wallet deja el estado.
+  const replace = useCallback((next: AccountState) =&gt; {
+    const cur = ref.current;
+    if (cur?.status === &quot;unlocked&quot; &amp;&amp; (next.status !== &quot;unlocked&quot; || next.wallet !== cur.wallet)) {
+      cur.wallet.session.end();
+    }
+    ref.current = next;
+    setAccount(next);
+  }, []);
+
+  // Arranque: solo la dirección (sin gate). Nada de Face ID aquí.
+  useEffect(() =&gt; {
+    let stale = false;
+    loadStoredAccount()
+      .then((s) =&gt; !stale &amp;&amp; setAccount(s ? { status: &quot;locked&quot;, ...s } : { status: &quot;none&quot; }))
+      .catch(() =&gt; !stale &amp;&amp; setAccount({ status: &quot;none&quot; }));
+    return () =&gt; {
+      stale = true;
+    };
+  }, []);
+
+  const onWallet = useCallback((wallet: Wallet) =&gt; replace({ status: &quot;unlocked&quot;, wallet }), [replace]);
+
+  const lock = useCallback(() =&gt; {
+    const cur = ref.current;
+    if (cur?.status === &quot;unlocked&quot;) {
+      replace({ status: &quot;locked&quot;, address: cur.wallet.address, credentialId: cur.wallet.credentialId });
+    }
+  }, [replace]);
+
+  const signOut = useCallback(async () =&gt; {
+    await clearStoredAccount();
+    replace({ status: &quot;none&quot; });
+  }, [replace]);
+
+  return { account, onWallet, lock, signOut };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Escribir <code>src/hooks/useTreasury.ts</code></strong> (lógica movida de <code>Home.tsx</code>; único añadido: sin dirección no consulta nada, y al cambiar de dirección se limpian aviso y error)</label></li>
+</ul>
+<pre><code class="language-ts">import { useCallback, useEffect, useState } from &quot;react&quot;;
+import { accountAddress, type AccountState } from &quot;../account&quot;;
+import { readBalances, requestAusdFromFaucet, waitForReceipt } from &quot;../wallet/chain&quot;;
+import { describeError, unlockStoredWallet, type Wallet } from &quot;../wallet/wallet&quot;;
+
+export type Balances = { ausd: bigint; mon: bigint };
+
+export type Treasury = {
+  balances: Balances | null;
+  rpcError: string;
+  busy: boolean;
+  notice: string;
+  error: string;
+  refresh: () =&gt; Promise&lt;void&gt;;
+  getTestAusd: () =&gt; Promise&lt;void&gt;;
+};
+
+export function useTreasury(account: AccountState, onUnlock: (w: Wallet) =&gt; void): Treasury {
+  const address = accountAddress(account);
+  const [balances, setBalances] = useState&lt;Balances | null&gt;(null);
+  const [rpcError, setRpcError] = useState(&quot;&quot;);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(&quot;&quot;);
+  const [error, setError] = useState(&quot;&quot;);
+
+  const refresh = useCallback(async () =&gt; {
+    setRpcError(&quot;&quot;);
+    if (!address) {
+      setBalances(null);
+      return;
+    }
+    try {
+      setBalances(await readBalances(address));
+    } catch (e) {
+      setBalances(null);
+      setRpcError(describeError(e));
+    }
+  }, [address]);
+
+  useEffect(() =&gt; {
+    setNotice(&quot;&quot;);
+    setError(&quot;&quot;);
+    refresh();
+  }, [refresh]);
+
+  const getTestAusd = useCallback(async () =&gt; {
+    if (!address) return;
+    setBusy(true);
+    setError(&quot;&quot;);
+    setNotice(&quot;&quot;);
+    try {
+      const fresh = await readBalances(address);
+      setBalances(fresh);
+      if (fresh.mon === 0n) {
+        throw new Error(&quot;You need test MON for gas. Get some at the Monad faucet and try again.&quot;);
+      }
+      let wallet: Wallet;
+      if (account.status === &quot;unlocked&quot;) {
+        wallet = account.wallet;
+      } else {
+        const unlocked = await unlockStoredWallet();
+        if (!unlocked) throw new Error(&quot;No stored account. Sign out and sign in again.&quot;);
+        wallet = unlocked;
+        onUnlock(wallet);
+      }
+      const hash = await requestAusdFromFaucet(wallet);
+      setNotice(`Sent: ${hash}`);
+      const status = await waitForReceipt(hash);
+      setNotice(status === &quot;success&quot; ? `Confirmed: ${hash}` : `Reverted: ${hash}`);
+      await refresh();
+    } catch (e) {
+      const msg = describeError(e);
+      if (msg) setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  }, [address, account, onUnlock, refresh]);
+
+  return { balances, rpcError, busy, notice, error, refresh, getTestAusd };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Escribir <code>src/ctx.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import type { AccountState } from &quot;./account&quot;;
+import type { AccountActions } from &quot;./hooks/useAccount&quot;;
+import type { Treasury } from &quot;./hooks/useTreasury&quot;;
+import type { AppStore } from &quot;./store&quot;;
+
+/** Todo lo que reciben Shell, DevControls y las pantallas. */
+export type AppCtx = AppStore &amp; AccountActions &amp; { account: AccountState; treasury: Treasury };</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: tsc y suite</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -5</code></pre>
+<p>Expected: tsc limpio; <code>Tests: 39 passed</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 9: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/hooks/useAccount.ts src/hooks/useTreasury.ts src/ctx.ts src/config/chain.ts __tests__/chain.test.ts
+git commit -m &quot;feat(mobile): hooks de cuenta y tesorería extraídos de App y Home&quot;</code></pre>
+<hr>
+<h3 id="task-6-pantallas-discover-y-follow-port-identico">Task 6: Pantallas Discover y Follow (port idéntico)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/discover.tsx</code>, <code>apps/mobile/src/screens/follow.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code> de <code>../ctx</code>; <code>Agent</code>, <code>Stage</code>, <code>AGENTS</code>, <code>POSTS</code>, <code>KINDS</code> de <code>../mock/data</code>; <code>pill</code>, <code>money</code> de <code>../mock/helpers</code>; primitivas de <code>../ui/primitives</code>; <code>C</code> de <code>../ui/theme</code>; tipos <code>Sort</code>, <code>AgentTab</code> de <code>../store</code>.</li>
+<li>Produces: <code>MarketScreen</code>, <code>SearchScreen</code>, <code>AgentScreen</code> (discover); <code>ActivityScreen</code>, <code>PostScreen</code>, <code>AskScreen</code> (follow). Todos <code>(ctx: AppCtx) =&gt; ReactElement</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Copiar <code>discover.js</code> a <code>src/screens/discover.tsx</code></strong> y aplicar las Reglas de porte más estos cambios de tipado (solo tipos; el JSX no cambia):</label></li>
+</ul>
+<pre><code class="language-ts">import { ScrollView, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { AGENTS, type Agent, KINDS, POSTS, type Stage } from &quot;../mock/data&quot;;
+import { money, pill } from &quot;../mock/helpers&quot;;
+import type { AgentTab, Sort } from &quot;../store&quot;;
+import { Avatar, EmptyPanel, Hair, Segmented, StatGrid, T, Tag, Touch, TouchCard } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+
+const SORT_NOTES: Record&lt;Sort, string&gt; = { /* igual */ };
+
+const stageStyle = (stage: Stage) =&gt; ({ /* igual */ });
+
+export function MarketScreen({ S, set, nav }: AppCtx) {
+  const ready = S.dataCase === &quot;normal&quot; || S.dataCase === &quot;stale&quot;;
+  const sorts = ([&quot;trending&quot;, &quot;volume&quot;, &quot;new&quot;] as const).map((k) =&gt; { /* igual */ });
+  // …
+}
+
+export function SearchScreen({ set, nav }: AppCtx) { /* igual */ }
+
+export function AgentScreen(ctx: AppCtx) {
+  const { S, set, nav, agent: a, tradeHolds } = ctx;
+  // …
+  const tabs = [[&quot;token&quot;, &quot;Token&quot;], [&quot;activity&quot;, &quot;Activity&quot;], [&quot;about&quot;, &quot;About&quot;]] as const;
+  // … en el map: set({ tab: k }) con k: AgentTab
+}
+
+function AgentToken({ ctx, a, hasPosition }: { ctx: AppCtx; a: Agent; hasPosition: boolean }) { /* igual */ }
+
+function AgentActivity({ ctx, a }: { ctx: AppCtx; a: Agent }) { /* igual */ }</code></pre>
+<p>Notas de tipado que van a aparecer:</p>
+<ul>
+<li><code>width: a.gradPct</code> compila porque <code>gradPct</code> es `<code> </code>${number}%<code> </code>` (Task 3).</li>
+<li><code>nav(&quot;agent&quot;, { agentId: &quot;pkl&quot; })</code> en Recent de Search: igual.</li>
+<li>Si <code>Hair</code> o <code>money</code> quedan sin usar en <code>discover.tsx</code>, quitar ese import (tsc no lo exige, pero no dejamos imports muertos).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Copiar <code>follow.js</code> a <code>src/screens/follow.tsx</code></strong> con las Reglas de porte y estos cambios:</label></li>
+</ul>
+<pre><code class="language-ts">import { View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { AGENTS, KINDS, POSTS } from &quot;../mock/data&quot;;
+import { EmptyPanel, Segmented, StatGrid, T, Tag, Touch, TouchCard } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+
+export function ActivityScreen({ user, nav }: AppCtx) {
+  const empty = user === &quot;new&quot;;            // antes: S.user === &#39;new&#39;
+  // … resto igual
+}
+
+export function PostScreen({ S, nav }: AppCtx) { /* igual */ }
+
+export function AskScreen({ S, agent: a }: AppCtx) { /* igual */ }</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit</code></pre>
+<p>Expected: limpio. Si aparece un error de tipos, la causa esperada es una tupla sin <code>as const</code> o una clave de <code>Record</code> faltante; se corrige el tipo, <strong>no</strong> el JSX.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Comprobación de fidelidad de copy</strong></label></li>
+</ul>
+<pre><code class="language-bash">for f in discover follow; do
+  a=$(grep -o &quot;&#39;[^&#39;]*&#39;&quot; ../../.superpowers/pickler-mobile/src/screens/$f.js | wc -l)
+  b=$(grep -o &#39;&quot;[^&quot;]*&quot;&#39; src/screens/$f.tsx | wc -l)
+  echo &quot;$f: prototipo $a literales, port $b literales&quot;
+done</code></pre>
+<p>Expected: los conteos difieren como mucho en los imports cambiados (±6). Cualquier diferencia mayor se explica antes de seguir.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/discover.tsx src/screens/follow.tsx
+git commit -m &quot;feat(mobile): pantallas Market, Search, Agent, Activity, Post y Ask del prototipo&quot;</code></pre>
+<hr>
+<h3 id="task-7-pantallas-trade-y-wallet-access-passkey-real">Task 7: Pantallas Trade y Wallet access (passkey real)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/trade.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code>; <code>createAccount</code>, <code>signIn</code>, <code>describeError</code> de <code>../wallet/wallet</code>; <code>Phase</code>, <code>Mode</code> de <code>../store</code>; <code>money</code>, <code>quoteFor</code>, <code>sellQuoteFor</code>, <code>pill</code>; <code>KV</code>, <code>Segmented</code>, <code>T</code>, <code>Touch</code>; <code>C</code>.</li>
+<li>Produces: <code>TradeScreen(ctx: AppCtx)</code>, <code>SigninScreen(ctx: AppCtx)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Copiar <code>trade.js</code> a <code>src/screens/trade.tsx</code></strong> (Reglas de porte) y tipar <code>TradeScreen</code> así:</label></li>
+</ul>
+<pre><code class="language-ts">import { useState } from &quot;react&quot;;
+import { ActivityIndicator, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { money, pill, quoteFor, sellQuoteFor } from &quot;../mock/helpers&quot;;
+import type { Phase } from &quot;../store&quot;;
+import { KV, Segmented, T, Touch } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+import { createAccount, describeError, signIn } from &quot;../wallet/wallet&quot;;
+
+type Notice = { title: string; body: string; bd: string; bg: string; fg: string };
+type Result = { title: string; glyph: string; fg: string; bd: string; bg: string; body: string; rows: { label: string; value: string }[] };
+type Action = { label: string; bg: string; fg: string; bd: string; disabled?: boolean; go: () =&gt; void };
+type Row = { label: string; value: string; fg: string };
+
+export function TradeScreen(ctx: AppCtx) {
+  const { S, set, nav, agent: a, balance } = ctx;
+  // …
+  const notice: Notice | undefined = ({ /* igual */ } as Partial&lt;Record&lt;Phase, Notice&gt;&gt;)[p];
+  const result: Result | null = /* igual */;
+  const actions: Action[] = ({ /* igual */ } as Record&lt;Phase, Action[]&gt;)[p];
+  const quoteRows: Row[] = /* igual */;
+  // …
+  &lt;Segmented options={([[&quot;buy&quot;, &quot;Buy&quot;], [&quot;sell&quot;, &quot;Sell&quot;]] as const).map(([k, label]) =&gt; { /* igual */ })} /&gt;</code></pre>
+<p>Único cambio semántico en <code>TradeScreen</code> (Regla 4):</p>
+<pre><code class="language-ts">// antes:  { label: &#39;See your position&#39;, …, go: () =&gt; nav(&#39;position&#39;, { user: &#39;holder&#39; }) },
+// ahora:
+{ label: &quot;See your position&quot;, bg: C.lime, fg: C.onLime, bd: C.lime, go: () =&gt; nav(&quot;position&quot;, { mockHolder: true }) },</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Reemplazar <code>SigninScreen</code> por la versión real</strong></label></li>
+</ul>
+<pre><code class="language-tsx">export function SigninScreen({ S, agent: a, onWallet, finishSignin }: AppCtx) {
+  const [busy, setBusy] = useState&lt;&quot;create&quot; | &quot;signin&quot; | null&gt;(null);
+  const [error, setError] = useState(&quot;&quot;);
+  const off = busy !== null;
+
+  async function run(kind: &quot;create&quot; | &quot;signin&quot;) {
+    setBusy(kind);
+    setError(&quot;&quot;);
+    try {
+      const wallet = kind === &quot;create&quot; ? await createAccount() : await signIn();
+      onWallet(wallet);
+      finishSignin();
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    &lt;View style={{ padding: 20, paddingHorizontal: 16, gap: 14 }}&gt;
+      {S.resume ? (
+        &lt;View style={{ padding: 13, borderWidth: 1, borderColor: &quot;rgba(122,92,255,0.5)&quot;, backgroundColor: &quot;rgba(122,92,255,0.12)&quot;, borderRadius: 12 }}&gt;
+          &lt;T w={600} s={12.5} lh={1.4}&gt;Your purchase is being held&lt;/T&gt;
+          &lt;T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 3 }}&gt;250.00 AUSD of {a.tickerBare} ({a.name}) — you come straight back here after this step.&lt;/T&gt;
+        &lt;/View&gt;
+      ) : null}
+      &lt;T w={400} s={13.5} lh={1.5} color={C.dim}&gt;You need a wallet to hold AUSD and agent tokens. Reading the market, following agents and asking questions never require one.&lt;/T&gt;
+      &lt;Touch onPress={() =&gt; run(&quot;create&quot;)} disabled={off} style={{ paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: &quot;center&quot;, opacity: off &amp;&amp; busy !== &quot;create&quot; ? 0.5 : 1 }}&gt;
+        {busy === &quot;create&quot; ? &lt;ActivityIndicator color={C.onLime} /&gt; : &lt;T w={700} s={14.5} color={C.onLime}&gt;Create a wallet&lt;/T&gt;}
+      &lt;/Touch&gt;
+      &lt;Touch onPress={() =&gt; run(&quot;signin&quot;)} disabled={off} style={{ paddingVertical: 15, borderRadius: 14, borderWidth: 1, borderColor: C.hair2, alignItems: &quot;center&quot;, opacity: off &amp;&amp; busy !== &quot;signin&quot; ? 0.5 : 1 }}&gt;
+        {busy === &quot;signin&quot; ? &lt;ActivityIndicator color={C.ink} /&gt; : &lt;T w={700} s={14.5}&gt;I already have one&lt;/T&gt;}
+      &lt;/Touch&gt;
+      {error ? &lt;T w={400} s={12.5} lh={1.4} color={C.down}&gt;{error}&lt;/T&gt; : null}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>Cambios respecto al prototipo, y solo estos: la tarjeta violeta se muestra solo con <code>S.resume</code> (§3.1 del spec); los botones llaman a passkey real y muestran spinner; hay línea de error; se elimina el párrafo &quot;Dependency: …&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit</code></pre>
+<p>Expected: limpio.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/trade.tsx
+git commit -m &quot;feat(mobile): pantalla Trade del prototipo y Wallet access con passkey real&quot;</code></pre>
+<hr>
+<h3 id="task-8-pantallas-own-wallet-y-deposit-con-datos-reales">Task 8: Pantallas Own (Wallet y Deposit con datos reales)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/own.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code>; <code>accountAddress</code> de <code>../account</code>; <code>EXPLORER_TX_URL</code>, <code>MON_FAUCET_URL</code>, <code>formatMon</code> de <code>../config/chain</code>; <code>money</code>; <code>AgentId</code>; <code>KV</code>, <code>StatGrid</code>, <code>EmptyPanel</code>, <code>TouchCard</code>, <code>T</code>, <code>Touch</code>; <code>C</code>; <code>expo-clipboard</code>.</li>
+<li>Produces: <code>PortfolioScreen</code>, <code>PositionScreen</code>, <code>WalletScreen</code>, <code>DepositScreen</code>, <code>WithdrawScreen</code>, todos <code>(ctx: AppCtx)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Copiar <code>own.js</code> a <code>src/screens/own.tsx</code></strong> (Reglas de porte). Encabezado e imports:</label></li>
+</ul>
+<pre><code class="language-ts">import * as Clipboard from &quot;expo-clipboard&quot;;
+import { useState } from &quot;react&quot;;
+import { ActivityIndicator, Linking, View } from &quot;react-native&quot;;
+import { accountAddress } from &quot;../account&quot;;
+import { EXPLORER_TX_URL, formatMon, MON_FAUCET_URL } from &quot;../config/chain&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import type { AgentId } from &quot;../mock/data&quot;;
+import { money } from &quot;../mock/helpers&quot;;
+import { EmptyPanel, KV, StatGrid, T, Touch, TouchCard } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;</code></pre>
+<p><code>PortfolioScreen({ holds, balance, nav }: AppCtx)</code>, <code>PositionScreen({ agent: a, nav }: AppCtx)</code> y <code>WithdrawScreen({ balance, nav }: AppCtx)</code> quedan <strong>idénticos</strong>; en Portfolio el arreglo <code>positions</code> se tipa con <code>agentId: AgentId</code> (declarar <code>type PositionRow = { initial: string; name: string; ticker: string; qty: string; avg: string; value: string; pl: string; plFg: string; agentId: AgentId }</code> y <code>const positions: PositionRow[] = empty ? [] : [ /* igual */ ]</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Reemplazar <code>WalletScreen</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">type Move = { kind: string; amount: string; fg: string; when: string; ref: string; status: string; stFg: string };
+
+const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: &quot;center&quot; } as const;
+const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
+
+export function WalletScreen({ balance, nav, account, treasury, lock, signOut, resetTo }: AppCtx) {
+  const available = treasury.balances ? money(balance) + &quot; AUSD&quot; : &quot;—&quot;;
+  const pending = balance === 0
+    ? &quot;Nothing pending. Nothing has ever arrived in this wallet.&quot;
+    : &quot;50.00 AUSD pending · a deposit is still confirming&quot;;
+  const moves: Move[] = [
+    { kind: &quot;Deposit&quot;, amount: &quot;+500.00 AUSD&quot;, fg: C.up, when: &quot;Sep 15, 09:20&quot;, ref: &quot;0x7ac4…e0b3&quot;, status: &quot;Confirming&quot;, stFg: C.warn },
+    { kind: &quot;Bought PKL&quot;, amount: &quot;−250.00 AUSD&quot;, fg: C.ink, when: &quot;Sep 15, 09:42&quot;, ref: &quot;0x4d1a…77c&quot;, status: &quot;Complete&quot;, stFg: C.up },
+    { kind: &quot;Sold MOSS&quot;, amount: &quot;+58.20 AUSD&quot;, fg: C.up, when: &quot;Aug 02, 16:10&quot;, ref: &quot;0x88fd…1a4&quot;, status: &quot;Complete&quot;, stFg: C.up },
+    { kind: &quot;Withdrawal&quot;, amount: &quot;−120.00 AUSD&quot;, fg: C.ink, when: &quot;Jul 28, 10:02&quot;, ref: &quot;0x12cc…903&quot;, status: &quot;Complete&quot;, stFg: C.up },
+  ];
+  const txHash = treasury.notice.split(&quot;: &quot;)[1];
+  const unlocked = account.status === &quot;unlocked&quot;;
+
+  return (
+    &lt;View style={{ padding: 14, paddingHorizontal: 16, paddingBottom: 20, gap: 13 }}&gt;
+      &lt;View style={{ padding: 16, borderWidth: 1, borderColor: C.hair, borderRadius: 16, backgroundColor: C.surf }}&gt;
+        &lt;T w={400} s={11.5} color={C.mute}&gt;Available to spend&lt;/T&gt;
+        &lt;T w={800} s={30} lh={1} ls={-0.04} style={{ marginTop: 8 }}&gt;{available}&lt;/T&gt;
+        &lt;T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 8 }}&gt;{pending}&lt;/T&gt;
+      &lt;/View&gt;
+
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Touch onPress={() =&gt; nav(&quot;deposit&quot;)} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: &quot;center&quot; }}&gt;
+          &lt;T w={700} s={13.5} color={C.onLime}&gt;Deposit&lt;/T&gt;
+        &lt;/Touch&gt;
+        &lt;Touch onPress={() =&gt; nav(&quot;withdraw&quot;)} style={secondaryBtn}&gt;
+          &lt;T w={700} s={13.5}&gt;Withdraw&lt;/T&gt;
+        &lt;/Touch&gt;
+      &lt;/View&gt;
+
+      &lt;View&gt;
+        &lt;T w={500} s={11} mono color={C.mute} style={{ marginBottom: 7 }}&gt;TESTNET&lt;/T&gt;
+        &lt;View style={{ gap: 8 }}&gt;
+          &lt;View style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf, flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, alignItems: &quot;baseline&quot; }}&gt;
+            &lt;T w={600} s={13}&gt;MON (gas)&lt;/T&gt;
+            &lt;T w={500} s={13} mono&gt;{treasury.balances ? formatMon(treasury.balances.mon) : &quot;—&quot;}&lt;/T&gt;
+          &lt;/View&gt;
+          &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+            &lt;Touch onPress={() =&gt; { void treasury.getTestAusd(); }} disabled={treasury.busy} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: &quot;center&quot;, opacity: treasury.busy ? 0.6 : 1 }}&gt;
+              {treasury.busy ? &lt;ActivityIndicator color={C.onLime} /&gt; : &lt;T w={700} s={13.5} color={C.onLime}&gt;Get test AUSD&lt;/T&gt;}
+            &lt;/Touch&gt;
+            &lt;Touch onPress={() =&gt; { void Linking.openURL(MON_FAUCET_URL); }} style={secondaryBtn}&gt;
+              &lt;T w={700} s={13.5}&gt;Get test MON&lt;/T&gt;
+            &lt;/Touch&gt;
+          &lt;/View&gt;
+          &lt;Touch onPress={() =&gt; { void treasury.refresh(); }} style={secondaryBtn}&gt;
+            &lt;T w={600} s={13}&gt;Refresh&lt;/T&gt;
+          &lt;/Touch&gt;
+          {treasury.rpcError ? (
+            &lt;View style={{ paddingVertical: 11, paddingHorizontal: 13, borderWidth: 1, borderColor: &quot;rgba(245,195,91,0.5)&quot;, backgroundColor: &quot;rgba(245,195,91,0.1)&quot;, borderRadius: 12, gap: 8 }}&gt;
+              &lt;T w={400} s={12} lh={1.4} color={C.warn}&gt;{treasury.rpcError}&lt;/T&gt;
+              &lt;Touch onPress={() =&gt; { void treasury.refresh(); }} style={{ alignSelf: &quot;flex-start&quot;, ...chipBtn }}&gt;
+                &lt;T w={600} s={12}&gt;Retry&lt;/T&gt;
+              &lt;/Touch&gt;
+            &lt;/View&gt;
+          ) : null}
+          {treasury.notice ? (
+            &lt;Touch onPress={() =&gt; { if (txHash) void Linking.openURL(EXPLORER_TX_URL(txHash)); }}&gt;
+              &lt;T w={400} s={11.5} lh={1.4} mono color={C.up}&gt;{treasury.notice}&lt;/T&gt;
+            &lt;/Touch&gt;
+          ) : null}
+          {treasury.error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{treasury.error}&lt;/T&gt; : null}
+        &lt;/View&gt;
+      &lt;/View&gt;
+
+      &lt;View&gt;
+        &lt;T w={500} s={11} mono color={C.mute} style={{ marginBottom: 7 }}&gt;MOVEMENTS&lt;/T&gt;
+        &lt;View style={{ gap: 6 }}&gt;
+          {moves.map((m, i) =&gt; (
+            &lt;View key={i} style={{ padding: 12, borderWidth: 1, borderColor: C.hairSoft, borderRadius: 11, backgroundColor: C.surf }}&gt;
+              &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, gap: 10, alignItems: &quot;baseline&quot; }}&gt;
+                &lt;T w={600} s={13} lh={1.2}&gt;{m.kind}&lt;/T&gt;
+                &lt;T w={500} s={13} lh={1.2} mono color={m.fg}&gt;{m.amount}&lt;/T&gt;
+              &lt;/View&gt;
+              &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, gap: 10, marginTop: 5 }}&gt;
+                &lt;T w={400} s={11} lh={1.3} mono color={C.mute}&gt;{m.when} · {m.ref}&lt;/T&gt;
+                &lt;T w={500} s={11} lh={1.3} color={m.stFg}&gt;{m.status}&lt;/T&gt;
+              &lt;/View&gt;
+            &lt;/View&gt;
+          ))}
+        &lt;/View&gt;
+      &lt;/View&gt;
+
+      &lt;View&gt;
+        &lt;T w={500} s={11} mono color={C.mute} style={{ marginBottom: 7 }}&gt;SESSION&lt;/T&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+          &lt;T w={400} s={12.5} color={C.mute} style={{ flex: 1 }}&gt;{unlocked ? &quot;Unlocked&quot; : &quot;Locked&quot;}&lt;/T&gt;
+          {unlocked ? (
+            &lt;Touch onPress={lock} style={chipBtn}&gt;
+              &lt;T w={600} s={12.5}&gt;Lock&lt;/T&gt;
+            &lt;/Touch&gt;
+          ) : null}
+          &lt;Touch onPress={() =&gt; { void signOut().then(() =&gt; resetTo(&quot;market&quot;)); }} style={chipBtn}&gt;
+            &lt;T w={600} s={12.5}&gt;Sign out&lt;/T&gt;
+          &lt;/Touch&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Reemplazar <code>DepositScreen</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">export function DepositScreen({ S, nav, account }: AppCtx) {
+  const address = accountAddress(account) ?? &quot;&quot;;
+  const [copied, setCopied] = useState(false);
+
+  return (
+    &lt;View style={{ padding: 16, gap: 13 }}&gt;
+      {S.resume ? (
+        &lt;View style={{ paddingVertical: 11, paddingHorizontal: 13, borderWidth: 1, borderColor: &quot;rgba(122,92,255,0.5)&quot;, backgroundColor: &quot;rgba(122,92,255,0.12)&quot;, borderRadius: 12 }}&gt;
+          &lt;T w={600} s={12.5} lh={1.4}&gt;Deposit to finish your purchase&lt;/T&gt;
+          &lt;T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 3 }}&gt;250.00 AUSD of PKL (Pickle) — we keep it for you.&lt;/T&gt;
+        &lt;/View&gt;
+      ) : null}
+      &lt;StatGrid items={[{ label: &quot;Asset&quot;, value: &quot;AUSD&quot;, fg: C.ink }, { label: &quot;Network&quot;, value: &quot;Monad&quot;, fg: C.ink }]} /&gt;
+      &lt;View style={{ height: 150, borderWidth: 1, borderColor: C.hair2, borderStyle: &quot;dashed&quot;, borderRadius: 14, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, backgroundColor: C.surf }}&gt;
+        &lt;T w={500} s={11.5} mono color={C.mute}&gt;QR code · deposit address&lt;/T&gt;
+      &lt;/View&gt;
+      &lt;View style={{ padding: 13, borderWidth: 1, borderColor: C.hair, borderRadius: 13, backgroundColor: C.surf }}&gt;
+        &lt;T w={400} s={11} color={C.mute}&gt;Your deposit address&lt;/T&gt;
+        &lt;T w={500} s={12.5} lh={1.45} mono style={{ marginTop: 6 }}&gt;{address}&lt;/T&gt;
+      &lt;/View&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Touch onPress={() =&gt; { void Clipboard.setStringAsync(address).then(() =&gt; setCopied(true)); }} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: &quot;center&quot; }}&gt;
+          &lt;T w={700} s={13.5} color={C.onLime}&gt;{copied ? &quot;Copied&quot; : &quot;Copy address&quot;}&lt;/T&gt;
+        &lt;/Touch&gt;
+        &lt;Touch onPress={() =&gt; nav(&quot;trade&quot;, { phase: &quot;quote&quot;, resume: true })} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: &quot;center&quot; }}&gt;
+          &lt;T w={700} s={13.5}&gt;I&#39;ve sent it&lt;/T&gt;
+        &lt;/Touch&gt;
+      &lt;/View&gt;
+      &lt;T w={400} s={11.5} lh={1.45} color={C.mute}&gt;Only AUSD on Monad arrives here. Card and bank transfer are not assumed to exist. Whether a gas asset is also needed is still open.&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>Cambios respecto al prototipo, y solo estos: dirección real; &quot;Copy address&quot; copia y se queda (muestra &quot;Copied&quot;); &quot;I&#39;ve sent it&quot; pierde <code>user: &#39;funded&#39;</code> (Regla 4).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit</code></pre>
+<p>Expected: limpio.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/own.tsx
+git commit -m &quot;feat(mobile): pantallas Own del prototipo; Wallet y Deposit con saldo, faucet y dirección reales&quot;</code></pre>
+<hr>
+<h3 id="task-9-shell-y-panel-de-dev">Task 9: Shell y panel de dev</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/Shell.tsx</code>, <code>apps/mobile/src/DevControls.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code>; las 13 pantallas de las Tasks 6–8; <code>pill</code>; <code>T</code>, <code>Touch</code>, <code>Hair</code>; <code>C</code>; tipos <code>Screen</code>, <code>Phase</code>, <code>Patch</code> de <code>../store</code>.</li>
+<li>Produces: <code>Shell({ ctx }: { ctx: AppCtx })</code>, <code>DevControls({ visible, onClose, ctx })</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir <code>src/Shell.tsx</code></strong></label></li>
+</ul>
+<p>Port de la parte superior de <code>Shell.js</code>. Cambios respecto al prototipo: sin barra falsa &quot;9:41&quot;; el ⚙ pasa al header como acción solo en <code>__DEV__</code>; Wallet/Portfolio de la tab bar y el botón Buy usan <code>requireAccount</code>; <code>ControlsModal</code> vive en <code>DevControls.tsx</code>.</p>
+<pre><code class="language-tsx">import { type ReactElement, useState } from &quot;react&quot;;
+import { Image, ScrollView, View } from &quot;react-native&quot;;
+import { SafeAreaView } from &quot;react-native-safe-area-context&quot;;
+import type { AppCtx } from &quot;./ctx&quot;;
+import { DevControls } from &quot;./DevControls&quot;;
+import { pill } from &quot;./mock/helpers&quot;;
+import { AgentScreen, MarketScreen, SearchScreen } from &quot;./screens/discover&quot;;
+import { ActivityScreen, AskScreen, PostScreen } from &quot;./screens/follow&quot;;
+import { DepositScreen, PortfolioScreen, PositionScreen, WalletScreen, WithdrawScreen } from &quot;./screens/own&quot;;
+import { SigninScreen, TradeScreen } from &quot;./screens/trade&quot;;
+import type { Screen } from &quot;./store&quot;;
+import { T, Touch } from &quot;./ui/primitives&quot;;
+import { C } from &quot;./ui/theme&quot;;
+
+const SCREENS: Record&lt;Screen, (ctx: AppCtx) =&gt; ReactElement&gt; = {
+  market: MarketScreen, search: SearchScreen, agent: AgentScreen,
+  trade: TradeScreen, signin: SigninScreen,
+  activity: ActivityScreen, post: PostScreen, ask: AskScreen,
+  portfolio: PortfolioScreen, position: PositionScreen, wallet: WalletScreen,
+  deposit: DepositScreen, withdraw: WithdrawScreen,
+};
+
+const BOTTOM_TABS: readonly [Screen, string][] = [[&quot;market&quot;, &quot;Market&quot;], [&quot;activity&quot;, &quot;Activity&quot;], [&quot;portfolio&quot;, &quot;Portfolio&quot;], [&quot;wallet&quot;, &quot;Wallet&quot;]];
+
+type HeaderAction = { label: string; active?: boolean; go: () =&gt; void };
+
+export function Shell({ ctx }: { ctx: AppCtx }) {
+  const { S, set, nav, back, requireAccount, agent, balance, tradeHolds: holds } = ctx;
+  const [controls, setControls] = useState(false);
+  const Current = SCREENS[ctx.scr];
+
+  const headerActions: HeaderAction[] = S.screen === &quot;market&quot;
+    ? [{ label: &quot;★&quot;, go: () =&gt; nav(&quot;search&quot;) }, { label: &quot;Alerts&quot;, go: () =&gt; nav(&quot;activity&quot;) }]
+    : S.screen === &quot;agent&quot;
+      ? [{ label: &quot;★&quot;, active: S.following, go: () =&gt; set({ following: !S.following }) }]
+      : [];
+  if (__DEV__) headerActions.push({ label: &quot;⚙&quot;, go: () =&gt; setControls(true) });
+
+  return (
+    &lt;SafeAreaView style={{ flex: 1, backgroundColor: C.phone }}&gt;
+      {/* app header */}
+      &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: C.hairSoft }}&gt;
+        {ctx.canBack ? (
+          &lt;Touch onPress={back} style={{ width: 32, height: 32, borderRadius: 999, borderWidth: 1, borderColor: C.hair2, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+            &lt;T w={500} s={14}&gt;←&lt;/T&gt;
+          &lt;/Touch&gt;
+        ) : null}
+        {S.screen === &quot;market&quot; ? (
+          &lt;Image source={require(&quot;../assets/pickler-mark.png&quot;)} style={{ width: 26, height: 26 }} resizeMode=&quot;contain&quot; /&gt;
+        ) : null}
+        &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+          &lt;T w={800} s={17} lh={1.15} ls={-0.03} numberOfLines={1}&gt;{ctx.headerTitle}&lt;/T&gt;
+          &lt;T w={400} s={11.5} lh={1.2} color={C.mute} numberOfLines={1} style={{ marginTop: 2 }}&gt;{ctx.headerSub}&lt;/T&gt;
+        &lt;/View&gt;
+        {headerActions.map((a, i) =&gt; {
+          const p = pill(!!a.active, a.active ? C.lime : undefined);
+          return (
+            &lt;Touch key={i} onPress={a.go} style={{ height: 30, paddingHorizontal: 11, borderRadius: 999, borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+              &lt;T w={600} s={12} color={p.fg}&gt;{a.label}&lt;/T&gt;
+            &lt;/Touch&gt;
+          );
+        })}
+      &lt;/View&gt;
+
+      {/* scroll body */}
+      &lt;ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}&gt;
+        &lt;Current {...ctx} /&gt;
+      &lt;/ScrollView&gt;
+
+      {/* agent sticky buy bar */}
+      {ctx.showAgentBar ? (
+        &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, backgroundColor: &quot;rgba(11,11,14,0.98)&quot;, borderTopWidth: 1, borderTopColor: C.hair }}&gt;
+          &lt;Touch onPress={() =&gt; requireAccount(&quot;trade&quot;, { mode: &quot;buy&quot;, phase: balance === 0 ? &quot;insufficient&quot; : &quot;quote&quot; })} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: &quot;center&quot; }}&gt;
+            &lt;T w={700} s={14} color={C.onLime}&gt;Buy {agent.tickerBare}&lt;/T&gt;
+          &lt;/Touch&gt;
+          &lt;Touch onPress={holds ? () =&gt; nav(&quot;trade&quot;, { mode: &quot;sell&quot;, phase: &quot;quote&quot; }) : undefined} disabled={!holds} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: holds ? C.hair2 : &quot;rgba(243,241,236,0.12)&quot;, alignItems: &quot;center&quot; }}&gt;
+            &lt;T w={700} s={14} color={holds ? C.ink : C.disabled}&gt;Sell&lt;/T&gt;
+          &lt;/Touch&gt;
+        &lt;/View&gt;
+      ) : null}
+
+      {/* bottom tab bar */}
+      {ctx.showTabs ? (
+        &lt;View style={{ flexDirection: &quot;row&quot;, borderTopWidth: 1, borderTopColor: C.hairSoft, backgroundColor: C.phone, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 6 }}&gt;
+          {BOTTOM_TABS.map(([k, label]) =&gt; {
+            const on = S.screen === k || (k === &quot;portfolio&quot; &amp;&amp; S.screen === &quot;position&quot;) || (k === &quot;market&quot; &amp;&amp; S.screen === &quot;search&quot;);
+            const fg = on ? C.lime : C.mute;
+            return (
+              &lt;Touch key={k} onPress={() =&gt; requireAccount(k)} style={{ flex: 1, alignItems: &quot;center&quot;, gap: 5, paddingVertical: 6 }}&gt;
+                &lt;View style={{ width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, borderColor: fg, backgroundColor: on ? C.lime : &quot;transparent&quot; }} /&gt;
+                &lt;T w={600} s={11} color={fg}&gt;{label}&lt;/T&gt;
+              &lt;/Touch&gt;
+            );
+          })}
+        &lt;/View&gt;
+      ) : null}
+
+      {__DEV__ ? &lt;DevControls visible={controls} onClose={() =&gt; setControls(false)} ctx={ctx} /&gt; : null}
+    &lt;/SafeAreaView&gt;
+  );
+}</code></pre>
+<p>(<code>requireAccount(&quot;market&quot;)</code> y <code>requireAccount(&quot;activity&quot;)</code> navegan directo porque no están en <code>GATED</code>; así la tab bar usa una sola función.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Escribir <code>src/DevControls.tsx</code></strong></label></li>
+</ul>
+<p>Port de <code>ControlsModal</code> y sus constantes. Cambios: los botones de <em>user state</em> se reducen a dos (funded/holder) que solo tocan <code>mockHolder</code>, con una línea que aclara que cuenta y saldo son reales; los saltos a pantallas con cuenta pasan por <code>requireAccount</code>; los patches <code>user:</code> de las journeys se convierten según la Regla 4; &quot;Kite&quot; y &quot;dataCase&quot; usan <code>nav</code> en vez de <code>set</code> con <code>stack</code>.</p>
+<pre><code class="language-tsx">import { Modal, ScrollView, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;./ctx&quot;;
+import { pill } from &quot;./mock/helpers&quot;;
+import type { Patch, Phase, Screen } from &quot;./store&quot;;
+import { Hair, T, Touch } from &quot;./ui/primitives&quot;;
+import { C } from &quot;./ui/theme&quot;;
+
+const SCREEN_GROUPS: readonly [string, readonly [Screen, string][]][] = [
+  [&quot;Discover&quot;, [[&quot;market&quot;, &quot;Market&quot;], [&quot;search&quot;, &quot;Search &amp; filters&quot;], [&quot;agent&quot;, &quot;Agent&quot;]]],
+  [&quot;Trade&quot;, [[&quot;trade&quot;, &quot;Buy / Sell&quot;], [&quot;signin&quot;, &quot;Wallet access&quot;]]],
+  [&quot;Follow&quot;, [[&quot;activity&quot;, &quot;Activity&quot;], [&quot;post&quot;, &quot;Activity detail&quot;], [&quot;ask&quot;, &quot;Ask agent&quot;]]],
+  [&quot;Own&quot;, [[&quot;portfolio&quot;, &quot;Portfolio&quot;], [&quot;position&quot;, &quot;Position&quot;], [&quot;wallet&quot;, &quot;Wallet&quot;], [&quot;deposit&quot;, &quot;Deposit&quot;], [&quot;withdraw&quot;, &quot;Withdraw&quot;]]],
+];
+
+const PHASES: readonly [Phase, string][] = [
+  [&quot;quoting&quot;, &quot;Quoting&quot;], [&quot;quote&quot;, &quot;Quote ready&quot;], [&quot;insufficient&quot;, &quot;No balance&quot;], [&quot;expired&quot;, &quot;Quote expired&quot;],
+  [&quot;confirm&quot;, &quot;Confirm&quot;], [&quot;sent&quot;, &quot;Processing&quot;], [&quot;done&quot;, &quot;Completed&quot;], [&quot;failed&quot;, &quot;Failed&quot;], [&quot;unknown&quot;, &quot;Unknown&quot;],
+];
+
+type Step = { label: string; screen: Screen; patch: Patch };
+type Journey = { title: string; note: string; steps: Step[] };
+const J = (label: string, screen: Screen, patch: Patch = {}): Step =&gt; ({ label, screen, patch });
+
+const JOURNEYS: Journey[] = [
+  { title: &quot;New user buys&quot;, note: &quot;Agent and amount survive wallet access and a deposit.&quot;, steps: [
+    J(&quot;Market&quot;, &quot;market&quot;), J(&quot;Agent&quot;, &quot;agent&quot;, { agentId: &quot;pkl&quot;, tab: &quot;token&quot; }),
+    J(&quot;Buy&quot;, &quot;trade&quot;, { mode: &quot;buy&quot;, phase: &quot;insufficient&quot; }), J(&quot;Wallet access&quot;, &quot;signin&quot;, { resume: true }),
+    J(&quot;Deposit&quot;, &quot;deposit&quot;, { resume: true }), J(&quot;Quote&quot;, &quot;trade&quot;, { phase: &quot;quote&quot;, resume: true }),
+    J(&quot;Complete&quot;, &quot;trade&quot;, { phase: &quot;done&quot; }), J(&quot;Position&quot;, &quot;position&quot;, { mockHolder: true, agentId: &quot;pkl&quot; })] },
+  { title: &quot;User with balance buys&quot;, note: &quot;The short path. Four taps from market to portfolio.&quot;, steps: [
+    J(&quot;Market&quot;, &quot;market&quot;), J(&quot;Agent&quot;, &quot;agent&quot;, { agentId: &quot;pkl&quot;, tab: &quot;token&quot; }),
+    J(&quot;Quote&quot;, &quot;trade&quot;, { phase: &quot;quote&quot;, mode: &quot;buy&quot; }), J(&quot;Confirm&quot;, &quot;trade&quot;, { phase: &quot;confirm&quot; }),
+    J(&quot;Portfolio&quot;, &quot;portfolio&quot;, { mockHolder: true })] },
+  { title: &quot;User follows activity&quot;, note: &quot;Following and asking never require buying.&quot;, steps: [
+    J(&quot;Activity&quot;, &quot;activity&quot;), J(&quot;Detail&quot;, &quot;post&quot;, { postId: &quot;p1&quot; }), J(&quot;Ask agent&quot;, &quot;ask&quot;, { agentId: &quot;pkl&quot; }),
+    J(&quot;Agent&quot;, &quot;agent&quot;, { agentId: &quot;pkl&quot;, tab: &quot;activity&quot; }), J(&quot;Buy · optional&quot;, &quot;trade&quot;, { phase: &quot;quote&quot;, mode: &quot;buy&quot; })] },
+  { title: &quot;User sells&quot;, note: &quot;Ends in the wallet, where the AUSD actually lands.&quot;, steps: [
+    J(&quot;Portfolio&quot;, &quot;portfolio&quot;, { mockHolder: true }), J(&quot;Position&quot;, &quot;position&quot;, { mockHolder: true, agentId: &quot;pkl&quot; }),
+    J(&quot;Sell&quot;, &quot;trade&quot;, { mode: &quot;sell&quot;, phase: &quot;quote&quot;, mockHolder: true }), J(&quot;Confirm&quot;, &quot;trade&quot;, { mode: &quot;sell&quot;, phase: &quot;confirm&quot;, mockHolder: true }),
+    J(&quot;Wallet&quot;, &quot;wallet&quot;, { mockHolder: true })] },
+  { title: &quot;User audits an agent&quot;, note: &quot;From a notification to the evidence behind one call.&quot;, steps: [
+    J(&quot;Notification&quot;, &quot;activity&quot;), J(&quot;The activity&quot;, &quot;post&quot;, { postId: &quot;p4&quot; }),
+    J(&quot;Outcome&quot;, &quot;post&quot;, { postId: &quot;p4&quot; }), J(&quot;Track record&quot;, &quot;agent&quot;, { agentId: &quot;pkl&quot;, tab: &quot;activity&quot; })] },
+];
+
+function RailLabel({ children, style }: { children: string; style?: { marginBottom?: number } }) {
+  return &lt;T w={500} s={10.5} mono color={C.mute} style={[{ marginBottom: 9 }, style]}&gt;{children}&lt;/T&gt;;
+}
+
+function Chip({ label, on, onLime, onPress }: { label: string; on: boolean; onLime?: boolean; onPress: () =&gt; void }) {
+  const p = pill(on, onLime ? C.lime : undefined);
+  return (
+    &lt;Touch onPress={onPress} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg }}&gt;
+      &lt;T w={600} s={11.5} color={p.fg}&gt;{label}&lt;/T&gt;
+    &lt;/Touch&gt;
+  );
+}
+
+export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClose: () =&gt; void; ctx: AppCtx }) {
+  const { S, set, nav, requireAccount, hasAccount } = ctx;
+  const go = (screen: Screen, patch?: Patch) =&gt; { requireAccount(screen, patch); onClose(); };
+  const holderBtn = (on: boolean, label: string) =&gt; {
+    const p = pill(S.mockHolder === on);
+    return (
+      &lt;Touch key={label} onPress={() =&gt; set({ mockHolder: on })} style={{ borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 11, marginBottom: 5 }}&gt;
+        &lt;T w={600} s={12.5} lh={1.3} color={p.fg}&gt;{label}&lt;/T&gt;
+      &lt;/Touch&gt;
+    );
+  };
+  const kiteOn = pill(S.agentId === &quot;kite&quot;);
+  const caseOn = pill(S.dataCase !== &quot;normal&quot;);
+  const nextCase = S.dataCase === &quot;normal&quot; ? &quot;loading&quot; : S.dataCase === &quot;loading&quot; ? &quot;empty&quot; : S.dataCase === &quot;empty&quot; ? &quot;stale&quot; : &quot;normal&quot;;
+
+  return (
+    &lt;Modal visible={visible} transparent animationType=&quot;slide&quot; onRequestClose={onClose}&gt;
+      &lt;View style={{ flex: 1, backgroundColor: &quot;rgba(0,0,0,0.6)&quot;, justifyContent: &quot;flex-end&quot; }}&gt;
+        &lt;Touch onPress={onClose} style={{ flex: 1 }}&gt;&lt;View /&gt;&lt;/Touch&gt;
+        &lt;View style={{ backgroundColor: C.panel, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: C.hair, padding: 18, paddingBottom: 28, maxHeight: &quot;85%&quot; }}&gt;
+          &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, alignItems: &quot;center&quot;, marginBottom: 14 }}&gt;
+            &lt;T w={800} s={18} ls={-0.03}&gt;Prototype controls&lt;/T&gt;
+            &lt;Touch onPress={onClose}&gt;&lt;T w={600} s={13} color={C.mute}&gt;Close&lt;/T&gt;&lt;/Touch&gt;
+          &lt;/View&gt;
+          &lt;ScrollView showsVerticalScrollIndicator={false}&gt;
+            &lt;RailLabel&gt;USER STATE&lt;/RailLabel&gt;
+            &lt;T w={400} s={11.5} lh={1.4} color={C.mute} style={{ marginBottom: 9 }}&gt;
+              {hasAccount ? &quot;Account and AUSD balance are real. Positions below are example data.&quot; : &quot;No account yet: Wallet, Portfolio and Buy will ask for access.&quot;}
+            &lt;/T&gt;
+            {holderBtn(false, &quot;Funded · no positions&quot;)}
+            {holderBtn(true, &quot;Holder · 4,820 PKL example position&quot;)}
+            &lt;Touch onPress={() =&gt; { nav(&quot;agent&quot;, { agentId: &quot;kite&quot;, tab: &quot;activity&quot; }); onClose(); }} style={{ borderWidth: 1, borderColor: kiteOn.bd, backgroundColor: kiteOn.bg, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 11, marginBottom: 5 }}&gt;
+              &lt;T w={600} s={12.5} color={kiteOn.fg}&gt;Agent with no history (Kite)&lt;/T&gt;
+            &lt;/Touch&gt;
+            &lt;Touch onPress={() =&gt; { nav(&quot;market&quot;, { dataCase: nextCase }); onClose(); }} style={{ borderWidth: 1, borderColor: caseOn.bd, backgroundColor: caseOn.bg, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 11 }}&gt;
+              &lt;T w={600} s={12.5} color={caseOn.fg}&gt;Market: no results / loading / stale (now: {S.dataCase})&lt;/T&gt;
+            &lt;/Touch&gt;
+
+            &lt;Hair style={{ marginVertical: 16 }} /&gt;
+            &lt;RailLabel&gt;SCREENS&lt;/RailLabel&gt;
+            &lt;View style={{ gap: 11 }}&gt;
+              {SCREEN_GROUPS.map(([title, items]) =&gt; (
+                &lt;View key={title}&gt;
+                  &lt;T w={700} s={11} color={C.mute} style={{ marginBottom: 6 }}&gt;{title}&lt;/T&gt;
+                  &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 5 }}&gt;
+                    {items.map(([k, label]) =&gt; &lt;Chip key={k} label={label} on={S.screen === k} onPress={() =&gt; go(k)} /&gt;)}
+                  &lt;/View&gt;
+                &lt;/View&gt;
+              ))}
+            &lt;/View&gt;
+
+            &lt;Hair style={{ marginVertical: 16 }} /&gt;
+            &lt;RailLabel style={{ marginBottom: 4 }}&gt;TRANSACTION STATES&lt;/RailLabel&gt;
+            &lt;T w={400} s={11.5} lh={1.4} color={C.mute} style={{ marginBottom: 9 }}&gt;The nine required states of one shared buy/sell flow.&lt;/T&gt;
+            &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 5 }}&gt;
+              {PHASES.map(([k, label]) =&gt; (
+                &lt;Chip key={k} label={label} on={S.screen === &quot;trade&quot; &amp;&amp; S.phase === k} onLime={k === &quot;done&quot;}
+                  onPress={() =&gt; go(&quot;trade&quot;, { phase: k, mode: k === &quot;insufficient&quot; ? &quot;buy&quot; : S.mode })} /&gt;
+              ))}
+            &lt;/View&gt;
+
+            &lt;Hair style={{ marginVertical: 16 }} /&gt;
+            &lt;RailLabel&gt;THE FIVE JOURNEYS · tap any step&lt;/RailLabel&gt;
+            &lt;View style={{ gap: 8 }}&gt;
+              {JOURNEYS.map((j) =&gt; (
+                &lt;View key={j.title} style={{ padding: 12, borderWidth: 1, borderColor: C.hair, borderRadius: 12, backgroundColor: C.surf }}&gt;
+                  &lt;T w={700} s={13} lh={1.2}&gt;{j.title}&lt;/T&gt;
+                  &lt;T w={400} s={11.5} lh={1.45} color={C.mute} style={{ marginTop: 3, marginBottom: 8 }}&gt;{j.note}&lt;/T&gt;
+                  &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 5 }}&gt;
+                    {j.steps.map((st, i) =&gt; (
+                      &lt;Touch key={i} onPress={() =&gt; go(st.screen, st.patch)} style={{ paddingVertical: 7, paddingHorizontal: 11, borderRadius: 9, borderWidth: 1, borderColor: C.hair, backgroundColor: C.chip }}&gt;
+                        &lt;T w={600} s={12}&gt;{st.label}&lt;/T&gt;
+                      &lt;/Touch&gt;
+                    ))}
+                  &lt;/View&gt;
+                &lt;/View&gt;
+              ))}
+            &lt;/View&gt;
+          &lt;/ScrollView&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+    &lt;/Modal&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: tsc</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit</code></pre>
+<p>Expected: limpio. (<code>__DEV__</code> viene de los tipos de React Native.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/Shell.tsx src/DevControls.tsx
+git commit -m &quot;feat(mobile): Shell del prototipo con gate de cuenta y panel de dev solo en __DEV__&quot;</code></pre>
+<hr>
+<h3 id="task-10-conectar-apptsx-borrar-la-ui-vieja-y-verificar-en-simulador">Task 10: Conectar <code>App.tsx</code>, borrar la UI vieja y verificar en simulador</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/App.tsx</code>, <code>apps/mobile/src/ui/theme.ts</code>, <code>apps/mobile/README.md</code></li>
+<li>Delete: <code>apps/mobile/src/screens/Welcome.tsx</code>, <code>apps/mobile/src/screens/Home.tsx</code>, <code>apps/mobile/src/ui/Button.tsx</code>, <code>apps/mobile/src/ui/Field.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>useFonts</code> de <code>expo-font</code>; fuentes de <code>@expo-google-fonts/manrope</code> y <code>@expo-google-fonts/jetbrains-mono</code>; <code>useAccount</code>, <code>useTreasury</code>, <code>useAppStore</code>, <code>ausdToNumber</code>, <code>Shell</code>, <code>AppCtx</code>, <code>C</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reemplazar <code>App.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from &quot;@expo-google-fonts/jetbrains-mono&quot;;
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from &quot;@expo-google-fonts/manrope&quot;;
+import { useFonts } from &quot;expo-font&quot;;
+import { ActivityIndicator, StatusBar, View } from &quot;react-native&quot;;
+import { SafeAreaProvider } from &quot;react-native-safe-area-context&quot;;
+import { ausdToNumber } from &quot;./src/config/chain&quot;;
+import type { AppCtx } from &quot;./src/ctx&quot;;
+import { useAccount } from &quot;./src/hooks/useAccount&quot;;
+import { useTreasury } from &quot;./src/hooks/useTreasury&quot;;
+import { Shell } from &quot;./src/Shell&quot;;
+import { useAppStore } from &quot;./src/store&quot;;
+import { C } from &quot;./src/ui/theme&quot;;
+
+const NONE = { status: &quot;none&quot; } as const;
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold,
+    JetBrainsMono_400Regular, JetBrainsMono_500Medium,
+  });
+  const { account, onWallet, lock, signOut } = useAccount();
+  const treasury = useTreasury(account ?? NONE, onWallet);
+  const store = useAppStore({
+    hasAccount: account !== null &amp;&amp; account.status !== &quot;none&quot;,
+    ausd: treasury.balances ? ausdToNumber(treasury.balances.ausd) : 0,
+  });
+
+  if (!fontsLoaded || account === null) {
+    return (
+      &lt;View style={{ flex: 1, backgroundColor: C.bg, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+        &lt;ActivityIndicator color={C.lime} /&gt;
+      &lt;/View&gt;
+    );
+  }
+
+  const ctx: AppCtx = { ...store, account, treasury, onWallet, lock, signOut };
+
+  return (
+    &lt;SafeAreaProvider&gt;
+      &lt;StatusBar barStyle=&quot;light-content&quot; /&gt;
+      &lt;View style={{ flex: 1, backgroundColor: C.bg }}&gt;
+        &lt;Shell ctx={ctx} /&gt;
+      &lt;/View&gt;
+    &lt;/SafeAreaProvider&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Borrar la UI vieja y la paleta de fase 1</strong></label></li>
+</ul>
+<pre><code class="language-bash">git rm src/screens/Welcome.tsx src/screens/Home.tsx src/ui/Button.tsx src/ui/Field.tsx</code></pre>
+<p>En <code>src/ui/theme.ts</code> eliminar el bloque final que empieza en el comentario <code>// --- Paleta de la fase 1 …</code> (exports <code>palette</code> y <code>spacing</code>).</p>
+<pre><code class="language-bash">grep -rn &quot;palette\|spacing\|screens/Home\|screens/Welcome\|ui/Button\|ui/Field&quot; App.tsx src | grep -v &quot;^src/ui/theme.ts&quot; ; echo &quot;exit=$?&quot;</code></pre>
+<p>Expected: sin coincidencias (<code>exit=1</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: tsc y suite</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -5</code></pre>
+<p>Expected: tsc limpio; <code>Tests: 39 passed</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr en simulador y hacer la prueba manual con capturas</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo run:ios --device &quot;iPhone 17 Pro&quot;</code></pre>
+<p>Capturas con <code>xcrun simctl io booted screenshot &lt;ruta&gt;.png</code> en el scratchpad de la sesión (no en el repo). Lista de comprobación, en orden, partiendo <strong>sin cuenta</strong> (si el simulador tiene una guardada de la fase 1: Wallet → SESSION → Sign out primero):</p>
+<ol>
+<li>Abre en <strong>Market</strong> con la marca, tipografía Manrope, tres chips de agentes. Captura <code>01-market.png</code>.</li>
+<li>Tocar un agente → <strong>Agent</strong> con tabs Token/Activity/About y barra Buy/Sell. Tab <strong>Activity</strong> de la tab bar no pide cuenta.</li>
+<li>Tab <strong>Wallet</strong> → <strong>Wallet access</strong> (sin tarjeta violeta). Captura <code>02-signin.png</code>.</li>
+<li>&quot;Create a wallet&quot; → Face ID → aterriza en <strong>Wallet</strong>: &quot;Available to spend&quot; con el AUSD real, bloque <strong>TESTNET</strong> con MON y botones, <strong>MOVEMENTS</strong>, fila <strong>SESSION</strong> en &quot;Unlocked&quot;. Captura <code>03-wallet.png</code>. El botón ← no aparece y la tab bar sí.</li>
+<li><strong>Deposit</strong> muestra la dirección real completa; &quot;Copy address&quot; cambia a &quot;Copied&quot;; <code>xcrun simctl pbpaste booted</code> (o pegar en Notes) devuelve la dirección.</li>
+<li>Volver a Wallet. Si MON = 0: &quot;Get test AUSD&quot; muestra el mensaje &quot;You need test MON for gas…&quot; sin abrir Face ID. Si MON &gt; 0: pide Face ID (si estaba Locked) y muestra &quot;Sent: 0x…&quot; y luego &quot;Confirmed: 0x…&quot;; el AUSD sube tras el refresh. Captura <code>04-faucet.png</code>.</li>
+<li><strong>Lock</strong> → fila dice &quot;Locked&quot; y el botón Lock desaparece.</li>
+<li>Ir a <strong>Market</strong> → <strong>Agent</strong> → <strong>Buy</strong> con cuenta: entra directo a <strong>Trade</strong> (quote o insufficient según el saldo real). Captura <code>05-trade.png</code>.</li>
+<li><strong>Sign out</strong> desde Wallet → regresa a <strong>Market</strong>; tocar <strong>Wallet</strong> vuelve a pedir acceso. &quot;I already have one&quot; → Face ID → Wallet otra vez.</li>
+<li>Sign out; sin cuenta: <strong>Agent → Buy</strong> → Wallet access <strong>con</strong> tarjeta violeta &quot;Your purchase is being held&quot; → crear/entrar → aterriza en <strong>Deposit</strong> con &quot;Deposit to finish your purchase&quot; → &quot;I&#39;ve sent it&quot; → <strong>Trade</strong> con &quot;Picking up where you left off&quot;.</li>
+<li>⚙ en el header (solo dev): los nueve estados de compra y las cinco journeys navegan; &quot;Holder&quot; enciende las posiciones de ejemplo en Portfolio. Captura <code>06-devpanel.png</code>.</li>
+</ol>
+<p>Anotar en el handoff cualquier paso que no se cumpla, con la captura.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Actualizar <code>README.md</code> de la app</strong></label></li>
+</ul>
+<p>Reemplazar el primer párrafo (el que empieza &quot;Fase 1: cuenta EVM…&quot;) por:</p>
+<pre><code class="language-markdown">App Expo/iOS de Pickler. UI portada del prototipo
+[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `365585e`):
+13 pantallas en TypeScript con datos de ejemplo, salvo lo que ya es real: cuenta EVM
+derivada de una passkey (mera + PRF) guardada con gate biométrico, saldos de AUSD/MON en
+Monad Testnet y faucet de AUSD, todo dentro de *Wallet access*, *Wallet* y *Deposit*.
+El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado del prototipo.</code></pre>
+<p>En la sección &quot;Tests&quot; cambiar <code>19/19 esperado</code> por <code>39/39 esperado</code>. En &quot;Conseguir MON de testnet&quot; cambiar &quot;desde la pantalla <em>Treasury</em> (botón &quot;Copy address&quot;)&quot; por &quot;desde <em>Wallet → Deposit</em> (botón &quot;Copy address&quot;)&quot; y &quot;Refrescar el balance en la app (botón &quot;Refresh balances&quot;…&quot; por &quot;Refrescar en <em>Wallet → TESTNET</em> (botón &quot;Refresh&quot;…&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add App.tsx src/ui/theme.ts README.md
+git commit -m &quot;feat(mobile): la app arranca en la UI del prototipo; se retiran Welcome, Home y la paleta de fase 1&quot;</code></pre>
+<p>(<code>git rm</code> del Step 2 ya dejó los borrados en el índice; entran en este mismo commit.)</p>
+<hr>
+<h3 id="task-11-revision-independiente-y-handoff">Task 11: Revisión independiente y handoff</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>docs/06-handoff-ui-port.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Pedir revisión independiente a un subagente</strong></label></li>
+</ul>
+<p>Entregarle: el spec, este plan, <code>git diff main...feat/mobile-ui-port --stat</code> y el diff completo, la salida de <code>npx tsc --noEmit</code> y <code>npm test</code>, y las capturas. Pedirle que verifique explícitamente: (a) que ninguna pantalla del prototipo cambió copy o estilos fuera de lo listado en el spec; (b) que sin cuenta no hay forma de llegar a wallet/portfolio/position/deposit/withdraw/trade sin pasar por <code>signin</code>; (c) que el panel de dev no se monta fuera de <code>__DEV__</code>; (d) que <code>useAccount</code>/<code>useTreasury</code> conservan la lógica de <code>App.tsx</code>/<code>Home.tsx</code> de <code>main</code> (comparar contra <code>git show main:apps/mobile/App.tsx</code> y <code>main:apps/mobile/src/screens/Home.tsx</code>); (e) que <code>session.end()</code> sigue llamándose al hacer Lock y Sign out.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Corregir lo que salga con severidad Critical/Important</strong>, con su test cuando aplique, y volver a correr <code>npx tsc --noEmit &amp;&amp; npm test</code>. Commit por corrección: <code>fix(mobile): &lt;qué&gt;</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Escribir <code>docs/06-handoff-ui-port.md</code></strong></label></li>
+</ul>
+<p>Contenido: tabla &quot;Qué quedó hecho y verificado&quot; (commits, tsc, tests 39/39, capturas 01–06 con qué muestra cada una), &quot;Lo aprendido&quot;, &quot;Pendientes&quot; (menores diferidos de la revisión; build 2 a TestFlight sigue pendiente y ahora llevaría esta UI) y &quot;Siguiente punto de decisión&quot; (fase 2: Perpl y venue, sin cambios respecto a <code>docs/05-handoff-fase1.md</code>).</p>
+<pre><code class="language-bash">git add docs/06-handoff-ui-port.md
+git commit -m &quot;docs: handoff del port de la UI de pickler-mobile&quot;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Checkpoint con Jesús</strong></label></li>
+</ul>
+<p>Reportar: rama, commits, evidencia, hallazgos de la revisión y qué quedó fuera. <strong>No</strong> hacer merge ni push: esa decisión es de Jesús.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-16-mobile-ui-port.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-16-mobile-ui-port';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
