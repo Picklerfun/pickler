@@ -2,7 +2,7 @@
 //
 // Este archivo es la fuente de verdad de qué entries aparecen en el index.
 // Está separado del HTML para que cada cambio de status toque solo este
-// archivo (diffs limpios en git, ver F1 del HTML Maximalism roadmap).
+// archivo (diffs limpios en git).
 //
 // Formato de cada entry:
 //   {
@@ -11,7 +11,7 @@
 //     summary: '...',
 //     file: 'YYYY-MM-DD-<topic>.html' | 'dev/YYYY-MM-DD-<slug>.html',
 //     types: ['spec'] | ['plan'] | ['spec','plan'] | ['fix'] | ['feature'] | ['refactor']
-//          | ['exploration'] | ['pr'] | ['playground'] | ['report'],   ← F4 nuevos
+//          | ['exploration'] | ['pr'] | ['playground'] | ['report'],
 //     status: 'active' | 'completed' | 'paused' | 'cancelled'
 //           | 'pending' | 'in_progress' | 'shipped',
 //     tags: ['...'],

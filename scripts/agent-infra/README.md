@@ -21,8 +21,8 @@ históricos explícitamente con `node scripts/docs-md-to-html.mjs --all --check`
 regeneran todas las vistas históricas incidentalmente. `--missing` repone solo ausentes.
 
 Los tests usan fixtures temporales y lock global. Incluyen los defectos reales de YAML,
-ramas docs-only/squash, HTML obsoleto, límites y fallo parcial del instalador. No son
-una evaluación automática de obediencia de modelos. `test-lock.sh` comparte el lock
+ramas docs-only/squash, HTML obsoleto y límites. No son una evaluación automática de
+obediencia de modelos. `test-lock.sh` comparte el lock
 `/tmp/proflores-test.lock` con Proflores a propósito: el límite es la máquina, no el repo.
 
 ## Navegador y CI

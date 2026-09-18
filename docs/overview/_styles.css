@@ -35,6 +35,7 @@
   --brand:#C8F03A;
   --brand-soft:rgba(200,240,58,0.14);
   --brand-dark:#E2F98A;
+  --on-brand:#08080A;
 
   /* Accent (violeta) */
   --accent:#7A5CFF;
@@ -76,11 +77,12 @@
     --brand:#5C7600;
     --brand-soft:#EEF7C9;
     --brand-dark:#3F5200;
+    --on-brand:#FFFFFF;
 
     --accent:#6A4CF0;
     --accent-soft:#ECE7FF;
 
-    --warn:#9A6B00;
+    --warn:#7E5700;
     --warn-soft:#FBF1D6;
     --info:#0B6F99;
     --info-soft:#E0F4FB;
@@ -305,9 +307,9 @@ section .sec-sub {
   transition: all .15s;
 }
 .btn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--ink-3); }
-.btn.primary { background: var(--brand); color: white; border-color: var(--brand); }
-.btn.primary:hover { background: var(--brand-dark); color: white; }
-.btn[data-copied="true"] { background: var(--status-pass); color: white; border-color: var(--status-pass); }
+.btn.primary { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+.btn.primary:hover { background: var(--brand-dark); color: var(--on-brand); }
+.btn[data-copied="true"] { background: var(--status-pass); color: var(--on-brand); border-color: var(--status-pass); }
 
 /* =============================================================================
  * Phase cards (data-status driven)
@@ -607,10 +609,10 @@ footer.foot a { color: var(--brand); }
   transition: all 0.15s;
 }
 .chip:hover { background: var(--surface-2); border-color: var(--ink-3); }
-.chip.active { background: var(--brand); color: white; border-color: var(--brand); }
+.chip.active { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
 .btn-new {
   padding: 8px 14px; border-radius: var(--radius-s);
-  background: var(--brand); color: white; border: none;
+  background: var(--brand); color: var(--on-brand); border: none;
   font-size: 13px; font-weight: 600; font-family: inherit;
   cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
   transition: filter .15s;
@@ -850,13 +852,13 @@ footer.foot a { color: var(--brand); }
 .btn-cancel:hover { background: var(--bg); }
 .btn-copy {
   padding: 8px 14px; border-radius: var(--radius-s);
-  background: var(--brand); color: white;
+  background: var(--brand); color: var(--on-brand);
   border: none; font-size: 13px; font-weight: 600;
   font-family: inherit; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
 }
 .btn-copy:hover { filter: brightness(1.1); }
-.btn-copy[data-copied="true"] { background: var(--status-pass); color: white; }
+.btn-copy[data-copied="true"] { background: var(--status-pass); color: var(--on-brand); }
 .preview-block {
   margin: 0 22px 18px;
   padding: 12px 14px;
