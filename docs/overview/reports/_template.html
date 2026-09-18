@@ -1,0 +1,238 @@
+<!doctype html>
+<!--
+  Plantilla: report · resumen periódico (weekly activity, deploy summary,
+  incident postmortem, etc.).
+
+  Uso: snapshot del estado del repo / proyecto / incidente, generado a partir
+  de git log, métricas o un evento puntual. NO es un dashboard vivo — es un
+  snapshot fechado.
+
+  Flujo:
+  1. Cópialo a docs/overview/reports/YYYY-MM-DD-<slug>.html
+  2. Rellena las stats con datos reales (git log + análisis manual).
+  3. Agrega entry al manifest con types: ['report'].
+
+  Reglas: el report no se vuelve a editar después de publicar. Si quieres
+  actualizar la info, escribes un nuevo report con fecha posterior.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>[[REPORT_TITLE]] · Report · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<script defer src="../_syntax.js"></script>
+<style>
+  .wrap { max-width: 920px; }
+
+  .kpi-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    margin: 8px 0 24px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .kpi .n {
+    font-size: 26px; font-weight: 800; color: var(--brand);
+    font-variant-numeric: tabular-nums; line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .kpi .l {
+    font-size: 11.5px; color: var(--ink-3);
+    margin-top: 6px; text-transform: uppercase; letter-spacing: .06em;
+    font-weight: 500;
+  }
+  .kpi .delta {
+    font-family: var(--mono); font-size: 11px;
+    margin-top: 4px;
+  }
+  .kpi .delta.up { color: var(--brand); }
+  .kpi .delta.down { color: var(--status-fail); }
+
+  /* Area breakdown bars */
+  .area-bars { display: flex; flex-direction: column; gap: 6px; }
+  .area-bar {
+    display: grid; grid-template-columns: 140px 1fr 40px;
+    gap: 10px; align-items: center;
+    font-size: 13px;
+  }
+  .area-bar .name { font-family: var(--mono); color: var(--ink); font-size: 12px; }
+  .area-bar .bar-track {
+    height: 14px; background: var(--surface-2);
+    border-radius: 7px; overflow: hidden;
+  }
+  .area-bar .bar-fill {
+    height: 100%; background: var(--brand);
+    border-radius: 7px;
+  }
+  .area-bar .count {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums; text-align: right;
+  }
+
+  .highlights .item {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    padding: 12px 16px; margin-bottom: 10px;
+  }
+  .highlights .item h4 {
+    margin: 0 0 4px; font-size: 14px; color: var(--ink); font-weight: 700;
+    text-transform: none; letter-spacing: 0;
+  }
+  .highlights .item p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .highlights .item.fix { border-left-color: var(--warn); }
+  .highlights .item.refactor { border-left-color: var(--info); }
+
+  .commit-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .commit-table th, .commit-table td {
+    padding: 8px 10px; text-align: left; vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+  .commit-table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .commit-table td.mono { font-family: var(--mono); color: var(--ink); }
+  .commit-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body data-slug="[[SLUG]]">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">reports/[[SLUG]]</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Report · Snapshot</span>
+    <h1>[[REPORT_TITLE]] <span class="accent">[[REPORT_PERIOD]]</span></h1>
+    <p class="lede">[[REPORT_LEDE]]</p>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#summary">Resumen</a></li>
+      <li><a href="#kpis">KPIs</a></li>
+      <li><a href="#areas">Áreas</a></li>
+      <li><a href="#highlights">Highlights</a></li>
+      <li><a href="#commits">Commits relevantes</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <section id="summary">
+      <h2><span class="sec-num">01</span>Resumen</h2>
+      <div class="tldr">
+        <h3>TL;DR</h3>
+        <p>[[REPORT_SUMMARY]]</p>
+      </div>
+    </section>
+
+    <section id="kpis">
+      <h2><span class="sec-num">02</span>KPIs</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="n">[[KPI_1_VALUE]]</div>
+          <div class="l">[[KPI_1_LABEL]]</div>
+          <div class="delta up">[[KPI_1_DELTA]]</div>
+        </div>
+        <div class="kpi">
+          <div class="n">[[KPI_2_VALUE]]</div>
+          <div class="l">[[KPI_2_LABEL]]</div>
+        </div>
+        <div class="kpi">
+          <div class="n">[[KPI_3_VALUE]]</div>
+          <div class="l">[[KPI_3_LABEL]]</div>
+        </div>
+        <div class="kpi">
+          <div class="n">[[KPI_4_VALUE]]</div>
+          <div class="l">[[KPI_4_LABEL]]</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="areas">
+      <h2><span class="sec-num">03</span>Commits por área</h2>
+      <p class="sec-sub">Distribución del esfuerzo del período.</p>
+
+      <div class="area-bars">
+        <div class="area-bar">
+          <span class="name">feat(api)</span>
+          <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+          <span class="count">48</span>
+        </div>
+        <div class="area-bar">
+          <span class="name">feat(web)</span>
+          <div class="bar-track"><div class="bar-fill" style="width:48%"></div></div>
+          <span class="count">23</span>
+        </div>
+        <!-- Duplicar por cada área del período -->
+      </div>
+    </section>
+
+    <section id="highlights">
+      <h2><span class="sec-num">04</span>Highlights</h2>
+      <p class="sec-sub">Los 3-5 cambios más importantes del período.</p>
+
+      <div class="highlights">
+        <div class="item">
+          <h4>[[HIGHLIGHT_1_TITLE]]</h4>
+          <p>[[HIGHLIGHT_1_BODY]]</p>
+        </div>
+        <div class="item">
+          <h4>[[HIGHLIGHT_2_TITLE]]</h4>
+          <p>[[HIGHLIGHT_2_BODY]]</p>
+        </div>
+        <div class="item fix">
+          <h4>[[HIGHLIGHT_3_TITLE]]</h4>
+          <p>[[HIGHLIGHT_3_BODY]]</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="commits">
+      <h2><span class="sec-num">05</span>Commits relevantes</h2>
+      <table class="commit-table">
+        <thead>
+          <tr>
+            <th>SHA</th>
+            <th>Fecha</th>
+            <th>Mensaje</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">aaaaaaa</td><td class="mono">YYYY-MM-DD</td><td>[[COMMIT_1_MSG]]</td></tr>
+          <tr><td class="mono">bbbbbbb</td><td class="mono">YYYY-MM-DD</td><td>[[COMMIT_2_MSG]]</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Periodo:</b> [[REPORT_PERIOD]] · <b>Generado:</b> [[REPORT_DATE]]</p>
+    <p>Snapshot. No se actualiza — para info más fresca, escribe un nuevo report.</p>
+  </div>
+</footer>
+
+</body>
+</html>

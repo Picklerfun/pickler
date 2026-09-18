@@ -25,15 +25,20 @@
 | Fase | Contenido | Estado | Cubre del bounty |
 |---|---|---|---|
 | **1** | Passkey vía Mera → cuenta EVM en Monad Testnet → balances de AUSD/MON → tx al faucet de Agora. Build 0.1.0 (1) subido a TestFlight. | **Hecha** (2026-09-16) | Auth vía Mera, balance de AUSD |
-| **2** | Perpl testnet: `createAccount(uint256 amountCNS)` en el Exchange contract, `allowOrderForwarding(true)` desde la wallet de la cuenta, cliente WebSocket sobre `/ws/v1/trading`, colocar una orden desde la app. | **Hecha** (2026-09-16): pestaña Trade con enable/orden de mercado/cierre/fondos, en `main` y en TestFlight **build 3**; trades reales verificados (`docs/08-handoff-perpl.md`) — **obligatoria** para elegibilidad | "executes trades through Perpl" |
+| **2** | Perpl testnet: `createAccount(uint256 amountCNS)` en el Exchange contract, `allowOrderForwarding(true)` desde la wallet de la cuenta, cliente WebSocket sobre `/ws/v1/trading`, colocar una orden desde la app. | **Hecha** (2026-09-16): pestaña Trade con enable/orden de mercado/cierre/fondos, en `main` y en TestFlight **build 3**; trades reales verificados (`docs/superpowers/audits/2026-09-16-mobile-perpl-f1-rulings.md`) — **obligatoria** para elegibilidad | "executes trades through Perpl" |
 | **3** | Agentes con historial público de posiciones; launchpad (token opcional). | Pendiente | Ángulo creativo / uso conjunto |
 | **4** | Harness: límites por orden/exposición, orden rechazada con comprobante visible. | Pendiente | Ángulo creativo, tesis de Pickler |
+
+Estado vivo de cada sub-proyecto y build en el catálogo `docs/overview/index.html` (abrir en el
+navegador): overviews de [fase 1](overview/2026-09-15-mobile-fase1.html), [UI
+port](overview/2026-09-16-mobile-ui-port.html), [wallet](overview/2026-09-16-mobile-wallet.html) y
+[Perpl](overview/2026-09-16-mobile-perpl.html), y trackers de TestFlight en `docs/overview/dev/`.
 
 Cada fase pasa por su propio brainstorm → spec → plan (ver `docs/00-historia.md`
 §Flujo de trabajo en el README raíz).
 
 **Detalle de fase 1**: `apps/mobile/README.md` (cómo correr, tests, TestFlight)
-y `docs/specs/2026-09-15-mobile-fase1-design.md` (diseño completo, §3 fuentes
+y `docs/superpowers/specs/2026-09-15-mobile-fase1-design.md` (diseño completo, §3 fuentes
 verificadas, §9 estas mismas fases siguientes). Evidencia de cierre: 19/19
 tests, `curl` del AASA en `https://pickler.fun/.well-known/apple-app-site-association`
 en 200, tx del faucet confirmada

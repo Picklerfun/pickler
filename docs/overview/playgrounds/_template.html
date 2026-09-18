@@ -1,0 +1,398 @@
+<!doctype html>
+<!--
+  Plantilla: playground · sliders / knobs / toggles para tunear una config.
+
+  Uso: cuando quieres explorar el espacio de parámetros de un agente Mastra,
+  un endpoint con thresholds, o cualquier config con números/enums que
+  necesitan tuneo iterativo. El JSON resultante se copia al portapapeles
+  para pegárselo a Claude o aplicarlo al código.
+
+  Flujo:
+  1. Cópialo a docs/overview/playgrounds/YYYY-MM-DD-<slug>.html
+  2. Define los knobs en el array CONFIG_KNOBS (abajo en el <script>).
+     Tipos soportados: range, number, select, toggle, text.
+  3. Click "Copy as JSON" → pega la config a Claude.
+  4. Agrega entry al manifest con types: ['playground'].
+
+  El ejemplo precargado tunea los parámetros de un agente Mastra ficticio
+  (modelo, temperature, top-p, max tokens, etc.). Reemplazar con tus knobs
+  reales editando CONFIG_KNOBS.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>[[PLAYGROUND_TITLE]] · Playground · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<script defer src="../_syntax.js"></script>
+<style>
+  .wrap { max-width: 1100px; }
+  header.hero { padding: 24px 0 28px; }
+
+  .play-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    margin-top: 8px;
+  }
+  @media (max-width: 760px) { .play-layout { grid-template-columns: 1fr; } }
+
+  .knobs-panel, .output-panel {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .knobs-panel h3, .output-panel h3 {
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em;
+    color: var(--brand-dark); margin: 0 0 14px;
+  }
+
+  .knob {
+    padding: 10px 0; border-bottom: 1px dashed var(--line);
+  }
+  .knob:last-child { border-bottom: none; }
+  .knob-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .knob-name {
+    font-family: var(--mono); font-size: 12px; color: var(--ink); font-weight: 600;
+  }
+  .knob-value {
+    font-family: var(--mono); font-size: 13px; color: var(--brand); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .knob-desc { font-size: 11.5px; color: var(--ink-3); margin: 4px 0 6px; line-height: 1.5; }
+  .knob input[type="range"] {
+    width: 100%;
+    accent-color: var(--brand);
+  }
+  .knob input[type="number"], .knob input[type="text"], .knob select {
+    width: 100%; padding: 6px 10px;
+    border: 1px solid var(--line); border-radius: var(--radius-s);
+    background: var(--bg); color: var(--ink);
+    font-size: 13px; font-family: inherit;
+  }
+  .knob .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--ink-2); cursor: pointer;
+  }
+
+  .output-panel pre {
+    margin: 0; max-height: 480px;
+    font-size: 12px;
+  }
+
+  .play-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 14px;
+  }
+</style>
+</head>
+<body data-slug="[[SLUG]]">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">playgrounds/[[SLUG]]</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Playground · Knobs en vivo</span>
+    <h1>[[PLAYGROUND_TITLE]] <span class="accent">tuner</span></h1>
+    <p class="lede">[[PLAYGROUND_LEDE]]</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <div class="play-layout">
+      <!-- Knobs -->
+      <div class="knobs-panel">
+        <h3>Parámetros</h3>
+        <div id="knobs"></div>
+        <div class="play-actions">
+          <button type="button" class="btn" id="btn-reset">↺ Reset defaults</button>
+        </div>
+      </div>
+
+      <!-- JSON output -->
+      <div class="output-panel">
+        <h3>Config resultante</h3>
+        <pre><code class="language-json" id="output">{}</code></pre>
+        <div class="play-actions">
+          <button type="button" class="btn primary" id="btn-copy">📋 Copy as JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <section style="margin-top:48px">
+      <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Contexto</h2>
+      <p contenteditable="true" data-placeholder="Descripción de qué hace cada parámetro y qué cambios esperar al moverlos. Markdown soportado.">
+        [[PLAYGROUND_CONTEXT]]
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuente:</b> playground asociado a <code>[[OWNER_REF]]</code>.</p>
+    <p>Reglas en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Knobs config — reemplazar con los parámetros reales del playground.
+  //
+  // Cada knob soporta:
+  //   { key, type: 'range', label, desc?, min, max, step, default }
+  //   { key, type: 'number', label, desc?, min?, max?, step?, default }
+  //   { key, type: 'select', label, desc?, options: [{ value, label }], default }
+  //   { key, type: 'toggle', label, desc?, default }
+  //   { key, type: 'text', label, desc?, default }
+  //
+  // Nested keys con notación 'a.b.c' funcionan: el JSON output será anidado.
+  // ===========================================================================
+
+  const CONFIG_KNOBS = [
+    {
+      key: 'model',
+      type: 'select',
+      label: 'Modelo',
+      desc: 'Modelo Claude a usar via OpenRouter.',
+      options: [
+        { value: 'claude-opus-4-7',     label: 'Opus 4.7 (razonamiento pesado)' },
+        { value: 'claude-sonnet-4-6',   label: 'Sonnet 4.6 (balance)' },
+        { value: 'claude-haiku-4-5',    label: 'Haiku 4.5 (barato)' },
+      ],
+      default: 'claude-sonnet-4-6',
+    },
+    {
+      key: 'temperature',
+      type: 'range',
+      label: 'Temperature',
+      desc: 'Determinismo del output. 0 = idéntico siempre, 1 = creativo.',
+      min: 0, max: 1, step: 0.05,
+      default: 0.7,
+    },
+    {
+      key: 'topP',
+      type: 'range',
+      label: 'top_p',
+      desc: 'Nucleus sampling. Suele dejarse en 1 si usas temperature.',
+      min: 0, max: 1, step: 0.05,
+      default: 1.0,
+    },
+    {
+      key: 'maxTokens',
+      type: 'number',
+      label: 'Max tokens',
+      desc: 'Tope superior de tokens generados.',
+      min: 100, max: 8000, step: 100,
+      default: 2000,
+    },
+    {
+      key: 'costCapUsd',
+      type: 'range',
+      label: 'Cost cap (USD)',
+      desc: 'Si la run pasa de esto, se aborta.',
+      min: 0.01, max: 5, step: 0.01,
+      default: 0.50,
+    },
+    {
+      key: 'tools.useWebSearch',
+      type: 'toggle',
+      label: 'Habilitar web search tool',
+      desc: 'Da acceso al agente a búsqueda web (Serper/DataForSEO).',
+      default: false,
+    },
+    {
+      key: 'tools.useCalendar',
+      type: 'toggle',
+      label: 'Habilitar calendar tool',
+      desc: 'Para agendar follow-ups en Google Calendar.',
+      default: false,
+    },
+    {
+      key: 'persona',
+      type: 'text',
+      label: 'Persona system prompt',
+      desc: 'Override del system prompt base.',
+      default: 'Eres un asistente experto en paisajismo mexicano.',
+    },
+  ];
+
+  // ===========================================================================
+  // Render + state
+  // ===========================================================================
+
+  const $knobs = document.getElementById('knobs');
+  const $output = document.getElementById('output');
+  const $toast = document.getElementById('toast');
+  const state = {};
+
+  function setNested(obj, key, value) {
+    const parts = key.split('.');
+    let cur = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!cur[parts[i]] || typeof cur[parts[i]] !== 'object') cur[parts[i]] = {};
+      cur = cur[parts[i]];
+    }
+    cur[parts[parts.length - 1]] = value;
+  }
+
+  function renderOutput() {
+    const out = {};
+    for (const knob of CONFIG_KNOBS) {
+      setNested(out, knob.key, state[knob.key]);
+    }
+    // Reset highlighter and re-render
+    $output.textContent = JSON.stringify(out, null, 2);
+    delete $output.dataset.highlighted;
+    if (window.Syntax) window.Syntax.highlightElement($output);
+  }
+
+  function makeKnob(knob) {
+    const wrap = document.createElement('div');
+    wrap.className = 'knob';
+
+    const head = document.createElement('div');
+    head.className = 'knob-head';
+    const name = document.createElement('span');
+    name.className = 'knob-name';
+    name.textContent = knob.key;
+    const value = document.createElement('span');
+    value.className = 'knob-value';
+    head.append(name, value);
+    wrap.append(head);
+
+    const desc = document.createElement('div');
+    desc.className = 'knob-desc';
+    desc.textContent = knob.desc || '';
+    if (knob.desc) wrap.append(desc);
+
+    let input;
+    function updateValueDisplay() {
+      if (knob.type === 'toggle') value.textContent = state[knob.key] ? 'true' : 'false';
+      else value.textContent = JSON.stringify(state[knob.key]);
+    }
+
+    if (knob.type === 'range') {
+      input = document.createElement('input');
+      input.type = 'range';
+      input.min = knob.min; input.max = knob.max; input.step = knob.step;
+      input.value = knob.default;
+      input.addEventListener('input', () => {
+        state[knob.key] = Number(input.value);
+        updateValueDisplay();
+        renderOutput();
+      });
+    } else if (knob.type === 'number') {
+      input = document.createElement('input');
+      input.type = 'number';
+      if (knob.min != null) input.min = knob.min;
+      if (knob.max != null) input.max = knob.max;
+      if (knob.step != null) input.step = knob.step;
+      input.value = knob.default;
+      input.addEventListener('input', () => {
+        state[knob.key] = Number(input.value);
+        updateValueDisplay();
+        renderOutput();
+      });
+    } else if (knob.type === 'select') {
+      input = document.createElement('select');
+      knob.options.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.value; opt.textContent = o.label;
+        if (o.value === knob.default) opt.selected = true;
+        input.append(opt);
+      });
+      input.addEventListener('change', () => {
+        state[knob.key] = input.value;
+        updateValueDisplay();
+        renderOutput();
+      });
+    } else if (knob.type === 'toggle') {
+      const lbl = document.createElement('label');
+      lbl.className = 'toggle';
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = !!knob.default;
+      lbl.append(input, document.createTextNode(knob.label));
+      input.addEventListener('change', () => {
+        state[knob.key] = input.checked;
+        updateValueDisplay();
+        renderOutput();
+      });
+      wrap.append(lbl);
+      state[knob.key] = !!knob.default;
+      updateValueDisplay();
+      return wrap;
+    } else { // text
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = knob.default;
+      input.addEventListener('input', () => {
+        state[knob.key] = input.value;
+        updateValueDisplay();
+        renderOutput();
+      });
+    }
+
+    wrap.append(input);
+    state[knob.key] = knob.type === 'range' || knob.type === 'number' ? Number(knob.default) : knob.default;
+    updateValueDisplay();
+    return wrap;
+  }
+
+  function buildKnobs() {
+    $knobs.textContent = '';
+    CONFIG_KNOBS.forEach(k => $knobs.append(makeKnob(k)));
+    renderOutput();
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    buildKnobs();
+    showToast('Reset · defaults restaurados');
+  });
+
+  document.getElementById('btn-copy').addEventListener('click', async (e) => {
+    const out = {};
+    for (const knob of CONFIG_KNOBS) setNested(out, knob.key, state[knob.key]);
+    const json = JSON.stringify(out, null, 2);
+    try {
+      await navigator.clipboard.writeText(json);
+      const btn = e.currentTarget;
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast('JSON copiado al portapapeles');
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = '📋 Copy as JSON'; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — copia desde el panel derecho');
+      console.log(json);
+    }
+  });
+
+  buildKnobs();
+</script>
+
+</body>
+</html>
