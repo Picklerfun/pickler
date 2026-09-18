@@ -1,0 +1,761 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-18-mobile-polish-f1.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pulido de navegación (mobile-polish) — Plan F1 · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-18-mobile-polish-f1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-18-mobile-polish-f1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Pulido de navegación (mobile-polish) — Plan F1</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-18-mobile-polish-f1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#task-0-bootstrap-del-worktree">Task 0: Bootstrap del worktree</a></li><li><a href="#task-1-store-comingsoon-arranque-en-wallet-bootstate-header-coming-soon">Task 1: Store — `COMING_SOON`, arranque en Wallet, `bootState`, header &quot;Coming soon&quot;</a></li><li><a href="#task-2-apptsx-boothasaccount-una-vez-al-resolver-la-cuenta">Task 2: `App.tsx` — `boot(hasAccount)` una vez al resolver la cuenta</a></li><li><a href="#task-3-uigesturests-umbrales-del-swipe-atras">Task 3: `ui/gestures.ts` — umbrales del swipe atrás</a></li><li><a href="#task-4-perplordersts-lockedcollateral-y-unrealisedpnl">Task 4: `perpl/orders.ts` — `lockedCollateral` y `unrealisedPnl`</a></li><li><a href="#task-5-comingsoonscreen-shell-la-renderiza">Task 5: `ComingSoonScreen` + `Shell` la renderiza</a></li><li><a href="#task-6-shell-pull-to-refresh-y-swipe-atras-owntsx-sin-boton-refresh">Task 6: `Shell` — pull-to-refresh y swipe atrás; `own.tsx` sin botón Refresh</a></li><li><a href="#task-7-perpstsx-in-positions-free-y-linea-de-pnl-no-realizado">Task 7: `perps.tsx` — &quot;in positions / free&quot; y línea de PnL no realizado</a></li><li><a href="#task-8-verificacion-manual-en-el-simulador-medicion-d12-readme-y-overview">Task 8: Verificación manual en el simulador, medición D12, README y overview</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-18-mobile-polish-f1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="pulido-de-navegacion-mobile-polish-plan-f1">Pulido de navegación (mobile-polish) — Plan F1</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que los tres tabs en mock digan &quot;coming soon&quot; con la estética de la app, que la app arranque en Wallet, que Wallet y Trade se refresquen jalando, que las pantallas con <code>←</code> regresen con swipe desde el borde, y que Trade muestre el PnL no realizado bajo el saldo con &quot;in positions / free&quot; correctos.</p>
+<p><strong>Architecture:</strong> Toda la lógica nueva va en funciones puras con tests de Jest (<code>store.ts</code>, <code>ui/gestures.ts</code>, <code>perpl/orders.ts</code>); <code>Shell.tsx</code>, <code>App.tsx</code> y las pantallas sólo las consumen. Sin dependencias nuevas: <code>RefreshControl</code> y <code>PanResponder</code> son de React Native core. El mock de Market/Activity/Portfolio no se borra: el <code>Shell</code> decide qué renderiza según <code>COMING_SOON</code>.</p>
+<p><strong>Tech Stack:</strong> Expo 57 / React Native 0.86 / React 19, TypeScript 6, Jest 29 con <code>jest-expo</code>, viem (bigint para AUSD con 6 decimales), Ionicons de <code>@expo/vector-icons</code>.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-18-mobile-polish-design.md</code> (decisiones D1–D13).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Sin dependencias nuevas ni cambios nativos (D13): no <code>react-native-gesture-handler</code>, no <code>reanimated</code>, no react-navigation. No tocar <code>ios/</code>, <code>app.config.ts</code> ni <code>package.json</code>.</li>
+<li>Nada del mock se borra (D2): <code>SCREENS</code>, <code>mock/data.ts</code> y las pantallas <code>market/search/agent/activity/post/ask/portfolio/position/trade</code> siguen existiendo.</li>
+<li>Umbrales del gesto (D7): borde <code>≤ 24 px</code>, disparo con <code>dx &gt; 60</code>.</li>
+<li>Copy exacto de coming soon (§2.3 del spec): Market → &quot;Agents and their tokens&quot;; Activity → &quot;What the agents you follow are doing&quot;; Portfolio → &quot;Your token positions&quot;. Tag: &quot;COMING SOON&quot;. Botón: &quot;Go to Wallet&quot;. Subtítulo de header: &quot;Coming soon&quot;.</li>
+<li>Copy de Trade (D10–D11): <code>&quot;{locked} in positions · {free} free&quot;</code> y <code>&quot;+X unrealised PnL&quot;</code> / <code>&quot;−X unrealised PnL&quot;</code> (signo &quot;−&quot; U+2212 como en <code>PositionRow</code>).</li>
+<li>Todo en <code>apps/mobile</code> corre desde esa carpeta (<code>npm test</code>, <code>npx tsc --noEmit</code>). El worktree es <code>.claude/worktrees/mobile-polish</code>, rama <code>feat/mobile-polish</code>; el primer paso ahí es <code>npm install</code> dentro de <code>apps/mobile</code> (sin <code>node_modules</code> no corre nada).</li>
+<li>Commits por nombre de archivo, conventional commits, nunca <code>git add -A</code>.</li>
+<li>Los tests nuevos se corren también <strong>contra el defecto</strong> (paso &quot;verify it fails&quot;) antes de implementar.</li>
+</ul>
+<hr>
+<h3 id="task-0-bootstrap-del-worktree">Task 0: Bootstrap del worktree</h3>
+<p><strong>Files:</strong> ninguno (sólo instala).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Instalar dependencias de la app</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npm install</code> Expected: termina sin errores; existe <code>apps/mobile/node_modules/jest-expo</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Línea base</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -5 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: <code>Tests: N passed</code> (anota N — el README dice 41/41 pero puede haber crecido; el número real es la línea base) y <code>TSC_OK</code>.</p>
+<hr>
+<h3 id="task-1-store-comingsoon-arranque-en-wallet-bootstate-header-coming-soon">Task 1: Store — <code>COMING_SOON</code>, arranque en Wallet, <code>bootState</code>, header &quot;Coming soon&quot;</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/store.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces:</li>
+<ul>
+<li><code>export const COMING_SOON: readonly Screen[]</code> = <code>[&quot;market&quot;, &quot;activity&quot;, &quot;portfolio&quot;]</code></li>
+<li><code>export function bootState(s: StoreState, hasAccount: boolean): StoreState</code></li>
+<li><code>AppStore</code> gana <code>boot: (hasAccount: boolean) =&gt; void</code> y <code>comingSoon: boolean</code></li>
+<li><code>INITIAL.screen === &quot;wallet&quot;</code>; <code>backState</code> cae a <code>&quot;wallet&quot;</code> con stack vacío (ruling: el spec fija Wallet como inicio; el fallback a <code>market</code> mandaría al usuario a un coming soon — se registra en el audit).</li>
+<li><code>headerFor(&quot;market&quot; | &quot;activity&quot; | &quot;portfolio&quot;, …)</code> → <code>[título, &quot;Coming soon&quot;]</code>.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Actualizar los tests existentes que asumían <code>market</code> como inicio y añadir los nuevos</strong></label></li>
+</ul>
+<p>En <code>__tests__/store.test.ts</code>, añade <code>bootState</code> y <code>COMING_SOON</code> al import y cambia estos tres asserts:</p>
+<pre><code class="language-ts">// test &quot;nav pushes the current screen and applies the patch&quot;
+expect(s.stack).toEqual([&quot;wallet&quot;]);
+
+// test &quot;back pops the stack and falls back to market when empty&quot; → renómbralo:
+test(&quot;back pops the stack and falls back to wallet when empty&quot;, () =&gt; {
+  const s = navState(navState(INITIAL, &quot;agent&quot;), &quot;trade&quot;);
+  expect(backState(s).screen).toBe(&quot;agent&quot;);
+  expect(backState(INITIAL).screen).toBe(&quot;wallet&quot;);
+  expect(backState(INITIAL).stack).toEqual([]);
+});
+
+// test &quot;after sign-in it lands on Wallet …&quot; (línea ~70)
+expect(s.stack).toEqual([&quot;wallet&quot;]);</code></pre>
+<p>Y agrega al final del archivo:</p>
+<pre><code class="language-ts">test(&quot;the app starts on Wallet&quot;, () =&gt; {
+  expect(INITIAL.screen).toBe(&quot;wallet&quot;);
+});
+
+test(&quot;boot keeps Wallet with an account and goes through Sign in without one&quot;, () =&gt; {
+  expect(bootState(INITIAL, true)).toBe(INITIAL);
+  const s = bootState(INITIAL, false);
+  expect(s).toMatchObject({ screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot;, resume: false });
+  expect(s.nextPatch).toBeUndefined();
+  expect(afterSigninState(s).screen).toBe(&quot;wallet&quot;);
+});
+
+test(&quot;coming soon covers the three mock tabs and never the real ones&quot;, () =&gt; {
+  expect(COMING_SOON).toEqual([&quot;market&quot;, &quot;activity&quot;, &quot;portfolio&quot;]);
+  expect(COMING_SOON).not.toContain(&quot;wallet&quot;);
+  expect(COMING_SOON).not.toContain(&quot;perps&quot;);
+  for (const screen of COMING_SOON) expect(headerFor(screen, agent, post, &quot;buy&quot;, 0)[1]).toBe(&quot;Coming soon&quot;);
+  expect(headerFor(&quot;wallet&quot;, agent, post, &quot;buy&quot;, 0)[1]).toBe(&quot;AUSD available and movements&quot;);
+  expect(headerFor(&quot;perps&quot;, agent, post, &quot;buy&quot;, 0)[1]).toBe(&quot;Perps on Perpl · Monad&quot;);
+});</code></pre>
+<p>(<code>agent</code> y <code>post</code> ya están definidos en el test de <code>headerFor</code> existente — si son locales a ese test, súbelos a nivel de módulo: <code>const agent = AGENTS.pkl; const post = POSTS[0];</code>.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que fallan</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -20</code> Expected: FAIL — <code>bootState is not a function</code> / <code>COMING_SOON</code> undefined, y los asserts de <code>[&quot;wallet&quot;]</code> fallan con <code>[&quot;market&quot;]</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar en <code>src/store.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// INITIAL
+export const INITIAL: StoreState = {
+  screen: &quot;wallet&quot;, stack: [], dataCase: &quot;normal&quot;,
+  // …resto igual
+};
+
+// backState: fallback a wallet
+const prev = stack.pop() ?? &quot;wallet&quot;;
+
+/** Tabs que todavía muestran el mock: el Shell renderiza &quot;Coming soon&quot; en vez de la pantalla (D1/D2). */
+export const COMING_SOON: readonly Screen[] = [&quot;market&quot;, &quot;activity&quot;, &quot;portfolio&quot;];
+
+/** Al resolver la cuenta por primera vez: con cuenta se queda en Wallet; sin cuenta pasa por Sign in y aterriza en Wallet (D3). */
+export function bootState(s: StoreState, hasAccount: boolean): StoreState {
+  if (hasAccount) return s;
+  return { ...s, screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot;, nextPatch: undefined, resume: false };
+}
+
+// headerFor: los tres casos
+case &quot;market&quot;: return [&quot;Market&quot;, &quot;Coming soon&quot;];
+case &quot;activity&quot;: return [&quot;Activity&quot;, &quot;Coming soon&quot;];
+case &quot;portfolio&quot;: return [&quot;Portfolio&quot;, &quot;Coming soon&quot;];</code></pre>
+<p>En <code>AppStore</code> añade <code>boot: (hasAccount: boolean) =&gt; void;</code> y <code>comingSoon: boolean;</code>. En <code>useAppStore</code>:</p>
+<pre><code class="language-ts">const boot = useCallback((has: boolean) =&gt; setS((s) =&gt; bootState(s, has)), []);
+// …
+return {
+  S, set, nav, back, requireAccount, finishSignin, resetTo, boot,
+  // …
+  comingSoon: COMING_SOON.includes(S.screen),
+};</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasan y que tsc está limpio</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -8 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: todos los tests de store en PASS; <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/store.ts apps/mobile/__tests__/store.test.ts
+git commit -m &quot;feat(mobile): arranque en Wallet, bootState y COMING_SOON en el store&quot;</code></pre>
+<hr>
+<h3 id="task-2-apptsx-boothasaccount-una-vez-al-resolver-la-cuenta">Task 2: <code>App.tsx</code> — <code>boot(hasAccount)</code> una vez al resolver la cuenta</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/App.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>store.boot(hasAccount)</code> de Task 1.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Añadir el efecto de arranque</strong></label></li>
+</ul>
+<p>En <code>App.tsx</code>, importa <code>useRef</code> junto a <code>useEffect</code> y, justo después de <code>const store = useAppStore({...})</code>:</p>
+<pre><code class="language-ts">const hasAccount = account !== null &amp;&amp; account.status !== &quot;none&quot;;
+const booted = useRef(false);
+const { boot } = store;
+// Una sola vez, cuando la cuenta deja de ser null: sin cuenta pasa por Sign in (D3).
+useEffect(() =&gt; {
+  if (account === null || booted.current) return;
+  booted.current = true;
+  boot(hasAccount);
+}, [account, hasAccount, boot]);</code></pre>
+<p>Y usa <code>hasAccount</code> en el <code>useAppStore({ hasAccount, … })</code> en vez de repetir la expresión.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: tsc</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/App.tsx
+git commit -m &quot;feat(mobile): boot al resolver la cuenta — Wallet o Sign in → Wallet&quot;</code></pre>
+<hr>
+<h3 id="task-3-uigesturests-umbrales-del-swipe-atras">Task 3: <code>ui/gestures.ts</code> — umbrales del swipe atrás</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/ui/gestures.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/gestures.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces:</li>
+<ul>
+<li><code>export const EDGE_PX = 24; export const BACK_DX = 60;</code></li>
+<li><code>export function shouldCaptureEdgeSwipe(x0: number, dx: number, dy: number): boolean</code></li>
+<li><code>export function shouldGoBack(dx: number): boolean</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test</strong></label></li>
+</ul>
+<pre><code class="language-ts">import { BACK_DX, EDGE_PX, shouldCaptureEdgeSwipe, shouldGoBack } from &quot;../src/ui/gestures&quot;;
+
+test(&quot;only a mostly-horizontal drag that starts at the left edge is captured&quot;, () =&gt; {
+  expect(shouldCaptureEdgeSwipe(0, 10, 2)).toBe(true);
+  expect(shouldCaptureEdgeSwipe(EDGE_PX, 10, 2)).toBe(true);
+  expect(shouldCaptureEdgeSwipe(EDGE_PX + 1, 10, 2)).toBe(false);
+  expect(shouldCaptureEdgeSwipe(5, 4, 8)).toBe(false);   // vertical: es scroll
+  expect(shouldCaptureEdgeSwipe(5, -10, 2)).toBe(true);  // se captura y luego no dispara
+});
+
+test(&quot;back fires only past the drag threshold&quot;, () =&gt; {
+  expect(shouldGoBack(BACK_DX)).toBe(false);
+  expect(shouldGoBack(BACK_DX + 1)).toBe(true);
+  expect(shouldGoBack(-100)).toBe(false);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que falla</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/gestures.test.ts 2&gt;&amp;1 | tail -6</code> Expected: FAIL — <code>Cannot find module &#39;../src/ui/gestures&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar <code>src/ui/gestures.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">/** Swipe desde el borde izquierdo = atrás (D7). Puro: sin react-native para poder testearlo. */
+export const EDGE_PX = 24;
+export const BACK_DX = 60;
+
+export function shouldCaptureEdgeSwipe(x0: number, dx: number, dy: number): boolean {
+  return x0 &lt;= EDGE_PX &amp;&amp; Math.abs(dx) &gt; Math.abs(dy);
+}
+
+export function shouldGoBack(dx: number): boolean {
+  return dx &gt; BACK_DX;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasa</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/gestures.test.ts 2&gt;&amp;1 | tail -6</code> Expected: 2 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/ui/gestures.ts apps/mobile/__tests__/gestures.test.ts
+git commit -m &quot;feat(mobile): umbrales puros del swipe desde el borde&quot;</code></pre>
+<hr>
+<h3 id="task-4-perplordersts-lockedcollateral-y-unrealisedpnl">Task 4: <code>perpl/orders.ts</code> — <code>lockedCollateral</code> y <code>unrealisedPnl</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/perpl/orders.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/perpl-orders.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces:</li>
+<ul>
+<li><code>export function lockedCollateral(positions: readonly { c: bigint }[]): bigint</code></li>
+<li><code>export function unrealisedPnl(positions: readonly PositionLike[], markets: readonly Market[]): bigint | null</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests</strong> (añadir a <code>perpl-orders.test.ts</code>; <code>MON</code> y <code>BTC</code> ya existen ahí, <code>MON.mark</code> es 2221 con <code>pd 5, sd 0</code> en el fixture — confírmalo con <code>console.log(MON.mark, BTC.mark)</code> si dudas)</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;lockedCollateral sums the collateral of every position&quot;, () =&gt; {
+  expect(lockedCollateral([])).toBe(0n);
+  expect(lockedCollateral([{ c: 10_000_000n }, { c: 2_500_000n }])).toBe(12_500_000n);
+});
+
+test(&quot;unrealisedPnl sums positionPnl across markets and skips unknown markets&quot;, () =&gt; {
+  const longMon = { mkt: 64, sd: 1 as const, s: 100, ep: 2217, lv: 100 };   // MON mark 2221 → +4000
+  const shortMon = { mkt: 64, sd: 2 as const, s: 100, ep: 2217, lv: 100 };  // → −4000
+  const orphan = { mkt: 999, sd: 1 as const, s: 100, ep: 1, lv: 100 };
+  expect(unrealisedPnl([longMon], [MON, BTC])).toBe(positionPnl(longMon, MON.mark, MON.priceDecimals, MON.sizeDecimals));
+  expect(unrealisedPnl([longMon], [MON, BTC])).toBe(4000n);
+  expect(unrealisedPnl([shortMon], [MON, BTC])).toBe(-4000n);
+  expect(unrealisedPnl([longMon, shortMon], [MON, BTC])).toBe(0n);
+  expect(unrealisedPnl([longMon, orphan], [MON, BTC])).toBe(4000n);
+  expect(unrealisedPnl([orphan], [MON, BTC])).toBeNull();
+  expect(unrealisedPnl([], [MON, BTC])).toBeNull();
+});</code></pre>
+<p>Añade <code>lockedCollateral, unrealisedPnl</code> al import.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que fallan</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/perpl-orders.test.ts 2&gt;&amp;1 | tail -8</code> Expected: FAIL — <code>lockedCollateral is not a function</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong> (después de <code>positionPnl</code> en <code>orders.ts</code>)</label></li>
+</ul>
+<pre><code class="language-ts">/** Colateral en posiciones = Σ c. El `lb` de la cuenta no lo es (audit mobile-perpl-f1, aprendido 1). */
+export function lockedCollateral(positions: readonly { c: bigint }[]): bigint {
+  return positions.reduce((sum, p) =&gt; sum + p.c, 0n);
+}
+
+/** Σ positionPnl sobre las posiciones con mercado conocido; null si ninguna lo tiene (la UI oculta la línea). */
+export function unrealisedPnl(positions: readonly PositionLike[], markets: readonly Market[]): bigint | null {
+  let sum = 0n, any = false;
+  for (const p of positions) {
+    const m = markets.find((x) =&gt; x.id === p.mkt);
+    if (!m) continue;
+    any = true;
+    sum += positionPnl(p, m.mark, m.priceDecimals, m.sizeDecimals);
+  }
+  return any ? sum : null;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasan</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/perpl-orders.test.ts 2&gt;&amp;1 | tail -8 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: PASS y <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/perpl/orders.ts apps/mobile/__tests__/perpl-orders.test.ts
+git commit -m &quot;feat(mobile): lockedCollateral y unrealisedPnl para el saldo de Trade&quot;</code></pre>
+<hr>
+<h3 id="task-5-comingsoonscreen-shell-la-renderiza">Task 5: <code>ComingSoonScreen</code> + <code>Shell</code> la renderiza</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/comingSoon.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/Shell.tsx</code></li>
+<li>Test: <code>apps/mobile/__tests__/comingSoon.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>COMING_SOON</code>, <code>ctx.comingSoon</code> (Task 1).</li>
+<li>Produces: <code>export const COMING_SOON_COPY: Record&lt;&quot;market&quot; | &quot;activity&quot; | &quot;portfolio&quot;, { icon: &quot;storefront-outline&quot; | &quot;pulse-outline&quot; | &quot;pie-chart-outline&quot;; title: string; copy: string }&gt;</code> y <code>export function ComingSoonScreen(props: { screen: Screen; nav: AppCtx[&quot;nav&quot;] })</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test</strong> (<code>__tests__/comingSoon.test.ts</code>; importar el módulo <code>.tsx</code> desde Jest funciona con <code>jest-expo</code> — el test sólo toca el mapa)</label></li>
+</ul>
+<pre><code class="language-ts">import { COMING_SOON_COPY } from &quot;../src/screens/comingSoon&quot;;
+import { COMING_SOON } from &quot;../src/store&quot;;
+
+test(&quot;every coming-soon tab has its icon, title and one-line copy&quot;, () =&gt; {
+  expect(Object.keys(COMING_SOON_COPY).sort()).toEqual([...COMING_SOON].sort());
+  expect(COMING_SOON_COPY.market).toEqual({ icon: &quot;storefront-outline&quot;, title: &quot;Market&quot;, copy: &quot;Agents and their tokens&quot; });
+  expect(COMING_SOON_COPY.activity).toEqual({ icon: &quot;pulse-outline&quot;, title: &quot;Activity&quot;, copy: &quot;What the agents you follow are doing&quot; });
+  expect(COMING_SOON_COPY.portfolio).toEqual({ icon: &quot;pie-chart-outline&quot;, title: &quot;Portfolio&quot;, copy: &quot;Your token positions&quot; });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que falla</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/comingSoon.test.ts 2&gt;&amp;1 | tail -6</code> Expected: FAIL — <code>Cannot find module &#39;../src/screens/comingSoon&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Crear <code>src/screens/comingSoon.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { View } from &quot;react-native&quot;;
+import Ionicons from &quot;@expo/vector-icons/Ionicons&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import type { Screen } from &quot;../store&quot;;
+import { T, Tag, Touch } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+
+type ComingSoonTab = &quot;market&quot; | &quot;activity&quot; | &quot;portfolio&quot;;
+type Copy = { icon: &quot;storefront-outline&quot; | &quot;pulse-outline&quot; | &quot;pie-chart-outline&quot;; title: string; copy: string };
+
+/** Mismo icono que la tab bar (Shell.BOTTOM_TABS), variante outline. Copy fijado en el spec §2.3. */
+export const COMING_SOON_COPY: Record&lt;ComingSoonTab, Copy&gt; = {
+  market: { icon: &quot;storefront-outline&quot;, title: &quot;Market&quot;, copy: &quot;Agents and their tokens&quot; },
+  activity: { icon: &quot;pulse-outline&quot;, title: &quot;Activity&quot;, copy: &quot;What the agents you follow are doing&quot; },
+  portfolio: { icon: &quot;pie-chart-outline&quot;, title: &quot;Portfolio&quot;, copy: &quot;Your token positions&quot; },
+};
+
+const secondaryBtn = { paddingVertical: 14, paddingHorizontal: 22, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: &quot;center&quot; } as const;
+
+export function ComingSoonScreen({ screen, nav }: { screen: Screen; nav: AppCtx[&quot;nav&quot;] }) {
+  const c = COMING_SOON_COPY[screen as ComingSoonTab] ?? COMING_SOON_COPY.market;
+  return (
+    &lt;View style={{ flex: 1, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, padding: 16, gap: 14 }}&gt;
+      &lt;View style={{ width: 72, height: 72, borderRadius: 999, backgroundColor: C.surf, borderWidth: 1, borderColor: &quot;rgba(200,240,58,0.35)&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+        &lt;Ionicons name={c.icon} size={30} color={C.lime} /&gt;
+      &lt;/View&gt;
+      &lt;T w={800} s={22} lh={1.1} ls={-0.03}&gt;{c.title}&lt;/T&gt;
+      &lt;Tag label=&quot;COMING SOON&quot; fg={C.lime} bd=&quot;rgba(200,240,58,0.45)&quot; dashed /&gt;
+      &lt;T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: &quot;center&quot;, maxWidth: 260 }}&gt;{c.copy}&lt;/T&gt;
+      &lt;Touch onPress={() =&gt; nav(&quot;wallet&quot;)} style={{ ...secondaryBtn, marginTop: 6 }}&gt;
+        &lt;T w={700} s={13.5}&gt;Go to Wallet&lt;/T&gt;
+      &lt;/Touch&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>(Si <code>Tag</code> no acepta <code>dashed</code> con esa firma, revisa <code>src/ui/primitives.tsx:45-56</code> — sí lo acepta: <code>dashed?: boolean</code>.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>Shell.tsx</code> — renderizar y ocultar ★/Alerts</strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { ComingSoonScreen } from &quot;./screens/comingSoon&quot;;
+// …
+const Current = SCREENS[ctx.scr];
+// header actions: sólo cuando Market es real
+const headerActions: HeaderAction[] = S.screen === &quot;market&quot; &amp;&amp; !ctx.comingSoon
+  ? [{ label: &quot;★&quot;, go: () =&gt; nav(&quot;search&quot;) }, { label: &quot;Alerts&quot;, go: () =&gt; nav(&quot;activity&quot;) }]
+  : S.screen === &quot;agent&quot;
+    ? [{ label: &quot;★&quot;, active: S.following, go: () =&gt; set({ following: !S.following }) }]
+    : [];
+// …
+&lt;ScrollView …&gt;
+  {ctx.comingSoon ? &lt;ComingSoonScreen screen={ctx.scr} nav={nav} /&gt; : &lt;Current {...ctx} /&gt;}
+&lt;/ScrollView&gt;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verificar</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx jest __tests__/comingSoon.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: PASS y <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/screens/comingSoon.tsx apps/mobile/src/Shell.tsx apps/mobile/__tests__/comingSoon.test.ts
+git commit -m &quot;feat(mobile): pantalla Coming soon para Market, Activity y Portfolio&quot;</code></pre>
+<hr>
+<h3 id="task-6-shell-pull-to-refresh-y-swipe-atras-owntsx-sin-boton-refresh">Task 6: <code>Shell</code> — pull-to-refresh y swipe atrás; <code>own.tsx</code> sin botón Refresh</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/Shell.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/screens/own.tsx</code> (bloque TESTNET, el <code>Touch</code> &quot;Refresh&quot;)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>shouldCaptureEdgeSwipe</code>, <code>shouldGoBack</code> (Task 3); <code>treasury.refresh</code>, <code>treasury.refreshMovements</code>, <code>perpl.refreshContext</code> (existentes).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: RefreshControl en el <code>ScrollView</code></strong></label></li>
+</ul>
+<p>En <code>Shell.tsx</code>:</p>
+<pre><code class="language-tsx">import { type ReactElement, useCallback, useMemo, useState } from &quot;react&quot;;
+import { Image, PanResponder, RefreshControl, ScrollView, View } from &quot;react-native&quot;;
+import { shouldCaptureEdgeSwipe, shouldGoBack } from &quot;./ui/gestures&quot;;
+// …
+export function Shell({ ctx }: { ctx: AppCtx }) {
+  const { S, set, nav, back, requireAccount, agent, balance, tradeHolds: holds, treasury, perpl } = ctx;
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshable = S.screen === &quot;wallet&quot; || S.screen === &quot;perps&quot;;
+  // D5: Wallet = saldos + movimientos; Trade = markets. allSettled: un fallo no deja el spinner colgado.
+  const onRefresh = useCallback(async () =&gt; {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled(S.screen === &quot;wallet&quot; ? [treasury.refresh(), treasury.refreshMovements()] : [perpl.refreshContext()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [S.screen, treasury, perpl]);</code></pre>
+<p>y en el <code>ScrollView</code>:</p>
+<pre><code class="language-tsx">&lt;ScrollView
+  style={{ flex: 1 }}
+  contentContainerStyle={{ flexGrow: 1 }}
+  showsVerticalScrollIndicator={false}
+  refreshControl={refreshable ? &lt;RefreshControl refreshing={refreshing} onRefresh={() =&gt; { void onRefresh(); }} tintColor={C.lime} /&gt; : undefined}
+&gt;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: PanResponder para el swipe atrás</strong></label></li>
+</ul>
+<p>Dentro de <code>Shell</code>, después de <code>onRefresh</code>:</p>
+<pre><code class="language-tsx">  // D7: captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
+  const pan = useMemo(() =&gt; PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_e, g) =&gt; shouldCaptureEdgeSwipe(g.x0, g.dx, g.dy),
+    onPanResponderRelease: (_e, g) =&gt; { if (shouldGoBack(g.dx)) back(); },
+  }), [back]);</code></pre>
+<p>y envuelve el <code>ScrollView</code>:</p>
+<pre><code class="language-tsx">&lt;View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}&gt;
+  &lt;ScrollView …&gt;…&lt;/ScrollView&gt;
+&lt;/View&gt;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Quitar el botón Refresh de Wallet</strong></label></li>
+</ul>
+<p>En <code>src/screens/own.tsx</code> (≈ línea 224) elimina exactamente este bloque; el <code>Retry</code> del <code>rpcError</code> de abajo se queda:</p>
+<pre><code class="language-tsx">&lt;Touch onPress={() =&gt; { void treasury.refresh(); }} style={secondaryBtn}&gt;
+  &lt;T w={600} s={13}&gt;Refresh&lt;/T&gt;
+&lt;/Touch&gt;</code></pre>
+<p>Si <code>secondaryBtn</code> deja de usarse en <code>own.tsx</code> tras esto, <code>tsc</code> no se queja (es una const), pero revisa con <code>grep -n secondaryBtn src/screens/own.tsx</code>: si sólo queda la declaración, bórrala también.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK &amp;&amp; npm test 2&gt;&amp;1 | tail -5</code> Expected: <code>TSC_OK</code>; todos los tests en PASS (línea base + 4 nuevos archivos/tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/Shell.tsx apps/mobile/src/screens/own.tsx
+git commit -m &quot;feat(mobile): pull-to-refresh en Wallet y Trade, swipe desde el borde para atrás&quot;</code></pre>
+<hr>
+<h3 id="task-7-perpstsx-in-positions-free-y-linea-de-pnl-no-realizado">Task 7: <code>perps.tsx</code> — &quot;in positions / free&quot; y línea de PnL no realizado</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/perps.tsx</code> (bloque &quot;Trading balance&quot;, ≈ líneas 186–193)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>lockedCollateral</code>, <code>unrealisedPnl</code> (Task 4).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Sustituir el cálculo y la línea</strong></label></li>
+</ul>
+<p>Import: añade <code>lockedCollateral, unrealisedPnl</code> al import de <code>../perpl/orders</code>. Reemplaza <code>const locked = acc?.lb ?? 0n;</code> por:</p>
+<pre><code class="language-tsx">const positions = live?.positions ?? [];
+const markets = perpl.context?.markets ?? [];
+const locked = lockedCollateral(positions);
+const upnl = unrealisedPnl(positions, markets);</code></pre>
+<p>(Las declaraciones de <code>markets</code> y <code>positions</code> que ya existen unas líneas más abajo se eliminan para no duplicarlas.) Y el bloque del saldo queda:</p>
+<pre><code class="language-tsx">&lt;T w={800} s={30} lh={1} ls={-0.04} style={{ marginTop: 8 }}&gt;{formatAusd(b)} AUSD&lt;/T&gt;
+&lt;T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 8 }}&gt;{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? &quot;&quot; : &quot; · last seen&quot;}&lt;/T&gt;
+{upnl !== null ? (
+  &lt;T w={500} s={12} lh={1.4} mono color={upnl &gt;= 0n ? C.up : C.down} style={{ marginTop: 4 }}&gt;{upnl &gt;= 0n ? &quot;+&quot; : &quot;−&quot;}{formatAusd(upnl &lt; 0n ? -upnl : upnl)} unrealised PnL&lt;/T&gt;
+) : null}</code></pre>
+<p><strong>&quot;free&quot; es <code>b</code> por D10, condicionado a D12</strong>: si la medición de Task 8 muestra que <code>b</code> <strong>no</strong> baja al abrir la posición, cambia <code>free</code> a <code>formatAusd(b - locked)</code> y regístralo en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/screens/perps.tsx
+git commit -m &quot;feat(mobile): Trade muestra colateral en posiciones y PnL no realizado bajo el saldo&quot;</code></pre>
+<hr>
+<h3 id="task-8-verificacion-manual-en-el-simulador-medicion-d12-readme-y-overview">Task 8: Verificación manual en el simulador, medición D12, README y overview</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code> (línea &quot;jest, 41/41 esperado&quot; → el conteo real)</li>
+<li>Modify: <code>docs/overview/2026-09-18-mobile-polish.html</code> (tasks de F1 marcadas, status)</li>
+<li>Modify: <code>docs/overview/data/manifest.js</code> (F1 → <code>completed</code> sólo con esta evidencia)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Correr la app en el simulador</strong></label></li>
+</ul>
+<p>Run (desde <code>apps/mobile</code>): <code>npx expo run:ios</code> (si <code>ios/</code> no existe en el worktree, primero <code>npx expo prebuild --platform ios --clean</code>). El simulador con cuenta es el que tiene la passkey del simulador (<code>0xe371…51C1</code>, Perpl #620). Expected: la app abre en <strong>Wallet</strong> (no en Market).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Capturas</strong> (guardar en el scratchpad de la sesión con <code>xcrun simctl io booted screenshot &lt;ruta&gt;.png</code> y mirarlas con la herramienta de lectura de imágenes)</label></li>
+</ul>
+<ol>
+<li>Arranque → Wallet. 2. Tab Market → coming soon con <code>storefront</code>; header &quot;Market · Coming soon&quot; sin ★/Alerts. 3. Activity y Portfolio, ídem con sus iconos. 4. Wallet: jalar (con <code>idb ui swipe</code> si está disponible, o a mano) → spinner lime → suelta; sin botón Refresh. 5. Trade: jalar → spinner. 6. Deposit: swipe desde el borde → vuelve a Wallet. 7. Wallet: el mismo swipe no hace nada.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Medición D12 en la cuenta #620</strong></label></li>
+</ul>
+<p>En Trade, anota <code>b</code> (Trading balance) con la cuenta plana. Abre un long pequeño de MON (el mínimo que acepte el mercado, 1x). Anota: <code>b</code> después, <code>c</code> de la posición (línea &quot;in positions&quot;), y la línea de PnL. Cierra la posición. Registra los tres números en el audit. Regla: si <code>b_después ≈ b_antes − c</code> → &quot;free&quot; = <code>b</code> (como está); si <code>b_después ≈ b_antes</code> → cambia <code>free</code> a <code>b − locked</code> en <code>perps.tsx</code> (Task 7) y commitea <code>fix(mobile): free = b − colateral, medido en #620</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Arranque sin cuenta</strong></label></li>
+</ul>
+<p>Sign out → cierra la app (<code>xcrun simctl terminate booted &lt;bundleId&gt;</code>) → relanza. Expected: Sign in; tras &quot;I already have one&quot; → Wallet. Captura.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: README y suite completa</strong></label></li>
+</ul>
+<p>Actualiza la línea <code>npm test          # jest, 41/41 esperado</code> con el conteo real de <code>npm test</code>. Run: <code>cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -5 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Overview, manifest y audit</strong></label></li>
+</ul>
+<ul>
+<li>En <code>docs/overview/2026-09-18-mobile-polish.html</code>: <code>data-status=&quot;completed&quot;</code> en la phase-card, <code>&lt;option value=&quot;completed&quot; selected&gt;</code>, las 8 tasks de este plan como <code>&lt;li&gt;</code> con <code>checked</code>, bloque <code>&lt;h3 class=&quot;section-sub&quot;&gt;Rulings en ejecución&lt;/h3&gt;</code> con los rulings reales del audit, footer con el audit.</li>
+<li>En <code>manifest.js</code>: <code>phases: [{ num: 1, status: &#39;completed&#39; }]</code>, <code>status: &#39;completed&#39;</code>, <code>types: [&#39;spec&#39;, &#39;plan&#39;]</code>.</li>
+<li>Audit <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code> con: rulings (fallback de <code>backState</code> a wallet; resultado de D12; cualquier desviación), correcciones, evidencia (salida de <code>npm test</code>/<code>tsc</code>, lista de capturas), <strong>&quot;## Estado de las cuentas de testnet al cierre&quot;</strong> (b, c, #620 tras la medición) y residuales.</li>
+<li>Desde la raíz del worktree: <code>npm run docs:html &amp;&amp; npm run agents:check &amp;&amp; npm run docs:check</code> en verde; <code>node scripts/agent-infra/render-check.mjs &lt;scratch&gt; 2026-09-18-mobile-polish</code> y mirar la captura de 390 px.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit de docs</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/README.md docs/overview/2026-09-18-mobile-polish.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md docs/superpowers/plans/2026-09-18-mobile-polish-f1.md docs/superpowers/plans/2026-09-18-mobile-polish-f1.html
+git commit -m &quot;docs: cierre de F1 de mobile-polish — overview, manifest, audit y README&quot;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Revisión independiente</strong></label></li>
+</ul>
+<p>Antes de proponer merge: subagente revisor con el spec, este plan, <code>git diff main...feat/mobile-polish</code> y la evidencia. Sus hallazgos Important se corrigen en la rama; los Minor van a &quot;Pendientes&quot; del overview y al audit.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-18-mobile-polish-f1.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-18-mobile-polish-f1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
