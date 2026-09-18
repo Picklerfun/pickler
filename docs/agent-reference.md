@@ -117,6 +117,7 @@ Cuando completes la implementación de una fase:
 }
 ```
 
+- Pickler numera las fases desde **1** (`num: 1` es la primera); el index muestra `F${num}` de la fase `in_progress`.
 - **Una entrada por proyecto** (no por doc). `types`, `phases` y `status` describen artefactos realmente escritos: no se inventan fases futuras "para verlas en el dashboard".
 - Orden del array: **más reciente primero** (nuevas entradas se agregan al inicio, no al final).
 - Cuando una fase avance, actualiza solo el `status` de ese item en `phases` y, si el proyecto cierra, el `status` global. **No borres entradas** al completar — el índice es histórico.

@@ -33,12 +33,12 @@ window.DOCS = [
     summary: 'Manifest, overviews, dev trackers, specs/planes con HTML autogenerado y un audit por fase — el modelo completo de documentación de Proflores, adoptado para que el estado de Pickler viva en un solo lugar máquina-legible.',
     file: '2026-09-18-docs-manifest.html',
     types: ['spec', 'plan'],
-    status: 'active',
+    status: 'completed',
     tags: ['docs', 'tooling', 'agentes', 'skills'],
     phases: [
       { num: 1, status: 'completed' },
       { num: 2, status: 'completed' },
-      { num: 3, status: 'in_progress' },
+      { num: 3, status: 'completed' },
     ],
   },
   {

@@ -51,7 +51,7 @@
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
           <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
-          <div class="v" data-sb="next" data-done="">F3: Skills</div>
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-18 — las tres fases del spec están hechas; siguiente decisión: merge de chore/docs-manifest (Jesús)">F3: Skills</div>
         </div>
       </div>
 
@@ -184,7 +184,7 @@
       </article>
 
       <!-- Phase 3 ====================================================== -->
-      <article class="phase-card" data-phase="3" data-status="in_progress">
+      <article class="phase-card" data-phase="3" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F3</span>
@@ -194,15 +194,15 @@
             <select aria-label="Phase 3 status">
               <option value="pending">pending</option>
               <option value="plan_ready">plan_ready</option>
-              <option value="in_progress" selected>in_progress</option>
-              <option value="completed">completed</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
           <p>Dejar operables las tres skills del modelo (<code>pickler-retomar</code>, <code>pickler-overview-new</code>, <code>pickler-dev-new</code>) con symlinks, casos de routing y los residuales de template/referencia que F2 dejó, y probar <code>pickler-retomar</code> en una sesión limpia.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Reglas compartidas en template/CSS (<code>section-sub</code>, <code>data-done</code>, bloque "Rulings en ejecución", sección "Validación" en dev); tres skills escritas y con symlink en <code>.claude/skills/</code>; <code>behavior-cases.json</code> con 8 casos de routing. Falta: prueba end-to-end de <code>pickler-retomar</code> en sesión limpia, revisión final de rama y el audit de F3.</div></div>
+            <div><div class="k">Entregable</div><div class="v">Reglas compartidas en template/CSS (<code>section-sub</code>, <code>data-done</code>, bloque "Rulings en ejecución", sección "Validación" en dev); tres skills escritas y con symlink en <code>.claude/skills/</code>; <code>behavior-cases.json</code> con casos de routing; dos pruebas end-to-end de <code>pickler-retomar</code> en sesión limpia; revisión final de rama; audit en <code>docs/superpowers/audits/2026-09-18-docs-manifest-f3-rulings.md</code>.</div></div>
             <div><div class="k">Prerequisitos</div><div class="v">F1, F2</div></div>
           </div>
           <details class="tasks">
@@ -216,7 +216,7 @@
               <li><label><input type="checkbox" checked> Task 3: <code>pickler-dev-new</code></label></li>
               <li><label><input type="checkbox" checked> Task 4: <code>pickler-retomar</code></label></li>
               <li><label><input type="checkbox" checked> Task 5: Symlinks, <code>behavior-cases.json</code>, README y check</label></li>
-              <li><label><input type="checkbox"> Task 6: Prueba de <code>pickler-retomar</code> en sesión limpia, revisión final y audit de F3</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Prueba de <code>pickler-retomar</code> en sesión limpia, revisión final y audit de F3</label></li>
             </ol>
           </details>
         </div>
@@ -275,7 +275,7 @@
       </table>
 
       <h3 class="section-sub">Rulings en ejecución</h3>
-      <p class="sec-sub">Decisiones tomadas durante la implementación de F1 y F2 (fuente: sus audits), no previstas en el spec. El audit de F3 sigue abierto.</p>
+      <p class="sec-sub">Decisiones tomadas durante la implementación de F1 y F2 (fuente: sus audits), no previstas en el spec.</p>
       <ol>
         <li>Tokens del esquema claro re-elegidos (<code>--brand #5C7600</code>, <code>--brand-dark #3F5200</code>, <code>--status-pass #247A3A</code>, <code>--info #0B6F99</code>): el revisor midió <code>#7FA300</code> (valor del plan) a 2.9:1 sobre blanco; los nuevos dan ≥4.8:1.</li>
         <li>Token <code>--on-brand</code> agregado tras encontrar <code>color:white</code> sobre lima en 9 reglas (1.31:1, visible en el propio index); ahora 15.2:1.</li>
@@ -318,7 +318,7 @@
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-18-docs-manifest-design.md</code> ·
        planes en <code>docs/superpowers/plans/2026-09-18-docs-manifest-f1.md</code>, <code>-f2.md</code>, <code>-f3.md</code> ·
-       audits en <code>docs/superpowers/audits/2026-09-18-docs-manifest-f1-rulings.md</code> y <code>-f2-rulings.md</code> (el de F3 sigue abierto)</p>
+       audits en <code>docs/superpowers/audits/2026-09-18-docs-manifest-f1-rulings.md</code>, <code>-f2-rulings.md</code> y <code>-f3-rulings.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>

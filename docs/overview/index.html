@@ -368,7 +368,7 @@
     if (completed === total) {
       label = `${total}/${total} fases completas`;
     } else if (inProgress > 0) {
-      label = `F${doc.phases.findIndex(p => p.status === 'in_progress')} en progreso · ${completed}/${total} completas`;
+      label = `F${doc.phases.find(p => p.status === 'in_progress').num} en progreso · ${completed}/${total} completas`;
     } else if (planReady > 0) {
       label = `${completed}/${total} completas · ${planReady} con plan listo`;
     } else {

@@ -79,7 +79,7 @@ Spec stub:
 Manifest actualizado:
    docs/overview/data/manifest.js (entry agregada al principio del array)
 
-Carpeta assets/ creada.
+Carpeta assets/: creada sólo si hay captura (hoy: no).
 
 npm run agents:check: <resultado>
 Captura 390 px mirada: sí/no

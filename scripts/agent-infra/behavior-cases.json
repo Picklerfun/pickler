@@ -1,5 +1,5 @@
 [
-  {"prompt":"¿En qué íbamos?","expected":"Inventario completo: manifest (6 entradas, 4 con fases), git, audits, deadline, build, cuentas. No resumir ni filtrar.","skill":"pickler-retomar"},
+  {"prompt":"¿En qué íbamos?","expected":"Inventario completo: todas las entradas del manifest (hoy unas pocas, con y sin fases), git, audits, deadline, build, cuentas. No resumir ni filtrar.","skill":"pickler-retomar"},
   {"prompt":"Sigamos con Perpl","expected":"Cargar spec/audit/overview de mobile-perpl y continuar el alcance autorizado; no volver a preguntar qué proyecto.","skill":"pickler-retomar"},
   {"prompt":"¿Cómo va el build de TestFlight?","expected":"Leer el tracker testflight-* más reciente del manifest y el audit; no inferir distribución de VALID ni subir nada.","skill":"pickler-retomar"},
   {"prompt":"Registra el build 4","expected":"Dev tracker con types feature; status pending o in_progress hasta tener evidencia; Validación con fuente; no shipped.","skill":"pickler-dev-new"},

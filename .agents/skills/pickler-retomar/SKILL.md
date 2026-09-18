@@ -20,7 +20,7 @@ que esta skill lee está en el checkout o en `git`.
 
 **Esto es un inventario, no un resumen.** El usuario invoca esta skill justamente porque no
 recuerda qué tiene abierto; una selección de "lo más relevante" le esconde trabajo que no puede
-recuperar de memoria. Hoy el manifest tiene 6 entradas (4 proyectos con fases, 2 dev trackers):
+recuperar de memoria. Todas las entradas del manifest caben completas; hoy son unas pocas:
 cabe completo y es barato. La compresión viene después, cuando él elija — no antes.
 
 **No leas specs completos todavía.** Primero el mapa; el detalle sólo del que elija.
@@ -106,7 +106,7 @@ Imprime JSON: `branches` (locales y remotas, con `status`, `headSha`,
 `origin/main`, informa el error y elige una base existente; un error no es inventario vacío.
 
 - `integrated_ancestry`: el HEAD medido es ancestro de la base. No prueba deploy ni build.
-  Es el caso de las cuatro `feat/mobile-*` (fase1, ui-port, wallet, build3): mergeadas y
+  Es el caso de las cuatro `feat/mobile-*` (build3, perpl, ui-port, wallet): mergeadas y
   pusheadas, con worktrees aún registrados.
 - `patch_equivalent_review`: todos los commits comparables tienen parche equivalente;
   revisar merges, reversiones y estado final antes de concluir.
@@ -127,7 +127,7 @@ exige revalidar SHA, cambios ignorados y sesiones vivas.
 ## 3. Las decisiones que no están en los commits
 
 ```bash
-ls -t docs/superpowers/audits/*.md 2>/dev/null | head -5
+ls docs/superpowers/audits/*.md 2>/dev/null | sort -r | head -5
 ```
 
 Los audits (`<fecha>-<topic>-f<N>-rulings.md`, uno por fase ejecutada) guardan lo que se
