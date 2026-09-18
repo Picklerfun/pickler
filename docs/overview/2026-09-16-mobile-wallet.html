@@ -46,7 +46,7 @@
         </div>
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
-          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
         </div>
       </div>
 
@@ -166,7 +166,7 @@
     <!-- ========================= 3. Decisiones ============================ -->
     <section id="decisions">
       <h2><span class="sec-num">03</span>Decisiones clave</h2>
-      <table class="decisions" style="overflow-wrap:anywhere;">
+      <table class="decisions">
         <thead>
           <tr>
             <th>Decisión</th>
@@ -213,7 +213,7 @@
         </tbody>
       </table>
 
-      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Rulings en ejecución</h3>
+      <h3 class="section-sub">Rulings en ejecución</h3>
       <ol>
         <li>Historial vía MonadScan, no vía RPC — medido: el RPC público limita a 100 bloques por llamada; SQD sin key tarda ~12 min con <code>529 overloaded</code>.</li>
         <li><code>MONADSCAN_API</code>/<code>MONADSCAN_CHAIN_ID</code> se quedaron en <code>wallet/explorer.ts</code>, no en <code>config/explorer.ts</code> como decía el spec, para que los tests carguen sin mocks.</li>
@@ -368,7 +368,7 @@
       const nextPhase = phases.find(p => p.status === 'in_progress')
         || phases.find(p => p.status === 'plan_ready')
         || phases.find(p => p.status === 'pending');
-      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
     }
 
     const $bar = document.getElementById('sb-progress-bar');

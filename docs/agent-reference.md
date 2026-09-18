@@ -118,6 +118,7 @@ Cuando completes la implementación de una fase:
 ```
 
 - **Una entrada por proyecto** (no por doc). `types`, `phases` y `status` describen artefactos realmente escritos: no se inventan fases futuras "para verlas en el dashboard".
+- Orden del array: **más reciente primero** (nuevas entradas se agregan al inicio, no al final).
 - Cuando una fase avance, actualiza solo el `status` de ese item en `phases` y, si el proyecto cierra, el `status` global. **No borres entradas** al completar — el índice es histórico.
 - El index muestra una mini-barra de progreso automática si el `phases` array está presente.
 - El index **construye DOM con `createElement`** — nunca `innerHTML` con contenido dinámico (XSS).
@@ -169,6 +170,10 @@ Los cuatro handoffs anteriores a este sistema (`docs/05` a `docs/08`) se conserv
   7. **Glosario** al final (sólo si el spec lo tiene).
   8. **Footer** con paths a `.md` fuente (spec, plan, audit) y nota de "dashboard vivo".
 - **Mirar el render** (desktop y 390 px) antes de afirmar calidad visual; `node scripts/agent-infra/render-check.mjs <scratch>` captura con el Chrome local, pero la captura hay que abrirla.
+- `<title>` = h1 completo (título + acento) + " · Pickler".
+- `data-done` en `[data-sb="next"]`: texto que el script usa cuando todas las fases están `completed`, en vez de "— todo completo".
+- Subtítulos dentro de una sección (p. ej. "Rulings en ejecución"): `<h3 class="section-sub">`, regla compartida en `_styles.css` — no estilos inline.
+- `agents:check` cuenta fases parseando el HTML real (ignora `<script>` y comentarios): la cadena literal `<article class="phase-card"` que aparece dentro del script del template (`buildHtmlDiff`) no se cuenta doble.
 
 ## Naming convention
 
@@ -184,6 +189,8 @@ Los cuatro handoffs anteriores a este sistema (`docs/05` a `docs/08`) se conserv
 | Playground | `playgrounds/YYYY-MM-DD-<slug>.html` |
 | Report | `reports/YYYY-MM-DD-<slug>.html` |
 | Investigación | `investigacion/<topic>.md` (sin fecha — expediente vivo, con fuentes en `fuentes/`) |
+
+`data-slug` (atributo del `<body>`): en overviews de proyecto es el slug **sin fecha** (`<topic>`); en HTML dev incluye la fecha (`YYYY-MM-DD-<slug>`, igual al nombre del archivo) — es la key de `localStorage`, así que debe ser único por artefacto.
 
 La fecha es la del primer escrito del artefacto. No la cambias después; refleja el día que arrancó. Ejemplo: el spec `2026-09-16-mobile-perpl-design.md` tiene plan `2026-09-16-mobile-perpl.md`, overview `2026-09-16-mobile-perpl.html` y audit `…-mobile-perpl-f1-rulings.md`.
 
@@ -220,8 +227,9 @@ Misma paleta y reglas del overview (standalone, marca Pickler dark por defecto, 
 3. **Qué cambió** — bullets concisos de los cambios funcionales (lo que un usuario nota).
 4. **Por qué** — 1-2 párrafos del problema o motivación.
 5. **Archivos tocados** — lista con paths relativos al repo (sin enlaces, son referencia).
-6. **Follow-ups** (opcional) — `<details class="followups">` si quedan known issues no-blockers.
-7. **Footer** con commit SHA / PR # / número de build cuando exista.
+6. **Validación** — tests, build, TestFlight, prueba manual, con cifras y fuente.
+7. **Follow-ups** (opcional) — `<details class="followups">` si quedan known issues no-blockers.
+8. **Footer** con commit SHA / PR # / número de build cuando exista.
 
 Plantilla canónica: **`docs/overview/dev/_template.html`** (editable con `contenteditable` + botón "⬇ Descargar HTML"). Skill `pickler-dev-new` automatiza el flow.
 

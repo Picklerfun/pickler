@@ -46,7 +46,7 @@
         </div>
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
-          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
         </div>
       </div>
 
@@ -201,7 +201,7 @@
         </tbody>
       </table>
 
-      <h3 style="font-size:14px;font-weight:700;margin:24px 0 8px;color:var(--ink)">Lo aprendido (audit)</h3>
+      <h3 class="section-sub">Lo aprendido (audit)</h3>
       <ul>
         <li>Expo SDK 57 exige Xcode ≥ 26.4; se instaló Xcode 26.6 junto al 26.2, más el runtime de simulador iOS 26.5.</li>
         <li>Mera no tiene SDK Swift (solo web/extensión/React Native); por eso la app es RN, con la misma derivación PRF→BIP-39→BIP-32 que el demo oficial.</li>
@@ -361,7 +361,7 @@
       const nextPhase = phases.find(p => p.status === 'in_progress')
         || phases.find(p => p.status === 'plan_ready')
         || phases.find(p => p.status === 'pending');
-      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
     }
 
     const $bar = document.getElementById('sb-progress-bar');

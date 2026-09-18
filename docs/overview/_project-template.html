@@ -26,6 +26,8 @@
   <div class="tabs"> + <button class="tab" aria-controls="..."> y .tab-panel.
   Ejemplo abajo (comentado).
 
+  <title> = texto completo del h1 (principal + acento) + ' · Pickler'.
+
   Reglas completas en docs/CLAUDE.md.
 -->
 <html lang="es-MX">
@@ -75,7 +77,8 @@
         </div>
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
-          <div class="v" data-sb="next">—</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="[[DONE_TEXT]]">—</div>
         </div>
       </div>
 
@@ -248,6 +251,11 @@
           </tr>
         </tbody>
       </table>
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li>[[RULING_1]]</li>
+        <li>[[RULING_2]]</li>
+      </ol>
     </section>
 
     <!-- ========================== 4. Modelo ================================ -->
@@ -512,7 +520,7 @@ export interface [[ENTITY]]Response {
       const nextPhase = phases.find(p => p.status === 'in_progress')
         || phases.find(p => p.status === 'plan_ready')
         || phases.find(p => p.status === 'pending');
-      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
     }
 
     const $bar = document.getElementById('sb-progress-bar');

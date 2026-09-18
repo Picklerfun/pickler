@@ -50,7 +50,7 @@
         </div>
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
-          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en <code>docs/04-roadmap-bounty.md</code></div>
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md">Cerrado el 2026-09-16 — siguiente en <code>docs/04-roadmap-bounty.md</code></div>
         </div>
       </div>
 
@@ -196,7 +196,7 @@
     <!-- ========================= 3. Decisiones ============================ -->
     <section id="decisions">
       <h2><span class="sec-num">03</span>Decisiones clave</h2>
-      <table class="decisions" style="table-layout:fixed;overflow-wrap:anywhere;word-break:break-word">
+      <table class="decisions">
         <thead>
           <tr>
             <th>Decisión</th>
@@ -267,7 +267,7 @@
         </tbody>
       </table>
 
-      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Rulings en ejecución</h3>
+      <h3 class="section-sub">Rulings en ejecución</h3>
       <p class="sec-sub">Decisiones tomadas durante la implementación (fuente: el audit de F1), no previstas en el spec.</p>
       <ol style="font-size:13.5px;color:var(--ink-2);line-height:1.6;padding-left:20px;margin:0">
         <li><code>initial_margin</code> es el apalancamiento máximo ×100 por mercado (medido en MON: <code>lv: 500</code> se acepta pero la posición queda en <code>lv: 300</code>); el selector solo ofrece los <code>LEVERAGES</code> ≤ ese máximo.</li>
@@ -429,7 +429,7 @@
       const nextPhase = phases.find(p => p.status === 'in_progress')
         || phases.find(p => p.status === 'plan_ready')
         || phases.find(p => p.status === 'pending');
-      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
     }
 
     const $bar = document.getElementById('sb-progress-bar');

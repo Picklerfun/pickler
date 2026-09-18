@@ -439,6 +439,12 @@ table.decisions th {
   text-transform: uppercase; letter-spacing: .06em;
 }
 table.decisions tr:last-child td { border-bottom: none; }
+/* Identificadores largos en decisiones no deben desbordar a 390 px */
+table.decisions { table-layout: fixed; }
+table.decisions td, table.decisions th { overflow-wrap: anywhere; word-break: break-word; }
+/* Subtítulo dentro de una sección (p. ej. "Rulings en ejecución") */
+.section-sub { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--ink); }
+.section-sub + ol, .section-sub + ul { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; padding-left: 20px; margin: 0; }
 
 /* =============================================================================
  * Glossary
