@@ -26,6 +26,7 @@
 // clipboard, listo para pegar al array de abajo.
 
 window.DOCS = [
+  // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-17',
     title: 'TestFlight build 4',
@@ -84,5 +85,4 @@ window.DOCS = [
     tags: ['mobile', 'expo', 'mera', 'passkey', 'ausd'],
     phases: [{ num: 1, status: 'completed' }],
   },
-  // ← Las entradas nuevas se pegan aquí.
 ];

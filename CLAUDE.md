@@ -20,6 +20,8 @@ sólo trae el tooling de documentación y agentes: `npm run agents:check`,
   Contexto fundacional en [`docs/00-historia.md`](docs/00-historia.md).
 - **Deadline del bounty: 13 oct 2026, 21:59 CST.** Toda decisión de alcance se mide
   contra esa fecha.
+- Skills del repo (`.claude/skills/`): `pickler-retomar` (retomar contexto),
+  `pickler-overview-new` (nuevo sub-proyecto), `pickler-dev-new` (fix/feature/build).
 
 `CLAUDE.md` es el archivo real y `AGENTS.md` su symlink hermano (`agents:check` lo
 valida y mide la cadena ≤ 24 KiB). Excepción: en `apps/mobile` el real es `AGENTS.md`.

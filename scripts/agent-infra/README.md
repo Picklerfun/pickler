@@ -15,6 +15,9 @@ existencia del HTML vecino de specs/planes. Excluye `plans/data/`: son datos aux
 no planes. No demuestra veracidad del contenido, disponibilidad de producción ni frescura
 remota de Git. Los dashboards sin phase-cards necesitan revisión humana de su estado.
 
+`behavior-cases.json` registra casos semánticos de routing de las skills `pickler-*`; se
+revisan a mano, no son una evaluación automática.
+
 `check-changed-docs` compara contenido generado de los Markdown cambiados; en CI usa
 `DOCS_BASE_SHA` del evento. Localmente incluye modificados/no trackeados. Comprueba
 históricos explícitamente con `node scripts/docs-md-to-html.mjs --all --check`; no se
