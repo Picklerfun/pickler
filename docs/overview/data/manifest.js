@@ -56,10 +56,10 @@ window.DOCS = [
   {
     date: '2026-09-17',
     title: 'TestFlight build 4',
-    summary: 'Lista propuesta tras probar el build 3 en teléfono real (desfase de reloj, "locked in positions", fees a 4 decimales, "Reconnect trading" tras Sign out); decide Jesús qué entra.',
+    summary: 'Build 0.1.0 (4) con el pulido de navegación (coming soon, arranque en Wallet, pull-to-refresh, swipe atrás, PnL en Trade); en el grupo interno "Equipo". Desfase de reloj, fees a 4 decimales y "Reconnect trading" quedan para el build 5.',
     file: 'dev/2026-09-17-testflight-build4.html',
     types: ['feature'],
-    status: 'pending',
+    status: 'shipped',
     tags: ['mobile', 'testflight', 'ios'],
   },
   {
