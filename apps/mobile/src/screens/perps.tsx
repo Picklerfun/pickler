@@ -6,7 +6,7 @@ import type { AppCtx } from "../ctx";
 import { PERPL_WEB } from "../perpl/config";
 import type { Market } from "../perpl/context";
 import { ENABLE_STEPS } from "../perpl/enable";
-import { change24h, formatPrice, formatSize, liquidationPrice, positionPnl } from "../perpl/orders";
+import { change24h, formatPrice, formatSize, liquidationPrice, lockedCollateral, positionPnl, unrealisedPnl } from "../perpl/orders";
 import type { Position } from "../perpl/ws";
 import { EmptyPanel, T, Tag, Touch, TouchCard } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
@@ -153,10 +153,11 @@ export function PerpsScreen(ctx: AppCtx) {
   const live = perpl.live;
   const acc = live?.account ?? null;
   const b = acc?.b ?? perpl.lastBalance ?? 0n;
-  const locked = acc?.lb ?? 0n;
-  const conn = CONNECTION[live?.status ?? "closed"];
-  const markets = perpl.context?.markets ?? [];
   const positions = live?.positions ?? [];
+  const markets = perpl.context?.markets ?? [];
+  const locked = lockedCollateral(positions);
+  const upnl = unrealisedPnl(positions, markets);
+  const conn = CONNECTION[live?.status ?? "closed"];
 
   const doClose = async (c: Closing) => {
     setClosing({ ...c, result: { step: "sent" } });
@@ -199,7 +200,10 @@ export function PerpsScreen(ctx: AppCtx) {
           <Tag label={conn.label} fg={conn.fg} bd={conn.fg} dot />
         </View>
         <T w={800} s={30} lh={1} ls={-0.04} style={{ marginTop: 8 }}>{formatAusd(b)} AUSD</T>
-        <T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 8 }}>{formatAusd(locked)} locked in positions · {formatAusd(b - locked)} free{acc ? "" : " · last seen"}</T>
+        <T w={400} s={12} lh={1.4} color={C.mute} style={{ marginTop: 8 }}>{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? "" : " · last seen"}</T>
+        {upnl !== null ? (
+          <T w={500} s={12} lh={1.4} mono color={upnl >= 0n ? C.up : C.down} style={{ marginTop: 4 }}>{upnl >= 0n ? "+" : "−"}{formatAusd(upnl < 0n ? -upnl : upnl)} unrealised PnL</T>
+        ) : null}
       </View>
 
       {live?.keyRejected ? (

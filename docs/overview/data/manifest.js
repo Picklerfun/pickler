@@ -29,6 +29,18 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-18',
+    title: 'App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade',
+    summary: 'Market, Activity y Portfolio dicen «coming soon» con la estética de la app; la app arranca en Wallet; Wallet y Trade se refrescan jalando y las pantallas con «←» regresan con swipe desde el borde; Trade muestra el PnL no realizado bajo el saldo con «in positions / free» corregidos.',
+    file: '2026-09-18-mobile-polish.html',
+    types: ['spec', 'plan'],
+    status: 'completed',
+    tags: ['mobile', 'expo', 'ui', 'perpl', 'navegación'],
+    phases: [
+      { num: 1, status: 'completed' },
+    ],
+  },
+  {
+    date: '2026-09-18',
     title: 'Sistema de documentación con manifest (modelo Proflores)',
     summary: 'Manifest, overviews, dev trackers, specs/planes con HTML autogenerado y un audit por fase — el modelo completo de documentación de Proflores, adoptado para que el estado de Pickler viva en un solo lugar máquina-legible.',
     file: '2026-09-18-docs-manifest.html',

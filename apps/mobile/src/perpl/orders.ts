@@ -46,6 +46,23 @@ export function positionPnl(p: PositionLike, mark: number, pd: number, sd: numbe
   return p.sd === 1 ? diff : -diff;
 }
 
+/** Colateral en posiciones = Σ c. El `lb` de la cuenta no lo es (audit mobile-perpl-f1, aprendido 1). */
+export function lockedCollateral(positions: readonly { c: bigint }[]): bigint {
+  return positions.reduce((sum, p) => sum + p.c, 0n);
+}
+
+/** Σ positionPnl sobre las posiciones con mercado conocido; null si ninguna lo tiene (la UI oculta la línea). */
+export function unrealisedPnl(positions: readonly PositionLike[], markets: readonly Market[]): bigint | null {
+  let sum = 0n, any = false;
+  for (const p of positions) {
+    const m = markets.find((x) => x.id === p.mkt);
+    if (!m) continue;
+    any = true;
+    sum += positionPnl(p, m.mark, m.priceDecimals, m.sizeDecimals);
+  }
+  return any ? sum : null;
+}
+
 export function change24h(mark: number, prev: number): number {
   return prev > 0 ? (mark - prev) / prev : 0;
 }

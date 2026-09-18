@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Pulido de navegación · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-polish">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-polish</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler — <span class="accent">Pulido de navegación</span></h1>
+    <p class="lede">Los tres tabs que siguen en mock (Market, Activity, Portfolio) lo dicen con la estética de la app; la app arranca en Wallet; Wallet y Trade se refrescan jalando y las pantallas con «←» regresan con swipe desde el borde; y Trade muestra el PnL no realizado de las posiciones abiertas bajo el saldo, con «in positions / free» calculados con datos que sí significan eso.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <div class="v" data-sb="next" data-done="">—</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Cinco piezas, ningún backend, ninguna dependencia nueva, ningún cambio nativo:</p>
+        <ol>
+          <li><strong>Coming soon</strong> en Market, Activity y Portfolio, con los tokens de la app. El mock no se borra.</li>
+          <li><strong>Arranque en Wallet</strong> (o Sign in → Wallet si no hay cuenta).</li>
+          <li><strong>Jalar para actualizar</strong> en Wallet y Trade con el <code>RefreshControl</code> nativo; el botón <em>Refresh</em> de Wallet desaparece.</li>
+          <li><strong>Swipe desde el borde izquierdo = atrás</strong> en las pantallas que hoy muestran «←».</li>
+          <li><strong>Trade</strong>: línea de PnL no realizado bajo el saldo, y «in positions / free» con Σ <code>c</code> de las posiciones y <code>b</code>, no con <code>lb</code>.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Coming soon, arranque en Wallet, gestos y PnL en Trade</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Una sola fase: pantalla «coming soon» para los tres tabs en mock, arranque en Wallet, pull-to-refresh en Wallet y Trade, swipe desde el borde para atrás, y la línea de PnL no realizado en Trade con «in positions / free» corregidos.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Los cinco puntos del TL;DR en el simulador, con capturas; tests de Jest para <code>bootState</code>, <code>COMING_SOON</code>, umbrales del gesto y <code>lockedCollateral</code>/<code>unrealisedPnl</code>; medición de <code>b</code> vs <code>c</code> en la cuenta #620 registrada en el audit.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 0: Bootstrap del worktree (<code>npm install</code>, línea base de tests y tsc)</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Store — <code>COMING_SOON</code>, arranque en Wallet, <code>bootState</code>, header «Coming soon»</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>App.tsx</code> — <code>boot(hasAccount)</code> una vez al resolver la cuenta</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>ui/gestures.ts</code> — umbrales del swipe atrás</label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>perpl/orders.ts</code> — <code>lockedCollateral</code> y <code>unrealisedPnl</code></label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>ComingSoonScreen</code> + <code>Shell</code> la renderiza</label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>Shell</code> — pull-to-refresh y swipe atrás; <code>own.tsx</code> sin botón Refresh</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>perps.tsx</code> — «in positions / free» y línea de PnL no realizado</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Verificación en simulador, medición D12, README, overview y audit</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li><code>resetTo</code> quedó sin usuarios tras cambiar Sign out; borrarlo o dejarlo para DevControls.</li>
+              <li>El subtítulo de Sign in «then back to your purchase» es copy heredado del flujo de compra.</li>
+              <li>PnL de ±0.00 se muestra con signo («−0.00 unrealised PnL»); tratar |pnl| &lt; 0.005 como «+0.00» si molesta.</li>
+              <li>Minors de revisión: variable <code>any</code> → <code>matched</code> en <code>orders.ts</code>; fallback silencioso en <code>comingSoon.tsx</code>; <code>useCallback</code> de <code>onRefresh</code> sin efecto; tests de empate y de componente.</li>
+              <li><code>accessibilityLabel</code> en <code>Touch</code>/<code>TouchCard</code> para que Maestro y VoiceOver encuentren tabs y filas.</li>
+              <li>El simulador quedó sin key de Perpl tras el Sign out de prueba (caso «Reconnect trading» del build 4).</li>
+            </ul>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>D1–D2 · Coming soon en <code>market</code>, <code>activity</code>, <code>portfolio</code>; nada del mock se borra</td>
+            <td>Son los tres tabs que siguen en mock. Jesús: «no elimines nada, solo es por el momento». Cuando una ruta cobre vida se quita de la lista y vuelve la pantalla.</td>
+          </tr>
+          <tr>
+            <td>D3 · Pantalla inicial: Wallet; sin cuenta, Sign in → Wallet</td>
+            <td>Jesús eligió Wallet. <code>WalletScreen</code> no tiene estado propio sin cuenta; el login ya aterriza en <code>wallet</code> por defecto.</td>
+          </tr>
+          <tr>
+            <td>D4 · Header de los tabs coming soon: subtítulo «Coming soon», sin píldoras ★ / Alerts</td>
+            <td>Las píldoras navegan al mock; mostrarlas contradice el «coming soon».</td>
+          </tr>
+          <tr>
+            <td>D5–D6 · Pull-to-refresh con <code>RefreshControl</code> en Wallet y Trade; se quita el botón Refresh</td>
+            <td>Gesto nativo de iOS que Jesús conoce de Proflores; sin librería ni Xcode. El Retry del error de RPC se queda.</td>
+          </tr>
+          <tr>
+            <td>D7–D8 · Swipe atrás con <code>PanResponder</code> (borde ≤ 24 px, <code>dx &gt; 60</code>); swipe entre tabs fuera de alcance</td>
+            <td>Sin react-navigation no hay gesto de sistema; el umbral de borde evita robar scroll horizontal. Tabs por swipe chocaría con esto y con 25 días de bounty no vale el riesgo.</td>
+          </tr>
+          <tr>
+            <td>D9–D11 · El saldo grande sigue siendo <code>b</code>; línea «Σc in positions · b free» y línea «±X unrealised PnL»</td>
+            <td>Jesús eligió no convertir el número grande en equity. El audit de Perpl midió que <code>lb</code> es 0 con posición abierta; Σ <code>c</code> sí es el colateral en posiciones. El PnL se suma con la misma <code>positionPnl</code> de cada fila, así ambas cifras coinciden.</td>
+          </tr>
+          <tr>
+            <td>D12 · Re-medir <code>b</code> vs <code>c</code> en #620 antes de fijar «free»</td>
+            <td>El «200.00» de Jesús con un long de 200 sugiere que quizá <code>b</code> no excluye <code>c</code>; una medición de hace dos días no se da por buena.</td>
+          </tr>
+          <tr>
+            <td>D13 · Sin gesture-handler, reanimated ni react-navigation</td>
+            <td>Cualquiera obliga a rebuild nativo y a rehacer el store; no cabe antes del bounty.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li><code>backState</code> con stack vacío cae a <code>wallet</code> (antes <code>market</code>, que ahora es coming soon).</li>
+        <li><code>COMING_SOON_COPY</code> vive en <code>comingSoonCopy.ts</code> (puro): importar el <code>.tsx</code> desde Jest falla por <code>expo-font → expo-asset</code>.</li>
+        <li>Tareas con archivos disjuntos en paralelo; los implementadores no commitean y el coordinador commitea por nombre tras cada revisión.</li>
+        <li>Medición D12 en #620: <code>b</code> 104.92 → 94.89 con <code>c</code> 10.02 al abrir un long de 10 AUSD → <code>b</code> excluye el colateral; «free = b» se mantiene.</li>
+        <li>Sign out → Sign in → Wallet (<code>signedOutState</code>), pedido por Jesús al ver que aterrizaba en el coming soon de Market; el spec decía «no cambia».</li>
+        <li>No se re-habilitó trading en el simulador tras el Sign out de prueba para no depositar 100 AUSD más en #620.</li>
+        <li>Revisión final de rama: <code>gestureState.x0</code> es 0 durante la fase <em>capture</em> del <code>PanResponder</code>, así que el umbral de borde nunca aplicaba; fix con <code>moveX − dx</code>, slop de 8 px y sólo hacia la derecha. «Go to Wallet» pasa por <code>requireAccount</code>; sin <code>←</code> con stack vacío; boot con <code>useLayoutEffect</code>.</li>
+      </ol>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Lógica nueva en funciones puras con tests (sin <code>react-native</code>); <code>Shell</code>
+        y las pantallas sólo las consumen.
+      </p>
+      <ul>
+        <li><code>src/store.ts</code> — <code>COMING_SOON</code>, <code>INITIAL.screen = "wallet"</code>, <code>bootState</code>, <code>headerFor</code></li>
+        <li><code>App.tsx</code> — <code>boot(hasAccount)</code> una vez al resolver la cuenta</li>
+        <li><code>src/screens/comingSoon.tsx</code> — nuevo</li>
+        <li><code>src/ui/gestures.ts</code> — nuevo: umbrales del swipe atrás</li>
+        <li><code>src/Shell.tsx</code> — coming soon, <code>RefreshControl</code>, <code>PanResponder</code></li>
+        <li><code>src/perpl/orders.ts</code> — <code>lockedCollateral</code>, <code>unrealisedPnl</code></li>
+        <li><code>src/screens/perps.tsx</code>, <code>src/screens/own.tsx</code> — ajustes de UI</li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-18-mobile-polish-design.md</code> ·
+       plan en <code>docs/superpowers/plans/2026-09-18-mobile-polish-f1.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

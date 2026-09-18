@@ -160,7 +160,7 @@ function MovementRow({ m }: { m: Movement }) {
 const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
 const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
 
-export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, resetTo }: AppCtx) {
+export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, signedOut }: AppCtx) {
   const address = accountAddress(account) ?? "";
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) + " AUSD" : "—";
   const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
@@ -221,9 +221,6 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
               <T w={700} s={13.5}>Get test MON · copies address</T>
             </Touch>
           </View>
-          <Touch onPress={() => { void treasury.refresh(); }} style={secondaryBtn}>
-            <T w={600} s={13}>Refresh</T>
-          </Touch>
           {treasury.rpcError ? (
             <View style={{ paddingVertical: 11, paddingHorizontal: 13, borderWidth: 1, borderColor: "rgba(245,195,91,0.5)", backgroundColor: "rgba(245,195,91,0.1)", borderRadius: 12, gap: 8 }}>
               <T w={400} s={12} lh={1.4} color={C.warn}>{treasury.rpcError}</T>
@@ -271,7 +268,7 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
               <T w={600} s={12.5}>Lock</T>
             </Touch>
           ) : null}
-          <Touch onPress={() => { void signOut().then(() => resetTo("market")); }} style={chipBtn}>
+          <Touch onPress={() => { void signOut().then(signedOut); }} style={chipBtn}>
             <T w={600} s={12.5}>Sign out</T>
           </Touch>
         </View>

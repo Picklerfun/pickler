@@ -1,0 +1,359 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-18-mobile-polish-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-18-mobile-polish-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-18-mobile-polish-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-18-mobile-polish-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</a></li><li><a href="#2-unidades">2. Unidades</a></li><li><a href="#21-srcstorets-se-amplia">2.1 `src/store.ts` — se amplía</a></li><li><a href="#22-apptsx-se-amplia">2.2 `App.tsx` — se amplía</a></li><li><a href="#23-srcscreenscomingsoontsx-nuevo">2.3 `src/screens/comingSoon.tsx` — nuevo</a></li><li><a href="#24-srcshelltsx-se-amplia">2.4 `src/Shell.tsx` — se amplía</a></li><li><a href="#25-srcuigesturests-nuevo">2.5 `src/ui/gestures.ts` — nuevo</a></li><li><a href="#26-srcperplordersts-se-amplia">2.6 `src/perpl/orders.ts` — se amplía</a></li><li><a href="#27-srcscreensperpstsx-se-ajusta">2.7 `src/screens/perps.tsx` — se ajusta</a></li><li><a href="#28-srcscreensowntsx-se-ajusta">2.8 `src/screens/own.tsx` — se ajusta</a></li><li><a href="#3-flujo-de-arranque">3. Flujo de arranque</a></li><li><a href="#4-pruebas">4. Pruebas</a></li><li><a href="#5-fuera-de-alcance">5. Fuera de alcance</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-18-mobile-polish-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-pulido-de-navegacion-coming-soon-arranque-en-wallet-gestos-y-pnl-en-trade">App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade</h1>
+<p><strong>Fecha</strong>: 2026-09-18 <strong>Estado</strong>: F1 ejecutada (audit <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code>) <strong>Slug</strong>: <code>mobile-polish</code> <strong>Rama</strong>: <code>feat/mobile-polish</code>, base <code>main</code> (<code>09a7ac9</code>) <strong>Contexto</strong>: tras el build 3 de TestFlight (<code>docs/overview/dev/2026-09-16-testflight-build3.html</code>) sólo dos de los cinco tabs hacen algo real: <strong>Wallet</strong> y <strong>Trade</strong>. Market, Activity y Portfolio siguen mostrando el mock del port de UI. Jesús usó la app en su iPhone y pidió tres cosas: que los tabs sin función lo digan con la estética de la app, que las rutas reales se sientan nativas (jalar para actualizar, gesto de atrás desde el borde, como la app iOS de Proflores) y que el saldo de Trade refleje la ganancia de su posición abierta (un long de BTC que en el bloque de posiciones marca +5.82 AUSD mientras el saldo de arriba sigue en 200.00).</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<p>Cinco piezas, ningún backend, ninguna dependencia nueva, ningún cambio nativo:</p>
+<ol>
+<li><strong>Coming soon</strong> en Market, Activity y Portfolio, con los tokens de la app. El mock no se borra.</li>
+<li><strong>Arranque en Wallet</strong> (o Sign in → Wallet si no hay cuenta).</li>
+<li><strong>Jalar para actualizar</strong> en Wallet y Trade con el <code>RefreshControl</code> nativo; el botón <em>Refresh</em></li>
+<p>de Wallet desaparece.</p>
+<li><strong>Swipe desde el borde izquierdo = atrás</strong> en las pantallas que hoy muestran <code>←</code>.</li>
+<li><strong>Trade</strong>: línea de PnL no realizado bajo el saldo, y &quot;in positions / free&quot; calculados con</li>
+<p>datos que sí significan eso (Σ <code>c</code> de las posiciones y <code>b</code>), no con <code>lb</code>.</p>
+</ol>
+<hr>
+<h2 id="1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>D1</td><td>Tabs &quot;coming soon&quot;</td><td><code>market</code>, <code>activity</code>, <code>portfolio</code>. Lista pura <code>COMING_SOON</code> en <code>store.ts</code>.</td><td>Son los tres que siguen en mock. Trade y Wallet son reales.</td></tr>
+<tr><td>D2</td><td>Qué pasa con el mock</td><td><strong>Nada se borra.</strong> <code>SCREENS</code> conserva <code>MarketScreen</code>, <code>ActivityScreen</code>, <code>PortfolioScreen</code>, <code>search</code>, <code>agent</code>, <code>post</code>, <code>ask</code>, <code>position</code>, <code>trade</code>, <code>mock/data.ts</code>. Sólo cambia qué renderiza el <code>Shell</code> cuando <code>S.screen ∈ COMING_SOON</code>.</td><td>Jesús: &quot;no elimines nada, solo es por el momento&quot;. Cuando una ruta cobre vida se quita de la lista y vuelve la pantalla.</td></tr>
+<tr><td>D3</td><td>Pantalla inicial</td><td><code>INITIAL.screen = &quot;wallet&quot;</code>. Al resolver la cuenta por primera vez, <code>bootState(s, hasAccount)</code>: con cuenta se queda en <code>wallet</code>; sin cuenta va a <code>signin</code> con <code>next: &quot;wallet&quot;</code>, <code>stack: []</code>.</td><td>Jesús eligió Wallet. <code>WalletScreen</code> no tiene estado propio sin cuenta (muestra &quot;—&quot;), así que el arranque sin cuenta pasa por Sign in, que ya aterriza en <code>wallet</code> por defecto (<code>afterSigninState</code>).</td></tr>
+<tr><td>D4</td><td>Header de los tabs coming soon</td><td>Título del tab, subtítulo <strong>&quot;Coming soon&quot;</strong>. Las píldoras <code>★</code> / <code>Alerts</code> de Market <strong>no se muestran</strong> mientras Market esté en la lista; <code>⚙</code> (solo <code>__DEV__</code>) sigue. El logo de Market en el header se conserva.</td><td>Las píldoras navegan al mock (<code>search</code>, <code>activity</code>); mostrarlas contradice el &quot;coming soon&quot;.</td></tr>
+<tr><td>D5</td><td>Pull-to-refresh</td><td><code>RefreshControl</code> (React Native core, <code>tintColor: C.lime</code>) en el <code>ScrollView</code> del <code>Shell</code> cuando <code>S.screen</code> es <code>wallet</code> o <code>perps</code>. Wallet: <code>treasury.refresh()</code> y <code>treasury.refreshMovements()</code> en paralelo. Trade: <code>perpl.refreshContext()</code>. El spinner se suelta cuando terminan (o fallan) todas.</td><td>Es el gesto nativo de iOS que Jesús conoce de Proflores; no necesita librería ni Xcode. La pista visual es el propio spinner al jalar.</td></tr>
+<tr><td>D6</td><td>Botón <em>Refresh</em> de Wallet</td><td><strong>Se quita</strong> (<code>own.tsx</code>, bloque TESTNET). El <strong>Retry</strong> dentro del aviso de error de RPC se queda.</td><td>El gesto lo sustituye; el Retry sirve cuando el RPC falló y el usuario está leyendo el error.</td></tr>
+<tr><td>D7</td><td>Swipe atrás</td><td><code>PanResponder</code> (RN core) sobre el cuerpo del <code>Shell</code>, activo sólo cuando <code>ctx.canBack</code>. Captura el gesto si empieza a <strong>≤ 24 px</strong> del borde izquierdo y <code>dx &gt; dy</code> en valor absoluto; al soltar con <strong><code>dx &gt; 60</code></strong> llama <code>back()</code>. Sin animación de transición.</td><td>Sin react-navigation no hay gesto de sistema. <code>PanResponder</code> no añade dependencias ni gestures nativos; un umbral de borde evita robar scroll horizontal.</td></tr>
+<tr><td>D8</td><td>Swipe entre tabs</td><td><strong>Fuera de alcance.</strong></td><td>Choca con D7 y con cualquier scroll horizontal futuro; con 25 días de bounty no vale el riesgo. Jesús aceptó dejarlo fuera.</td></tr>
+<tr><td>D9</td><td>Saldo grande de Trade</td><td><strong>Sigue siendo <code>b</code></strong> (lo que Perpl reporta como balance).</td><td>Jesús eligió la opción 2: no convertir el número grande en equity.</td></tr>
+<tr><td>D10</td><td>Línea bajo el saldo</td><td><code>{Σc} in positions · {b} free</code> (hoy usa <code>lb</code> y <code>b − lb</code>).</td><td>El audit <code>2026-09-16-mobile-perpl-f1</code> midió que con posición abierta <code>lb</code> es 0 y <code>b</code> ya excluye el colateral: &quot;0.00 locked · 89.99 free&quot; con 10 AUSD en una posición. Σ <code>c</code> sí es el colateral en posiciones.</td></tr>
+<tr><td>D11</td><td>PnL no realizado</td><td>Nueva línea <code>+5.82 unrealised PnL</code> / <code>−1.20 unrealised PnL</code>, mono, <code>C.up</code> / <code>C.down</code>, sólo cuando hay ≥ 1 posición con mercado conocido. Σ de <code>positionPnl(p, market.mark, …)</code>, la misma función que ya usa cada <code>PositionRow</code>.</td><td>Es la ganancia que Jesús ve abajo y echa de menos arriba; sumarla con la misma fórmula garantiza que ambas cifras coinciden.</td></tr>
+<tr><td>D12</td><td>Re-medición de <code>b</code> vs <code>c</code></td><td>Antes de fijar el copy de D10 se abre una posición pequeña en la cuenta #620 del simulador (testnet) y se registra <code>b</code> antes/después y <code>c</code> de la posición en el audit. Si <code>b</code> <strong>no</strong> baja por el colateral (contradiciendo el audit), &quot;free&quot; pasa a <code>b − Σc</code>.</td><td>El &quot;200.00&quot; de Jesús con un long de 200 sugiere que quizá <code>b</code> no excluye <code>c</code>; el spec no da por buena una medición de hace dos días.</td></tr>
+<tr><td>D13</td><td>Sin animaciones ni dependencias</td><td>No se añade <code>react-native-gesture-handler</code>, <code>react-native-reanimated</code> ni react-navigation.</td><td>Cualquiera obliga a rebuild nativo y a rehacer el store; no cabe antes del bounty.</td></tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-unidades">2. Unidades</h2>
+<h3 id="21-srcstorets-se-amplia">2.1 <code>src/store.ts</code> — se amplía</h3>
+<ul>
+<li><code>COMING_SOON: readonly Screen[] = [&quot;market&quot;, &quot;activity&quot;, &quot;portfolio&quot;]</code>.</li>
+<li><code>INITIAL.screen = &quot;wallet&quot;</code>.</li>
+<li><code>bootState(s, hasAccount): StoreState</code> — pura. Con cuenta devuelve <code>s</code> tal cual (ya está en</li>
+<p><code>wallet</code>); sin cuenta devuelve <code>{ ...s, screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot;, nextPatch: undefined, resume: false }</code>.</p>
+<li><code>useAppStore</code> expone <code>boot: (hasAccount: boolean) =&gt; void</code>.</li>
+<li><code>headerFor</code>: <code>market</code> / <code>activity</code> / <code>portfolio</code> devuelven <code>[título, &quot;Coming soon&quot;]</code>.</li>
+<li><code>AppStore</code> gana <code>comingSoon: boolean</code> (<code>COMING_SOON.includes(S.screen)</code>).</li>
+</ul>
+<h3 id="22-apptsx-se-amplia">2.2 <code>App.tsx</code> — se amplía</h3>
+<ul>
+<li><code>useEffect</code> que corre <strong>una vez</strong> cuando <code>account</code> deja de ser <code>null</code>: <code>boot(hasAccount)</code>.</li>
+<p>Guardado con un <code>useRef</code> para no repetirse al hacer sign in/out después.</p>
+</ul>
+<h3 id="23-srcscreenscomingsoontsx-nuevo">2.3 <code>src/screens/comingSoon.tsx</code> — nuevo</h3>
+<ul>
+<li><code>ComingSoonScreen({ screen, nav }: Pick&lt;AppCtx, &quot;nav&quot;&gt; &amp; { screen: Screen })</code>.</li>
+<li>Centrado vertical dentro del cuerpo (<code>flex: 1</code>, <code>justifyContent: &quot;center&quot;</code>, padding 16).</li>
+<li>Disco de 72 px, fondo <code>C.surf</code>, borde 1 px <code>rgba(200,240,58,0.35)</code>, con el **mismo Ionicon</li>
+<p>del tab** (<code>storefront</code> / <code>pulse</code> / <code>pie-chart</code>, variante outline) en <code>C.lime</code> a 30 px.</p>
+<li>Título <code>T w={800} s={22}</code> con el nombre del tab; <code>Tag</code> punteado <strong>COMING SOON</strong> en <code>C.lime</code>.</li>
+<li>Copy de una línea por tab (<code>C.dim</code>, 13 px, centrado): Market → &quot;Agents and their tokens&quot;;</li>
+<p>Activity → &quot;What the agents you follow are doing&quot;; Portfolio → &quot;Your token positions&quot;.</p>
+<li>Botón secundario &quot;Go to Wallet&quot; (<code>nav(&quot;wallet&quot;)</code>) — estilo <code>secondaryBtn</code> de las pantallas reales.</li>
+<li>Mapa <code>COMING_SOON_COPY: Record&lt;&quot;market&quot;|&quot;activity&quot;|&quot;portfolio&quot;, { icon, title, copy }&gt;</code> exportado</li>
+<p>para el test.</p>
+</ul>
+<h3 id="24-srcshelltsx-se-amplia">2.4 <code>src/Shell.tsx</code> — se amplía</h3>
+<ul>
+<li><code>Current</code>: si <code>ctx.comingSoon</code> renderiza <code>ComingSoonScreen</code>; si no, <code>SCREENS[ctx.scr]</code>.</li>
+<li><code>headerActions</code>: la rama <code>S.screen === &quot;market&quot;</code> sólo aplica cuando <strong>no</strong> es coming soon.</li>
+<li><code>ScrollView</code> recibe <code>refreshControl={&lt;RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.lime} /&gt;}</code></li>
+<p>sólo cuando <code>S.screen === &quot;wallet&quot; || S.screen === &quot;perps&quot;</code>; <code>onRefresh</code> según D5, con <code>Promise.allSettled</code> y <code>setRefreshing(false)</code> en <code>finally</code>.</p>
+<li><code>PanResponder</code> (D7) envuelve el <code>ScrollView</code> en un <code>View</code> con los <code>panHandlers</code> cuando</li>
+<p><code>ctx.canBack</code>. Lógica de umbrales en una función pura <code>edgeSwipeBack(start, dx, dy)</code> exportada desde <code>src/ui/gestures.ts</code> para poder testearla sin RN.</p>
+</ul>
+<h3 id="25-srcuigesturests-nuevo">2.5 <code>src/ui/gestures.ts</code> — nuevo</h3>
+<ul>
+<li><code>EDGE_PX = 24</code>, <code>BACK_DX = 60</code>.</li>
+<li><code>shouldCaptureEdgeSwipe(x0, dx, dy): boolean</code> — <code>x0 &lt;= EDGE_PX &amp;&amp; Math.abs(dx) &gt; Math.abs(dy)</code>.</li>
+<li><code>shouldGoBack(dx): boolean</code> — <code>dx &gt; BACK_DX</code>.</li>
+</ul>
+<h3 id="26-srcperplordersts-se-amplia">2.6 <code>src/perpl/orders.ts</code> — se amplía</h3>
+<ul>
+<li><code>lockedCollateral(positions: readonly { c: bigint }[]): bigint</code> — Σ <code>c</code>.</li>
+<li><code>unrealisedPnl(positions: readonly PositionLike[], markets: readonly Market[]): bigint | null</code> —</li>
+<p>Σ <code>positionPnl(p, m.mark, m.priceDecimals, m.sizeDecimals)</code> sobre las posiciones cuyo <code>mkt</code> tiene mercado; <code>null</code> si ninguna lo tiene (la UI oculta la línea).</p>
+</ul>
+<h3 id="27-srcscreensperpstsx-se-ajusta">2.7 <code>src/screens/perps.tsx</code> — se ajusta</h3>
+<ul>
+<li><code>locked = lockedCollateral(positions)</code>; línea <code>&quot;{locked} in positions · {b} free&quot;</code> (o</li>
+<p><code>b − locked</code> si D12 lo obliga; el plan fija cuál con la medición).</p>
+<li>Nueva línea D11 debajo, con el mismo formato de signo que <code>PositionRow</code></li>
+<p>(<code>pnl &gt;= 0n ? &quot;+&quot; : &quot;−&quot;</code> y <code>formatAusd(abs)</code>).</p>
+</ul>
+<h3 id="28-srcscreensowntsx-se-ajusta">2.8 <code>src/screens/own.tsx</code> — se ajusta</h3>
+<ul>
+<li>Se elimina el <code>Touch</code> &quot;Refresh&quot; del bloque TESTNET (D6). Nada más cambia.</li>
+</ul>
+<hr>
+<h2 id="3-flujo-de-arranque">3. Flujo de arranque</h2>
+<pre><code>App monta → account === null → spinner
+account resuelve → boot(hasAccount)
+  hasAccount   → screen &quot;wallet&quot;, tabs visibles
+  !hasAccount  → screen &quot;signin&quot;, next &quot;wallet&quot;; tras login → afterSigninState → &quot;wallet&quot;</code></pre>
+<p>Sign out: <code>signedOutState</code> = limpiar + Sign in con <code>next: &quot;wallet&quot;</code> (cambiado en ejecución a petición de Jesús; el diseño original decía &quot;no cambia&quot; y aterrizaba en Market, hoy coming soon).</p>
+<hr>
+<h2 id="4-pruebas">4. Pruebas</h2>
+<p>Jest (<code>apps/mobile</code>, <code>npm test</code>) — todas corren también contra el defecto (la afirmación negativa falla si se quita la implementación):</p>
+<ul>
+<li><code>store.test.ts</code>: <code>bootState</code> con y sin cuenta; <code>INITIAL.screen === &quot;wallet&quot;</code>; <code>headerFor</code></li>
+<p>devuelve &quot;Coming soon&quot; para los tres tabs y <strong>no</strong> para <code>wallet</code>/<code>perps</code>; <code>COMING_SOON</code> no incluye <code>wallet</code> ni <code>perps</code>.</p>
+<li><code>gestures.test.ts</code>: captura sólo desde el borde (<code>x0 = 25</code> no captura), no captura si el</li>
+<p>gesto es vertical, <code>shouldGoBack(60)</code> es falso y <code>shouldGoBack(61)</code> es verdadero.</p>
+<li><code>orders.test.ts</code>: <code>lockedCollateral</code> suma <code>c</code>; <code>unrealisedPnl</code> con un long en ganancia, un short en</li>
+<p>pérdida, mezcla de ambos, posición sin mercado (se ignora) y sin ninguna con mercado (<code>null</code>).</p>
+<li><code>comingSoon.test.ts</code>: <code>COMING_SOON_COPY</code> cubre exactamente las claves de <code>COMING_SOON</code>.</li>
+</ul>
+<p>Manual, en el simulador (capturas en el audit):</p>
+<ul>
+<li>Arranque con cuenta → Wallet; arranque sin cuenta (sign out + relanzar) → Sign in → Wallet.</li>
+<li>Market, Activity, Portfolio muestran la pantalla coming soon con el ícono correcto; el header de</li>
+<p>Market no tiene <code>★</code>/<code>Alerts</code>.</p>
+<li>Jalar en Wallet y en Trade: spinner lime, datos actualizados, spinner se suelta también cuando</li>
+<p>el RPC falla (modo avión).</p>
+<li>Swipe desde el borde en Deposit/Withdraw/perpsMarket regresa; el mismo gesto en Wallet (sin</li>
+<p><code>←</code>) no hace nada.</p>
+<li>Trade con una posición abierta en #620: la línea de PnL coincide con la del <code>PositionRow</code>; <code>b</code></li>
+<p>y <code>c</code> medidos antes/después (D12).</p>
+</ul>
+<p>Cierre: <code>npx tsc --noEmit</code> y <code>npm test</code> en verde con salida pegada; <code>npm run agents:check</code> y <code>npm run docs:check</code> en la raíz.</p>
+<hr>
+<h2 id="5-fuera-de-alcance">5. Fuera de alcance</h2>
+<ul>
+<li>Swipe entre tabs (D8), animaciones de transición, react-navigation.</li>
+<li>Build 4 de TestFlight: se registra con su propio tracker cuando Jesús decida el alcance.</li>
+<li>Detección de desfase de reloj, fees con 4 decimales, &quot;Reconnect trading&quot; (lista del build 4).</li>
+<li>Borrar o reescribir el mock de Market/Activity/Portfolio.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-18-mobile-polish-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-18-mobile-polish-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

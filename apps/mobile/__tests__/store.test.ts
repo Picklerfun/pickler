@@ -1,7 +1,10 @@
 import {
   afterSigninState,
   backState,
+  bootState,
   CAN_BACK,
+  canBackFor,
+  COMING_SOON,
   deriveBalance,
   deriveTradeHolds,
   deriveUser,
@@ -11,14 +14,17 @@ import {
   navState,
   requireAccountState,
   resetState,
+  signedOutState,
   SHOW_TABS,
 } from "../src/store";
 import { AGENTS, POSTS } from "../src/mock/data";
 
+const agent = AGENTS.pkl, post = POSTS[0];
+
 test("nav pushes the current screen and applies the patch", () => {
   const s = navState(INITIAL, "agent", { agentId: "hld", tab: "about" });
   expect(s.screen).toBe("agent");
-  expect(s.stack).toEqual(["market"]);
+  expect(s.stack).toEqual(["wallet"]);
   expect(s.agentId).toBe("hld");
   expect(s.tab).toBe("about");
 });
@@ -29,10 +35,10 @@ test("the back-stack keeps only the last 8 screens", () => {
   expect(s.stack).toHaveLength(8);
 });
 
-test("back pops the stack and falls back to market when empty", () => {
+test("back pops the stack and falls back to wallet when empty", () => {
   const s = navState(navState(INITIAL, "agent"), "trade");
   expect(backState(s).screen).toBe("agent");
-  expect(backState(INITIAL).screen).toBe("market");
+  expect(backState(INITIAL).screen).toBe("wallet");
   expect(backState(INITIAL).stack).toEqual([]);
 });
 
@@ -67,7 +73,7 @@ test("reading screens never ask for an account", () => {
 test("after sign-in the app lands on next without leaving signin in the stack", () => {
   const s = afterSigninState(requireAccountState(INITIAL, false, "wallet"));
   expect(s.screen).toBe("wallet");
-  expect(s.stack).toEqual(["market"]);
+  expect(s.stack).toEqual(["wallet"]);
   expect(s.next).toBeUndefined();
   expect(s.nextPatch).toBeUndefined();
 });
@@ -120,7 +126,6 @@ test("without an account the Trade tab asks for access and comes back to it", ()
 });
 
 test("headers of the Perpl screens", () => {
-  const agent = AGENTS.pkl, post = POSTS[0];
   expect(headerFor("perps", agent, post, "buy", 0)).toEqual(["Trade", "Perps on Perpl · Monad"]);
   expect(headerFor("perpsMarket", agent, post, "buy", 0, "MON")).toEqual(["MON Perp", "Market order"]);
   expect(headerFor("perpsMarket", agent, post, "buy", 0)).toEqual(["Perp", "Market order"]);
@@ -131,4 +136,42 @@ test("nav to a market keeps the chosen market and side in the state", () => {
   const s = navState(INITIAL, "perpsMarket", { perpsMarketId: 64, perpsSide: "short" });
   expect(s).toMatchObject({ screen: "perpsMarket", perpsMarketId: 64, perpsSide: "short" });
   expect(navState(INITIAL, "perpsFunds", { fundsMode: "withdraw" }).fundsMode).toBe("withdraw");
+});
+
+test("the app starts on Wallet", () => {
+  expect(INITIAL.screen).toBe("wallet");
+});
+
+test("boot keeps Wallet with an account and goes through Sign in without one", () => {
+  expect(bootState(INITIAL, true)).toBe(INITIAL);
+  const s = bootState(INITIAL, false);
+  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false });
+  expect(s.nextPatch).toBeUndefined();
+  expect(afterSigninState(s).screen).toBe("wallet");
+});
+
+test("canBackFor requires both a CAN_BACK screen and a non-empty stack", () => {
+  expect(canBackFor("signin", [])).toBe(false);
+  expect(canBackFor("signin", ["wallet"])).toBe(true);
+  expect(canBackFor("wallet", ["market"])).toBe(false); // wallet no está en CAN_BACK
+  const booted = bootState(INITIAL, false);
+  expect(canBackFor(booted.screen, booted.stack)).toBe(false);
+});
+
+test("coming soon covers the three mock tabs and never the real ones", () => {
+  expect(COMING_SOON).toEqual(["market", "activity", "portfolio"]);
+  expect(COMING_SOON).not.toContain("wallet");
+  expect(COMING_SOON).not.toContain("perps");
+  for (const screen of COMING_SOON) expect(headerFor(screen, agent, post, "buy", 0)[1]).toBe("Coming soon");
+  expect(headerFor("wallet", agent, post, "buy", 0)[1]).toBe("AUSD available and movements");
+  expect(headerFor("perps", agent, post, "buy", 0)[1]).toBe("Perps on Perpl · Monad");
+});
+
+test("sign out lands on Sign in and comes back to Wallet after logging in", () => {
+  const dirty = { ...navState(navState(INITIAL, "perps"), "perpsMarket", { perpsMarketId: 64 }), resume: true, mockHolder: true };
+  const s = signedOutState(dirty);
+  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false, mockHolder: false });
+  expect(s.nextPatch).toBeUndefined();
+  expect(canBackFor(s.screen, s.stack)).toBe(false);
+  expect(afterSigninState(s).screen).toBe("wallet");
 });

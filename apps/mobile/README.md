@@ -27,7 +27,7 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 ## Tests
 
 ```bash
-npm test          # jest, 41/41 esperado
+npm test          # jest, 178/178 esperado (24 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 

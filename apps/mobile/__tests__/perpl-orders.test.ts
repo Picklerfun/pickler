@@ -3,7 +3,7 @@ import frames from "./fixtures/perpl/ws-frames.json";
 import { parseContext } from "../src/perpl/context";
 import {
   change24h, closeIntent, describeOrderStatus, formatPrice, formatSize, leveragesFor, liquidationPrice,
-  notionalAusd, openIntent, orderFrame, positionPnl, sizeFromAusd, takerFee,
+  lockedCollateral, notionalAusd, openIntent, orderFrame, positionPnl, sizeFromAusd, takerFee, unrealisedPnl,
 } from "../src/perpl/orders";
 
 const ctx = parseContext(contextJson);
@@ -93,4 +93,22 @@ test("formatPrice and formatSize use the market decimals", () => {
   expect(formatPrice(762555, 1)).toBe("76255.5");
   expect(formatSize(100, 0)).toBe("100");
   expect(formatSize(131, 5)).toBe("0.00131");
+});
+
+test("lockedCollateral sums the collateral of every position", () => {
+  expect(lockedCollateral([])).toBe(0n);
+  expect(lockedCollateral([{ c: 10_000_000n }, { c: 2_500_000n }])).toBe(12_500_000n);
+});
+
+test("unrealisedPnl sums positionPnl across markets and skips unknown markets", () => {
+  const longMon = { mkt: 64, sd: 1 as const, s: 100, ep: 2217, lv: 100 };   // MON mark 2221 → +4000
+  const shortMon = { mkt: 64, sd: 2 as const, s: 100, ep: 2217, lv: 100 };  // → −4000
+  const orphan = { mkt: 999, sd: 1 as const, s: 100, ep: 1, lv: 100 };
+  expect(unrealisedPnl([longMon], [MON, BTC])).toBe(positionPnl(longMon, MON.mark, MON.priceDecimals, MON.sizeDecimals));
+  expect(unrealisedPnl([longMon], [MON, BTC])).toBe(4000n);
+  expect(unrealisedPnl([shortMon], [MON, BTC])).toBe(-4000n);
+  expect(unrealisedPnl([longMon, shortMon], [MON, BTC])).toBe(0n);
+  expect(unrealisedPnl([longMon, orphan], [MON, BTC])).toBe(4000n);
+  expect(unrealisedPnl([orphan], [MON, BTC])).toBeNull();
+  expect(unrealisedPnl([], [MON, BTC])).toBeNull();
 });
