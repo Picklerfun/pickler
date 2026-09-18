@@ -7,7 +7,7 @@ import {
   Manrope_800ExtraBold,
 } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { ActivityIndicator, StatusBar, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ausdToNumber } from "./src/config/chain";
@@ -39,7 +39,8 @@ export default function App() {
   const booted = useRef(false);
   const { boot } = store;
   // Una sola vez, cuando la cuenta deja de ser null: sin cuenta pasa por Sign in (D3).
-  useEffect(() => {
+  // useLayoutEffect (no useEffect): corre antes del paint, para no flashear Wallet un frame sin cuenta.
+  useLayoutEffect(() => {
     if (account === null || booted.current) return;
     booted.current = true;
     boot(hasAccount);

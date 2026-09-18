@@ -1,7 +1,7 @@
 # App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade
 
 **Fecha**: 2026-09-18
-**Estado**: aprobado por Jesús (diseño en chat), pendiente de plan
+**Estado**: F1 ejecutada (audit `docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md`)
 **Slug**: `mobile-polish`
 **Rama**: `feat/mobile-polish`, base `main` (`09a7ac9`)
 **Contexto**: tras el build 3 de TestFlight (`docs/overview/dev/2026-09-16-testflight-build3.html`) sólo

@@ -1,11 +1,13 @@
-import { BACK_DX, EDGE_PX, shouldCaptureEdgeSwipe, shouldGoBack } from "../src/ui/gestures";
+import { BACK_DX, EDGE_PX, shouldCaptureEdgeSwipe, shouldGoBack, SLOP_PX } from "../src/ui/gestures";
 
-test("only a mostly-horizontal drag that starts at the left edge is captured", () => {
+test("only a mostly-horizontal, rightward drag that starts at the left edge and clears the slop is captured", () => {
   expect(shouldCaptureEdgeSwipe(0, 10, 2)).toBe(true);
   expect(shouldCaptureEdgeSwipe(EDGE_PX, 10, 2)).toBe(true);
   expect(shouldCaptureEdgeSwipe(EDGE_PX + 1, 10, 2)).toBe(false);
   expect(shouldCaptureEdgeSwipe(5, 4, 8)).toBe(false);   // vertical: es scroll
-  expect(shouldCaptureEdgeSwipe(5, -10, 2)).toBe(true);  // se captura y luego no dispara
+  expect(shouldCaptureEdgeSwipe(5, -10, 2)).toBe(false); // izquierda: no es "atrás"
+  expect(shouldCaptureEdgeSwipe(5, SLOP_PX - 1, 0)).toBe(false); // jitter: no captura el tap
+  expect(shouldCaptureEdgeSwipe(5, SLOP_PX, 0)).toBe(true);
 });
 
 test("back fires only past the drag threshold", () => {

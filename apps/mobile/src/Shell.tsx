@@ -57,7 +57,9 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
 
   // D7: captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
   const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_e, g) => shouldCaptureEdgeSwipe(g.x0, g.dx, g.dy),
+    // g.x0 sólo vale a partir de onResponderGrant (después de conceder el responder); en capture
+    // siempre es 0, así que la x inicial real es moveX - dx. No "simplificar" de vuelta a g.x0.
+    onMoveShouldSetPanResponderCapture: (_e, g) => shouldCaptureEdgeSwipe(g.moveX - g.dx, g.dx, g.dy),
     onPanResponderRelease: (_e, g) => { if (shouldGoBack(g.dx)) back(); },
   }), [back]);
 
@@ -102,7 +104,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
           showsVerticalScrollIndicator={false}
           refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
         >
-          {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} nav={nav} /> : <Current {...ctx} />}
+          {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} requireAccount={requireAccount} /> : <Current {...ctx} />}
         </ScrollView>
       </View>
 

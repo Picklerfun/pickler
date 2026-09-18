@@ -10,7 +10,7 @@ export { COMING_SOON_COPY } from "./comingSoonCopy";
 
 const secondaryBtn = { paddingVertical: 14, paddingHorizontal: 22, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
 
-export function ComingSoonScreen({ screen, nav }: { screen: Screen; nav: AppCtx["nav"] }) {
+export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; requireAccount: AppCtx["requireAccount"] }) {
   const c = COMING_SOON_COPY[screen as ComingSoonTab] ?? COMING_SOON_COPY.market;
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 14 }}>
@@ -20,7 +20,7 @@ export function ComingSoonScreen({ screen, nav }: { screen: Screen; nav: AppCtx[
       <T w={800} s={22} lh={1.1} ls={-0.03}>{c.title}</T>
       <Tag label="COMING SOON" fg={C.lime} bd="rgba(200,240,58,0.45)" dashed />
       <T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center", maxWidth: 260 }}>{c.copy}</T>
-      <Touch onPress={() => nav("wallet")} style={{ ...secondaryBtn, marginTop: 6 }}>
+      <Touch onPress={() => requireAccount("wallet")} style={{ ...secondaryBtn, marginTop: 6 }}>
         <T w={700} s={13.5}>Go to Wallet</T>
       </Touch>
     </View>

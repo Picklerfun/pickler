@@ -112,6 +112,11 @@ export function deriveTradeHolds(hasAccount: boolean, mockHolder: boolean, phase
 export const CAN_BACK: readonly Screen[] = ["agent", "trade", "post", "ask", "position", "deposit", "withdraw", "search", "signin", "perpsMarket", "perpsFunds"];
 export const SHOW_TABS: readonly Screen[] = ["market", "activity", "portfolio", "wallet", "search", "position", "perps"];
 
+/** `←` sólo si la pantalla lo permite Y hay algo en el stack al que volver (con bootState el stack arranca vacío). */
+export function canBackFor(screen: Screen, stack: readonly Screen[]): boolean {
+  return CAN_BACK.includes(screen) && stack.length > 0;
+}
+
 export function headerFor(screen: Screen, agent: Agent, post: Post, mode: Mode, balance: number, perpsSymbol?: string): [string, string] {
   switch (screen) {
     case "market": return ["Market", "Coming soon"];
@@ -195,7 +200,7 @@ export function useAppStore({ hasAccount, ausd, perpsMarkets }: StoreInput): App
     S, set, nav, back, requireAccount, finishSignin, resetTo, boot,
     hasAccount, user, agent, balance, holds, tradeHolds,
     scr: S.screen, buying: S.mode === "buy", post, headerTitle, headerSub,
-    canBack: CAN_BACK.includes(S.screen),
+    canBack: canBackFor(S.screen, S.stack),
     showTabs: SHOW_TABS.includes(S.screen),
     showAgentBar: S.screen === "agent",
     comingSoon: COMING_SOON.includes(S.screen),

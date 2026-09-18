@@ -3,6 +3,7 @@ import {
   backState,
   bootState,
   CAN_BACK,
+  canBackFor,
   COMING_SOON,
   deriveBalance,
   deriveTradeHolds,
@@ -146,6 +147,14 @@ test("boot keeps Wallet with an account and goes through Sign in without one", (
   expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false });
   expect(s.nextPatch).toBeUndefined();
   expect(afterSigninState(s).screen).toBe("wallet");
+});
+
+test("canBackFor requires both a CAN_BACK screen and a non-empty stack", () => {
+  expect(canBackFor("signin", [])).toBe(false);
+  expect(canBackFor("signin", ["wallet"])).toBe(true);
+  expect(canBackFor("wallet", ["market"])).toBe(false); // wallet no está en CAN_BACK
+  const booted = bootState(INITIAL, false);
+  expect(canBackFor(booted.screen, booted.stack)).toBe(false);
 });
 
 test("coming soon covers the three mock tabs and never the real ones", () => {
