@@ -28,9 +28,9 @@ cabe completo y es barato. La compresión viene después, cuando él elija — n
 ## 1. El mapa: todo lo que el manifest sabe
 
 El `status` global de cada entrada se actualiza a mano y **puede mentir en las dos
-direcciones**: un proyecto `active` con todas sus fases `completed`, o —más peligroso— uno
-`completed` con fases `pending`. Por eso **el `status` global no filtra nada**: sólo se reporta
-como discrepancia. La fuente de verdad son las **fases**.
+direcciones**: `active` con todas sus fases `completed`, o —peor— `completed` con fases
+`pending`. Por eso **el `status` global no filtra nada**: sólo se reporta como discrepancia.
+La fuente de verdad son las **fases**.
 
 ```bash
 cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || cd .
@@ -69,9 +69,8 @@ for (const d of muertos) console.log('  · ' + d.title + (d.supersededBy ? '  �
 ```
 
 Los **en vuelo** van completos al reporte. Las entradas **sin `phases` son dev trackers**
-(builds de TestFlight, fixes, PRs): su estado es su `status` (`pending` / `in_progress` /
-`shipped`) y van en su propia tabla, **incluidos los `shipped`**: el último build distribuido
-es parte del estado.
+(builds de TestFlight, fixes, PRs): su estado es su `status` y van en su propia tabla,
+**incluidos los `shipped`**: el último build distribuido es parte del estado.
 
 ```bash
 node -e "global.window={};require('./docs/overview/data/manifest.js');for(const d of window.DOCS.filter(d=>!d.phases))console.log(d.date,d.status.padEnd(9),d.title,' · docs/overview/'+d.file)"
@@ -80,12 +79,11 @@ node -e "global.window={};require('./docs/overview/data/manifest.js');for(const 
 Los *terminados sin cerrar* van en una línea al final: son limpieza de manifest, no trabajo.
 
 **`cancelled` sí cierra el caso, y `completed` no.** `completed` *afirma que el trabajo se
-hizo*, así que una fase `pending` lo desmiente y se reporta la discrepancia. `cancelled` afirma
-que **no se va a hacer**: sus fases `pending` son verdad histórica, y por eso es el único status
-que saca una entrada del inventario. Igual a nivel de fase: una fase `cancelled` no es trabajo
-pendiente (`abiertaF` la excluye); marcarla `completed` para que el proyecto "cierre" es la
-mentira que esta skill persigue. Una cancelada y el resto completas = cerrado; una cancelada y
-otra `in_progress` = abierto.
+hizo*: una fase `pending` lo desmiente y se reporta la discrepancia. `cancelled` afirma que
+**no se va a hacer**: sus fases `pending` son verdad histórica, y es el único status que saca
+una entrada del inventario. Igual por fase: una `cancelled` no es trabajo pendiente (`abiertaF`
+la excluye); marcarla `completed` para que el proyecto "cierre" es la mentira que esta skill
+persigue.
 
 Si el manifest no carga, dilo y sigue con el paso 2 — git no miente aunque el manifest esté roto.
 
@@ -104,9 +102,8 @@ node scripts/agent-infra/branches.mjs origin/main
 
 Imprime JSON: `branches` (locales y remotas, con `status`, `headSha`,
 `commitsOutsideBaseline`), `worktrees` (todos los registrados, con `changes` sin commit) y
-`stashes`. Fija los SHA antes de comparar y declara refs locales (`remoteFreshness`): no
-afirma frescura remota. Si falta `origin/main`, informa el error y
-elige una base existente explícitamente; un error no significa inventario vacío.
+`stashes`. Declara refs locales (`remoteFreshness`): no afirma frescura remota. Si falta
+`origin/main`, informa el error y elige una base existente; un error no es inventario vacío.
 
 - `integrated_ancestry`: el HEAD medido es ancestro de la base. No prueba deploy ni build.
   Es el caso de las cuatro `feat/mobile-*` (fase1, ui-port, wallet, build3): mergeadas y
@@ -117,16 +114,15 @@ elige una base existente explícitamente; un error no significa inventario vací
   reemplazada o seguir pendiente. **Nunca etiquetar como «perdido» o «ya integrado» por
   contar archivos distintos; incluye documentación.**
 
-Si hace falta resolver un squash, consulta PRs y comprueba que su `headRefOid` coincide
-con el SHA inventariado y que el merge pertenece a la base examinada. Un PR del mismo
-nombre de rama con otro HEAD no basta. Una diferencia posterior en main no deshace el
-hecho histórico del merge. Reporta por separado integración, trabajo posterior y build.
+Para resolver un squash, consulta PRs y comprueba que su `headRefOid` coincide con el SHA
+inventariado y que el merge pertenece a la base examinada; un PR del mismo nombre de rama
+con otro HEAD no basta. Reporta por separado integración, trabajo posterior y build.
 
 Consulta PRs con `gh pr list --state open --limit 100 --json number,title,headRefName,headRefOid`;
 si hay 100 resultados, pagina antes de afirmar que el inventario está completo. Sin gh o
-sin acceso, declara esa parte no verificada y continúa con la evidencia local.
-No borres ramas, stashes o worktrees durante un inventario. Revalida los SHA antes de
-una recomendación de limpieza; ésta requiere revisar cambios ignorados y sesiones vivas.
+sin acceso, declara esa parte no verificada y sigue con la evidencia local.
+No borres ramas, stashes o worktrees durante un inventario; una recomendación de limpieza
+exige revalidar SHA, cambios ignorados y sesiones vivas.
 
 ## 3. Las decisiones que no están en los commits
 
@@ -137,13 +133,12 @@ ls -t docs/superpowers/audits/*.md 2>/dev/null | head -5
 Los audits (`<fecha>-<topic>-f<N>-rulings.md`, uno por fase ejecutada) guardan lo que se
 decidió **sin el usuario**, las correcciones a afirmaciones previas y los residuales abiertos.
 Un commit message no alcanza para eso. Si el proyecto que va a retomar tiene audit, léelo
-**antes** de proponer nada — ahí están las trampas ya pisadas. Los de las fases móviles traen
-además "Estado al cerrar la sesión" y "Lista propuesta para el build N".
+**antes** de proponer nada — ahí están las trampas ya pisadas.
 
 ## 4. Reporta así
 
-**En tablas.** Una lista de bullets separada por `·` se vuelve un párrafo apelmazado que el
-usuario no puede escanear; entonces da igual que esté completa.
+**En tablas.** Una lista de bullets separada por `·` es un párrafo apelmazado que el usuario
+no puede escanear; entonces da igual que esté completa.
 
 Tres tablas. Primero lo que se puede perder, porque es lo único urgente:
 
@@ -156,8 +151,8 @@ Tres tablas. Primero lo que se puede perder, porque es lo único urgente:
 | <rama local sin worktree> | <qué es> | N |
 ```
 
-Luego los proyectos con fases, **ordenados por fases restantes ascendente** — así arriba
-quedan los que están a una fase de cerrarse, que casi siempre es lo que conviene tocar:
+Luego los proyectos con fases, **ordenados por fases restantes ascendente** — arriba quedan
+los que están a una fase de cerrarse, que casi siempre es lo que conviene tocar:
 
 ```
 | Proyecto | Avance | Siguiente | Falta |
@@ -174,9 +169,8 @@ Y los dev trackers, del más reciente al más antiguo:
 | 2026-09-16 | shipped | TestFlight build 3 |
 ```
 
-Genéralas con node desde el manifest en vez de transcribirlas a mano; copiar a ojo introduce
-errores que nadie va a auditar. Marca con `[!]` la fila cuyo `status` global contradiga a sus
-fases. Después, en una línea cada uno: los terminados sin cerrar, el deadline, el bloque de
+Genéralas con node desde el manifest, no a mano. Marca con `[!]` la fila cuyo `status`
+global contradiga a sus fases. Después, en una línea cada uno: los terminados sin cerrar, el deadline, el bloque de
 cuentas (4b) y el residual más pesado del audit más reciente (sección "Residuales" o
 "Pendientes", según su formato).
 
@@ -193,8 +187,8 @@ cómo quedaron las cuentas.
 node -e "const d=(new Date('2026-10-13T21:59:00-06:00')-Date.now())/864e5;console.log('Bounty: faltan '+Math.floor(d)+' días')"
 # Build de TestFlight: el tracker testflight-* más reciente del manifest (no el contador del index, que cuenta pending)
 node -e "global.window={};require('./docs/overview/data/manifest.js');const t=window.DOCS.filter(d=>/testflight/.test(d.file)).sort((a,b)=>b.date.localeCompare(a.date));for(const d of t)console.log(d.date,d.status.padEnd(9),d.title)"
-# Cuentas de testnet: el audit más reciente con esa sección
-grep -l "Estado de las cuentas" docs/superpowers/audits/*.md | sort | tail -1 | xargs -I{} sed -n '/## Estado de las cuentas/,/^## /p' {}
+# Cuentas de testnet: el audit más reciente con esa sección (sólo la sección)
+node -e "const fs=require('fs');const d='docs/superpowers/audits/';const f=fs.readdirSync(d).filter(n=>n.endsWith('.md')&&fs.readFileSync(d+n,'utf8').includes('## Estado de las cuentas')).sort().pop();if(!f){console.log('(ningún audit con sección de cuentas)');process.exit()}const s=fs.readFileSync(d+f,'utf8');const m=s.match(/## Estado de las cuentas[^\n]*\n[\s\S]*?(?=\n## |$)/);console.log(f);console.log(m?m[0]:'(sección no encontrada)')"
 ```
 
 Reglas de lectura:
@@ -203,8 +197,7 @@ Reglas de lectura:
   `2026-09-17` porque el spec fijó esa fecha, no porque se haya trabajado ese día. La fecha de
   la sesión real está en el audit.
 - `shipped` con `VALID` en App Store Connect **no prueba distribución**: el build puede estar
-  procesado y aún no asignado a un grupo de testers. Lee el tracker y el audit; no infieras
-  ni subas nada.
+  procesado y sin grupo de testers. Lee el tracker y el audit; no infieras ni subas nada.
 - Las cuentas del audit son **"al cierre de esa sesión"**, no verdad viva: saldos de AUSD/MON,
   IDs de cuenta de Perpl y forwarding pudieron cambiar desde otro dispositivo. Antes de operar,
   re-mide con RPC (balances, `readAccountId`) y reporta la diferencia.
@@ -215,6 +208,10 @@ Reglas de lectura:
   trabajo en curso.
 - Para contar fases en un overview usa `grep -c '^ *<article class="phase-card"'`: el script
   del template repite la cadena en literales y un `grep` a secas da 3 donde hay 1.
+- El proyecto que construye el catálogo (spec `docs-manifest`) también tiene entrada y overview;
+  si una rama con commits `unknown_review` no aparece en el manifest, busca su spec en
+  `docs/superpowers/specs/` y su plan más reciente en `docs/superpowers/plans/` antes de
+  llamarla caja negra.
 
 ## 5. Cuando ya eligió
 
@@ -224,23 +221,23 @@ Sólo entonces:
    son el contrato; el plan (`docs/superpowers/plans/<fecha>-<topic>[-fN].md`) argumenta desde ahí.
 2. Lee el audit del proyecto si existe.
 3. Abre `docs/overview/<fecha>-<topic>.html` sólo si necesitas el detalle de una fase.
-4. **Vuelve a medir contra la base viva** cualquier número que vayas a usar. Los specs y audits
-   de este repo fechan sus mediciones a propósito: punto de partida, no verdad vigente. El caso
-   que lo motivó: el `3401` que Perpl devolvió dos veces en un iPhone real se reportó como
+4. **Vuelve a medir contra la base viva** cualquier número que vayas a usar. Specs y audits
+   fechan sus mediciones a propósito: punto de partida, no verdad vigente. El caso que lo
+   motivó: el `3401` que Perpl devolvió dos veces en un iPhone real se reportó como
    geobloqueo; la causa era el **reloj del teléfono desfasado** (firmas fuera de ±30 s).
 
 ## Anti-patterns
 
 - ❌ Entregar una selección de "los que importan". El usuario no puede echar de menos lo que no
-  recuerda; omitir es esconder. Lista todo y deja que él filtre.
+  recuerda; omitir es esconder. Lista todo.
 - ❌ Mirar sólo `.claude/worktrees/`. Hay trabajo en ramas locales sin worktree y en ramas
   remotas que ningún directorio recuerda.
-- ❌ Reportar como «trabajo perdido» una rama que `--no-merged` lista sin haber comprobado su
+- ❌ Reportar como «trabajo perdido» una rama que `--no-merged` lista sin comprobar su
   contenido contra `main`. Los squash-merges la dejan ahí de por vida.
-- ❌ Filtrar por el `status` global del manifest. Puede mentir en ambas direcciones; sólo se
-  reporta como discrepancia contra las fases.
-- ❌ Leer los specs de todos los proyectos activos "para tener contexto". Es justo lo que vuelve
-  a llenar el contexto que el usuario acaba de limpiar.
+- ❌ Filtrar por el `status` global del manifest. Miente en ambas direcciones; sólo se reporta
+  como discrepancia contra las fases.
+- ❌ Leer los specs de todos los proyectos "para tener contexto". Es justo lo que vuelve a
+  llenar el contexto que el usuario acaba de limpiar.
 - ❌ Dar por bueno un número del spec o del audit sin re-medirlo. Están fechados por algo.
 - ❌ Deducir el build vivo del contador del index o de un `VALID`; el tracker y el audit dicen
   qué se distribuyó.
