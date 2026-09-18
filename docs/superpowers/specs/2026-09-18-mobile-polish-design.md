@@ -124,7 +124,8 @@ account resuelve → boot(hasAccount)
   !hasAccount  → screen "signin", next "wallet"; tras login → afterSigninState → "wallet"
 ```
 
-Sign out (`resetTo`) no cambia: sigue aterrizando donde lo hace hoy.
+Sign out: `signedOutState` = limpiar + Sign in con `next: "wallet"` (cambiado en ejecución a petición
+de Jesús; el diseño original decía "no cambia" y aterrizaba en Market, hoy coming soon).
 
 ---
 

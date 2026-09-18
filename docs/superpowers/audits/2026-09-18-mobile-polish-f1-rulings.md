@@ -4,7 +4,7 @@ Cierre de F1 de `mobile-polish`: los tres tabs en mock dicen "coming soon" con l
 la app, la app arranca en Wallet, Wallet y Trade se refrescan jalando, las pantallas con `←`
 regresan con swipe desde el borde, y Trade muestra el PnL no realizado con "in positions /
 free" calculados con Σ `c` y `b`. Rama `feat/mobile-polish`, base `main` (`09a7ac9`), 11
-commits (`aefc1bd..HEAD`), sin push. Spec:
+commits + 1 de Sign out (`aefc1bd..HEAD`), sin push. Spec:
 `docs/superpowers/specs/2026-09-18-mobile-polish-design.md`; plan:
 `docs/superpowers/plans/2026-09-18-mobile-polish-f1.md`. Ejecutado con
 subagent-driven-development: un implementador y un revisor independiente por tarea (7 tareas,
@@ -15,7 +15,7 @@ Critical + 3 Important) y una ola de fixes con re-revisión acotada (todo ADDRES
 
 | Pieza | Evidencia |
 |---|---|
-| Tests | `npm test` → **24 suites, 177/177** (línea base 168 + 9 nuevos: store ×4, gestures ×2, orders ×2, comingSoon ×1). `npx tsc --noEmit` limpio. README actualizado (decía 41/41). |
+| Tests | `npm test` → **24 suites, 178/178** (línea base 168 + 10 nuevos: store ×5, gestures ×2, orders ×2, comingSoon ×1). `npx tsc --noEmit` limpio. README actualizado (decía 41/41). |
 | Coming soon (D1/D2/D4) | Simulador iPhone 17 Pro, flujo Maestro `01-coming-soon.yaml` en verde: Market/Activity/Portfolio muestran disco lima con el ícono del tab, tag punteado COMING SOON, copy exacto y "Go to Wallet"; header "Coming soon" sin ★/Alerts; capturas `02-market`, `03-activity`, `04-portfolio`. El mock sigue en `SCREENS`. |
 | Arranque en Wallet (D3) | Con cuenta: `01-boot-wallet.png` (Wallet directo). Sin cuenta: Sign out → `stopApp` → `launchApp` → "Wallet access" con "I already have one" y **sin `←`** (`30-boot-signin-no-back.png`, `assertNotVisible "←"`); tras el passkey aterriza en Wallet `0xe371…51C1` (`26-after-signin.png`, `32-relogin.png`). |
 | Pull-to-refresh (D5/D6) | Video del simulador durante el gesto (`pull.mp4`, fotogramas `strip-wallet.png` / `strip-trade.png`): la tarjeta baja con el spinner lima y se suelta sola; en Trade pasa por *Connecting…* → *Live*. El botón Refresh ya no existe (`assertNotVisible "Refresh"` en verde); el Retry del error de RPC se conserva. |
@@ -51,8 +51,12 @@ es correcto; D10 se mantiene sin cambios.
    commiteó por nombre tras cada revisión, para que un `git add` por nombre no arrastrara
    staging ajeno (precedente del audit mobile-wallet). Efecto: los reports de T1/T3/T4 hablan
    de conteos de suite mezclados; los commits son limpios.
-4. **Sign out sigue aterrizando en Market** (ahora coming soon). El spec lo dejó explícito ("Sign
-   out no cambia"); se respeta y va a Pendientes como decisión de Jesús.
+4. **Sign out → Sign in → Wallet.** El spec decía "Sign out no cambia" (aterrizaba en Market, hoy
+   coming soon); Jesús pidió cambiarlo al ver el resultado. Nueva `signedOutState(s)` =
+   `bootState(resetState(s, "signin"), false)` y acción `signedOut()` en el store; `own.tsx` la usa en
+   vez de `resetTo("market")`. Test en `store.test.ts`; verificado en simulador
+   (`33-signout-lands-on-signin.png`: "Wallet access" sin `←` ni coming soon; re-login → Wallet).
+   `resetTo` sigue en el `AppStore` sin usuarios (DevControls no lo usa); candidato a borrar.
 5. **Revisión final de rama (Opus) y ola de fixes.** Hallazgos y resolución:
    - **Critical — el umbral de borde nunca aplicaba.** `PanResponder` pone `gestureState.x0 = 0` al
      inicializar y sólo lo asigna en `onResponderGrant` (`PanResponder.js:295` y `:460`); en la fase
@@ -126,9 +130,8 @@ Minors diferidos por los revisores (ninguno bloquea):
 
 Producto (decide Jesús):
 
-- **Tras Sign out la app aterriza en Market (coming soon).** Propuesta: `resetTo("signin")` con
-  `next: "wallet"`, o directamente Wallet gated. Hoy el usuario tiene que tocar Wallet y pasar
-  por Sign in.
+- `resetTo` quedó sin usuarios en el `AppStore` tras el cambio de Sign out; borrarlo o dejarlo
+  para DevControls.
 - **Subtítulo de Sign in** "One step, then back to your purchase" es copy del flujo de compra
   (heredado). El `←` con stack vacío ya se corrigió en la ola de fixes.
 - **PnL de ±0.00**: con una posición que vale −0.004 AUSD la línea dice "−0.00 unrealised PnL"
@@ -144,8 +147,7 @@ Producto (decide Jesús):
 
 ## Siguiente punto de decisión
 
-La rama está lista para merge a `main` local (sin push): 10 commits, 177/177 tests y tsc en
+La rama está lista para merge a `main` local (sin push): 12 commits, 178/178 tests y tsc en
 verde, verificación en simulador con capturas antes y después de la ola de fixes, revisión
-final de rama y re-revisión acotada limpias. Decidir (1) si se mergea, (2) si "Sign out →
-Market coming soon" se cambia antes del merge o va al build 4, y (3) si el build 4 se registra
-ya con `pickler-dev-new` incluyendo este pulido.
+final de rama y re-revisión acotada limpias. Decidir (1) si se mergea y (2) si el build 4 se
+registra ya con `pickler-dev-new` incluyendo este pulido.

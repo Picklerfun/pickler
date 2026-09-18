@@ -14,6 +14,7 @@ import {
   navState,
   requireAccountState,
   resetState,
+  signedOutState,
   SHOW_TABS,
 } from "../src/store";
 import { AGENTS, POSTS } from "../src/mock/data";
@@ -164,4 +165,13 @@ test("coming soon covers the three mock tabs and never the real ones", () => {
   for (const screen of COMING_SOON) expect(headerFor(screen, agent, post, "buy", 0)[1]).toBe("Coming soon");
   expect(headerFor("wallet", agent, post, "buy", 0)[1]).toBe("AUSD available and movements");
   expect(headerFor("perps", agent, post, "buy", 0)[1]).toBe("Perps on Perpl · Monad");
+});
+
+test("sign out lands on Sign in and comes back to Wallet after logging in", () => {
+  const dirty = { ...navState(navState(INITIAL, "perps"), "perpsMarket", { perpsMarketId: 64 }), resume: true, mockHolder: true };
+  const s = signedOutState(dirty);
+  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false, mockHolder: false });
+  expect(s.nextPatch).toBeUndefined();
+  expect(canBackFor(s.screen, s.stack)).toBe(false);
+  expect(afterSigninState(s).screen).toBe("wallet");
 });

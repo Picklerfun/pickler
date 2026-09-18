@@ -247,7 +247,7 @@
 account resuelve → boot(hasAccount)
   hasAccount   → screen &quot;wallet&quot;, tabs visibles
   !hasAccount  → screen &quot;signin&quot;, next &quot;wallet&quot;; tras login → afterSigninState → &quot;wallet&quot;</code></pre>
-<p>Sign out (<code>resetTo</code>) no cambia: sigue aterrizando donde lo hace hoy.</p>
+<p>Sign out: <code>signedOutState</code> = limpiar + Sign in con <code>next: &quot;wallet&quot;</code> (cambiado en ejecución a petición de Jesús; el diseño original decía &quot;no cambia&quot; y aterrizaba en Market, hoy coming soon).</p>
 <hr>
 <h2 id="4-pruebas">4. Pruebas</h2>
 <p>Jest (<code>apps/mobile</code>, <code>npm test</code>) — todas corren también contra el defecto (la afirmación negativa falla si se quita la implementación):</p>

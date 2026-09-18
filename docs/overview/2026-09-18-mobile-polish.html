@@ -150,7 +150,7 @@
           <details class="followups">
             <summary>Pendientes (no bloqueantes)</summary>
             <ul>
-              <li>Tras Sign out la app aterriza en Market (coming soon); propuesta: Sign in → Wallet. Decide Jesús.</li>
+              <li><code>resetTo</code> quedó sin usuarios tras cambiar Sign out; borrarlo o dejarlo para DevControls.</li>
               <li>El subtítulo de Sign in «then back to your purchase» es copy heredado del flujo de compra.</li>
               <li>PnL de ±0.00 se muestra con signo («−0.00 unrealised PnL»); tratar |pnl| &lt; 0.005 como «+0.00» si molesta.</li>
               <li>Minors de revisión: variable <code>any</code> → <code>matched</code> en <code>orders.ts</code>; fallback silencioso en <code>comingSoon.tsx</code>; <code>useCallback</code> de <code>onRefresh</code> sin efecto; tests de empate y de componente.</li>
@@ -214,7 +214,7 @@
         <li><code>COMING_SOON_COPY</code> vive en <code>comingSoonCopy.ts</code> (puro): importar el <code>.tsx</code> desde Jest falla por <code>expo-font → expo-asset</code>.</li>
         <li>Tareas con archivos disjuntos en paralelo; los implementadores no commitean y el coordinador commitea por nombre tras cada revisión.</li>
         <li>Medición D12 en #620: <code>b</code> 104.92 → 94.89 con <code>c</code> 10.02 al abrir un long de 10 AUSD → <code>b</code> excluye el colateral; «free = b» se mantiene.</li>
-        <li>Sign out sigue aterrizando en Market, como fijó el spec; va a Pendientes como decisión de producto.</li>
+        <li>Sign out → Sign in → Wallet (<code>signedOutState</code>), pedido por Jesús al ver que aterrizaba en el coming soon de Market; el spec decía «no cambia».</li>
         <li>No se re-habilitó trading en el simulador tras el Sign out de prueba para no depositar 100 AUSD más en #620.</li>
         <li>Revisión final de rama: <code>gestureState.x0</code> es 0 durante la fase <em>capture</em> del <code>PanResponder</code>, así que el umbral de borde nunca aplicaba; fix con <code>moveX − dx</code>, slop de 8 px y sólo hacia la derecha. «Go to Wallet» pasa por <code>requireAccount</code>; sin <code>←</code> con stack vacío; boot con <code>useLayoutEffect</code>.</li>
       </ol>

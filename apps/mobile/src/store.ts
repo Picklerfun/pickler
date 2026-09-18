@@ -94,6 +94,11 @@ export function resetState(s: StoreState, screen: Screen): StoreState {
   return { ...s, screen, stack: [], resume: false, mockHolder: false, next: undefined, nextPatch: undefined };
 }
 
+/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar (mismo camino que el arranque sin cuenta). */
+export function signedOutState(s: StoreState): StoreState {
+  return bootState(resetState(s, "signin"), false);
+}
+
 export function deriveUser(hasAccount: boolean, mockHolder: boolean): UserKind {
   if (!hasAccount) return "new";
   return mockHolder ? "holder" : "funded";
@@ -155,6 +160,7 @@ export type AppStore = {
   requireAccount: (target: Screen, patch?: Patch) => void;
   finishSignin: () => void;
   resetTo: (screen: Screen) => void;
+  signedOut: () => void;
   boot: (hasAccount: boolean) => void;
   hasAccount: boolean;
   user: UserKind;
@@ -185,6 +191,7 @@ export function useAppStore({ hasAccount, ausd, perpsMarkets }: StoreInput): App
   );
   const finishSignin = useCallback(() => setS(afterSigninState), []);
   const resetTo = useCallback((screen: Screen) => setS((s) => resetState(s, screen)), []);
+  const signedOut = useCallback(() => setS(signedOutState), []);
   const boot = useCallback((has: boolean) => setS((s) => bootState(s, has)), []);
 
   const agent = AGENTS[S.agentId];
@@ -197,7 +204,7 @@ export function useAppStore({ hasAccount, ausd, perpsMarkets }: StoreInput): App
   const [headerTitle, headerSub] = headerFor(S.screen, agent, post, S.mode, balance, perpsSymbol);
 
   return {
-    S, set, nav, back, requireAccount, finishSignin, resetTo, boot,
+    S, set, nav, back, requireAccount, finishSignin, resetTo, signedOut, boot,
     hasAccount, user, agent, balance, holds, tradeHolds,
     scr: S.screen, buying: S.mode === "buy", post, headerTitle, headerSub,
     canBack: canBackFor(S.screen, S.stack),
