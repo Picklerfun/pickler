@@ -93,28 +93,28 @@
     </span>
     <h1>
       <span>TestFlight build 4</span>
-      <span class="accent">propuesta</span>
+      <span class="accent">pulido de navegación</span>
     </h1>
     <p class="lede">
-      Lista propuesta tras probar el build 3 en teléfono real; decide Jesús qué entra.
+      Build 0.1.0 (4) con el pulido de navegación (coming soon en Market/Activity/Portfolio, arranque en Wallet, pull-to-refresh, swipe atrás y PnL no realizado en Trade); subido al grupo interno "Equipo". La lista propuesta el 17 sep (desfase de reloj, fees a 4 decimales, "Reconnect trading") queda pendiente para el build 5.
     </p>
 
     <div class="dev-status-board">
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
-        <div><span class="dev-sb-pill pending"><span>Pending</span></span></div>
+        <div><span class="dev-sb-pill shipped"><span>Shipped</span></span></div>
       </div>
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
-        <div><a href="#" contenteditable="true" data-export-as-text style="color:var(--brand);">—</a></div>
+        <div>— (merge de <code>feat/mobile-polish</code> 745f031 + <code>chore/testflight-build4</code>)</div>
       </div>
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
-        <div style="font-family:var(--mono);font-size:12.5px" contenteditable="true" data-placeholder="shaXXXXXX">—</div>
+        <div style="font-family:var(--mono);font-size:12.5px">ea26bf6</div>
       </div>
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
-        <div style="font-family:var(--mono);font-size:13px">2026-09-17</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-09-18</div>
       </div>
     </div>
   </div>
@@ -124,17 +124,23 @@
   <div class="wrap">
 
     <section>
-      <h2>Qué entra (propuesta)</h2>
+      <h2>Qué cambió</h2>
       <ul>
-        <li>Detectar desfase de reloj (header <code>Date</code> de <code>pub/context</code> vs
-          <code>Date.now()</code>) y mostrar un aviso específico en vez del copy de regiones.</li>
-        <li>"locked in positions" calculado como Σ <code>c</code> de las posiciones (el <code>lb</code>
-          de Perpl no lo es).</li>
+        <li>Market, Activity y Portfolio muestran "Coming soon" con la estética de la app (el mock sigue en el código).</li>
+        <li>La app arranca en Wallet; sin cuenta pasa por Sign in y aterriza en Wallet. Sign out vuelve a Sign in.</li>
+        <li>Pull-to-refresh en Wallet y Trade; desaparece el botón Refresh de Wallet.</li>
+        <li>Swipe desde el borde izquierdo = atrás en las pantallas con <code>←</code>.</li>
+        <li>Trade: "X in positions · Y free" con Σ <code>c</code> y <code>b</code> (ya no <code>lb</code>) y línea "±X unrealised PnL".</li>
+        <li><code>ios.buildNumber</code> "4".</li>
+      </ul>
+      <p>Proyecto completo: <a href="../2026-09-18-mobile-polish.html">overview mobile-polish</a>; audit
+        <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code>.</p>
+      <h3>Pendiente para el build 5 (lista del 17 sep, no incluida)</h3>
+      <ul>
+        <li>Detectar desfase de reloj (header <code>Date</code> de <code>pub/context</code> vs <code>Date.now()</code>) y avisar en vez del copy de regiones.</li>
         <li>Fees con 4 decimales (hoy "0.00 AUSD").</li>
-        <li>"Reconnect trading" tras Sign out + sign in: en estado <code>none</code>, si
-          <code>readAccountId(address) &gt; 0</code>, mostrar "Reconnect trading" sin monto en vez del
-          formulario de 100 AUSD.</li>
-        <li>Minors diferidos de las revisiones (sección "Pendientes") a criterio.</li>
+        <li>"Reconnect trading" tras Sign out + sign in: en estado <code>none</code>, si <code>readAccountId(address) &gt; 0</code>, mostrar "Reconnect trading" sin monto en vez del formulario de 100 AUSD (reproducible hoy en el simulador).</li>
+        <li>Minors del audit de mobile-polish (PnL "−0.00", <code>accessibilityLabel</code> en <code>Touch</code>, subtítulos derivados de <code>COMING_SOON</code>, etc.).</li>
       </ul>
     </section>
 
@@ -155,14 +161,27 @@
       <h2>Archivos tocados</h2>
       <div class="files-box">
         <ul>
-          <li>Por definir con el plan.</li>
+          <li>apps/mobile/App.tsx</li>
+          <li>apps/mobile/app.config.ts</li>
+          <li>apps/mobile/src/Shell.tsx</li>
+          <li>apps/mobile/src/store.ts</li>
+          <li>apps/mobile/src/ui/gestures.ts</li>
+          <li>apps/mobile/src/screens/comingSoon.tsx · comingSoonCopy.ts</li>
+          <li>apps/mobile/src/screens/own.tsx · perps.tsx</li>
+          <li>apps/mobile/src/perpl/orders.ts</li>
+          <li>apps/mobile/__tests__/{store,gestures,perpl-orders,comingSoon}.test.ts</li>
+          <li>apps/mobile/README.md</li>
         </ul>
       </div>
     </section>
 
     <section>
       <h2>Validación</h2>
-      <p>Pendiente.</p>
+      <p>178/178 tests, tsc limpio. Verificación en simulador con capturas y video (audit de mobile-polish),
+        incluida la medición de <code>b</code>/<code>c</code> en la cuenta Perpl #620. <code>.ipa</code> 0.1.0 (4),
+        MinimumOSVersion 18.0, 13.1 MB; <code>altool</code>: UPLOAD SUCCEEDED (Delivery UUID
+        c0839b42-457d-4481-a27e-32d89faebd48). App Store Connect: build VALID; grupo interno "Equipo"
+        (<code>hasAccessToAllBuilds</code>) lo recibe automáticamente. Aún sin probar en el iPhone de Jesús.</p>
     </section>
 
   </div>
@@ -170,7 +189,7 @@
 
 <footer class="foot">
   <div class="wrap">
-    <p>One-pager dev · <a href="#" contenteditable="true" data-export-as-text>—</a> · commit <code contenteditable="true" data-export-as-text>—</code></p>
+    <p>One-pager dev · merge directo · commit <code>ea26bf6</code></p>
     <p>Reglas de doc en <code>docs/CLAUDE.md</code>.</p>
   </div>
 </footer>
