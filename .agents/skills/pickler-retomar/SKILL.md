@@ -20,8 +20,8 @@ que esta skill lee está en el checkout o en `git`.
 
 **Esto es un inventario, no un resumen.** El usuario invoca esta skill justamente porque no
 recuerda qué tiene abierto; una selección de "lo más relevante" le esconde trabajo que no puede
-recuperar de memoria. Todas las entradas del manifest caben completas; hoy son unas pocas:
-cabe completo y es barato. La compresión viene después, cuando él elija — no antes.
+recuperar de memoria. El inventario completo cabe de sobra (hoy el manifest tiene unas pocas
+entradas) y es barato. La compresión viene después, cuando él elija — no antes.
 
 **No leas specs completos todavía.** Primero el mapa; el detalle sólo del que elija.
 
