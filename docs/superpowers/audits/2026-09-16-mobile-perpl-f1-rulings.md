@@ -90,7 +90,7 @@ Capturas en el scratchpad de la sesión (`shots/`), no en el repo. Automatizaci�
 - Los trailers de un commit (`28aeb01`) dicen "Claude Sonnet 5" (lo escribió el subagente); el resto
   "Claude Opus 5 (1M context)".
 
-Copy congelado y build 3: sin cambios respecto a `docs/06-handoff-ui-port.md`; esta rama no sube
+Copy congelado y build 3: sin cambios respecto a `docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md`; esta rama no sube
 `ios.buildNumber`.
 
 ## Estado de las cuentas de testnet al cierre

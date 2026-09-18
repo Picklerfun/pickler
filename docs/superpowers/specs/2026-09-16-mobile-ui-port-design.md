@@ -3,7 +3,7 @@
 **Fecha**: 2026-09-16
 **Estado**: aprobado por Jesús (diseño en chat), pendiente de plan
 **Slug**: `mobile-ui-port`
-**Contexto**: cierre de fase 1 (`docs/05-handoff-fase1.md`). Antes de la fase 2
+**Contexto**: cierre de fase 1 (`docs/superpowers/audits/2026-09-16-mobile-fase1-f1-rulings.md`). Antes de la fase 2
 (Perpl) la app adopta la UI completa del prototipo `jjesusaf/pickler-mobile`,
 que implementa los *Pickler Mobile Wireframes*.
 

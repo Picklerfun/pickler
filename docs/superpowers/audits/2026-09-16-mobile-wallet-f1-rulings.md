@@ -94,12 +94,12 @@ Minors diferidos de las revisiones (ninguno bloquea el merge):
   longitud, estilos duplicados y unión `WithdrawStep` en una línea, error de dirección visible
   antes de tocar el campo, `fetchAusdTransfers` sin test con `fetch` mockeado.
 
-Copy congelado y build 3: sin cambios respecto a `docs/06-handoff-ui-port.md` (la lista del
+Copy congelado y build 3: sin cambios respecto a `docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md` (la lista del
 build 3 sigue pendiente; esta rama no sube `buildNumber`).
 
 ## Siguiente punto de decisión
 
 La rama está lista para merge a `main` (revisión final limpia, 55/55, withdraw real
 confirmado). Decide Jesús: (1) merge + push; (2) si va a TestFlight, sumar la lista del build 3
-de `docs/06-handoff-ui-port.md` y subir `ios.buildNumber` a `"3"`; (3) fase 2 = Perpl y la
+de `docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md` y subir `ios.buildNumber` a `"3"`; (3) fase 2 = Perpl y la
 decisión de venue, sin cambios.

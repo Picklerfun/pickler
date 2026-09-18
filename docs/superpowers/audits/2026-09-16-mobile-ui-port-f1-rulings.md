@@ -110,7 +110,7 @@ Pendientes técnicos:
 
 - **Build 0.1.0 (2) subido a TestFlight el 2026-09-16** con esta UI (commit `63adccd`,
   Delivery UUID `e8b64d34-5b48-4f23-9fa6-f0202adac1c9`). La próxima subida necesita
-  `ios.buildNumber: "3"` (regla de `docs/05-handoff-fase1.md`).
+  `ios.buildNumber: "3"` (regla de `docs/superpowers/audits/2026-09-16-mobile-fase1-f1-rulings.md`).
 - **Testers del build 2** (2026-09-16): jjaf051094@gmail.com y ctjuvenal@gmail.com, ambos
   `INSTALLED` en el grupo interno *Equipo*. Juvenal creó cuenta, pidió MON y AUSD de prueba y
   todo funcionó una vez resuelto lo de Bitwarden (ver "Lo aprendido" 6 y 7).
@@ -136,4 +136,4 @@ El merge a `main` y el push ya se hicieron (`63adccd`) y el build 2 está en Tes
 probado por dos testers. Lo que sigue, en este orden: (1) **build 3** con la lista de arriba,
 que Jesús aprueba tarea por tarea; (2) el copy congelado de "Pendientes que decide Jesús";
 (3) **fase 2 = Perpl** y la decisión de venue (Perpl vs. Polymarket), sin cambios respecto a
-`docs/05-handoff-fase1.md`.
+`docs/superpowers/audits/2026-09-16-mobile-fase1-f1-rulings.md`.

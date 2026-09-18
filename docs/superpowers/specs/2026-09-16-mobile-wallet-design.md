@@ -4,7 +4,7 @@
 **Estado**: aprobado por Jesús (diseño en chat), pendiente de plan
 **Slug**: `mobile-wallet`
 **Rama**: `feat/mobile-wallet`, base `main` (`286bd0a`)
-**Contexto**: cierre del port de UI (`docs/06-handoff-ui-port.md`). Antes de la fase 2
+**Contexto**: cierre del port de UI (`docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md`). Antes de la fase 2
 (Perpl) la sección *Wallet* deja de ser maqueta: *Withdraw* manda AUSD de verdad y
 *Movements* lista las transferencias reales de la dirección. De paso, la tab bar
 recibe iconos y el header de Market recupera el logo.
@@ -153,4 +153,4 @@ iconos; header de Market con el logo. Capturas en el scratchpad como evidencia.
 ## 5. Fuera de alcance
 
 Compras/ventas en Movements (Perpl), QR en Deposit, retirar MON, backend de usuarios,
-píldoras del header, copy congelado restante de `docs/06-handoff-ui-port.md`.
+píldoras del header, copy congelado restante de `docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md`.
