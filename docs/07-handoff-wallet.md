@@ -3,8 +3,8 @@
 Cierre de la sesión que hizo real la sección *Wallet* de la app móvil: *Withdraw* manda AUSD
 de verdad en Monad Testnet, *Movements* lista las transferencias reales de la dirección vía
 MonadScan, la tab bar tiene iconos y el header de Market recupera el logo. Rama
-`feat/mobile-wallet`, base `main` (`286bd0a`). Spec: `docs/specs/2026-09-16-mobile-wallet-design.md`;
-plan: `docs/plans/2026-09-16-mobile-wallet.md`.
+`feat/mobile-wallet`, base `main` (`286bd0a`). Spec: `docs/superpowers/specs/2026-09-16-mobile-wallet-design.md`;
+plan: `docs/superpowers/plans/2026-09-16-mobile-wallet.md`.
 
 ## Qué quedó hecho y verificado
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Expo SDK 57 / RN 0.86 / React 19.2 / TS 6 / viem 2.55.13 / `@noble/curves` **2.2.0** (Ed25519; ya instalado como transitiva de viem, se fija como dependencia directa). Jest (`jest-expo`).
 
-**Spec:** `docs/specs/2026-09-16-mobile-perpl-design.md` (autoridad). Insumos: `docs/investigacion/perpl.md` (trampas), `docs/07-handoff-wallet.md` (lecciones).
+**Spec:** `docs/superpowers/specs/2026-09-16-mobile-perpl-design.md` (autoridad). Insumos: `docs/investigacion/perpl.md` (trampas), `docs/07-handoff-wallet.md` (lecciones).
 
 ## Global Constraints
 

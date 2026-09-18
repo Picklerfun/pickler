@@ -13,7 +13,7 @@ La app móvil de Pickler (`apps/mobile/`) tiene su fase 1 lista: login con
 passkey vía Mera, cuenta EVM en Monad Testnet, balances de AUSD/MON y tx al
 faucet de Agora, con build subido a TestFlight. Ver
 [`apps/mobile/README.md`](apps/mobile/README.md) (cómo correr y verificar) y
-[`docs/specs/2026-09-15-mobile-fase1-design.md`](docs/specs/2026-09-15-mobile-fase1-design.md)
+[`docs/superpowers/specs/2026-09-15-mobile-fase1-design.md`](docs/superpowers/specs/2026-09-15-mobile-fase1-design.md)
 (diseño). Las decisiones bloqueantes del producto en general
 (`docs/02-decisiones-abiertas.md`) siguen abiertas; la fase 1 es compatible con
 cualquier salida. Fases siguientes del bounty (Perpl, agentes, harness) en
@@ -41,5 +41,5 @@ Cada sub-proyecto pasa por el ciclo completo antes de empezar el siguiente:
 brainstorm → spec → plan de UNA fase → ejecutar → checkpoint
 ```
 
-Los specs viven en `docs/specs/YYYY-MM-DD-<tema>-design.md`. No se escriben todos
+Los specs viven en `docs/superpowers/specs/YYYY-MM-DD-<tema>-design.md`. No se escriben todos
 por adelantado.

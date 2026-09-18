@@ -8,7 +8,7 @@
 
 **Tech Stack:** Expo SDK 57 (bare vía `expo prebuild`), React Native 0.86, TypeScript, `@category-labs/mera` 0.2.0, `react-native-passkey` 3.6.1, `viem` 2.55.13, `expo-secure-store`, `expo-crypto`, `@scure/bip32` + `@scure/bip39`, Jest (`jest-expo`). Cloudflare Pages para el dominio. Xcode 26.2 + App Store Connect API key para TestFlight.
 
-**Spec:** `docs/specs/2026-09-15-mobile-fase1-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-15-mobile-fase1-design.md`
 
 ## Global Constraints
 

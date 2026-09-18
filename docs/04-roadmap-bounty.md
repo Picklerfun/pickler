@@ -33,7 +33,7 @@ Cada fase pasa por su propio brainstorm → spec → plan (ver `docs/00-historia
 §Flujo de trabajo en el README raíz).
 
 **Detalle de fase 1**: `apps/mobile/README.md` (cómo correr, tests, TestFlight)
-y `docs/specs/2026-09-15-mobile-fase1-design.md` (diseño completo, §3 fuentes
+y `docs/superpowers/specs/2026-09-15-mobile-fase1-design.md` (diseño completo, §3 fuentes
 verificadas, §9 estas mismas fases siguientes). Evidencia de cierre: 19/19
 tests, `curl` del AASA en `https://pickler.fun/.well-known/apple-app-site-association`
 en 200, tx del faucet confirmada

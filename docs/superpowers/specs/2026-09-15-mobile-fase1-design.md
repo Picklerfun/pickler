@@ -101,7 +101,7 @@ predict/
   infra/passkey-domain/
     public/.well-known/apple-app-site-association
     wrangler.jsonc             proyecto Pages `pickler-passkeys`, custom domain pickler.fun
-  docs/specs/2026-09-15-mobile-fase1-design.md   este archivo
+  docs/superpowers/specs/2026-09-15-mobile-fase1-design.md   este archivo
   docs/04-roadmap-bounty.md                       fases 2-4 (se escribe en el plan)
 ```
 

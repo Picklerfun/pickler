@@ -8,7 +8,7 @@
 
 **Tech Stack:** Expo SDK 57 / React Native 0.86 / React 19.2 / TypeScript 6 (ya instalados). Nuevos: `expo-font` 57.0.4, `@expo-google-fonts/manrope` 0.4.2, `@expo-google-fonts/jetbrains-mono` 0.4.1. Tests con Jest (`jest-expo`).
 
-**Spec:** `docs/specs/2026-09-16-mobile-ui-port-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-16-mobile-ui-port-design.md`
 
 ## Global Constraints
 

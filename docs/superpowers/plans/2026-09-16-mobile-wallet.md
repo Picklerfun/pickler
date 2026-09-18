@@ -8,7 +8,7 @@
 
 **Tech Stack:** Expo SDK 57 / React Native 0.86 / React 19.2 / TypeScript 6 / viem 2.55 (ya instalados). Nuevo: `@expo/vector-icons` **15.1.1**. Historial vía Etherscan V2 (`chainid=10143`). Tests con Jest (`jest-expo`).
 
-**Spec:** `docs/specs/2026-09-16-mobile-wallet-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-16-mobile-wallet-design.md`
 
 ## Global Constraints
 

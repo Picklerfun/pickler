@@ -4,7 +4,7 @@ Cierre de la sesión que construyó la fase 2 de la app móvil: una pestaña **T
 habilita trading en Perpl (approve + createAccount + forwarding + API key Ed25519), ve saldo,
 mercados y posiciones por WebSocket, abre y cierra perps con orden de mercado y mueve AUSD entre
 la wallet y la cuenta de trading. Rama `feat/mobile-perpl`, base `main` (`2d928fc`). Spec:
-`docs/specs/2026-09-16-mobile-perpl-design.md`; plan: `docs/plans/2026-09-16-mobile-perpl.md`;
+`docs/superpowers/specs/2026-09-16-mobile-perpl-design.md`; plan: `docs/superpowers/plans/2026-09-16-mobile-perpl.md`;
 spike previo: `docs/investigacion/perpl.md`.
 
 ## Qué quedó hecho y verificado
