@@ -221,9 +221,6 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, res
               <T w={700} s={13.5}>Get test MON · copies address</T>
             </Touch>
           </View>
-          <Touch onPress={() => { void treasury.refresh(); }} style={secondaryBtn}>
-            <T w={600} s={13}>Refresh</T>
-          </Touch>
           {treasury.rpcError ? (
             <View style={{ paddingVertical: 11, paddingHorizontal: 13, borderWidth: 1, borderColor: "rgba(245,195,91,0.5)", backgroundColor: "rgba(245,195,91,0.1)", borderRadius: 12, gap: 8 }}>
               <T w={400} s={12} lh={1.4} color={C.warn}>{treasury.rpcError}</T>

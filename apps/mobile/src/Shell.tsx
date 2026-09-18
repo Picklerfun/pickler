@@ -1,5 +1,5 @@
-import { type ReactElement, useState } from "react";
-import { Image, ScrollView, View } from "react-native";
+import { type ReactElement, useCallback, useMemo, useState } from "react";
+import { Image, PanResponder, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { AppCtx } from "./ctx";
@@ -14,6 +14,7 @@ import { PerpsFundsScreen } from "./screens/perpsFunds";
 import { PerpsMarketScreen } from "./screens/perpsMarket";
 import { SigninScreen, TradeScreen } from "./screens/trade";
 import type { Screen } from "./store";
+import { shouldCaptureEdgeSwipe, shouldGoBack } from "./ui/gestures";
 import { T, Touch } from "./ui/primitives";
 import { C } from "./ui/theme";
 
@@ -38,9 +39,27 @@ const BOTTOM_TABS: readonly [Screen, string, TabIcon][] = [
 type HeaderAction = { label: string; active?: boolean; go: () => void };
 
 export function Shell({ ctx }: { ctx: AppCtx }) {
-  const { S, set, nav, back, requireAccount, agent, balance, tradeHolds: holds } = ctx;
+  const { S, set, nav, back, requireAccount, agent, balance, tradeHolds: holds, treasury, perpl } = ctx;
   const [controls, setControls] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const Current = SCREENS[ctx.scr];
+
+  const refreshable = S.screen === "wallet" || S.screen === "perps";
+  // D5: Wallet = saldos + movimientos; Trade = markets. allSettled: un fallo no deja el spinner colgado.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled(S.screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()] : [perpl.refreshContext()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [S.screen, treasury, perpl]);
+
+  // D7: captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
+  const pan = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_e, g) => shouldCaptureEdgeSwipe(g.x0, g.dx, g.dy),
+    onPanResponderRelease: (_e, g) => { if (shouldGoBack(g.dx)) back(); },
+  }), [back]);
 
   const headerActions: HeaderAction[] = S.screen === "market" && !ctx.comingSoon
     ? [{ label: "★", go: () => nav("search") }, { label: "Alerts", go: () => nav("activity") }]
@@ -76,9 +95,16 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
       </View>
 
       {/* scroll body */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} nav={nav} /> : <Current {...ctx} />}
-      </ScrollView>
+      <View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
+        >
+          {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} nav={nav} /> : <Current {...ctx} />}
+        </ScrollView>
+      </View>
 
       {/* agent sticky buy bar */}
       {ctx.showAgentBar ? (
