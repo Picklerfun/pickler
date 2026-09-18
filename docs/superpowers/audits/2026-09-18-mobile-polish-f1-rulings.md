@@ -3,22 +3,23 @@
 Cierre de F1 de `mobile-polish`: los tres tabs en mock dicen "coming soon" con la estética de
 la app, la app arranca en Wallet, Wallet y Trade se refrescan jalando, las pantallas con `←`
 regresan con swipe desde el borde, y Trade muestra el PnL no realizado con "in positions /
-free" calculados con Σ `c` y `b`. Rama `feat/mobile-polish`, base `main` (`09a7ac9`), 8
-commits (`aefc1bd..0f6d208`), sin push. Spec:
+free" calculados con Σ `c` y `b`. Rama `feat/mobile-polish`, base `main` (`09a7ac9`), 11
+commits (`aefc1bd..HEAD`), sin push. Spec:
 `docs/superpowers/specs/2026-09-18-mobile-polish-design.md`; plan:
 `docs/superpowers/plans/2026-09-18-mobile-polish-f1.md`. Ejecutado con
 subagent-driven-development: un implementador y un revisor independiente por tarea (7 tareas,
-7 revisiones `Approved`, 0 rondas de fix) más la revisión final de rama (ver abajo).
+7 revisiones `Approved`, 0 rondas de fix), revisión final de rama (Opus: **With fixes**, 1
+Critical + 3 Important) y una ola de fixes con re-revisión acotada (todo ADDRESSED).
 
 ## Qué quedó hecho y verificado
 
 | Pieza | Evidencia |
 |---|---|
-| Tests | `npm test` → **24 suites, 176/176** (línea base 168 + 8 nuevos: store ×3, gestures ×2, orders ×2, comingSoon ×1). `npx tsc --noEmit` limpio. README actualizado (decía 41/41). |
+| Tests | `npm test` → **24 suites, 177/177** (línea base 168 + 9 nuevos: store ×4, gestures ×2, orders ×2, comingSoon ×1). `npx tsc --noEmit` limpio. README actualizado (decía 41/41). |
 | Coming soon (D1/D2/D4) | Simulador iPhone 17 Pro, flujo Maestro `01-coming-soon.yaml` en verde: Market/Activity/Portfolio muestran disco lima con el ícono del tab, tag punteado COMING SOON, copy exacto y "Go to Wallet"; header "Coming soon" sin ★/Alerts; capturas `02-market`, `03-activity`, `04-portfolio`. El mock sigue en `SCREENS`. |
-| Arranque en Wallet (D3) | Con cuenta: `01-boot-wallet.png` (Wallet directo). Sin cuenta: Sign out → `stopApp` → `launchApp` → "Wallet access" con "I already have one" (`23-boot-no-account.png`); tras el passkey aterriza en Wallet `0xe371…51C1` (`26-after-signin.png`). |
+| Arranque en Wallet (D3) | Con cuenta: `01-boot-wallet.png` (Wallet directo). Sin cuenta: Sign out → `stopApp` → `launchApp` → "Wallet access" con "I already have one" y **sin `←`** (`30-boot-signin-no-back.png`, `assertNotVisible "←"`); tras el passkey aterriza en Wallet `0xe371…51C1` (`26-after-signin.png`, `32-relogin.png`). |
 | Pull-to-refresh (D5/D6) | Video del simulador durante el gesto (`pull.mp4`, fotogramas `strip-wallet.png` / `strip-trade.png`): la tarjeta baja con el spinner lima y se suelta sola; en Trade pasa por *Connecting…* → *Live*. El botón Refresh ya no existe (`assertNotVisible "Refresh"` en verde); el Retry del error de RPC se conserva. |
-| Swipe atrás (D7) | Maestro `02-gestures.yaml`: Deposit → swipe desde `1%` → "Available to spend" visible en < 3 s (`08-after-edge-swipe.png`). El mismo swipe en Wallet no hace nada. |
+| Swipe atrás (D7) | Tras el fix del Critical: Maestro `11-gesture-fix.yaml` en Deposit — swipe desde el **40 %** de ancho **no** regresa (`28-deposit-after-mid-swipe.png`), swipe desde el 1 % sí (`29-wallet-after-edge-swipe.png`). Con el código previo al fix cualquier arrastre horizontal regresaba. |
 | Trade: PnL y colateral (D9–D12) | Ver medición D12. Con posición abierta: "10.02 in positions · 94.89 free" y línea "−0.00 / +0.00 unrealised PnL" que coincide con la fila del `PositionRow` (`17-trade-with-position.png`, `18-positions.png`). Sin posiciones la línea desaparece (`21-final.png`). |
 | Docs | `npm run agents:check` errors `[]`; `npm run docs:check` 15/15; overview `2026-09-18-mobile-polish.html` con F1 `completed`, 9 tasks marcadas y rulings; captura 390 px mirada. |
 
@@ -52,7 +53,27 @@ es correcto; D10 se mantiene sin cambios.
    de conteos de suite mezclados; los commits son limpios.
 4. **Sign out sigue aterrizando en Market** (ahora coming soon). El spec lo dejó explícito ("Sign
    out no cambia"); se respeta y va a Pendientes como decisión de Jesús.
-5. **No se re-habilitó trading en el simulador tras el Sign out de prueba.** Hacerlo exigiría
+5. **Revisión final de rama (Opus) y ola de fixes.** Hallazgos y resolución:
+   - **Critical — el umbral de borde nunca aplicaba.** `PanResponder` pone `gestureState.x0 = 0` al
+     inicializar y sólo lo asigna en `onResponderGrant` (`PanResponder.js:295` y `:460`); en la fase
+     *capture* siempre es 0, así que `0 <= 24` capturaba cualquier arrastre horizontal en cualquier
+     punto de las pantallas con `←` y un tap con jitter podía robarle el press a los `Pressable`. Las
+     pruebas del simulador no lo distinguían porque Wallet no tiene `←`. Fix: la x inicial real es
+     `g.moveX - g.dx` (ambos sí se actualizan antes del callback de capture), con comentario para que
+     nadie lo "simplifique" de vuelta. Además `shouldCaptureEdgeSwipe` exige `dx >= SLOP_PX` (8) y
+     sólo hacia la derecha.
+   - **Important — "Go to Wallet" saltaba el gate.** Llamaba `nav("wallet")` (como decía el spec
+     §2.3); tras Sign out → Market coming soon → "Go to Wallet" abría Wallet sin cuenta. Ahora
+     `requireAccount("wallet")`, como la tab bar.
+   - **Important — `←` con stack vacío.** Nueva `canBackFor(screen, stack)` pura: sin stack no hay
+     atrás (el Sign in de arranque ya no muestra `←`, que llevaba a Wallet sin cuenta).
+   - **Important — flash de Wallet antes de Sign in.** El efecto de boot pasa a `useLayoutEffect`.
+   - Diferidos al build 4 o después: `any` → `matched`; check `never` en `comingSoon.tsx`;
+     `useCallback` de `onRefresh` sin efecto; subtítulos "Coming soon" derivados de `COMING_SOON` en
+     vez de tres `case` (y el subtítulo original de Market "Discover agents and their tokens" se
+     perdió del `headerFor`; recuperarlo cuando Market vuelva); `refreshing` global al cambiar de
+     tab a media recarga; el pull de Trade no reconecta el socket (sólo `refreshContext`).
+6. **No se re-habilitó trading en el simulador tras el Sign out de prueba.** Hacerlo exigiría
    `Get test AUSD` (10,000) + `enable(100)`, que depositaría 100 AUSD más en #620 y ensuciaría
    la medición. Se deja documentado (ver cuentas).
 
@@ -108,11 +129,12 @@ Producto (decide Jesús):
 - **Tras Sign out la app aterriza en Market (coming soon).** Propuesta: `resetTo("signin")` con
   `next: "wallet"`, o directamente Wallet gated. Hoy el usuario tiene que tocar Wallet y pasar
   por Sign in.
-- **Sign in en el arranque muestra `←`** con stack vacío (lleva a Wallet sin cuenta, que
-  muestra "—"); y su subtítulo "One step, then back to your purchase" es copy del flujo de
-  compra. Ambos heredados.
+- **Subtítulo de Sign in** "One step, then back to your purchase" es copy del flujo de compra
+  (heredado). El `←` con stack vacío ya se corrigió en la ola de fixes.
 - **PnL de ±0.00**: con una posición que vale −0.004 AUSD la línea dice "−0.00 unrealised PnL"
   (misma regla que la fila). Si molesta, tratar |pnl| < 0.005 como "+0.00".
+- `headerFor`: los tres subtítulos "Coming soon" están hard-coded por `case`; derivarlos de
+  `COMING_SOON` y conservar los originales para cuando cada tab vuelva.
 - Wallet dice "0.00 AUSD in trading" mientras el socket no ha conectado (sin " · last seen"
   porque `lastBalance` es `null` al arrancar); heredado de fase 2.
 - Añadir `accessibilityLabel` a `Touch`/`TouchCard` para que Maestro (y VoiceOver) encuentren
@@ -122,7 +144,8 @@ Producto (decide Jesús):
 
 ## Siguiente punto de decisión
 
-La rama está lista para revisión de merge a `main` local (sin push): 8 commits, tests y tsc en
-verde, verificación en simulador con capturas. Decidir (1) si se mergea, (2) si "Sign out →
+La rama está lista para merge a `main` local (sin push): 10 commits, 177/177 tests y tsc en
+verde, verificación en simulador con capturas antes y después de la ola de fixes, revisión
+final de rama y re-revisión acotada limpias. Decidir (1) si se mergea, (2) si "Sign out →
 Market coming soon" se cambia antes del merge o va al build 4, y (3) si el build 4 se registra
 ya con `pickler-dev-new` incluyendo este pulido.
