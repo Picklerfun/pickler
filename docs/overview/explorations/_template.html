@@ -1,0 +1,313 @@
+<!doctype html>
+<!--
+  Plantilla: exploración de diseño · 4 enfoques side-by-side
+
+  Uso: cuando estás a punto de decidir un patrón importante (forma del schema,
+  layout de una pestaña, naming de una API), en vez de comprometerte de una,
+  arma 4 mini-mockups con pros/contras y elige con info visual.
+
+  Flujo:
+  1. Cópialo a docs/overview/explorations/YYYY-MM-DD-<slug>.html
+  2. Reemplaza placeholders [[…]] en cada columna A/B/C/D.
+  3. Marca el radio "decisión" del enfoque ganador.
+  4. Click "Copy decision as MD" → pega el bloque en el spec del proyecto.
+  5. Agrega entry al manifest con types: ['exploration'].
+
+  Reglas: cada enfoque tiene exactamente las mismas filas (título, pros, contras,
+  mockup) para comparar visualmente. No metas detalle infinito — son explorations.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>[[EXPLORATION_TITLE]] · Exploración · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<script defer src="../_syntax.js"></script>
+<style>
+  .wrap { max-width: 1200px; }
+  header.hero { padding: 32px 0 24px; }
+
+  .options-grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin: 8px 0 24px;
+  }
+  .option-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: border-color .15s, transform .15s;
+    cursor: pointer;
+  }
+  .option-card:hover { border-color: var(--brand); transform: translateY(-2px); }
+  .option-card.selected {
+    border: 2px solid var(--brand);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+  .option-head {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .option-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    background: var(--brand); color: white;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .option-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 0; flex: 1; }
+  .option-radio { transform: scale(1.15); accent-color: var(--brand); cursor: pointer; }
+
+  .option-mockup {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: var(--radius-s); padding: 14px;
+    min-height: 110px;
+    font-size: 12px; color: var(--ink-2);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; line-height: 1.5;
+  }
+  .option-mockup svg { width: 100%; height: auto; }
+
+  .pros-cons { display: grid; gap: 6px; }
+  .pros-cons .row {
+    display: grid; grid-template-columns: 18px 1fr; gap: 8px;
+    font-size: 12.5px; line-height: 1.5;
+  }
+  .pros-cons .row.pro { color: var(--brand-dark); }
+  .pros-cons .row.con { color: var(--warn); }
+  .pros-cons .row .ico { font-weight: 700; }
+
+  .decision-output {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+  }
+  .decision-output h3 {
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em;
+    color: var(--brand-dark); margin: 0 0 8px;
+  }
+  .decision-output p { margin: 0 0 8px; font-size: 14px; }
+</style>
+</head>
+<body data-slug="[[SLUG]]">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">explorations/[[SLUG]]</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Exploration · 4 enfoques</span>
+    <h1>[[EXPLORATION_TITLE]] <span class="accent">[[ACCENT]]</span></h1>
+    <p class="lede">[[EXPLORATION_LEDE]]</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Enfoques</h2>
+      <p class="sec-sub">
+        Click sobre el radio del enfoque elegido. Luego "Copy decision as MD"
+        para pegar el resumen al spec.
+      </p>
+
+      <div class="options-grid">
+        <!-- A -->
+        <article class="option-card" data-option="A">
+          <div class="option-head">
+            <span class="option-label">A</span>
+            <h3 class="option-title">[[A_TITLE]]</h3>
+            <input type="radio" name="decision" value="A" class="option-radio" aria-label="Elegir enfoque A">
+          </div>
+          <div class="option-mockup">[[A_MOCKUP]]</div>
+          <div class="pros-cons">
+            <div class="row pro"><span class="ico">+</span><span>[[A_PRO_1]]</span></div>
+            <div class="row pro"><span class="ico">+</span><span>[[A_PRO_2]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[A_CON_1]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[A_CON_2]]</span></div>
+          </div>
+        </article>
+
+        <!-- B -->
+        <article class="option-card" data-option="B">
+          <div class="option-head">
+            <span class="option-label">B</span>
+            <h3 class="option-title">[[B_TITLE]]</h3>
+            <input type="radio" name="decision" value="B" class="option-radio" aria-label="Elegir enfoque B">
+          </div>
+          <div class="option-mockup">[[B_MOCKUP]]</div>
+          <div class="pros-cons">
+            <div class="row pro"><span class="ico">+</span><span>[[B_PRO_1]]</span></div>
+            <div class="row pro"><span class="ico">+</span><span>[[B_PRO_2]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[B_CON_1]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[B_CON_2]]</span></div>
+          </div>
+        </article>
+
+        <!-- C -->
+        <article class="option-card" data-option="C">
+          <div class="option-head">
+            <span class="option-label">C</span>
+            <h3 class="option-title">[[C_TITLE]]</h3>
+            <input type="radio" name="decision" value="C" class="option-radio" aria-label="Elegir enfoque C">
+          </div>
+          <div class="option-mockup">[[C_MOCKUP]]</div>
+          <div class="pros-cons">
+            <div class="row pro"><span class="ico">+</span><span>[[C_PRO_1]]</span></div>
+            <div class="row pro"><span class="ico">+</span><span>[[C_PRO_2]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[C_CON_1]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[C_CON_2]]</span></div>
+          </div>
+        </article>
+
+        <!-- D -->
+        <article class="option-card" data-option="D">
+          <div class="option-head">
+            <span class="option-label">D</span>
+            <h3 class="option-title">[[D_TITLE]]</h3>
+            <input type="radio" name="decision" value="D" class="option-radio" aria-label="Elegir enfoque D">
+          </div>
+          <div class="option-mockup">[[D_MOCKUP]]</div>
+          <div class="pros-cons">
+            <div class="row pro"><span class="ico">+</span><span>[[D_PRO_1]]</span></div>
+            <div class="row pro"><span class="ico">+</span><span>[[D_PRO_2]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[D_CON_1]]</span></div>
+            <div class="row con"><span class="ico">−</span><span>[[D_CON_2]]</span></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="roadmap-actions" style="justify-content:flex-end">
+        <button type="button" class="btn primary" id="btn-copy-decision">📋 Copy decision as MD</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Decisión final</h2>
+      <p class="sec-sub">
+        Elige un enfoque arriba, agrega la justificación abajo, y copia el bloque
+        para pegarlo en la sección "Decisiones clave" del spec.
+      </p>
+
+      <div class="decision-output">
+        <h3>Enfoque elegido</h3>
+        <p id="decision-display">— Sin decidir —</p>
+
+        <h3 style="margin-top:14px">Justificación</h3>
+        <p contenteditable="true" id="decision-rationale"
+           data-placeholder="Por qué este enfoque vence a los otros 3 (1-2 párrafos)…"
+           style="min-height:60px">
+          [[DECISION_RATIONALE]]
+        </p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuente:</b> esta exploración alimenta al spec en
+       <code>docs/superpowers/specs/[[SPEC_FILE]]</code>.</p>
+    <p>Reglas en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $toast = document.getElementById('toast');
+  const $display = document.getElementById('decision-display');
+  const $rationale = document.getElementById('decision-rationale');
+  const cards = document.querySelectorAll('.option-card');
+  const radios = document.querySelectorAll('.option-radio');
+
+  function applySelection(value) {
+    cards.forEach(c => c.classList.toggle('selected', c.dataset.option === value));
+    if (!value) {
+      $display.textContent = '— Sin decidir —';
+      return;
+    }
+    const card = document.querySelector(`.option-card[data-option="${value}"]`);
+    const title = card?.querySelector('.option-title')?.textContent.trim() ?? '';
+    $display.textContent = `${value} · ${title}`;
+  }
+
+  radios.forEach(r => {
+    r.addEventListener('change', () => applySelection(r.value));
+  });
+  cards.forEach(card => {
+    // Click en el card (no en el radio) también selecciona
+    card.addEventListener('click', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      const radio = card.querySelector('.option-radio');
+      radio.checked = true;
+      applySelection(card.dataset.option);
+    });
+  });
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+
+  document.getElementById('btn-copy-decision').addEventListener('click', async (e) => {
+    const selected = [...radios].find(r => r.checked);
+    if (!selected) {
+      showToast('Elige un enfoque primero');
+      return;
+    }
+    const card = document.querySelector(`.option-card[data-option="${selected.value}"]`);
+    const title = card.querySelector('.option-title').textContent.trim();
+    const pros = [...card.querySelectorAll('.row.pro span:last-child')].map(s => s.textContent.trim());
+    const cons = [...card.querySelectorAll('.row.con span:last-child')].map(s => s.textContent.trim());
+    const rationale = $rationale.textContent.trim();
+    const explorationTitle = document.querySelector('h1').textContent.trim().replace(/\s+/g, ' ');
+
+    const md = [
+      `## Decisión: ${explorationTitle}`,
+      ``,
+      `**Enfoque elegido**: ${selected.value} · ${title}`,
+      ``,
+      `**Pros**:`,
+      ...pros.map(p => `- ${p}`),
+      ``,
+      `**Trade-offs aceptados**:`,
+      ...cons.map(c => `- ${c}`),
+      ``,
+      `**Por qué este enfoque**:`,
+      rationale || '_(pendiente)_',
+      ``,
+      `_Capturado desde explorations/${document.body.dataset.slug}.html en ${new Date().toISOString()}_`,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(md);
+      const btn = e.currentTarget;
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast('MD copiado — pégalo en la sección Decisiones del spec');
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = '📋 Copy decision as MD'; }, 2000);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(md);
+    }
+  });
+</script>
+
+</body>
+</html>
