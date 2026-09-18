@@ -5,6 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { AppCtx } from "./ctx";
 import { DevControls } from "./DevControls";
 import { pill } from "./mock/helpers";
+import { ComingSoonScreen } from "./screens/comingSoon";
 import { AgentScreen, MarketScreen, SearchScreen } from "./screens/discover";
 import { ActivityScreen, AskScreen, PostScreen } from "./screens/follow";
 import { DepositScreen, PortfolioScreen, PositionScreen, WalletScreen, WithdrawScreen } from "./screens/own";
@@ -41,7 +42,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
   const [controls, setControls] = useState(false);
   const Current = SCREENS[ctx.scr];
 
-  const headerActions: HeaderAction[] = S.screen === "market"
+  const headerActions: HeaderAction[] = S.screen === "market" && !ctx.comingSoon
     ? [{ label: "★", go: () => nav("search") }, { label: "Alerts", go: () => nav("activity") }]
     : S.screen === "agent"
       ? [{ label: "★", active: S.following, go: () => set({ following: !S.following }) }]
@@ -76,7 +77,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
 
       {/* scroll body */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <Current {...ctx} />
+        {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} nav={nav} /> : <Current {...ctx} />}
       </ScrollView>
 
       {/* agent sticky buy bar */}
