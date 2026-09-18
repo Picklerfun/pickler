@@ -1,0 +1,573 @@
+<!doctype html>
+<!--
+  Project overview de Pickler — App móvil, Fase 2: trading manual en Perpl (pestaña Trade).
+  Generado desde docs/overview/_project-template.html. Reglas completas en docs/CLAUDE.md.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Fase 2: trading manual en Perpl · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-perpl">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-perpl</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler — Fase 2: trading manual en Perpl <span class="accent">(pestaña Trade)</span></h1>
+    <p class="lede">Una pestaña nueva Trade donde el usuario, con su cuenta de Mera y su AUSD, habilita trading, ve saldo y posiciones, abre y cierra perps con orden de mercado, y mueve fondos entre la wallet y la cuenta de trading.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill completed" data-sb="status">Completed</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en <code>docs/04-roadmap-bounty.md</code></div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Una pestaña nueva <strong>Trade</strong> donde el usuario, con su cuenta de Mera y su AUSD:</p>
+        <ul>
+          <li><strong>Habilita trading</strong> (una vez): <code>approve</code> + <code>createAccount(≥100 AUSD)</code> + <code>allowOrderForwarding(true)</code> + registro de una API key Ed25519 firmada con la wallet.</li>
+          <li>Ve <strong>saldo de trading</strong>, <strong>mercados</strong> (precio de marca y cambio 24h) y <strong>posiciones</strong> con PnL y precio de liquidación.</li>
+          <li><strong>Abre</strong> un perp (Long/Short, monto en AUSD, 1x–5x) con orden de mercado por WebSocket, y lo <strong>cierra</strong> completo.</li>
+          <li><strong>Mueve fondos</strong> entre la wallet y la cuenta de trading (Add funds ≥10, Withdraw).</li>
+        </ul>
+        <p>Sin backend. Todo firma en el teléfono: secp256k1 (sesión de Mera / viem) para las tx y el EIP-712; Ed25519 (<code>@noble/curves</code>, ya en <code>node_modules</code> vía viem) para la API key.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">F1 · Trading manual en Perpl (pestaña Trade)</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Una pestaña nueva Trade donde el usuario habilita trading en Perpl (approve + createAccount + forwarding + API key), ve saldo/mercados/posiciones por WebSocket, abre y cierra perps con orden de mercado (1x–5x, capado por mercado) y mueve AUSD entre la wallet y la cuenta de trading.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Módulos puros <code>src/perpl/*</code>, <code>storage/perpl.ts</code>, <code>hooks/usePerpl.ts</code> y 3 pantallas nuevas (Trade / perpsMarket / perpsFunds) cableadas en store/Shell/Wallet — 164/164 tests, mergeado a <code>main</code> y en TestFlight build 3.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Config de Perpl, ABI ERC-20 ampliado y dependencia Ed25519</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>perpl/context.ts</code> — mercados e instancia desde <code>pub/context</code></label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>perpl/orders.ts</code> — tamaño, fee, liquidación, PnL, frames y copy de estados</label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>perpl/apiKey.ts</code> — llave Ed25519, sign-in del WS y enroll EIP-712</label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>perpl/onboarding.ts</code> — lecturas y tx del exchange</label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>storage/perpl.ts</code> — la key en SecureStore y su borrado al cerrar sesión</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>perpl/ws.ts</code> (parte 1) — tipos, <code>parseFrame</code> y <code>applyFrame</code> con frames reales</label></li>
+              <li><label><input type="checkbox" checked> Task 8: <code>perpl/ws.ts</code> (parte 2) — <code>TradingSocket</code>: sign-in, ping, órdenes, reintento, timeout, reconexión</label></li>
+              <li><label><input type="checkbox" checked> Task 9: <code>perpl/enable.ts</code> — máquina de 4 pasos reanudable (sin repetir <code>createAccount</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 10: <code>store.ts</code> (pantallas nuevas) y <code>hooks/useUnlock.ts</code> (desbloqueo compartido)</label></li>
+              <li><label><input type="checkbox" checked> Task 11: <code>hooks/usePerpl.ts</code> — orquestación, y cableado en <code>ctx.ts</code>/<code>App.tsx</code></label></li>
+              <li><label><input type="checkbox" checked> Task 12: <code>screens/perpsMarket.tsx</code> — Long/Short, monto, apalancamiento, review, confirm, resultado</label></li>
+              <li><label><input type="checkbox" checked> Task 13: <code>perpl/funds.ts</code> + <code>screens/perpsFunds.tsx</code> — Add funds / Withdraw to wallet</label></li>
+              <li><label><input type="checkbox" checked> Task 14: <code>screens/perps.tsx</code> (pestaña Trade), <code>Shell.tsx</code>, línea "in trading" en Wallet y README</label></li>
+              <li><label><input type="checkbox" checked> Task 15: Revisión final de rama, prueba manual en el simulador y handoff</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (lista propuesta para el build 4)</summary>
+            <ul>
+              <li>Detectar desfase de reloj del teléfono (header <code>Date</code> de <code>pub/context</code> vs <code>Date.now()</code>) y aviso específico en vez del copy de regiones.</li>
+              <li>"Locked in positions" calculado como Σ <code>c</code> de las posiciones (el <code>lb</code> de Perpl no lo es).</li>
+              <li>Fees con 4 decimales (hoy se ven como "0.00 AUSD").</li>
+              <li>Tras sign out + sign in con cuenta Perpl ya existente, mostrar "Reconnect trading" en vez del formulario de 100 AUSD.</li>
+              <li>Minors diferidos de las revisiones por tarea, a criterio (detalle en el audit).</li>
+            </ul>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!--
+      ============================================================================
+      OPCIONAL · TABS para overviews largos (F2)
+      ============================================================================
+      Cuando un overview crece mucho (decisiones + modelo + ingesta + endpoints
+      + frontend + ...) en lugar de scroll infinito, agrupar bajo tabs:
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="tab-decisions">Decisiones</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-model">Modelo</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-api">API</button>
+      </div>
+      <section class="tab-panel" id="tab-decisions" role="tabpanel">…</section>
+      <section class="tab-panel" id="tab-model" role="tabpanel" hidden>…</section>
+      <section class="tab-panel" id="tab-api" role="tabpanel" hidden>…</section>
+
+      El init() del script de abajo activa los tabs automáticamente si encuentra
+      .tabs en el DOM.
+      ============================================================================
+    -->
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions" style="table-layout:fixed;overflow-wrap:anywhere;word-break:break-word">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Dónde vive:</b> pestaña <b>Trade</b> nueva (5.ª tab, icono Ionicons <code>trending-up</code>, entre Market y Activity)</td>
+            <td>Jesús: "pestaña totalmente nueva"; lo del token es F3.</td>
+          </tr>
+          <tr>
+            <td><b>Nombre interno:</b> pantallas <code>perps</code>, <code>perpsMarket</code>, <code>perpsFunds</code>; <code>trade</code> conserva su id</td>
+            <td>Evitar renombrar lo que no se toca.</td>
+          </tr>
+          <tr>
+            <td><b>Colateral:</b> AUSD de Agora testnet (6 decimales), el mismo de la wallet</td>
+            <td>Verificado en <code>GET /api/v1/pub/context</code> → <code>tokens[0]</code>.</td>
+          </tr>
+          <tr>
+            <td><b>Contrato:</b> exchange proxy Monad Testnet 10143, con <code>createAccount</code>, <code>allowOrderForwarding</code>, <code>getAccountByAddr</code>, <code>depositCollateral</code>, <code>withdrawCollateral</code></td>
+            <td>Selectores confirmados en la implementación; los mínimos se leen de <code>context.instances[0]</code>, no se fijan.</td>
+          </tr>
+          <tr>
+            <td><b>API:</b> REST y WS en <code>testnet.perpl.xyz</code>, constantes en <code>perpl/config.ts</code> con override para mainnet después</td>
+            <td>Spike.</td>
+          </tr>
+          <tr>
+            <td><b>API key:</b> generada en el teléfono, enrolada sin header <code>Origin</code>, <code>scope_mask: 3</code>; guardada en SecureStore sin gate biométrico</td>
+            <td>La llave no puede retirar ni transferir, solo operar; gate por Face ID obligaría un prompt en cada conexión. Riesgo aceptado para testnet.</td>
+          </tr>
+          <tr>
+            <td><b>Apalancamiento:</b> selector 1x · 2x · 3x · 5x, default 1x; con <code>lv &gt; 1</code> se advierte y se resalta el precio de liquidación</td>
+            <td>Jesús eligió la opción B.</td>
+          </tr>
+          <tr>
+            <td><b>Órdenes:</b> solo mercado (IOC), cierre total</td>
+            <td>Límite, TP/SL y cierre parcial quedan para F3.</td>
+          </tr>
+          <tr>
+            <td><b>Mercados:</b> todos los que devuelva <code>context.markets</code> con <code>config.is_open</code>, ordenados por id</td>
+            <td>Sin lista fija.</td>
+          </tr>
+          <tr>
+            <td><b>Captura del monto:</b> en AUSD; el tamaño en unidades del activo se calcula y se muestra al usuario</td>
+            <td>El usuario piensa en dólares; Perpl en unidades.</td>
+          </tr>
+          <tr>
+            <td><b>Fondos:</b> Enable trading (monto editable ≥ mínimo), Add funds (≥ mínimo, ≤ wallet), Withdraw (≥ mínimo, ≤ saldo libre)</td>
+            <td>Jesús eligió "A completo".</td>
+          </tr>
+          <tr>
+            <td><b>Fuente de verdad:</b> WebSocket de trading para cuenta/órdenes/posiciones; <code>pub/context</code> solo para precios (polling 5 s); REST firmado no se usa en F2</td>
+            <td>Sin los mensajes de estado del WS no hay forma limpia de saber qué pasó con una orden.</td>
+          </tr>
+          <tr>
+            <td><b><code>rq</code> y <code>lb</code>:</b> <code>rq</code> = último enviado + 1 desde la semilla del snapshot; <code>lb</code> = <code>head</code> + TTL del mercado, nunca timestamp ni <code>lb: 0</code></td>
+            <td>Trampas medidas en el spike previo.</td>
+          </tr>
+          <tr>
+            <td><b>Conexión:</b> el socket vive mientras la pestaña Trade está activa, ping cada 3 s, reconexión con backoff; Sign out y "Reset trading key" lo cierran</td>
+            <td>Ahorra batería y evita estados fantasma.</td>
+          </tr>
+          <tr>
+            <td><b>Copy:</b> inglés, mismo tono que el resto de la app; números con <code>formatAusd</code> y los decimales del mercado</td>
+            <td>Consistencia con el resto de Pickler.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Rulings en ejecución</h3>
+      <p class="sec-sub">Decisiones tomadas durante la implementación (fuente: el audit de F1), no previstas en el spec.</p>
+      <ol style="font-size:13.5px;color:var(--ink-2);line-height:1.6;padding-left:20px;margin:0">
+        <li><code>initial_margin</code> es el apalancamiento máximo ×100 por mercado (medido en MON: <code>lv: 500</code> se acepta pero la posición queda en <code>lv: 300</code>); el selector solo ofrece los <code>LEVERAGES</code> ≤ ese máximo.</li>
+        <li><code>maintenance_margin</code> es fracción del margen inicial en bps; la fórmula de liquidación estimada usa <code>mm/10000/maxLeverage</code>.</li>
+        <li>El fee taker se cobra con <code>ceil</code>, no truncado.</li>
+        <li><code>getAccountByAddr</code> devuelve un struct; el id sale de la primera word decodificada.</li>
+        <li>Sin getter on-chain para el forwarding: en Retry se reenvía <code>allowOrderForwarding(true)</code> salvo que ya se haya hecho en la sesión o el snapshot vivo diga <code>fw: true</code>.</li>
+        <li>Sin detección de gap de <code>sn</code> en el heartbeat (no estaba en el spec); el backoff cubre los cierres reales.</li>
+        <li><code>OrderOutcome.failed.order</code> es opcional porque los rechazos del gateway no traen orden.</li>
+        <li>Ola de fixes de la revisión final de rama: validación de saldo de wallet, cálculo de "Max" con la fee descontada, heartbeat sin re-render por segundo, <code>resetKey</code> no borra la key antes de enrolar, errores de Reset/Enable forwarding visibles.</li>
+        <li>Copy de cierre ajustado a "Closed N SYMBOL at P · Fee … · realised PnL shows in the trading balance": el fill no trae PnL realizado.</li>
+        <li>Se terminó un proceso <code>expo run:ios</code> huérfano de la sesión anterior que ocupaba el puerto :8090.</li>
+      </ol>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Todo lo nuevo vive en <code>apps/mobile/src/perpl/</code> como módulos puros (sin
+        <code>react-native</code> ni <code>expo-constants</code>, testeables en Jest), más el
+        storage, el hook de orquestación y las pantallas — según la sección "Unidades" del spec.
+      </p>
+      <ul style="font-size:13.5px;color:var(--ink-2);line-height:1.8;padding-left:20px;margin:0">
+        <li><code>apps/mobile/src/perpl/config.ts</code></li>
+        <li><code>apps/mobile/src/perpl/context.ts</code></li>
+        <li><code>apps/mobile/src/perpl/onboarding.ts</code></li>
+        <li><code>apps/mobile/src/perpl/apiKey.ts</code></li>
+        <li><code>apps/mobile/src/perpl/orders.ts</code></li>
+        <li><code>apps/mobile/src/perpl/ws.ts</code></li>
+        <li><code>apps/mobile/src/storage/perpl.ts</code></li>
+        <li><code>apps/mobile/src/hooks/usePerpl.ts</code></li>
+        <li><code>apps/mobile/src/screens/perps.tsx</code></li>
+        <li><code>apps/mobile/src/Shell.tsx</code></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-16-mobile-perpl-design.md</code> ·
+       plan en <code>docs/superpowers/plans/2026-09-16-mobile-perpl.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-16-mobile-perpl-f1-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

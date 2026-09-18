@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-ui-port">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-ui-port</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler <span class="accent">— Port de la UI de pickler-mobile</span></h1>
+    <p class="lede">Se reemplaza la app de dos pantallas (Welcome, Home) por las 13 pantallas del prototipo pickler-mobile, portadas a TypeScript dentro de <code>apps/mobile/src</code>.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill completed" data-sb="status">Completed</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Se reemplaza la app de dos pantallas (<code>Welcome</code>, <code>Home</code>) por las
+           <strong>13 pantallas del prototipo <code>pickler-mobile</code></strong>, portadas a TypeScript
+           dentro de <code>apps/mobile/src</code>. El flujo real que ya funciona (passkey, saldos AUSD/MON,
+           faucet, Lock, Sign out) se inyecta en <strong>tres pantallas</strong>: <em>Wallet access</em>,
+           <em>Wallet</em> y <em>Deposit</em>. Todo lo demás queda idéntico al prototipo, con sus datos de
+           ejemplo. <strong>Solo UI: no se agrega funcionamiento nuevo.</strong></p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">F1 · Port de la UI de pickler-mobile</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>La app móvil adopta las 13 pantallas del prototipo <code>jjesusaf/pickler-mobile</code> en
+             TypeScript, y el flujo real que ya funciona (passkey, saldos AUSD/MON, faucet, Lock, Sign out)
+             queda inyectado en <em>Wallet access</em>, <em>Wallet</em> y <em>Deposit</em>. Solo UI: nada de
+             funcionamiento nuevo.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">13 pantallas del prototipo portadas a TypeScript, con passkey/saldos/faucet/Lock/Sign out reales en Wallet access, Wallet y Deposit; build 0.1.0 (2) subido a TestFlight el 2026-09-16.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Prototipo de referencia, dependencias y config</label></li>
+              <li><label><input type="checkbox" checked> Task 2: Tema y primitivas</label></li>
+              <li><label><input type="checkbox" checked> Task 3: Datos de ejemplo y helpers</label></li>
+              <li><label><input type="checkbox" checked> Task 4: Store de navegación con gate de cuenta</label></li>
+              <li><label><input type="checkbox" checked> Task 5: Hooks de cuenta y tesorería, y <code>AppCtx</code></label></li>
+              <li><label><input type="checkbox" checked> Task 6: Pantallas Discover y Follow (port idéntico)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Pantallas Trade y Wallet access (passkey real)</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Pantallas Own (Wallet y Deposit con datos reales)</label></li>
+              <li><label><input type="checkbox" checked> Task 9: Shell y panel de dev</label></li>
+              <li><label><input type="checkbox" checked> Task 10: Conectar <code>App.tsx</code>, borrar la UI vieja y verificar en simulador</label></li>
+              <li><label><input type="checkbox" checked> Task 11: Revisión independiente y handoff</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>
+              <span>Pendientes (audit)</span>
+              <span class="progress-pill">8</span>
+            </summary>
+            <ul>
+              <li><code>pickler-mark.png</code> del header de Market sigue truncado (verbatim del commit del prototipo); reemplazar en build 3.</li>
+              <li>"Copied" en Deposit al copiar la dirección: es un añadido del port, no estaba en el prototipo — falta que Jesús lo apruebe o lo quite.</li>
+              <li>Build 3: 5 cambios acordados con Jesús (mensaje real de <code>PRF_UNAVAILABLE</code>, iOS mínimo 18.0, copiar dirección antes de abrir el faucet de MON, README sobre Bitwarden, reemplazar <code>pickler-mark.png</code>).</li>
+              <li>Subir <code>ios.buildNumber</code> a <code>"3"</code> antes de la próxima subida a TestFlight.</li>
+              <li>Testers del build 2: <code>jjaf051094@gmail.com</code> y <code>ctjuvenal@gmail.com</code>, ambos <code>INSTALLED</code> en el grupo <em>Equipo</em>.</li>
+              <li><code>DevControls</code> viaja inerte en el bundle de producción (solo se monta con <code>__DEV__</code>, pero el código está en el bundle).</li>
+              <li><code>.catch</code> en Sign out, heredado de fase 1 sin cambios.</li>
+              <li>y 4 minors más en el audit (línea "50.00 AUSD pending" en Wallet, subtítulo "One step..." en Wallet access, "250.00 AUSD of PKL" fijo, recomendaciones de la revisión final para fase 2).</li>
+            </ul>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Modelo de acceso — el de la UI: la app abre en Market; Wallet access solo aparece al tocar Wallet, Portfolio o Buy sin cuenta.</td>
+            <td>Es el producto dibujado ("leer y seguir nunca requieren wallet"). Jesús lo eligió el 2026-09-16.</td>
+          </tr>
+          <tr>
+            <td>Saldos y faucet — dentro de Wallet, en un bloque TESTNET debajo de Deposit/Withdraw; Lock/Sign out en una fila SESSION al final.</td>
+            <td>La UI no tiene sitio para MON, faucet ni sesión; Jesús pidió meterlos en Wallet.</td>
+          </tr>
+          <tr>
+            <td>Panel "Prototype controls" (⚙) — se conserva solo con <code>__DEV__</code>; sus botones de user state ya no gobiernan cuenta ni saldo.</td>
+            <td>Sirve para llegar a pantallas sin entrada real todavía (9 estados de compra, post detail). En TestFlight no aparece.</td>
+          </tr>
+          <tr>
+            <td>Lenguaje — TypeScript (<code>.ts</code>/<code>.tsx</code>), tipos ligeros para store, contexto de pantalla y primitivas.</td>
+            <td><code>tsc --noEmit</code> limpio es parte de la verificación del repo; evita errores al conectar datos reales en fase 2.</td>
+          </tr>
+          <tr>
+            <td>Navegación — máquina de estados con back-stack, como el prototipo. Sin react-navigation.</td>
+            <td>Cambiarla rompe el "idéntico" y no aporta nada ahora.</td>
+          </tr>
+          <tr>
+            <td>Copy — idéntico al prototipo salvo una línea.</td>
+            <td>Se quita el párrafo "Dependency: whether access is email, passkey or an external wallet is not decided" de Wallet access; esa decisión ya está tomada (passkey vía Mera).</td>
+          </tr>
+          <tr>
+            <td>Ícono, bundle id, rpId, passkeys — no se tocan.</td>
+            <td>Fuera del alcance de este spec.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Rulings en ejecución (audit)</h3>
+      <ul>
+        <li><code>ios.backgroundColor</code> se dejó sin el plugin <code>expo-system-ui</code> (YAGNI: la app ya pinta su propio fondo); costo si está mal, un flash claro al arrancar.</li>
+        <li>Los hooks quedaron en <code>src/hooks/</code>, no en <code>src/account/</code>/<code>src/wallet/</code> como decía el spec, porque ya existía <code>src/account.ts</code> y un directorio nuevo habría hecho ambiguo el import.</li>
+        <li>El store recibe <code>hasAccount</code> (booleano), no <code>account</code> (el objeto completo), para simplificar las funciones puras derivadas y sus tests.</li>
+        <li><code>pickler-mark.png</code> truncado en el commit del prototipo se copió verbatim, fiel a la fuente de verdad fijada, en vez de corregirlo.</li>
+        <li>Ruling erróneo de Task 9 sobre <code>tradeHolds</code> (daba por sentado que no podía ser <code>true</code> sin cuenta) corregido en la ola de fixes tras la revisión final de rama.</li>
+        <li>"Available to spend" usa <code>formatAusd</code>, no <code>money()</code> como hizo el porte inicial, siguiendo la autoridad del spec sobre el plan.</li>
+        <li>El feedback "Copied" al copiar la dirección en Deposit se agregó en el porte — no estaba en el prototipo, que navegaba a Trade — y queda pendiente que Jesús lo apruebe o lo quite.</li>
+      </ul>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Archivos de <code>apps/mobile/src</code> tocados por el port (spec §4, con la corrección de
+        ubicación de hooks que registra el audit).
+      </p>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Nuevos</h3>
+      <ul>
+        <li><code>apps/mobile/src/ui/theme.ts</code></li>
+        <li><code>apps/mobile/src/ui/primitives.tsx</code></li>
+        <li><code>apps/mobile/src/mock/data.ts</code></li>
+        <li><code>apps/mobile/src/mock/helpers.ts</code></li>
+        <li><code>apps/mobile/src/store.ts</code></li>
+        <li><code>apps/mobile/src/hooks/useAccount.ts</code></li>
+        <li><code>apps/mobile/src/hooks/useTreasury.ts</code></li>
+        <li><code>apps/mobile/src/Shell.tsx</code></li>
+        <li><code>apps/mobile/src/DevControls.tsx</code></li>
+        <li><code>apps/mobile/src/screens/discover.tsx</code></li>
+        <li><code>apps/mobile/src/screens/trade.tsx</code></li>
+        <li><code>apps/mobile/src/screens/follow.tsx</code></li>
+        <li><code>apps/mobile/src/screens/own.tsx</code></li>
+        <li><code>apps/mobile/src/assets/pickler-mark.png</code></li>
+      </ul>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Se borran</h3>
+      <ul>
+        <li><code>apps/mobile/src/screens/Welcome.tsx</code></li>
+        <li><code>apps/mobile/src/screens/Home.tsx</code></li>
+        <li><code>apps/mobile/src/ui/Button.tsx</code></li>
+        <li><code>apps/mobile/src/ui/Field.tsx</code></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-16-mobile-ui-port-design.md</code> ·
+       plan en <code>docs/superpowers/plans/2026-09-16-mobile-ui-port.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-16-mobile-ui-port-f1-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Wallet real (withdraw + movements) e iconos · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-wallet">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-wallet</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler — Wallet real (withdraw + movements) <span class="accent">e iconos</span></h1>
+    <p class="lede">Cuatro piezas, ningún backend, ningún cambio nativo.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill completed" data-sb="status">Completed</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <div class="v" data-sb="next">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Cuatro piezas, ningún backend, ningún cambio nativo:</p>
+        <ol>
+          <li><strong>Tab bar</strong> con iconos (<code>@expo/vector-icons</code>, Ionicons) en vez de cuadros.</li>
+          <li><strong>Logo del header</strong> (<code>assets/pickler-mark.png</code>) rehecho desde <code>PickerLogo.png</code>.</li>
+          <li><strong>Withdraw real</strong>: destino + monto → review → firma → recibo. ERC-20 <code>transfer</code> de AUSD en Monad Testnet, gas en MON.</li>
+          <li><strong>Movements reales</strong>: transferencias AUSD de la dirección vía MonadScan (Etherscan V2, <code>chainid=10143</code>), más las tx propias en vuelo como <em>Confirming</em>.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Wallet real (withdraw + movements) e iconos</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>La sección Wallet deja de ser maqueta: Withdraw manda AUSD de verdad en Monad Testnet y Movements lista las transferencias reales de la dirección; la tab bar recibe iconos y el header de Market recupera el logo.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Withdraw real (destino + monto → review → firma → recibo, tx confirmada en Monad Testnet), Movements reales (Faucet/Deposit/Withdrawal vía MonadScan), tab bar con Ionicons y logo del header sin truncar.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Iconos de la tab bar y logo del header</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>parseAusd</code>, <code>shortHash</code> y <code>transfer</code> en el ABI</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>transferCalldata</code>, <code>estimateAusdTransferFee</code> y <code>sendAusd</code></label></li>
+              <li><label><input type="checkbox" checked> Task 4: Explorer — <code>fetchAusdTransfers</code>, <code>toMovements</code>, key en config</label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>validateWithdraw</code></label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>useTreasury</code> — movimientos, tx en vuelo y withdraw</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>WalletScreen</code> — movements reales y línea de pending</label></li>
+              <li><label><input type="checkbox" checked> Task 8: <code>WithdrawScreen</code> real</label></li>
+              <li><label><input type="checkbox" checked> Task 9: README y verificación manual en simulador</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li>Fuga de la dirección anterior tras Sign out con una tx en vuelo (pre-existente de fase 1).</li>
+              <li>Hueco entre quitar la fila <em>Confirming</em> al recibo y que el explorer indexe la tx.</li>
+              <li>"1,000" se parsea como 1 AUSD (coma → punto); falta decidir el separador.</li>
+              <li>Sin Retry de la estimación de fee en review tras un error.</li>
+              <li>Carrera Edit → Review con estimación lenta; "0.00 AUSD available" con el RPC caído; doble tap en Confirm sin guardia.</li>
+              <li><code>FAUCET_AMOUNT</code> fijo en la fila <em>Confirming</em> del faucet; <code>key={hash}</code> colisionará si una tx emite dos <code>Transfer</code>.</li>
+              <li>Pulido menor: guard muerto en <code>parseAusd</code>, <code>walletClient</code> duplicado, <code>shortHash</code> sin validar longitud, estilos duplicados, <code>fetchAusdTransfers</code> sin test con <code>fetch</code> mockeado.</li>
+            </ul>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions" style="overflow-wrap:anywhere;">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fuente del historial: MonadScan / Etherscan V2 (<code>chainid=10143</code>, <code>tokentx</code> de AUSD)</td>
+            <td>El RPC público limita <code>eth_getLogs</code> a 100 bloques; Ankr/dRPC/monadinfra limitan igual y SQD sin key tarda ~12 min con <code>529</code>. MonadScan devuelve todo en una llamada.</td>
+          </tr>
+          <tr>
+            <td>Dónde vive la key: <code>app.config.ts → extra.monadscanKey</code> (override <code>PICKLER_MONADSCAN_KEY</code>)</td>
+            <td>Key pública de explorer, solo lectura, testnet (100k llamadas/día); si se abusa, se rota.</td>
+          </tr>
+          <tr>
+            <td>Qué es un "movement": solo transferencias AUSD — Faucet, Deposit, Withdrawal</td>
+            <td>Compras/ventas de tokens llegan con Perpl; MON no se lista porque es gas, no dinero del usuario.</td>
+          </tr>
+          <tr>
+            <td>Fee de withdraw: en MON, estimado con <code>estimateGas</code> × precio de gas</td>
+            <td>La maqueta decía "−0.15 AUSD · example"; el gas real es MON y no vale mentir en la pantalla de dinero.</td>
+          </tr>
+          <tr>
+            <td>Línea de pending: real ("N transfers confirming" / "Nothing pending.")</td>
+            <td>Era copy congelado inventado; con datos reales deja de tener sentido.</td>
+          </tr>
+          <tr>
+            <td>Iconos: <code>@expo/vector-icons</code> 15.1.1, Ionicons, outline inactivo / relleno activo</td>
+            <td>Solo JS + fuentes (<code>expo-font</code> ya está); no toca Xcode ni pods.</td>
+          </tr>
+          <tr>
+            <td>Píldoras del header (★, Alerts, ⚙): no se tocan</td>
+            <td>Copy congelado del spec anterior; Jesús no pidió cambiarlas.</td>
+          </tr>
+          <tr>
+            <td>Logo: recorte cuadrado de <code>PickerLogo.png</code>, exportado a 160 px como <code>assets/pickler-mark.png</code></td>
+            <td>Se pinta a 26 pt; 160 px cubre @3x sobre fondo transparente que coincide con el negro del original.</td>
+          </tr>
+          <tr>
+            <td>Withdraw de MON, QR real en Deposit, backend de usuarios: fuera de alcance</td>
+            <td>No lo pidió nadie; YAGNI.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Rulings en ejecución</h3>
+      <ol>
+        <li>Historial vía MonadScan, no vía RPC — medido: el RPC público limita a 100 bloques por llamada; SQD sin key tarda ~12 min con <code>529 overloaded</code>.</li>
+        <li><code>MONADSCAN_API</code>/<code>MONADSCAN_CHAIN_ID</code> se quedaron en <code>wallet/explorer.ts</code>, no en <code>config/explorer.ts</code> como decía el spec, para que los tests carguen sin mocks.</li>
+        <li><code>load()</code> se separó de <code>refresh()</code> en <code>useTreasury</code>: el plan filtraba una fila <code>Reverted</code> en el mismo tick en que la marcaba, y nunca se veía.</li>
+        <li>Nuevo estado "unknown" en Withdraw: si <code>withdraw</code> rechaza después de <code>onSent</code>, la pantalla muestra "Sent · confirmation not received" en vez de un spinner sin salida.</li>
+        <li>Saldos independientes del explorer: <code>load()</code> aplica <code>setBalances</code> en su propia rama del <code>Promise.all</code>; el fetch del explorer usa <code>AbortController</code> + <code>setTimeout</code> (15 s), no <code>AbortSignal.timeout</code>, que no existe en el runtime de RN 0.86.</li>
+        <li><em>Max</em> usa <code>formatUnits(ausd, 6)</code>, no <code>formatAusd</code> (2 decimales), para no dejar polvo.</li>
+        <li>Prueba manual con <code>idb</code> en vez de <code>cliclick</code>/<code>osascript</code>: la sesión no tenía Screen Recording/Accessibility sobre macOS.</li>
+        <li>Paralelismo de subagentes en un worktree: el coordinador commiteó por nombre al terminar cada tarea, para que un <code>git add</code> por nombre no arrastrara staging ajeno.</li>
+      </ol>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Módulos puros nuevos (sin <code>react-native</code>) con tests unitarios, orquestados por
+        <code>useTreasury</code>; las pantallas de <code>own.tsx</code> los consumen.
+      </p>
+      <ul>
+        <li><code>src/config/explorer.ts</code></li>
+        <li><code>src/wallet/explorer.ts</code></li>
+        <li><code>src/wallet/chain.ts</code></li>
+        <li><code>src/config/chain.ts</code></li>
+        <li><code>src/hooks/useTreasury.ts</code></li>
+        <li><code>src/screens/own.tsx</code></li>
+        <li><code>src/Shell.tsx</code></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-16-mobile-wallet-design.md</code> ·
+       plan en <code>docs/superpowers/plans/2026-09-16-mobile-wallet.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-16-mobile-wallet-f1-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : '— todo completo';
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>
