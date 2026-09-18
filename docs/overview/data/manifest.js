@@ -33,10 +33,10 @@ window.DOCS = [
     summary: 'Market, Activity y Portfolio dicen «coming soon» con la estética de la app; la app arranca en Wallet; Wallet y Trade se refrescan jalando y las pantallas con «←» regresan con swipe desde el borde; Trade muestra el PnL no realizado bajo el saldo con «in positions / free» corregidos.',
     file: '2026-09-18-mobile-polish.html',
     types: ['spec', 'plan'],
-    status: 'active',
+    status: 'completed',
     tags: ['mobile', 'expo', 'ui', 'perpl', 'navegación'],
     phases: [
-      { num: 1, status: 'plan_ready' },
+      { num: 1, status: 'completed' },
     ],
   },
   {

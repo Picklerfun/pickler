@@ -109,7 +109,7 @@
       </div>
 
       <!-- Phase 1 ====================================================== -->
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -118,9 +118,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -136,16 +136,27 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 0: Bootstrap del worktree (<code>npm install</code>, línea base de tests y tsc)</label></li>
-              <li><label><input type="checkbox"> Task 1: Store — <code>COMING_SOON</code>, arranque en Wallet, <code>bootState</code>, header «Coming soon»</label></li>
-              <li><label><input type="checkbox"> Task 2: <code>App.tsx</code> — <code>boot(hasAccount)</code> una vez al resolver la cuenta</label></li>
-              <li><label><input type="checkbox"> Task 3: <code>ui/gestures.ts</code> — umbrales del swipe atrás</label></li>
-              <li><label><input type="checkbox"> Task 4: <code>perpl/orders.ts</code> — <code>lockedCollateral</code> y <code>unrealisedPnl</code></label></li>
-              <li><label><input type="checkbox"> Task 5: <code>ComingSoonScreen</code> + <code>Shell</code> la renderiza</label></li>
-              <li><label><input type="checkbox"> Task 6: <code>Shell</code> — pull-to-refresh y swipe atrás; <code>own.tsx</code> sin botón Refresh</label></li>
-              <li><label><input type="checkbox"> Task 7: <code>perps.tsx</code> — «in positions / free» y línea de PnL no realizado</label></li>
-              <li><label><input type="checkbox"> Task 8: Verificación en simulador, medición D12, README, overview y audit</label></li>
+              <li><label><input type="checkbox" checked> Task 0: Bootstrap del worktree (<code>npm install</code>, línea base de tests y tsc)</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Store — <code>COMING_SOON</code>, arranque en Wallet, <code>bootState</code>, header «Coming soon»</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>App.tsx</code> — <code>boot(hasAccount)</code> una vez al resolver la cuenta</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>ui/gestures.ts</code> — umbrales del swipe atrás</label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>perpl/orders.ts</code> — <code>lockedCollateral</code> y <code>unrealisedPnl</code></label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>ComingSoonScreen</code> + <code>Shell</code> la renderiza</label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>Shell</code> — pull-to-refresh y swipe atrás; <code>own.tsx</code> sin botón Refresh</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>perps.tsx</code> — «in positions / free» y línea de PnL no realizado</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Verificación en simulador, medición D12, README, overview y audit</label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li>Tras Sign out la app aterriza en Market (coming soon); propuesta: Sign in → Wallet. Decide Jesús.</li>
+              <li>Sign in en el arranque muestra «←» con stack vacío y el subtítulo «then back to your purchase» (heredados).</li>
+              <li>PnL de ±0.00 se muestra con signo («−0.00 unrealised PnL»); tratar |pnl| &lt; 0.005 como «+0.00» si molesta.</li>
+              <li>Minors de revisión: variable <code>any</code> → <code>matched</code> en <code>orders.ts</code>; fallback silencioso en <code>comingSoon.tsx</code>; <code>useCallback</code> de <code>onRefresh</code> sin efecto; tests de empate y de componente.</li>
+              <li><code>accessibilityLabel</code> en <code>Touch</code>/<code>TouchCard</code> para que Maestro y VoiceOver encuentren tabs y filas.</li>
+              <li>El simulador quedó sin key de Perpl tras el Sign out de prueba (caso «Reconnect trading» del build 4).</li>
+            </ul>
           </details>
         </div>
       </article>
@@ -197,6 +208,15 @@
           </tr>
         </tbody>
       </table>
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li><code>backState</code> con stack vacío cae a <code>wallet</code> (antes <code>market</code>, que ahora es coming soon).</li>
+        <li><code>COMING_SOON_COPY</code> vive en <code>comingSoonCopy.ts</code> (puro): importar el <code>.tsx</code> desde Jest falla por <code>expo-font → expo-asset</code>.</li>
+        <li>Tareas con archivos disjuntos en paralelo; los implementadores no commitean y el coordinador commitea por nombre tras cada revisión.</li>
+        <li>Medición D12 en #620: <code>b</code> 104.92 → 94.89 con <code>c</code> 10.02 al abrir un long de 10 AUSD → <code>b</code> excluye el colateral; «free = b» se mantiene.</li>
+        <li>Sign out sigue aterrizando en Market, como fijó el spec; va a Pendientes como decisión de producto.</li>
+        <li>No se re-habilitó trading en el simulador tras el Sign out de prueba para no depositar 100 AUSD más en #620.</li>
+      </ol>
     </section>
 
     <!-- ========================== 4. Modelo ================================ -->
@@ -223,7 +243,8 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-18-mobile-polish-design.md</code> ·
-       plan en <code>docs/superpowers/plans/2026-09-18-mobile-polish-f1.md</code></p>
+       plan en <code>docs/superpowers/plans/2026-09-18-mobile-polish-f1.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>
