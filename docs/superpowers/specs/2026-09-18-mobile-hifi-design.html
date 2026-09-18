@@ -1,0 +1,336 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-18-mobile-hifi-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Rediseño hi-fi: tema, navegación MARKETS, Wallet y Trade re-vestidos · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-18-mobile-hifi-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-18-mobile-hifi-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Rediseño hi-fi: tema, navegación MARKETS, Wallet y Trade re-vestidos</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-18-mobile-hifi-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</a></li><li><a href="#2-unidades">2. Unidades</a></li><li><a href="#21-srcuithemets-se-reescribe-d8-d9">2.1 `src/ui/theme.ts` — se reescribe (D8, D9)</a></li><li><a href="#22-srcuiprimitivestsx-se-reescribe-d12">2.2 `src/ui/primitives.tsx` — se reescribe (D12)</a></li><li><a href="#23-srcshelltsx-se-reescribe-d4-d10">2.3 `src/Shell.tsx` — se reescribe (D4, D10)</a></li><li><a href="#24-srcstorets-se-reduce-d5-d6-d7-d22">2.4 `src/store.ts` — se reduce (D5, D6, D7, D22)</a></li><li><a href="#25-srcscreens-resultado-final">2.5 `src/screens/` — resultado final</a></li><li><a href="#26-srcperplcontextts-srchooksuseperplts-se-amplian-d19-d21">2.6 `src/perpl/context.ts`, `src/hooks/usePerpl.ts` — se amplían (D19, D21)</a></li><li><a href="#27-srcconfigchaints-se-amplia-d20">2.7 `src/config/chain.ts` — se amplía (D20)</a></li><li><a href="#28-apptsx-appconfigts-packagejson-d9d11">2.8 `App.tsx`, `app.config.ts`, `package.json` (D9–D11)</a></li><li><a href="#3-verificacion">3. Verificación</a></li><li><a href="#4-riesgos-conocidos">4. Riesgos conocidos</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-18-mobile-hifi-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-rediseno-hi-fi-tema-navegacion-markets-wallet-y-trade-re-vestidos">App móvil Pickler — Rediseño hi-fi: tema, navegación MARKETS, Wallet y Trade re-vestidos</h1>
+<p><strong>Fecha</strong>: 2026-09-18 <strong>Estado</strong>: diseño aprobado por Jesús (chat), spec pendiente de revisión; sin plan <strong>Slug</strong>: <code>mobile-hifi</code> <strong>Rama</strong>: <code>feat/mobile-hifi</code>, base <code>main</code> (<code>48f82a4</code>), worktree <code>.claude/worktrees/mobile-hifi</code> <strong>Contexto</strong>: el equipo subió hoy el diseño hi-fi de la app (<code>jjesusaf/pickler-mobile@a0e353e</code>, &quot;Implement Pickler Mobile App hi-fi design&quot;, 2026-09-18 22:35 UTC), portado desde el archivo de Claude Design <code>Pickler Mobile App.dc.html</code>. Reemplaza los <em>wireframes</em> (<code>365585e</code>) que la app adoptó en <code>mobile-ui-port</code>. La app real tiene hoy dos tabs vivos (Wallet y Trade sobre Perpl, con passkey y tesorería AUSD) y tres en <em>coming soon</em>. Jesús pidió dos cosas: <strong>adaptar Wallet y Trade al diseño nuevo sin perder lo que ya funciona</strong>, y <strong>traer el resto de la UI nueva manteniendo el coming soon</strong>. Quedan 25 días para el bounty (13 oct 2026, 21:59 CST); la lista pendiente al build 5 de TestFlight (reloj, fees, &quot;Reconnect trading&quot;) se absorbe aquí porque toca las mismas pantallas.</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ol>
+<li><strong>Tema nuevo</strong> (tokens, gradiente azul con estrellas, Chakra Petch para display, lucide) en toda</li>
+<p>la app. Cuatro dependencias nuevas; rebuild nativo, que ya es nuestro flujo.</p>
+<li><strong>Tab bar del hi-fi</strong>: MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET. <strong>No hay tab Trade</strong>:</li>
+<p>MARKETS absorbe todo Perpl (saldo de trading, fondos, mercados, posiciones) y cada mercado abre <code>Market</code> con pills Ask · <strong>Trade</strong> · Agents, donde Trade es nuestro ticket real.</p>
+<li><strong>Wallet conserva todo lo real</strong> (deposit/withdraw, movimientos, testnet, sesión) con el look nuevo.</li>
+<li><strong>Coming soon</strong> en Launchpad, Activity, Portfolio y en los pills Ask/Agents.</li>
+<li><strong>El mock del wireframe se borra</strong> (Jesús lo aprobó): el hi-fi lo reemplaza.</li>
+<li><strong>Tres fixes del 17 sep</strong> entran: desfase de reloj, fees a 4 decimales, <em>Reconnect trading</em>.</li>
+<li>Dos fases con checkpoint; al cierre, build 5 de TestFlight.</li>
+</ol>
+<hr>
+<h2 id="1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>D1</td><td>Dónde vive Perpl</td><td><strong>Tab MARKETS</strong> = la pantalla Perps actual re-vestida (card de saldo de trading, Add funds / Withdraw to wallet, lista de mercados, posiciones, gate Enable/Reconnect). Tocar un mercado abre <code>market</code> con pills <strong>Ask · Trade · Agents</strong>; Trade es el ticket real; Ask y Agents muestran una tarjeta <em>coming soon</em> inline. Portfolio es coming soon completo.</td><td>Jesús eligió esta opción: todo Perpl en un lugar, sin partir la lógica real en dos tabs. Los mercados del diseño (BTC-PERP, ETH-PERP, MON-PERP) <em>son</em> mercados de Perpl.</td></tr>
+<tr><td>D2</td><td>Ticket de Trade</td><td><strong>Nuestro ticket real con el look del hi-fi</strong>: Long/Short, monto AUSD con Max, chips de apalancamiento del mercado, KV <code>NOTIONAL · EST. PRICE · FEE · TAKER · LIQUIDATION ≈</code>, CTA &quot;Review long · X AUSD&quot;, Review, y Sent/Filled/Failed/Unknown como <code>StatusCard</code>. <strong>Sin la grilla nivel × horizonte.</strong></td><td>La grilla promete &quot;cierra al horizonte si no toca el target&quot; (reduce-only por tiempo + TP). Perpl nos da orden a mercado; mostrar la grilla sería UI falsa sobre dinero real.</td></tr>
+<tr><td>D3</td><td>Wallet</td><td><strong>Conservar todo, re-vestido.</strong> Card principal del diseño (<code>AVAILABLE · AUSD</code>, address <code>· CONNECTED</code>, línea &quot;X AUSD in trading&quot;) + Deposit/Withdraw reales con el botón <code>outline2</code> del diseño + <code>MOVEMENTS</code> con las filas del diseño + secciones <code>TESTNET</code> y <code>SESSION</code> con las mismas tarjetas.</td><td>El hi-fi deja Deposit/Withdraw como placeholders y no contempla MON, faucets ni Sign out; sin ellos no se puede operar ni probar en TestFlight.</td></tr>
+<tr><td>D4</td><td>Tab bar</td><td><code>[[&quot;markets&quot;,&quot;MARKETS&quot;,&quot;chart&quot;],[&quot;launchpad&quot;,&quot;LAUNCHPAD&quot;,&quot;rocket&quot;],[&quot;activity&quot;,&quot;ACTIVITY&quot;,&quot;activity&quot;],[&quot;portfolio&quot;,&quot;PORTFOLIO&quot;,&quot;layers&quot;],[&quot;wallet&quot;,&quot;WALLET&quot;,&quot;wallet&quot;]]</code>, iconos lucide, etiqueta mono 9 px <code>ls .04</code>, lima al activo, <code>faint</code> al resto. Activo = <code>ROOT_OF[screen] === tab</code>.</td><td>Es la barra del diseño (<code>src/Shell.js</code> TABS).</td></tr>
+<tr><td>D5</td><td>Set de pantallas</td><td>`Screen = &quot;markets&quot; \</td><td>&quot;market&quot; \</td><td>&quot;perpsFunds&quot; \</td><td>&quot;launchpad&quot; \</td><td>&quot;activity&quot; \</td><td>&quot;portfolio&quot; \</td><td>&quot;wallet&quot; \</td><td>&quot;deposit&quot; \</td><td>&quot;withdraw&quot; \</td><td>&quot;signin&quot;<code>. </code>COMING<em>SOON = [&quot;launchpad&quot;,&quot;activity&quot;,&quot;portfolio&quot;]<code>. </code>GATED = [&quot;markets&quot;,&quot;market&quot;,&quot;perpsFunds&quot;,&quot;wallet&quot;,&quot;deposit&quot;,&quot;withdraw&quot;]<code>. </code>CAN</em>BACK = [&quot;market&quot;,&quot;perpsFunds&quot;,&quot;deposit&quot;,&quot;withdraw&quot;,&quot;signin&quot;]<code>. </code>SHOW<em>TABS = [&quot;markets&quot;,&quot;launchpad&quot;,&quot;activity&quot;,&quot;portfolio&quot;,&quot;wallet&quot;]<code>. </code>ROOT</em>OF<code>: </code>market<code>/</code>perpsFunds<code> → </code>markets<code>; </code>deposit<code>/</code>withdraw<code>/</code>signin<code> → </code>wallet`.</td><td><code>perps</code> → <code>markets</code> y <code>perpsMarket</code> → <code>market</code> son renombres; el resto del wireframe desaparece (D6).</td></tr>
+<tr><td>D6</td><td>Mock del wireframe</td><td><strong>Se borran</strong> <code>screens/discover.tsx</code>, <code>screens/follow.tsx</code>, <code>screens/trade.tsx</code> (token), <code>PortfolioScreen</code>/<code>PositionScreen</code> de <code>own.tsx</code>, <code>mock/data.ts</code>, <code>mock/helpers.ts</code> (<code>pill</code> se muda a <code>ui/theme.ts</code>, <code>money</code> deja de usarse), y en <code>store.ts</code> los campos <code>agentId</code>, <code>tab</code>, <code>postId</code>, <code>mode</code>, <code>phase</code>, <code>amount</code>, <code>sort</code>, <code>sellPct</code>, <code>following</code>, <code>askCtx</code>, <code>dataCase</code>, <code>mockHolder</code>, <code>resume</code> (sólo servía a la compra retenida), con <code>deriveUser</code>/<code>deriveTradeHolds</code>/<code>deriveBalance</code>/<code>holds</code>/<code>tradeHolds</code>/<code>showAgentBar</code>/<code>buying</code>/<code>agent</code>/<code>post</code>/<code>balance</code>. <code>assets/pickler-mark.png</code> (160×160, cuadrado) <strong>se conserva</strong> como logo del header: el <code>assets/logo.png</code> del diseño mide 1536×1024 y a 24 px queda ilegible.</td><td>Jesús aprobó borrarlo: el hi-fi reemplaza al wireframe y re-vestir UI muerta es trabajo perdido. Git conserva el historial.</td></tr>
+<tr><td>D7</td><td>Arranque y gestos</td><td><code>INITIAL.screen = &quot;wallet&quot;</code>, <code>bootState</code>, swipe atrás (<code>gestures.ts</code>) y pull-to-refresh (<code>wallet</code> → tesorería + movimientos; <code>markets</code> → <code>refreshContext</code>) <strong>se conservan</strong> tal cual.</td><td>Decisiones D3/D5/D7 de <code>mobile-polish</code>; nada en el hi-fi las contradice.</td></tr>
+<tr><td>D8</td><td>Tokens de color</td><td><code>ui/theme.ts</code> adopta <strong>tal cual</strong> <code>C</code> de <code>pickler-mobile/src/theme.js</code>: <code>ink #F5F6FF</code>, <code>dim #C3C9E4</code>, <code>faint #8891B5</code>, familia <code>hair*</code>, <code>card*</code>, <code>deep*</code>, <code>onDeep #05061A</code>, <code>slab</code>, <code>vio #B9A5FF</code> / <code>vioSolid #9B7BFF</code> / <code>vioBd*</code> / <code>vioBg*</code>, <code>lime #C8F03A</code> / <code>onLime #0B1200</code> / <code>limeBd*</code> / <code>limeBg*</code>, <code>up = lime</code>, <code>down #FF5FA2</code> / <code>downBd*</code> / <code>downBg</code>, <code>warn #FFC93F</code> / <code>warnBd</code> / <code>warnBg</code>, <code>cyan</code>, <code>blue</code>, <code>spark</code>, <code>disabled #5C5C58</code>, <code>bgTop #1B1F6B</code> / <code>bgMid #0A0B2E</code> / <code>bgBottom #05061A</code>. Los nombres viejos (<code>mute</code>, <code>surf</code>, <code>tile</code>, <code>chip</code>, <code>phone</code>, <code>panel</code>, <code>hairSoft</code>, <code>hairFaint</code>, <code>violet</code>, <code>violetInk</code>, <code>onInk</code>) desaparecen. <code>pill(on)</code> vive aquí.</td><td>Portar 1:1 desde el diseño evita inventar equivalencias; el <code>theme.test.ts</code> fija los valores.</td></tr>
+<tr><td>D9</td><td>Tipografía</td><td><code>textStyle(w, s, { lh, ls, mono, display, color })</code>. Familias: Manrope 400/500/600/700 (<strong>800 → 700</strong>: el hi-fi no usa ExtraBold y deja de cargarse), JetBrains Mono 400/500/<strong>700</strong>, <strong>Chakra Petch 600/700</strong> (<code>display</code>). <code>fam(weight, kind)</code> como en el diseño.</td><td>Es el <code>type()</code> del hi-fi; <code>display</code> es lo que distingue títulos y cifras grandes.</td></tr>
+<tr><td>D10</td><td>Fondo y chrome</td><td><code>Shell</code> pinta <code>Backdrop</code>: <code>LinearGradient</code> <code>[bgTop, bgMid, bgBottom]</code> <code>locations [0, .48, 1]</code> + <code>Svg</code> con <code>Pattern</code> de puntos 130×130 (<code>r=1</code>, <code>rgba(255,255,255,.7)</code>, opacidad .4). Header: círculo <code>←</code> 31 px <code>hair22</code> si <code>canBack</code>, logo 24 px en raíz, título <code>display 700 16.5</code>, subtítulo <code>400 11 faint</code>, <code>⚙</code> sólo <code>__DEV__</code> (a la derecha del header, no en una fila de status). <strong>Sin</strong> el reloj falso &quot;9:41&quot;. Tab bar <code>deep50</code> con <code>hair</code> arriba, <code>paddingBottom 12</code>. <code>app.config.ts</code> <code>backgroundColor</code> y <code>ios.backgroundColor</code> → <code>#05061A</code>; splash sin cambio.</td><td>Es el marco del diseño. La fila &quot;9:41 ⚙&quot; es del prototipo; el simulador ya dibuja la hora real.</td></tr>
+<tr><td>D11</td><td>Dependencias</td><td><code>expo-linear-gradient</code> y <code>react-native-svg</code> a la versión que resuelva <code>npx expo install</code> para SDK 57 (hoy 57.0.2 y 15.15.x), <code>lucide-react-native 1.47.0</code> (peer <code>react-native-svg ^15</code>), <code>@expo-google-fonts/chakra-petch 0.4.1</code>. Sale <code>@expo/vector-icons</code>. Pines exactos como el resto del <code>package.json</code>. Rebuild: <code>npx expo run:ios</code> (pods nuevos).</td><td>Las cuatro las usa el diseño; ninguna toca el store ni exige react-navigation.</td></tr>
+<tr><td>D12</td><td>Primitivas</td><td><code>ui/primitives.tsx</code> adopta el vocabulario de <code>pickler-mobile/src/ui.js</code> para portar pantallas 1:1: <code>T</code> (+<code>display</code>), <strong><code>Tag</code> = línea mono mayúscula 9.5 px <code>ls .1</code></strong> (la píldora actual <code>Tag</code> pasa a llamarse <strong><code>Chip</code></strong>), <code>Card</code>, <code>TouchCard</code>, <code>KV</code> (mono 10, <code>k</code>/<code>v</code>/<code>vFg</code>), <code>KVList</code>, <code>Hair</code>, <code>Avatar</code>, <code>Btn</code> (variantes <code>outline</code>, <code>outline2</code>, <code>outline20</code>, <code>lime</code>, <code>violet</code>, <code>violetSoft</code>, <code>violetSoft10</code>, <code>violetLine</code>, <code>ghost</code>, <code>dashed</code>; props <code>arrow</code>, <code>icon</code>, <code>flex</code>, <code>disabled</code>), <code>Segmented</code> (<code>options: [key,label][]</code>, <code>value</code>, <code>onChange</code>), <code>PillTabs</code>, <code>Bar</code>, <code>Warn</code>, <code>StatusCard</code>, <code>Screen</code>, <code>Icon</code> (lucide: <code>back arrow search send sliders help chart rocket activity layers wallet</code>). <code>Touch</code>/<code>TouchCard</code> aceptan <code>accessibilityLabel</code> y <code>hitSlop</code>. <strong>No</strong> se portan <code>Sparkline</code> ni <code>SearchBox</code>. <code>StatGrid</code> y <code>EmptyPanel</code> se conservan re-vestidos (<code>card</code>/<code>hair14</code>).</td><td>Mismo nombre que el diseño = diff legible contra <code>ui.js</code>. <code>Sparkline</code>/<code>SearchBox</code> sólo sirven a la grilla y a buscadores que no existen.</td></tr>
+<tr><td>D13</td><td>Markets (raíz)</td><td><code>screens/markets.tsx</code> (hoy <code>perps.tsx</code>). Orden: card <code>TRADING · AUSD</code> (<code>Tag</code> + cifra <code>display 30</code> + <code>Chip</code> de conexión Live/Connecting/Reconnecting/Offline + &quot;{Σc} in positions · {b} free&quot; + línea PnL), avisos (<code>Warn</code>: reloj D19, key rechazada, forwarding off), fila <code>Btn</code> <strong>Add funds</strong> (<code>lime</code>) / <strong>Withdraw to wallet</strong> (<code>outline2</code>), <code>Tag MARKETS</code> + <code>TouchCard</code> por mercado (par <code>700 14</code>, &quot;name · up to Nx&quot; <code>faint</code>, mark mono <code>700 13</code>, 24h <code>up</code>/<code>down</code>), <code>Tag POSITIONS</code> + filas (<code>Chip</code> LONG/SHORT, tamaño·lv, PnL mono, &quot;ep → mark · Liq. est.&quot;), <code>Btn Close</code> <code>outline</code>. Cierre de posición: <code>Card</code> de confirmación + <code>OrderResultCard</code>. Gate <code>none</code>/<code>onboarding</code>: <code>Card</code> <strong>Enable trading</strong> con input <code>display 26</code>, mínimos, pasos <code>ENABLE_STEPS</code> con <code>ActivityIndicator</code>/✓/×, o <strong>Reconnect trading</strong> (D21). Lista de mercados en gate <code>readOnly</code> (opacidad .7).</td><td>Toda la lógica es la de <code>perps.tsx</code>; sólo cambia la piel y el orden de bloques para parecerse a <code>MarketsScreen</code> del diseño.</td></tr>
+<tr><td>D14</td><td>Market (ticket)</td><td><code>screens/market.tsx</code> (hoy <code>perpsMarket.tsx</code>). Header <code>[symbol, &quot;Perpl · isolated margin · market order&quot;]</code>. <code>PillTabs</code> <strong>Ask · Trade · Agents</strong> (<code>S.marketTab</code>, default <code>trade</code>). Ask/Agents → <code>ComingSoonCard</code> inline (D17). Trade: <code>Segmented</code> Long/Short (lima al long, <code>down</code> al short), card <code>MARGIN · AUSD</code> con <code>TextInput</code> <code>display 32</code> + <code>Chip Max</code>, &quot;X AUSD free in trading&quot;, chips de apalancamiento <code>pill(on)</code> (<code>leveragesFor(market)</code>), <code>Card</code> KV <code>NOTIONAL</code> / <code>EST. PRICE</code> / <code>FEE · TAKER</code> / <code>LIQUIDATION ≈</code> (<code>down</code> si lv &gt; 1), <code>Btn</code> <code>arrow</code> &quot;Review long · 25.00 AUSD&quot; (o &quot;Enter a margin&quot; deshabilitado). Review: <code>Card</code> con <code>Tag YOU OPEN</code>, cifra <code>display 22</code>, KV, <code>Btn lime</code> &quot;Confirm long&quot; / &quot;Connecting…&quot; deshabilitado si el socket no está <code>live</code>, <code>Btn ghost</code> &quot;Change amount&quot;. Resultado: <code>StatusCard</code> con tonos <code>sent</code> (<code>hair2</code>/<code>slab</code>), <code>filled</code> (<code>limeBd</code>/<code>limeBg06</code>), <code>failed</code> (<code>downBd</code>/<code>downBg</code>), <code>unknown</code> (<code>warnBd</code>/<code>warnBg</code>) + <code>Btn</code> &quot;Back to Markets&quot; / &quot;Edit&quot;.</td><td>Es <code>TradeTab</code> del diseño sin grilla, con nuestras validaciones (<code>units + fee ≤ free</code>, Max con sitio para la fee).</td></tr>
+<tr><td>D15</td><td>Funds</td><td><code>screens/perpsFunds.tsx</code> re-vestido: <code>StatGrid</code> Wallet / Trading · free, <code>Segmented</code> Add funds / Withdraw, card de monto <code>display 30</code> + <code>Chip Max</code>, <code>Card</code> KV From / To / Network, <code>Btn lime</code> Confirm, estados como <code>StatusCard</code> con hash tocable. Lógica intacta (<code>validateFunds</code>, allowance).</td><td>Igual que hoy con las primitivas nuevas.</td></tr>
+<tr><td>D16</td><td>Wallet, Deposit, Withdraw</td><td><code>screens/wallet.tsx</code> (hoy <code>own.tsx</code> sin Portfolio/Position). Wallet: <code>Card</code> <code>AVAILABLE · AUSD</code> + cifra <code>display 30</code> + <code>{shortHash} · CONNECTED</code> mono <code>faint</code> + &quot;Nothing pending.&quot; / &quot;N transfers confirming&quot; + <code>Touch</code> &quot;X AUSD in trading · Markets&quot; (<code>nav(&quot;markets&quot;)</code>, sólo con <code>perpl.state.status === &quot;ready&quot;</code>); fila <code>Btn outline2</code> Deposit / Withdraw; <code>Tag MOVEMENTS</code> + filas (<code>600 12.5</code> kind, <code>mono 9.5 faint</code> &quot;SEP 18 14:02 · 0x4d1a…9e02&quot;, monto <code>mono 700 12</code> <code>up</code> si <code>+</code>, status <code>Complete</code>/<code>Confirming</code>/<code>Reverted</code> en <code>up</code>/<code>warn</code>/<code>down</code>), errores y vacío como hoy; <code>Tag TESTNET</code> + tarjetas MON (gas) / Your address + <code>Btn lime</code> Get test AUSD / <code>Btn outline2</code> Get test MON · copies address + aviso RPC/notice/error; <code>Tag SESSION</code> + <code>Chip</code> Lock / Sign out. Deposit y Withdraw: mismas máquinas de estado (<code>WithdrawStep</code>), cajas <code>deep</code> con borde <code>hair</code>, cifra <code>display 30</code>, <code>Btn lime</code> primario, KV mono.</td><td>D3. El copy &quot;Nothing has ever arrived in this wallet.&quot; y el <code>MonadScan</code> como historial siguen.</td></tr>
+<tr><td>D17</td><td>Coming soon</td><td>Pantalla completa (<code>launchpad</code>, <code>activity</code>, <code>portfolio</code>): disco 72 px <code>card</code> con borde <code>vioBd40</code>, icono lucide del tab en <code>vio</code> 30 px, título <code>display 700 22</code>, <code>Chip</code> <strong>COMING SOON</strong> <code>dashed</code> lima, copy <code>dim 13</code> centrado, <code>Btn outline</code> &quot;Go to Wallet&quot;. Copy: Launchpad → &quot;Agents with a token&quot;; Activity → &quot;What the agents you follow are doing&quot;; Portfolio → &quot;Tokens · Perps · Reads&quot;. <code>COMING_SOON_COPY</code> alimenta también el subtítulo del header (&quot;Coming soon&quot;) y la <code>ComingSoonCard</code> inline de Ask (&quot;Ask an agent for a read on this market&quot;) y Agents (&quot;Who trades and who reads this market&quot;).</td><td>Mantiene el patrón del polish con la estética nueva; subtítulos derivados del mapa (minor del audit).</td></tr>
+<tr><td>D18</td><td>Sign in</td><td><code>screens/signin.tsx</code> (hoy en <code>trade.tsx</code>). Header <code>[&quot;Wallet access&quot;, &quot;Passkey on this device&quot;]</code>. Con <code>S.next</code> distinto de <code>wallet</code> (el gate retuvo Markets, Funds, Deposit o Withdraw): <code>Card</code> <code>vioBd45</code>/<code>vioBg08</code> &quot;We kept what you were about to do&quot; + la acción retenida (&quot;Trading on Perpl&quot;, &quot;Trading funds&quot;, &quot;A deposit&quot;, &quot;A withdrawal&quot;). Copy del diseño: &quot;Reading and following never need an account. The wallet appears the first time money moves.&quot; y &quot;Connecting is not signing. Every operation is confirmed on its own.&quot; Botones <code>Btn lime</code> Create / <code>Btn outline</code> Sign in con passkey (lógica <code>useUnlock</code>/<code>useAccount</code> intacta).</td><td>Quita el copy heredado &quot;One step, then back to your purchase&quot; y adopta el gate del hi-fi.</td></tr>
+<tr><td>D19</td><td>Fix reloj</td><td><code>fetchContext</code> devuelve además `serverTime: number \</td><td>null<code> leído del header </code>Date<code> de </code>GET /v1/pub/context<code> (</code>res.headers.get(&quot;date&quot;)<code>); </code>usePerpl<code> guarda </code>clockSkewMs = serverTime − Date.now()<code> en cada refresh (</code>null<code> si no hay header). Con </code></td><td>clockSkewMs</td><td>&gt; 20_000<code> Markets muestra </code>Warn<code> &quot;Your phone&#39;s clock is off by N s. Perpl rejects signatures more than 30 s off — turn on *Set automatically* in Settings › General › Date &amp; Time.&quot; y el aviso de </code>keyRejected` pasa a &quot;Trading key rejected. Check the phone clock first; if it is right, Perpl may not be available in your region.&quot; con los mismos botones Reset trading key / Open Perpl.</td><td>Causa real de los dos <code>3401</code> en el iPhone de Jesús (audit polish). El umbral 20 s deja margen bajo el ±30 s del servidor.</td></tr>
+<tr><td>D20</td><td>Fix fees</td><td><code>formatAusd(raw, decimals = 2)</code>; los KV <code>FEE · TAKER</code> (ticket y review), &quot;Fee X AUSD&quot; del resultado y el <code>detail</code> del cierre usan <code>formatAusd(fee, 4)</code>. Saldos y montos siguen a 2.</td><td>&quot;0.00 AUSD&quot; en fees de 0.0005 era ilegible.</td></tr>
+<tr><td>D21</td><td>Fix Reconnect trading</td><td>Con <code>perpl.state.status === &quot;none&quot;</code>, <code>usePerpl</code> sondea <code>readAccountId(address)</code> una vez (y en cada <code>refreshContext</code>) y expone `existingAccountId: bigint \</td><td>null<code>. Si </code>&gt; 0n<code>, el gate de Markets muestra **Reconnect trading** (&quot;This wallet already has Perpl account #620. Reconnect registers a trading key on this phone; no AUSD moves.&quot;) sin input de monto y </code>Btn lime<code> **Reconnect** → </code>perpl.enable(0n)<code>. </code>runEnable<code> con </code>id ≠ 0<code> ya salta approve/create (pasos 3–4 solamente); el paso 1 no consulta </code>walletAusd` cuando hay id. Sign out sigue borrando la key (spec fase 2 §4).</td><td>El caso reproducible del simulador (cuenta #620 con 104.87 AUSD y Trade pidiendo 100 AUSD nuevos).</td></tr>
+<tr><td>D22</td><td>Minors del audit polish</td><td>PnL: `</td><td>x</td><td>&lt; 0.005<code> → &quot;+0.00&quot; (fila y suma). </code>accessibilityLabel<code> en tabs (</code>tab-markets<code>…), filas de mercado (</code>market-BTC<code>) y botones primarios. </code>headerFor<code> deriva &quot;Coming soon&quot; de </code>COMING<em>SOON</em>COPY<code>. </code>resetTo<code> se elimina del store. </code>useCallback(onRefresh)` se queda como está (sin efecto en corrección).</td><td>Cierran los residuales listados en <code>2026-09-18-mobile-polish-f1-rulings.md</code>.</td></tr>
+<tr><td>D23</td><td>DevControls</td><td>Se poda a: saltar a cada pantalla real (<code>markets</code>, <code>market</code> con el primer mercado, <code>perpsFunds</code>, <code>wallet</code>, <code>deposit</code>, <code>withdraw</code>, <code>signin</code>, los tres coming soon), estado de sesión (Lock / Sign out), <code>Reset</code>. Estilo con <code>Chip</code>/<code>pill</code>. Sin <em>holder</em>, <em>dataCase</em> ni fases de token.</td><td>Todo lo que controlaba era mock.</td></tr>
+<tr><td>D24</td><td>Fases</td><td><strong>F1</strong>: D8–D12, D16–D18, D23 y el <code>Shell</code> (tema, primitivas, tabs, Wallet/Deposit/Withdraw, Sign in, coming soon, borrado del mock) con Markets/Market/Funds compilando con las primitivas nuevas pero sin re-maquetar. <strong>F2</strong>: D13–D15 (re-maquetado Perpl) + D19–D22 → build 5 de TestFlight (<code>pickler-dev-new</code>).</td><td>Checkpoint a mitad: F1 se puede mirar en simulador sin tocar dinero; F2 concentra lo que exige cuenta #620 y iPhone real.</td></tr>
+<tr><td>D25</td><td>Fuera de alcance</td><td>Grilla nivel × horizonte, reads (Ask/Confirm/Read/Follow-up/Result), Launchpad y compra de tokens, Portfolio real, Follow, Android, animaciones de transición, react-navigation.</td><td>25 días; nada de esto tiene backend.</td></tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-unidades">2. Unidades</h2>
+<h3 id="21-srcuithemets-se-reescribe-d8-d9">2.1 <code>src/ui/theme.ts</code> — se reescribe (D8, D9)</h3>
+<ul>
+<li><code>C</code> con los tokens del diseño; <code>F</code> con las nueve familias; <code>fam(weight, kind?: &quot;mono&quot; | &quot;display&quot;)</code>;</li>
+<p><code>textStyle(w, s, opts)</code>; <code>pill(on): { bd, bg, fg }</code>.</p>
+<li>Test <code>theme.test.ts</code>: <code>fam(800)</code> → <code>Manrope_700Bold</code>; <code>fam(700, &quot;mono&quot;)</code> → <code>JetBrainsMono_700Bold</code>;</li>
+<p><code>fam(600, &quot;display&quot;)</code> → <code>ChakraPetch_600SemiBold</code>; <code>textStyle(700, 16.5, { display: true, ls: -0.01 })</code> → <code>{ fontFamily: &quot;ChakraPetch_700Bold&quot;, fontSize: 16.5, color: &quot;#F5F6FF&quot;, letterSpacing: -0.17 }</code>; <code>C.bgBottom === &quot;#05061A&quot;</code>, <code>C.down === &quot;#FF5FA2&quot;</code>.</p>
+</ul>
+<h3 id="22-srcuiprimitivestsx-se-reescribe-d12">2.2 <code>src/ui/primitives.tsx</code> — se reescribe (D12)</h3>
+<p>Una función por primitiva, sin estado. <code>Btn</code> recibe <code>label</code>, <code>onPress</code>, <code>variant</code>, <code>arrow</code>, <code>icon</code>, <code>s</code>, <code>py</code>, <code>flex</code>, <code>disabled</code>, <code>fg</code>, <code>bd</code>, <code>accessibilityLabel</code>. <code>Segmented</code> deja de recibir estilos por opción: <code>options: readonly [string, string][]</code>, <code>value</code>, <code>onChange</code>, opcional <code>tone?: (key) =&gt; { bg, fg }</code> para el Long/Short de D14. <code>Icon</code> mapea nombre → componente lucide.</p>
+<h3 id="23-srcshelltsx-se-reescribe-d4-d10">2.3 <code>src/Shell.tsx</code> — se reescribe (D4, D10)</h3>
+<ul>
+<li><code>Backdrop</code>, header, <code>ScrollView</code> con <code>RefreshControl</code> (<code>refreshable = screen ∈ {wallet, markets}</code>),</li>
+<p><code>PanResponder</code> como hoy, tab bar con <code>ROOT_OF</code>, <code>DevControls</code> en <code>__DEV__</code>.</p>
+<li><code>SCREENS: Record&lt;Screen, …&gt;</code> con las diez pantallas de D5.</li>
+</ul>
+<h3 id="24-srcstorets-se-reduce-d5-d6-d7-d22">2.4 <code>src/store.ts</code> — se reduce (D5, D6, D7, D22)</h3>
+<ul>
+<li><code>StoreState</code>: <code>screen</code>, <code>stack</code>, <code>next</code>, <code>nextPatch</code>, <code>perpsMarketId</code>, <code>perpsSide</code>,</li>
+<p><code>fundsMode</code>, <code>marketTab: &quot;ask&quot; | &quot;trade&quot; | &quot;agents&quot;</code>.</p>
+<li>Listas <code>COMING_SOON</code>, <code>GATED</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code>, <code>ROOT_OF</code> (D5). <code>requireAccountState</code> pierde el</li>
+<p>caso <code>buying</code> (<code>next = target</code> siempre). <code>headerFor(screen, balance, perpsSymbol)</code> con los títulos: <code>markets</code> → <code>[&quot;Markets&quot;, &quot;Perps on Perpl · Monad&quot;]</code>; <code>market</code> → <code>[symbol + &quot; Perp&quot;, &quot;Perpl · isolated margin · market order&quot;]</code>; <code>perpsFunds</code> → <code>[&quot;Trading funds&quot;, &quot;Between wallet and trading&quot;]</code>; <code>wallet</code> → <code>[&quot;Wallet&quot;, &quot;AUSD available and movements&quot;]</code>; <code>deposit</code> → <code>[&quot;Deposit AUSD&quot;, &quot;Monad network&quot;]</code>; <code>withdraw</code> → <code>[&quot;Withdraw AUSD&quot;, &quot;To an external address&quot;]</code>; <code>signin</code> → <code>[&quot;Wallet access&quot;, &quot;Passkey on this device&quot;]</code>; coming soon → <code>[COMING_SOON_COPY[k].title, &quot;Coming soon&quot;]</code>.</p>
+<li><code>AppStore</code> pierde <code>agent</code>, <code>post</code>, <code>holds</code>, <code>tradeHolds</code>, <code>buying</code>, <code>showAgentBar</code>, <code>resetTo</code>, <code>user</code>.</li>
+<li>Test <code>store.test.ts</code> se reescribe contra el set nuevo (gates, coming soon, back, boot, sign out, header).</li>
+</ul>
+<h3 id="25-srcscreens-resultado-final">2.5 <code>src/screens/</code> — resultado final</h3>
+<p><code>markets.tsx</code> (D13), <code>market.tsx</code> (D14), <code>perpsFunds.tsx</code> (D15), <code>wallet.tsx</code> con <code>WalletScreen</code>, <code>DepositScreen</code>, <code>WithdrawScreen</code> (D16), <code>signin.tsx</code> (D18), <code>comingSoon.tsx</code> + <code>comingSoonCopy.ts</code> (<code>ComingSoonScreen</code>, <code>ComingSoonCard</code>, <code>COMING_SOON_COPY</code> con <code>icon</code> lucide) (D17). Se borran <code>discover.tsx</code>, <code>follow.tsx</code>, <code>trade.tsx</code>, <code>own.tsx</code>, <code>perps.tsx</code>, <code>perpsMarket.tsx</code>. <code>OrderResultCard</code> vive en <code>market.tsx</code> y lo importa <code>markets.tsx</code> (como hoy).</p>
+<h3 id="26-srcperplcontextts-srchooksuseperplts-se-amplian-d19-d21">2.6 <code>src/perpl/context.ts</code>, <code>src/hooks/usePerpl.ts</code> — se amplían (D19, D21)</h3>
+<ul>
+<li><code>Context</code> gana <code>serverTime: number | null</code> (ms desde epoch, <code>Date.parse(res.headers.get(&quot;date&quot;))</code>;</li>
+<p><code>null</code> si el header falta o no parsea). <code>parseContext(body)</code> no cambia; <code>fetchContext</code> lo completa. El test usa un <code>fetch</code> falso que devuelve el header <code>date</code>.</p>
+<li><code>Perpl</code> gana <code>clockSkewMs: number | null</code> y <code>existingAccountId: bigint | null</code>; <code>enable(0n)</code> permitido</li>
+<p>sólo cuando <code>existingAccountId &gt; 0n</code> (si no, el gate no lo ofrece).</p>
+<li>Tests: <code>perpl-context.test.ts</code> (header presente / ausente / inválido), <code>perpl-enable.test.ts</code></li>
+<p>(con <code>readAccountId → 620n</code> y <code>amount 0n</code>: no llama <code>walletAusd</code>, <code>approve</code> ni <code>createAccount</code>; sí <code>isForwarding</code> y <code>loadKey</code>).</p>
+</ul>
+<h3 id="27-srcconfigchaints-se-amplia-d20">2.7 <code>src/config/chain.ts</code> — se amplía (D20)</h3>
+<p><code>formatAusd(raw, decimals = 2)</code>; test con <code>formatAusd(500n, 4) === &quot;0.0005&quot;</code> y <code>formatAusd(500n) === &quot;0.00&quot;</code>.</p>
+<h3 id="28-apptsx-appconfigts-packagejson-d9d11">2.8 <code>App.tsx</code>, <code>app.config.ts</code>, <code>package.json</code> (D9–D11)</h3>
+<p>Carga de fuentes nueva (Manrope 4, JetBrains 3, Chakra 2); <code>PERPL_SCREENS = [&quot;markets&quot;,&quot;market&quot;,&quot;perpsFunds&quot;]</code>; <code>backgroundColor #05061A</code>; dependencias de D11.</p>
+<hr>
+<h2 id="3-verificacion">3. Verificación</h2>
+<ul>
+<li><code>npm test</code> y <code>npx tsc --noEmit</code> en verde en cada fase, con salida pegada en el audit.</li>
+<li><strong>F1</strong>: capturas en simulador de Wallet (con y sin movimientos), Deposit, Withdraw (edit/review),</li>
+<p>Sign in (con y sin <code>resume</code>), los tres coming soon y Markets/Market compilando con el tema nuevo. Fuente Chakra Petch visible en títulos; gradiente y puntos visibles; tab activa en lima.</p>
+<li><strong>F2</strong>: en simulador con la cuenta #620: Reconnect trading (D21) desde estado <code>none</code>; ticket con</li>
+<p>fee a 4 decimales; abrir y cerrar una posición pequeña; skew forzado (reloj del simulador ±2 min) muestra el <code>Warn</code> y el copy nuevo de <code>keyRejected</code>. En el iPhone de Jesús: mismo recorrido con su cuenta real. Todo con capturas antes/después y saldos re-medidos por RPC en el audit.</p>
+<li>Antes de cerrar cada fase: revisión independiente por subagente con requisitos, diff y evidencia</li>
+<p>(regla global), <code>npm run agents:check</code> y <code>npm run docs:check</code>.</p>
+</ul>
+<hr>
+<h2 id="4-riesgos-conocidos">4. Riesgos conocidos</h2>
+<table>
+<thead>
+<tr><th>Riesgo</th><th>Mitigación</th></tr>
+</thead>
+<tbody>
+<tr><td><code>react-native-svg</code> / <code>expo-linear-gradient</code> exigen pods nuevos; el archive de TestFlight usa <code>scripts/ios-archive.sh</code>.</td><td>F1 corre <code>npx expo run:ios</code> y deja el pod install en el audit; el script de archive no cambia.</td></tr>
+<tr><td><code>lucide-react-native</code> renderiza vía SVG; iconos a 19–30 px en tab bar y coming soon.</td><td>Tamaños fijados en D4/D17; si un glifo se ve delgado se sube <code>strokeWidth</code> a 2.2 (decisión del plan).</td></tr>
+<tr><td>Renombrar <code>Tag</code>→<code>Chip</code> toca todas las pantallas.</td><td>Ocurre en F1 junto con el borrado del mock; <code>tsc</code> detecta cualquier uso viejo.</td></tr>
+<tr><td>El header <code>Date</code> puede faltar detrás de un CDN o venir redondeado a segundos.</td><td><code>serverTime: null</code> desactiva el aviso; umbral de 20 s absorbe el redondeo.</td></tr>
+<tr><td><code>enable(0n)</code> con <code>existingAccountId</code> desfasado (cuenta creada desde otro dispositivo justo antes).</td><td><code>runEnable</code> relee <code>readAccountId</code> en el paso 1; si es 0 con amount 0 falla con &quot;Enter an amount&quot; y el gate vuelve a Enable.</td></tr>
+</tbody>
+</table>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-18-mobile-hifi-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
