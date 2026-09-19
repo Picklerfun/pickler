@@ -1,5 +1,5 @@
 import contextJson from "./fixtures/perpl/context.json";
-import { fetchContext, parseContext } from "../src/perpl/context";
+import { fetchContext, parseContext, parseServerTime } from "../src/perpl/context";
 
 test("parseContext reads the MON market from the real testnet payload", () => {
   const ctx = parseContext(contextJson);
@@ -44,4 +44,26 @@ test("fetchContext times out with AbortController, not AbortSignal.timeout", asy
   await expect(failed).resolves.toBe(true);
   expect(fetchMock.mock.calls[0][0]).toBe("https://x.test/api/v1/pub/context");
   jest.useRealTimers();
+});
+
+test("parseContext leaves serverTime null; parseServerTime reads an RFC 1123 Date header", () => {
+  expect(parseContext(contextJson).serverTime).toBeNull();
+  expect(parseServerTime("Thu, 18 Sep 2026 22:35:00 GMT")).toBe(Date.UTC(2026, 8, 18, 22, 35, 0));
+  expect(parseServerTime(null)).toBeNull();
+  expect(parseServerTime("not a date")).toBeNull();
+});
+
+// Sin `new Response`: el entorno de jest-expo no garantiza los globals de fetch de Node.
+function fakeFetch(headers: Record<string, string>) {
+  const res = { ok: true, status: 200, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null }, json: async () => contextJson };
+  return jest.fn(async () => res) as unknown as typeof fetch;
+}
+
+test("fetchContext fills serverTime from the Date header, and null without it", async () => {
+  (globalThis as { fetch: typeof fetch }).fetch = fakeFetch({ date: "Thu, 18 Sep 2026 22:35:00 GMT" });
+  const withHeader = await fetchContext("https://x.test/api");
+  expect(withHeader.serverTime).toBe(Date.UTC(2026, 8, 18, 22, 35, 0));
+  expect(withHeader.markets.map((m) => m.id)).toEqual([16, 32, 48, 64, 256, 272, 320]);
+  (globalThis as { fetch: typeof fetch }).fetch = fakeFetch({});
+  expect((await fetchContext("https://x.test/api")).serverTime).toBeNull();
 });
