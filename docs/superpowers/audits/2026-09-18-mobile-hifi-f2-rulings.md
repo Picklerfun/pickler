@@ -287,10 +287,11 @@ No bloqueantes, ordenados por lo que más pesa:
 ## Siguiente punto de decisión
 
 F2 termina aquí: **sin merge a `main`, sin push, sin TestFlight y sin tocar `buildNumber`**. La rama
-`feat/mobile-hifi-f2` tiene 14 commits sobre `5289aa8` más el de esta documentación, 179/179 tests,
+`feat/mobile-hifi-f2` tiene 17 commits sobre `5289aa8`, incluidos el plan y las docs, 179/179 tests,
 `tsc` en verde, build nativo reproducido desde cero y 36 capturas del recorrido completo con la
-cuenta #620. Falta la **revisión independiente de la rama entera**, que corre el coordinador después
-de esta task.
+cuenta #620. La **revisión independiente de la rama entera** ya corrió (0 críticos, 3 importantes
+corregidos en `486a6fa`, ver «Correcciones tras la revisión final»); la re-revisión acotada la dio por
+cerrada.
 
 Decide Jesús: (1) si se mergea F2 a `main` local, (2) si se hace push, y (3) si se autoriza el
 **build 0.1.0 (5) de TestFlight** —Task 10, con su tracker `testflight-build5` vía
