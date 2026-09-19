@@ -5,7 +5,7 @@ import type { AgentLedger } from "./budget/agent-ledger";
 export interface Env {
   APP_ENV: string;
   ADMISSIONS_ENABLED?: string;
-  HYPERDRIVE?: Hyperdrive;
+  DATABASE_CA_CERT?: string;
   DATABASE_URL?: string;
   RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" }>;
   SUPABASE_URL: string;
