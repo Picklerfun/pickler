@@ -8,8 +8,7 @@ This document does not claim a deployed staging environment or live-provider acc
 
 Target deployment consists of a Next.js/OpenNext web Worker, a Hono API Worker, and a
 Queue research consumer. Node and Studio remain local operator tools. PostgreSQL and
-Supabase Auth are hosted in a separate staging project. API and research use a Hyperdrive
-binding with query caching disabled. Database clients are scoped to an invocation.
+Supabase Auth are hosted in a separate staging project. API and research use DATABASE_URL with verified TLS through the Supabase session pooler on port 5432. Database clients are scoped to an invocation.
 
 ## Identity and ownership
 
