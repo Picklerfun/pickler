@@ -33,7 +33,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
             <Touch onPress={onClose}><T w={600} s={13} color={C.faint}>Close</T></Touch>
           </View>
           <T w={500} s={10} lh={1.4} mono color={C.faint} style={{ marginBottom: 14 }}>
-            screen: {S.screen} · account: {account.status} · perpl: {perpl.state.status}
+            screen: {S.screen} · account: {account.status} · perpl: {perpl.state.status} · skew: {perpl.clockSkewMs === null ? "—" : `${Math.round(perpl.clockSkewMs / 1000)}s`}
           </T>
           <ScrollView showsVerticalScrollIndicator={false}>
             <Tag s={10} style={{ marginBottom: 9 }}>SCREENS</Tag>
@@ -56,6 +56,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
             <View style={{ flexDirection: "row", gap: 5 }}>
               {account.status === "unlocked" ? <PChip label="Lock" on={false} onPress={() => { lock(); onClose(); }} /> : null}
               {hasAccount ? <PChip label="Sign out" on={false} onPress={() => { void signOut().then(() => { signedOut(); onClose(); }); }} /> : null}
+              <PChip label="Clock +2 min" on={perpl.clockSkewMs !== null && perpl.clockSkewMs >= 120_000} onPress={() => perpl.setClockSkewOverride(perpl.clockSkewMs !== null && perpl.clockSkewMs >= 120_000 ? null : 120_000)} />
             </View>
           </ScrollView>
         </View>
