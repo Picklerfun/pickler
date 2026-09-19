@@ -16,12 +16,12 @@ const config: ExpoConfig = {
   // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
-  backgroundColor: "#08080A",
+  backgroundColor: "#05061A",
   ios: {
     bundleIdentifier,
     buildNumber: "4",
     supportsTablet: false,
-    backgroundColor: "#08080A",
+    backgroundColor: "#05061A",
     associatedDomains: [`webcredentials:${rpId}`],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,

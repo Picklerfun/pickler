@@ -1,51 +1,63 @@
 import { type ReactElement, useCallback, useMemo, useState } from "react";
-import { Image, PanResponder, RefreshControl, ScrollView, View } from "react-native";
+import { Image, PanResponder, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import type { AppCtx } from "./ctx";
 import { DevControls } from "./DevControls";
-import { pill } from "./mock/helpers";
 import { ComingSoonScreen } from "./screens/comingSoon";
-import { AgentScreen, MarketScreen, SearchScreen } from "./screens/discover";
-import { ActivityScreen, AskScreen, PostScreen } from "./screens/follow";
-import { DepositScreen, PortfolioScreen, PositionScreen, WalletScreen, WithdrawScreen } from "./screens/own";
-import { PerpsScreen } from "./screens/perps";
+import { MarketScreen } from "./screens/market";
+import { MarketsScreen } from "./screens/markets";
 import { PerpsFundsScreen } from "./screens/perpsFunds";
-import { PerpsMarketScreen } from "./screens/perpsMarket";
-import { SigninScreen, TradeScreen } from "./screens/trade";
-import type { Screen } from "./store";
+import { SigninScreen } from "./screens/signin";
+import { DepositScreen, WalletScreen, WithdrawScreen } from "./screens/wallet";
+import { ROOT_OF, type Screen } from "./store";
 import { shouldCaptureEdgeSwipe, shouldGoBack } from "./ui/gestures";
-import { T, Touch } from "./ui/primitives";
+import { Icon, type IconName, T, Touch } from "./ui/primitives";
 import { C } from "./ui/theme";
 
 const SCREENS: Record<Screen, (ctx: AppCtx) => ReactElement> = {
-  market: MarketScreen, search: SearchScreen, agent: AgentScreen,
-  trade: TradeScreen, signin: SigninScreen,
-  activity: ActivityScreen, post: PostScreen, ask: AskScreen,
-  portfolio: PortfolioScreen, position: PositionScreen, wallet: WalletScreen,
-  deposit: DepositScreen, withdraw: WithdrawScreen,
-  perps: PerpsScreen, perpsMarket: PerpsMarketScreen, perpsFunds: PerpsFundsScreen,
+  markets: MarketsScreen, market: MarketScreen, perpsFunds: PerpsFundsScreen,
+  launchpad: (ctx) => <ComingSoonScreen screen="launchpad" requireAccount={ctx.requireAccount} />,
+  activity: (ctx) => <ComingSoonScreen screen="activity" requireAccount={ctx.requireAccount} />,
+  portfolio: (ctx) => <ComingSoonScreen screen="portfolio" requireAccount={ctx.requireAccount} />,
+  wallet: WalletScreen, deposit: DepositScreen, withdraw: WithdrawScreen, signin: SigninScreen,
 };
 
-type TabIcon = "storefront" | "trending-up" | "pulse" | "pie-chart" | "wallet";
-const BOTTOM_TABS: readonly [Screen, string, TabIcon][] = [
-  ["market", "Market", "storefront"],
-  ["perps", "Trade", "trending-up"],
-  ["activity", "Activity", "pulse"],
-  ["portfolio", "Portfolio", "pie-chart"],
-  ["wallet", "Wallet", "wallet"],
+/** Tab bar del hi-fi (D4): clave de pantalla, etiqueta mono, icono lucide. */
+export const TABS: readonly [Screen, string, IconName][] = [
+  ["markets", "MARKETS", "chart"],
+  ["launchpad", "LAUNCHPAD", "rocket"],
+  ["activity", "ACTIVITY", "activity"],
+  ["portfolio", "PORTFOLIO", "layers"],
+  ["wallet", "WALLET", "wallet"],
 ];
 
-type HeaderAction = { label: string; active?: boolean; go: () => void };
+/** Fondo del teléfono: gradiente + campo de puntos, como el marco del diseño (D10). */
+function Backdrop() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient colors={[C.bgTop, C.bgMid, C.bgBottom]} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} />
+      <Svg width="100%" height="100%" style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}>
+        <Defs>
+          <Pattern id="dots" patternUnits="userSpaceOnUse" width="130" height="130">
+            <Circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.7)" />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#dots)" />
+      </Svg>
+    </View>
+  );
+}
 
 export function Shell({ ctx }: { ctx: AppCtx }) {
-  const { S, set, nav, back, requireAccount, agent, balance, tradeHolds: holds, treasury, perpl } = ctx;
+  const { S, back, requireAccount, treasury, perpl } = ctx;
   const [controls, setControls] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const Current = SCREENS[ctx.scr];
 
-  const refreshable = S.screen === "wallet" || S.screen === "perps";
-  // D5: Wallet = saldos + movimientos; Trade = markets. allSettled: un fallo no deja el spinner colgado.
+  const refreshable = S.screen === "wallet" || S.screen === "markets";
+  // Wallet = saldos + movimientos; Markets = contexto de Perpl. allSettled: un fallo no deja el spinner colgado.
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -55,88 +67,68 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
     }
   }, [S.screen, treasury, perpl]);
 
-  // D7: captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
+  // Captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
   const pan = useMemo(() => PanResponder.create({
-    // g.x0 sólo vale a partir de onResponderGrant (después de conceder el responder); en capture
-    // siempre es 0, así que la x inicial real es moveX - dx. No "simplificar" de vuelta a g.x0.
+    // g.x0 sólo vale a partir de onResponderGrant; en capture siempre es 0, así que la x inicial real es moveX - dx.
     onMoveShouldSetPanResponderCapture: (_e, g) => shouldCaptureEdgeSwipe(g.moveX - g.dx, g.dx, g.dy),
     onPanResponderRelease: (_e, g) => { if (shouldGoBack(g.dx)) back(); },
   }), [back]);
 
-  const headerActions: HeaderAction[] = S.screen === "market" && !ctx.comingSoon
-    ? [{ label: "★", go: () => nav("search") }, { label: "Alerts", go: () => nav("activity") }]
-    : S.screen === "agent"
-      ? [{ label: "★", active: S.following, go: () => set({ following: !S.following }) }]
-      : [];
-  if (__DEV__) headerActions.push({ label: "⚙", go: () => setControls(true) });
+  const isRoot = ROOT_OF[S.screen] === S.screen;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.phone }}>
-      {/* app header */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: C.hairSoft }}>
-        {ctx.canBack ? (
-          <Touch onPress={back} style={{ width: 32, height: 32, borderRadius: 999, borderWidth: 1, borderColor: C.hair2, alignItems: "center", justifyContent: "center" }}>
-            <T w={500} s={14}>←</T>
-          </Touch>
-        ) : null}
-        {S.screen === "market" ? (
-          <Image source={require("../assets/pickler-mark.png")} style={{ width: 26, height: 26 }} resizeMode="contain" />
-        ) : null}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <T w={800} s={17} lh={1.15} ls={-0.03} numberOfLines={1}>{ctx.headerTitle}</T>
-          <T w={400} s={11.5} lh={1.2} color={C.mute} numberOfLines={1} style={{ marginTop: 2 }}>{ctx.headerSub}</T>
-        </View>
-        {headerActions.map((a, i) => {
-          const p = pill(!!a.active, a.active ? C.lime : undefined);
-          return (
-            <Touch key={i} onPress={a.go} style={{ height: 30, paddingHorizontal: 11, borderRadius: 999, borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg, alignItems: "center", justifyContent: "center" }}>
-              <T w={600} s={12} color={p.fg}>{a.label}</T>
+    <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
+      <Backdrop />
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+        {/* header */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 9, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair, backgroundColor: C.deep50 }}>
+          {ctx.canBack ? (
+            <Touch onPress={back} accessibilityLabel="back" style={{ width: 31, height: 31, borderRadius: 999, borderWidth: 1, borderColor: C.hair22, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="back" size={16} color={C.ink} />
             </Touch>
-          );
-        })}
-      </View>
-
-      {/* scroll body */}
-      <View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
-        >
-          {ctx.comingSoon ? <ComingSoonScreen screen={ctx.scr} requireAccount={requireAccount} /> : <Current {...ctx} />}
-        </ScrollView>
-      </View>
-
-      {/* agent sticky buy bar */}
-      {ctx.showAgentBar ? (
-        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, backgroundColor: "rgba(11,11,14,0.98)", borderTopWidth: 1, borderTopColor: C.hair }}>
-          <Touch onPress={() => requireAccount("trade", { mode: "buy", phase: balance === 0 ? "insufficient" : "quote" })} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: C.lime, alignItems: "center" }}>
-            <T w={700} s={14} color={C.onLime}>Buy {agent.tickerBare}</T>
-          </Touch>
-          <Touch onPress={holds ? () => nav("trade", { mode: "sell", phase: "quote" }) : undefined} disabled={!holds} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: holds ? C.hair2 : "rgba(243,241,236,0.12)", alignItems: "center" }}>
-            <T w={700} s={14} color={holds ? C.ink : C.disabled}>Sell</T>
-          </Touch>
+          ) : null}
+          {isRoot ? <Image source={require("../assets/pickler-mark.png")} style={{ width: 24, height: 24 }} resizeMode="contain" /> : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <T w={700} s={16.5} lh={1.15} ls={-0.01} display numberOfLines={1}>{ctx.headerTitle}</T>
+            <T w={400} s={11} lh={1.2} color={C.faint} numberOfLines={1} style={{ marginTop: 2 }}>{ctx.headerSub}</T>
+          </View>
+          {__DEV__ ? (
+            <Touch onPress={() => setControls(true)} hitSlop={12} accessibilityLabel="dev-controls">
+              <T w={500} s={13} lh={1} mono color={C.faint}>⚙</T>
+            </Touch>
+          ) : null}
         </View>
-      ) : null}
 
-      {/* bottom tab bar */}
-      {ctx.showTabs ? (
-        <View style={{ flexDirection: "row", borderTopWidth: 1, borderTopColor: C.hairSoft, backgroundColor: C.phone, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 6 }}>
-          {BOTTOM_TABS.map(([k, label, icon]) => {
-            const on = S.screen === k || (k === "portfolio" && S.screen === "position") || (k === "market" && S.screen === "search");
-            const fg = on ? C.lime : C.mute;
-            return (
-              <Touch key={k} onPress={() => requireAccount(k)} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 6 }}>
-                <Ionicons name={on ? icon : `${icon}-outline`} size={20} color={fg} />
-                <T w={600} s={11} color={fg}>{label}</T>
-              </Touch>
-            );
-          })}
+        {/* cuerpo */}
+        <View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
+          >
+            <Current {...ctx} />
+          </ScrollView>
         </View>
-      ) : null}
+
+        {/* tab bar */}
+        {ctx.showTabs ? (
+          <View style={{ flexDirection: "row", paddingTop: 8, paddingHorizontal: 6, paddingBottom: 12, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.deep50 }}>
+            {TABS.map(([k, label, icon]) => {
+              const fg = ROOT_OF[S.screen] === k ? C.lime : C.faint;
+              return (
+                <Touch key={k} onPress={() => requireAccount(k)} accessibilityLabel={`tab-${k}`} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}>
+                  <Icon name={icon} size={19} color={fg} />
+                  <T w={500} s={9} lh={1} ls={0.04} mono color={fg}>{label}</T>
+                </Touch>
+              );
+            })}
+          </View>
+        ) : null}
+      </SafeAreaView>
 
       {__DEV__ ? <DevControls visible={controls} onClose={() => setControls(false)} ctx={ctx} /> : null}
-    </SafeAreaView>
+    </View>
   );
 }
