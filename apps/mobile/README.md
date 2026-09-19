@@ -27,10 +27,19 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 `react-native-svg` y `expo-linear-gradient` son módulos nativos: tras cambiar
 dependencias, `npx expo prebuild --platform ios --clean` antes de `run:ios`.
 
+**Face ID del simulador se pierde al reiniciarlo.** Volver a inscribirlo antes de
+cualquier recorrido con passkey:
+
+```bash
+notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 && \
+  notifyutil -p com.apple.BiometricKit.enrollmentChanged   # inscribe
+notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
+```
+
 ## Tests
 
 ```bash
-npm test          # jest, 169/169 esperado (23 suites)
+npm test          # jest, 179/179 esperado (24 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -65,7 +74,7 @@ El RPC público no sirve para esto: `eth_getLogs` está limitado a 100 bloques.
 En un dev-client ya instalado, `expo start` no refresca `extra` de `app.config.ts`;
 para que la app vea otra key hay que rehacer `expo run:ios`.
 
-## Perpl (pestaña Trade)
+## Perpl (tab MARKETS)
 
 Trading manual de perps en Perpl testnet (`https://testnet.perpl.xyz`). Sin backend: las tres tx de
 onboarding (`approve`, `createAccount ≥ 100 AUSD`, `allowOrderForwarding`) y la firma EIP-712 de la
@@ -78,6 +87,11 @@ borra; "Reset trading key" enrola otra (máx. 16 por cuenta; revocar en `testnet
 - URLs con override para mainnet: `PICKLER_PERPL_REST` / `PICKLER_PERPL_WS` en `app.config.ts`
   (`extra` solo se refresca con `expo run:ios`).
 - Perpl geobloquea US, GB, UA, RU, BY, CU, IR, KP, SY: el sign-in del WS falla con `3401`.
+- *Reconnect trading*: sin key pero con cuenta on-chain (`readAccountId > 0`), el gate reconecta con
+  `enable(0n)` — sólo forwarding + key, sin mover AUSD.
+- Desfase de reloj: `pub/context` trae el header `Date`; con más de 20 s de diferencia Markets avisa
+  (Perpl rechaza firmas a ±30 s; fue la causa real de los `3401` del iPhone).
+- Fees se muestran con 4 decimales; saldos y montos con 2.
 - Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
 
 ## Subir a TestFlight

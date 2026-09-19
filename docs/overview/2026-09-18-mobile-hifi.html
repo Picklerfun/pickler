@@ -78,7 +78,7 @@
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
           <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
-          <div class="v" data-sb="next" data-done="">—</div>
+          <div class="v" data-sb="next" data-done="Build 0.1.0 (5) de TestFlight (Task 10 de F2), sólo con autorización de Jesús">—</div>
         </div>
       </div>
 
@@ -186,7 +186,7 @@
         </div>
       </article>
       <!-- Phase 2 ====================================================== -->
-      <article class="phase-card" data-phase="2" data-status="plan_ready">
+      <article class="phase-card" data-phase="2" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -195,9 +195,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -213,18 +213,30 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 0: <code>expo-system-ui</code> y rebuild nativo (cierra el aviso de <code>ios.backgroundColor</code>)</label></li>
-              <li><label><input type="checkbox"> Task 1: <code>formatAusd(raw, decimals)</code> y <code>formatPnl</code> sin «−0.00» (D20, D22)</label></li>
-              <li><label><input type="checkbox"> Task 2: <code>serverTime</code> del header <code>Date</code> y <code>perpl/clock.ts</code> (D19)</label></li>
-              <li><label><input type="checkbox"> Task 3: <code>runEnable</code> con cuenta existente; <code>usePerpl</code> expone <code>clockSkewMs</code> y <code>existingAccountId</code> (D19, D21)</label></li>
-              <li><label><input type="checkbox"> Task 4: <code>isComingSoonTab</code>, primitiva <code>Screen</code> → <code>Page</code>, <code>PillTabs</code> con <code>pill-*</code> (diferidos de la revisión de F1)</label></li>
-              <li><label><input type="checkbox"> Task 5: <code>market.tsx</code> — pills Ask · Trade · Agents y el ticket del hi-fi; fees a 4 decimales (D14, D20)</label></li>
-              <li><label><input type="checkbox"> Task 6: <code>markets.tsx</code> — raíz re-maquetada, gate Reconnect trading, aviso de reloj, PnL (D13, D19, D21, D22)</label></li>
-              <li><label><input type="checkbox"> Task 7: <code>perpsFunds.tsx</code> re-vestido; chip «Clock +2 min» en DevControls (D15)</label></li>
-              <li><label><input type="checkbox"> Task 8: Rebuild y recorrido en simulador con #620: Reconnect, ticket, abrir/cerrar, Funds, reloj forzado, tarjeta «We kept…», RPC antes/después</label></li>
-              <li><label><input type="checkbox"> Task 9: README, spec, overview, manifest y audit F2; revisión independiente</label></li>
+              <li><label><input type="checkbox" checked> Task 0: <code>expo-system-ui</code> y rebuild nativo (cierra el aviso de <code>ios.backgroundColor</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 1: <code>formatAusd(raw, decimals)</code> y <code>formatPnl</code> sin «−0.00» (D20, D22)</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>serverTime</code> del header <code>Date</code> y <code>perpl/clock.ts</code> (D19)</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>runEnable</code> con cuenta existente; <code>usePerpl</code> expone <code>clockSkewMs</code> y <code>existingAccountId</code> (D19, D21)</label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>isComingSoonTab</code>, primitiva <code>Screen</code> → <code>Page</code>, <code>PillTabs</code> con <code>pill-*</code> (diferidos de la revisión de F1)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>market.tsx</code> — pills Ask · Trade · Agents y el ticket del hi-fi; fees a 4 decimales (D14, D20)</label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>markets.tsx</code> — raíz re-maquetada, gate Reconnect trading, aviso de reloj, PnL (D13, D19, D21, D22)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>perpsFunds.tsx</code> re-vestido; chip «Clock +2 min» en DevControls (D15)</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Rebuild y recorrido en simulador con #620: Reconnect, ticket, abrir/cerrar, Funds, reloj forzado, tarjeta «We kept…», RPC antes/después</label></li>
+              <li><label><input type="checkbox" checked> Task 9: README, spec, overview, manifest y audit F2; revisión independiente</label></li>
               <li><label><input type="checkbox"> Task 10: Build 0.1.0 (5) de TestFlight y tracker <code>testflight-build5</code> — sólo con autorización de Jesús</label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li><b>Falta el build 5 de TestFlight</b> (Task 10): el recorrido en el iPhone de Jesús con su cuenta real todavía no se hizo. Por eso el proyecto sigue <code>active</code> en el manifest.</li>
+              <li>El aviso «Trading key rejected» no se pudo provocar en el simulador (exige una key inválida); queda cubierto por <code>__tests__/perpl-clock.test.ts</code> y por lectura de <code>markets.tsx</code>.</li>
+              <li>Los estados intermedios de Reconnect (los cuatro pasos con ✓/spinner) y el <code>StatusCard</code> <code>SENT</code> no se alcanzaron a capturar: el flujo terminó antes que la captura, así que <code>02</code> y <code>10</code> muestran el estado final.</li>
+              <li>La cifra grande de la card <code>TRADING · AUSD</code> es el saldo <em>libre</em>, no el total: con la posición abierta se leyó 102.86 arriba y «2.00 in positions · 102.86 free» abajo. Decisión de spec, sin cambiar.</li>
+              <li>Dos claves de trading de más enroladas en la cuenta #620 (una por cada Reconnect del recorrido; el límite es 16). Revocar en <code>testnet.perpl.xyz/apikeys</code> antes de repetir el recorrido muchas veces.</li>
+              <li>Gas: cada Reconnect gastó ≈ 0.0083 MON. Quedan <b>0.0551 MON</b> en la wallet del simulador.</li>
+              <li>El plan pedía probar Trading funds con un monto de <code>5</code>, pero el mínimo real de depósito es <b>10.00 AUSD</b>; se usó 10 y se tocó <em>Edit</em> (no se movió dinero).</li>
+            </ul>
           </details>
         </div>
       </article>
@@ -334,7 +346,8 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code> ·
-       planes en <code>docs/superpowers/plans/2026-09-18-mobile-hifi-f*.md</code></p>
+       planes en <code>docs/superpowers/plans/2026-09-18-mobile-hifi-f*.md</code> ·
+       audits en <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f*-rulings.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>
