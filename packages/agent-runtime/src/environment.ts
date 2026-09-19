@@ -1,5 +1,7 @@
 export interface Environment {
   DATABASE_URL: string;
+  APP_ENV?: string;
+  DATABASE_CA_CERT?: string;
   MODEL_BASE_URL: string;
   MODEL_ID: string;
   MODEL_API_KEY: string;
