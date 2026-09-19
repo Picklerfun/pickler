@@ -113,12 +113,12 @@ test("unrealisedPnl sums positionPnl across markets and skips unknown markets", 
   expect(unrealisedPnl([], [MON, BTC])).toBeNull();
 });
 
-test("formatPnl rounds anything under half a cent to +0.00 and keeps the sign otherwise", () => {
+test("formatPnl rounds anything under one displayed cent to +0.00 and keeps the sign otherwise", () => {
   expect(formatPnl(0n)).toBe("+0.00");
-  expect(formatPnl(-4_999n)).toBe("+0.00");
-  expect(formatPnl(4_999n)).toBe("+0.00");
-  expect(formatPnl(5_000n)).toBe("+0.00");
+  expect(formatPnl(-9_999n)).toBe("+0.00");
+  expect(formatPnl(9_999n)).toBe("+0.00");
   expect(formatPnl(10_000n)).toBe("+0.01");
+  expect(formatPnl(-10_000n)).toBe("−0.01");
   expect(formatPnl(-1_500_000n)).toBe("−1.50");
   expect(formatPnl(123_456_789n)).toBe("+123.45");
 });

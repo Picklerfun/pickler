@@ -63,12 +63,12 @@ export function unrealisedPnl(positions: readonly PositionLike[], markets: reado
   return matched ? sum : null;
 }
 
-const HALF_CENT = 5_000n; // 0.005 AUSD en unidades de 6 decimales
+const ONE_CENT = 10_000n; // 0.01 AUSD en unidades de 6 decimales: lo mínimo que formatAusd (truncado) muestra distinto de 0.00
 
-/** PnL con signo para la UI: por debajo de medio centavo es "+0.00" (D22), nunca "−0.00". */
+/** PnL con signo para la UI: por debajo de un centavo es "+0.00" (D22), nunca "−0.00". */
 export function formatPnl(raw: bigint): string {
   const abs = raw < 0n ? -raw : raw;
-  if (abs < HALF_CENT) return "+0.00";
+  if (abs < ONE_CENT) return "+0.00";
   return `${raw < 0n ? "−" : "+"}${formatAusd(abs)}`;
 }
 
