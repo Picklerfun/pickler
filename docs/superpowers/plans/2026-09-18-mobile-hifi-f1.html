@@ -1,0 +1,2004 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-18-mobile-hifi-f1.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rediseño hi-fi — F1: tema, primitivas, Shell, Wallet, Sign in y coming soon — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-18-mobile-hifi-f1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-18-mobile-hifi-f1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Rediseño hi-fi — F1: tema, primitivas, Shell, Wallet, Sign in y coming soon — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-18-mobile-hifi-f1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-0-bootstrap-del-worktree-y-dependencias-nuevas">Task 0: Bootstrap del worktree y dependencias nuevas</a></li><li><a href="#task-1-uithemets-tokens-fuentes-pill-d8-d9">Task 1: `ui/theme.ts` — tokens, fuentes, `pill` (D8, D9)</a></li><li><a href="#task-2-uiprimitivestsx-primitivas-del-diseno-d12">Task 2: `ui/primitives.tsx` — primitivas del diseño (D12)</a></li><li><a href="#task-3-storets-navegacion-del-hi-fi-d5-d6-d7-d22">Task 3: `store.ts` — navegación del hi-fi (D5, D6, D7, D22)</a></li><li><a href="#task-4-comingsoontsx-pantalla-y-tarjeta-inline-d17">Task 4: `comingSoon.tsx` — pantalla y tarjeta inline (D17)</a></li><li><a href="#task-5-screenssignintsx-gate-de-passkey-d18">Task 5: `screens/signin.tsx` — gate de passkey (D18)</a></li><li><a href="#task-6-screenswallettsx-wallet-deposit-y-withdraw-re-vestidos-d16">Task 6: `screens/wallet.tsx` — Wallet, Deposit y Withdraw re-vestidos (D16)</a></li><li><a href="#task-7-shelltsx-devcontrolstsx-apptsx-appconfigts-d4-d10-d23">Task 7: `Shell.tsx`, `DevControls.tsx`, `App.tsx`, `app.config.ts` (D4, D10, D23)</a></li><li><a href="#task-8-markets-market-funds-adaptacion-mecanica-y-borrado-del-mock-d6-d24">Task 8: Markets / Market / Funds — adaptación mecánica y borrado del mock (D6, D24)</a></li><li><a href="#task-9-revision-de-tipos-y-de-copy-cruzado">Task 9: Revisión de tipos y de copy cruzado</a></li><li><a href="#task-10-rebuild-nativo-verificacion-en-simulador-readme-overview-y-audit">Task 10: Rebuild nativo, verificación en simulador, README, overview y audit</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-18-mobile-hifi-f1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="rediseno-hi-fi-f1-tema-primitivas-shell-wallet-sign-in-y-coming-soon-implementation-plan">Rediseño hi-fi — F1: tema, primitivas, Shell, Wallet, Sign in y coming soon — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> La app compila y corre en el simulador con el tema del hi-fi en todas las rutas; Wallet, Deposit, Withdraw y Sign in quedan re-vestidos con lógica intacta; Launchpad, Activity y Portfolio muestran el coming soon nuevo; el mock del wireframe desaparece; Markets/Market/Funds compilan con las primitivas nuevas (su re-maquetado es F2).</p>
+<p><strong>Architecture:</strong> Se reescriben tres cimientos (<code>ui/theme.ts</code>, <code>ui/primitives.tsx</code>, <code>store.ts</code>) con los nombres del diseño (<code>pickler-mobile/src/theme.js</code>, <code>ui.js</code>, <code>store.js</code>) y sobre ellos se portan las pantallas. El <code>Shell</code> dibuja el backdrop (gradiente + puntos SVG), header y tab bar del hi-fi. Toda la lógica de cuenta, tesorería y Perpl (<code>hooks/</code>, <code>wallet/</code>, <code>perpl/</code>) queda sin tocar.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / React Native 0.86 / TypeScript 6 / Jest 29 (<code>jest-expo</code>). Nuevas: <code>expo-linear-gradient</code>, <code>react-native-svg</code>, <code>lucide-react-native 1.47.0</code>, <code>@expo-google-fonts/chakra-petch 0.4.1</code>. Sale <code>@expo/vector-icons</code>.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code> (decisiones D4–D12, D16–D18, D22–D24). El plan argumenta desde ahí; léelo antes de empezar.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-hifi</code>, rama <code>feat/mobile-hifi</code>. Todo se corre desde <code>apps/mobile</code> dentro del worktree. Nunca <code>git add -A</code>; archivos por nombre. Commits con formato <code>feat(mobile): …</code> / <code>chore(mobile): …</code> y trailer <code>Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;</code>.</li>
+<li>Tokens de color y familias tipográficas <strong>tal cual</strong> el diseño (D8, D9): <code>ink #F5F6FF</code>, <code>lime #C8F03A</code>, <code>onLime #0B1200</code>, <code>vio #B9A5FF</code>, <code>vioSolid #9B7BFF</code>, <code>down #FF5FA2</code>, <code>warn #FFC93F</code>, <code>bgTop #1B1F6B</code>, <code>bgMid #0A0B2E</code>, <code>bgBottom #05061A</code>. Manrope 400/500/600/700 (800 → 700), JetBrains Mono 400/500/700, Chakra Petch 600/700.</li>
+<li>Vocabulario de primitivas del diseño (D12): <code>Tag</code> = línea mono mayúscula; <code>Chip</code> = píldora. <code>Sparkline</code> y <code>SearchBox</code> <strong>no</strong> se portan.</li>
+<li>Tab bar (D4): <code>MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET</code>, iconos lucide <code>chart · rocket · activity · layers · wallet</code>.</li>
+<li>Pantallas (D5): <code>markets | market | perpsFunds | launchpad | activity | portfolio | wallet | deposit | withdraw | signin</code>. <code>COMING_SOON = [&quot;launchpad&quot;,&quot;activity&quot;,&quot;portfolio&quot;]</code>. <code>GATED = [&quot;markets&quot;,&quot;market&quot;,&quot;perpsFunds&quot;,&quot;wallet&quot;,&quot;deposit&quot;,&quot;withdraw&quot;]</code>. <code>CAN_BACK = [&quot;market&quot;,&quot;perpsFunds&quot;,&quot;deposit&quot;,&quot;withdraw&quot;,&quot;signin&quot;]</code>. <code>SHOW_TABS = [&quot;markets&quot;,&quot;launchpad&quot;,&quot;activity&quot;,&quot;portfolio&quot;,&quot;wallet&quot;]</code>.</li>
+<li>Copy de coming soon (D17): Launchpad → &quot;Agents with a token&quot;; Activity → &quot;What the agents you follow are doing&quot;; Portfolio → &quot;Tokens · Perps · Reads&quot;. Subtítulo de header: &quot;Coming soon&quot;.</li>
+<li>Sign in (D18): header <code>[&quot;Wallet access&quot;, &quot;Passkey on this device&quot;]</code>; copy &quot;Reading and following never need an account. The wallet appears the first time money moves.&quot; y &quot;Connecting is not signing. Every operation is confirmed on its own.&quot;</li>
+<li>Arranque en Wallet, swipe atrás y pull-to-refresh se conservan (D7). Sin react-navigation, gesture-handler ni reanimated.</li>
+<li><code>assets/pickler-mark.png</code> sigue siendo el logo del header (D6).</li>
+<li>Al cerrar F1: <code>npm test</code> y <code>npx tsc --noEmit</code> en verde, app corriendo en simulador con capturas, README actualizado, overview con F1 <code>completed</code>, audit <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md</code>. <strong>Sin push ni TestFlight</strong> (eso es F2).</li>
+<li>Entre tareas 1–9 <code>tsc</code> puede estar en rojo (renombres cruzados); los tests de módulos puros (<code>theme</code>, <code>store</code>, <code>comingSoon</code>, <code>chain</code>, <code>perpl-*</code>) deben pasar en cada tarea que los toque. <code>tsc</code> limpio es obligatorio al cerrar la Task 9.</li>
+</ul>
+<hr>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Acción</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/package.json</code>, <code>package-lock.json</code></td><td>modificar</td><td>dependencias D11</td></tr>
+<tr><td><code>apps/mobile/app.config.ts</code></td><td>modificar</td><td><code>backgroundColor #05061A</code></td></tr>
+<tr><td><code>apps/mobile/App.tsx</code></td><td>modificar</td><td>fuentes nuevas, <code>PERPL_SCREENS</code>, <code>ctx</code> sin <code>resume</code></td></tr>
+<tr><td><code>src/ui/theme.ts</code></td><td>reescribir</td><td>tokens, <code>fam</code>, <code>textStyle</code>, <code>pill</code></td></tr>
+<tr><td><code>src/ui/primitives.tsx</code></td><td>reescribir</td><td>primitivas del diseño</td></tr>
+<tr><td><code>src/store.ts</code></td><td>reescribir</td><td>navegación, gates, header, <code>held</code></td></tr>
+<tr><td><code>src/screens/comingSoonCopy.ts</code>, <code>comingSoon.tsx</code></td><td>reescribir</td><td>pantalla y tarjeta coming soon</td></tr>
+<tr><td><code>src/screens/signin.tsx</code></td><td>crear (desde <code>trade.tsx</code>)</td><td>gate de passkey</td></tr>
+<tr><td><code>src/screens/wallet.tsx</code></td><td>crear (desde <code>own.tsx</code>)</td><td>Wallet, Deposit, Withdraw</td></tr>
+<tr><td><code>src/screens/markets.tsx</code></td><td>renombrar desde <code>perps.tsx</code></td><td>adaptación mecánica (re-maquetado en F2)</td></tr>
+<tr><td><code>src/screens/market.tsx</code></td><td>renombrar desde <code>perpsMarket.tsx</code></td><td>adaptación mecánica</td></tr>
+<tr><td><code>src/screens/perpsFunds.tsx</code></td><td>modificar</td><td>adaptación mecánica</td></tr>
+<tr><td><code>src/Shell.tsx</code></td><td>reescribir</td><td>backdrop, header, tabs</td></tr>
+<tr><td><code>src/DevControls.tsx</code></td><td>reescribir</td><td>panel dev podado</td></tr>
+<tr><td><code>src/screens/discover.tsx</code>, <code>follow.tsx</code>, <code>trade.tsx</code>, <code>own.tsx</code>, <code>src/mock/data.ts</code>, <code>src/mock/helpers.ts</code>, <code>__tests__/helpers.test.ts</code></td><td>borrar</td><td>mock del wireframe</td></tr>
+<tr><td><code>__tests__/theme.test.ts</code>, <code>store.test.ts</code>, <code>comingSoon.test.ts</code></td><td>reescribir</td><td>pruebas de los cimientos</td></tr>
+<tr><td><code>apps/mobile/README.md</code></td><td>modificar</td><td>referencia al hi-fi y dependencias</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-0-bootstrap-del-worktree-y-dependencias-nuevas">Task 0: Bootstrap del worktree y dependencias nuevas</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/package.json</code>, <code>apps/mobile/package-lock.json</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>node_modules</code> con <code>expo-linear-gradient</code>, <code>react-native-svg</code>, <code>lucide-react-native</code>, <code>@expo-google-fonts/chakra-petch</code>; sin <code>@expo/vector-icons</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Instalar y medir la línea base</strong></label></li>
+</ul>
+<p>Run (desde <code>.claude/worktrees/mobile-hifi/apps/mobile</code>):</p>
+<pre><code class="language-bash">npm install
+npm test 2&gt;&amp;1 | tail -6
+npx tsc --noEmit &amp;&amp; echo TSC_OK</code></pre>
+<p>Expected: <code>Tests: 178 passed, 178 total</code> (24 suites) y <code>TSC_OK</code>. Si la línea base no está en verde, <strong>para</strong> y repórtalo: no se construye sobre rojo.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Agregar las dependencias de D11</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo install expo-linear-gradient react-native-svg
+npm install --save-exact lucide-react-native@1.47.0 @expo-google-fonts/chakra-petch@0.4.1
+npm uninstall @expo/vector-icons</code></pre>
+<p>Expected: <code>package.json</code> con <code>&quot;expo-linear-gradient&quot;: &quot;57.0.2&quot;</code> (o la que resuelva <code>expo install</code> para SDK 57), <code>&quot;react-native-svg&quot;: &quot;15.15.x&quot;</code>, <code>&quot;lucide-react-native&quot;: &quot;1.47.0&quot;</code>, <code>&quot;@expo-google-fonts/chakra-petch&quot;: &quot;0.4.1&quot;</code>, y sin <code>@expo/vector-icons</code>. Comprueba que los pines quedaron <strong>exactos</strong> (sin <code>^</code>/<code>~</code>); si <code>expo install</code> los dejó con rango, edítalos a mano a la versión instalada (<code>npm ls expo-linear-gradient react-native-svg</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar que las fuentes existen en el paquete</strong></label></li>
+</ul>
+<pre><code class="language-bash">node -e &quot;const f=require(&#39;@expo-google-fonts/chakra-petch&#39;);console.log(Object.keys(f).filter(k=&gt;/600|700/.test(k)))&quot;
+node -e &quot;const f=require(&#39;@expo-google-fonts/jetbrains-mono&#39;);console.log(Object.keys(f).filter(k=&gt;/700/.test(k)))&quot;</code></pre>
+<p>Expected: <code>[ &#39;ChakraPetch_600SemiBold&#39;, &#39;ChakraPetch_700Bold&#39; ]</code> (más itálicas) y <code>JetBrainsMono_700Bold</code> presente.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add package.json package-lock.json
+git commit -m &quot;chore(mobile): dependencias del hi-fi (linear-gradient, svg, lucide, Chakra Petch); sale vector-icons
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-1-uithemets-tokens-fuentes-pill-d8-d9">Task 1: <code>ui/theme.ts</code> — tokens, fuentes, <code>pill</code> (D8, D9)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rewrite: <code>apps/mobile/src/ui/theme.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/theme.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>C</code> (tokens), <code>F</code> (familias), <code>fam(weight, kind?)</code>, <code>textStyle(weight, size, opts)</code>, <code>pill(on)</code>, tipos <code>FontKind</code>, <code>TypeOpts</code>, <code>Pill</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir el test</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/theme.test.ts</code>:</p>
+<pre><code class="language-ts">import { C, fam, pill, textStyle } from &quot;../src/ui/theme&quot;;
+
+test(&quot;weights map to the loaded Manrope families; 800 collapses to 700&quot;, () =&gt; {
+  expect(fam(400)).toBe(&quot;Manrope_400Regular&quot;);
+  expect(fam(500)).toBe(&quot;Manrope_500Medium&quot;);
+  expect(fam(600)).toBe(&quot;Manrope_600SemiBold&quot;);
+  expect(fam(700)).toBe(&quot;Manrope_700Bold&quot;);
+  expect(fam(800)).toBe(&quot;Manrope_700Bold&quot;);
+});
+
+test(&quot;mono has three cuts and display two&quot;, () =&gt; {
+  expect(fam(400, &quot;mono&quot;)).toBe(&quot;JetBrainsMono_400Regular&quot;);
+  expect(fam(500, &quot;mono&quot;)).toBe(&quot;JetBrainsMono_500Medium&quot;);
+  expect(fam(700, &quot;mono&quot;)).toBe(&quot;JetBrainsMono_700Bold&quot;);
+  expect(fam(600, &quot;display&quot;)).toBe(&quot;ChakraPetch_600SemiBold&quot;);
+  expect(fam(700, &quot;display&quot;)).toBe(&quot;ChakraPetch_700Bold&quot;);
+});
+
+test(&quot;textStyle converts lh ratio and ls em to pixels&quot;, () =&gt; {
+  expect(textStyle(700, 20, { display: true, lh: 1.15, ls: -0.02 })).toEqual({
+    fontFamily: &quot;ChakraPetch_700Bold&quot;,
+    fontSize: 20,
+    color: C.ink,
+    lineHeight: 23,
+    letterSpacing: -0.4,
+  });
+  expect(textStyle(500, 10, { mono: true, color: C.faint })).toEqual({ fontFamily: &quot;JetBrainsMono_500Medium&quot;, fontSize: 10, color: C.faint });
+});
+
+test(&quot;tokens come verbatim from the hi-fi design&quot;, () =&gt; {
+  expect(C.ink).toBe(&quot;#F5F6FF&quot;);
+  expect(C.lime).toBe(&quot;#C8F03A&quot;);
+  expect(C.vio).toBe(&quot;#B9A5FF&quot;);
+  expect(C.down).toBe(&quot;#FF5FA2&quot;);
+  expect(C.warn).toBe(&quot;#FFC93F&quot;);
+  expect([C.bgTop, C.bgMid, C.bgBottom]).toEqual([&quot;#1B1F6B&quot;, &quot;#0A0B2E&quot;, &quot;#05061A&quot;]);
+});
+
+test(&quot;pill(on) is the selected filter chip of the design&quot;, () =&gt; {
+  expect(pill(true)).toEqual({ bd: C.limeBd, bg: C.limeBg14, fg: C.lime });
+  expect(pill(false)).toEqual({ bd: C.hair18, bg: &quot;transparent&quot;, fg: C.dim });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correr el test y verlo fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/theme.test.ts</code> Expected: FAIL (<code>fam(800)</code> devuelve <code>Manrope_800ExtraBold</code>, <code>C.bgTop</code> undefined, <code>pill</code> no exportado).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Reescribir <code>theme.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import type { TextStyle } from &quot;react-native&quot;;
+
+// Tokens portados de &quot;Pickler Mobile App.dc.html&quot; vía pickler-mobile@a0e353e (src/theme.js).
+export const C = {
+  ink: &quot;#F5F6FF&quot;,
+  dim: &quot;#C3C9E4&quot;,
+  faint: &quot;#8891B5&quot;,
+
+  hair: &quot;rgba(245,246,255,0.16)&quot;,
+  hair2: &quot;rgba(245,246,255,0.3)&quot;,
+  hair08: &quot;rgba(245,246,255,0.08)&quot;,
+  hair10: &quot;rgba(245,246,255,0.10)&quot;,
+  hair12: &quot;rgba(245,246,255,0.12)&quot;,
+  hair14: &quot;rgba(245,246,255,0.14)&quot;,
+  hair18: &quot;rgba(245,246,255,0.18)&quot;,
+  hair22: &quot;rgba(245,246,255,0.22)&quot;,
+  hair28: &quot;rgba(245,246,255,0.28)&quot;,
+  hair34: &quot;rgba(245,246,255,0.34)&quot;,
+
+  card: &quot;rgba(245,246,255,0.05)&quot;,
+  card04: &quot;rgba(245,246,255,0.04)&quot;,
+  card09: &quot;rgba(245,246,255,0.09)&quot;,
+  card10: &quot;rgba(245,246,255,0.10)&quot;,
+  deep: &quot;rgba(5,6,26,0.65)&quot;,
+  deep50: &quot;rgba(5,6,26,0.5)&quot;,
+  deep60: &quot;rgba(5,6,26,0.6)&quot;,
+  onDeep: &quot;#05061A&quot;,
+  slab: &quot;#121216&quot;,
+
+  vio: &quot;#B9A5FF&quot;,
+  vioSolid: &quot;#9B7BFF&quot;,
+  vioBd: &quot;rgba(155,123,255,0.5)&quot;,
+  vioBd45: &quot;rgba(155,123,255,0.45)&quot;,
+  vioBd40: &quot;rgba(155,123,255,0.4)&quot;,
+  vioBg: &quot;rgba(155,123,255,0.12)&quot;,
+  vioBg10: &quot;rgba(155,123,255,0.1)&quot;,
+  vioBg08: &quot;rgba(155,123,255,0.08)&quot;,
+  vioBg07: &quot;rgba(155,123,255,0.07)&quot;,
+  vioBg06: &quot;rgba(155,123,255,0.06)&quot;,
+
+  lime: &quot;#C8F03A&quot;,
+  onLime: &quot;#0B1200&quot;,
+  limeBd: &quot;rgba(200,240,58,0.45)&quot;,
+  limeBd40: &quot;rgba(200,240,58,0.4)&quot;,
+  limeBg: &quot;rgba(200,240,58,0.1)&quot;,
+  limeBg14: &quot;rgba(200,240,58,0.14)&quot;,
+  limeBg06: &quot;rgba(200,240,58,0.06)&quot;,
+
+  up: &quot;#C8F03A&quot;,
+  down: &quot;#FF5FA2&quot;,
+  downBd: &quot;rgba(255,95,162,0.5)&quot;,
+  downBd45: &quot;rgba(255,95,162,0.45)&quot;,
+  downBg: &quot;rgba(255,95,162,0.07)&quot;,
+  warn: &quot;#FFC93F&quot;,
+  warnBd: &quot;rgba(255,201,63,0.45)&quot;,
+  warnBg: &quot;rgba(255,201,63,0.06)&quot;,
+  cyan: &quot;#7FE3FF&quot;,
+  blue: &quot;#5AD8FF&quot;,
+  spark: &quot;#A9B0D0&quot;,
+  disabled: &quot;#5C5C58&quot;,
+
+  // Fondo del teléfono: radial-gradient(#1B1F6B → #0A0B2E → #05061A).
+  bgTop: &quot;#1B1F6B&quot;,
+  bgMid: &quot;#0A0B2E&quot;,
+  bgBottom: &quot;#05061A&quot;,
+} as const;
+
+// Nombres de familia que exportan @expo-google-fonts/*.
+export const F = {
+  r: &quot;Manrope_400Regular&quot;,
+  m: &quot;Manrope_500Medium&quot;,
+  sb: &quot;Manrope_600SemiBold&quot;,
+  b: &quot;Manrope_700Bold&quot;,
+  mono: &quot;JetBrainsMono_400Regular&quot;,
+  monoM: &quot;JetBrainsMono_500Medium&quot;,
+  monoB: &quot;JetBrainsMono_700Bold&quot;,
+  display: &quot;ChakraPetch_700Bold&quot;,
+  displaySb: &quot;ChakraPetch_600SemiBold&quot;,
+} as const;
+
+export type FontKind = &quot;mono&quot; | &quot;display&quot;;
+
+/** Peso numérico del diseño → familia cargada. El hi-fi no usa ExtraBold: 800 cae en 700. */
+export function fam(weight: number, kind?: FontKind): string {
+  if (kind === &quot;display&quot;) return weight &gt;= 700 ? F.display : F.displaySb;
+  if (kind === &quot;mono&quot;) return weight &gt;= 700 ? F.monoB : weight &gt;= 500 ? F.monoM : F.mono;
+  if (weight &gt;= 700) return F.b;
+  if (weight &gt;= 600) return F.sb;
+  if (weight &gt;= 500) return F.m;
+  return F.r;
+}
+
+export type TypeOpts = { lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string };
+
+/** `font: &lt;weight&gt; &lt;size&gt;/&lt;lh&gt; &lt;family&gt;` del diseño. `ls` en em, convertido a px. */
+export function textStyle(weight: number, size: number, { lh, ls = 0, mono = false, display = false, color }: TypeOpts = {}): TextStyle {
+  const kind: FontKind | undefined = display ? &quot;display&quot; : mono ? &quot;mono&quot; : undefined;
+  const style: TextStyle = { fontFamily: fam(weight, kind), fontSize: size, color: color ?? C.ink };
+  if (lh) style.lineHeight = Math.round(size * lh);
+  if (ls) style.letterSpacing = +(size * ls).toFixed(2);
+  return style;
+}
+
+export type Pill = { bd: string; bg: string; fg: string };
+
+/** pill(on): seleccionado = borde lima .45 + relleno lima .14, como los filtros del diseño. */
+export function pill(on: boolean): Pill {
+  return on ? { bd: C.limeBd, bg: C.limeBg14, fg: C.lime } : { bd: C.hair18, bg: &quot;transparent&quot;, fg: C.dim };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr el test y verlo pasar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/theme.test.ts</code> Expected: PASS, 5 tests.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/ui/theme.ts __tests__/theme.test.ts
+git commit -m &quot;feat(mobile): tokens y tipografía del hi-fi (Chakra Petch, JetBrains 700, pill lima)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-2-uiprimitivestsx-primitivas-del-diseno-d12">Task 2: <code>ui/primitives.tsx</code> — primitivas del diseño (D12)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rewrite: <code>apps/mobile/src/ui/primitives.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>C</code>, <code>textStyle</code>, <code>pill</code> de Task 1.</li>
+<li>Produces (todas exportadas): <code>T</code>, <code>Tag</code>, <code>Touch</code>, <code>Icon</code> + <code>IconName</code>, <code>Card</code>, <code>TouchCard</code>, <code>KV</code>, <code>KVList</code>, <code>Hair</code>, <code>Chip</code>, <code>Avatar</code>, <code>Btn</code> + <code>BtnVariant</code>, <code>Segmented</code>, <code>PillTabs</code>, <code>Bar</code>, <code>Warn</code>, <code>StatusCard</code>, <code>Screen</code>, <code>StatGrid</code>, <code>EmptyPanel</code>.</li>
+</ul>
+<p>Sin test unitario (jest-expo no renderiza componentes con fuentes, límite conocido); la puerta es <code>tsc</code> al cerrar la Task 9 y la captura de la Task 10.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el archivo completo</strong></label></li>
+</ul>
+<pre><code class="language-tsx">import type { ReactNode } from &quot;react&quot;;
+import { Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle } from &quot;react-native&quot;;
+import {
+  Activity, ArrowLeft, ArrowRight, ChartLine, CircleQuestionMark, Layers, Rocket, Search, Send, SlidersHorizontal, Wallet,
+} from &quot;lucide-react-native&quot;;
+import { C, textStyle } from &quot;./theme&quot;;
+
+// ---------------------------------------------------------------------------
+// Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains) | display (Chakra Petch).
+export type TProps = {
+  w?: number; s?: number; lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string;
+  style?: StyleProp&lt;TextStyle&gt;; numberOfLines?: number; children?: ReactNode;
+};
+
+export function T({ w = 400, s = 13, lh, ls, mono, display, color, style, numberOfLines, children }: TProps) {
+  return (
+    &lt;Text numberOfLines={numberOfLines} style={[textStyle(w, s, { lh, ls, mono, display, color }), style]}&gt;
+      {children}
+    &lt;/Text&gt;
+  );
+}
+
+/** Línea mono en mayúsculas: `font:500 9.5px/1 mono; letter-spacing:.1em`. */
+export function Tag({ children, color = C.faint, s = 9.5, style }: { children: ReactNode; color?: string; s?: number; style?: StyleProp&lt;TextStyle&gt; }) {
+  return &lt;T w={500} s={s} lh={1} ls={0.1} mono color={color} style={style}&gt;{children}&lt;/T&gt;;
+}
+
+export type TouchProps = {
+  onPress?: () =&gt; void; style?: StyleProp&lt;ViewStyle&gt;; children?: ReactNode; disabled?: boolean;
+  hitSlop?: number; accessibilityLabel?: string;
+};
+
+export function Touch({ onPress, style, children, disabled, hitSlop, accessibilityLabel }: TouchProps) {
+  return (
+    &lt;Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={hitSlop}
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) =&gt; [style, pressed &amp;&amp; !disabled ? { opacity: 0.72 } : null]}
+    &gt;
+      {children}
+    &lt;/Pressable&gt;
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Iconos lucide (el diseño usa SVGs enmascarados con estos mismos glifos).
+const ICONS = {
+  back: ArrowLeft, arrow: ArrowRight, search: Search, send: Send, sliders: SlidersHorizontal, help: CircleQuestionMark,
+  chart: ChartLine, rocket: Rocket, activity: Activity, layers: Layers, wallet: Wallet,
+} as const;
+export type IconName = keyof typeof ICONS;
+
+export function Icon({ name, size = 15, color = C.ink, strokeWidth = 2 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
+  const Cmp = ICONS[name];
+  return &lt;Cmp size={size} color={color} strokeWidth={strokeWidth} /&gt;;
+}
+
+// ---------------------------------------------------------------------------
+// Superficies.
+export type CardProps = { children?: ReactNode; style?: StyleProp&lt;ViewStyle&gt;; bd?: string; bg?: string; radius?: number; pad?: number; gap?: number };
+
+/** Superficie estándar: relleno .05 + hairline .14, radio 14. */
+export function Card({ children, style, bd = C.hair14, bg = C.card, radius = 14, pad = 13, gap }: CardProps) {
+  return (
+    &lt;View style={[{ padding: pad, borderRadius: radius, borderWidth: 1, borderColor: bd, backgroundColor: bg, gap }, style]}&gt;
+      {children}
+    &lt;/View&gt;
+  );
+}
+
+export function TouchCard({ onPress, children, style, bd = C.hair14, bg = C.card, pad = 12, radius = 14, disabled, accessibilityLabel }: TouchProps &amp; { bd?: string; bg?: string; pad?: number; radius?: number }) {
+  return (
+    &lt;Touch onPress={onPress} disabled={disabled} accessibilityLabel={accessibilityLabel} style={[{ padding: pad, borderRadius: radius, borderWidth: 1, borderColor: bd, backgroundColor: bg }, style]}&gt;
+      {children}
+    &lt;/Touch&gt;
+  );
+}
+
+/** Fila clave/valor mono: `font:500 10px/1.4 mono; color:#8891B5` con valor ink. */
+export function KV({ k, v, vFg = C.ink, kFg = C.faint }: { k: string; v: string; vFg?: string; kFg?: string }) {
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, gap: 10 }}&gt;
+      &lt;T w={500} s={10} lh={1.4} mono color={kFg}&gt;{k}&lt;/T&gt;
+      &lt;T w={500} s={10} lh={1.4} mono color={vFg} style={{ textAlign: &quot;right&quot;, flexShrink: 1 }}&gt;{v}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+export type KVRow = { label: string; value: string; fg?: string };
+
+export function KVList({ rows, top, gap = 7, style }: { rows: KVRow[]; top?: boolean; gap?: number; style?: StyleProp&lt;ViewStyle&gt; }) {
+  return (
+    &lt;View style={[{ gap, paddingTop: top ? 9 : 0, borderTopWidth: top ? 1 : 0, borderTopColor: C.hair12 }, style]}&gt;
+      {rows.map((r, i) =&gt; &lt;KV key={i} k={r.label} v={r.value} vFg={r.fg} /&gt;)}
+    &lt;/View&gt;
+  );
+}
+
+export function Hair({ style }: { style?: StyleProp&lt;ViewStyle&gt; }) {
+  return &lt;View style={[{ height: 1, backgroundColor: C.hair12 }, style]} /&gt;;
+}
+
+/** Píldora con hairline: filtros, tabs y marcas pequeñas. */
+export type ChipProps = {
+  label: string; fg?: string; bd?: string; bg?: string; onPress?: () =&gt; void; mono?: boolean; dashed?: boolean;
+  s?: number; py?: number; px?: number; w?: number; style?: StyleProp&lt;ViewStyle&gt;; accessibilityLabel?: string;
+};
+
+export function Chip({ label, fg = C.dim, bd = C.hair18, bg = &quot;transparent&quot;, onPress, mono, dashed, s = 11, py = 7, px = 11, w = 600, style, accessibilityLabel }: ChipProps) {
+  const inner = &lt;T w={mono ? 500 : w} s={s} lh={1} mono={mono} color={fg}&gt;{label}&lt;/T&gt;;
+  const box: ViewStyle = {
+    paddingVertical: py, paddingHorizontal: px, borderRadius: 999, borderWidth: 1, borderColor: bd, backgroundColor: bg,
+    alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, borderStyle: dashed ? &quot;dashed&quot; : &quot;solid&quot;,
+  };
+  if (onPress) return &lt;Touch onPress={onPress} accessibilityLabel={accessibilityLabel} style={[box, style]}&gt;{inner}&lt;/Touch&gt;;
+  return &lt;View style={[box, style]}&gt;{inner}&lt;/View&gt;;
+}
+
+/** Avatar cuadrado con iniciales: hairline .28, mono bold. */
+export function Avatar({ initials, size = 36, radius = 11, s = 11 }: { initials: string; size?: number; radius?: number; s?: number }) {
+  return (
+    &lt;View style={{ width: size, height: size, borderRadius: radius, borderWidth: 1, borderColor: C.hair28, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+      &lt;T w={700} s={s} lh={1} mono color={C.dim}&gt;{initials}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Botones.
+export type BtnVariant = &quot;outline&quot; | &quot;outline2&quot; | &quot;outline20&quot; | &quot;lime&quot; | &quot;violet&quot; | &quot;violetSoft&quot; | &quot;violetSoft10&quot; | &quot;violetLine&quot; | &quot;violetLine45&quot; | &quot;ghost&quot; | &quot;dashed&quot;;
+
+const VARIANTS: Record&lt;BtnVariant, { bg: string; bd: string; fg: string; w: number }&gt; = {
+  outline: { bg: &quot;transparent&quot;, bd: C.hair34, fg: C.ink, w: 600 },
+  outline2: { bg: &quot;transparent&quot;, bd: C.hair2, fg: C.ink, w: 600 },
+  outline20: { bg: &quot;transparent&quot;, bd: &quot;rgba(245,246,255,0.2)&quot;, fg: C.ink, w: 600 },
+  lime: { bg: C.lime, bd: C.lime, fg: C.onLime, w: 700 },
+  violet: { bg: C.vioSolid, bd: C.vioSolid, fg: C.onDeep, w: 700 },
+  violetSoft: { bg: C.vioBg, bd: C.vioBd, fg: C.vio, w: 700 },
+  violetSoft10: { bg: C.vioBg10, bd: C.vioBd, fg: C.vio, w: 600 },
+  violetLine: { bg: &quot;transparent&quot;, bd: C.vioBd, fg: C.vio, w: 600 },
+  violetLine45: { bg: &quot;transparent&quot;, bd: C.vioBd45, fg: C.vio, w: 600 },
+  ghost: { bg: &quot;transparent&quot;, bd: &quot;transparent&quot;, fg: C.faint, w: 600 },
+  dashed: { bg: &quot;transparent&quot;, bd: &quot;rgba(245,246,255,0.2)&quot;, fg: C.faint, w: 500 },
+};
+
+export type BtnProps = {
+  label: string; onPress?: () =&gt; void; variant?: BtnVariant; arrow?: boolean; icon?: IconName; s?: number; py?: number;
+  style?: StyleProp&lt;ViewStyle&gt;; disabled?: boolean; fg?: string; bd?: string; flex?: number; busy?: boolean; accessibilityLabel?: string;
+};
+
+/** `busy` muestra el label atenuado (el spinner lo pone la pantalla si quiere); `disabled` baja opacidad. */
+export function Btn({ label, onPress, variant = &quot;outline&quot;, arrow, icon, s = 12.5, py = 13, style, disabled, fg, bd, flex, busy, accessibilityLabel }: BtnProps) {
+  const v = VARIANTS[variant];
+  const color = fg ?? v.fg;
+  return (
+    &lt;Touch
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityLabel={accessibilityLabel}
+      style={[{
+        flex, flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, gap: 7,
+        paddingVertical: py, paddingHorizontal: 12, borderRadius: variant === &quot;dashed&quot; ? 999 : 12,
+        borderWidth: 1, borderColor: bd ?? v.bd, backgroundColor: v.bg,
+        borderStyle: variant === &quot;dashed&quot; ? &quot;dashed&quot; : &quot;solid&quot;,
+        opacity: disabled ? 0.55 : busy ? 0.8 : 1,
+      }, style]}
+    &gt;
+      {icon ? &lt;Icon name={icon} size={15} color={color} /&gt; : null}
+      &lt;T w={v.w} s={s} lh={1} mono={variant === &quot;dashed&quot;} color={color}&gt;{label}&lt;/T&gt;
+      {arrow ? &lt;Icon name=&quot;arrow&quot; size={13} color={color} /&gt; : null}
+    &lt;/Touch&gt;
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Selectores.
+export type SegmentedProps&lt;K extends string&gt; = {
+  options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) =&gt; void;
+  /** Colores del segmento activo por clave (Long lima / Short rosa). Sin `tone`, activo = card10 + ink. */
+  tone?: (k: K) =&gt; { bg: string; fg: string };
+};
+
+/** Control segmentado con pulgar translúcido (tabs de portfolio, buy/sell, long/short). */
+export function Segmented&lt;K extends string&gt;({ options, value, onChange, tone }: SegmentedProps&lt;K&gt;) {
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, gap: 4, padding: 3, borderRadius: 999, borderWidth: 1, borderColor: C.hair14, backgroundColor: C.deep }}&gt;
+      {options.map(([k, label]) =&gt; {
+        const on = value === k;
+        const t = on &amp;&amp; tone ? tone(k) : { bg: on ? C.card10 : &quot;transparent&quot;, fg: on ? C.ink : C.faint };
+        return (
+          &lt;Touch key={k} onPress={() =&gt; onChange(k)} accessibilityLabel={`segment-${k}`} style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 999, backgroundColor: t.bg, alignItems: &quot;center&quot; }}&gt;
+            &lt;T w={on ? 700 : 600} s={11.5} lh={1} color={t.fg}&gt;{label}&lt;/T&gt;
+          &lt;/Touch&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+}
+
+/** Tabs píldora (tabs de mercado, de agente): lima al seleccionado. */
+export function PillTabs&lt;K extends string&gt;({ options, value, onChange, flex = true, style }: { options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) =&gt; void; flex?: boolean; style?: StyleProp&lt;ViewStyle&gt; }) {
+  return (
+    &lt;View style={[{ flexDirection: &quot;row&quot;, gap: 4 }, style]}&gt;
+      {options.map(([k, label]) =&gt; {
+        const on = value === k;
+        return (
+          &lt;Chip
+            key={k} label={label} onPress={() =&gt; onChange(k)} accessibilityLabel={`tab-${k}`}
+            fg={on ? C.lime : C.dim} bd={on ? C.limeBd : C.hair18} bg={on ? C.limeBg14 : &quot;transparent&quot;}
+            s={11.5} py={8} px={flex ? 6 : 12} style={flex ? { flex: 1 } : null}
+          /&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+}
+
+/** Barra de progreso fina (graduación). `pct` en 0..1. */
+export function Bar({ pct, h = 5, color = C.blue }: { pct: number; h?: number; color?: string }) {
+  return (
+    &lt;View style={{ flex: 1, height: h, borderRadius: 999, backgroundColor: C.hair12, overflow: &quot;hidden&quot; }}&gt;
+      &lt;View style={{ width: `${Math.max(0, Math.min(1, pct)) * 100}%`, height: &quot;100%&quot;, backgroundColor: color }} /&gt;
+    &lt;/View&gt;
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Avisos y estados.
+export function Warn({ title, body, children }: { title: string; body?: string; children?: ReactNode }) {
+  return (
+    &lt;Card bd={C.warnBd} bg={C.warnBg} pad={11} style={{ paddingHorizontal: 13 }} gap={6}&gt;
+      &lt;T w={700} s={12} lh={1.3} color={C.warn}&gt;{title}&lt;/T&gt;
+      {body ? &lt;T w={400} s={11.5} lh={1.45} color={C.dim}&gt;{body}&lt;/T&gt; : null}
+      {children}
+    &lt;/Card&gt;
+  );
+}
+
+export type Tone = { bd: string; bg: string; fg: string };
+
+/** Tarjeta de estado (fases de read / de orden): borde tintado + tag + título + cuerpo. */
+export function StatusCard({ tag, title, body, tone, big, children }: { tag: string; title: string; body?: string; tone: Tone; big?: boolean; children?: ReactNode }) {
+  return (
+    &lt;Card bd={tone.bd} bg={tone.bg} pad={big ? 15 : 13} gap={big ? 7 : 6}&gt;
+      &lt;Tag color={tone.fg}&gt;{tag}&lt;/Tag&gt;
+      {big
+        ? &lt;T w={700} s={20} lh={1.15} ls={-0.02} display&gt;{title}&lt;/T&gt;
+        : &lt;T w={700} s={13.5} lh={1.3}&gt;{title}&lt;/T&gt;}
+      {body ? &lt;T w={400} s={11.5} lh={1.45} color={C.dim}&gt;{body}&lt;/T&gt; : null}
+      {children}
+    &lt;/Card&gt;
+  );
+}
+
+export function Screen({ children, style, gap = 11, top = 14 }: { children?: ReactNode; style?: StyleProp&lt;ViewStyle&gt;; gap?: number; top?: number }) {
+  return &lt;View style={[{ paddingTop: top, paddingHorizontal: 15, paddingBottom: 20, gap }, style]}&gt;{children}&lt;/View&gt;;
+}
+
+// ---------------------------------------------------------------------------
+// Conservadas de la app (no existen en el diseño), re-vestidas.
+export type StatItem = { label: string; value: string; fg?: string };
+
+export function StatGrid({ items }: { items: StatItem[] }) {
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, borderWidth: 1, borderColor: C.hair14, borderRadius: 14, overflow: &quot;hidden&quot; }}&gt;
+      {items.map((it, i) =&gt; (
+        &lt;View key={i} style={{ width: &quot;50%&quot;, backgroundColor: C.card, padding: 12, paddingHorizontal: 13, borderColor: C.hair12, borderTopWidth: i &gt;= 2 ? 1 : 0, borderLeftWidth: i % 2 === 1 ? 1 : 0 }}&gt;
+          &lt;Tag&gt;{it.label.toUpperCase()}&lt;/Tag&gt;
+          &lt;T w={500} s={13} mono color={it.fg ?? C.ink} style={{ marginTop: 6 }}&gt;{it.value}&lt;/T&gt;
+        &lt;/View&gt;
+      ))}
+    &lt;/View&gt;
+  );
+}
+
+export function EmptyPanel({ children }: { children: ReactNode }) {
+  return (
+    &lt;View style={{ padding: 26, paddingHorizontal: 18, borderWidth: 1, borderColor: &quot;rgba(245,246,255,0.24)&quot;, borderStyle: &quot;dashed&quot;, borderRadius: 14, alignItems: &quot;center&quot; }}&gt;
+      {children}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Comprobar que el archivo tipa por sí solo</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit 2&gt;&amp;1 | grep &#39;src/ui/primitives.tsx&#39; || echo PRIMITIVES_OK</code> Expected: <code>PRIMITIVES_OK</code> (el resto del proyecto puede fallar por <code>Tag</code>/<code>C.mute</code>; sólo importa que este archivo no tenga errores propios). Si <code>CircleQuestionMark</code> no existe en <code>lucide-react-native</code> instalado, usa <code>CircleHelp</code> y anótalo en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/ui/primitives.tsx
+git commit -m &quot;feat(mobile): primitivas del hi-fi (Tag mono, Chip, Btn, Segmented, StatusCard, Icon lucide)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-3-storets-navegacion-del-hi-fi-d5-d6-d7-d22">Task 3: <code>store.ts</code> — navegación del hi-fi (D5, D6, D7, D22)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rewrite: <code>apps/mobile/src/store.ts</code></li>
+<li>Rewrite: <code>apps/mobile/src/screens/comingSoonCopy.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code>, <code>apps/mobile/__tests__/comingSoon.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>IconName</code> de Task 2.</li>
+<li>Produces: tipos <code>Screen</code>, <code>MarketTab</code>, <code>StoreState</code>, <code>Patch</code>, <code>StoreInput</code>, <code>AppStore</code>; constantes <code>INITIAL</code>, <code>COMING_SOON</code>, <code>GATED</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code>, <code>ROOT_OF</code>; funciones puras <code>navState</code>, <code>backState</code>, <code>requireAccountState</code>, <code>afterSigninState</code>, <code>bootState</code>, <code>resetState</code>, <code>signedOutState</code>, <code>canBackFor</code>, <code>headerFor</code>, <code>heldActionFor</code>; hook <code>useAppStore</code>. De <code>comingSoonCopy.ts</code>: <code>ComingSoonTab</code>, <code>ComingSoonCopy</code>, <code>COMING_SOON_COPY</code>, <code>MarketComingSoon</code>, <code>MARKET_COMING_SOON</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir <code>comingSoonCopy.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import type { IconName } from &quot;../ui/primitives&quot;;
+
+export type ComingSoonTab = &quot;launchpad&quot; | &quot;activity&quot; | &quot;portfolio&quot;;
+export type ComingSoonCopy = { icon: IconName; title: string; copy: string };
+
+/** Mismo icono que la tab bar (Shell.TABS). Copy fijado en el spec D17. */
+export const COMING_SOON_COPY: Record&lt;ComingSoonTab, ComingSoonCopy&gt; = {
+  launchpad: { icon: &quot;rocket&quot;, title: &quot;Launchpad&quot;, copy: &quot;Agents with a token&quot; },
+  activity: { icon: &quot;activity&quot;, title: &quot;Activity&quot;, copy: &quot;What the agents you follow are doing&quot; },
+  portfolio: { icon: &quot;layers&quot;, title: &quot;Portfolio&quot;, copy: &quot;Tokens · Perps · Reads&quot; },
+};
+
+export type MarketComingSoon = { title: string; copy: string };
+
+/** Pills Ask y Agents de Market (D14/D17): tarjeta inline, no pantalla completa. */
+export const MARKET_COMING_SOON: Record&lt;&quot;ask&quot; | &quot;agents&quot;, MarketComingSoon&gt; = {
+  ask: { title: &quot;Ask&quot;, copy: &quot;Ask an agent for a read on this market&quot; },
+  agents: { title: &quot;Agents&quot;, copy: &quot;Who trades and who reads this market&quot; },
+};</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Reescribir <code>comingSoon.test.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { COMING_SOON_COPY, MARKET_COMING_SOON } from &quot;../src/screens/comingSoonCopy&quot;;
+import { COMING_SOON } from &quot;../src/store&quot;;
+
+test(&quot;every coming-soon tab has its lucide icon, title and one-line copy&quot;, () =&gt; {
+  expect(Object.keys(COMING_SOON_COPY).sort()).toEqual([...COMING_SOON].sort());
+  expect(COMING_SOON_COPY.launchpad).toEqual({ icon: &quot;rocket&quot;, title: &quot;Launchpad&quot;, copy: &quot;Agents with a token&quot; });
+  expect(COMING_SOON_COPY.activity).toEqual({ icon: &quot;activity&quot;, title: &quot;Activity&quot;, copy: &quot;What the agents you follow are doing&quot; });
+  expect(COMING_SOON_COPY.portfolio).toEqual({ icon: &quot;layers&quot;, title: &quot;Portfolio&quot;, copy: &quot;Tokens · Perps · Reads&quot; });
+});
+
+test(&quot;the Ask and Agents pills of Market have their inline copy&quot;, () =&gt; {
+  expect(MARKET_COMING_SOON.ask.copy).toBe(&quot;Ask an agent for a read on this market&quot;);
+  expect(MARKET_COMING_SOON.agents.copy).toBe(&quot;Who trades and who reads this market&quot;);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Reescribir <code>store.test.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import {
+  afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
+  navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
+} from &quot;../src/store&quot;;
+
+test(&quot;nav pushes the current screen and applies the patch&quot;, () =&gt; {
+  const s = navState(INITIAL, &quot;market&quot;, { perpsMarketId: 64, perpsSide: &quot;short&quot; });
+  expect(s.screen).toBe(&quot;market&quot;);
+  expect(s.stack).toEqual([&quot;wallet&quot;]);
+  expect(s).toMatchObject({ perpsMarketId: 64, perpsSide: &quot;short&quot; });
+  expect(navState(INITIAL, &quot;perpsFunds&quot;, { fundsMode: &quot;withdraw&quot; }).fundsMode).toBe(&quot;withdraw&quot;);
+});
+
+test(&quot;the back-stack keeps only the last 8 screens&quot;, () =&gt; {
+  let s = INITIAL;
+  for (let i = 0; i &lt; 10; i++) s = navState(s, i % 2 ? &quot;markets&quot; : &quot;activity&quot;);
+  expect(s.stack).toHaveLength(8);
+});
+
+test(&quot;back pops the stack and falls back to wallet when empty&quot;, () =&gt; {
+  const s = navState(navState(INITIAL, &quot;markets&quot;), &quot;market&quot;);
+  expect(backState(s).screen).toBe(&quot;markets&quot;);
+  expect(backState(INITIAL).screen).toBe(&quot;wallet&quot;);
+  expect(backState(INITIAL).stack).toEqual([]);
+});
+
+test(&quot;without an account, gated screens ask for access and remember where to go&quot;, () =&gt; {
+  for (const target of GATED) {
+    const s = requireAccountState(INITIAL, false, target, { fundsMode: &quot;add&quot; });
+    expect(s.screen).toBe(&quot;signin&quot;);
+    expect(s.next).toBe(target);
+    expect(s.nextPatch).toEqual({ fundsMode: &quot;add&quot; });
+  }
+});
+
+test(&quot;with an account the gate navigates straight to the target&quot;, () =&gt; {
+  const s = requireAccountState(INITIAL, true, &quot;markets&quot;);
+  expect(s.screen).toBe(&quot;markets&quot;);
+  expect(s.next).toBeUndefined();
+});
+
+test(&quot;coming-soon tabs never ask for an account&quot;, () =&gt; {
+  for (const target of COMING_SOON) expect(requireAccountState(INITIAL, false, target).screen).toBe(target);
+});
+
+test(&quot;after sign-in the app lands on next without leaving signin in the stack&quot;, () =&gt; {
+  const s = afterSigninState(requireAccountState(INITIAL, false, &quot;markets&quot;));
+  expect(s.screen).toBe(&quot;markets&quot;);
+  expect(s.stack).toEqual([&quot;wallet&quot;]);
+  expect(s.next).toBeUndefined();
+  expect(s.nextPatch).toBeUndefined();
+});
+
+test(&quot;the held action names what the gate kept, and is null when it kept nothing&quot;, () =&gt; {
+  expect(heldActionFor(undefined)).toBeNull();
+  expect(heldActionFor(&quot;wallet&quot;)).toBeNull();
+  expect(heldActionFor(&quot;markets&quot;)).toBe(&quot;Trading on Perpl&quot;);
+  expect(heldActionFor(&quot;market&quot;)).toBe(&quot;Trading on Perpl&quot;);
+  expect(heldActionFor(&quot;perpsFunds&quot;)).toBe(&quot;Moving trading funds&quot;);
+  expect(heldActionFor(&quot;deposit&quot;)).toBe(&quot;A deposit&quot;);
+  expect(heldActionFor(&quot;withdraw&quot;)).toBe(&quot;A withdrawal&quot;);
+});
+
+test(&quot;the screen sets of D5 are exactly the spec&#39;s&quot;, () =&gt; {
+  expect([...COMING_SOON]).toEqual([&quot;launchpad&quot;, &quot;activity&quot;, &quot;portfolio&quot;]);
+  expect([...GATED]).toEqual([&quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;, &quot;wallet&quot;, &quot;deposit&quot;, &quot;withdraw&quot;]);
+  expect([...CAN_BACK]).toEqual([&quot;market&quot;, &quot;perpsFunds&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;signin&quot;]);
+  expect([...SHOW_TABS]).toEqual([&quot;markets&quot;, &quot;launchpad&quot;, &quot;activity&quot;, &quot;portfolio&quot;, &quot;wallet&quot;]);
+});
+
+test(&quot;every screen maps to the tab it lights up&quot;, () =&gt; {
+  expect(ROOT_OF.market).toBe(&quot;markets&quot;);
+  expect(ROOT_OF.perpsFunds).toBe(&quot;markets&quot;);
+  expect(ROOT_OF.deposit).toBe(&quot;wallet&quot;);
+  expect(ROOT_OF.withdraw).toBe(&quot;wallet&quot;);
+  expect(ROOT_OF.signin).toBe(&quot;wallet&quot;);
+  for (const tab of SHOW_TABS) expect(ROOT_OF[tab]).toBe(tab);
+});
+
+test(&quot;headers&quot;, () =&gt; {
+  expect(headerFor(&quot;markets&quot;)).toEqual([&quot;Markets&quot;, &quot;Perps on Perpl · Monad&quot;]);
+  expect(headerFor(&quot;market&quot;, &quot;MON&quot;)).toEqual([&quot;MON Perp&quot;, &quot;Perpl · isolated margin · market order&quot;]);
+  expect(headerFor(&quot;market&quot;)).toEqual([&quot;Perp&quot;, &quot;Perpl · isolated margin · market order&quot;]);
+  expect(headerFor(&quot;perpsFunds&quot;)).toEqual([&quot;Trading funds&quot;, &quot;Between wallet and trading&quot;]);
+  expect(headerFor(&quot;wallet&quot;)).toEqual([&quot;Wallet&quot;, &quot;AUSD available and movements&quot;]);
+  expect(headerFor(&quot;deposit&quot;)).toEqual([&quot;Deposit AUSD&quot;, &quot;Monad network&quot;]);
+  expect(headerFor(&quot;withdraw&quot;)).toEqual([&quot;Withdraw AUSD&quot;, &quot;To an external address&quot;]);
+  expect(headerFor(&quot;signin&quot;)).toEqual([&quot;Wallet access&quot;, &quot;Passkey on this device&quot;]);
+  for (const screen of COMING_SOON) expect(headerFor(screen)[1]).toBe(&quot;Coming soon&quot;);
+  expect(headerFor(&quot;launchpad&quot;)[0]).toBe(&quot;Launchpad&quot;);
+});
+
+test(&quot;the app starts on Wallet; boot keeps it with an account and goes through Sign in without one&quot;, () =&gt; {
+  expect(INITIAL.screen).toBe(&quot;wallet&quot;);
+  expect(bootState(INITIAL, true)).toBe(INITIAL);
+  const s = bootState(INITIAL, false);
+  expect(s).toMatchObject({ screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot; });
+  expect(s.nextPatch).toBeUndefined();
+  expect(afterSigninState(s).screen).toBe(&quot;wallet&quot;);
+});
+
+test(&quot;canBackFor requires both a CAN_BACK screen and a non-empty stack&quot;, () =&gt; {
+  expect(canBackFor(&quot;signin&quot;, [])).toBe(false);
+  expect(canBackFor(&quot;signin&quot;, [&quot;wallet&quot;])).toBe(true);
+  expect(canBackFor(&quot;wallet&quot;, [&quot;markets&quot;])).toBe(false);
+  const booted = bootState(INITIAL, false);
+  expect(canBackFor(booted.screen, booted.stack)).toBe(false);
+});
+
+test(&quot;reset clears the stack and any pending gate&quot;, () =&gt; {
+  const dirty = { ...navState(INITIAL, &quot;market&quot;), next: &quot;markets&quot; as const };
+  expect(resetState(dirty, &quot;markets&quot;)).toMatchObject({ screen: &quot;markets&quot;, stack: [], next: undefined, nextPatch: undefined });
+});
+
+test(&quot;sign out lands on Sign in and comes back to Wallet after logging in&quot;, () =&gt; {
+  const dirty = navState(navState(INITIAL, &quot;markets&quot;), &quot;market&quot;, { perpsMarketId: 64 });
+  const s = signedOutState(dirty);
+  expect(s).toMatchObject({ screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot; });
+  expect(canBackFor(s.screen, s.stack)).toBe(false);
+  expect(afterSigninState(s).screen).toBe(&quot;wallet&quot;);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr ambos tests y verlos fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/store.test.ts __tests__/comingSoon.test.ts</code> Expected: FAIL (exports inexistentes: <code>ROOT_OF</code>, <code>heldActionFor</code>, <code>MARKET_COMING_SOON</code>; <code>COMING_SOON</code> viejo).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Reescribir <code>store.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { useCallback, useState } from &quot;react&quot;;
+import { COMING_SOON_COPY, type ComingSoonTab } from &quot;./screens/comingSoonCopy&quot;;
+
+export type Screen =
+  | &quot;markets&quot; | &quot;market&quot; | &quot;perpsFunds&quot;
+  | &quot;launchpad&quot; | &quot;activity&quot; | &quot;portfolio&quot;
+  | &quot;wallet&quot; | &quot;deposit&quot; | &quot;withdraw&quot; | &quot;signin&quot;;
+export type MarketTab = &quot;ask&quot; | &quot;trade&quot; | &quot;agents&quot;;
+
+export type StoreState = {
+  screen: Screen;
+  stack: Screen[];
+  /** A dónde ir al terminar Wallet access, y con qué patch. */
+  next?: Screen;
+  nextPatch?: Patch;
+  /** Trading en Perpl: mercado y lado elegidos, pill activo de Market y modo de la pantalla de fondos. */
+  perpsMarketId?: number;
+  perpsSide?: &quot;long&quot; | &quot;short&quot;;
+  marketTab: MarketTab;
+  fundsMode?: &quot;add&quot; | &quot;withdraw&quot;;
+};
+
+export type Patch = Partial&lt;Omit&lt;StoreState, &quot;stack&quot;&gt;&gt;;
+
+export const INITIAL: StoreState = { screen: &quot;wallet&quot;, stack: [], marketTab: &quot;trade&quot; };
+
+const STACK_MAX = 8;
+
+export function navState(s: StoreState, screen: Screen, patch: Patch = {}): StoreState {
+  return { ...s, ...patch, stack: [...s.stack, s.screen].slice(-STACK_MAX), screen };
+}
+
+export function backState(s: StoreState): StoreState {
+  const stack = [...s.stack];
+  const prev = stack.pop() ?? &quot;wallet&quot;;
+  return { ...s, stack, screen: prev };
+}
+
+/** Tabs que todavía no hacen nada real: el Shell renderiza &quot;Coming soon&quot; (D5, D17). */
+export const COMING_SOON: readonly ComingSoonTab[] = [&quot;launchpad&quot;, &quot;activity&quot;, &quot;portfolio&quot;];
+/** Pantallas que exigen cuenta. Los coming soon nunca la piden. */
+export const GATED: readonly Screen[] = [&quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;, &quot;wallet&quot;, &quot;deposit&quot;, &quot;withdraw&quot;];
+export const CAN_BACK: readonly Screen[] = [&quot;market&quot;, &quot;perpsFunds&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;signin&quot;];
+export const SHOW_TABS: readonly Screen[] = [&quot;markets&quot;, &quot;launchpad&quot;, &quot;activity&quot;, &quot;portfolio&quot;, &quot;wallet&quot;];
+/** Qué tab se ilumina en cada pantalla (D4). */
+export const ROOT_OF: Record&lt;Screen, Screen&gt; = {
+  markets: &quot;markets&quot;, market: &quot;markets&quot;, perpsFunds: &quot;markets&quot;,
+  launchpad: &quot;launchpad&quot;, activity: &quot;activity&quot;, portfolio: &quot;portfolio&quot;,
+  wallet: &quot;wallet&quot;, deposit: &quot;wallet&quot;, withdraw: &quot;wallet&quot;, signin: &quot;wallet&quot;,
+};
+
+export function requireAccountState(s: StoreState, hasAccount: boolean, target: Screen, patch: Patch = {}): StoreState {
+  if (hasAccount || !GATED.includes(target)) return navState(s, target, patch);
+  return navState(s, &quot;signin&quot;, { next: target, nextPatch: patch });
+}
+
+/** Tras el login aterriza en `next` sin dejar `signin` en el stack (como si se hubiera navegado directo). */
+export function afterSigninState(s: StoreState): StoreState {
+  const { next, nextPatch, ...rest } = s;
+  return { ...rest, ...(nextPatch ?? {}), screen: next ?? &quot;wallet&quot; };
+}
+
+/** Al resolver la cuenta por primera vez: con cuenta se queda en Wallet; sin cuenta pasa por Sign in y aterriza en Wallet (D7). */
+export function bootState(s: StoreState, hasAccount: boolean): StoreState {
+  if (hasAccount) return s;
+  return { ...s, screen: &quot;signin&quot;, stack: [], next: &quot;wallet&quot;, nextPatch: undefined };
+}
+
+export function resetState(s: StoreState, screen: Screen): StoreState {
+  return { ...s, screen, stack: [], next: undefined, nextPatch: undefined };
+}
+
+/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar. */
+export function signedOutState(s: StoreState): StoreState {
+  return bootState(resetState(s, &quot;signin&quot;), false);
+}
+
+/** `←` sólo si la pantalla lo permite Y hay algo en el stack al que volver. */
+export function canBackFor(screen: Screen, stack: readonly Screen[]): boolean {
+  return CAN_BACK.includes(screen) &amp;&amp; stack.length &gt; 0;
+}
+
+/** Texto de la tarjeta &quot;We kept what you were about to do&quot; de Sign in (D18); null si el gate no retuvo nada. */
+export function heldActionFor(next: Screen | undefined): string | null {
+  switch (next) {
+    case &quot;markets&quot;: case &quot;market&quot;: return &quot;Trading on Perpl&quot;;
+    case &quot;perpsFunds&quot;: return &quot;Moving trading funds&quot;;
+    case &quot;deposit&quot;: return &quot;A deposit&quot;;
+    case &quot;withdraw&quot;: return &quot;A withdrawal&quot;;
+    default: return null;
+  }
+}
+
+export function headerFor(screen: Screen, perpsSymbol?: string): [string, string] {
+  switch (screen) {
+    case &quot;markets&quot;: return [&quot;Markets&quot;, &quot;Perps on Perpl · Monad&quot;];
+    case &quot;market&quot;: return [perpsSymbol ? `${perpsSymbol} Perp` : &quot;Perp&quot;, &quot;Perpl · isolated margin · market order&quot;];
+    case &quot;perpsFunds&quot;: return [&quot;Trading funds&quot;, &quot;Between wallet and trading&quot;];
+    case &quot;wallet&quot;: return [&quot;Wallet&quot;, &quot;AUSD available and movements&quot;];
+    case &quot;deposit&quot;: return [&quot;Deposit AUSD&quot;, &quot;Monad network&quot;];
+    case &quot;withdraw&quot;: return [&quot;Withdraw AUSD&quot;, &quot;To an external address&quot;];
+    case &quot;signin&quot;: return [&quot;Wallet access&quot;, &quot;Passkey on this device&quot;];
+    case &quot;launchpad&quot;: case &quot;activity&quot;: case &quot;portfolio&quot;: return [COMING_SOON_COPY[screen].title, &quot;Coming soon&quot;];
+  }
+}
+
+export type StoreInput = {
+  /** `account.status !== &quot;none&quot;`. */
+  hasAccount: boolean;
+  /** Mercados de Perpl disponibles para resolver el símbolo del header. */
+  perpsMarkets?: { id: number; symbol: string }[];
+};
+
+export type AppStore = {
+  S: StoreState;
+  set: (patch: Patch) =&gt; void;
+  nav: (screen: Screen, patch?: Patch) =&gt; void;
+  back: () =&gt; void;
+  requireAccount: (target: Screen, patch?: Patch) =&gt; void;
+  finishSignin: () =&gt; void;
+  signedOut: () =&gt; void;
+  boot: (hasAccount: boolean) =&gt; void;
+  hasAccount: boolean;
+  scr: Screen;
+  headerTitle: string;
+  headerSub: string;
+  canBack: boolean;
+  showTabs: boolean;
+  comingSoon: boolean;
+  /** Acción retenida por el gate, para la tarjeta de Sign in. */
+  held: string | null;
+};
+
+export function useAppStore({ hasAccount, perpsMarkets }: StoreInput): AppStore {
+  const [S, setS] = useState&lt;StoreState&gt;(INITIAL);
+
+  const set = useCallback((patch: Patch) =&gt; setS((s) =&gt; ({ ...s, ...patch })), []);
+  const nav = useCallback((screen: Screen, patch?: Patch) =&gt; setS((s) =&gt; navState(s, screen, patch)), []);
+  const back = useCallback(() =&gt; setS(backState), []);
+  const requireAccount = useCallback(
+    (target: Screen, patch?: Patch) =&gt; setS((s) =&gt; requireAccountState(s, hasAccount, target, patch)),
+    [hasAccount],
+  );
+  const finishSignin = useCallback(() =&gt; setS(afterSigninState), []);
+  const signedOut = useCallback(() =&gt; setS(signedOutState), []);
+  const boot = useCallback((has: boolean) =&gt; setS((s) =&gt; bootState(s, has)), []);
+
+  const perpsSymbol = (perpsMarkets ?? []).find((m) =&gt; m.id === S.perpsMarketId)?.symbol;
+  const [headerTitle, headerSub] = headerFor(S.screen, perpsSymbol);
+
+  return {
+    S, set, nav, back, requireAccount, finishSignin, signedOut, boot,
+    hasAccount, scr: S.screen, headerTitle, headerSub,
+    canBack: canBackFor(S.screen, S.stack),
+    showTabs: SHOW_TABS.includes(S.screen),
+    comingSoon: (COMING_SOON as readonly Screen[]).includes(S.screen),
+    held: heldActionFor(S.next),
+  };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Correr los tests y verlos pasar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/store.test.ts __tests__/comingSoon.test.ts</code> Expected: PASS (15 + 2 tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/store.ts src/screens/comingSoonCopy.ts __tests__/store.test.ts __tests__/comingSoon.test.ts
+git commit -m &quot;feat(mobile): store con la navegación del hi-fi (MARKETS absorbe Perpl, coming soon en Launchpad/Activity/Portfolio)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-4-comingsoontsx-pantalla-y-tarjeta-inline-d17">Task 4: <code>comingSoon.tsx</code> — pantalla y tarjeta inline (D17)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rewrite: <code>apps/mobile/src/screens/comingSoon.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>COMING_SOON_COPY</code>, <code>MARKET_COMING_SOON</code>, <code>ComingSoonTab</code> (Task 3); <code>T</code>, <code>Chip</code>, <code>Btn</code>, <code>Icon</code>, <code>Card</code>, <code>Tag</code> (Task 2).</li>
+<li>Produces: <code>ComingSoonScreen({ screen, requireAccount })</code>, <code>ComingSoonCard({ which })</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el archivo</strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import type { Screen } from &quot;../store&quot;;
+import { Btn, Card, Chip, Icon, T, Tag } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+import { COMING_SOON_COPY, MARKET_COMING_SOON, type ComingSoonTab } from &quot;./comingSoonCopy&quot;;
+
+export { COMING_SOON_COPY } from &quot;./comingSoonCopy&quot;;
+
+function isTab(screen: Screen): screen is ComingSoonTab {
+  return screen === &quot;launchpad&quot; || screen === &quot;activity&quot; || screen === &quot;portfolio&quot;;
+}
+
+/** Pantalla completa de los tabs sin función (D17). */
+export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; requireAccount: AppCtx[&quot;requireAccount&quot;] }) {
+  if (!isTab(screen)) throw new Error(`ComingSoonScreen: ${screen} is not a coming-soon tab`);
+  const c = COMING_SOON_COPY[screen];
+  return (
+    &lt;View style={{ flex: 1, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, padding: 16, gap: 14 }}&gt;
+      &lt;View style={{ width: 72, height: 72, borderRadius: 999, backgroundColor: C.card, borderWidth: 1, borderColor: C.vioBd40, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+        &lt;Icon name={c.icon} size={30} color={C.vio} /&gt;
+      &lt;/View&gt;
+      &lt;T w={700} s={22} lh={1.1} ls={-0.02} display&gt;{c.title}&lt;/T&gt;
+      &lt;Chip label=&quot;COMING SOON&quot; mono s={10} fg={C.lime} bd={C.limeBd} dashed /&gt;
+      &lt;T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: &quot;center&quot;, maxWidth: 260 }}&gt;{c.copy}&lt;/T&gt;
+      &lt;Btn label=&quot;Go to Wallet&quot; onPress={() =&gt; requireAccount(&quot;wallet&quot;)} variant=&quot;outline&quot; py={14} style={{ marginTop: 6, paddingHorizontal: 22 }} accessibilityLabel=&quot;go-to-wallet&quot; /&gt;
+    &lt;/View&gt;
+  );
+}
+
+/** Tarjeta inline para los pills Ask y Agents de Market (D14). */
+export function ComingSoonCard({ which }: { which: &quot;ask&quot; | &quot;agents&quot; }) {
+  const c = MARKET_COMING_SOON[which];
+  return (
+    &lt;Card bd={C.vioBd40} bg={C.vioBg06} gap={8}&gt;
+      &lt;Tag color={C.vio}&gt;COMING SOON&lt;/Tag&gt;
+      &lt;T w={700} s={14} lh={1.3}&gt;{c.title}&lt;/T&gt;
+      &lt;T w={400} s={11.5} lh={1.45} color={C.dim}&gt;{c.copy}&lt;/T&gt;
+    &lt;/Card&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Comprobar que tipa</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit 2&gt;&amp;1 | grep &#39;screens/comingSoon&#39; || echo COMING_SOON_OK</code> Expected: <code>COMING_SOON_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/comingSoon.tsx
+git commit -m &quot;feat(mobile): coming soon con la estética del hi-fi y tarjeta inline para Ask/Agents
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-5-screenssignintsx-gate-de-passkey-d18">Task 5: <code>screens/signin.tsx</code> — gate de passkey (D18)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/signin.tsx</code> (a partir de <code>SigninScreen</code> de <code>src/screens/trade.tsx</code>; <code>trade.tsx</code> se borra en Task 8)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>ctx.held</code>, <code>ctx.onWallet</code>, <code>ctx.finishSignin</code> (Task 3 / <code>ctx.ts</code>); <code>createAccount</code>, <code>signIn</code>, <code>describeError</code> de <code>wallet/wallet.ts</code>.</li>
+<li>Produces: <code>SigninScreen(ctx: AppCtx)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el archivo</strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { useState } from &quot;react&quot;;
+import { ActivityIndicator, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { Btn, Card, Screen, T } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+import { createAccount, describeError, signIn } from &quot;../wallet/wallet&quot;;
+
+export function SigninScreen({ held, onWallet, finishSignin }: AppCtx) {
+  const [busy, setBusy] = useState&lt;&quot;create&quot; | &quot;signin&quot; | null&gt;(null);
+  const [error, setError] = useState(&quot;&quot;);
+  const off = busy !== null;
+
+  async function run(kind: &quot;create&quot; | &quot;signin&quot;) {
+    setBusy(kind);
+    setError(&quot;&quot;);
+    try {
+      const wallet = kind === &quot;create&quot; ? await createAccount() : await signIn();
+      onWallet(wallet);
+      finishSignin();
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    &lt;Screen top={18} gap={12}&gt;
+      {held ? (
+        &lt;Card bd={C.vioBd45} bg={C.vioBg08} pad={12} radius={12}&gt;
+          &lt;T w={700} s={12.5} lh={1.3}&gt;We kept what you were about to do&lt;/T&gt;
+          &lt;T w={400} s={11.5} lh={1.45} color={C.dim} style={{ marginTop: 4 }}&gt;{held}. You come straight back after this step.&lt;/T&gt;
+        &lt;/Card&gt;
+      ) : null}
+      &lt;T w={400} s={12.5} lh={1.5} color={C.dim}&gt;Reading and following never need an account. The wallet appears the first time money moves.&lt;/T&gt;
+      &lt;View style={{ gap: 8 }}&gt;
+        &lt;View style={{ position: &quot;relative&quot; }}&gt;
+          &lt;Btn label={busy === &quot;create&quot; ? &quot; &quot; : &quot;Create a wallet&quot;} onPress={() =&gt; run(&quot;create&quot;)} variant=&quot;lime&quot; s={13.5} py={15} disabled={off &amp;&amp; busy !== &quot;create&quot;} busy={busy === &quot;create&quot;} accessibilityLabel=&quot;create-wallet&quot; /&gt;
+          {busy === &quot;create&quot; ? &lt;ActivityIndicator color={C.onLime} style={{ position: &quot;absolute&quot;, alignSelf: &quot;center&quot;, top: 13 }} /&gt; : null}
+        &lt;/View&gt;
+        &lt;View style={{ position: &quot;relative&quot; }}&gt;
+          &lt;Btn label={busy === &quot;signin&quot; ? &quot; &quot; : &quot;I already have one&quot;} onPress={() =&gt; run(&quot;signin&quot;)} variant=&quot;outline&quot; s={13.5} py={15} disabled={off &amp;&amp; busy !== &quot;signin&quot;} busy={busy === &quot;signin&quot;} accessibilityLabel=&quot;sign-in&quot; /&gt;
+          {busy === &quot;signin&quot; ? &lt;ActivityIndicator color={C.ink} style={{ position: &quot;absolute&quot;, alignSelf: &quot;center&quot;, top: 13 }} /&gt; : null}
+        &lt;/View&gt;
+      &lt;/View&gt;
+      {error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{error}&lt;/T&gt; : null}
+      &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;Connecting is not signing. Every operation is confirmed on its own.&lt;/T&gt;
+    &lt;/Screen&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Comprobar que tipa</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit 2&gt;&amp;1 | grep &#39;screens/signin&#39; || echo SIGNIN_OK</code> Expected: <code>SIGNIN_OK</code> (<code>ctx.held</code> existe desde Task 3; <code>AppCtx</code> sigue siendo <code>AppStore &amp; AccountActions &amp; {...}</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/signin.tsx
+git commit -m &quot;feat(mobile): Sign in con el gate del hi-fi (acción retenida, copy nuevo)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-6-screenswallettsx-wallet-deposit-y-withdraw-re-vestidos-d16">Task 6: <code>screens/wallet.tsx</code> — Wallet, Deposit y Withdraw re-vestidos (D16)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/wallet.tsx</code> (lógica de <code>WalletScreen</code>, <code>DepositScreen</code>, <code>WithdrawScreen</code> de <code>src/screens/own.tsx</code>; <code>own.tsx</code> se borra en Task 8)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Treasury</code> (<code>hooks/useTreasury.ts</code>), <code>Perpl</code> (<code>hooks/usePerpl.ts</code>), <code>accountAddress</code>, <code>formatAusd</code>, <code>formatMon</code>, <code>shortHash</code>, <code>EXPLORER_TX_URL</code>, <code>MON_FAUCET_URL</code>, <code>AUSD_DECIMALS</code>, <code>validateWithdraw</code>, <code>describeError</code>; primitivas de Task 2.</li>
+<li>Produces: <code>WalletScreen</code>, <code>DepositScreen</code>, <code>WithdrawScreen</code> (todas <code>(ctx: AppCtx) =&gt; ReactElement</code>).</li>
+</ul>
+<p>Reglas al portar: <strong>ninguna llamada a <code>treasury.*</code> cambia</strong>; sólo cambian primitivas, copy y orden de bloques. El botón &quot;I&#39;ve sent it&quot; de Deposit ya no vuelve a una compra: navega a <code>wallet</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el archivo</strong></label></li>
+</ul>
+<pre><code class="language-tsx">import * as Clipboard from &quot;expo-clipboard&quot;;
+import { useState } from &quot;react&quot;;
+import { ActivityIndicator, Linking, TextInput, View } from &quot;react-native&quot;;
+import { formatUnits, type Address, type Hex } from &quot;viem&quot;;
+import { accountAddress } from &quot;../account&quot;;
+import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from &quot;../config/chain&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { Btn, Card, Chip, KV, Screen, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from &quot;../ui/primitives&quot;;
+import { C, textStyle } from &quot;../ui/theme&quot;;
+import type { Movement } from &quot;../wallet/explorer&quot;;
+import { describeError } from &quot;../wallet/wallet&quot;;
+import { validateWithdraw } from &quot;../wallet/withdraw&quot;;
+
+const TONES = {
+  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime },
+  failed: { bd: C.downBd, bg: C.downBg, fg: C.down },
+  pending: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
+} as const satisfies Record&lt;string, Tone&gt;;
+
+function movementDate(when: number): string {
+  return new Date(when * 1000).toLocaleString(&quot;en-US&quot;, { month: &quot;short&quot;, day: &quot;2-digit&quot;, hour: &quot;2-digit&quot;, minute: &quot;2-digit&quot;, hourCycle: &quot;h23&quot; }).toUpperCase();
+}
+
+const STATUS_FG: Record&lt;Movement[&quot;status&quot;], string&gt; = { Complete: C.up, Confirming: C.warn, Reverted: C.down };
+
+function MovementRow({ m }: { m: Movement }) {
+  return (
+    &lt;Touch onPress={() =&gt; { void Linking.openURL(EXPLORER_TX_URL(m.hash)); }} accessibilityLabel={`movement-${shortHash(m.hash)}`} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: C.hair12, backgroundColor: C.card }}&gt;
+      &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+        &lt;T w={600} s={12.5} lh={1.25}&gt;{m.kind}&lt;/T&gt;
+        &lt;T w={500} s={9.5} lh={1} mono color={C.faint} style={{ marginTop: 3 }}&gt;{movementDate(m.when)} · {shortHash(m.hash).toUpperCase()}&lt;/T&gt;
+      &lt;/View&gt;
+      &lt;View style={{ alignItems: &quot;flex-end&quot;, gap: 4 }}&gt;
+        &lt;T w={700} s={12} lh={1} mono color={m.sign === &quot;+&quot; ? C.up : C.ink}&gt;{m.sign === &quot;+&quot; ? &quot;+&quot; : &quot;−&quot;}{formatAusd(m.amount)}&lt;/T&gt;
+        &lt;T w={500} s={9} lh={1} mono color={STATUS_FG[m.status]}&gt;{m.status.toUpperCase()}&lt;/T&gt;
+      &lt;/View&gt;
+    &lt;/Touch&gt;
+  );
+}
+
+export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, signedOut }: AppCtx) {
+  const address = accountAddress(account) ?? &quot;&quot;;
+  const available = treasury.balances ? formatAusd(treasury.balances.ausd) : &quot;—&quot;;
+  const confirming = treasury.pending.filter((m) =&gt; m.status === &quot;Confirming&quot;).length;
+  const pending = confirming === 0 ? &quot;Nothing pending.&quot; : `${confirming} transfer${confirming === 1 ? &quot;&quot; : &quot;s&quot;} confirming`;
+  const seen = new Set(treasury.pending.map((m) =&gt; m.hash));
+  const rows = [...treasury.pending, ...(treasury.movements ?? []).filter((m) =&gt; !seen.has(m.hash))];
+  const txHash = treasury.notice.split(&quot;: &quot;)[1];
+  const unlocked = account.status === &quot;unlocked&quot;;
+
+  return (
+    &lt;Screen gap={11}&gt;
+      &lt;Card pad={15}&gt;
+        &lt;Tag&gt;AVAILABLE · AUSD&lt;/Tag&gt;
+        &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{available}&lt;/T&gt;
+        &lt;T w={500} s={10} lh={1} mono color={C.faint} style={{ marginTop: 6 }}&gt;{address ? shortHash(address) : &quot;—&quot;} · CONNECTED&lt;/T&gt;
+        &lt;T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}&gt;{pending}&lt;/T&gt;
+        {perpl.state.status === &quot;ready&quot; ? (
+          &lt;Touch onPress={() =&gt; nav(&quot;markets&quot;)} accessibilityLabel=&quot;in-trading&quot;&gt;
+            &lt;T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}&gt;
+              {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? &quot;&quot; : perpl.lastBalance !== null ? &quot; · last seen&quot; : &quot;&quot;} · Markets
+            &lt;/T&gt;
+          &lt;/Touch&gt;
+        ) : null}
+      &lt;/Card&gt;
+
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Btn label=&quot;Deposit&quot; onPress={() =&gt; nav(&quot;deposit&quot;)} variant=&quot;outline2&quot; flex={1} accessibilityLabel=&quot;deposit&quot; /&gt;
+        &lt;Btn label=&quot;Withdraw&quot; onPress={() =&gt; nav(&quot;withdraw&quot;)} variant=&quot;outline2&quot; flex={1} accessibilityLabel=&quot;withdraw&quot; /&gt;
+      &lt;/View&gt;
+
+      &lt;Tag s={10}&gt;MOVEMENTS&lt;/Tag&gt;
+      {treasury.movementsError ? (
+        &lt;Warn title=&quot;Couldn&#39;t load movements&quot; body={treasury.movementsError}&gt;
+          &lt;Chip label=&quot;Retry&quot; onPress={() =&gt; { void treasury.refreshMovements(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: &quot;flex-start&quot; }} /&gt;
+        &lt;/Warn&gt;
+      ) : null}
+      {treasury.movements === null &amp;&amp; !treasury.movementsError ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;Loading movements…&lt;/T&gt; : null}
+      {treasury.movements !== null &amp;&amp; rows.length === 0 ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;Nothing has ever arrived in this wallet.&lt;/T&gt; : null}
+      {rows.map((m) =&gt; &lt;MovementRow key={m.hash} m={m} /&gt;)}
+
+      &lt;Tag s={10} style={{ marginTop: 6 }}&gt;TESTNET&lt;/Tag&gt;
+      &lt;Card gap={7} bg=&quot;transparent&quot;&gt;
+        &lt;KV k=&quot;MON (GAS)&quot; v={treasury.balances ? formatMon(treasury.balances.mon) : &quot;—&quot;} /&gt;
+        &lt;KV k=&quot;YOUR ADDRESS&quot; v={address ? shortHash(address) : &quot;—&quot;} /&gt;
+      &lt;/Card&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Btn label={treasury.busy ? &quot;Requesting…&quot; : &quot;Get test AUSD&quot;} onPress={() =&gt; { void treasury.getTestAusd(); }} variant=&quot;lime&quot; flex={1} busy={treasury.busy} accessibilityLabel=&quot;get-test-ausd&quot; /&gt;
+        &lt;Btn label=&quot;Get test MON · copies address&quot; onPress={() =&gt; { void Clipboard.setStringAsync(address).catch(() =&gt; {}); void Linking.openURL(MON_FAUCET_URL); }} variant=&quot;outline2&quot; flex={1} s={11.5} accessibilityLabel=&quot;get-test-mon&quot; /&gt;
+      &lt;/View&gt;
+      {treasury.rpcError ? (
+        &lt;Warn title=&quot;RPC error&quot; body={treasury.rpcError}&gt;
+          &lt;Chip label=&quot;Retry&quot; onPress={() =&gt; { void treasury.refresh(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: &quot;flex-start&quot; }} /&gt;
+        &lt;/Warn&gt;
+      ) : null}
+      {treasury.notice ? (
+        &lt;Touch onPress={() =&gt; { if (txHash) void Linking.openURL(EXPLORER_TX_URL(txHash)); }}&gt;
+          &lt;T w={500} s={10.5} lh={1.4} mono color={C.up}&gt;{treasury.notice}&lt;/T&gt;
+        &lt;/Touch&gt;
+      ) : null}
+      {treasury.error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{treasury.error}&lt;/T&gt; : null}
+
+      &lt;Tag s={10} style={{ marginTop: 6 }}&gt;SESSION&lt;/Tag&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+        &lt;T w={400} s={12} color={C.faint} style={{ flex: 1 }}&gt;{unlocked ? &quot;Unlocked&quot; : &quot;Locked&quot;}&lt;/T&gt;
+        {unlocked ? &lt;Chip label=&quot;Lock&quot; onPress={lock} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;lock&quot; /&gt; : null}
+        &lt;Chip label=&quot;Sign out&quot; onPress={() =&gt; { void signOut().then(signedOut); }} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;sign-out&quot; /&gt;
+      &lt;/View&gt;
+    &lt;/Screen&gt;
+  );
+}
+
+export function DepositScreen({ nav, account }: AppCtx) {
+  const address = accountAddress(account) ?? &quot;&quot;;
+  const [copied, setCopied] = useState(false);
+
+  return (
+    &lt;Screen gap={11}&gt;
+      &lt;StatGrid items={[{ label: &quot;Asset&quot;, value: &quot;AUSD&quot; }, { label: &quot;Network&quot;, value: &quot;Monad&quot; }]} /&gt;
+      &lt;View style={{ height: 150, borderWidth: 1, borderColor: C.hair22, borderStyle: &quot;dashed&quot;, borderRadius: 14, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot;, backgroundColor: C.card04 }}&gt;
+        &lt;Tag&gt;QR CODE · DEPOSIT ADDRESS&lt;/Tag&gt;
+      &lt;/View&gt;
+      &lt;Card&gt;
+        &lt;Tag&gt;YOUR DEPOSIT ADDRESS&lt;/Tag&gt;
+        &lt;T w={500} s={12} lh={1.45} mono style={{ marginTop: 6 }}&gt;{address}&lt;/T&gt;
+      &lt;/Card&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Btn label={copied ? &quot;Copied&quot; : &quot;Copy address&quot;} onPress={() =&gt; { void Clipboard.setStringAsync(address).then(() =&gt; setCopied(true)); }} variant=&quot;lime&quot; flex={1} py={14} accessibilityLabel=&quot;copy-address&quot; /&gt;
+        &lt;Btn label=&quot;I&#39;ve sent it&quot; onPress={() =&gt; nav(&quot;wallet&quot;)} variant=&quot;outline2&quot; flex={1} py={14} /&gt;
+      &lt;/View&gt;
+      &lt;T w={400} s={11.5} lh={1.45} color={C.faint}&gt;Only AUSD on Monad arrives here. Card and bank transfer are not assumed to exist. Gas is paid in MON.&lt;/T&gt;
+    &lt;/Screen&gt;
+  );
+}
+
+type WithdrawStep = { step: &quot;edit&quot; } | { step: &quot;review&quot;; to: Address; amount: bigint; fee: bigint | null } | { step: &quot;sent&quot;; hash: Hex } | { step: &quot;done&quot;; hash: Hex } | { step: &quot;failed&quot;; hash: Hex } | { step: &quot;unknown&quot;; hash: Hex };
+
+const inputBox = { paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: C.hair, borderRadius: 12, backgroundColor: C.deep } as const;
+
+export function WithdrawScreen({ nav, treasury }: AppCtx) {
+  const ausd = treasury.balances?.ausd ?? 0n;
+  const [to, setTo] = useState(&quot;&quot;);
+  const [amount, setAmount] = useState(&quot;&quot;);
+  const [st, setSt] = useState&lt;WithdrawStep&gt;({ step: &quot;edit&quot; });
+  const [error, setError] = useState(&quot;&quot;);
+  const [busy, setBusy] = useState(false);
+  const check = validateWithdraw({ to, amount, ausd });
+
+  const review = async () =&gt; {
+    if (!check.ok) return;
+    setError(&quot;&quot;);
+    setSt({ step: &quot;review&quot;, to: check.to, amount: check.amount, fee: null });
+    try {
+      const fee = await treasury.estimateFee(check.to, check.amount);
+      setSt((s) =&gt; s.step === &quot;review&quot; ? { ...s, fee } : s);
+    } catch (e) {
+      setError(describeError(e) || &quot;Couldn&#39;t estimate the network fee.&quot;);
+    }
+  };
+
+  const confirm = async () =&gt; {
+    if (st.step !== &quot;review&quot;) return;
+    setBusy(true);
+    setError(&quot;&quot;);
+    try {
+      const status = await treasury.withdraw(st.to, st.amount, (hash) =&gt; setSt({ step: &quot;sent&quot;, hash }));
+      setSt((s) =&gt; s.step === &quot;sent&quot; ? { step: status === &quot;success&quot; ? &quot;done&quot; : &quot;failed&quot;, hash: s.hash } : s);
+    } catch (e) {
+      const msg = describeError(e);
+      if (msg) setError(msg);
+      setSt((s) =&gt; s.step === &quot;sent&quot; ? { step: &quot;unknown&quot;, hash: s.hash } : s);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (st.step === &quot;sent&quot; || st.step === &quot;done&quot; || st.step === &quot;failed&quot; || st.step === &quot;unknown&quot;) {
+    const card = st.step === &quot;done&quot; ? { tag: &quot;COMPLETED&quot;, title: &quot;Withdrawal complete&quot;, body: &quot;The AUSD left this wallet. It shows in Movements.&quot;, tone: TONES.done }
+      : st.step === &quot;failed&quot; ? { tag: &quot;FAILED&quot;, title: &quot;Withdrawal reverted&quot;, body: &quot;Nothing left your balance.&quot;, tone: TONES.failed }
+      : st.step === &quot;unknown&quot; ? { tag: &quot;VERIFYING&quot;, title: &quot;Sent · confirmation not received&quot;, body: &quot;Check the movements list — it may still confirm.&quot;, tone: TONES.pending }
+      : { tag: &quot;SENT · WAITING ON THE NETWORK&quot;, title: &quot;Sent · waiting for confirmation&quot;, body: &quot;You can leave this screen.&quot;, tone: TONES.pending };
+    return (
+      &lt;Screen gap={12}&gt;
+        &lt;StatusCard tag={card.tag} title={card.title} body={card.body} tone={card.tone}&gt;
+          &lt;Touch onPress={() =&gt; { void Linking.openURL(EXPLORER_TX_URL(st.hash)); }}&gt;
+            &lt;T w={500} s={10} lh={1.4} mono color={C.dim}&gt;{st.hash}&lt;/T&gt;
+          &lt;/Touch&gt;
+          {st.step === &quot;unknown&quot; &amp;&amp; error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{error}&lt;/T&gt; : null}
+        &lt;/StatusCard&gt;
+        {st.step !== &quot;sent&quot; ? &lt;Btn label=&quot;Back to wallet&quot; onPress={() =&gt; nav(&quot;wallet&quot;)} variant=&quot;lime&quot; s={13.5} py={15} /&gt; : &lt;ActivityIndicator color={C.lime} /&gt;}
+      &lt;/Screen&gt;
+    );
+  }
+
+  if (st.step === &quot;review&quot;) {
+    return (
+      &lt;Screen gap={11}&gt;
+        &lt;Card&gt;
+          &lt;Tag&gt;DESTINATION ADDRESS&lt;/Tag&gt;
+          &lt;T w={500} s={12} lh={1.45} mono style={{ marginTop: 6 }}&gt;{st.to}&lt;/T&gt;
+        &lt;/Card&gt;
+        &lt;Card pad={15} gap={9}&gt;
+          &lt;Tag&gt;YOU WITHDRAW · AUSD&lt;/Tag&gt;
+          &lt;T w={700} s={30} lh={1} ls={-0.02} display&gt;{formatAusd(st.amount)}&lt;/T&gt;
+          &lt;View style={{ gap: 7, paddingTop: 9, borderTopWidth: 1, borderTopColor: C.hair12 }}&gt;
+            &lt;KV k=&quot;NETWORK&quot; v=&quot;MONAD&quot; /&gt;
+            &lt;KV k=&quot;NETWORK FEE&quot; v={st.fee !== null ? `~${formatMon(st.fee)} MON` : error ? &quot;UNAVAILABLE&quot; : &quot;ESTIMATING…&quot;} vFg={C.dim} /&gt;
+            &lt;KV k=&quot;PLATFORM FEE&quot; v=&quot;0.00 AUSD&quot; vFg={C.dim} /&gt;
+            &lt;KV k=&quot;YOU RECEIVE&quot; v={`${formatAusd(st.amount)} AUSD`} vFg={C.lime} /&gt;
+          &lt;/View&gt;
+        &lt;/Card&gt;
+        {error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{error}&lt;/T&gt; : null}
+        &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+          &lt;Btn label=&quot;Edit&quot; onPress={() =&gt; { setError(&quot;&quot;); setSt({ step: &quot;edit&quot; }); }} variant=&quot;outline2&quot; disabled={busy} style={{ width: 96 }} py={14} /&gt;
+          &lt;Btn label={busy ? &quot;Confirming…&quot; : &quot;Confirm withdrawal&quot;} onPress={() =&gt; { void confirm(); }} variant=&quot;lime&quot; flex={1} busy={busy} s={13.5} py={14} accessibilityLabel=&quot;confirm-withdrawal&quot; /&gt;
+        &lt;/View&gt;
+        &lt;T w={400} s={11.5} lh={1.45} color={C.faint}&gt;Gas is paid in MON from this wallet. The AUSD amount arrives in full.&lt;/T&gt;
+      &lt;/Screen&gt;
+    );
+  }
+
+  return (
+    &lt;Screen gap={11}&gt;
+      &lt;View style={inputBox}&gt;
+        &lt;Tag&gt;DESTINATION ADDRESS&lt;/Tag&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8, marginTop: 4 }}&gt;
+          &lt;TextInput
+            value={to}
+            onChangeText={setTo}
+            placeholder=&quot;Paste a Monad address&quot;
+            placeholderTextColor={C.faint}
+            autoCapitalize=&quot;none&quot;
+            autoCorrect={false}
+            style={[textStyle(500, 12.5, { mono: true, color: C.ink }), { flex: 1, paddingVertical: 6 }]}
+          /&gt;
+          &lt;Chip label=&quot;Paste&quot; onPress={() =&gt; { void Clipboard.getStringAsync().then((s) =&gt; setTo(s.trim())).catch(() =&gt; {}); }} bd={C.hair22} fg={C.ink} /&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+      &lt;Card pad={15} gap={9}&gt;
+        &lt;Tag&gt;AMOUNT · AUSD&lt;/Tag&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+          &lt;TextInput
+            value={amount}
+            onChangeText={setAmount}
+            placeholder=&quot;0.00&quot;
+            placeholderTextColor={C.faint}
+            keyboardType=&quot;decimal-pad&quot;
+            style={[textStyle(700, 30, { lh: 1, ls: -0.02, display: true, color: C.ink }), { flex: 1, paddingVertical: 0 }]}
+          /&gt;
+          &lt;Chip label=&quot;MAX&quot; mono s={10} py={6} px={10} onPress={() =&gt; setAmount(formatUnits(ausd, AUSD_DECIMALS))} /&gt;
+        &lt;/View&gt;
+        &lt;T w={500} s={9.5} lh={1} ls={0.06} mono color={C.faint}&gt;AVAILABLE {formatAusd(ausd)} AUSD&lt;/T&gt;
+      &lt;/Card&gt;
+      {!check.ok &amp;&amp; (to !== &quot;&quot; || amount !== &quot;&quot;) ? &lt;T w={400} s={12} lh={1.4} color={C.warn}&gt;{check.error}&lt;/T&gt; : null}
+      &lt;Btn label=&quot;Review withdrawal&quot; onPress={() =&gt; { void review(); }} disabled={!check.ok} variant=&quot;lime&quot; arrow s={13} py={15} accessibilityLabel=&quot;review-withdrawal&quot; /&gt;
+      &lt;T w={400} s={11.5} lh={1.45} color={C.faint}&gt;Only AUSD on Monad. Gas is paid in MON from this wallet.&lt;/T&gt;
+    &lt;/Screen&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Comprobar que tipa</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit 2&gt;&amp;1 | grep &#39;screens/wallet&#39; || echo WALLET_OK</code> Expected: <code>WALLET_OK</code>. Si <code>satisfies</code> no está disponible en el TS del proyecto (lo está desde 4.9), cambia a <code>as const</code> con el tipo <code>Record&lt;&quot;done&quot;|&quot;failed&quot;|&quot;pending&quot;, Tone&gt;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/wallet.tsx
+git commit -m &quot;feat(mobile): Wallet, Deposit y Withdraw re-vestidos con el hi-fi (testnet y sesión conservados)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-7-shelltsx-devcontrolstsx-apptsx-appconfigts-d4-d10-d23">Task 7: <code>Shell.tsx</code>, <code>DevControls.tsx</code>, <code>App.tsx</code>, <code>app.config.ts</code> (D4, D10, D23)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rewrite: <code>apps/mobile/src/Shell.tsx</code>, <code>apps/mobile/src/DevControls.tsx</code></li>
+<li>Modify: <code>apps/mobile/App.tsx</code>, <code>apps/mobile/app.config.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>ROOT_OF</code>, <code>SHOW_TABS</code> (Task 3); primitivas (Task 2); pantallas <code>MarketsScreen</code>, <code>MarketScreen</code>, <code>PerpsFundsScreen</code> (Task 8, mismos nombres que exportará), <code>WalletScreen</code>, <code>DepositScreen</code>, <code>WithdrawScreen</code> (Task 6), <code>SigninScreen</code> (Task 5), <code>ComingSoonScreen</code> (Task 4); <code>shouldCaptureEdgeSwipe</code>, <code>shouldGoBack</code> (<code>ui/gestures.ts</code>, sin cambios).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir <code>Shell.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { type ReactElement, useCallback, useMemo, useState } from &quot;react&quot;;
+import { Image, PanResponder, RefreshControl, ScrollView, StyleSheet, View } from &quot;react-native&quot;;
+import { LinearGradient } from &quot;expo-linear-gradient&quot;;
+import Svg, { Circle, Defs, Pattern, Rect } from &quot;react-native-svg&quot;;
+import { SafeAreaView } from &quot;react-native-safe-area-context&quot;;
+import type { AppCtx } from &quot;./ctx&quot;;
+import { DevControls } from &quot;./DevControls&quot;;
+import { ComingSoonScreen } from &quot;./screens/comingSoon&quot;;
+import { MarketScreen } from &quot;./screens/market&quot;;
+import { MarketsScreen } from &quot;./screens/markets&quot;;
+import { PerpsFundsScreen } from &quot;./screens/perpsFunds&quot;;
+import { SigninScreen } from &quot;./screens/signin&quot;;
+import { DepositScreen, WalletScreen, WithdrawScreen } from &quot;./screens/wallet&quot;;
+import { ROOT_OF, type Screen } from &quot;./store&quot;;
+import { shouldCaptureEdgeSwipe, shouldGoBack } from &quot;./ui/gestures&quot;;
+import { Icon, type IconName, T, Touch } from &quot;./ui/primitives&quot;;
+import { C } from &quot;./ui/theme&quot;;
+
+const SCREENS: Record&lt;Screen, (ctx: AppCtx) =&gt; ReactElement&gt; = {
+  markets: MarketsScreen, market: MarketScreen, perpsFunds: PerpsFundsScreen,
+  launchpad: (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;launchpad&quot; requireAccount={ctx.requireAccount} /&gt;,
+  activity: (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;activity&quot; requireAccount={ctx.requireAccount} /&gt;,
+  portfolio: (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;portfolio&quot; requireAccount={ctx.requireAccount} /&gt;,
+  wallet: WalletScreen, deposit: DepositScreen, withdraw: WithdrawScreen, signin: SigninScreen,
+};
+
+/** Tab bar del hi-fi (D4): clave de pantalla, etiqueta mono, icono lucide. */
+export const TABS: readonly [Screen, string, IconName][] = [
+  [&quot;markets&quot;, &quot;MARKETS&quot;, &quot;chart&quot;],
+  [&quot;launchpad&quot;, &quot;LAUNCHPAD&quot;, &quot;rocket&quot;],
+  [&quot;activity&quot;, &quot;ACTIVITY&quot;, &quot;activity&quot;],
+  [&quot;portfolio&quot;, &quot;PORTFOLIO&quot;, &quot;layers&quot;],
+  [&quot;wallet&quot;, &quot;WALLET&quot;, &quot;wallet&quot;],
+];
+
+/** Fondo del teléfono: gradiente + campo de puntos, como el marco del diseño (D10). */
+function Backdrop() {
+  return (
+    &lt;View style={StyleSheet.absoluteFill} pointerEvents=&quot;none&quot;&gt;
+      &lt;LinearGradient colors={[C.bgTop, C.bgMid, C.bgBottom]} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} /&gt;
+      &lt;Svg width=&quot;100%&quot; height=&quot;100%&quot; style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}&gt;
+        &lt;Defs&gt;
+          &lt;Pattern id=&quot;dots&quot; patternUnits=&quot;userSpaceOnUse&quot; width=&quot;130&quot; height=&quot;130&quot;&gt;
+            &lt;Circle cx=&quot;1&quot; cy=&quot;1&quot; r=&quot;1&quot; fill=&quot;rgba(255,255,255,0.7)&quot; /&gt;
+          &lt;/Pattern&gt;
+        &lt;/Defs&gt;
+        &lt;Rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;url(#dots)&quot; /&gt;
+      &lt;/Svg&gt;
+    &lt;/View&gt;
+  );
+}
+
+export function Shell({ ctx }: { ctx: AppCtx }) {
+  const { S, back, requireAccount, treasury, perpl } = ctx;
+  const [controls, setControls] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const Current = SCREENS[ctx.scr];
+
+  const refreshable = S.screen === &quot;wallet&quot; || S.screen === &quot;markets&quot;;
+  // Wallet = saldos + movimientos; Markets = contexto de Perpl. allSettled: un fallo no deja el spinner colgado.
+  const onRefresh = useCallback(async () =&gt; {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled(S.screen === &quot;wallet&quot; ? [treasury.refresh(), treasury.refreshMovements()] : [perpl.refreshContext()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [S.screen, treasury, perpl]);
+
+  // Captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
+  const pan = useMemo(() =&gt; PanResponder.create({
+    // g.x0 sólo vale a partir de onResponderGrant; en capture siempre es 0, así que la x inicial real es moveX - dx.
+    onMoveShouldSetPanResponderCapture: (_e, g) =&gt; shouldCaptureEdgeSwipe(g.moveX - g.dx, g.dx, g.dy),
+    onPanResponderRelease: (_e, g) =&gt; { if (shouldGoBack(g.dx)) back(); },
+  }), [back]);
+
+  const isRoot = ROOT_OF[S.screen] === S.screen;
+
+  return (
+    &lt;View style={{ flex: 1, backgroundColor: C.bgBottom }}&gt;
+      &lt;Backdrop /&gt;
+      &lt;SafeAreaView style={{ flex: 1 }} edges={[&quot;top&quot;, &quot;bottom&quot;]}&gt;
+        {/* header */}
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10, paddingTop: 9, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair, backgroundColor: C.deep50 }}&gt;
+          {ctx.canBack ? (
+            &lt;Touch onPress={back} accessibilityLabel=&quot;back&quot; style={{ width: 31, height: 31, borderRadius: 999, borderWidth: 1, borderColor: C.hair22, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+              &lt;Icon name=&quot;back&quot; size={16} color={C.ink} /&gt;
+            &lt;/Touch&gt;
+          ) : null}
+          {isRoot ? &lt;Image source={require(&quot;../assets/pickler-mark.png&quot;)} style={{ width: 24, height: 24 }} resizeMode=&quot;contain&quot; /&gt; : null}
+          &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+            &lt;T w={700} s={16.5} lh={1.15} ls={-0.01} display numberOfLines={1}&gt;{ctx.headerTitle}&lt;/T&gt;
+            &lt;T w={400} s={11} lh={1.2} color={C.faint} numberOfLines={1} style={{ marginTop: 2 }}&gt;{ctx.headerSub}&lt;/T&gt;
+          &lt;/View&gt;
+          {__DEV__ ? (
+            &lt;Touch onPress={() =&gt; setControls(true)} hitSlop={12} accessibilityLabel=&quot;dev-controls&quot;&gt;
+              &lt;T w={500} s={13} lh={1} mono color={C.faint}&gt;⚙&lt;/T&gt;
+            &lt;/Touch&gt;
+          ) : null}
+        &lt;/View&gt;
+
+        {/* cuerpo */}
+        &lt;View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}&gt;
+          &lt;ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps=&quot;handled&quot;
+            refreshControl={refreshable ? &lt;RefreshControl refreshing={refreshing} onRefresh={() =&gt; { void onRefresh(); }} tintColor={C.lime} /&gt; : undefined}
+          &gt;
+            &lt;Current {...ctx} /&gt;
+          &lt;/ScrollView&gt;
+        &lt;/View&gt;
+
+        {/* tab bar */}
+        {ctx.showTabs ? (
+          &lt;View style={{ flexDirection: &quot;row&quot;, paddingTop: 8, paddingHorizontal: 6, paddingBottom: 12, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.deep50 }}&gt;
+            {TABS.map(([k, label, icon]) =&gt; {
+              const fg = ROOT_OF[S.screen] === k ? C.lime : C.faint;
+              return (
+                &lt;Touch key={k} onPress={() =&gt; requireAccount(k)} accessibilityLabel={`tab-${k}`} style={{ flex: 1, alignItems: &quot;center&quot;, gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}&gt;
+                  &lt;Icon name={icon} size={19} color={fg} /&gt;
+                  &lt;T w={500} s={9} lh={1} ls={0.04} mono color={fg}&gt;{label}&lt;/T&gt;
+                &lt;/Touch&gt;
+              );
+            })}
+          &lt;/View&gt;
+        ) : null}
+      &lt;/SafeAreaView&gt;
+
+      {__DEV__ ? &lt;DevControls visible={controls} onClose={() =&gt; setControls(false)} ctx={ctx} /&gt; : null}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Reescribir <code>DevControls.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { Modal, ScrollView, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;./ctx&quot;;
+import type { Screen } from &quot;./store&quot;;
+import { Chip, Hair, T, Tag, Touch } from &quot;./ui/primitives&quot;;
+import { C, pill } from &quot;./ui/theme&quot;;
+
+const GROUPS: readonly [string, readonly [Screen, string][]][] = [
+  [&quot;Perpl&quot;, [[&quot;markets&quot;, &quot;Markets&quot;], [&quot;market&quot;, &quot;Market · ticket&quot;], [&quot;perpsFunds&quot;, &quot;Trading funds&quot;]]],
+  [&quot;Wallet&quot;, [[&quot;wallet&quot;, &quot;Wallet&quot;], [&quot;deposit&quot;, &quot;Deposit&quot;], [&quot;withdraw&quot;, &quot;Withdraw&quot;], [&quot;signin&quot;, &quot;Wallet access&quot;]]],
+  [&quot;Coming soon&quot;, [[&quot;launchpad&quot;, &quot;Launchpad&quot;], [&quot;activity&quot;, &quot;Activity&quot;], [&quot;portfolio&quot;, &quot;Portfolio&quot;]]],
+];
+
+function PChip({ label, on, onPress }: { label: string; on: boolean; onPress: () =&gt; void }) {
+  const p = pill(on);
+  return &lt;Chip label={label} fg={p.fg} bd={p.bd} bg={p.bg} onPress={onPress} s={11.5} py={6} px={10} /&gt;;
+}
+
+export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClose: () =&gt; void; ctx: AppCtx }) {
+  const { S, requireAccount, hasAccount, account, perpl, lock, signOut, signedOut } = ctx;
+  const firstMarket = perpl.context?.markets[0]?.id;
+  const go = (screen: Screen) =&gt; {
+    requireAccount(screen, screen === &quot;market&quot; &amp;&amp; firstMarket !== undefined ? { perpsMarketId: firstMarket, perpsSide: &quot;long&quot; } : undefined);
+    onClose();
+  };
+
+  return (
+    &lt;Modal visible={visible} transparent animationType=&quot;slide&quot; onRequestClose={onClose}&gt;
+      &lt;View style={{ flex: 1, backgroundColor: &quot;rgba(0,0,0,0.6)&quot;, justifyContent: &quot;flex-end&quot; }}&gt;
+        &lt;Touch onPress={onClose} style={{ flex: 1 }}&gt;&lt;View /&gt;&lt;/Touch&gt;
+        &lt;View style={{ backgroundColor: C.bgMid, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: C.hair, padding: 18, paddingBottom: 28, maxHeight: &quot;85%&quot; }}&gt;
+          &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, alignItems: &quot;center&quot;, marginBottom: 6 }}&gt;
+            &lt;T w={700} s={18} ls={-0.01} display&gt;Dev controls&lt;/T&gt;
+            &lt;Touch onPress={onClose}&gt;&lt;T w={600} s={13} color={C.faint}&gt;Close&lt;/T&gt;&lt;/Touch&gt;
+          &lt;/View&gt;
+          &lt;T w={500} s={10} lh={1.4} mono color={C.faint} style={{ marginBottom: 14 }}&gt;
+            screen: {S.screen} · account: {account.status} · perpl: {perpl.state.status}
+          &lt;/T&gt;
+          &lt;ScrollView showsVerticalScrollIndicator={false}&gt;
+            &lt;Tag s={10} style={{ marginBottom: 9 }}&gt;SCREENS&lt;/Tag&gt;
+            &lt;View style={{ gap: 11 }}&gt;
+              {GROUPS.map(([title, items]) =&gt; (
+                &lt;View key={title}&gt;
+                  &lt;T w={700} s={11} color={C.faint} style={{ marginBottom: 6 }}&gt;{title}&lt;/T&gt;
+                  &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 5 }}&gt;
+                    {items.map(([k, label]) =&gt; &lt;PChip key={k} label={label} on={S.screen === k} onPress={() =&gt; go(k)} /&gt;)}
+                  &lt;/View&gt;
+                &lt;/View&gt;
+              ))}
+            &lt;/View&gt;
+
+            &lt;Hair style={{ marginVertical: 16 }} /&gt;
+            &lt;Tag s={10} style={{ marginBottom: 9 }}&gt;SESSION&lt;/Tag&gt;
+            &lt;T w={400} s={11.5} lh={1.4} color={C.faint} style={{ marginBottom: 9 }}&gt;
+              {hasAccount ? &quot;Account, balances and Perpl are real; nothing here is mocked.&quot; : &quot;No account yet: gated screens will ask for access.&quot;}
+            &lt;/T&gt;
+            &lt;View style={{ flexDirection: &quot;row&quot;, gap: 5 }}&gt;
+              {account.status === &quot;unlocked&quot; ? &lt;PChip label=&quot;Lock&quot; on={false} onPress={() =&gt; { lock(); onClose(); }} /&gt; : null}
+              {hasAccount ? &lt;PChip label=&quot;Sign out&quot; on={false} onPress={() =&gt; { void signOut().then(() =&gt; { signedOut(); onClose(); }); }} /&gt; : null}
+            &lt;/View&gt;
+          &lt;/ScrollView&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+    &lt;/Modal&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Actualizar <code>App.tsx</code></strong></label></li>
+</ul>
+<p>Reemplaza las importaciones de fuentes y el <code>useFonts</code> por:</p>
+<pre><code class="language-tsx">import { ChakraPetch_600SemiBold, ChakraPetch_700Bold } from &quot;@expo-google-fonts/chakra-petch&quot;;
+import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from &quot;@expo-google-fonts/jetbrains-mono&quot;;
+import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from &quot;@expo-google-fonts/manrope&quot;;</code></pre>
+<pre><code class="language-tsx">  const [fontsLoaded] = useFonts({
+    Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold,
+    JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold,
+    ChakraPetch_600SemiBold, ChakraPetch_700Bold,
+  });</code></pre>
+<p>Cambia <code>const PERPL_SCREENS: readonly Screen[] = [&quot;perps&quot;, &quot;perpsMarket&quot;, &quot;perpsFunds&quot;];</code> por <code>[&quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;]</code>. Quita <code>ausd</code>/<code>ausdToNumber</code> del <code>useAppStore</code> (el store ya no recibe <code>ausd</code>): <code>const store = useAppStore({ hasAccount, perpsMarkets: perpl.context?.markets ?? [] });</code> y borra el import de <code>ausdToNumber</code>. Los dos <code>backgroundColor: C.bg</code> pasan a <code>C.bgBottom</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Actualizar <code>app.config.ts</code></strong></label></li>
+</ul>
+<p><code>backgroundColor: &quot;#08080A&quot;</code> → <code>&quot;#05061A&quot;</code> en la raíz y en <code>ios</code>. <code>buildNumber</code> <strong>no</strong> cambia (eso es F2).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Comprobar que tipan Shell, DevControls y App (salvo imports de Task 8)</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit 2&gt;&amp;1 | grep -E &#39;src/Shell.tsx|src/DevControls.tsx|App.tsx&#39; | grep -v &quot;screens/market&quot; || echo SHELL_OK</code> Expected: <code>SHELL_OK</code> (los únicos errores permitidos son los módulos <code>./screens/markets</code> y <code>./screens/market</code> que crea la Task 8).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/Shell.tsx src/DevControls.tsx App.tsx app.config.ts
+git commit -m &quot;feat(mobile): Shell con backdrop, header y tab bar del hi-fi; DevControls podado; fuentes nuevas
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-8-markets-market-funds-adaptacion-mecanica-y-borrado-del-mock-d6-d24">Task 8: Markets / Market / Funds — adaptación mecánica y borrado del mock (D6, D24)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Rename: <code>src/screens/perps.tsx</code> → <code>src/screens/markets.tsx</code>; <code>src/screens/perpsMarket.tsx</code> → <code>src/screens/market.tsx</code></li>
+<li>Modify: <code>src/screens/markets.tsx</code>, <code>src/screens/market.tsx</code>, <code>src/screens/perpsFunds.tsx</code></li>
+<li>Delete: <code>src/screens/discover.tsx</code>, <code>src/screens/follow.tsx</code>, <code>src/screens/trade.tsx</code>, <code>src/screens/own.tsx</code>, <code>src/mock/data.ts</code>, <code>src/mock/helpers.ts</code>, <code>__tests__/helpers.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>MarketsScreen</code>, <code>MarketScreen</code>, <code>PerpsFundsScreen</code>, <code>OrderResultCard</code> (misma firma que hoy, en <code>market.tsx</code>).</li>
+</ul>
+<p>El re-maquetado real de estas tres pantallas es F2 (D13–D15). Aquí sólo se cambian nombres para que compilen con los cimientos nuevos. <strong>No</strong> añadas pills, ni cambies copy, ni toques <code>perpl.*</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Renombrar y borrar</strong></label></li>
+</ul>
+<pre><code class="language-bash">git mv src/screens/perps.tsx src/screens/markets.tsx
+git mv src/screens/perpsMarket.tsx src/screens/market.tsx
+git rm src/screens/discover.tsx src/screens/follow.tsx src/screens/trade.tsx src/screens/own.tsx src/mock/data.ts src/mock/helpers.ts __tests__/helpers.test.ts
+rmdir src/mock</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Sustituciones en los tres archivos</strong></label></li>
+</ul>
+<p>En <code>markets.tsx</code>, <code>market.tsx</code> y <code>perpsFunds.tsx</code> aplica, en este orden:</p>
+<table>
+<thead>
+<tr><th>Antes</th><th>Después</th></tr>
+</thead>
+<tbody>
+<tr><td><code>export function PerpsScreen(</code></td><td><code>export function MarketsScreen(</code></td></tr>
+<tr><td><code>export function PerpsMarketScreen(</code></td><td><code>export function MarketScreen(</code></td></tr>
+<tr><td><code>from &quot;./perpsMarket&quot;</code></td><td><code>from &quot;./market&quot;</code></td></tr>
+<tr><td><code>nav(&quot;perps&quot;)</code></td><td><code>nav(&quot;markets&quot;)</code></td></tr>
+<tr><td><code>nav(&quot;perpsMarket&quot;, </code></td><td><code>nav(&quot;market&quot;, </code></td></tr>
+<tr><td><code>C.mute</code></td><td><code>C.faint</code></td></tr>
+<tr><td><code>C.surf2</code></td><td><code>C.deep</code></td></tr>
+<tr><td><code>C.surf</code></td><td><code>C.card</code></td></tr>
+<tr><td><code>C.tile</code></td><td><code>C.card10</code></td></tr>
+<tr><td><code>C.chip</code></td><td><code>C.card09</code></td></tr>
+<tr><td><code>C.hairSoft</code></td><td><code>C.hair12</code></td></tr>
+<tr><td><code>C.hair2</code></td><td><code>C.hair22</code></td></tr>
+<tr><td><code>C.onInk</code></td><td><code>C.onDeep</code></td></tr>
+<tr><td><code>&quot;rgba(245,195,91,0.5)&quot;</code></td><td><code>C.warnBd</code></td></tr>
+<tr><td><code>&quot;rgba(245,195,91,0.1)&quot;</code></td><td><code>C.warnBg</code></td></tr>
+<tr><td><code>&quot;rgba(242,119,122,0.5)&quot;</code></td><td><code>C.downBd</code></td></tr>
+<tr><td><code>&quot;rgba(242,119,122,0.08)&quot;</code></td><td><code>C.downBg</code></td></tr>
+<tr><td><code>&quot;rgba(200,240,58,0.45)&quot;</code></td><td><code>C.limeBd</code></td></tr>
+<tr><td><code>&quot;rgba(200,240,58,0.07)&quot;</code></td><td><code>C.limeBg06</code></td></tr>
+<tr><td><code>textStyle(800, </code></td><td><code>textStyle(700, </code></td></tr>
+</tbody>
+</table>
+<p>Comando de ayuda (macOS <code>sed -i &#39;&#39;</code>, sin <code>\b</code> porque BSD sed no lo soporta; el orden importa: <code>surf2</code> antes que <code>surf</code>, y <code>hair2</code> sólo cuando no le sigue un dígito. Revisa el diff después, no lo confíes a ciegas):</p>
+<pre><code class="language-bash">for f in src/screens/markets.tsx src/screens/market.tsx src/screens/perpsFunds.tsx; do
+  sed -i &#39;&#39; -e &#39;s/export function PerpsScreen(/export function MarketsScreen(/&#39; \
+    -e &#39;s/export function PerpsMarketScreen(/export function MarketScreen(/&#39; \
+    -e &#39;s#from &quot;./perpsMarket&quot;#from &quot;./market&quot;#&#39; \
+    -e &#39;s/nav(&quot;perps&quot;)/nav(&quot;markets&quot;)/g&#39; -e &#39;s/nav(&quot;perpsMarket&quot;, /nav(&quot;market&quot;, /g&#39; \
+    -e &#39;s/C\.mute/C.faint/g&#39; -e &#39;s/C\.surf2/C.deep/g&#39; -e &#39;s/C\.surf/C.card/g&#39; -e &#39;s/C\.tile/C.card10/g&#39; -e &#39;s/C\.chip/C.card09/g&#39; \
+    -e &#39;s/C\.hairSoft/C.hair12/g&#39; -e &#39;s/C\.hair2\([^0-9]\)/C.hair22\1/g&#39; -e &#39;s/C\.onInk/C.onDeep/g&#39; \
+    -e &#39;s/&quot;rgba(245,195,91,0.5)&quot;/C.warnBd/g&#39; -e &#39;s/&quot;rgba(245,195,91,0.1)&quot;/C.warnBg/g&#39; \
+    -e &#39;s/&quot;rgba(242,119,122,0.5)&quot;/C.downBd/g&#39; -e &#39;s/&quot;rgba(242,119,122,0.08)&quot;/C.downBg/g&#39; \
+    -e &#39;s/&quot;rgba(200,240,58,0.45)&quot;/C.limeBd/g&#39; -e &#39;s/&quot;rgba(200,240,58,0.07)&quot;/C.limeBg06/g&#39; \
+    -e &#39;s/textStyle(800, /textStyle(700, /g&#39; &quot;$f&quot;
+done</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Cambios a mano que <code>sed</code> no cubre</strong></label></li>
+</ul>
+<ol>
+<li><strong><code>Tag</code> (píldora) → <code>Chip</code></strong> en <code>markets.tsx</code>: <code>import { EmptyPanel, T, Tag, Touch, TouchCard }</code> → <code>import { Chip, EmptyPanel, T, Touch, TouchCard }</code>. Las dos llamadas:</li>
+<ul>
+<li><code>&lt;Tag label={long ? &quot;LONG&quot; : &quot;SHORT&quot;} fg={…} bd={…} /&gt;</code> → <code>&lt;Chip label={long ? &quot;LONG&quot; : &quot;SHORT&quot;} mono s={9.5} py={4} px={8} fg={long ? C.lime : C.down} bd={long ? C.limeBd : C.downBd} /&gt;</code></li>
+<li><code>&lt;Tag label={conn.label} fg={conn.fg} bd={conn.fg} dot /&gt;</code> → <code>&lt;Chip label={conn.label} s={10} py={4} px={9} fg={conn.fg} bd={conn.fg} /&gt;</code> (el punto se pierde; F2 lo re-maqueta).</li>
+</ul>
+<li><strong><code>KV</code></strong> (<code>label/value/fg</code> → <code>k/v/vFg</code>) en <code>market.tsx</code> y <code>perpsFunds.tsx</code>:</li>
+<ul>
+<li><code>summary.map((r, i) =&gt; &lt;KV key={i} label={r.label} value={r.value} fg={r.fg} /&gt;)</code> → <code>summary.map((r, i) =&gt; &lt;KV key={i} k={r.label.toUpperCase()} v={r.value} vFg={r.fg} /&gt;)</code> (dos veces en <code>market.tsx</code>).</li>
+<li>En <code>perpsFunds.tsx</code>: <code>&lt;KV label=&quot;From&quot; value={…} /&gt;</code> → <code>&lt;KV k=&quot;FROM&quot; v={…} /&gt;</code>; <code>&lt;KV label=&quot;To&quot; value={…} /&gt;</code> → <code>&lt;KV k=&quot;TO&quot; v={…} /&gt;</code>; <code>&lt;KV label=&quot;Network&quot; value=&quot;Monad · gas in MON&quot; fg={C.dim} /&gt;</code> → <code>&lt;KV k=&quot;NETWORK&quot; v=&quot;Monad · gas in MON&quot; vFg={C.dim} /&gt;</code>.</li>
+</ul>
+<li><strong><code>Segmented</code></strong> (nueva firma <code>options/value/onChange/tone</code>):</li>
+<ul>
+<li><code>market.tsx</code> Long/Short:</li>
+<p>``<code>tsx &lt;Segmented options={[[&quot;long&quot;, &quot;Long&quot;], [&quot;short&quot;, &quot;Short&quot;]] as const} value={side} onChange={(k) =&gt; set({ perpsSide: k })} tone={(k) =&gt; ({ bg: k === &quot;long&quot; ? C.lime : C.down, fg: C.onLime })} /&gt; </code>``</p>
+<li><code>market.tsx</code> apalancamiento:</li>
+<p>``<code>tsx &lt;Segmented options={leverages.map((l) =&gt; [String(l), </code>${l}x<code>] as const)} value={String(lvUsed)} onChange={(k) =&gt; setLv(Number(k))} tone={() =&gt; ({ bg: C.ink, fg: C.onDeep })} /&gt; </code>``</p>
+<li><code>perpsFunds.tsx</code> Add/Withdraw:</li>
+<p>``<code>tsx &lt;Segmented options={[[&quot;add&quot;, &quot;Add funds&quot;], [&quot;withdraw&quot;, &quot;Withdraw&quot;]] as const} value={mode} onChange={(k) =&gt; { set({ fundsMode: k }); setAmount(&quot;&quot;); }} tone={() =&gt; ({ bg: C.ink, fg: C.onDeep })} /&gt; </code>``</p>
+</ul>
+<li><code>StatGrid</code> conserva <code>{ label, value, fg }</code> — sin cambios.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>tsc</code> limpio en todo el proyecto</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; echo TSC_OK</code> Expected: <code>TSC_OK</code>. Errores típicos que quedan: un <code>C.hair2</code> al final de línea que el <code>sed</code> no alcanzó (revisa <code>git diff</code>), imports de <code>Tag</code> sobrantes. Corrige hasta verde; no dejes <code>// @ts-ignore</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Tests en verde</strong></label></li>
+</ul>
+<p>Run: <code>npm test 2&gt;&amp;1 | tail -6</code> Expected: 23 suites (se fue <code>helpers.test.ts</code>), todos en verde. Anota el número total de tests en el audit (el spec no lo fija; será menor que 178 por los tests de <code>helpers</code> y <code>store</code> viejos).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add -u src/screens src/mock __tests__/helpers.test.ts
+git add src/screens/markets.tsx src/screens/market.tsx src/screens/perpsFunds.tsx
+git commit -m &quot;refactor(mobile): Markets/Market/Funds sobre las primitivas nuevas; fuera el mock del wireframe
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<p>(<code>git add -u</code> sobre rutas concretas registra los borrados y renombres de esas rutas; no es <code>git add -A</code>.)</p>
+<hr>
+<h3 id="task-9-revision-de-tipos-y-de-copy-cruzado">Task 9: Revisión de tipos y de copy cruzado</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Verify: todo <code>src/</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Buscar restos del wireframe</strong></label></li>
+</ul>
+<pre><code class="language-bash">grep -rn &#39;mock/\|Ionicons\|@expo/vector-icons\|C\.mute\|C\.surf\|C\.tile\|C\.phone\|C\.panel\|C\.bg\b\|hairSoft\|resume\|tradeHolds\|mockHolder\|pickler-mobile@365585e&#39; src App.tsx || echo CLEAN</code></pre>
+<p>Expected: <code>CLEAN</code>. Cada coincidencia es un residuo: elimínalo.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Confirmar la ausencia del reloj falso y de <code>Sparkline</code>/<code>SearchBox</code></strong></label></li>
+</ul>
+<pre><code class="language-bash">grep -rn &#39;9:41\|Sparkline\|SearchBox&#39; src || echo NO_PROTOTYPE_LEFTOVERS</code></pre>
+<p>Expected: <code>NO_PROTOTYPE_LEFTOVERS</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>tsc</code> y tests una vez más</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: limpio y en verde. Si hubo correcciones, commit:</p>
+<pre><code class="language-bash">git add &lt;archivos corregidos&gt;
+git commit -m &quot;chore(mobile): limpieza de residuos del wireframe
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-10-rebuild-nativo-verificacion-en-simulador-readme-overview-y-audit">Task 10: Rebuild nativo, verificación en simulador, README, overview y audit</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code>, <code>docs/overview/2026-09-18-mobile-hifi.html</code>, <code>docs/overview/data/manifest.js</code></li>
+<li>Create: <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Prebuild y correr en el simulador</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo prebuild --platform ios --clean
+npx expo run:ios 2&gt;&amp;1 | tail -20</code></pre>
+<p>Expected: pods instalados (<code>RNSVG</code>, <code>ExpoLinearGradient</code> en la salida de <code>pod install</code>), build OK, app abierta en el simulador por defecto. Pega las últimas líneas en el audit. Si la app arranca con fondo negro sin gradiente, <code>expo-linear-gradient</code> no quedó enlazado: repite el prebuild.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Recorrido con capturas (respeta el lock global de tests/simulador)</strong></label></li>
+</ul>
+<p>Con <code>xcrun simctl io booted screenshot &lt;ruta&gt;</code> (usa el udid explícito si hay más de un simulador arrancado; <code>booted</code> es ambiguo) guarda en el scratchpad de la sesión:</p>
+<ol>
+<li><code>01-signin.png</code> — sin cuenta (Sign out desde SESSION si hace falta): título Chakra Petch, copy de D18, dos botones.</li>
+<li><code>02-signin-held.png</code> — toca la tab MARKETS sin cuenta: aparece &quot;We kept what you were about to do · Trading on Perpl&quot;.</li>
+<li><code>03-wallet.png</code> — con cuenta: card AVAILABLE, address · CONNECTED, MOVEMENTS, TESTNET, SESSION.</li>
+<li><code>04-deposit.png</code>, <code>05-withdraw-edit.png</code>, <code>06-withdraw-review.png</code> (con una dirección válida y 0.01 AUSD; <strong>no confirmes</strong> el retiro).</li>
+<li><code>07-launchpad.png</code>, <code>08-activity.png</code>, <code>09-portfolio.png</code> — coming soon con icono lucide violeta y chip COMING SOON.</li>
+<li><code>10-markets.png</code>, <code>11-market.png</code> — sólo para constatar que compilan y muestran datos reales con el tema nuevo (su look final es F2).</li>
+<li>Pull-to-refresh en Wallet y swipe desde el borde en Deposit → vuelve a Wallet (anótalo, sin captura).</li>
+</ol>
+<p>Mira cada captura con la herramienta de lectura de imágenes antes de darla por buena: gradiente visible, sin texto en Manrope 800 (ya no se carga: si algo se ve en fuente del sistema, hay un <code>w={800}</code> que <code>fam</code> no cubre — no puede pasar, <code>fam(800)</code> → 700 — pero verifica).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: README</strong></label></li>
+</ul>
+<p>En <code>apps/mobile/README.md</code>: primer párrafo → &quot;UI portada del diseño hi-fi <code>Pickler Mobile App.dc.html</code> vía <code>jjesusaf/pickler-mobile</code> (commit <code>a0e353e</code>): tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET. Reales: Wallet (passkey, AUSD/MON, deposit, withdraw, movimientos) y Markets (Perpl). Launchpad, Activity y Portfolio son <em>coming soon</em>.&quot; Sección Tests: sustituye &quot;178/178 esperado (24 suites)&quot; por el número real de la Task 8. Añade una línea en &quot;Correr en simulador&quot;: &quot;<code>react-native-svg</code> y <code>expo-linear-gradient</code> son módulos nativos: tras cambiar dependencias, <code>npx expo prebuild --platform ios --clean</code> antes de <code>run:ios</code>.&quot;</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Overview y manifest</strong></label></li>
+</ul>
+<p>En <code>docs/overview/2026-09-18-mobile-hifi.html</code>: la <code>phase-card</code> F1 pasa a <code>data-status=&quot;completed&quot;</code> (y <code>&lt;option value=&quot;completed&quot; selected&gt;</code>), sus <code>&lt;li&gt;</code> (una por Task 0–10 de este plan, ya cargadas al escribir el plan) quedan <code>checked</code>. Añade <code>&lt;details class=&quot;followups&quot;&gt;</code> con los residuales del audit. En <code>docs/overview/data/manifest.js</code>: <code>phases: [{ num: 1, status: &#39;completed&#39; }, { num: 2, status: &#39;pending&#39; }]</code>, <code>types: [&#39;spec&#39;, &#39;plan&#39;]</code>. Luego:</p>
+<pre><code class="language-bash">cd ../.. &amp;&amp; npm run agents:check 2&gt;&amp;1 | grep -A2 &#39;&quot;errors&quot;&#39; &amp;&amp; npm run docs:check 2&gt;&amp;1 | tail -2</code></pre>
+<p>Expected: <code>&quot;errors&quot;: []</code> y <code>errors=0</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Audit</strong></label></li>
+</ul>
+<p>Crea <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md</code> con las secciones del audit de <code>mobile-polish</code>: <em>Qué quedó hecho y verificado</em> (salida de <code>npm test</code>, <code>tsc</code>, <code>pod install</code>, lista de capturas), <em>Decisiones tomadas durante la ejecución (rulings)</em> (p. ej. <code>CircleHelp</code> vs <code>CircleQuestionMark</code>, versión que resolvió <code>expo install</code>, cualquier desviación del plan), <em>Lo aprendido</em>, <em>Estado de las cuentas de testnet al cierre</em> (saldos de la wallet del simulador re-medidos por RPC, cuenta Perpl #620), <em>Pendientes</em> (residuales no bloqueantes) y <em>Siguiente punto de decisión</em> (F2: re-maquetado de Perpl + fixes → build 5).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Revisión independiente y commit final</strong></label></li>
+</ul>
+<p>Pide una revisión independiente a un subagente con: el spec, este plan, <code>git diff main...feat/mobile-hifi -- apps/mobile</code>, la salida de tests/tsc y las capturas. Aplica lo que proceda (con su propio commit) y registra en el audit qué se aceptó y qué se difirió.</p>
+<pre><code class="language-bash">git add README.md ../../docs/overview/2026-09-18-mobile-hifi.html ../../docs/overview/data/manifest.js ../../docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md
+git commit -m &quot;docs(mobile-hifi): F1 completada — README, overview y audit
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<p><strong>Checkpoint.</strong> F1 termina aquí: sin merge a <code>main</code>, sin push, sin TestFlight. Jesús decide si se abre el plan de F2.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-18-mobile-hifi-f1.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-18-mobile-hifi-f1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

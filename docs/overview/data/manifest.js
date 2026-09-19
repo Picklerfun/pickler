@@ -29,6 +29,19 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-18',
+    title: 'App móvil Pickler — Rediseño hi-fi: tema, MARKETS, Wallet y Trade re-vestidos',
+    summary: 'La app adopta el diseño hi-fi (pickler-mobile@a0e353e): tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET; Wallet y el trading en Perpl se re-visten sin perder lógica, el resto queda en «coming soon» y entran los tres fixes del build 5 (reloj, fees, Reconnect trading).',
+    file: '2026-09-18-mobile-hifi.html',
+    types: ['spec', 'plan'],
+    status: 'active',
+    tags: ['mobile', 'expo', 'ui', 'perpl', 'diseño', 'testflight'],
+    phases: [
+      { num: 1, status: 'completed' },
+      { num: 2, status: 'pending' },
+    ],
+  },
+  {
+    date: '2026-09-18',
     title: 'App móvil Pickler — Pulido de navegación: coming soon, arranque en Wallet, gestos y PnL en Trade',
     summary: 'Market, Activity y Portfolio dicen «coming soon» con la estética de la app; la app arranca en Wallet; Wallet y Trade se refrescan jalando y las pantallas con «←» regresan con swipe desde el borde; Trade muestra el PnL no realizado bajo el saldo con «in positions / free» corregidos.',
     file: '2026-09-18-mobile-polish.html',

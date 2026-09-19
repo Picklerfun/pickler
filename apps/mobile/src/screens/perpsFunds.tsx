@@ -11,8 +11,8 @@ import { describeError } from "../wallet/wallet";
 type Step = { step: "edit" } | { step: "review"; amount: bigint } | { step: "sent"; hash: Hex } | { step: "done"; hash: Hex } | { step: "failed"; hash: Hex } | { step: "unknown"; hash: Hex };
 
 const primaryBtn = { paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: "center" } as const;
-const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
-const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
+const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair22, alignItems: "center" } as const;
+const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair22 } as const;
 
 export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
   const mode: FundsMode = S.fundsMode ?? "add";
@@ -53,10 +53,10 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
   );
 
   if (st.step === "sent" || st.step === "done" || st.step === "failed" || st.step === "unknown") {
-    const tone = st.step === "done" ? { title: mode === "add" ? "Funds added" : "Withdrawn to wallet", fg: C.lime, bd: "rgba(200,240,58,0.45)", bg: "rgba(200,240,58,0.07)" }
-      : st.step === "failed" ? { title: "Transaction reverted", fg: C.down, bd: "rgba(242,119,122,0.5)", bg: "rgba(242,119,122,0.08)" }
-      : st.step === "unknown" ? { title: "Sent · confirmation not received", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" }
-      : { title: "Sent · waiting for confirmation", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" };
+    const tone = st.step === "done" ? { title: mode === "add" ? "Funds added" : "Withdrawn to wallet", fg: C.lime, bd: C.limeBd, bg: C.limeBg06 }
+      : st.step === "failed" ? { title: "Transaction reverted", fg: C.down, bd: C.downBd, bg: C.downBg }
+      : st.step === "unknown" ? { title: "Sent · confirmation not received", fg: C.warn, bd: C.warnBd, bg: C.warnBg }
+      : { title: "Sent · waiting for confirmation", fg: C.warn, bd: C.warnBd, bg: C.warnBg };
     return (
       <View style={{ padding: 16, gap: 13 }}>
         {header}
@@ -66,7 +66,7 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
           {st.step === "unknown" && error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
         </View>
         {st.step !== "sent" ? (
-          <Touch onPress={() => nav("perps")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
+          <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Markets</T></Touch>
         ) : <ActivityIndicator color={C.lime} />}
       </View>
     );
@@ -76,17 +76,17 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
     return (
       <View style={{ padding: 16, gap: 13 }}>
         {header}
-        <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.surf2 }}>
-          <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>{mode === "add" ? "Add to trading" : "Withdraw to wallet"}</T>
+        <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.deep }}>
+          <T w={400} s={11.5} color={C.faint} style={{ marginBottom: 8 }}>{mode === "add" ? "Add to trading" : "Withdraw to wallet"}</T>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
             <T w={800} s={30} lh={1} ls={-0.03}>{formatAusd(st.amount)}</T>
-            <T w={500} s={14} mono color={C.mute}>AUSD</T>
+            <T w={500} s={14} mono color={C.faint}>AUSD</T>
           </View>
         </View>
-        <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, gap: 9 }}>
-          <KV label="From" value={mode === "add" ? "Wallet" : "Trading account"} />
-          <KV label="To" value={mode === "add" ? "Trading account" : "Wallet"} />
-          <KV label="Network" value="Monad · gas in MON" fg={C.dim} />
+        <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, gap: 9 }}>
+          <KV k="FROM" v={mode === "add" ? "Wallet" : "Trading account"} />
+          <KV k="TO" v={mode === "add" ? "Trading account" : "Wallet"} />
+          <KV k="NETWORK" v="Monad · gas in MON" vFg={C.dim} />
         </View>
         {error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -95,7 +95,7 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
             {busy ? <ActivityIndicator color={C.onLime} /> : <T w={700} s={13.5} color={C.onLime}>{mode === "add" ? "Confirm deposit" : "Confirm withdrawal"}</T>}
           </Touch>
         </View>
-        {mode === "add" ? <T w={400} s={11.5} lh={1.45} color={C.mute}>If the exchange allowance is too low, Pickler approves it first (one extra transaction).</T> : null}
+        {mode === "add" ? <T w={400} s={11.5} lh={1.45} color={C.faint}>If the exchange allowance is too low, Pickler approves it first (one extra transaction).</T> : null}
       </View>
     );
   }
@@ -103,23 +103,26 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
   return (
     <View style={{ padding: 16, gap: 13 }}>
       {header}
-      <Segmented options={(["add", "withdraw"] as const).map((k) => ({
-        label: k === "add" ? "Add funds" : "Withdraw", bg: mode === k ? C.ink : "transparent", fg: mode === k ? C.onInk : C.dim, onPress: () => { set({ fundsMode: k }); setAmount(""); },
-      }))} />
-      <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.surf2 }}>
-        <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>{mode === "add" ? "Amount to add" : "Amount to withdraw"}</T>
+      <Segmented
+        options={[["add", "Add funds"], ["withdraw", "Withdraw"]] as const}
+        value={mode}
+        onChange={(k) => { set({ fundsMode: k }); setAmount(""); }}
+        tone={() => ({ bg: C.ink, fg: C.onDeep })}
+      />
+      <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.deep }}>
+        <T w={400} s={11.5} color={C.faint} style={{ marginBottom: 8 }}>{mode === "add" ? "Amount to add" : "Amount to withdraw"}</T>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <TextInput value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.mute} keyboardType="decimal-pad" style={[textStyle(800, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]} />
-          <T w={500} s={14} mono color={C.mute}>AUSD</T>
+          <TextInput value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.faint} keyboardType="decimal-pad" style={[textStyle(700, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]} />
+          <T w={500} s={14} mono color={C.faint}>AUSD</T>
           <Touch onPress={() => setAmount(formatUnits(max, AUSD_DECIMALS))} style={chipBtn}><T w={600} s={12}>Max</T></Touch>
         </View>
         <T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 10 }}>{mode === "add" ? `Minimum ${formatAusd(minDeposit)} AUSD` : `Minimum ${formatAusd(minWithdraw)} AUSD · only free balance`}</T>
       </View>
       {!check.ok && amount !== "" ? <T w={400} s={12} lh={1.4} color={C.warn}>{check.error}</T> : null}
-      <Touch onPress={() => { if (check.ok) setSt({ step: "review", amount: check.amount }); }} disabled={!check.ok} style={{ ...primaryBtn, backgroundColor: check.ok ? C.lime : C.tile }}>
+      <Touch onPress={() => { if (check.ok) setSt({ step: "review", amount: check.amount }); }} disabled={!check.ok} style={{ ...primaryBtn, backgroundColor: check.ok ? C.lime : C.card10 }}>
         <T w={700} s={14.5} color={check.ok ? C.onLime : C.disabled}>Review</T>
       </Touch>
-      <T w={400} s={11.5} lh={1.45} color={C.mute}>Gas is paid in MON from this wallet. Locked collateral can't be withdrawn until the position closes.</T>
+      <T w={400} s={11.5} lh={1.45} color={C.faint}>Gas is paid in MON from this wallet. Locked collateral can't be withdrawn until the position closes.</T>
     </View>
   );
 }
