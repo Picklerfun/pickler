@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "pickler-research-staging",
+  "main": "fixture-worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "queues": {
+    "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }],
+    "consumers": [
+      { "queue": "pickler-research-staging", "max_batch_size": 1, "max_concurrency": 5 },
+    ],
+  },
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": { "APP_ENV": "local", "ADMISSIONS_ENABLED": "true" },
+}
