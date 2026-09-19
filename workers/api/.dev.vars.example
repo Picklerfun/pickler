@@ -7,3 +7,6 @@ DATABASE_URL=
 ALLOWED_ORIGINS=http://localhost:3000
 ENCRYPTION_KEY=
 ADMISSIONS_ENABLED=true
+
+# Optional PEM CA for Node connections; Workers uses platform TLS verification.
+DATABASE_CA_CERT=
