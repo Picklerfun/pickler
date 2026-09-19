@@ -118,7 +118,7 @@ test("reconnect with amount 0 but no account on-chain fails at step 1 and never 
   const err = await runEnable(d, 0n, () => {}).catch((e: unknown) => e);
   expect(err).toBeInstanceOf(EnableError);
   expect((err as EnableError).step).toBe(1);
-  expect((err as EnableError).message).toBe("Enter an amount.");
+  expect((err as EnableError).message).toBe("This wallet has no Perpl account yet.");
   expect(d.walletAusd).not.toHaveBeenCalled();
   expect(d.createAccount).not.toHaveBeenCalled();
 });

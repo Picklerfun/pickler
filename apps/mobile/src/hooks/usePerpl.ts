@@ -121,14 +121,17 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
   }, [active, refreshContext]);
 
   // Reconnect trading (D21): sin key, ¿esta wallet ya tiene cuenta en el exchange?
+  // Sondea mientras no se sepa (cada refresh de context reintenta); una vez conocido no vuelve a llamar al RPC.
+  // Durante "onboarding" conserva el valor: si se anulara, el gate se retitularía "Enable trading" a mitad del Reconnect.
   useEffect(() => {
-    if (state.status !== "none" || !address) { setExistingAccountId(null); return; }
+    if (!address || state.status === "ready" || state.status === "loading") { setExistingAccountId(null); return; }
+    if (state.status === "onboarding" || existingAccountId !== null) return;
     let stale = false;
     readAccountId(address)
       .then((id) => { if (!stale) setExistingAccountId(id); })
-      .catch(() => { if (!stale) setExistingAccountId(null); });
+      .catch(() => { /* hipo del RPC: se reintenta con el siguiente context */ });
     return () => { stale = true; };
-  }, [state.status, address, context]);
+  }, [state.status, address, context, existingAccountId]);
 
   // Socket: vive mientras la pestaña está activa y hay key.
   const key = state.status === "ready" ? state.key : null;
