@@ -21,9 +21,8 @@ npm run build:workers
 ```
 
 For authenticated local browsing, set only public Supabase URL/publishable-key values in the
-web's ignored `.env.local` before building. Set API secrets in its ignored `.dev.vars`. Supply
-`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in the operator environment for
-the disposable local database. The consumer may keep admissions disabled for UI tests:
+web's ignored `.env.local` before building. Set API secrets in its ignored `.dev.vars`. Set APP_ENV=local and DATABASE_URL in each backend Worker’s ignored .dev.vars for
+the disposable loopback database. The consumer may keep admissions disabled for UI tests:
 
 ```sh
 npx wrangler dev --config apps/web/wrangler.jsonc \
@@ -35,26 +34,56 @@ This runs the OpenNext output with bindings under workerd. Rebuild after changes
 provider checks run at startup. Enable consumer admissions only for an explicitly authorized
 research test. An enqueued job is not evidence of completed research.
 
+## Controlled end-to-end suite
+
+For the free integration suite, replace the research config with
+`workers/research/test/wrangler.jsonc`. Its separate entry imports controlled providers only;
+it must never be deployed. Put the disposable local DATABASE_URL in that test directory's
+ignored `.dev.vars`. Keep API APP_ENV=local and ADMISSIONS_ENABLED=true in its `.dev.vars`.
+No model/provider secrets are needed in the controlled consumer.
+
+```sh
+npx wrangler dev --config apps/web/wrangler.jsonc \
+  --config workers/api/wrangler.staging.jsonc \
+  --config workers/research/test/wrangler.jsonc --ip 127.0.0.1 --port 8790 \
+  --persist-to /tmp/pickler-direct-worker-state
+```
+
+In another terminal, save `supabase status --output json` into a mode-0600 temporary file
+without printing its credentials, then run:
+
+```sh
+TEST_WORKERS_URL=http://127.0.0.1:8790 \
+SUPABASE_LOCAL_STATUS_FILE=/absolute/path/to/private-local-status.json \
+npm run test:workers-local
+```
+
+The test requires loopback destinations, creates labelled disposable local users/agents,
+revokes their research access afterward, and retains their results for inspection. It checks
+three controlled market IDs: 1 (abstain), 2 (trade proposal), 3 (technical failure). These are
+synthetic fixtures, never claims about the actual provider's markets. The ordinary suite skips
+this test unless TEST_WORKERS_URL is explicitly supplied. Stop the controlled stack afterward.
+
 ## Dedicated resources and secrets
 
 Resolve the Cloudflare project account and a separate Supabase staging project first. Never
-reuse production identifiers or data. Create Queue `pickler-research-staging` and Hyperdrive
-`pickler-postgres-staging` against that database with **query caching disabled**. Pin the
-verified account ID in all three configs and the same Hyperdrive ID in API/research configs.
-The committed zero ID is a placeholder for local builds; it is not deployable.
+reuse production identifiers or data. Create Queue `pickler-research-staging` and pin the verified account ID in all three configs.
+API and research connect using the DATABASE_URL secret to the Supabase session pooler on port 5432. No Hyperdrive resource or binding is used. Pools belong to one invocation, have at most
+two connections and close before the invocation ends. PostgreSQL remains the transactional authority.
 
-Verify Hyperdrive's remote `caching.disabled` setting after creation and every update. Disabling
-caching preserves connection pooling and ensures permissions and lease reads remain fresh;
-see [Cloudflare caching documentation](https://developers.cloudflare.com/hyperdrive/concepts/query-caching/).
-Migration connections must be direct or session-pooler connections, not Hyperdrive.
+Hosted connections require TLS and hostname verification. Do not add SSL parameters to DATABASE_URL;
+they can override driver options. Node operators can supply the project CA using DATABASE_CA_CERT;
+Workers uses its platform TLS trust and hostname verification. Never disable certificate validation.
+Local plaintext connections require APP_ENV=local and a loopback host. A local success does not
+establish remote TLS compatibility: test the actual hosted path before opening admissions.
 
-| Destination       | Configuration                                                                                       |
-| ----------------- | --------------------------------------------------------------------------------------------------- |
-| Web build/browser | Public Supabase URL and publishable key only                                                        |
-| API secrets       | SUPABASE_URL, SUPABASE_SECRET_KEY, JWT_ISSUER, ALLOWED_ORIGINS                                      |
-| Research secrets  | MODEL_BASE_URL, MODEL_ID, MODEL_API_KEY, EXA_API_KEY; optional sports keys only for enabled plugins |
-| Hyperdrive        | Dedicated staging PostgreSQL origin credentials                                                     |
-| Operator only     | Direct/session database migration URL and deployment authentication                                 |
+| Destination          | Configuration                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| Web build/browser    | Public Supabase URL and publishable key only                                                        |
+| API secrets          | SUPABASE_URL, SUPABASE_SECRET_KEY, JWT_ISSUER, ALLOWED_ORIGINS                                      |
+| Research secrets     | MODEL_BASE_URL, MODEL_ID, MODEL_API_KEY, EXA_API_KEY; optional sports keys only for enabled plugins |
+| Both backend Workers | DATABASE_URL (secret), APP_ENV=staging                                                              |
+| Operator only        | Direct/session database migration URL and deployment authentication                                 |
 
 Use secret input through stdin or the provider's secret UI; do not put secrets in command
 arguments, PRs, logs or shell history. Keep `ADMISSIONS_ENABLED=false` for initial deployment.
@@ -68,14 +97,14 @@ Set ALLOWED_ORIGINS to the exact web URL. Configure Supabase site URL and allowe
 1. Run format, lint, types, PostgreSQL/Supabase tests and all Worker builds. Apply migrations
    against an isolated database first, including historical migration reconciliation tests.
 2. Commit the tested configuration and record its SHA. Run `npm run check:staging -- --provisioned`.
-   Inspect the destination account, database project and Hyperdrive cache configuration separately;
+   Inspect the destination account, database project separately;
    the script checks topology/identifiers, not remote ownership or secrets.
 3. Apply the reconciled migrator to staging using the operator connection. Do not reset schemas.
 4. Upload configured secrets and deploy consumer, then API, then web from that identified commit.
    Use each committed Wrangler config explicitly. Backend workers.dev and previews stay disabled.
 5. Verify the web through its public URL, including binding transport, auth refresh/signout,
    private no-store responses and cookie flags. Check fresh reads and transaction behavior through
-   the actual Hyperdrive path before opening admissions.
+   the actual session-pooler connection before opening admissions.
 6. Enable staging admissions explicitly for the acceptance window, recording the override and
    resulting Worker versions. A subsequent default deployment closes admissions again.
 
