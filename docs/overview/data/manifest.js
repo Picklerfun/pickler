@@ -37,7 +37,7 @@ window.DOCS = [
     tags: ['mobile', 'expo', 'ui', 'perpl', 'diseño', 'testflight'],
     phases: [
       { num: 1, status: 'completed' },
-      { num: 2, status: 'pending' },
+      { num: 2, status: 'plan_ready' },
     ],
   },
   {

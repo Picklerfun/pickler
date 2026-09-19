@@ -186,7 +186,7 @@
         </div>
       </article>
       <!-- Phase 2 ====================================================== -->
-      <article class="phase-card" data-phase="2" data-status="pending">
+      <article class="phase-card" data-phase="2" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -195,7 +195,7 @@
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
               <option value="pending">pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
@@ -213,6 +213,17 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
+              <li><label><input type="checkbox"> Task 0: <code>expo-system-ui</code> y rebuild nativo (cierra el aviso de <code>ios.backgroundColor</code>)</label></li>
+              <li><label><input type="checkbox"> Task 1: <code>formatAusd(raw, decimals)</code> y <code>formatPnl</code> sin «−0.00» (D20, D22)</label></li>
+              <li><label><input type="checkbox"> Task 2: <code>serverTime</code> del header <code>Date</code> y <code>perpl/clock.ts</code> (D19)</label></li>
+              <li><label><input type="checkbox"> Task 3: <code>runEnable</code> con cuenta existente; <code>usePerpl</code> expone <code>clockSkewMs</code> y <code>existingAccountId</code> (D19, D21)</label></li>
+              <li><label><input type="checkbox"> Task 4: <code>isComingSoonTab</code>, primitiva <code>Screen</code> → <code>Page</code>, <code>PillTabs</code> con <code>pill-*</code> (diferidos de la revisión de F1)</label></li>
+              <li><label><input type="checkbox"> Task 5: <code>market.tsx</code> — pills Ask · Trade · Agents y el ticket del hi-fi; fees a 4 decimales (D14, D20)</label></li>
+              <li><label><input type="checkbox"> Task 6: <code>markets.tsx</code> — raíz re-maquetada, gate Reconnect trading, aviso de reloj, PnL (D13, D19, D21, D22)</label></li>
+              <li><label><input type="checkbox"> Task 7: <code>perpsFunds.tsx</code> re-vestido; chip «Clock +2 min» en DevControls (D15)</label></li>
+              <li><label><input type="checkbox"> Task 8: Rebuild y recorrido en simulador con #620: Reconnect, ticket, abrir/cerrar, Funds, reloj forzado, tarjeta «We kept…», RPC antes/después</label></li>
+              <li><label><input type="checkbox"> Task 9: README, spec, overview, manifest y audit F2; revisión independiente</label></li>
+              <li><label><input type="checkbox"> Task 10: Build 0.1.0 (5) de TestFlight y tracker <code>testflight-build5</code> — sólo con autorización de Jesús</label></li>
             </ol>
           </details>
         </div>
