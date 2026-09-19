@@ -134,7 +134,7 @@
       </div>
 
       <!-- Phase 1 ====================================================== -->
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -143,9 +143,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -161,18 +161,29 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 0: Bootstrap del worktree y dependencias nuevas (linear-gradient, svg, lucide, Chakra Petch; sale vector-icons)</label></li>
-              <li><label><input type="checkbox"> Task 1: <code>ui/theme.ts</code> — tokens, fuentes y <code>pill</code> del hi-fi</label></li>
-              <li><label><input type="checkbox"> Task 2: <code>ui/primitives.tsx</code> — primitivas del diseño (Tag mono, Chip, Btn, Segmented, StatusCard, Icon lucide)</label></li>
-              <li><label><input type="checkbox"> Task 3: <code>store.ts</code> + <code>comingSoonCopy.ts</code> — navegación MARKETS, gates, header, <code>held</code></label></li>
-              <li><label><input type="checkbox"> Task 4: <code>comingSoon.tsx</code> — pantalla completa y tarjeta inline</label></li>
-              <li><label><input type="checkbox"> Task 5: <code>screens/signin.tsx</code> — gate de passkey con el copy del hi-fi</label></li>
-              <li><label><input type="checkbox"> Task 6: <code>screens/wallet.tsx</code> — Wallet, Deposit y Withdraw re-vestidos</label></li>
-              <li><label><input type="checkbox"> Task 7: <code>Shell.tsx</code>, <code>DevControls.tsx</code>, <code>App.tsx</code>, <code>app.config.ts</code></label></li>
-              <li><label><input type="checkbox"> Task 8: Markets/Market/Funds adaptación mecánica; borrado del mock del wireframe</label></li>
-              <li><label><input type="checkbox"> Task 9: Revisión de tipos y residuos del wireframe</label></li>
-              <li><label><input type="checkbox"> Task 10: Rebuild nativo, capturas, README, overview y audit</label></li>
+              <li><label><input type="checkbox" checked> Task 0: Bootstrap del worktree y dependencias nuevas (linear-gradient, svg, lucide, Chakra Petch; sale vector-icons)</label></li>
+              <li><label><input type="checkbox" checked> Task 1: <code>ui/theme.ts</code> — tokens, fuentes y <code>pill</code> del hi-fi</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>ui/primitives.tsx</code> — primitivas del diseño (Tag mono, Chip, Btn, Segmented, StatusCard, Icon lucide)</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>store.ts</code> + <code>comingSoonCopy.ts</code> — navegación MARKETS, gates, header, <code>held</code></label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>comingSoon.tsx</code> — pantalla completa y tarjeta inline</label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>screens/signin.tsx</code> — gate de passkey con el copy del hi-fi</label></li>
+              <li><label><input type="checkbox" checked> Task 6: <code>screens/wallet.tsx</code> — Wallet, Deposit y Withdraw re-vestidos</label></li>
+              <li><label><input type="checkbox" checked> Task 7: <code>Shell.tsx</code>, <code>DevControls.tsx</code>, <code>App.tsx</code>, <code>app.config.ts</code></label></li>
+              <li><label><input type="checkbox" checked> Task 8: Markets/Market/Funds adaptación mecánica; borrado del mock del wireframe</label></li>
+              <li><label><input type="checkbox" checked> Task 9: Revisión de tipos y residuos del wireframe</label></li>
+              <li><label><input type="checkbox" checked> Task 10: Rebuild nativo, capturas, README, overview y audit</label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li>La cifra <code>display 30</code> dentro del <code>TextInput</code> de Withdraw se recorta por arriba (<code>lh: 1</code> con <code>paddingVertical: 0</code>); en el review, donde es un <code>T</code>, se ve completa.</li>
+              <li><code>expo prebuild</code> avisa «<code>ios.backgroundColor</code>: Install expo-system-ui to enable this feature»: el color de fondo nativo de D10 no se aplica sin <code>expo-system-ui</code>.</li>
+              <li>Las filas de mercado quedan sin <code>onPress</code> en el gate <code>readOnly</code>, así que a <code>market</code> sólo se llega por DevControls mientras no haya cuenta de Perpl.</li>
+              <li>Los chips de DevControls no llevan <code>accessibilityLabel</code>: Maestro no los encuentra por texto y hay que tocarlos por punto.</li>
+              <li>La tarjeta «We kept what you were about to do» (D18) quedó verificada sólo por test (<code>heldActionFor</code>); falta captura en simulador porque exige estado sin cuenta.</li>
+              <li>El pill activo de apalancamiento en <code>market</code> se ve blanco, no lima; se revisa con el re-maquetado de F2.</li>
+            </ul>
           </details>
         </div>
       </article>

@@ -1,11 +1,11 @@
 # Pickler mobile
 
-App Expo/iOS de Pickler. UI portada del prototipo
-[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `365585e`):
-13 pantallas en TypeScript con datos de ejemplo, salvo lo que ya es real: cuenta EVM
-derivada de una passkey (mera + PRF) guardada con gate biométrico, saldos de AUSD/MON en
-Monad Testnet y faucet de AUSD, todo dentro de *Wallet access*, *Wallet* y *Deposit*.
-El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado del prototipo.
+App Expo/iOS de Pickler. UI portada del diseño hi-fi `Pickler Mobile App.dc.html` vía
+[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `a0e353e`):
+tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET.
+Reales: Wallet (passkey, AUSD/MON, deposit, withdraw, movimientos) y Markets (Perpl).
+Launchpad, Activity y Portfolio son *coming soon*.
+El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado de la sesión.
 
 ## Correr en simulador
 
@@ -24,10 +24,13 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 `00008140-...`), **no** el `Identifier` que imprime la tabla de
 `xcrun devicectl list devices` (ese es un UUID de emparejamiento distinto).
 
+`react-native-svg` y `expo-linear-gradient` son módulos nativos: tras cambiar
+dependencias, `npx expo prebuild --platform ios --clean` antes de `run:ios`.
+
 ## Tests
 
 ```bash
-npm test          # jest, 178/178 esperado (24 suites)
+npm test          # jest, 169/169 esperado (23 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
