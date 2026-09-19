@@ -30,7 +30,7 @@
 | P3 | `PillTabs` etiqueta cada pill como `pill-<key>` (hoy `tab-<key>`). | Pendiente de la revisión final: `tab-markets` ya es la tab bar; el pill Trade de Market colisionaría con un futuro `tab-trade`. |
 | P4 | `Perpl.clockSkewMs` se mide en `refreshContext` con el `Date.now()` inmediatamente posterior al `await fetchContext`, y un override de desarrollo `setClockSkewOverride(ms \| null)` (sólo lo usa `DevControls` bajo `__DEV__`) permite forzar el `Warn` en el simulador. | El simulador comparte el reloj del Mac; no hay forma de desfasarlo sin tocar el reloj del host. El spec §3 pide "skew forzado (reloj del simulador ±2 min)"; el override cumple esa verificación sin cambiar el reloj de nadie. |
 | P5 | `runEnable` con `amount === 0n` y `readAccountId() === 0n` falla en el paso 1 con `"Enter an amount."` sin llamar `createAccount`. | Riesgo del spec §4 ("`enable(0n)` con `existingAccountId` desfasado"): sin este guard `createAccount(0n)` mandaría una tx inútil. |
-| P6 | `formatPnl(raw)` (nueva, en `perpl/orders.ts`) devuelve `"+0.00"` cuando `\|raw\| < 5_000n` (0.005 AUSD) y `±X.XX` en el resto; la usan la fila de posición, la línea de PnL no realizado y la confirmación de cierre. | D22: cierra el "−0.00 unrealised PnL" del audit del pulido con una sola función testeada. |
+| P6 | `formatPnl(raw)` (nueva, en `perpl/orders.ts`) devuelve `"+0.00"` cuando `\|raw\| < 10_000n` (un centavo mostrado: `formatAusd` trunca, así que todo lo menor a 0.01 imprime "0.00") y `±X.XX` en el resto; la usan la fila de posición, la línea de PnL no realizado y la confirmación de cierre. | D22: cierra el "−0.00 unrealised PnL" del audit del pulido con una sola función testeada. |
 | P7 | Al tocar una fila de Markets se navega con `{ perpsMarketId, perpsSide: "long", marketTab: "trade" }`. | D14 fija `trade` como pill por defecto; sin el patch, volver a un mercado tras haber mirado Ask lo abriría en Ask. |
 | P8 | El botón "Review …" del ticket es `Btn` `outline` con `arrow` (como `Btn label={M.perpCta} arrow` del diseño) y el de confirmación es `lime`. | D14 lo describe así; el énfasis lima queda para la acción que mueve dinero. |
 
@@ -120,7 +120,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `truncate(value, places)` y `AUSD_DECIMALS` de `config/chain.ts`; `formatAusd` de `config/chain.ts` desde `orders.ts`.
-- Produces: `formatAusd(raw: bigint, decimals = 2): string`; `formatPnl(raw: bigint): string` (`"+0.00"` si `|raw| < 5_000n`, si no `"+1.23"` / `"−1.23"` con el signo menos tipográfico `−` U+2212, como ya usan las pantallas). Las Tasks 5 y 6 dependen de los dos.
+- Produces: `formatAusd(raw: bigint, decimals = 2): string`; `formatPnl(raw: bigint): string` (`"+0.00"` si `|raw| < 10_000n`, si no `"+1.23"` / `"−1.23"` con el signo menos tipográfico `−` U+2212, como ya usan las pantallas). Las Tasks 5 y 6 dependen de los dos.
 
 - [ ] **Step 1: Tests que fallan**
 
@@ -137,15 +137,15 @@ Añade `formatPnl` al import de `__tests__/perpl-orders.test.ts` y al final del 
 ```ts
 test("formatPnl rounds anything under half a cent to +0.00 and keeps the sign otherwise", () => {
   expect(formatPnl(0n)).toBe("+0.00");
-  expect(formatPnl(-4_999n)).toBe("+0.00");
-  expect(formatPnl(4_999n)).toBe("+0.00");
-  expect(formatPnl(5_000n)).toBe("+0.00");
+  expect(formatPnl(-9_999n)).toBe("+0.00");
+  expect(formatPnl(9_999n)).toBe("+0.00");
   expect(formatPnl(10_000n)).toBe("+0.01");
+  expect(formatPnl(-10_000n)).toBe("−0.01");
   expect(formatPnl(-1_500_000n)).toBe("−1.50");
   expect(formatPnl(123_456_789n)).toBe("+123.45");
 });
 ```
-(`formatPnl(5_000n)` es `"+0.00"` porque `formatAusd` trunca: 0.005 → "0.00". El umbral sólo decide el signo.)
+(El umbral es un centavo mostrado, no medio: `formatAusd` trunca, y un umbral de 0.005 dejaría «−0.00» entre −0.005 y −0.0099. Ruling de ejecución.)
 
 - [ ] **Step 2: Verificar que fallan**
 
@@ -163,12 +163,12 @@ export function formatAusd(raw: bigint, decimals = 2): string {
 ```
 En `src/perpl/orders.ts`, cambia el import de la cabecera a `import { AUSD_DECIMALS, formatAusd } from "../config/chain";`, renombra en `unrealisedPnl` la variable `any` → `matched` (las tres apariciones) y añade después de `unrealisedPnl`:
 ```ts
-const HALF_CENT = 5_000n; // 0.005 AUSD en unidades de 6 decimales
+const ONE_CENT = 10_000n; // 0.01 AUSD en unidades de 6 decimales: lo mínimo que formatAusd (truncado) muestra distinto de 0.00
 
-/** PnL con signo para la UI: por debajo de medio centavo es "+0.00" (D22), nunca "−0.00". */
+/** PnL con signo para la UI: por debajo de un centavo es "+0.00" (D22), nunca "−0.00". */
 export function formatPnl(raw: bigint): string {
   const abs = raw < 0n ? -raw : raw;
-  if (abs < HALF_CENT) return "+0.00";
+  if (abs < ONE_CENT) return "+0.00";
   return `${raw < 0n ? "−" : "+"}${formatAusd(abs)}`;
 }
 ```
@@ -768,7 +768,7 @@ function PositionRow({ p, market, onClose }: { p: Position; market: Market; onCl
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Chip label={long ? "LONG" : "SHORT"} mono s={9.5} py={4} px={8} fg={long ? C.lime : C.down} bd={long ? C.limeBd : C.downBd} />
         <T w={600} s={13} style={{ flex: 1 }}>{formatSize(p.s, market.sizeDecimals)} {market.symbol} · {lv}x</T>
-        <T w={700} s={13} mono color={pnl < -4_999n ? C.down : C.up}>{formatPnl(pnl)} AUSD</T>
+        <T w={700} s={13} mono color={pnl <= -10_000n ? C.down : C.up}>{formatPnl(pnl)} AUSD</T>
       </View>
       <T w={500} s={10} lh={1.4} mono color={C.faint}>{formatPrice(p.ep, market.priceDecimals)} → {formatPrice(market.mark, market.priceDecimals)} · LIQ. EST. {formatPrice(liq, market.priceDecimals)}</T>
       <Btn label="Close" onPress={onClose} variant="outline" py={10} accessibilityLabel={`close-${p.pid}`} />
@@ -883,7 +883,7 @@ export function MarketsScreen(ctx: AppCtx) {
           <Card bd={C.hair2} bg={C.deep} gap={9}>
             <Tag>YOU CLOSE · AT MARKET</Tag>
             <T w={700} s={14} lh={1.3}>{formatSize(closing.p.s, closing.market.sizeDecimals)} {closing.market.symbol} {closing.p.sd === 1 ? "LONG" : "SHORT"}</T>
-            <KV k="EST. PNL" v={`${formatPnl(pnl)} AUSD`} vFg={pnl < -4_999n ? C.down : C.up} />
+            <KV k="EST. PNL" v={`${formatPnl(pnl)} AUSD`} vFg={pnl <= -10_000n ? C.down : C.up} />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Btn label="Keep it" onPress={() => setClosing(null)} variant="outline" flex={1} accessibilityLabel="keep-position" />
               <Btn label={isLive ? "Close position" : "Connecting…"} onPress={() => { void doClose(closing); }} variant="lime" flex={1} disabled={!isLive} accessibilityLabel="close-position" />
@@ -903,7 +903,7 @@ export function MarketsScreen(ctx: AppCtx) {
         </View>
         <T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{formatAusd(b)}</T>
         <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? "" : " · last seen"}</T>
-        {upnl !== null ? <T w={500} s={10.5} lh={1.4} mono color={upnl < -4_999n ? C.down : C.up} style={{ marginTop: 3 }}>{formatPnl(upnl)} unrealised PnL</T> : null}
+        {upnl !== null ? <T w={500} s={10.5} lh={1.4} mono color={upnl <= -10_000n ? C.down : C.up} style={{ marginTop: 3 }}>{formatPnl(upnl)} unrealised PnL</T> : null}
       </Card>
 
       {skew ? <Warn title={skew.title} body={skew.body} /> : null}
@@ -943,7 +943,7 @@ export function MarketsScreen(ctx: AppCtx) {
   );
 }
 ```
-Nota: el umbral `-4_999n` en los colores es el mismo medio centavo de `formatPnl` (P6): un PnL de −0.004 se pinta en lima junto a su "+0.00".
+Nota: el umbral `-10_000n` en los colores es el mismo centavo de `formatPnl` (P6): un PnL de −0.009 se pinta en lima junto a su "+0.00".
 
 - [ ] **Step 2: `tsc`, tests, residuos**
 
