@@ -6,7 +6,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
   "queues": {
     "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }],
     "consumers": [
@@ -23,5 +22,5 @@
   "triggers": { "crons": ["* * * * *"] },
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
-  "vars": { "ADMISSIONS_ENABLED": "false" },
+  "vars": { "APP_ENV": "staging", "ADMISSIONS_ENABLED": "false" },
 }
