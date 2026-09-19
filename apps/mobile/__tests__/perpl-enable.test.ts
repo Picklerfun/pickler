@@ -100,3 +100,25 @@ test("retry after a step-3 failure with the wallet drained does not re-check the
   expect(d.walletAusd).not.toHaveBeenCalled();
   expect(d.approve).not.toHaveBeenCalled();
 });
+
+test("reconnect: amount 0 with an existing account only re-checks forwarding and the key (D21)", async () => {
+  const d = deps({ readAccountId: jest.fn(async () => 620n) });
+  const steps: number[] = [];
+  await expect(runEnable(d, 0n, (s) => steps.push(s))).resolves.toEqual(KEY);
+  expect(steps).toEqual([1, 3, 4]);
+  expect(d.walletAusd).not.toHaveBeenCalled();
+  expect(d.approve).not.toHaveBeenCalled();
+  expect(d.createAccount).not.toHaveBeenCalled();
+  expect(d.isForwarding).toHaveBeenCalledTimes(1);
+  expect(d.loadKey).toHaveBeenCalledWith(620n);
+});
+
+test("reconnect with amount 0 but no account on-chain fails at step 1 and never creates an account", async () => {
+  const d = deps({ readAccountId: jest.fn(async () => 0n) });
+  const err = await runEnable(d, 0n, () => {}).catch((e: unknown) => e);
+  expect(err).toBeInstanceOf(EnableError);
+  expect((err as EnableError).step).toBe(1);
+  expect((err as EnableError).message).toBe("Enter an amount.");
+  expect(d.walletAusd).not.toHaveBeenCalled();
+  expect(d.createAccount).not.toHaveBeenCalled();
+});

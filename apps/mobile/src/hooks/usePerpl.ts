@@ -3,6 +3,7 @@ import type { Hex } from "viem";
 import { accountAddress, type AccountState } from "../account";
 import { PERPL_URLS } from "../config/perpl";
 import { enrollTradingKey, generateTradingKey } from "../perpl/apiKey";
+import { clockSkewMs as measureSkew } from "../perpl/clock";
 import { CONTEXT_POLL_MS, PERPL_CHAIN_ID, SOCKET_GRACE_MS } from "../perpl/config";
 import { type Context, fetchContext, type Market } from "../perpl/context";
 import { EnableError, type EnableStep, runEnable } from "../perpl/enable";
@@ -31,6 +32,12 @@ export type Perpl = {
   contextError: string;
   live: Live | null;
   lastBalance: bigint | null;
+  /** serverTime − Date.now() del último pub/context; null sin header `Date` (D19). Con override de dev, el override. */
+  clockSkewMs: number | null;
+  /** Cuenta de Perpl de esta wallet mientras no hay key (D21): null = sin sondear, 0n = no existe, >0n = existe. */
+  existingAccountId: bigint | null;
+  /** Sólo DevControls (__DEV__): fuerza un desfase para ver el aviso en el simulador. */
+  setClockSkewOverride: (ms: number | null) => void;
   enable: (amount: bigint) => Promise<void>;
   enableForwardingOnly: () => Promise<void>;
   addFunds: (amount: bigint, onSent: (hash: Hex) => void) => Promise<"success" | "reverted">;
@@ -68,6 +75,9 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
   const [contextError, setContextError] = useState("");
   const [live, setLive] = useState<Live | null>(null);
   const [lastBalance, setLastBalance] = useState<bigint | null>(null);
+  const [measuredSkew, setMeasuredSkew] = useState<number | null>(null);
+  const [skewOverride, setSkewOverride] = useState<number | null>(null);
+  const [existingAccountId, setExistingAccountId] = useState<bigint | null>(null);
   const [active, setActiveState] = useState(false);
   const socketRef = useRef<TradingSocket | null>(null);
   const liveRef = useRef<Live | null>(null);
@@ -93,7 +103,9 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
 
   const refreshContext = useCallback(async () => {
     try {
-      setContext(await fetchContext(PERPL_URLS.rest));
+      const ctx = await fetchContext(PERPL_URLS.rest);
+      setMeasuredSkew(measureSkew(ctx.serverTime, Date.now()));
+      setContext(ctx);
       setContextError("");
     } catch (e) {
       setContextError(describeError(e) || "Couldn't load markets.");
@@ -107,6 +119,16 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
     const timer = setInterval(() => { void refreshContext(); }, CONTEXT_POLL_MS);
     return () => clearInterval(timer);
   }, [active, refreshContext]);
+
+  // Reconnect trading (D21): sin key, ¿esta wallet ya tiene cuenta en el exchange?
+  useEffect(() => {
+    if (state.status !== "none" || !address) { setExistingAccountId(null); return; }
+    let stale = false;
+    readAccountId(address)
+      .then((id) => { if (!stale) setExistingAccountId(id); })
+      .catch(() => { if (!stale) setExistingAccountId(null); });
+    return () => { stale = true; };
+  }, [state.status, address, context]);
 
   // Socket: vive mientras la pestaña está activa y hay key.
   const key = state.status === "ready" ? state.key : null;
@@ -133,6 +155,8 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
       if (socketRef.current === socket) socketRef.current = null;
     };
   }, [active, key]);
+
+  const setClockSkewOverride = useCallback((ms: number | null) => setSkewOverride(ms), []);
 
   const setActive = useCallback((next: boolean) => {
     if (graceRef.current) { clearTimeout(graceRef.current); graceRef.current = null; }
@@ -236,5 +260,9 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
     setState({ status: "ready", key: stored }); // el efecto del socket lo recrea con la key nueva
   }, [address, key, openWallet]);
 
-  return { state, context, contextError, live, lastBalance, enable, enableForwardingOnly, addFunds, withdraw, open, close, resetKey, setActive, refreshContext };
+  return {
+    state, context, contextError, live, lastBalance,
+    clockSkewMs: skewOverride ?? measuredSkew, existingAccountId, setClockSkewOverride,
+    enable, enableForwardingOnly, addFunds, withdraw, open, close, resetKey, setActive, refreshContext,
+  };
 }
