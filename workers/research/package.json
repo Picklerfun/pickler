@@ -14,6 +14,9 @@
   "devDependencies": {
     "@pickler/typescript-config": "*",
     "@cloudflare/workers-types": "^4.20260702.1",
-    "wrangler": "4.133.0"
+    "wrangler": "4.133.0",
+    "@pickler/core": "*",
+    "pg": "8.20.0",
+    "@types/pg": "8.23.1"
   }
 }
