@@ -14,10 +14,14 @@ import {
   createSupabaseProfileRepository,
   createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
+  PostgresResearchStore,
+  PostgresConsoleDirectory,
+  PostgresBudgetLedger,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
-import { createDurableBudgetGateway } from "./budget/budget-gateway";
 import type { Env } from "./env";
+
+import { createGrowthServices } from "./growth/services";
 
 const encoder = new TextEncoder();
 const hex = (buffer: ArrayBuffer) =>
@@ -48,8 +52,15 @@ function required<
   return value;
 }
 
-/** Composition root. Built once per isolate from bindings. */
-export function createServices(env: Env): Services {
+/** Request-scoped composition; no model, provider credentials or lab initialization. */
+export function createServices(env: Env): Services & { close(): Promise<void> } {
+  const connectionString =
+    env.HYPERDRIVE?.connectionString ?? (env.APP_ENV === "local" ? env.DATABASE_URL : undefined);
+  if (!connectionString) {
+    throw new Error("Missing HYPERDRIVE binding");
+  }
+  const repository = new PostgresResearchStore(connectionString);
+  const directory = new PostgresConsoleDirectory(repository.pool);
   const db = createSupabaseAdmin({
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -59,19 +70,34 @@ export function createServices(env: Env): Services {
   const agents = createSupabaseAgentRegistry(db);
   const now = () => new Date();
 
-  return {
-    authenticate: createAuthenticateRequest({
-      tokens: createSupabaseJwtVerifier({
-        jwksUrl: `${issuer}/.well-known/jwks.json`,
-        issuer,
-        ...(env.JWT_AUDIENCE ? { audience: env.JWT_AUDIENCE } : {}),
-      }),
-      workspaces,
-      apiKeys: createSupabaseApiKeyDirectory(db),
-      sha256Hex,
-      now,
-      superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
+  const authenticate = createAuthenticateRequest({
+    tokens: createSupabaseJwtVerifier({
+      jwksUrl: `${issuer}/.well-known/jwks.json`,
+      issuer,
+      ...(env.JWT_AUDIENCE ? { audience: env.JWT_AUDIENCE } : {}),
     }),
+    workspaces,
+    apiKeys: createSupabaseApiKeyDirectory(db),
+    sha256Hex,
+    now,
+    superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
+  });
+  return {
+    authenticate,
+    growth: createGrowthServices(env),
+    close: () => repository.close(),
+    onboard: (userId) => directory.onboard(userId),
+    console: {
+      authenticate,
+      directory,
+      repository,
+      notifyQueued: async () => {
+        if (!env.RESEARCH_QUEUE) {
+          throw new Error("Missing research queue");
+        }
+        await env.RESEARCH_QUEUE.send({ type: "wake" });
+      },
+    },
     authenticateAgent: createAuthenticateAgent({
       agents,
       // Relayer encrypts agent secrets with ENCRYPTION_KEY; the same key must be bound here.
@@ -82,7 +108,7 @@ export function createServices(env: Env): Services {
     }),
     findWorkspace: (id) => workspaces.findById(id),
     agentQueries: createAgentQueries({ agents, events: createSupabaseAgentEventLog(db), now }),
-    budgets: createDurableBudgetGateway(env.AGENT_LEDGER),
+    budgets: new PostgresBudgetLedger(repository.pool),
     profiles: createProfileService(createSupabaseProfileRepository(db)),
   };
 }

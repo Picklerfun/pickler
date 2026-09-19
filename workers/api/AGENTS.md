@@ -70,3 +70,9 @@ Broad legacy labels alone grant no route authority. SQLite ledger upgrades are a
 history; committed reservation refunds require a matching period and spend generation. `.wrangler`
 state is local generated output and must never be tracked. The product workspace/agent registry is
 not yet connected to research tenants; see [integration boundaries](../../docs/frontend-integration.md).
+
+## Cloudflare unification update
+
+The new request-scoped composition uses PostgreSQL through a cache-disabled Hyperdrive binding (local DATABASE_URL only when APP_ENV=local). It does not import Mastra or require LLM credentials. Console routes use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
+
+The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.

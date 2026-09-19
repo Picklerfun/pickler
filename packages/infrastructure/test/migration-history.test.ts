@@ -63,7 +63,8 @@ for (const history of ["fresh", "research", "product"] as const) {
     assert.equal(
       (await pool.query("SELECT count(*)::int AS n FROM pickler_migrations.__drizzle_migrations"))
         .rows[0].n,
-      7,
+      JSON.parse(await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8")).entries
+        .length,
     );
     if (history !== "fresh") {
       assert.equal(

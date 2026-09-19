@@ -8,6 +8,7 @@ import { authenticated, type Authenticate } from "../middleware/auth";
 export interface ProfileRouteServices {
   authenticate: Authenticate;
   profiles: ReturnType<typeof createProfileService>;
+  onboard?(userId: string): Promise<void>;
 }
 
 const profileDto = (profile: Profile) => ({
@@ -52,6 +53,7 @@ export function profileRoutes(services: ProfileRouteServices) {
         displayName: body.display_name,
         handle: body.handle,
       });
+      await services.onboard?.(c.get("principal").id);
       return c.json(successEnvelope(profileDto(profile), c.req.path, "Profile created"), 201);
     });
 }

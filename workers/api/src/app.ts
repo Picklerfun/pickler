@@ -10,8 +10,15 @@ import { authRoutes } from "./routes/auth";
 import { corsFromEnv } from "./middleware/cors";
 import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes/profiles";
 
+import { demoRoutes } from "./routes/demo";
+import { growthRoutes } from "./routes/growth";
+import type { createGrowthServices } from "./growth/services";
+import { consoleRoutes, type ConsoleServices } from "./routes/console";
+
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
+  console?: ConsoleServices;
+  growth?: ReturnType<typeof createGrowthServices>;
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -29,5 +36,12 @@ export function createApp(services: Services) {
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
+  if (services.console) {
+    app.route("/v1/console", consoleRoutes(services.console));
+  }
+  if (services.growth) {
+    app.route("/v1", growthRoutes(services.growth));
+    app.route("/v1/demo", demoRoutes(services.growth));
+  }
   return app;
 }

@@ -81,6 +81,17 @@ export class PostgresResearchStore implements ResearchRepository {
       : sql`floor(extract(epoch from clock_timestamp()) * 1000)::bigint`;
   }
 
+  /** Lab scopes have no product link; managed scopes require current operator enablement. */
+  private researchEnabled(scope: Scope) {
+    return sql`not exists (
+      select 1 from pickler.product_agents p
+      join identity.workspaces w on w.id=p.workspace_id
+      left join pickler.research_access a on a.user_id=w.owner_user_id
+      where p.tenant_id=${scope.tenantId} and p.runtime_agent_id=${scope.agentId}
+        and (not w.is_active or not coalesce(a.enabled,false))
+    )`;
+  }
+
   private owned(run: RunRecord) {
     const owner = this.owners.get(run.id);
     if (!owner) {
@@ -90,6 +101,7 @@ export class PostgresResearchStore implements ResearchRepository {
       eq(runs.id, run.id),
       runScope(run),
       eq(runs.status, "running"),
+      this.researchEnabled(run),
       eq(runs.leaseOwner, owner),
       gt(runs.leaseExpiresAt, this.leaseNow()),
     );
@@ -188,6 +200,12 @@ export class PostgresResearchStore implements ResearchRepository {
     if (!agent) {
       throw new PilotError("NOT_FOUND", "Agent not found");
     }
+    if (lock) {
+      const enabled = await db.execute(sql`select ${this.researchEnabled(scope)} as allowed`);
+      if (!enabled.rows[0]?.allowed) {
+        throw new PilotError("RESEARCH_ACCESS_DENIED", "Research access revoked");
+      }
+    }
     return agent;
   }
 
@@ -235,10 +253,12 @@ export class PostgresResearchStore implements ResearchRepository {
       await tx.execute(sql`select pg_advisory_xact_lock(761204, 2)`);
       const agent = await this.getAgent(scope, tx, true);
       if (enabled) {
-        const [checked] = await tx
-          .select()
-          .from(metadata)
-          .where(eq(metadata.key, "connections_checked"));
+        const managed = await tx.execute(sql`select 1 from pickler.product_agents
+          where tenant_id=${scope.tenantId} and runtime_agent_id=${scope.agentId}`);
+        const readinessKey = managed.rows.length
+          ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
+          : "connections_checked";
+        const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
         const success = await tx
           .select({ id: runs.id })
           .from(runs)
@@ -396,6 +416,10 @@ export class PostgresResearchStore implements ResearchRepository {
           .from(agents)
           .where(agentScope(next))
           .for("update", { skipLocked: true });
+        const enabled = await tx.execute(sql`select ${this.researchEnabled(next)} as allowed`);
+        if (!enabled.rows[0]?.allowed) {
+          continue;
+        }
         if (!agent || agent.paused) {
           continue;
         }
@@ -549,6 +573,20 @@ export class PostgresResearchStore implements ResearchRepository {
           .set({ nextDueAt: nextOccurrence(agent, now) })
           .where(agentScope(scope));
       }
+    });
+  }
+
+  async setAgentConnectionsChecked(scope: Scope, version: number, ok: boolean): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const agent = await this.getAgent(scope, tx, true);
+      if (agent.version !== version) {
+        throw new PilotError("CONFIG_CHANGED", "Configuration changed during validation");
+      }
+      const key = `connections_checked:${scope.tenantId}:${scope.agentId}:${version}`;
+      await tx
+        .insert(metadata)
+        .values({ key, value: String(ok) })
+        .onConflictDoUpdate({ target: metadata.key, set: { value: String(ok) } });
     });
   }
 

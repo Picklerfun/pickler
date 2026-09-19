@@ -30,3 +30,7 @@ Plugin configuration is optional for historical reads. New NFL output uses `nflA
 NFL coverage `sourceIds` may identify retrieved sources or section-scoped execution context references recorded in the `research_references` event. Market/quote/availability references are not independent sports evidence. Top-level decision `sourceIds` remain retrieved-source identifiers; the public DTO shape is unchanged. Core enforces reference scope and quote attribution.
 
 `marketScopeSchema` and `marketCatalogSchema` describe the version-1 two-level sports catalog. Scoped configs reject mixed legacy selection fields. `generalAssessmentSchema` has eight coverage sections; `decisionV4Schema` discriminates NFL and general outputs while `decisionSchema` still accepts v1/v2/v3. Plugins remain independent of sports selection.
+
+## Console contracts
+
+`src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.

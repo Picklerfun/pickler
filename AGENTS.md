@@ -80,3 +80,11 @@ PostgreSQL is hosted by Supabase in deployed environments. Drizzle and database 
 The full local Supabase stack is configured in `supabase/config.toml`; read `supabase/AGENTS.md` before changing it. Use `npm run supabase:start` and `npm run test:supabase` for the Supabase-specific integration run. Its database uses port 54522; the PostgreSQL-only Docker alternative uses 55432.
 
 Manual paper trading is an opt-in plugin, with no model-executable tool. Read [the simulation guide](apps/agent-service/PAPER-TRADING.md) for permissions, reservations and exclusions.
+
+## Cloudflare unification in progress
+
+The API/data branch adds request-scoped Hono composition in `workers/api`, private console
+identity links and PostgreSQL monetary budgets. Read `workers/api/AGENTS.md` before changes.
+See [delivery status and contracts](docs/cloudflare-unification.md); do not describe the planned
+staging deployment as complete until the three-Worker flow is verified remotely. Deployed
+composition must never seed local alpha/beta tenants or import legacy budget projections silently.

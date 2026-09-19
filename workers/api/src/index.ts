@@ -1,30 +1,20 @@
-import { createApp, type Services } from "./app";
+import { createApp } from "./app";
 import { createServices } from "./container";
 import type { Env } from "./env";
 
+// Preserve the legacy class and its stored data; staging does not bind it.
 export { AgentLedger } from "./budget/agent-ledger";
 
-let app: ReturnType<typeof createApp> | undefined;
-let services: Services | undefined;
-
 export default {
-  fetch(request, env, ctx) {
-    // Services are built on first use, so /health answers even when bindings are missing.
-    const get = () => (services ??= createServices(env));
-    app ??= createApp({
-      authenticate: (credentials, options) => get().authenticate(credentials, options),
-      authenticateAgent: (agentRequest) => get().authenticateAgent(agentRequest),
-      findWorkspace: (id) => get().findWorkspace(id),
-      get agentQueries() {
-        return get().agentQueries;
-      },
-      get budgets() {
-        return get().budgets;
-      },
-      get profiles() {
-        return get().profiles;
-      },
-    });
-    return app.fetch(request, env, ctx);
+  async fetch(request, env, ctx) {
+    if (new URL(request.url).pathname === "/health") {
+      return Response.json({ status: "ok" }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const services = createServices(env);
+    try {
+      return await createApp(services).fetch(request, env, ctx);
+    } finally {
+      await services.close();
+    }
   },
 } satisfies ExportedHandler<Env>;

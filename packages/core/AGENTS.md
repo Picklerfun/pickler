@@ -53,3 +53,7 @@ product agent access; legacy broad labels grant no implied permissions. Budget r
 the actual commit period and reset generation. A refund may reduce current spend only when both
 match; legacy unknown-period charges cannot credit the active balance. This product ledger is not
 the research quota authority.
+
+## Unified console access
+
+`features/console/access.ts` owns user-session-only research authorization and the console directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
