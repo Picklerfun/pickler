@@ -1,93 +1,52 @@
 import "server-only";
-import {
-  createCheckTicker,
-  createGetAgentProfile,
-  createGetPickDetail,
-  createGetAgentPersona,
-  createGetLeaderboard,
-  createGetPlatformAnalytics,
-  createGetRead,
-  createListAgents,
-  createListDirectory,
-  createListReads,
-  createGetApplicant,
-  createGetHealth,
-  createGetLanding,
-  createJoinWaitlist,
-  createSubmitApplication,
-  type AgentDirectory,
-  type ApplicantRepository,
-  type LandingReadModel,
-  type WaitlistRepository,
-} from "@pickler/core";
-import {
-  createInMemoryApplicantStore,
-  createSampleAgentDirectory,
-  createSampleLandingReadModel,
-  createSupabaseApplicants,
-  createSupabaseRestClient,
-  createSupabaseWaitlist,
-  SAMPLE_AGENT_TICKERS,
-  systemClock,
-} from "@pickler/infrastructure";
-import { readDataSource } from "./config";
+import type {
+  LandingResponse,
+  ApplicantResponse,
+  AgentSummaryDto,
+  AgentProfileDto,
+  PickDetailDto,
+  AgentPersonaDto,
+  DirectoryAgentDto,
+  AgentReadDto,
+  PlatformAnalyticsDto,
+  LeaderboardDto,
+} from "@pickler/api-schema";
+import { apiJson, apiFetch } from "./api-client";
 
-function createAdapters(): {
-  landing: LandingReadModel;
-  waitlist: WaitlistRepository;
-  applicants: ApplicantRepository;
-  agents: AgentDirectory;
-} {
-  const source = readDataSource();
-  if (source.kind === "supabase") {
-    const growth = createSupabaseRestClient({
-      url: source.url,
-      secretKey: source.secretKey,
-      schema: "growth",
-    });
-    // No launched agents exist yet: the landing and board keep sample data until the market schema lands.
-    return {
-      landing: createSampleLandingReadModel(systemClock),
-      agents: createSampleAgentDirectory(systemClock),
-      waitlist: createSupabaseWaitlist(growth),
-      applicants: createSupabaseApplicants(growth),
-    };
-  }
-  // Sample mode: signups and applications live in process memory, so they vanish on restart.
-  // Next.js bundles pages and route handlers as separate module instances, so the store
-  // is pinned to globalThis to keep one per process.
-  const holder = globalThis as typeof globalThis & {
-    __picklerSampleStore?: ReturnType<typeof createInMemoryApplicantStore>;
-  };
-  holder.__picklerSampleStore ??= createInMemoryApplicantStore({
-    initialCount: 1204,
-    reservedTickers: SAMPLE_AGENT_TICKERS,
-  });
-  return {
-    landing: createSampleLandingReadModel(systemClock),
-    agents: createSampleAgentDirectory(systemClock),
-    ...holder.__picklerSampleStore,
-  };
-}
-
-const adapters = createAdapters();
-
-// Composition root: wire concrete adapters here, not inside business logic.
+// Presentation facade over the sole business API; no database or provider adapters.
 export const services = {
-  clock: systemClock,
-  getHealth: createGetHealth(systemClock),
-  getLanding: createGetLanding(adapters.landing),
-  joinWaitlist: createJoinWaitlist(adapters.waitlist, adapters.applicants),
-  getApplicant: createGetApplicant(adapters.applicants),
-  submitApplication: createSubmitApplication(adapters.applicants),
-  checkTicker: createCheckTicker(adapters.applicants),
-  listAgents: createListAgents(adapters.agents),
-  getAgentProfile: createGetAgentProfile(adapters.agents),
-  getPickDetail: createGetPickDetail(adapters.agents),
-  getAgentPersona: createGetAgentPersona(adapters.agents),
-  getPlatformAnalytics: createGetPlatformAnalytics(adapters.agents),
-  getLeaderboard: createGetLeaderboard(adapters.agents),
-  listDirectory: createListDirectory(adapters.agents),
-  listReads: createListReads(adapters.agents),
-  getRead: createGetRead(adapters.agents),
+  clock: { now: () => new Date() },
+  getLanding: () => apiJson<LandingResponse>("/landing"),
+  listAgents: () => apiJson<AgentSummaryDto[]>("/demo/agents"),
+  listDirectory: () => apiJson<DirectoryAgentDto[]>("/demo/directory"),
+  listReads: () => apiJson<AgentReadDto[]>("/demo/reads"),
+  getRead: (id: string) => apiJson<AgentReadDto | null>(`/demo/reads/${encodeURIComponent(id)}`),
+  getAgentProfile: (ticker: string) =>
+    apiJson<AgentProfileDto | null>(`/demo/profiles/${encodeURIComponent(ticker)}`),
+  getPickDetail: (ticker: string, id: string) =>
+    apiJson<PickDetailDto | null>(
+      `/demo/profiles/${encodeURIComponent(ticker)}/picks/${encodeURIComponent(id)}`,
+    ),
+  getAgentPersona: (handle: string) =>
+    apiJson<AgentPersonaDto | null>(`/demo/personas/${encodeURIComponent(handle)}`),
+  getPlatformAnalytics: (range?: string) =>
+    apiJson<PlatformAnalyticsDto>(`/demo/analytics?range=${encodeURIComponent(range ?? "30d")}`),
+  getLeaderboard: () => apiJson<LeaderboardDto>("/demo/leaderboard"),
+  async getApplicant(token: string | null): Promise<ApplicantResponse | null> {
+    if (!token) {
+      return null;
+    }
+    const response = await apiFetch(
+      new Request("https://pickler.internal/v1/applications", {
+        headers: { Cookie: `pk_apply=${encodeURIComponent(token)}` },
+      }),
+    );
+    if (response.status === 401) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error("Application service unavailable");
+    }
+    return response.json() as Promise<ApplicantResponse>;
+  },
 };

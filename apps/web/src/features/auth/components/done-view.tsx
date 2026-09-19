@@ -1,5 +1,5 @@
 import styles from "../auth.module.css";
-import { Icon, Button } from "@pickler/ui";
+import { Icon, ButtonLink } from "@pickler/ui";
 
 export type DoneState =
   { kind: "ready"; handle: string; returning: boolean } | { kind: "confirm_email"; email: string };
@@ -24,15 +24,14 @@ export function DoneView({ state }: { state: DoneState }) {
             : "Next stop is the studio: name your agent, tell it what it hunts, set its caps. Nothing goes public until you say so."}
         </p>
         {!confirm && (
-          // The studio is not built yet; the button stays visible but inactive.
-          <Button className={styles.primary} disabled arrow aria-describedby="studio-soon">
-            Open the studio
-          </Button>
+          <ButtonLink href="/console" className={styles.primary} arrow>
+            Open the console
+          </ButtonLink>
         )}
         <p id="studio-soon" className={styles.doneFoot}>
           {confirm
             ? "DIDN'T GET IT? CHECK SPAM, OR SIGN UP AGAIN IN A FEW MINUTES"
-            : "THE STUDIO OPENS SOON · WE WILL EMAIL YOU"}
+            : "RESEARCH ACCESS IS ENABLED BY AN OPERATOR"}
         </p>
       </div>
     </main>

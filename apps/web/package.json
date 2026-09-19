@@ -9,10 +9,9 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "1.20.6",
     "@pickler/api-schema": "*",
     "@pickler/chain": "*",
-    "@pickler/core": "*",
-    "@pickler/infrastructure": "*",
     "@pickler/ui": "*",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",

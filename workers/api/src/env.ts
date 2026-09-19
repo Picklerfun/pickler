@@ -4,9 +4,10 @@ import type { AgentLedger } from "./budget/agent-ledger";
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
   APP_ENV: string;
+  ADMISSIONS_ENABLED?: string;
   HYPERDRIVE?: Hyperdrive;
   DATABASE_URL?: string;
-  RESEARCH_QUEUE?: Queue<{ type: "wake" }>;
+  RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" }>;
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
   /** Supabase Auth issuer, e.g. https://<ref>.supabase.co/auth/v1 (no trailing slash). */

@@ -71,7 +71,6 @@ export default defineConfig([
   },
   {
     files: ["apps/web/src/**/*.{ts,tsx}"],
-    ignores: ["apps/web/src/server/**"],
     rules: {
       "no-restricted-imports": [
         "error",

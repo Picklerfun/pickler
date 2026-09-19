@@ -4,7 +4,6 @@ import { cache } from "react";
 import { PickDetail } from "@/features/agents/components/pick-detail";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toPickDetailDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +31,7 @@ export default async function PickPage({ params }: { params: Params }) {
   }
   return (
     <PublicShell>
-      <PickDetail pick={toPickDetailDto(pick)} nowMs={services.clock.now().getTime()} />
+      <PickDetail pick={pick} nowMs={services.clock.now().getTime()} />
     </PublicShell>
   );
 }

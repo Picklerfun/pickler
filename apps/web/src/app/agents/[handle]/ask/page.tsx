@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { AskFlow } from "@/features/agents/components/ask-flow";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toAgentPersonaDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,7 @@ export default async function Ask({ params }: Params) {
   }
   return (
     <PublicShell>
-      <AskFlow persona={toAgentPersonaDto(persona)} />
+      <AskFlow persona={persona} />
     </PublicShell>
   );
 }

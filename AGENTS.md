@@ -15,6 +15,8 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 | `apps/agent-service`         | Local Mastra Studio, API and research worker          | [AGENTS.md](apps/agent-service/AGENTS.md)         |
 | `apps/web`                   | Next.js presentation and HTTP entry points            | [AGENTS.md](apps/web/AGENTS.md)                   |
 | `workers/api`                | Public API on Cloudflare Workers, ported from Relayer | [AGENTS.md](workers/api/AGENTS.md)                |
+| `workers/research`           | Queue/Cron research execution                         | [AGENTS.md](workers/research/AGENTS.md)           |
+| `packages/agent-runtime`     | Shared Mastra library and host lifecycle              | [AGENTS.md](packages/agent-runtime/AGENTS.md)     |
 | `packages/core`              | Business rules, use cases, and ports                  | [AGENTS.md](packages/core/AGENTS.md)              |
 | `packages/infrastructure`    | Implementations of business ports                     | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
 | `packages/api-schema`        | Public HTTP DTOs                                      | [AGENTS.md](packages/api-schema/AGENTS.md)        |
@@ -29,12 +31,12 @@ See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.m
 ## Architecture invariants
 
 - Maintain three layers: presentation (`apps/web`), business (`packages/core`), and infrastructure (`packages/infrastructure`). Code dependencies point toward business: presentation → business ← infrastructure.
-- Each executable app connects concrete adapters with use cases in its own server composition root. Today this is `apps/web/src/server`, protected with `server-only`. The agent service uses `src/composition/container.ts` and a Node server boundary; it must not depend on Next.js-specific guards.
+- Hono composes business adapters in `workers/api/src/container.ts`. `apps/web/src/server` is a server-only HTTP client facade. `packages/agent-runtime` is the shared Node/Workers research library; local Studio composition alone initializes laboratory presets. No Next.js guard belongs in shared runtime.
 - Keep Next.js, React, transport objects, database clients, and provider SDKs out of core. Use business-owned interfaces and dependency injection.
 - Keep HTTP DTOs in `api-schema`; keep public on-chain artifacts in `chain`. Neither package carries credentials or server implementation details.
 - Use declared workspace dependencies and public package exports. Do not bypass package boundaries with relative imports into another project's source.
 - Drizzle in `packages/infrastructure` owns all database migrations, including product schemas. Use `npm run db:generate` and `npm run db:migrate`; never reset existing schemas to reconcile histories.
-- The research runtime uses Mastra, configurable providers and private PostgreSQL persistence. The public frontend and Cloudflare API add Supabase login and product profiles; their agents are not yet linked to research tenants. Manual paper trading is opt-in. Real trading from PR #22 is outside this integration. Read `docs/frontend-integration.md` for current boundaries and the proposed connection. Do not describe controlled tests as live-provider validation.
+- The research runtime uses Mastra, configurable providers and private PostgreSQL persistence. The public frontend and Cloudflare API add Supabase login and product profiles; their agents use explicit private workspace/tenant and product/runtime mappings. Manual paper trading is opt-in. Real trading from PR #22 is outside this integration. Read `docs/frontend-integration.md` for current boundaries and the proposed connection. Do not describe controlled tests as live-provider validation.
 
 ## Branch and pull request workflow
 

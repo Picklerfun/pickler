@@ -1,11 +1,11 @@
 import "server-only";
-import type { LandingSnapshot } from "@pickler/core";
+import type { LandingResponse } from "@pickler/api-schema";
 import type { AuthBoardData } from "@/features/auth/lib/board-data";
 
 const MINUS = "−";
 const fixed = (n: number) => Math.abs(n).toFixed(2);
 
-export function toAuthBoardData(snapshot: LandingSnapshot): AuthBoardData {
+export function toAuthBoardData(snapshot: LandingResponse): AuthBoardData {
   return {
     source: snapshot.source,
     picksToday: snapshot.stats.picksToday,

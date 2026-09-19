@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { ReadCard } from "@/features/agents/components/read-card";
 import { services } from "@/server/container";
-import { toAgentReadDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,7 @@ export default async function Read({ params }: Params) {
   }
   return (
     <PublicShell>
-      <ReadCard read={toAgentReadDto(read)} />
+      <ReadCard read={read} />
     </PublicShell>
   );
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { ActivityPage } from "@/features/wallet/components/activity-page";
 import { services } from "@/server/container";
-import { toDirectoryAgentDto, toPlatformAnalyticsDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +18,7 @@ export default async function Activity() {
   ]);
   return (
     <PublicShell>
-      <ActivityPage
-        agents={agents.map(toDirectoryAgentDto)}
-        log={toPlatformAnalyticsDto(analytics).log}
-        nowMs={services.clock.now().getTime()}
-      />
+      <ActivityPage agents={agents} log={analytics.log} nowMs={services.clock.now().getTime()} />
     </PublicShell>
   );
 }

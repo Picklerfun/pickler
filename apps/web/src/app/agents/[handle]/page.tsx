@@ -4,7 +4,6 @@ import { cache } from "react";
 import { PersonaPage } from "@/features/agents/components/persona-page";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toAgentPersonaDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +27,7 @@ export default async function AgentPage({ params }: { params: Params }) {
   }
   return (
     <PublicShell>
-      <PersonaPage persona={toAgentPersonaDto(persona)} nowMs={services.clock.now().getTime()} />
+      <PersonaPage persona={persona} nowMs={services.clock.now().getTime()} />
     </PublicShell>
   );
 }

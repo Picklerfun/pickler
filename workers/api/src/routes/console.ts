@@ -4,6 +4,8 @@ import { z } from "zod";
 import {
   createConsoleAccess,
   MARKET_CATALOG,
+  DEFAULT_CONFIG,
+  PLUGINS,
   PilotError,
   AccessDeniedError,
   AuthenticationRequiredError,
@@ -12,6 +14,7 @@ import {
 } from "@pickler/core";
 import {
   createAgentSchema,
+  consoleOptionsSchema,
   idempotencyKeySchema,
   agentResponseSchema,
   configUpdateSchema,
@@ -19,6 +22,7 @@ import {
   runResponseSchema,
   eventResponseSchema,
   pauseSchema,
+  paperOrderSchema,
   scheduleSchema,
 } from "@pickler/api-schema";
 import type { AppEnv } from "../env";
@@ -28,7 +32,12 @@ export interface ConsoleServices {
   authenticate: Authenticate;
   directory: ConsoleDirectory;
   repository: ResearchRepository;
+  admissionsEnabled?: boolean;
   notifyQueued(): Promise<void>;
+  paper?: {
+    create(tenantId: string, runId: string, key: string): Promise<unknown>;
+    get(tenantId: string, runId: string): Promise<unknown>;
+  };
 }
 
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
@@ -77,6 +86,11 @@ export function consoleRoutes(services: ConsoleServices) {
       enabled: current.enabled,
       canManage: current.enabled && current.ownerUserId === principal.id,
     });
+  });
+  api.get("/options", (c) => {
+    const defaults = { ...DEFAULT_CONFIG };
+    delete defaults.categoryIds;
+    return c.json(consoleOptionsSchema.parse({ defaults, plugins: PLUGINS }));
   });
   api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
   api.get("/agents", async (c) => {
@@ -131,6 +145,9 @@ export function consoleRoutes(services: ConsoleServices) {
     });
   });
   api.post("/agents/:id/runs", async (c) => {
+    if (services.admissionsEnabled === false) {
+      throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
+    }
     const current = await access.authorize(c.get("principal"), true);
     const scope = await services.directory.agentScope(current, c.req.param("id"));
     const body = runRequestSchema.parse(await c.req.json());
@@ -160,6 +177,33 @@ export function consoleRoutes(services: ConsoleServices) {
         .array()
         .parse(await repo.events(current.tenantId, c.req.param("id"))),
     });
+  });
+  api.post("/runs/:id/paper-order", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    if (!services.paper) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
+    }
+    const raw = await c.req.text();
+    if (raw) {
+      z.object({}).strict().parse(JSON.parse(raw));
+    }
+    const order = paperOrderSchema.parse(
+      await services.paper.create(
+        current.tenantId,
+        c.req.param("id"),
+        idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
+      ),
+    );
+    return c.json(order, order.status === "pending" ? 202 : 200);
+  });
+  api.get("/runs/:id/paper-order", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    if (!services.paper) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
+    }
+    return c.json(
+      paperOrderSchema.parse(await services.paper.get(current.tenantId, c.req.param("id"))),
+    );
   });
   api.put("/agents/:id/pause", async (c) => {
     const current = await access.authorize(c.get("principal"), true);

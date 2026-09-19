@@ -3,7 +3,6 @@ import { ApplyFlow } from "@/features/apply/components/apply-flow";
 import { ApplyShell } from "@/features/apply/components/apply-shell";
 import { NoSeat } from "@/features/apply/components/no-seat";
 import { services } from "@/server/container";
-import { toApplicantResponse } from "@/server/http/applicant-response";
 import { readApplyToken } from "@/server/http/apply-cookie";
 
 export const metadata: Metadata = {
@@ -28,7 +27,7 @@ export default async function ApplyPage({
   }
   return (
     <ApplyShell>
-      <ApplyFlow initial={toApplicantResponse(applicant)} />
+      <ApplyFlow initial={applicant} />
     </ApplyShell>
   );
 }

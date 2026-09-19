@@ -47,3 +47,12 @@ Manual simulation is documented in [PAPER-TRADING.md](PAPER-TRADING.md). The com
 NFL context citations are produced by core's `researchReferences` and remain separate from retrieved sources. The final prompt lists their section restrictions; do not bypass attribution checks or turn plugin availability into sports evidence. Explicit evaluator `--attempt <label>` directories preserve previous results; `--case <id>` restricts a deliberate diagnostic. No default-ledger bypass or automatic paid retry is allowed. Read `NFL-LIVE-VALIDATION.md` for actual acceptance results and `NFL-SOURCES.md` before adding sports providers.
 
 Read [MARKET-CATEGORIES.md](MARKET-CATEGORIES.md) for the catalog, v4 contracts and explicit `configure:categories` lab migration. `market-categories` in the CLI and `marketCategories` in Studio presets expose the core catalog; legacy provider categories remain available. `src/prompts/general-decision-system.ts` defines the immutable general final prompt and is snapshotted alongside NFL/legacy prompts. Protocol selection is core-owned; the adapter only chooses the corresponding structured schema.
+
+## Shared runtime extraction
+
+Mastra model, prompts, plugins and lease/background lifecycle now live in
+`packages/agent-runtime`. The former files here re-export public package paths for local
+compatibility. Change the shared implementation, not the forwarding files. Local composition
+retains laboratory initialization; deployed composition never calls it. `validate:agent` is an
+explicit paid operator command for a managed tenant/agent and validates readiness for that
+configuration version. It does not initialize alpha/beta or change their global validation.

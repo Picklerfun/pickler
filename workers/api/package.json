@@ -13,7 +13,7 @@
     "@pickler/infrastructure": "*",
     "hono": "^4.13.8",
     "@pickler/api-schema": "*",
-    "zod": "^3.25.76"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",

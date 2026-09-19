@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { PortfolioPage } from "@/features/wallet/components/portfolio-page";
 import { services } from "@/server/container";
-import { toAgentReadDto, toAgentSummaryDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +15,7 @@ export default async function Portfolio() {
   const [agents, reads] = await Promise.all([services.listAgents(), services.listReads()]);
   return (
     <PublicShell>
-      <PortfolioPage agents={agents.map(toAgentSummaryDto)} reads={reads.map(toAgentReadDto)} />
+      <PortfolioPage agents={agents} reads={reads} />
     </PublicShell>
   );
 }

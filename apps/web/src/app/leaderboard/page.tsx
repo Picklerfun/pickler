@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { LeaderboardPage } from "@/features/agents/components/leaderboard-page";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toLeaderboardDto, toPlatformAnalyticsDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +22,7 @@ export default async function Leaderboard({ searchParams }: { searchParams: Prom
   ]);
   return (
     <PublicShell>
-      <LeaderboardPage
-        board={toLeaderboardDto(board)}
-        analytics={toPlatformAnalyticsDto(analytics)}
-      />
+      <LeaderboardPage board={board} analytics={analytics} />
     </PublicShell>
   );
 }

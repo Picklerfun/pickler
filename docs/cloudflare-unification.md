@@ -78,3 +78,26 @@ the same agent. No legacy tables or Durable Objects are removed by these migrati
 Apply the reconciled migrator against an isolated database first. The tests cover empty,
 research-only and product-only histories. Keep all private Pickler schemas out of the
 Supabase Data API. Never provide database/provider credentials to the web Worker.
+
+## Runtime and console follow-up
+
+`packages/agent-runtime` now contains the shared Mastra adapter, prompts, tool registry,
+composition and lease/background lifecycle. Local import paths forward to that package.
+`workers/research` is a Queue/Cron-only host with no fetch handler and no laboratory startup.
+Its admission flag provides an operator stop switch without deleting jobs or evidence.
+
+The web's business handlers and database adapters are removed. A single catch-all delegates
+`/api/v1/*`; server-rendered demo pages consume API DTOs. No private backend dependencies or
+credentials remain in the web package. `/console` uses the shared design system, JWT API calls,
+versioned edits and visibility-aware polling. Public pages stay demonstrative.
+
+Run explicit managed-agent connection validation from an operator environment:
+
+```sh
+npm run build:shared
+npm run validate:agent --workspace=@pickler/agent-service -- TENANT_UUID AGENT_UUID
+```
+
+This command makes provider calls. Supply DATABASE_URL and model/provider environment variables
+for the intended isolated environment. It marks only the chosen agent/configuration as checked;
+a successful manual research is still required before enabling its schedule. Never run it in CI.

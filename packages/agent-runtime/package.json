@@ -1,0 +1,83 @@
+{
+  "name": "@pickler/agent-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./prompts/market-selection-system": {
+      "types": "./src/prompts/market-selection-system.ts",
+      "import": "./dist/prompts/market-selection-system.js"
+    },
+    "./prompts/decision-system": {
+      "types": "./src/prompts/decision-system.ts",
+      "import": "./dist/prompts/decision-system.js"
+    },
+    "./prompts/general-decision-system": {
+      "types": "./src/prompts/general-decision-system.ts",
+      "import": "./dist/prompts/general-decision-system.js"
+    },
+    "./prompts/research-system": {
+      "types": "./src/prompts/research-system.ts",
+      "import": "./dist/prompts/research-system.js"
+    },
+    "./prompts/nfl-decision-system": {
+      "types": "./src/prompts/nfl-decision-system.ts",
+      "import": "./dist/prompts/nfl-decision-system.js"
+    },
+    "./prompts/define-prompt": {
+      "types": "./src/prompts/define-prompt.ts",
+      "import": "./dist/prompts/define-prompt.js"
+    },
+    "./plugins/registry": {
+      "types": "./src/plugins/registry.ts",
+      "import": "./dist/plugins/registry.js"
+    },
+    "./composition/model-output": {
+      "types": "./src/composition/model-output.ts",
+      "import": "./dist/composition/model-output.js"
+    },
+    "./composition/model-probe": {
+      "types": "./src/composition/model-probe.ts",
+      "import": "./dist/composition/model-probe.js"
+    },
+    "./composition/model": {
+      "types": "./src/composition/model.ts",
+      "import": "./dist/composition/model.js"
+    },
+    "./composition/model-diagnostics": {
+      "types": "./src/composition/model-diagnostics.ts",
+      "import": "./dist/composition/model-diagnostics.js"
+    },
+    "./workers/lease": {
+      "types": "./src/workers/lease.ts",
+      "import": "./dist/workers/lease.js"
+    },
+    "./workers/background": {
+      "types": "./src/workers/background.ts",
+      "import": "./dist/workers/background.js"
+    },
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.48",
+    "@mastra/core": "1.67.0",
+    "@pickler/core": "*",
+    "@pickler/infrastructure": "*",
+    "@pickler/api-schema": "*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pickler/typescript-config": "*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

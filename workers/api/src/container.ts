@@ -1,5 +1,6 @@
 import {
   createAgentQueries,
+  createPaperService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
@@ -15,6 +16,8 @@ import {
   createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
   PostgresResearchStore,
+  PostgresPaperStore,
+  PolymarketData,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
 } from "@pickler/infrastructure";
@@ -88,14 +91,16 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     console: {
+      admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       authenticate,
       directory,
       repository,
+      paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");
         }
-        await env.RESEARCH_QUEUE.send({ type: "wake" });
+        await env.RESEARCH_QUEUE.send({ kind: "research-wakeup" });
       },
     },
     authenticateAgent: createAuthenticateAgent({

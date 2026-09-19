@@ -3,7 +3,6 @@ import { TokenBoard } from "@/features/agents/components/token-board";
 import { readBoardFilters } from "@/features/agents/lib/board-filters";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toAgentSummaryDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +17,7 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
   const [agents, search] = await Promise.all([services.listAgents(), searchParams]);
   return (
     <PublicShell>
-      <TokenBoard
-        agents={agents.map(toAgentSummaryDto)}
-        initialFilters={readBoardFilters(search)}
-      />
+      <TokenBoard agents={agents} initialFilters={readBoardFilters(search)} />
     </PublicShell>
   );
 }

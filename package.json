@@ -19,7 +19,7 @@
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",
-    "build:shared": "turbo run build --filter=@pickler/core --filter=@pickler/infrastructure --filter=@pickler/api-schema",
+    "build:shared": "turbo run build --filter=@pickler/core --filter=@pickler/infrastructure --filter=@pickler/api-schema --filter=@pickler/agent-runtime",
     "agent": "npm run cli --workspace=@pickler/agent-service --",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

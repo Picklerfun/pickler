@@ -1,0 +1,83 @@
+.page {
+  min-height: 100vh;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  padding: 32px clamp(16px, 5vw, 80px);
+}
+.header,
+.row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.header {
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
+  gap: 24px;
+}
+.stack {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.panel {
+  composes: pk-panel from global;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.panel h2,
+.header h1 {
+  font-family: var(--pk-font-display);
+  margin: 0;
+}
+.panel fieldset {
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  padding: 16px;
+}
+.panel legend {
+  padding: 0 8px;
+}
+.panel label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.plugin {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+.error {
+  color: var(--pk-magenta);
+}
+.muted {
+  color: var(--pk-ink-muted);
+}
+.details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--pk-font-mono);
+  font-size: 12px;
+  max-height: 480px;
+  overflow: auto;
+}
+.sources {
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 20px 16px;
+  }
+}

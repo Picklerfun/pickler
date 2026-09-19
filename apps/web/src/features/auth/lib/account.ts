@@ -79,7 +79,7 @@ export async function signUpWithEmail(
     options: {
       // Kept on the auth user so the profile can be created after email confirmation.
       data: { display_name: input.displayName, handle: input.handle },
-      emailRedirectTo: `${window.location.origin}/signin`,
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
   });
   if (error) {

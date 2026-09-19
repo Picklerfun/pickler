@@ -4,7 +4,6 @@ import { cache } from "react";
 import { TokenPage } from "@/features/agents/components/token-page";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
-import { toAgentProfileDto } from "@/server/http/agent-responses";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,7 @@ export default async function TokenDetailPage({ params }: { params: Params }) {
   }
   return (
     <PublicShell>
-      <TokenPage agent={toAgentProfileDto(profile)} nowMs={services.clock.now().getTime()} />
+      <TokenPage agent={profile} nowMs={services.clock.now().getTime()} />
     </PublicShell>
   );
 }
