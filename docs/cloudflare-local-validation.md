@@ -1,3 +1,5 @@
+> Historical validation before the removal of Hyperdrive. See the subsequent direct-connection validation record for current results.
+
 # Local unification validation
 
 Validation date: 2026-09-19. These results cover local PostgreSQL/Supabase and workerd.
