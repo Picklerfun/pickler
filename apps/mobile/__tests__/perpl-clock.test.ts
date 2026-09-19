@@ -20,5 +20,5 @@ test("describeClockSkew warns beyond 20 s in either direction, with whole second
 });
 
 test("the key-rejected copy points at the clock first", () => {
-  expect(KEY_REJECTED_COPY).toBe("Trading key rejected. Check the phone clock first; if it is right, Perpl may not be available in your region.");
+  expect(KEY_REJECTED_COPY).toBe("Check the phone clock first; if it is right, Perpl may not be available in your region.");
 });

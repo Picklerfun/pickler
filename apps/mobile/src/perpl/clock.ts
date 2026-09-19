@@ -17,4 +17,4 @@ export function describeClockSkew(skewMs: number | null): { title: string; body:
   };
 }
 
-export const KEY_REJECTED_COPY = "Trading key rejected. Check the phone clock first; if it is right, Perpl may not be available in your region.";
+export const KEY_REJECTED_COPY = "Check the phone clock first; if it is right, Perpl may not be available in your region.";
