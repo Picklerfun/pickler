@@ -1,6 +1,6 @@
 import {
   afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
+  isComingSoonTab, navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
 } from "../src/store";
 
 test("nav pushes the current screen and applies the patch", () => {
@@ -118,4 +118,9 @@ test("sign out lands on Sign in and comes back to Wallet after logging in", () =
   expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet" });
   expect(canBackFor(s.screen, s.stack)).toBe(false);
   expect(afterSigninState(s).screen).toBe("wallet");
+});
+
+test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SOON set", () => {
+  for (const s of COMING_SOON) expect(isComingSoonTab(s)).toBe(true);
+  for (const s of ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "signin"] as const) expect(isComingSoonTab(s)).toBe(false);
 });

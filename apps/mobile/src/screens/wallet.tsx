@@ -5,7 +5,7 @@ import { formatUnits, type Address, type Hex } from "viem";
 import { accountAddress } from "../account";
 import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
-import { Btn, Card, Chip, KV, Screen, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
+import { Btn, Card, Chip, KV, Page, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import type { Movement } from "../wallet/explorer";
 import { describeError } from "../wallet/wallet";
@@ -49,7 +49,7 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
   const unlocked = account.status === "unlocked";
 
   return (
-    <Screen gap={11}>
+    <Page gap={11}>
       <Card pad={15}>
         <Tag>AVAILABLE · AUSD</Tag>
         <T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{available}</T>
@@ -106,7 +106,7 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
         {unlocked ? <Chip label="Lock" onPress={lock} bd={C.hair22} fg={C.ink} accessibilityLabel="lock" /> : null}
         <Chip label="Sign out" onPress={() => { void signOut().then(signedOut); }} bd={C.hair22} fg={C.ink} accessibilityLabel="sign-out" />
       </View>
-    </Screen>
+    </Page>
   );
 }
 
@@ -115,7 +115,7 @@ export function DepositScreen({ nav, account }: AppCtx) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <Screen gap={11}>
+    <Page gap={11}>
       <StatGrid items={[{ label: "Asset", value: "AUSD" }, { label: "Network", value: "Monad" }]} />
       <View style={{ height: 150, borderWidth: 1, borderColor: C.hair22, borderStyle: "dashed", borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: C.card04 }}>
         <Tag>QR CODE · DEPOSIT ADDRESS</Tag>
@@ -129,7 +129,7 @@ export function DepositScreen({ nav, account }: AppCtx) {
         <Btn label="I've sent it" onPress={() => nav("wallet")} variant="outline2" flex={1} py={14} />
       </View>
       <T w={400} s={11.5} lh={1.45} color={C.faint}>Only AUSD on Monad arrives here. Card and bank transfer are not assumed to exist. Gas is paid in MON.</T>
-    </Screen>
+    </Page>
   );
 }
 
@@ -180,7 +180,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
       : st.step === "unknown" ? { tag: "VERIFYING", title: "Sent · confirmation not received", body: "Check the movements list — it may still confirm.", tone: TONES.pending }
       : { tag: "SENT · WAITING ON THE NETWORK", title: "Sent · waiting for confirmation", body: "You can leave this screen.", tone: TONES.pending };
     return (
-      <Screen gap={12}>
+      <Page gap={12}>
         <StatusCard tag={card.tag} title={card.title} body={card.body} tone={card.tone}>
           <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(st.hash)); }}>
             <T w={500} s={10} lh={1.4} mono color={C.dim}>{st.hash}</T>
@@ -188,13 +188,13 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
           {st.step === "unknown" && error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
         </StatusCard>
         {st.step !== "sent" ? <Btn label="Back to wallet" onPress={() => nav("wallet")} variant="lime" s={13.5} py={15} /> : <ActivityIndicator color={C.lime} />}
-      </Screen>
+      </Page>
     );
   }
 
   if (st.step === "review") {
     return (
-      <Screen gap={11}>
+      <Page gap={11}>
         <Card>
           <Tag>DESTINATION ADDRESS</Tag>
           <T w={500} s={12} lh={1.45} mono style={{ marginTop: 6 }}>{st.to}</T>
@@ -215,12 +215,12 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
           <Btn label={busy ? "Confirming…" : "Confirm withdrawal"} onPress={() => { void confirm(); }} variant="lime" flex={1} busy={busy} s={13.5} py={14} accessibilityLabel="confirm-withdrawal" />
         </View>
         <T w={400} s={11.5} lh={1.45} color={C.faint}>Gas is paid in MON from this wallet. The AUSD amount arrives in full.</T>
-      </Screen>
+      </Page>
     );
   }
 
   return (
-    <Screen gap={11}>
+    <Page gap={11}>
       <View style={inputBox}>
         <Tag>DESTINATION ADDRESS</Tag>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
@@ -254,6 +254,6 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
       {!check.ok && (to !== "" || amount !== "") ? <T w={400} s={12} lh={1.4} color={C.warn}>{check.error}</T> : null}
       <Btn label="Review withdrawal" onPress={() => { void review(); }} disabled={!check.ok} variant="lime" arrow s={13} py={15} accessibilityLabel="review-withdrawal" />
       <T w={400} s={11.5} lh={1.45} color={C.faint}>Only AUSD on Monad. Gas is paid in MON from this wallet.</T>
-    </Screen>
+    </Page>
   );
 }

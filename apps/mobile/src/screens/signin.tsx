@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import type { AppCtx } from "../ctx";
-import { Btn, Card, Screen, T } from "../ui/primitives";
+import { Btn, Card, Page, T } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { createAccount, describeError, signIn } from "../wallet/wallet";
 
@@ -25,7 +25,7 @@ export function SigninScreen({ held, onWallet, finishSignin }: AppCtx) {
   }
 
   return (
-    <Screen top={18} gap={12}>
+    <Page top={18} gap={12}>
       {held ? (
         <Card bd={C.vioBd45} bg={C.vioBg08} pad={12} radius={12}>
           <T w={700} s={12.5} lh={1.3}>We kept what you were about to do</T>
@@ -45,6 +45,6 @@ export function SigninScreen({ held, onWallet, finishSignin }: AppCtx) {
       </View>
       {error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
       <T w={400} s={11} lh={1.4} color={C.faint}>Connecting is not signing. Every operation is confirmed on its own.</T>
-    </Screen>
+    </Page>
   );
 }
