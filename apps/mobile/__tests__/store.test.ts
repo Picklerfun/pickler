@@ -1,151 +1,100 @@
 import {
-  afterSigninState,
-  backState,
-  bootState,
-  CAN_BACK,
-  canBackFor,
-  COMING_SOON,
-  deriveBalance,
-  deriveTradeHolds,
-  deriveUser,
-  GATED,
-  headerFor,
-  INITIAL,
-  navState,
-  requireAccountState,
-  resetState,
-  signedOutState,
-  SHOW_TABS,
+  afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
+  navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
 } from "../src/store";
-import { AGENTS, POSTS } from "../src/mock/data";
-
-const agent = AGENTS.pkl, post = POSTS[0];
 
 test("nav pushes the current screen and applies the patch", () => {
-  const s = navState(INITIAL, "agent", { agentId: "hld", tab: "about" });
-  expect(s.screen).toBe("agent");
+  const s = navState(INITIAL, "market", { perpsMarketId: 64, perpsSide: "short" });
+  expect(s.screen).toBe("market");
   expect(s.stack).toEqual(["wallet"]);
-  expect(s.agentId).toBe("hld");
-  expect(s.tab).toBe("about");
+  expect(s).toMatchObject({ perpsMarketId: 64, perpsSide: "short" });
+  expect(navState(INITIAL, "perpsFunds", { fundsMode: "withdraw" }).fundsMode).toBe("withdraw");
 });
 
 test("the back-stack keeps only the last 8 screens", () => {
   let s = INITIAL;
-  for (let i = 0; i < 10; i++) s = navState(s, i % 2 ? "market" : "activity");
+  for (let i = 0; i < 10; i++) s = navState(s, i % 2 ? "markets" : "activity");
   expect(s.stack).toHaveLength(8);
 });
 
 test("back pops the stack and falls back to wallet when empty", () => {
-  const s = navState(navState(INITIAL, "agent"), "trade");
-  expect(backState(s).screen).toBe("agent");
+  const s = navState(navState(INITIAL, "markets"), "market");
+  expect(backState(s).screen).toBe("markets");
   expect(backState(INITIAL).screen).toBe("wallet");
   expect(backState(INITIAL).stack).toEqual([]);
 });
 
-test("without an account, Wallet asks for access and remembers where to go", () => {
-  const s = requireAccountState(INITIAL, false, "wallet");
-  expect(s.screen).toBe("signin");
-  expect(s.resume).toBe(false);
-  expect(s.next).toBe("wallet");
-  expect(s.nextPatch).toEqual({});
-});
-
-test("without an account, Buy holds the purchase and resumes in Deposit", () => {
-  const s = requireAccountState(INITIAL, false, "trade", { mode: "buy", phase: "insufficient" });
-  expect(s.screen).toBe("signin");
-  expect(s.resume).toBe(true);
-  expect(s.next).toBe("deposit");
-  expect(s.nextPatch).toEqual({ mode: "buy", phase: "insufficient", resume: true });
-});
-
-test("with an account the gate navigates straight to the target", () => {
-  const s = requireAccountState(INITIAL, true, "wallet");
-  expect(s.screen).toBe("wallet");
-  expect(s.next).toBeUndefined();
-});
-
-test("reading screens never ask for an account", () => {
-  for (const target of ["market", "search", "agent", "activity", "post", "ask"] as const) {
-    expect(requireAccountState(INITIAL, false, target).screen).toBe(target);
+test("without an account, gated screens ask for access and remember where to go", () => {
+  for (const target of GATED) {
+    const s = requireAccountState(INITIAL, false, target, { fundsMode: "add" });
+    expect(s.screen).toBe("signin");
+    expect(s.next).toBe(target);
+    expect(s.nextPatch).toEqual({ fundsMode: "add" });
   }
 });
 
+test("with an account the gate navigates straight to the target", () => {
+  const s = requireAccountState(INITIAL, true, "markets");
+  expect(s.screen).toBe("markets");
+  expect(s.next).toBeUndefined();
+});
+
+test("coming-soon tabs never ask for an account", () => {
+  for (const target of COMING_SOON) expect(requireAccountState(INITIAL, false, target).screen).toBe(target);
+});
+
 test("after sign-in the app lands on next without leaving signin in the stack", () => {
-  const s = afterSigninState(requireAccountState(INITIAL, false, "wallet"));
-  expect(s.screen).toBe("wallet");
+  const s = afterSigninState(requireAccountState(INITIAL, false, "markets"));
+  expect(s.screen).toBe("markets");
   expect(s.stack).toEqual(["wallet"]);
   expect(s.next).toBeUndefined();
   expect(s.nextPatch).toBeUndefined();
 });
 
-test("after sign-in from Buy the deposit screen resumes the purchase", () => {
-  const s = afterSigninState(requireAccountState(INITIAL, false, "trade", { mode: "buy", phase: "insufficient" }));
-  expect(s.screen).toBe("deposit");
-  expect(s.resume).toBe(true);
-  expect(s.phase).toBe("insufficient");
+test("the held action names what the gate kept, and is null when it kept nothing", () => {
+  expect(heldActionFor(undefined)).toBeNull();
+  expect(heldActionFor("wallet")).toBeNull();
+  expect(heldActionFor("markets")).toBe("Trading on Perpl");
+  expect(heldActionFor("market")).toBe("Trading on Perpl");
+  expect(heldActionFor("perpsFunds")).toBe("Moving trading funds");
+  expect(heldActionFor("deposit")).toBe("A deposit");
+  expect(heldActionFor("withdraw")).toBe("A withdrawal");
 });
 
-test("user is new without an account even when the dev panel marks holder", () => {
-  expect(deriveUser(false, true)).toBe("new");
-  expect(deriveUser(true, false)).toBe("funded");
-  expect(deriveUser(true, true)).toBe("holder");
+test("the screen sets of D5 are exactly the spec's", () => {
+  expect([...COMING_SOON]).toEqual(["launchpad", "activity", "portfolio"]);
+  expect([...GATED]).toEqual(["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw"]);
+  expect([...CAN_BACK]).toEqual(["market", "perpsFunds", "deposit", "withdraw", "signin"]);
+  expect([...SHOW_TABS]).toEqual(["markets", "launchpad", "activity", "portfolio", "wallet"]);
 });
 
-test("reset clears the stack, resume and the mock holder flag", () => {
-  const dirty = { ...navState(INITIAL, "agent"), resume: true, mockHolder: true };
-  const s = resetState(dirty, "market");
-  expect(s).toMatchObject({ screen: "market", stack: [], resume: false, mockHolder: false });
+test("every screen maps to the tab it lights up", () => {
+  expect(ROOT_OF.market).toBe("markets");
+  expect(ROOT_OF.perpsFunds).toBe("markets");
+  expect(ROOT_OF.deposit).toBe("wallet");
+  expect(ROOT_OF.withdraw).toBe("wallet");
+  expect(ROOT_OF.signin).toBe("wallet");
+  for (const tab of SHOW_TABS) expect(ROOT_OF[tab]).toBe(tab);
 });
 
-test("a completed buy never counts as holding without an account", () => {
-  expect(deriveTradeHolds(false, false, "done", "buy")).toBe(false);
-  expect(deriveTradeHolds(false, true, "done", "buy")).toBe(false);
-  expect(deriveTradeHolds(true, false, "done", "buy")).toBe(true);
-  expect(deriveTradeHolds(true, true, "quote", "buy")).toBe(true);
-  expect(deriveTradeHolds(true, false, "done", "sell")).toBe(false);
+test("headers", () => {
+  expect(headerFor("markets")).toEqual(["Markets", "Perps on Perpl · Monad"]);
+  expect(headerFor("market", "MON")).toEqual(["MON Perp", "Perpl · isolated margin · market order"]);
+  expect(headerFor("market")).toEqual(["Perp", "Perpl · isolated margin · market order"]);
+  expect(headerFor("perpsFunds")).toEqual(["Trading funds", "Between wallet and trading"]);
+  expect(headerFor("wallet")).toEqual(["Wallet", "AUSD available and movements"]);
+  expect(headerFor("deposit")).toEqual(["Deposit AUSD", "Monad network"]);
+  expect(headerFor("withdraw")).toEqual(["Withdraw AUSD", "To an external address"]);
+  expect(headerFor("signin")).toEqual(["Wallet access", "Passkey on this device"]);
+  for (const screen of COMING_SOON) expect(headerFor(screen)[1]).toBe("Coming soon");
+  expect(headerFor("launchpad")[0]).toBe("Launchpad");
 });
 
-test("balance is 0 without an account even if AUSD was read", () => {
-  expect(deriveBalance(false, 1240)).toBe(0);
-  expect(deriveBalance(true, 1240)).toBe(1240);
-});
-
-test("the three Perpl screens need an account; only the tab shows the tab bar; subscreens can go back", () => {
-  for (const s of ["perps", "perpsMarket", "perpsFunds"] as const) expect(GATED).toContain(s);
-  expect(SHOW_TABS).toContain("perps");
-  expect(SHOW_TABS).not.toContain("perpsMarket");
-  expect(SHOW_TABS).not.toContain("perpsFunds");
-  expect(CAN_BACK).toContain("perpsMarket");
-  expect(CAN_BACK).toContain("perpsFunds");
-  expect(CAN_BACK).not.toContain("perps");
-});
-
-test("without an account the Trade tab asks for access and comes back to it", () => {
-  const s = afterSigninState(requireAccountState(INITIAL, false, "perps"));
-  expect(s.screen).toBe("perps");
-});
-
-test("headers of the Perpl screens", () => {
-  expect(headerFor("perps", agent, post, "buy", 0)).toEqual(["Trade", "Perps on Perpl · Monad"]);
-  expect(headerFor("perpsMarket", agent, post, "buy", 0, "MON")).toEqual(["MON Perp", "Market order"]);
-  expect(headerFor("perpsMarket", agent, post, "buy", 0)).toEqual(["Perp", "Market order"]);
-  expect(headerFor("perpsFunds", agent, post, "buy", 0)).toEqual(["Trading funds", "Between wallet and trading"]);
-});
-
-test("nav to a market keeps the chosen market and side in the state", () => {
-  const s = navState(INITIAL, "perpsMarket", { perpsMarketId: 64, perpsSide: "short" });
-  expect(s).toMatchObject({ screen: "perpsMarket", perpsMarketId: 64, perpsSide: "short" });
-  expect(navState(INITIAL, "perpsFunds", { fundsMode: "withdraw" }).fundsMode).toBe("withdraw");
-});
-
-test("the app starts on Wallet", () => {
+test("the app starts on Wallet; boot keeps it with an account and goes through Sign in without one", () => {
   expect(INITIAL.screen).toBe("wallet");
-});
-
-test("boot keeps Wallet with an account and goes through Sign in without one", () => {
   expect(bootState(INITIAL, true)).toBe(INITIAL);
   const s = bootState(INITIAL, false);
-  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false });
+  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet" });
   expect(s.nextPatch).toBeUndefined();
   expect(afterSigninState(s).screen).toBe("wallet");
 });
@@ -153,25 +102,20 @@ test("boot keeps Wallet with an account and goes through Sign in without one", (
 test("canBackFor requires both a CAN_BACK screen and a non-empty stack", () => {
   expect(canBackFor("signin", [])).toBe(false);
   expect(canBackFor("signin", ["wallet"])).toBe(true);
-  expect(canBackFor("wallet", ["market"])).toBe(false); // wallet no está en CAN_BACK
+  expect(canBackFor("wallet", ["markets"])).toBe(false);
   const booted = bootState(INITIAL, false);
   expect(canBackFor(booted.screen, booted.stack)).toBe(false);
 });
 
-test("coming soon covers the three mock tabs and never the real ones", () => {
-  expect(COMING_SOON).toEqual(["market", "activity", "portfolio"]);
-  expect(COMING_SOON).not.toContain("wallet");
-  expect(COMING_SOON).not.toContain("perps");
-  for (const screen of COMING_SOON) expect(headerFor(screen, agent, post, "buy", 0)[1]).toBe("Coming soon");
-  expect(headerFor("wallet", agent, post, "buy", 0)[1]).toBe("AUSD available and movements");
-  expect(headerFor("perps", agent, post, "buy", 0)[1]).toBe("Perps on Perpl · Monad");
+test("reset clears the stack and any pending gate", () => {
+  const dirty = { ...navState(INITIAL, "market"), next: "markets" as const };
+  expect(resetState(dirty, "markets")).toMatchObject({ screen: "markets", stack: [], next: undefined, nextPatch: undefined });
 });
 
 test("sign out lands on Sign in and comes back to Wallet after logging in", () => {
-  const dirty = { ...navState(navState(INITIAL, "perps"), "perpsMarket", { perpsMarketId: 64 }), resume: true, mockHolder: true };
+  const dirty = navState(navState(INITIAL, "markets"), "market", { perpsMarketId: 64 });
   const s = signedOutState(dirty);
-  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet", resume: false, mockHolder: false });
-  expect(s.nextPatch).toBeUndefined();
+  expect(s).toMatchObject({ screen: "signin", stack: [], next: "wallet" });
   expect(canBackFor(s.screen, s.stack)).toBe(false);
   expect(afterSigninState(s).screen).toBe("wallet");
 });
