@@ -245,7 +245,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
             placeholder="0.00"
             placeholderTextColor={C.faint}
             keyboardType="decimal-pad"
-            style={[textStyle(700, 30, { lh: 1, ls: -0.02, display: true, color: C.ink }), { flex: 1, paddingVertical: 0 }]}
+            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, paddingVertical: 4 }]}
           />
           <Chip label="MAX" mono s={10} py={6} px={10} onPress={() => setAmount(formatUnits(ausd, AUSD_DECIMALS))} />
         </View>

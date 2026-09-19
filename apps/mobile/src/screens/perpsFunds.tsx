@@ -66,7 +66,7 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
           {st.step === "unknown" && error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
         </View>
         {st.step !== "sent" ? (
-          <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
+          <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Markets</T></Touch>
         ) : <ActivityIndicator color={C.lime} />}
       </View>
     );

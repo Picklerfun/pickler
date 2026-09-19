@@ -41,7 +41,7 @@ export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResul
           {result.step === "failed" && onEdit ? (
             <Touch onPress={onEdit} style={secondaryBtn}><T w={700} s={13.5}>Edit</T></Touch>
           ) : null}
-          <Touch onPress={onBack} style={{ ...primaryBtn, flex: 1 }}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
+          <Touch onPress={onBack} style={{ ...primaryBtn, flex: 1 }}><T w={700} s={14.5} color={C.onLime}>Back to Markets</T></Touch>
         </View>
       ) : null}
     </View>
@@ -62,7 +62,7 @@ export function MarketScreen({ S, set, perpl, nav }: AppCtx) {
     return (
       <View style={{ padding: 16, gap: 13 }}>
         <T w={400} s={13} color={C.faint}>{perpl.contextError ? `Couldn't load markets. ${perpl.contextError}` : "Loading market…"}</T>
-        <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
+        <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Markets</T></Touch>
       </View>
     );
   }

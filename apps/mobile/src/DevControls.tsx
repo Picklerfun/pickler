@@ -12,7 +12,7 @@ const GROUPS: readonly [string, readonly [Screen, string][]][] = [
 
 function PChip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   const p = pill(on);
-  return <Chip label={label} fg={p.fg} bd={p.bd} bg={p.bg} onPress={onPress} s={11.5} py={6} px={10} />;
+  return <Chip label={label} fg={p.fg} bd={p.bd} bg={p.bg} onPress={onPress} s={11.5} py={6} px={10} accessibilityLabel={`dev-${label.toLowerCase().replace(/\W+/g, "-")}`} />;
 }
 
 export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClose: () => void; ctx: AppCtx }) {
