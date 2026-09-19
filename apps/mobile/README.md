@@ -90,7 +90,8 @@ borra; "Reset trading key" enrola otra (máx. 16 por cuenta; revocar en `testnet
 - *Reconnect trading*: sin key pero con cuenta on-chain (`readAccountId > 0`), el gate reconecta con
   `enable(0n)` — sólo forwarding + key, sin mover AUSD.
 - Desfase de reloj: `pub/context` trae el header `Date`; con más de 20 s de diferencia Markets avisa
-  (Perpl rechaza firmas a ±30 s; fue la causa real de los `3401` del iPhone).
+  (Perpl rechaza firmas a ±30 s; fue la causa real de los `3401` del iPhone), descontando el header
+  `Age` del CDN.
 - Fees se muestran con 4 decimales; saldos y montos con 2.
 - Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
 

@@ -24,7 +24,7 @@ explícita de Jesús en sesión.
 | Market, pills y ticket (D14, D20) | `04-market-trade-empty.png`: header "MON Perp / Perpl · isolated margin · market order", pills Ask · **Trade** (lima) · Agents, Segmented Long/Short con Long en lima, card `MARGIN · AUSD`, chips `1x 2x 3x` con **1x en lima** (cierra el pendiente "pill blanco" de F1), KV NOTIONAL / EST. PRICE / FEE · TAKER / LIQUIDATION ≈ y el botón deshabilitado. `07-ticket-filled.png` (margen 2): NOTIONAL ≈ 1.98 AUSD · 81 MON, EST. PRICE 0.02445, **FEE · TAKER ≈ 0.0006 AUSD** (cuatro decimales, ≠ 0.0000), LIQUIDATION ≈ 0.00041, `Review long · 2.00 AUSD →` en `outline` con flecha (P8). `08-ticket-3x.png`: a 3x, FEE ≈ 0.0020 AUSD, LIQUIDATION ≈ 0.01674 en rosa y el aviso ámbar "Higher leverage means a closer liquidation price.". `05-market-ask.png` y `06-market-agents.png`: las `ComingSoonCard` de Ask y Agents. |
 | Orden real abierta y cerrada (D13, P6) | `09-review.png`: `YOU OPEN · LONG MON · 1X · MARKET`, cifra display "2.00 AUSD" y **Confirm long** en lima. `11-filled.png`: **"Filled 81 MON at 0.02464"** con "Fee 0.0006 AUSD · LONG 1x". `12-position.png`: POSITIONS con chip `LONG`, "81 MON · 1x", PnL **+0.00 AUSD** en lima (nunca «−0.00»), línea `0.02464 → 0.02453 · LIQ. EST. 0.00041` y botón Close. `12b-balance-in-positions.png`: **102.86** arriba, "2.00 in positions · 102.86 free". `13-close-confirm.png`: `YOU CLOSE · AT MARKET`, "81 MON LONG", `EST. PNL +0.00 AUSD`. `14-closed.png`: **"Closed 81 MON at 0.02455"** con "Fee 0.0006 AUSD · realised PnL shows in the trading balance". `15-markets-flat.png`: **104.86**, "0.00 in positions · 104.86 free". |
 | Trading funds (D15) | `16-funds-add.png`: StatGrid `WALLET 29.00 AUSD` / `TRADING · FREE 104.86 AUSD`, Segmented **Add funds** \| Withdraw, card `AMOUNT TO ADD · AUSD`, "Minimum 10.00 AUSD" y Review deshabilitado. `17-funds-review.png`: `YOU ADD TO TRADING · AUSD` "10.00", KV FROM Wallet / TO Trading account / NETWORK Monad · gas in MON y los botones Edit / Confirm deposit — se tocó **Edit**, nunca Confirm. `18-funds-withdraw.png`: `AMOUNT TO WITHDRAW · AUSD`, "Minimum 0.01 AUSD · only free balance". **No se movió ni un centavo.** |
-| Aviso de reloj desfasado (D19, P4) | `20b-devcontrols-skew-real-0s.png`: el panel ⚙ muestra `screen: markets · account: unlocked · perpl: ready · skew: 0s` — **primera medición real del desfase del simulador contra Perpl: 0 s** (y −5 s en una segunda lectura tras el Sign out, `21a-after-signout.png`), muy por dentro del umbral de ±20 s y del ±30 s del servidor. Con el chip `Clock +2 min`, `19-clock-warn.png`: Warn ámbar **"Your phone's clock is off by 120 s."** con el cuerpo "Perpl rejects signatures more than 30 s off — turn on Set automatically in Settings › General › Date & Time."; `20-devcontrols-skew.png` marca `skew: 120s`. Al desactivarlo, `20c` vuelve a `skew: 0s` y `20d-markets-no-warn.png` confirma Markets limpio. |
+| Aviso de reloj desfasado (D19, P4) | `20b-devcontrols-skew-real-0s.png`: el panel ⚙ muestra `screen: markets · account: unlocked · perpl: ready · skew: 0s` — **primera medición real del desfase del simulador contra Perpl: 0 s** (y −5 s en una segunda lectura tras el Sign out, `21a-after-signout.png`), muy por dentro del umbral de ±20 s y del ±30 s del servidor. **Corrección tras la revisión final:** esa segunda lectura de −5 s no era el reloj del simulador — `pub/context` está detrás de Cloudflare (`cache-control: max-age=10`) y el `Date` de un hit de caché puede tener hasta 10 s de antigüedad; `serverTime` ahora suma el header `Age` (commit `486a6fa`). Con el chip `Clock +2 min`, `19-clock-warn.png`: Warn ámbar **"Your phone's clock is off by 120 s."** con el cuerpo "Perpl rejects signatures more than 30 s off — turn on Set automatically in Settings › General › Date & Time."; `20-devcontrols-skew.png` marca `skew: 120s`. Al desactivarlo, `20c` vuelve a `skew: 0s` y `20d-markets-no-warn.png` confirma Markets limpio. |
 | Tarjeta "We kept what you were about to do" (D18) | `21-signin-held.png`: tras `dev-sign-out` y tocar el tab Markets sin cuenta, Wallet access muestra la tarjeta violeta **"We kept what you were about to do"** con "Trading on Perpl. You come straight back after this step."; `21a-after-signout.png` prueba que sin `next` la tarjeta **no** aparece. `22-after-signin-markets.png`: tras el sign-in aterriza en **Markets** (el `next` retenido) con el gate Reconnect y `#620`. **Cierra el pendiente 9 del audit de F1**, que quedó verificado sólo por test. |
 | Passkey y cuenta | Ver "Lista de passkeys del sheet" más abajo. El sign-in aterrizó en `0xe371…51C1` las dos veces (Wallet: `0xe371…51C1 · CONNECTED`, AUSD 29.00, MON 0.0718) y el gate leyó `Perpl account #620`. Nunca se tocó "Create a wallet". |
 | Docs | `npm run docs:html`, `npm run docs:check`, `npm run agents:check` y la captura de 390 px del overview: salidas en el reporte de la Task 9. Overview con la phase-card F2 en `completed`, las diez tasks 0–9 marcadas (la 10 no) y `<details class="followups">` con los pendientes reales; manifest con `{ num: 2, status: 'completed' }` y `status: 'active'` global hasta que el build 5 esté `shipped`. |
@@ -117,6 +117,38 @@ Todas las tomó el coordinador sin consultar a Jesús. En orden de aparición en
    es **inalcanzable**. Se documentó el estado con `16b-funds-add-5-below-min.png` y se usó **10**
    —dentro de los 29.00 AUSD de la wallet— tocando **Edit**, nunca Confirm. **Qué cuesta si está
    mal:** nada en el código; es un error del plan, y queda corregido aquí y no en la app.
+
+### Correcciones tras la revisión final
+
+Commit `486a6fa` (`fix(mobile): sondeo de cuenta estable durante el Reconnect, Age del CDN en
+serverTime, copy del guard sin cuenta`) cerró tres hallazgos de la revisión final de la rama entera:
+
+1. **`usePerpl.ts` — el sondeo de `existingAccountId` se anulaba a mitad del Reconnect.** El efecto
+   de la Task 3 (minor diferido de arriba) resolvía a `null` en cuanto `state.status` dejaba de ser
+   `"none"`, así que al tocar **Reconnect** (`state` pasa a `"onboarding"`) el gate perdía el id de
+   cuenta conocido y el título podía retitularse a "Enable trading" a mitad de los cuatro pasos. El
+   efecto ahora conserva el valor durante `"onboarding"`, sólo sondea mientras no se conoce (no
+   repite el RPC una vez que hay respuesta) y mantiene el último valor si el RPC falla en vez de
+   volver a `null`; sólo resetea con `!address`, `"ready"` o `"loading"`. Sin test dedicado — no hay
+   suite de `usePerpl` (ver Pendientes) — verificado por lectura del efecto y por `npx tsc --noEmit`
+   (exit 0) y el resto de la suite Perpl (`npm test` → 24 suites, 179/179) sin regresiones.
+2. **`context.ts` — `serverTime` no contaba el `Age` del CDN.** `pub/context` está detrás de
+   Cloudflare (`cache-control: max-age=10`); un *hit* de caché trae un header `Date` de hasta 10 s de
+   antigüedad, que `parseServerTime` ignoraba. Ahora `parseServerTime(dateHeader, ageHeader)` suma
+   `age * 1000` ms cuando el header `Age` es un número finito y positivo, e ignora valores no
+   numéricos. Cubierto en `__tests__/perpl-context.test.ts`: `parseServerTime(..., "7")` →
+   `Date.UTC(2026, 8, 18, 22, 35, 7)`, `parseServerTime(..., "x")` → sin sumar (header inválido), y un
+   tercer caso de `fetchContext` con `age: "10"` → `Date.UTC(2026, 8, 18, 22, 35, 10)`. Explica la
+   lectura de "−5 s" del audit (ver la fila de reloj arriba): no era el reloj del simulador.
+3. **`enable.ts` — el copy del guard sin cuenta decía "Enter an amount."** El paso 1 de Reconnect
+   (`amount === 0n` y `readAccountId() === 0n`) no tiene formulario de monto que "entrar", así que el
+   mensaje no correspondía al recorrido; pasa a "This wallet has no Perpl account yet." Actualizado
+   en `__tests__/perpl-enable.test.ts` ("reconnect with amount 0 but no account on-chain…").
+
+Anotaciones de documentación de la misma pasada (sin código): spec `2026-09-18-mobile-hifi-design.md`
+— rama F2 en el encabezado, D19 con el matiz de `KEY_REJECTED_COPY`/título del `Warn` y la suma del
+`Age`, D7 con el reset de scroll de F2, y la fila de riesgos del header `Date` con la caché de
+Cloudflare; `apps/mobile/README.md` con el matiz del `Age` en el bullet del reloj.
 
 ### Minors diferidos (revisados y aceptados sin arreglar)
 
@@ -233,6 +265,24 @@ No bloqueantes, ordenados por lo que más pesa:
 - **Gas**: quedan 0.0551 MON y cada Reconnect gasta ≈ 0.0083 MON. Alcanza para varios recorridos,
   pero no es infinito.
 - Minors diferidos de las revisiones por task (lista arriba), ninguno con efecto observable.
+
+### Items de producto de la revisión final (para Jesús)
+
+- La cifra grande de la card `TRADING · AUSD` es el saldo **libre** (D13), no el capital: con una
+  posición abierta se ve más chico que el total. Decidir si se muestra el capital, un desglose, o se
+  deja así con el label actual.
+- El copy de Reconnect no dice "· gas in MON" aunque `allowOrderForwarding` sí gasta gas (≈ 0.0083 MON
+  por Reconnect, medido en este audit): la tarjeta puede leerse como que el paso es gratis.
+- El `Warn` de reloj desfasado (D19) sólo se pinta en la rama `ready` de Markets; el gate
+  `none`/`onboarding` (Enable/Reconnect trading) no lo muestra aunque el mismo desfase pueda tumbar el
+  enrolamiento de la key.
+- El reset de scroll al cambiar de pantalla (ruling 4) sólo se probó yendo hacia adelante; falta
+  verificar también al volver atrás, porque iOS puede restaurar la posición de scroll al hacer `pop`.
+- Revocar las **dos claves de trading de más** en la cuenta #620 en `testnet.perpl.xyz/apikeys` antes
+  de repetir este recorrido (límite 16 por cuenta; ya señalado arriba).
+- Sigue sin existir una suite de tests para `usePerpl` — el fix 1 de esta pasada (sondeo estable de
+  `existingAccountId`) sólo quedó verificado por lectura y por el resto de la suite Perpl, no por un
+  test directo del hook.
 
 ## Siguiente punto de decisión
 
