@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
 import type { TestContext } from "node:test";
 import { Pool } from "pg";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { migrateDatabase } from "../src/persistence/migrate-database.js";
 import { PostgresResearchStore } from "../src/persistence/research-store.js";
 
 /** Real PostgreSQL, isolated database per test; never touches existing schemas. */
@@ -39,10 +38,7 @@ export async function createTestStore(t: TestContext, leaseClock?: () => number)
       await admin.end();
     }
   });
-  await migrate(store.db, {
-    migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
-    migrationsSchema: "pickler_migrations",
-  });
+  await migrateDatabase(store.pool);
   await store.init();
   return Object.assign(store, { connectPeer });
 }

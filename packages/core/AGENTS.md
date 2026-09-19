@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) first. Read the local instructions
 
 `@pickler/core` owns the business layer: domain entities and invariants, application use cases, authorization rules, and ports for external capabilities. It must remain usable without Next.js or any specific provider.
 
-Current source includes `application/get-health.ts`, `ports/clock.ts` and `features/research/{types,policy,run-research}.ts`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
+Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
 
 The runner owns permission rechecks, evidence attribution, bounded capability use and final quote verification. It accepts trusted scope from persisted jobs. API, Studio and scheduling share the same queue/runner. Core never accepts a model-supplied tenant or grants permissions from external content. Research failures and valid abstentions remain separate states.
 
@@ -47,3 +47,9 @@ NFL research adds provider-neutral `SportsData`, versioned plugin permissions an
 `researchReferences` produces citable market, quote and plugin-availability context, distinct from external `Source` evidence. `validateReport` accepts these only in their declared sections; context cannot substantiate injuries or sporting advantage. The runner persists these references and retains the original provider events. Top-level decision source IDs still require retrieved sources. Keep historical reports readable without requiring a context-reference backfill.
 
 `features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization remains NFL-only.
+
+Product API-key authorization is deny-by-default for every key kind. `read:agents` grants read-only
+product agent access; legacy broad labels grant no implied permissions. Budget reservations record
+the actual commit period and reset generation. A refund may reduce current spend only when both
+match; legacy unknown-period charges cannot credit the active balance. This product ledger is not
+the research quota authority.

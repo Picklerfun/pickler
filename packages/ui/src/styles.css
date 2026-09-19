@@ -1,21 +1,492 @@
+/* Pickler control system. One set of shapes, two surfaces.
+ *
+ * The public site (landing, tokens, agents) and the creator console share the same radii, control
+ * sizes and button variants. What changes between them is tone: typeface, background and density.
+ * Pick a surface with `data-surface="public"` or `data-surface="console"` on any wrapper; the
+ * public surface is the default.
+ *
+ * Shapes: pill for actions, chips and status; 16 for cards and panels; 12 for inputs and tiles;
+ * 6 for small marks. Nothing square.
+ */
+
+:root {
+  --pk-radius-sm: 6px;
+  --pk-radius-md: 12px;
+  --pk-radius-lg: 16px;
+  --pk-radius-xl: 24px;
+  --pk-radius-pill: 999px;
+
+  /* Control padding and type, by size. */
+  --pk-control-sm: 9px 14px;
+  --pk-control-md: 12px 18px;
+  --pk-control-lg: 15px 24px;
+  --pk-control-font-sm: 600 12.5px/1;
+  --pk-control-font-md: 600 14px/1;
+  --pk-control-font-lg: 600 15px/1;
+
+  /* Accents are the same hue on both surfaces; only the ink and the ground change. */
+  --pk-lime: #c8f03a;
+  --pk-lime-hover: #d6f95c;
+  --pk-on-lime: #0b1200;
+  --pk-violet: #9b7bff;
+  --pk-on-violet: #0b0618;
+  --pk-magenta: #ff5fa2;
+  --pk-cyan: #5ad8ff;
+  --pk-cyan-ink: #7fe3ff;
+  --pk-pink-ink: #ff9ec6;
+  --pk-amber: #ffc93f;
+
+  --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
+
+  --pk-duration: 140ms;
+}
+
+/* Public surface: the landing, token and agent pages. Playful and roomier. */
+[data-surface="public"],
+:root {
+  --pk-font: var(--font-body), Manrope, sans-serif;
+  --pk-font-mono: var(--font-mono), "JetBrains Mono", monospace;
+  --pk-bg: #05061a;
+  --pk-ink: #f5f6ff;
+  --pk-ink-soft: #dde1f5;
+  --pk-ink-dim: #c3c9e4;
+  --pk-ink-muted: #a9b0d0;
+  --pk-ink-faint: #8891b5;
+  --pk-ink-placeholder: #6c7398;
+  --pk-panel: rgba(245, 246, 255, 0.05);
+  --pk-field: rgba(5, 6, 26, 0.65);
+  --pk-surface: rgba(245, 246, 255, 0.05);
+  --pk-surface-strong: rgba(245, 246, 255, 0.09);
+  --pk-border: rgba(245, 246, 255, 0.18);
+  --pk-border-strong: rgba(245, 246, 255, 0.45);
+  /* Hairlines that separate content, quieter than a control's border. */
+  --pk-rule: rgba(245, 246, 255, 0.16);
+  --pk-rule-strong: rgba(245, 246, 255, 0.24);
+  --pk-focus: var(--pk-cyan);
+}
+
+/* Console surface: the creator dashboard. Denser and quieter. */
+[data-surface="console"] {
+  --pk-font: var(--font-body), Manrope, sans-serif;
+  --pk-bg: #08080a;
+  --pk-ink: #f3f1ec;
+  --pk-ink-soft: #b9b9b4;
+  --pk-ink-dim: #c9c6bf;
+  --pk-ink-muted: #8c8c88;
+  --pk-ink-faint: #8b8880;
+  --pk-ink-placeholder: #6f6f6a;
+  --pk-panel: #0d0d10;
+  --pk-field: #121216;
+  --pk-surface: rgba(243, 241, 236, 0.04);
+  --pk-surface-strong: rgba(243, 241, 236, 0.09);
+  --pk-border: rgba(243, 241, 236, 0.14);
+  --pk-border-strong: rgba(243, 241, 236, 0.36);
+  --pk-rule: rgba(243, 241, 236, 0.12);
+  --pk-rule-strong: rgba(243, 241, 236, 0.18);
+  --pk-focus: var(--pk-lime);
+}
+
+/* ---------- Button ---------- */
+
 .pk-button {
-  margin-top: 1.5rem;
-  border: 0;
-  border-radius: 0.4rem;
-  padding: 0.9rem 1.2rem;
-  background: #172a22;
-  color: white;
-  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: var(--pk-control-md);
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink);
+  font: var(--pk-control-font-md) var(--pk-font);
+  white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    border-color var(--pk-duration),
+    color var(--pk-duration),
+    transform var(--pk-duration);
 }
-.pk-button:hover {
-  background: #2c503f;
+
+.pk-button:active {
+  transform: scale(0.98);
 }
+
 .pk-button:focus-visible {
-  outline: 3px solid #bd641e;
-  outline-offset: 4px;
+  outline: 2px solid var(--pk-lime);
+  outline-offset: 2px;
 }
-.pk-button:disabled {
-  opacity: 0.5;
+
+.pk-button:disabled,
+.pk-button[aria-disabled="true"] {
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* One filled lime action per view. Never two filled buttons side by side. */
+.pk-button[data-variant="primary"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+
+.pk-button[data-variant="primary"]:hover:not(:disabled) {
+  background: var(--pk-lime-hover);
+}
+
+.pk-button[data-variant="secondary"] {
+  border-color: var(--pk-border-strong);
+  color: var(--pk-ink);
+}
+
+.pk-button[data-variant="secondary"]:hover:not(:disabled) {
+  background: var(--pk-surface);
+  border-color: var(--pk-ink);
+}
+
+.pk-button[data-variant="ghost"] {
+  color: var(--pk-ink-dim);
+}
+
+.pk-button[data-variant="ghost"]:hover:not(:disabled) {
+  color: var(--pk-ink);
+}
+
+/* Tile: a rectangular action inside a grid, like the console's quick actions. A tile reads as a
+   row, so its label starts at the left rather than sitting in the middle like an action's does. */
+.pk-button[data-variant="tile"] {
+  justify-content: flex-start;
+  text-align: left;
+  padding: 14px 16px;
+  background: var(--pk-surface);
+  border-color: var(--pk-border);
+  border-radius: var(--pk-radius-md);
+}
+
+.pk-button[data-variant="tile"]:hover:not(:disabled) {
+  border-color: var(--pk-border-strong);
+}
+
+.pk-button[data-size="sm"] {
+  padding: var(--pk-control-sm);
+  font: var(--pk-control-font-sm) var(--pk-font);
+}
+
+.pk-button[data-size="lg"] {
+  padding: var(--pk-control-lg);
+  font: var(--pk-control-font-lg) var(--pk-font);
+}
+
+/* Glow: the marketing call to action, lit from inside. One per page, and only where the page is
+   asking for something — the hero, the waitlist, the application. */
+.pk-button[data-glow="true"] {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 0 24px rgba(200, 240, 58, 0.32);
+  transition:
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pk-button[data-glow="true"]:hover:not(:disabled) {
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 0 40px rgba(200, 240, 58, 0.5);
+  transform: translateY(-2px);
+}
+
+.pk-button[data-glow="true"]:disabled {
+  box-shadow: none;
+  transform: none;
+}
+
+/* Mono labels: the uppercase micro type used for navigation and utility actions. */
+.pk-button[data-mono="true"] {
+  font-family: var(--pk-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Mono type follows the control's size, the way the rest of the label type does. */
+.pk-button[data-mono="true"][data-size="sm"] {
+  font-size: 11px;
+}
+
+.pk-button[data-mono="true"][data-size="lg"] {
+  font-size: 13.5px;
+  letter-spacing: 0.1em;
+}
+
+.pk-button[data-block="true"] {
+  width: 100%;
+}
+
+/* ---------- Chip: filters, tags and status ---------- */
+
+.pk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-dim);
+  font: 500 12px/1 var(--pk-font-mono);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    border-color var(--pk-duration),
+    color var(--pk-duration);
+}
+
+.pk-chip:hover:not(:disabled) {
+  border-color: var(--pk-border-strong);
+  color: var(--pk-ink);
+}
+
+.pk-chip[aria-pressed="true"],
+.pk-chip[data-selected="true"] {
+  background: rgba(200, 240, 58, 0.14);
+  border-color: rgba(200, 240, 58, 0.45);
+  color: var(--pk-lime);
+}
+
+/* Read-only status, not a control. */
+.pk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* A status reads on one line or it is not a status. */
+  white-space: nowrap;
+  padding: 4px 9px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  font: 700 9.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-dim);
+}
+
+/* ---------- Meter: one number between 0 and 100 ---------- */
+
+.pk-meter {
+  display: block;
+  height: 7px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-field);
+  overflow: hidden;
+}
+
+.pk-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-cyan);
+  transition: width var(--pk-duration);
+}
+
+.pk-meter-fill[data-tone="lime"] {
+  background: var(--pk-lime);
+}
+
+.pk-meter-fill[data-tone="amber"] {
+  background: var(--pk-amber);
+}
+
+.pk-meter-fill[data-tone="magenta"] {
+  background: var(--pk-magenta);
+}
+
+/* ---------- Segmented: exclusive options in one track ---------- */
+
+.pk-segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-field);
+}
+
+.pk-segment {
+  flex: 1;
+  padding: 9px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-dim);
+  font: var(--pk-control-font-sm) var(--pk-font);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+
+.pk-segment:hover:not([aria-pressed="true"]) {
+  color: var(--pk-ink);
+}
+
+.pk-segment:focus-visible {
+  outline: 2px solid var(--pk-lime);
+  outline-offset: 2px;
+}
+
+.pk-segment[aria-pressed="true"] {
+  background: var(--pk-surface-strong);
+  color: var(--pk-ink);
+}
+
+/* Taking a side reads as loud as the money it moves. */
+.pk-segmented[data-tone="lime"] .pk-segment[aria-pressed="true"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+  font-weight: 700;
+}
+
+/* ---------- Field: a label, a control, a note ---------- */
+
+.pk-field {
+  display: block;
+}
+
+.pk-field-label {
+  display: block;
+  margin-bottom: 7px;
+  font: 500 10.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-muted);
+}
+
+.pk-field-note {
+  display: block;
+  margin-top: 8px;
+  font: 500 11.5px/1.4 var(--pk-font-mono);
+  color: var(--pk-ink-muted);
+}
+
+.pk-field-note[data-tone="good"] {
+  color: var(--pk-lime);
+}
+
+.pk-field-note[data-tone="warn"] {
+  color: var(--pk-amber);
+}
+
+.pk-field-note[data-tone="bad"] {
+  color: var(--pk-magenta);
+}
+
+.pk-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-field);
+  color: var(--pk-ink);
+  font: 400 14.5px/1.3 var(--pk-font);
+  outline: none;
+  transition: border-color var(--pk-duration);
+}
+
+.pk-input::placeholder {
+  color: var(--pk-ink-placeholder);
+}
+
+.pk-input:focus,
+.pk-input:focus-within {
+  border-color: var(--pk-focus);
+}
+
+.pk-input[aria-invalid="true"] {
+  border-color: var(--pk-magenta);
+}
+
+.pk-input[data-mono="true"] {
+  font-family: var(--pk-font-mono);
+}
+
+.pk-input[data-size="sm"] {
+  padding: 10px 14px;
+  font-size: 13.5px;
+}
+
+.pk-input[data-size="lg"] {
+  padding: 14px 16px;
+  font-size: 17px;
+}
+
+/* A search field is a pill, like the filters it sits beside. */
+.pk-input[data-shape="pill"] {
+  border-radius: var(--pk-radius-pill);
+}
+
+.pk-textarea {
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* A fixed mark inside the frame — the @ before a handle — so the two read as one control. */
+.pk-input-group {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pk-input-prefix {
+  flex: none;
+  padding-left: 15px;
+  font: 500 14.5px/1.3 var(--pk-font-mono);
+  color: var(--pk-ink-muted);
+}
+
+.pk-input-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 13px 15px 13px 3px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 400 14.5px/1.3 var(--pk-font);
+  outline: none;
+}
+
+.pk-input-inner[data-mono="true"] {
+  font-family: var(--pk-font-mono);
+}
+
+.pk-input-group[data-size="lg"] .pk-input-inner {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  font-size: 17px;
+}
+
+.pk-input-group[data-size="lg"] .pk-input-prefix {
+  font-size: 17px;
+  padding-left: 16px;
+}
+
+/* ---------- Panel: the surface content sits on ---------- */
+
+.pk-panel {
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface);
+}
+
+/* Raised: the card a form is built from, lit along its top edge. */
+.pk-panel[data-tone="raised"] {
+  background: var(--pk-surface-strong);
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.pk-panel[data-tone="quiet"] {
+  background: transparent;
 }

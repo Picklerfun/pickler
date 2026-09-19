@@ -44,6 +44,12 @@ PostgreSQL stores each tenant's configuration and history, including config snap
 
 See [the pilot guide](../apps/agent-service/README.md) for current endpoints, limits, readiness and restart semantics. [Runtime V1](specs/agent-runtime-v1.md) remains the broader direction; paper/live trading, wallets, public login and adaptive scheduling are not implemented.
 
+The network, contracts, authorization rules, and confirmation policy remain undefined. No blockchain SDK or RPC provider has been provisioned.
+
+## Data storage
+
+Supabase Postgres (project `pickler`) holds one schema per domain: `identity`, `agents`, `budget`, `audit`, `growth` (see `supabase/AGENTS.md`). Servers reach it with a server-only secret key, through tables or `security definer` functions (the waitlist uses `growth.join_waitlist`); tables have row-level security enabled with no public policies. Agent tokens are modelled in `market` (see [market/token-launch.md](market/token-launch.md)); landing and agent board data stay sample content until the indexer fills it. Adapters use plain `fetch`, so they also run on Cloudflare Workers. Redis is not used; add it only as a cache behind the same port if measured load requires it. Without Supabase configuration the app serves labelled sample data.
+
 ## Future backend extraction
 
 Create `apps/api` when needed. It will consume the same `core`, `infrastructure`, and `api-schema` packages, provide its own composition root, and expose the same `/api/v1` contract. Next.js can retain a facade or consume the new backend over HTTP. Use cases remain unchanged; transport, sessions, configuration, and deployment still need adaptation. Do not create an extra process merely to simulate a future migration.

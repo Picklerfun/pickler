@@ -10,17 +10,19 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 
 ## Project map
 
-| Project                      | Responsibility                                       | Required local instructions                       |
-| ---------------------------- | ---------------------------------------------------- | ------------------------------------------------- |
-| `apps/agent-service`         | Local Mastra Studio, API and research worker         | [AGENTS.md](apps/agent-service/AGENTS.md)         |
-| `apps/web`                   | Next.js presentation and HTTP entry points           | [AGENTS.md](apps/web/AGENTS.md)                   |
-| `packages/core`              | Business rules, use cases, and ports                 | [AGENTS.md](packages/core/AGENTS.md)              |
-| `packages/infrastructure`    | Implementations of business ports                    | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
-| `packages/api-schema`        | Public HTTP DTOs                                     | [AGENTS.md](packages/api-schema/AGENTS.md)        |
-| `packages/ui`                | Reusable React components and styles                 | [AGENTS.md](packages/ui/AGENTS.md)                |
-| `packages/chain`             | Public blockchain metadata and future generated ABIs | [AGENTS.md](packages/chain/AGENTS.md)             |
-| `packages/typescript-config` | Shared compiler configuration                        | [AGENTS.md](packages/typescript-config/AGENTS.md) |
-| `contracts`                  | Foundry/Solidity project                             | [AGENTS.md](contracts/AGENTS.md)                  |
+| Project                      | Responsibility                                        | Required local instructions                       |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| `apps/agent-service`         | Local Mastra Studio, API and research worker          | [AGENTS.md](apps/agent-service/AGENTS.md)         |
+| `apps/web`                   | Next.js presentation and HTTP entry points            | [AGENTS.md](apps/web/AGENTS.md)                   |
+| `workers/api`                | Public API on Cloudflare Workers, ported from Relayer | [AGENTS.md](workers/api/AGENTS.md)                |
+| `packages/core`              | Business rules, use cases, and ports                  | [AGENTS.md](packages/core/AGENTS.md)              |
+| `packages/infrastructure`    | Implementations of business ports                     | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
+| `packages/api-schema`        | Public HTTP DTOs                                      | [AGENTS.md](packages/api-schema/AGENTS.md)        |
+| `packages/ui`                | Reusable React components and styles                  | [AGENTS.md](packages/ui/AGENTS.md)                |
+| `packages/chain`             | Public blockchain metadata and future generated ABIs  | [AGENTS.md](packages/chain/AGENTS.md)             |
+| `packages/typescript-config` | Shared compiler configuration                         | [AGENTS.md](packages/typescript-config/AGENTS.md) |
+| `contracts`                  | Foundry/Solidity project                              | [AGENTS.md](contracts/AGENTS.md)                  |
+| `supabase`                   | Local Supabase stack configuration                    | [AGENTS.md](supabase/AGENTS.md)                   |
 
 See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.md) for architectural decisions, and [the agent runtime V1 specification](docs/specs/agent-runtime-v1.md) for the planned Mastra service, capability interfaces, tenant isolation, scheduling, and implementation phases. The research-only subset is implemented; read [the pilot guide](apps/agent-service/README.md) for actual commands, limits and exclusions.
 
@@ -31,7 +33,8 @@ See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.m
 - Keep Next.js, React, transport objects, database clients, and provider SDKs out of core. Use business-owned interfaces and dependency injection.
 - Keep HTTP DTOs in `api-schema`; keep public on-chain artifacts in `chain`. Neither package carries credentials or server implementation details.
 - Use declared workspace dependencies and public package exports. Do not bypass package boundaries with relative imports into another project's source.
-- The local agent pilot uses Mastra, Exa, Polymarket and PostgreSQL. Provider credentials and the exact OpenAI-compatible model are operator supplied. No real trading, wallets, public login, deployed external queue, contracts or Firecrawl integration exists. A separate local Cloudflare Queue experiment is documented in `apps/agent-service/CLOUDFLARE-BACKGROUND.md`. Do not describe offline tests as a verified live model run.
+- Drizzle in `packages/infrastructure` owns all database migrations, including product schemas. Use `npm run db:generate` and `npm run db:migrate`; never reset existing schemas to reconcile histories.
+- The research runtime uses Mastra, configurable providers and private PostgreSQL persistence. The public frontend and Cloudflare API add Supabase login and product profiles; their agents are not yet linked to research tenants. Manual paper trading is opt-in. Real trading from PR #22 is outside this integration. Read `docs/frontend-integration.md` for current boundaries and the proposed connection. Do not describe controlled tests as live-provider validation.
 
 ## Branch and pull request workflow
 
@@ -54,7 +57,7 @@ npm run contracts:build
 npm run contracts:test
 ```
 
-Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers core, infrastructure and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
+Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `workers/api` and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
 
 Never commit dependencies, build output, secrets, private keys, or local environment files. Keep changes scoped to the request and preserve unrelated work.
 

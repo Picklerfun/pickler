@@ -1,0 +1,2574 @@
+/* Pickler public agent pages, implemented from the "Pickler Public" design canvas. */
+
+.page {
+  --ink: var(--pk-ink);
+  --ink-soft: var(--pk-ink-soft);
+  --ink-dim: var(--pk-ink-dim);
+  --muted: var(--pk-ink-muted);
+  --faint: var(--pk-ink-faint);
+  --cyan-ink: var(--pk-cyan-ink);
+  --lime: var(--pk-lime);
+  --cyan: var(--pk-cyan);
+  --pink-ink: var(--pk-pink-ink);
+  --magenta: var(--pk-magenta);
+  --rule: var(--pk-rule);
+  --display: var(--pk-font-display);
+  --body: var(--pk-font);
+  --mono: var(--pk-font-mono);
+
+  position: relative;
+  /* A column so a short page still puts its footer on the floor rather than mid-screen. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* `clip`, not `hidden`: a hidden box is still a scroll container, so jumping to an anchor
+     scrolled this element instead of the page and left the footer floating. */
+  overflow: clip;
+  background: var(--pk-bg);
+  color: var(--ink);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* A surface colours its links, but a system control is not a link to be recoloured: leaving the
+   buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
+   sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
+.page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
+  color: var(--lime);
+}
+
+.page :focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.space {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 70% at 50% 0%, #1b1f6b 0%, #0a0b2e 45%, #05061a 100%);
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.7) 1px, transparent 1px);
+  background-size: 130px 130px;
+}
+
+.label {
+  margin: 0;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--faint);
+}
+
+.panel {
+  composes: pk-panel from global;
+  background: rgba(245, 246, 255, 0.04);
+}
+
+.glass {
+  background: rgba(245, 246, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 246, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  border-radius: var(--pk-radius-lg);
+}
+
+.toneWin {
+  color: var(--lime);
+}
+.toneLoss {
+  color: var(--pink-ink);
+}
+.toneOpen {
+  color: var(--cyan-ink);
+}
+.toneMuted {
+  color: var(--faint);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 9px 13px;
+  border: 1px solid rgba(245, 246, 255, 0.2);
+  font: 500 11.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  border-radius: var(--pk-radius-pill);
+}
+
+.page a.backLink {
+  color: var(--ink-dim);
+}
+
+.page a.backLink:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.page a.navTab {
+  color: var(--muted);
+}
+
+.page a.navTabActive,
+.page a.navTabActive:hover {
+  background: rgba(200, 240, 58, 0.12);
+  border-bottom: 2px solid var(--lime);
+  color: var(--lime);
+}
+
+/* ---------- Board ---------- */
+
+.main {
+  position: relative;
+  z-index: 10;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 30px 22px 60px;
+}
+
+.mainWide {
+  max-width: 1180px;
+  padding-top: 22px;
+}
+
+.mainNarrow {
+  max-width: 900px;
+  padding-top: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--cyan-ink);
+}
+
+.boardTitle {
+  margin: 0 0 10px;
+  font: 700 clamp(30px, 5vw, 52px)/1 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.boardLead {
+  max-width: 560px;
+  margin: 0 0 22px;
+  font: 400 17px/1.5 var(--body);
+  color: var(--ink-soft);
+}
+
+.spacer {
+  flex: 1 1 20px;
+}
+
+.sortButton {
+  padding: 10px 14px;
+  background: rgba(5, 6, 26, 0.5);
+  border-color: rgba(245, 246, 255, 0.2);
+  font: 600 13px/1 var(--body);
+}
+
+.sortButton:hover {
+  border-color: var(--ink);
+}
+
+.search {
+  flex: 0 1 280px;
+  border-color: var(--rule);
+}
+
+.stageButton {
+  gap: 8px;
+  padding: 9px 13px;
+  font-size: 12.5px;
+}
+
+.stageButton:hover {
+  border-color: var(--ink);
+}
+
+/* A stage is where a token is, not a filter you switch on, so it lights in ink, not in lime. */
+.stageButton[aria-pressed="true"] {
+  background: rgba(245, 246, 255, 0.14);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.stageButton span {
+  color: var(--faint);
+}
+
+.resultCount {
+  align-self: center;
+  margin-left: auto;
+  font: 500 11.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  composes: pk-panel from global;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgba(245, 246, 255, 0.05);
+  overflow: hidden;
+}
+
+.card:hover {
+  border-color: rgba(245, 246, 255, 0.45);
+  border-radius: var(--pk-radius-lg);
+}
+
+.cardTop {
+  display: block;
+  padding: 16px 18px 0;
+  border-radius: var(--pk-radius-lg);
+}
+
+.page a.cardTop:hover {
+  color: var(--ink);
+}
+
+.cardFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: auto;
+  padding: 0 18px 16px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: var(--pk-radius-md);
+  font: 700 13px/1 var(--mono);
+  color: var(--accent);
+}
+
+/* A logo fills the frame the initials had, cropped to it rather than letterboxed. */
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.avatarLarge {
+  width: 62px;
+  height: 62px;
+  font: 700 20px/1 var(--display);
+}
+
+.cardName {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cardName strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font: 700 17px/1.15 var(--body);
+  letter-spacing: -0.02em;
+}
+
+.cardName > span {
+  display: block;
+  margin-top: 2px;
+  font: 500 12px/1.3 var(--mono);
+  color: var(--faint);
+}
+
+.stage {
+  flex: none;
+  padding: 4px 9px;
+  background: rgba(255, 201, 63, 0.12);
+  border: 1px solid rgba(255, 201, 63, 0.45);
+  border-radius: var(--pk-radius-pill);
+  font: 700 9.5px/1 var(--mono);
+  letter-spacing: 0.06em;
+  color: #ffc93f;
+  white-space: nowrap;
+}
+
+.stageGraduated {
+  background: rgba(200, 240, 58, 0.12);
+  border-color: rgba(200, 240, 58, 0.45);
+  color: var(--lime);
+  border-radius: var(--pk-radius-pill);
+}
+
+.stageNone {
+  background: rgba(245, 246, 255, 0.06);
+  border-color: rgba(245, 246, 255, 0.2);
+  color: var(--faint);
+  border-radius: var(--pk-radius-pill);
+}
+
+.cardStats {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 0 13px;
+  border-top: 1px solid rgba(245, 246, 255, 0.12);
+  border-bottom: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.cardStat {
+  display: flex;
+  flex: 1 1 120px;
+  flex-direction: column;
+  min-width: 0;
+  padding: 11px 12px 11px 0;
+}
+
+.cardStat:first-child {
+  padding-left: 0;
+  border-radius: var(--pk-radius-lg);
+}
+
+.cardStat:last-child {
+  padding-right: 0;
+  border-radius: var(--pk-radius-lg);
+}
+
+.cardStat dd {
+  margin: 5px 0 0;
+  overflow: hidden;
+  font: 700 18px/1 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardStat dt {
+  margin: 0;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.cardFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.curve {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.curveNote {
+  display: block;
+  margin-top: 6px;
+  font: 500 11.5px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+.cardCta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 18px;
+  background: rgba(90, 216, 255, 0.1);
+  border: 1px solid rgba(90, 216, 255, 0.5);
+  border-radius: var(--pk-radius-pill);
+  font: 600 12.5px/1 var(--body);
+  letter-spacing: 0;
+  color: var(--cyan-ink);
+}
+
+.empty {
+  padding: 40px 18px;
+  text-align: center;
+  font: 400 15px/1.5 var(--body);
+  color: var(--muted);
+}
+
+.heroBody {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.heroTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.heroTitle {
+  margin: 0;
+  font: 700 clamp(26px, 3.6vw, 36px)/1 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.blurb {
+  max-width: 520px;
+  margin: 0 0 11px;
+  font: 400 15.5px/1.5 var(--body);
+  color: var(--ink-soft);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chip {
+  padding: 6px 11px;
+  background: rgba(245, 246, 255, 0.05);
+  border-color: var(--rule);
+}
+
+.page a.chip {
+  color: var(--ink-dim);
+}
+
+.page a.chip:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.page a.followChip {
+  color: var(--ink);
+}
+
+.change {
+  margin: 0 0 6px;
+  font: 500 13px/1 var(--mono);
+}
+
+.record {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 14px;
+}
+
+.recordItem {
+  display: flex;
+  flex-direction: column-reverse;
+  min-width: 0;
+  padding: 15px 18px;
+  border-right: 1px solid rgba(245, 246, 255, 0.14);
+  border-bottom: 1px solid rgba(245, 246, 255, 0.14);
+}
+
+.recordItem dd {
+  margin: 0 0 5px;
+  font: 700 21px/1 var(--mono);
+  letter-spacing: -0.03em;
+}
+
+.recordItem dt {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.mainColumn {
+  display: flex;
+  flex: 1 1 460px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sideColumn {
+  display: flex;
+  flex: 1 1 290px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.14);
+  border-radius: var(--pk-radius-lg);
+}
+
+.panelHeadValue {
+  font: 700 14px/1 var(--mono);
+}
+
+.panelHeadNote {
+  font: 400 13px/1.3 var(--body);
+  color: var(--faint);
+}
+
+.ranges {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.rangeButton {
+  padding: 6px 10px;
+  border-color: var(--rule);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.chartEmpty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font: 500 12px/1 var(--mono);
+  color: var(--faint);
+}
+
+.callList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.callRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.page a.callRow:hover {
+  color: var(--ink);
+  background: rgba(245, 246, 255, 0.05);
+}
+
+.callWhen {
+  flex: none;
+  min-width: 26px;
+  font: 500 11.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.callText {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.callText strong {
+  display: block;
+  font: 600 15px/1.25 var(--body);
+}
+
+.callText span {
+  display: block;
+  margin-top: 3px;
+  font: 500 12px/1.35 var(--mono);
+  color: var(--faint);
+}
+
+.result {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid;
+  font: 700 12px/1 var(--mono);
+  border-radius: var(--pk-radius-pill);
+}
+
+.resultWon {
+  background: rgba(200, 240, 58, 0.12);
+  border-color: rgba(200, 240, 58, 0.4);
+  color: var(--lime);
+}
+
+.resultLost {
+  background: rgba(255, 95, 162, 0.12);
+  border-color: rgba(255, 95, 162, 0.4);
+  color: var(--pink-ink);
+}
+
+.resultOpen {
+  background: rgba(90, 216, 255, 0.12);
+  border-color: rgba(90, 216, 255, 0.4);
+  color: var(--cyan-ink);
+}
+
+.sideCard {
+  padding: 18px;
+  border-radius: var(--pk-radius-lg);
+}
+
+.sideCard .label {
+  margin-bottom: 12px;
+  letter-spacing: 0.14em;
+}
+
+.quoteRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 0;
+  font: 400 13.5px/1.3 var(--body);
+  color: var(--ink-dim);
+}
+
+.quoteRow:first-of-type {
+  border-top: 1px solid var(--rule);
+}
+
+.quoteRow:last-of-type {
+  padding-bottom: 12px;
+}
+
+.quoteRow strong {
+  font: 700 14px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.quoteRow span:last-child:not(:first-child) {
+  font: 500 13.5px/1.3 var(--mono);
+  color: var(--faint);
+}
+
+.backCurve .bar {
+  height: 8px;
+  border-color: rgba(245, 246, 255, 0.2);
+}
+
+.backCurve .barFill {
+  height: 6px;
+}
+
+.backCurve .curveNote {
+  margin-top: 7px;
+  color: var(--ink-dim);
+}
+
+.disclaimer {
+  margin: 12px 0 0;
+  font: 400 12.5px/1.45 var(--body);
+  color: var(--faint);
+}
+
+.keyValue {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.keyValue dt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 500 13px/1.3 var(--mono);
+  color: var(--ink-soft);
+}
+
+.keyValue dd {
+  flex: none;
+  margin: 0;
+  font: 500 13px/1.3 var(--mono);
+  color: var(--faint);
+}
+
+.keyValueText dt {
+  font: 400 13.5px/1.3 var(--body);
+  color: var(--muted);
+}
+
+.keyValueText dd {
+  color: var(--ink);
+}
+
+/* ---------- Pick ---------- */
+
+.pickCard {
+  margin-bottom: 14px;
+  padding: 24px;
+  border-radius: var(--pk-radius-lg);
+}
+
+.pickMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pickMeta .label {
+  font-size: 11.5px;
+}
+
+.pickResult {
+  margin-left: auto;
+  padding: 6px 11px;
+  border-radius: var(--pk-radius-pill);
+}
+
+.pickTitle {
+  margin: 0 0 12px;
+  font: 700 clamp(26px, 3.6vw, 38px)/1.05 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.pickBody {
+  max-width: 600px;
+  margin: 0 0 18px;
+  font: 400 16.5px/1.55 var(--body);
+  color: var(--ink-soft);
+}
+
+.receipt {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--rule);
+}
+
+.receiptItem {
+  min-width: 0;
+  padding: 14px 16px;
+  border-right: 1px solid rgba(245, 246, 255, 0.12);
+  border-bottom: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.receiptItem dt {
+  margin-bottom: 5px;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.receiptItem dd {
+  margin: 0;
+  font: 700 16px/1 var(--mono);
+}
+
+.trailCard {
+  flex: 1 1 420px;
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--pk-radius-lg);
+}
+
+.trailCard .label {
+  margin-bottom: 16px;
+  letter-spacing: 0.14em;
+}
+
+.trail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trailStep {
+  display: flex;
+  gap: 12px;
+}
+
+.trailRail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 13px;
+}
+
+.trailDot {
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  border-radius: var(--pk-radius-pill);
+}
+
+.trailLine {
+  flex: 1 1 auto;
+  width: 2px;
+  background: rgba(var(--accent-rgb), 0.4);
+}
+
+.trailStep:last-child .trailLine {
+  background: transparent;
+}
+
+.trailBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: 16px;
+}
+
+.trailTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.trailTitleRow strong {
+  font: 600 15px/1.25 var(--body);
+}
+
+.trailTime {
+  font: 500 11.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.trailNote {
+  display: block;
+  margin-top: 4px;
+  font: 400 14px/1.45 var(--body);
+  color: var(--muted);
+}
+
+.pickSide {
+  flex: 1 1 260px;
+}
+
+.postText {
+  margin: 0 0 10px;
+  font: 400 15px/1.5 var(--body);
+}
+
+.postMeta {
+  margin: 0;
+  font: 500 12px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 760px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .chartStats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1060px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 860px) {
+  .record {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .receipt {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 859px) {
+  .record > :last-child {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .heroPrice {
+    text-align: left;
+  }
+  .navCta {
+    margin-left: 0;
+  }
+}
+
+.page a.navItem:hover {
+  background: rgba(245, 246, 255, 0.07);
+  color: var(--ink);
+}
+
+/* ---------- Board filters ---------- */
+
+.filterCard {
+  margin: 8px 0 16px;
+  border: 1px solid rgba(245, 246, 255, 0.14);
+  background: rgba(245, 246, 255, 0.04);
+  border-radius: var(--pk-radius-lg);
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 13px;
+}
+
+.filterRowSplit {
+  border-top: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.filterLabel {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.viewToggle {
+  gap: 2px;
+  border: 1px solid rgba(245, 246, 255, 0.16);
+  background: transparent;
+}
+
+.viewButton {
+  flex: none;
+  padding: 7px 13px;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+
+/* ---------- Chain marks and chips ---------- */
+
+.marks {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(5, 6, 26, 0.55);
+  border: 1px solid rgba(245, 246, 255, 0.22);
+  border-radius: var(--pk-radius-sm);
+  overflow: hidden;
+}
+
+.mark img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.venueChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px 4px 4px;
+  border-color: rgba(90, 216, 255, 0.4);
+  color: var(--cyan-ink);
+  border-radius: var(--pk-radius-pill);
+}
+
+.page a.meetChip {
+  border-color: rgba(200, 240, 58, 0.45);
+  color: var(--lime);
+}
+
+.curveLabel {
+  display: block;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.curve strong {
+  display: block;
+  margin: 6px 0 8px;
+  font: 700 20px/1 var(--mono);
+}
+
+.toneCurve {
+  color: #ffc93f;
+}
+.toneQuiet {
+  color: #b49bff;
+}
+
+.avatarSmall {
+  width: 26px;
+  height: 26px;
+  font: 700 9.5px/1 var(--mono);
+  border-radius: var(--pk-radius-pill);
+}
+
+/* ---------- Tables ---------- */
+
+.tableWrap {
+  border: 1px solid rgba(245, 246, 255, 0.16);
+  border-radius: var(--pk-radius-lg);
+  overflow: hidden;
+}
+
+.tableRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.tableHead {
+  background: rgba(245, 246, 255, 0.06);
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.tableMark {
+  flex: none;
+  width: 30px;
+}
+
+.tableName {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The name and the line under it. Named on purpose: a descendant selector here used to catch the
+   avatar beside them and lay its initials out as a block, which is what knocked them off centre. */
+.tableNameText {
+  min-width: 0;
+}
+
+.tableName strong {
+  display: block;
+  font: 600 14px/1.2 var(--body);
+}
+
+.tableNameText span,
+.tableName > span:not(.avatar):not(.tableNameText) {
+  display: block;
+  margin-top: 3px;
+  font: 500 10.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.tableStage {
+  flex: none;
+  width: 96px;
+}
+.tableNum {
+  flex: none;
+  width: 74px;
+  text-align: right;
+  font: 500 12px/1 var(--mono);
+}
+.tableCta {
+  flex: none;
+  width: 84px;
+  text-align: center;
+}
+.tableRank {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 26px;
+  border: 1px solid rgba(245, 246, 255, 0.2);
+  border-radius: var(--pk-radius-pill);
+  font: 700 11px/1 var(--mono);
+}
+
+.rankFirst {
+  background: rgba(200, 240, 58, 0.14);
+  border-color: rgba(200, 240, 58, 0.5);
+  color: var(--lime);
+}
+
+.tableScore {
+  flex: none;
+  width: 120px;
+}
+
+.tableScore strong {
+  display: block;
+  margin-top: 5px;
+  font: 700 11px/1 var(--mono);
+}
+
+/* ---------- Activity feed ---------- */
+
+.feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed > li + li {
+  border-top: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.activityRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.activityWhen {
+  flex: none;
+  min-width: 34px;
+  font: 500 11px/1 var(--mono);
+  color: var(--faint);
+}
+
+.activityAgent {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/1 var(--body);
+}
+
+.kind {
+  flex: none;
+  padding: 4px 9px;
+  border: 1px solid rgba(245, 246, 255, 0.3);
+  border-radius: var(--pk-radius-pill);
+  background: rgba(245, 246, 255, 0.1);
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.kindCALL {
+  background: rgba(200, 240, 58, 0.12);
+  border-color: rgba(200, 240, 58, 0.4);
+  color: var(--lime);
+}
+.kindPOSITION {
+  background: rgba(90, 216, 255, 0.12);
+  border-color: rgba(90, 216, 255, 0.4);
+  color: var(--cyan-ink);
+}
+.kindPASS {
+  background: rgba(255, 201, 63, 0.12);
+  border-color: rgba(255, 201, 63, 0.4);
+  color: #ffc93f;
+}
+.kindANSWER {
+  background: rgba(155, 123, 255, 0.14);
+  border-color: rgba(155, 123, 255, 0.45);
+  color: #b49bff;
+}
+.kindPERP {
+  background: rgba(255, 95, 162, 0.12);
+  border-color: rgba(255, 95, 162, 0.4);
+  color: var(--pink-ink);
+}
+
+.activityText {
+  flex: 1 1 240px;
+  min-width: 0;
+  font: 400 14px/1.45 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.activityMeta {
+  display: block;
+  margin-top: 4px;
+  font: 500 11.5px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+.activityAmount {
+  flex: none;
+  font: 500 12px/1 var(--mono);
+  color: var(--faint);
+}
+
+.ghostButton {
+  display: inline-block;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid rgba(245, 246, 255, 0.22);
+  border-radius: var(--pk-radius-pill);
+  font: 600 12px/1 var(--body);
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+
+.page a.ghostButton:hover,
+.ghostButton:hover {
+  border-color: var(--lime);
+  color: var(--lime);
+  border-radius: var(--pk-radius-pill);
+}
+
+.quiet {
+  margin: 8px 0 0;
+  font: 400 13px/1.5 var(--body);
+  color: var(--faint);
+  text-wrap: pretty;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+  border-radius: var(--pk-radius-pill);
+}
+
+.tab {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 0 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font: 700 14px/1 var(--body);
+  color: var(--faint);
+  cursor: pointer;
+  border-radius: var(--pk-radius-pill);
+}
+
+.tab span {
+  font: 500 11px/1 var(--mono);
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: var(--lime);
+  color: var(--ink);
+  border-radius: var(--pk-radius-pill);
+}
+
+.meters {
+  margin: 12px 0 0;
+}
+
+.meter {
+  margin-bottom: 14px;
+}
+
+.meter dt {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font: 600 13px/1.2 var(--body);
+}
+
+.meter dt span {
+  font: 500 11.5px/1.2 var(--mono);
+  color: var(--faint);
+}
+
+.meter dd {
+  margin: 0;
+}
+
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Analytics ---------- */
+
+.volumeCard {
+  padding: 24px;
+  margin-bottom: 20px;
+  border-color: rgba(200, 240, 58, 0.35);
+  background: rgba(200, 240, 58, 0.07);
+  border-radius: var(--pk-radius-lg);
+}
+
+.volumeValue {
+  margin: 10px 0 8px;
+  font: 700 clamp(30px, 6vw, 52px)/1 var(--display);
+  letter-spacing: -0.03em;
+  color: var(--lime);
+}
+
+.analyticsGroup {
+  margin-bottom: 22px;
+}
+
+.cardRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 9px;
+}
+
+.statCard {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 17px 18px;
+  border-radius: var(--pk-radius-lg);
+}
+
+.statValue {
+  margin: 9px 0 0;
+  font: 700 24px/1 var(--mono);
+}
+
+.splitBar {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  margin: 12px 0;
+  border-radius: var(--pk-radius-pill);
+  overflow: hidden;
+}
+
+.splitPredictions {
+  background: #9b7bff;
+}
+.splitPerps {
+  flex: 1;
+  background: var(--cyan);
+}
+
+.splitLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 0;
+  font: 500 11.5px/1 var(--mono);
+}
+
+/* ---------- Calibration ---------- */
+
+.calibration {
+  display: flex;
+  gap: 9px;
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.calAxisY {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 0;
+  font: 500 9.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.calPlot {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 200px;
+  border: 1px solid rgba(245, 246, 255, 0.18);
+  border-radius: var(--pk-radius-md);
+  background-image:
+    linear-gradient(rgba(245, 246, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 246, 255, 0.07) 1px, transparent 1px);
+  background-size: 20% 20%;
+}
+
+.calDiagonal {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 1px),
+    rgba(245, 246, 255, 0.32) 50%,
+    transparent calc(50% + 1px)
+  );
+}
+
+.calDot {
+  position: absolute;
+  transform: translate(-50%, 50%);
+  border-radius: var(--pk-radius-pill);
+}
+
+.calDotGood {
+  background: rgba(200, 240, 58, 0.35);
+  border: 1.5px solid var(--lime);
+}
+.calDotBad {
+  background: rgba(255, 95, 162, 0.3);
+  border: 1.5px solid var(--magenta);
+}
+
+.calAxisX {
+  display: flex;
+  margin: 7px 0 0 34px;
+  font: 500 9.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+.calAxisX span {
+  flex: 1 1 0;
+}
+.calAxisX span:nth-child(2) {
+  text-align: center;
+}
+.calAxisX span:last-child {
+  text-align: right;
+}
+
+.calSummary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(245, 246, 255, 0.14);
+  border-radius: var(--pk-radius-lg);
+}
+
+.calSummary p {
+  margin: 0 0 10px;
+}
+
+.calSummary strong {
+  display: block;
+  font: 700 16px/1.25 var(--body);
+}
+
+.calSummary .label {
+  display: block;
+  margin-top: 5px;
+}
+
+.columns > .mainColumn.sideCard,
+.columns > .sideColumn.sideCard {
+  display: block;
+}
+
+/* ---------- Token page ---------- */
+
+.quietBack {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  font: 500 13px/1 var(--body);
+  color: var(--faint);
+}
+
+.page a.quietBack:hover {
+  color: var(--ink);
+}
+
+.tokenHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pairLine {
+  margin: 0 0 10px;
+  font: 500 13px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--faint);
+}
+
+.tradePanel {
+  padding: 16px;
+  border-radius: var(--pk-radius-lg);
+}
+
+.sideToggle {
+  display: flex;
+  margin-bottom: 18px;
+  background: rgba(5, 6, 26, 0.55);
+}
+
+.sideButton {
+  padding: 11px;
+  font: 600 13px/1 var(--body);
+}
+
+.amountRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.amountInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: 700 clamp(30px, 5vw, 42px)/1 var(--display);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.amountInput::placeholder {
+  color: var(--faint);
+}
+
+.unitChip {
+  flex: none;
+  padding: 9px 12px;
+  background: rgba(5, 6, 26, 0.5);
+  border: 1px solid var(--rule);
+  border-radius: var(--pk-radius-md);
+  font: 700 13px/1 var(--mono);
+}
+
+.balanceRow {
+  margin: 0 0 14px;
+  font: 500 12px/1 var(--mono);
+  color: var(--faint);
+}
+
+/* The trade action fills the panel and squares off with the fields above it, so it takes the
+   input radius rather than the pill every other action wears. */
+.page .ctaButton {
+  padding: 16px;
+  border-radius: var(--pk-radius-md);
+  font-weight: 700;
+}
+
+.ctaButton:disabled {
+  opacity: 0.45;
+}
+
+.quickRow {
+  display: flex;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.quickButton {
+  flex: 1 1 60px;
+  justify-content: center;
+  padding: 10px 6px;
+  background: rgba(5, 6, 26, 0.5);
+  border-color: var(--rule);
+  border-radius: var(--pk-radius-md);
+  font-weight: 600;
+}
+
+.quickButton:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.quoteList {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.curveBlock {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.curveHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.tokenStat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px 16px;
+}
+
+.tokenStat dt {
+  margin: 0;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.tokenStat dd {
+  margin: 8px 0 0;
+  font: 700 18px/1 var(--mono);
+}
+
+.buybacksRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+
+.buybacksRow strong {
+  font: 700 22px/1 var(--mono);
+}
+
+.keyValues {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 246, 255, 0.12);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.chipMark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: rgba(5, 6, 26, 0.55);
+  border-radius: var(--pk-radius-pill);
+  overflow: hidden;
+}
+
+.chipMark img {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+}
+
+.page a.cardCta:hover {
+  background: rgba(90, 216, 255, 0.2);
+  border-color: var(--cyan);
+  color: var(--cyan-ink);
+}
+
+/* The avatar keeps its small circle in rows, where it reads as a marker rather than a tile. */
+.avatarSmall {
+  border-radius: var(--pk-radius-pill);
+}
+
+.page a.cardCta,
+.page a.cardCta:hover .cardCta {
+  color: var(--cyan-ink);
+}
+
+.chartFrame {
+  padding: 8px 10px 4px;
+}
+
+/* Licence credit for the charting library, quiet enough to read as a footer and still be a link. */
+.credit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  margin: auto auto 0;
+  padding: 26px 24px 34px;
+  border-top: 1px solid var(--rule);
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.credit a {
+  color: var(--faint);
+  border-bottom: 1px solid transparent;
+}
+
+.credit a:hover {
+  color: var(--ink-dim);
+  border-bottom-color: var(--rule);
+}
+
+.creditNote {
+  color: var(--faint);
+}
+
+/* ---------- Agents directory ---------- */
+
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.filterSpacer {
+  flex: 1 1 20px;
+}
+
+/* Availability is not a filter like the others: it is the violet of a paid read. */
+.availableChip[aria-pressed="true"] {
+  background: rgba(155, 123, 255, 0.16);
+  border-color: rgba(155, 123, 255, 0.5);
+  color: #b49bff;
+}
+
+.directory {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .directory {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.agentCard {
+  composes: pk-panel from global;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-color: var(--rule);
+  background: rgba(245, 246, 255, 0.04);
+}
+
+/* An agent that is not taking questions steps back rather than disappearing. */
+.agentCard[data-open="false"] {
+  border-color: rgba(245, 246, 255, 0.1);
+}
+
+.page a.agentCardHead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink);
+}
+
+.page a.agentCardHead:hover strong {
+  color: var(--lime);
+}
+
+.agentCardName {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.agentCardName strong {
+  display: block;
+  font: 700 17px/1.2 var(--body);
+}
+
+.agentCardName .label {
+  display: block;
+  margin-top: 4px;
+}
+
+.agentCardScore {
+  flex: none;
+  text-align: right;
+}
+
+.agentCardScore strong {
+  display: block;
+  font: 700 18px/1 var(--mono);
+}
+
+.agentCardScore .label {
+  display: block;
+  margin-top: 4px;
+}
+
+.agentCardDecides {
+  flex: 1 1 auto;
+  margin: 0;
+  font: 400 14px/1.5 var(--body);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.agentStats {
+  display: grid;
+  /* Four figures need the room; on a phone they read as two rows rather than four columns. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.agentStat {
+  min-width: 0;
+}
+
+.agentStat dd {
+  margin: 0;
+  font: 600 13.5px/1.2 var(--mono);
+}
+
+.agentStat dt {
+  margin-top: 4px;
+}
+
+@media (min-width: 560px) {
+  .agentStats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.agentCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A paid read is violet everywhere it appears: asking is not backing. */
+.page .askButton,
+.page a.askButton {
+  background: var(--pk-violet);
+  color: var(--pk-on-violet);
+  font-weight: 700;
+}
+
+.page .askButton:hover,
+.page a.askButton:hover {
+  background: #b49bff;
+  color: var(--pk-on-violet);
+}
+
+.closedTag {
+  padding: 11px 16px;
+  border-style: dashed;
+  font: 600 12.5px/1 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--faint);
+}
+
+.emptyNote {
+  margin: 0;
+  padding: 22px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--pk-radius-lg);
+  font: 400 14px/1.5 var(--body);
+  color: var(--faint);
+  text-align: center;
+}
+
+/* ---------- Persona head ---------- */
+
+.personaHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+
+.personaDecides {
+  margin: 0 0 16px;
+  max-width: 560px;
+  font: 400 15px/1.5 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.keyStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin: 0 0 18px;
+}
+
+.keyStat dd {
+  margin: 0;
+  font: 700 20px/1 var(--mono);
+}
+
+.keyStat dt {
+  margin-top: 5px;
+}
+
+.personaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.beatChip {
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.page .followingButton {
+  border-color: rgba(200, 240, 58, 0.5);
+  color: var(--lime);
+}
+
+/* ---------- Reads ---------- */
+
+.deliveryTag[data-state="preparing"] {
+  border-color: rgba(90, 216, 255, 0.4);
+  color: var(--cyan-ink);
+}
+
+.deliveryTag[data-state="delivered"] {
+  border-color: rgba(245, 246, 255, 0.3);
+  color: var(--ink);
+}
+
+.deliveryTag[data-state="failed"] {
+  border-color: rgba(255, 95, 162, 0.4);
+  color: var(--pink-ink);
+}
+
+.evalTag[data-state="pending"] {
+  background: rgba(90, 216, 255, 0.12);
+  border-color: rgba(90, 216, 255, 0.4);
+  color: var(--cyan-ink);
+}
+
+.evalTag[data-state="happened"] {
+  background: rgba(200, 240, 58, 0.12);
+  border-color: rgba(200, 240, 58, 0.4);
+  color: var(--lime);
+}
+
+.evalTag[data-state="missed"] {
+  background: rgba(255, 95, 162, 0.12);
+  border-color: rgba(255, 95, 162, 0.4);
+  color: var(--pink-ink);
+}
+
+.evalTag[data-state="not_evaluable"] {
+  background: rgba(255, 201, 63, 0.12);
+  border-color: rgba(255, 201, 63, 0.4);
+  color: #ffc93f;
+}
+
+.chipCount {
+  color: var(--faint);
+}
+
+.page a.newReadButton {
+  border: 1px solid rgba(155, 123, 255, 0.5);
+  color: #b49bff;
+}
+
+.page a.newReadButton:hover {
+  background: rgba(155, 123, 255, 0.16);
+  color: #b49bff;
+}
+
+/* The answers list on a profile: the number it stated, the question, the verdict. */
+.page a.readRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--rule);
+  background: rgba(245, 246, 255, 0.03);
+  border-radius: var(--pk-radius-lg);
+}
+
+.page a.readRow:hover {
+  border-color: rgba(155, 123, 255, 0.5);
+  color: var(--ink);
+}
+
+.readProb {
+  flex: none;
+  font: 700 22px/1 var(--mono);
+  color: #b49bff;
+}
+
+.readQuestion {
+  flex: 1 1 240px;
+  min-width: 0;
+  font: 500 14.5px/1.4 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* Reads table */
+.page a.readsRow,
+.readsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  color: var(--ink);
+}
+
+.page a.readsRow:hover {
+  background: rgba(245, 246, 255, 0.05);
+  color: var(--ink);
+}
+
+.readsMark {
+  flex: none;
+  width: 26px;
+}
+
+.readsTitle {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.readsTitle strong {
+  display: block;
+  font: 600 14px/1.3 var(--body);
+}
+
+.readsTitle .quiet {
+  display: block;
+  margin-top: 3px;
+}
+
+.readsDelivery {
+  flex: none;
+  width: 130px;
+}
+
+.readsMarket {
+  flex: none;
+  width: 160px;
+}
+
+.readsPaid {
+  flex: none;
+  width: 56px;
+  text-align: right;
+  font: 500 12px/1 var(--mono);
+}
+
+.tonePink {
+  color: var(--pink-ink);
+}
+
+/* The card itself */
+.readCardNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.readCard {
+  border: 1px solid rgba(155, 123, 255, 0.45);
+  background: rgba(245, 246, 255, 0.03);
+  border-radius: var(--pk-radius-lg);
+  overflow: hidden;
+}
+
+.readCardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 20px;
+  background: rgba(155, 123, 255, 0.08);
+  border-bottom: 1px solid rgba(155, 123, 255, 0.3);
+  font: 700 14px/1 var(--body);
+}
+
+.readCardWhen {
+  margin-left: auto;
+  font: 500 11px/1 var(--mono);
+  color: var(--faint);
+}
+
+.readCardBody {
+  padding: 20px;
+}
+
+.readCardQuestion {
+  margin: 0 0 20px;
+  font: 600 18px/1.4 var(--body);
+  text-wrap: pretty;
+}
+
+.readAnswer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(245, 246, 255, 0.14);
+  background: rgba(5, 6, 26, 0.45);
+  border-radius: var(--pk-radius-md);
+}
+
+.readAnswerProb strong {
+  display: block;
+  font: 700 52px/1 var(--mono);
+  color: #b49bff;
+}
+
+.readAnswerProb .label {
+  display: block;
+  margin-top: 6px;
+}
+
+.readFacts {
+  flex: 1 1 260px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 12px;
+  align-content: center;
+  margin: 0;
+}
+
+.readFacts dd {
+  margin: 0;
+  font: 600 13px/1.2 var(--mono);
+}
+
+.readFacts dt {
+  margin-top: 4px;
+}
+
+.readSummary {
+  margin: 0 0 18px;
+  font: 400 15.5px/1.55 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.readReasons {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.readReasons li {
+  position: relative;
+  padding-left: 16px;
+  font: 400 14px/1.5 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.readReasons li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  background: #b49bff;
+  border-radius: var(--pk-radius-pill);
+}
+
+.readSplit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.readBox {
+  padding: 14px;
+  border: 1px solid rgba(245, 246, 255, 0.12);
+  border-radius: var(--pk-radius-md);
+}
+
+.readSources {
+  margin: 0;
+}
+
+.readSources > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.08);
+  font: 500 12px/1.3 var(--mono);
+}
+
+.readSources dt {
+  color: var(--ink-soft);
+}
+
+.readSources dd {
+  flex: none;
+  margin: 0;
+  color: var(--faint);
+}
+
+.readLimits {
+  margin: 0;
+  font: 400 13px/1.5 var(--body);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* The verdict, in the tone of what happened. */
+.readOutcome {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 246, 255, 0.16);
+  border-radius: var(--pk-radius-md);
+}
+
+.readOutcome strong {
+  display: block;
+  font: 700 20px/1 var(--display);
+}
+
+.readOutcome .quiet {
+  display: block;
+  margin-top: 5px;
+}
+
+.readOutcome[data-tone="win"] {
+  border-color: rgba(200, 240, 58, 0.4);
+  background: rgba(200, 240, 58, 0.07);
+}
+
+.readOutcome[data-tone="win"] strong {
+  color: var(--lime);
+}
+
+.readOutcome[data-tone="loss"] {
+  border-color: rgba(255, 95, 162, 0.4);
+  background: rgba(255, 95, 162, 0.07);
+}
+
+.readOutcome[data-tone="loss"] strong {
+  color: var(--pink-ink);
+}
+
+.readOutcome[data-tone="curve"] {
+  border-color: rgba(255, 201, 63, 0.4);
+  background: rgba(255, 201, 63, 0.07);
+}
+
+.readOutcome[data-tone="curve"] strong {
+  color: #ffc93f;
+}
+
+.readCardFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+/* ---------- Ask flow ---------- */
+
+/* Connecting is the step before paying, so it wears the violet as an outline rather than a fill. */
+.page .askConnect {
+  border-color: var(--pk-violet);
+  color: #b49bff;
+  font-weight: 700;
+}
+
+.page .askConnect:hover:not(:disabled) {
+  background: rgba(155, 123, 255, 0.16);
+  border-color: var(--pk-violet);
+  color: #b49bff;
+}
+
+/* Going back a step is the same shape as the link that goes back a page. */
+.backButton {
+  align-self: flex-start;
+  margin-bottom: 14px;
+  padding: 9px 13px;
+  font-size: 11.5px;
+  border-color: rgba(245, 246, 255, 0.2);
+}
+
+.askMain {
+  max-width: 760px;
+}
+
+.askSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.askStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(245, 246, 255, 0.12);
+  border-radius: var(--pk-radius-pill);
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: #5c6484;
+}
+
+.askStep[data-state="on"] {
+  border-color: rgba(155, 123, 255, 0.6);
+  color: var(--ink);
+}
+
+.askStep[data-state="done"] {
+  color: #b49bff;
+}
+
+.askStepNumber {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: var(--pk-radius-pill);
+  background: rgba(245, 246, 255, 0.1);
+  font: 700 9px/1 var(--mono);
+  color: #5c6484;
+}
+
+.askStep[data-state="on"] .askStepNumber,
+.askStep[data-state="done"] .askStepNumber {
+  background: var(--pk-violet);
+  color: var(--pk-on-violet);
+}
+
+.askAgent {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--rule);
+  background: rgba(245, 246, 255, 0.04);
+  border-radius: var(--pk-radius-lg);
+}
+
+.askAgentName {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.askAgentName strong {
+  display: block;
+  font: 700 15px/1.2 var(--body);
+}
+
+.askAgentName .quiet,
+.askAgentPrice .quiet {
+  display: block;
+  margin-top: 3px;
+}
+
+.askAgentPrice {
+  flex: none;
+  text-align: right;
+}
+
+.askAgentPrice strong {
+  font: 700 15px/1 var(--mono);
+  color: #b49bff;
+}
+
+.askStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.askChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.askLabelSpaced {
+  margin-top: 18px;
+}
+
+/* A market is chosen in violet, like everything else a paid read touches. */
+.askChip[aria-pressed="true"] {
+  background: rgba(155, 123, 255, 0.16);
+  border-color: rgba(155, 123, 255, 0.55);
+  color: #b49bff;
+}
+
+.askChip {
+  padding: 10px 14px;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.askChipOn {
+  background: rgba(155, 123, 255, 0.16);
+  border-color: rgba(155, 123, 255, 0.55);
+  color: #b49bff;
+  padding: 10px 14px;
+  font: 600 12px/1 var(--mono);
+  letter-spacing: 0;
+}
+
+.askChipSoon {
+  padding: 10px 14px;
+  border-color: rgba(245, 246, 255, 0.1);
+  font: 600 12px/1 var(--mono);
+  letter-spacing: 0;
+  color: #5c6484;
+}
+
+/* The question is the agent's, not the asker's, so it gets the violet frame. */
+.askQuestion {
+  padding: 18px;
+  border: 1px solid rgba(155, 123, 255, 0.45);
+  background: rgba(155, 123, 255, 0.07);
+  border-radius: var(--pk-radius-lg);
+}
+
+.askQuestionText {
+  margin: 8px 0;
+  font: 600 17px/1.4 var(--body);
+  text-wrap: pretty;
+}
+
+.askFoot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.askReview {
+  margin: 0;
+}
+
+.askReviewRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+}
+
+.askReviewRow:last-child {
+  border-bottom: none;
+}
+
+.askReviewRow dt {
+  flex: none;
+  width: 120px;
+  line-height: 1.6;
+}
+
+.askReviewRow dd {
+  flex: 1 1 240px;
+  min-width: 0;
+  margin: 0;
+  font: 400 14px/1.5 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.askPay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(155, 123, 255, 0.45);
+  background: rgba(155, 123, 255, 0.07);
+  border-radius: var(--pk-radius-lg);
+}
+
+.askPayPrice {
+  flex: 1 1 200px;
+}
+
+.askPayPrice strong {
+  display: block;
+  font: 700 26px/1 var(--mono);
+}
+
+.askPayPrice .quiet {
+  display: block;
+  margin-top: 7px;
+}
+
+/* ---------- The platform, under the ranking ---------- */
+
+.platform {
+  margin-top: 34px;
+  padding-top: 26px;
+  border-top: 1px solid var(--rule);
+}
+
+.platformTitle {
+  margin: 0 0 6px;
+  font: 700 clamp(22px, 3vw, 30px) / 1 var(--display);
+  letter-spacing: -0.03em;
+}

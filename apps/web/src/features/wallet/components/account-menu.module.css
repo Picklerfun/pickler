@@ -1,0 +1,184 @@
+/* The wallet's corner of the navigation bar. */
+
+.slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border-left: 1px solid var(--pk-rule);
+}
+
+/* The same action as the one on a token page, sitting inside the bar. */
+.connect {
+  margin: 0 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 100%;
+  padding: 0 20px;
+  background: transparent;
+  border: none;
+  font: 500 12.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-dim);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+
+.chip:hover {
+  background: rgba(245, 246, 255, 0.06);
+  color: var(--pk-ink);
+}
+
+/* Lit while the wallet is on the network we read; amber while it is somewhere else. */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
+}
+
+.dotWrong {
+  background: var(--pk-amber);
+  box-shadow: 0 0 10px rgba(255, 201, 63, 0.9);
+}
+
+.error {
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  padding: 6px 10px;
+  font: 500 11px/1.3 var(--pk-font-mono);
+  color: var(--pk-magenta);
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 1px);
+  z-index: 40;
+  width: 260px;
+  padding: 14px;
+  background: #080a22;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.balanceLabel {
+  margin: 0 0 6px;
+  font: 500 10px/1 var(--pk-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+
+.balance {
+  margin: 0 0 12px;
+  font: 700 24px/1 var(--pk-font-mono);
+  color: var(--pk-ink);
+}
+
+.balance span {
+  font: 500 12px/1 var(--pk-font-mono);
+  color: var(--pk-ink-faint);
+}
+
+.switch {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 201, 63, 0.12);
+  border: 1px solid rgba(255, 201, 63, 0.4);
+  border-radius: var(--pk-radius-pill);
+  font: 600 12px/1 var(--pk-font);
+  color: var(--pk-amber);
+  cursor: pointer;
+}
+
+.address {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  font: 500 12px/1 var(--pk-font-mono);
+  color: var(--pk-ink-dim);
+  cursor: pointer;
+}
+
+.address:hover {
+  border-color: var(--pk-border-strong);
+  color: var(--pk-ink);
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--pk-rule);
+}
+
+.link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  font: 700 13.5px/1.2 var(--pk-font);
+  color: var(--pk-ink);
+  text-decoration: none;
+}
+
+.link:hover {
+  background: rgba(245, 246, 255, 0.07);
+  color: var(--pk-lime);
+}
+
+.link span {
+  display: block;
+  margin-top: 3px;
+  font: 400 11.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+
+.link:hover span {
+  color: var(--pk-ink-faint);
+}
+
+.disconnect {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--pk-rule);
+  font: 600 13px/1.2 var(--pk-font);
+  color: var(--pk-pink-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.disconnect:hover {
+  color: var(--pk-magenta);
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: default;
+}

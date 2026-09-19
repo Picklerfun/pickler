@@ -9,14 +9,17 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@pickler/api-schema": "*",
+    "@pickler/chain": "*",
+    "@pickler/core": "*",
+    "@pickler/infrastructure": "*",
+    "@pickler/ui": "*",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "server-only": "^0.0.1",
-    "@pickler/ui": "*",
-    "@pickler/core": "*",
-    "@pickler/infrastructure": "*",
-    "@pickler/api-schema": "*"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*"

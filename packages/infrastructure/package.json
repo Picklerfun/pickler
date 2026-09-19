@@ -22,8 +22,13 @@
     "drizzle-kit": "0.31.10"
   },
   "dependencies": {
+    "@noble/hashes": "^2.4.0",
     "@pickler/core": "*",
+    "@supabase/supabase-js": "^2.116.0",
+    "@turnkey/api-key-stamper": "^0.6.15",
+    "@turnkey/http": "^6.5.0",
     "drizzle-orm": "0.45.2",
+    "jose": "^6.2.12",
     "pg": "8.20.0",
     "zod": "4.6.5"
   },

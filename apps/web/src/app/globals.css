@@ -1,26 +1,62 @@
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  color: #172a22;
-  background: #f4f2e9;
-  font-family: system-ui, sans-serif;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
 }
-main {
-  max-width: 64rem;
-  margin: auto;
-  padding: clamp(2rem, 10vw, 8rem) 1.5rem;
+
+button,
+input {
+  font: inherit;
 }
-.eyebrow {
-  font-weight: 700;
-  letter-spacing: 0.2em;
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
-h1 {
-  font-size: clamp(2.5rem, 7vw, 5.5rem);
-  line-height: 1.05;
-  max-width: 12ch;
+
+/* Route fallbacks: the 404 and the error boundary, on the public surface so they look like the
+   rest of the product. The action itself is a system button. */
+.fallback {
+  display: grid;
+  gap: 12px;
+  place-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  text-align: center;
 }
-p {
-  line-height: 1.6;
+
+.fallback-eyebrow {
+  margin: 0;
+  font: 500 12.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--pk-cyan-ink);
+}
+
+.fallback h1 {
+  margin: 0;
+  font: 700 clamp(28px, 5vw, 48px) / 1 var(--pk-font-display);
+}
+
+.fallback p {
+  margin: 0;
+  color: var(--pk-ink-muted);
+}
+
+.fallback .pk-button {
+  justify-self: center;
+  margin-top: 12px;
 }

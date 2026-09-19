@@ -1,14 +1,11 @@
-import { Button } from "@pickler/ui";
+import { LandingPage } from "@/features/landing/components/landing-page";
+import { services } from "@/server/container";
+import { toLandingResponse } from "@/server/http/landing-response";
 
-export default function Home() {
-  return (
-    <main>
-      <p className="eyebrow">PICKLER</p>
-      <h1>Un nuevo comienzo.</h1>
-      <p>Estamos preparando lo que viene.</p>
-      <form action="/api/v1/health" method="get">
-        <Button type="submit">Consultar estado</Button>
-      </form>
-    </main>
-  );
+// Data changes continuously; the client also refreshes it through /api/v1/landing.
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const snapshot = await services.getLanding();
+  return <LandingPage initial={toLandingResponse(snapshot)} />;
 }

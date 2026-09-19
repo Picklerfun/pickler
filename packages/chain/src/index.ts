@@ -4,3 +4,5 @@ export interface ContractDeployment {
   address: `0x${string}`;
   deploymentBlock: bigint;
 }
+
+export * from "./networks";

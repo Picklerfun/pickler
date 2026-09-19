@@ -2,7 +2,7 @@
 
 Read [the root instructions](../../AGENTS.md) first. Read [contract instructions](../../contracts/AGENTS.md) when dealing with ABIs or deployments, and the local instructions of any adapter or app you change.
 
-`@pickler/chain` is the public boundary for blockchain artifacts. Currently it exports only `ContractDeployment` from `src/index.ts`, with `chainId`, a hexadecimal address type, and `deploymentBlock: bigint`. No deployed addresses, ABIs, SDK, or generation scripts exist yet.
+`@pickler/chain` is the public boundary for blockchain artifacts. It exports `ContractDeployment` and, from `src/networks.ts`, Monad mainnet (143) and testnet (10143) metadata, the AUSD token (6 decimals, EIP-712 domain `Agora Dollar` / `1`, EIP-2612 and EIP-3009), `requireSupportedChain` (no fallback to other networks) and `toBaseUnits` (exact decimal → base units). Each value records its source and verification date; re-verify before launches that depend on them. No ABIs, SDK or generation scripts exist yet. Tests: `test/networks.test.ts`.
 
 - Keep this package browser-safe and independent of Next.js, React, business logic, and infrastructure.
 - Never include private keys, signer objects, secrets, or credential-bearing RPC endpoints.

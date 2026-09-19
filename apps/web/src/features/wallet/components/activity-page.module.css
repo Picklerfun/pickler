@@ -1,0 +1,76 @@
+/* Activity: who you follow, and what they have done. */
+
+.main {
+  position: relative;
+  z-index: 10;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 22px 60px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font: 500 11px/1 var(--pk-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--pk-cyan-ink);
+}
+
+.title {
+  margin: 0 0 10px;
+  font: 700 clamp(26px, 4vw, 40px) / 1 var(--pk-font-display);
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 0 0 22px;
+  max-width: 560px;
+  font: 400 16px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+/* A followed agent is a chip you can press to stop following. */
+.followChip {
+  gap: 9px;
+  padding: 7px 13px 7px 7px;
+  font-family: var(--pk-font);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.feed {
+  composes: pk-panel from global;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  padding: 24px;
+  border: 1px dashed var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+}
+
+.empty p {
+  margin: 0;
+  max-width: 460px;
+  font: 400 14.5px/1.55 var(--pk-font);
+  color: var(--pk-ink-dim);
+  text-wrap: pretty;
+}
+
+.quiet {
+  margin: 0;
+  font: 400 13.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-faint);
+}

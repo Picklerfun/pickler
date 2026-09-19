@@ -1,0 +1,22 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "pickler-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "AGENT_LEDGER", "class_name": "AgentLedger" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentLedger"] }],
+  // Non-secret configuration. Secrets (SUPABASE_SECRET_KEY, ENCRYPTION_KEY) are set with
+  // `wrangler secret put` or .dev.vars locally; never commit them.
+  "vars": {
+    "APP_ENV": "development",
+    "SUPABASE_URL": "",
+    "JWT_ISSUER": "",
+    "JWT_AUDIENCE": "authenticated",
+    "SUPER_ADMIN_EMAILS": "",
+    "ALLOWED_ORIGINS": "http://localhost:3000",
+  },
+}

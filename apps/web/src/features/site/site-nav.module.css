@@ -1,0 +1,235 @@
+/* The one navigation bar for every public route. The landing adds the price tape above it; nothing
+ * else changes between surfaces, so the brand, the menus and the actions stay put as you move.
+ */
+
+.nav {
+  position: relative;
+  z-index: 30;
+  border-bottom: 1px solid var(--pk-rule);
+  background: rgba(5, 6, 26, 0.5);
+  backdrop-filter: blur(16px);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 16px 22px;
+  border-right: 1px solid var(--pk-rule);
+  color: var(--pk-ink);
+  text-decoration: none;
+}
+
+/* The mark is lit in cyan on every surface: the brand reads the same on the landing, the board and
+   the console, and the lime stays for what the product does rather than for who made it. */
+.logo {
+  display: block;
+  width: 26px;
+  height: auto;
+  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));
+}
+
+.name {
+  font: 700 20px/1 var(--pk-font-display);
+  letter-spacing: -0.01em;
+}
+
+.menus {
+  display: flex;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+}
+
+.menu {
+  position: relative;
+}
+
+.menuButton {
+  gap: 8px;
+  padding: 10px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+
+.menuButtonOn {
+  color: var(--pk-lime);
+}
+
+.dropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 12px);
+  z-index: 40;
+  width: 290px;
+  padding: 12px;
+  background: #080a22;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.dropdownLabel {
+  display: block;
+  margin: 0;
+  padding: 4px 10px 10px;
+  font: 500 10px/1 var(--pk-font-mono);
+  letter-spacing: 0.16em;
+  color: var(--pk-ink-faint);
+}
+
+.item {
+  display: block;
+  padding: 11px 12px;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-ink);
+  text-decoration: none;
+}
+
+.item:hover {
+  background: rgba(245, 246, 255, 0.07);
+}
+
+.itemOn {
+  background: rgba(200, 240, 58, 0.1);
+  border-color: rgba(200, 240, 58, 0.3);
+}
+
+.itemSoon {
+  cursor: default;
+}
+
+.itemSoon .itemTitle {
+  color: var(--pk-ink-faint);
+}
+
+.itemTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 14.5px/1.2 var(--pk-font);
+}
+
+.itemSub {
+  display: block;
+  margin-top: 4px;
+  font: 400 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-faint);
+  text-wrap: pretty;
+}
+
+.soon {
+  padding: 3px 7px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  font: 500 9px/1 var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* Connect sits beside Join, quieter: one of them is the page's action and the other is a utility. */
+.connect {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+  padding: 16px 20px;
+  border-left: 1px solid var(--pk-rule);
+  font: 500 12.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-dim);
+  text-decoration: none;
+}
+
+.connect:hover {
+  background: rgba(245, 246, 255, 0.06);
+  color: var(--pk-ink);
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-left: auto;
+  padding: 16px 22px;
+  background: rgba(245, 246, 255, 0.08);
+  border-left: 1px solid var(--pk-rule);
+  font: 500 13px/1 var(--pk-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink);
+  text-decoration: none;
+}
+
+.connect + .cta {
+  margin-left: 0;
+}
+
+.cta:hover {
+  background: rgba(245, 246, 255, 0.16);
+}
+
+.arrow {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+  border-radius: var(--pk-radius-pill);
+  box-shadow: 0 0 10px rgba(200, 240, 58, 0.35);
+}
+
+/* Every surface styles its own links, and those rules reach inside here: on the landing the brand
+   lit cyan on hover and everywhere else it lit lime. The bar answers for its own links, at a weight
+   that wins, so the brand behaves the same wherever you are. */
+.nav a.brand:hover .name {
+  color: var(--pk-cyan-ink);
+}
+
+.nav a.cta,
+.nav a.cta:hover,
+.nav a.item {
+  color: var(--pk-ink);
+}
+
+/* A menu entry lights lime on the way in: that is the colour of going somewhere in this product. */
+.nav a.item:hover .itemTitle {
+  color: var(--pk-lime);
+}
+
+.nav a.item .itemSub {
+  color: var(--pk-ink-faint);
+}
+
+.nav a.connect {
+  color: var(--pk-ink-dim);
+}
+
+.nav a.connect:hover {
+  color: var(--pk-ink);
+}
+
+/* Click-away closer: the dropdowns are the only thing it dismisses. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: default;
+}

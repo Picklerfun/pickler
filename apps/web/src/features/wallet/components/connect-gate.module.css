@@ -1,0 +1,45 @@
+/* What a wallet-only page shows before there is a wallet. */
+
+.gate {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  max-width: 460px;
+  margin: 40px auto;
+  padding: 32px 24px;
+  border: 1px dashed var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  text-align: center;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(155, 123, 255, 0.5);
+  border-radius: var(--pk-radius-pill);
+  background: rgba(155, 123, 255, 0.12);
+  color: #b49bff;
+}
+
+.title {
+  margin: 0;
+  font: 700 22px/1.1 var(--pk-font-display);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+
+.lead {
+  margin: 0;
+  font: 400 15px/1.5 var(--pk-font);
+  color: var(--pk-ink-dim);
+  text-wrap: pretty;
+}
+
+.note {
+  margin: 0;
+  font: 400 12.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-faint);
+  text-wrap: pretty;
+}
