@@ -81,13 +81,10 @@ function classify(
 
 export function handleError(error: unknown, c: Context<AppEnv>) {
   const traceId = c.get("requestId") ?? crypto.randomUUID();
-  const isProduction = c.env?.APP_ENV === "production";
+  const isProduction = c.env?.APP_ENV !== "local";
   const { status, message, extras } = classify(error, isProduction);
   if (status >= 500) {
-    console.error(
-      `[${traceId}] ${c.req.method} ${c.req.path}`,
-      isProduction && error instanceof Error ? error.message : error,
-    );
+    console.error(`[${traceId}] ${c.req.method} ${c.req.path}`, `HTTP ${status}`);
   }
   return c.json(errorEnvelope(message, status, c.req.path, traceId, extras), status);
 }
