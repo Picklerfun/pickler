@@ -28,19 +28,13 @@ for (const worker of [api, research]) {
   assert.equal(worker.routes, undefined);
   assert.equal(worker.durable_objects, undefined);
   assert.equal(worker.vars.ADMISSIONS_ENABLED, "false", "Deploy with admissions closed first");
-  assert.equal(worker.hyperdrive.length, 1);
-  assert.match(worker.hyperdrive[0].id, /^[a-f0-9]{32}$/);
+  assert.equal(worker.hyperdrive, undefined, "Hyperdrive must not be configured");
+  assert.equal(worker.vars.DATABASE_URL, undefined, "Database credentials must be secrets");
   if (requireProvisioned) {
-    assert.notEqual(
-      worker.hyperdrive[0].id,
-      "0".repeat(32),
-      "Provision dedicated staging Hyperdrive first",
-    );
     assert.match(worker.account_id ?? "", /^[a-f0-9]{32}$/, "Pin the verified Cloudflare account");
   }
   assert.equal(worker.queues.producers[0].queue, "pickler-research-staging");
 }
-assert.equal(api.hyperdrive[0].id, research.hyperdrive[0].id);
 assert.equal(research.queues.consumers[0].max_batch_size, 1);
 assert.equal(research.queues.consumers[0].max_concurrency, 5);
 assert.deepEqual(research.triggers.crons, ["* * * * *"]);
@@ -51,6 +45,6 @@ if (requireProvisioned) {
 }
 console.log(
   requireProvisioned
-    ? "Staging topology and identifiers checked; verify remote Hyperdrive caching separately."
+    ? "Staging topology and identifiers checked; remote secrets and connectivity remain unverified."
     : "Staging topology checked (resource provisioning is not asserted).",
 );
