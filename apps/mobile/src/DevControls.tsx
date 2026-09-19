@@ -30,7 +30,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
         <View style={{ backgroundColor: C.bgMid, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: C.hair, padding: 18, paddingBottom: 28, maxHeight: "85%" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <T w={700} s={18} ls={-0.01} display>Dev controls</T>
-            <Touch onPress={onClose}><T w={600} s={13} color={C.faint}>Close</T></Touch>
+            <Touch onPress={onClose} accessibilityLabel="dev-close"><T w={600} s={13} color={C.faint}>Close</T></Touch>
           </View>
           <T w={500} s={10} lh={1.4} mono color={C.faint} style={{ marginBottom: 14 }}>
             screen: {S.screen} · account: {account.status} · perpl: {perpl.state.status} · skew: {perpl.clockSkewMs === null ? "—" : `${Math.round(perpl.clockSkewMs / 1000)}s`}
