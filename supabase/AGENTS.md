@@ -11,7 +11,7 @@ Use root npm scripts supabase:start, supabase:stop, supabase:status, db:migrate 
 The product schemas the web app reads (`identity`, `agents`, `budget`, `audit`, `growth`, `market`)
 are defined in `packages/infrastructure/src/persistence/product/` and applied by the same Drizzle
 pipeline as the research tables: `npm run db:generate` writes the SQL, `npm run db:migrate` applies
-it. `drizzle/0002_product_functions_and_grants.sql` is a custom migration for what Drizzle does not
+it. `drizzle/0006_product_functions_and_grants.sql` is a custom migration for what Drizzle does not
 model: the `internal` helper schema, triggers, deferrable foreign keys, the references to
 `auth.users`, the security-definer functions the web app calls, and the grants. It detects whether
 Supabase roles and `auth.users` exist, so the same migration runs on the local Docker PostgreSQL and
@@ -19,11 +19,11 @@ on Supabase.
 
 There is no SQL in this directory any more. Never apply schema changes from here.
 
-A hosted Supabase project (`pickler`, us-east-1) exists and currently carries those schemas from the
-earlier CLI-based migrations. Before Drizzle owns it end to end, the six schemas must be dropped
-there and `npm run db:migrate` run against the project's direct or session connection URL, never the
-transaction pooler. The database holds no rows yet. Connection URLs and the service key belong to
-the operator and are never committed.
+Never drop existing product schemas to reconcile migrations. Use the hash-aware Drizzle wrapper
+through `npm run db:migrate`; see [the upgrade guide](../docs/frontend-integration.md).
+Manually provisioned schemas without recognized journal entries require explicit provenance
+reconciliation. The wrapper refuses unknown history rather than adopting or deleting it.
+No hosted migration is implied by local tests. Connection URLs and service keys are operator supplied.
 
 Data API: the hosted project exposes `identity`, `agents`, `budget`, `audit`, `growth` and `market`
 so the service role can read them over PostgREST. Never expose `internal`, `pickler`,

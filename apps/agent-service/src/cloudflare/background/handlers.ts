@@ -1,11 +1,21 @@
 import type { ResearchRepository, RunRecord } from "@pickler/core";
+import { executeWithLease } from "../../workers/lease";
 
-export type BackgroundRepository = Pick<ResearchRepository, "recover" | "claim" | "tick"> & {
-  acquireWorker(onLost: () => void): Promise<() => Promise<void>>;
+export type BackgroundRepository = Pick<
+  ResearchRepository,
+  "recover" | "claim" | "tick" | "renew"
+> & {
   close(): Promise<void>;
 };
-
 export type WakeupQueue = { send(body: { kind: "research-wakeup" }): Promise<void> };
+
+async function notify(queue: WakeupQueue) {
+  try {
+    await queue.send({ kind: "research-wakeup" });
+  } catch {
+    console.error("Research wakeup failed; scheduled reconciliation will retry");
+  }
+}
 
 export async function consumeWakeup(
   repository: BackgroundRepository,
@@ -13,23 +23,20 @@ export async function consumeWakeup(
   queue: WakeupQueue,
   now = Date.now,
 ) {
-  const controller = new AbortController();
-  let release: (() => Promise<void>) | undefined;
   try {
-    release = await repository.acquireWorker(() => controller.abort());
     await repository.recover(now());
     const run = await repository.claim(now());
-    if (run) {
-      await execute(run, controller.signal);
-      // Drain one job per invocation; an extra no-op wakeup ends the chain.
-      await queue.send({ kind: "research-wakeup" });
+    if (!run) {
+      return;
     }
+    // Wake another invocation before research, so pending jobs can use spare capacity.
+    await executeWithLease(repository, run, async (claimed, signal) => {
+      await notify(queue);
+      await execute(claimed, signal);
+    });
+    await notify(queue);
   } finally {
-    try {
-      await release?.();
-    } finally {
-      await repository.close();
-    }
+    await repository.close();
   }
 }
 
@@ -39,8 +46,8 @@ export async function reconcile(
   now = Date.now,
 ) {
   try {
+    await repository.recover(now());
     await repository.tick(now());
-    // Also recover interrupted work when no new scheduled job was created.
     await queue.send({ kind: "research-wakeup" });
   } finally {
     await repository.close();

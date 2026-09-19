@@ -1,10 +1,25 @@
+import { generalDecisionSystemPrompt } from "../prompts/general-decision-system";
+import { diagnoseModel } from "./model-probe";
+import { noopLogger } from "@mastra/core/logger";
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
-import { modelAssessmentSchema } from "@pickler/api-schema";
+import {
+  modelAssessmentSchema,
+  nflAssessmentSchema,
+  generalAssessmentSchema,
+} from "@pickler/api-schema";
 import { PilotError, type ResearchModel, type Market } from "@pickler/core";
-import { validatedModelOutput } from "./model-output";
+import { nflDecisionSystemPrompt } from "../prompts/nfl-decision-system";
+import { decisionSystemPrompt } from "../prompts/decision-system";
+import { modelDiagnostic } from "./model-diagnostics";
+import {
+  validatedModelOutput,
+  classifyModelFailure,
+  validateStructuredStep,
+  record,
+} from "./model-output";
 import { buildTools } from "../plugins/registry";
 import type { Environment } from "../config/env";
 import { researchSystemPrompt } from "../prompts/research-system";
@@ -13,7 +28,10 @@ import {
   marketSelectionSchema,
 } from "../prompts/market-selection-system";
 
-export function createModel(env: Environment): ResearchModel & { check(): Promise<unknown> } {
+export function createModel(env: Environment): ResearchModel & {
+  check(): Promise<unknown>;
+  diagnose(mode: "combined" | "split"): Promise<unknown>;
+} {
   const provider = createOpenAICompatible({
     name: "pickler-configured",
     baseURL: env.MODEL_BASE_URL,
@@ -37,9 +55,22 @@ export function createModel(env: Environment): ResearchModel & { check(): Promis
     metadata: () => ({
       model: env.MODEL_ID,
       provider: new URL(env.MODEL_BASE_URL).origin,
-      prompts: { research: researchSystemPrompt, marketSelection: marketSelectionSystemPrompt },
+      prompts: {
+        research: researchSystemPrompt,
+        marketSelection: marketSelectionSystemPrompt,
+        decision: decisionSystemPrompt,
+        nflDecision: nflDecisionSystemPrompt,
+        generalDecision: generalDecisionSystemPrompt,
+      },
     }),
-    async select(markets: Market[], profile: string, signal: AbortSignal, limits, now) {
+    async select(
+      markets: Market[],
+      profile: string,
+      signal: AbortSignal,
+      limits,
+      now,
+      onDiagnostic,
+    ) {
       const agent = new Agent({
         maxRetries: 0,
         id: "market-selector",
@@ -47,37 +78,83 @@ export function createModel(env: Environment): ResearchModel & { check(): Promis
         instructions: marketSelectionSystemPrompt.instructions,
         model,
       });
+      agent.__setLogger(noopLogger);
       const schema = marketSelectionSchema;
-      const result = await validatedModelOutput(
-        () =>
-          agent.generate(
-            JSON.stringify({
-              now,
-              profile,
-              candidates: markets.map(({ id, question, liquidity, closesAt }) => ({
-                id,
-                question,
-                liquidity,
-                closesAt,
-              })),
-            }),
-            {
-              maxSteps: 1,
-              abortSignal: signal,
-              modelSettings: { maxOutputTokens: Math.min(limits.outputTokens, 2000) },
-              ...(isDashScope
-                ? { providerOptions: { "pickler-configured": { enable_thinking: false } } }
-                : {}),
-              structuredOutput: { schema },
-            },
-          ),
-        schema,
-        "selection",
-        signal,
-      );
-      return { ...result.object, usage: result.usage };
+      const started = Date.now();
+      let stepFailure: PilotError | undefined;
+      try {
+        const result = await validatedModelOutput(
+          () =>
+            agent.generate(
+              JSON.stringify({
+                now,
+                profile,
+                candidates: markets.map(
+                  ({ id, question, liquidity, closesAt, startsAt, timingSource }) => ({
+                    startsAt,
+                    timingSource,
+                    id,
+                    question,
+                    liquidity,
+                    closesAt,
+                  }),
+                ),
+              }),
+              {
+                maxSteps: 1,
+                abortSignal: signal,
+                modelSettings: { maxOutputTokens: Math.min(limits.outputTokens, 2000) },
+                ...(isDashScope
+                  ? { providerOptions: { "pickler-configured": { enable_thinking: false } } }
+                  : {}),
+                onStepFinish: async (step) => {
+                  await onDiagnostic?.(modelDiagnostic("selection", Date.now() - started, step));
+                  try {
+                    await validateStructuredStep(step, schema, "selection", signal);
+                  } catch (error) {
+                    stepFailure = classifyModelFailure(error, "selection", signal, step);
+                  }
+                },
+                structuredOutput: { schema, logger: noopLogger },
+              },
+            ),
+          schema,
+          "selection",
+          signal,
+        );
+        if (stepFailure) {
+          throw stepFailure;
+        }
+        await onDiagnostic?.(
+          modelDiagnostic("selection-result", Date.now() - started, {
+            object: result.object,
+            totalUsage: result.usage,
+          }),
+        );
+        return { ...result.object, usage: result.usage };
+      } catch (error) {
+        const original = classifyModelFailure(error, "selection", signal);
+        const failure = /^(MODEL_HTTP_|MODEL_TIMEOUT|MODEL_CANCELLED|LEASE_LOST)/.test(
+          original.code,
+        )
+          ? original
+          : (stepFailure ?? original);
+        await onDiagnostic?.({
+          phase: "selection",
+          kind: "failure",
+          durationMs: Date.now() - started,
+          code: failure.code,
+        });
+        throw failure;
+      }
     },
     async research(input) {
+      const assessmentSchema =
+        input.protocol === "general-market-v1"
+          ? generalAssessmentSchema
+          : input.protocol === "nfl-winner-v1"
+            ? nflAssessmentSchema
+            : modelAssessmentSchema;
       const agent = new Agent({
         maxRetries: 0,
         id: "researcher",
@@ -86,31 +163,156 @@ export function createModel(env: Environment): ResearchModel & { check(): Promis
         model,
         tools: buildTools(input.tools),
       });
-      const result = await validatedModelOutput(
-        () =>
-          agent.generate(
-            JSON.stringify({
-              now: new Date().toISOString(),
-              market: input.market,
-              profile: input.profile,
-            }),
-            {
-              maxSteps: input.limits.steps - 1,
-              abortSignal: input.signal,
-              modelSettings: { maxOutputTokens: input.limits.outputTokens },
-              onStepFinish: async (step) => {
-                await input.onUsage(step.usage);
+      agent.__setLogger(noopLogger);
+      const started = Date.now();
+      let phase: "research" | "decision" = "research";
+      let lastStep: unknown;
+      let stepFailure: PilotError | undefined;
+      let stepStarted = started;
+      let stepIndex = 0;
+      const usages: unknown[] = [];
+      const callbacks = (phase: string) => ({
+        prepareStep: async () => {
+          await input.beforeStep?.();
+          if (stepFailure) {
+            throw stepFailure;
+          }
+          stepStarted = Date.now();
+        },
+        onStepFinish: async (step: { usage?: unknown }) => {
+          lastStep = step;
+          usages.push(step.usage);
+          await input.onUsage(step.usage);
+          const diagnostic = modelDiagnostic(phase, Date.now() - stepStarted, step);
+          await input.onDiagnostic?.({ ...diagnostic, kind: "step", step: ++stepIndex });
+          if (
+            diagnostic.tools.some((tool) => tool.status !== "completed" || tool.name === "unknown")
+          ) {
+            stepFailure = new PilotError("MODEL_INVALID_TOOL", "Model tool call failed");
+          }
+          if (phase === "decision") {
+            try {
+              await validateStructuredStep(step, assessmentSchema, phase, input.signal);
+            } catch (error) {
+              stepFailure = classifyModelFailure(error, phase, input.signal, step);
+            }
+          }
+        },
+      });
+      try {
+        const research = await agent.generate(
+          JSON.stringify({
+            now: new Date().toISOString(),
+            market: input.market,
+            profile: input.profile,
+            protocol: input.protocol,
+            availability: input.availability,
+            evidence: input.evidence?.(),
+          }),
+          {
+            maxSteps: input.limits.steps - (input.selectionSteps ?? 1) - 1,
+            abortSignal: input.signal,
+            modelSettings: { maxOutputTokens: input.limits.outputTokens },
+            ...callbacks("research"),
+            toolCallConcurrency: 1,
+          },
+        );
+        input.signal.throwIfAborted();
+        if (record(research).error) {
+          throw record(research).error;
+        }
+        if (stepFailure) {
+          throw stepFailure;
+        }
+        await input.onDiagnostic?.(
+          modelDiagnostic("research-result", Date.now() - started, research),
+        );
+        if (research.finishReason === "length") {
+          throw new PilotError("MODEL_OUTPUT_TRUNCATED", "Research summary truncated");
+        }
+        if (research.finishReason === "content-filter") {
+          throw new PilotError("MODEL_CONTENT_FILTERED", "Research output filtered");
+        }
+        if (research.finishReason === "error") {
+          throw new PilotError("MODEL_FAILURE", "Research model failed");
+        }
+        if (!research.text?.trim()) {
+          throw new PilotError("MODEL_EMPTY_RESPONSE", "Research summary absent");
+        }
+        await input.beforeStep?.();
+        input.signal.throwIfAborted();
+        phase = "decision";
+        const finalizer = new Agent({
+          maxRetries: 0,
+          id: "research-decision",
+          name: "Research decision",
+          instructions:
+            input.protocol === "general-market-v1"
+              ? generalDecisionSystemPrompt.instructions
+              : input.protocol === "nfl-winner-v1"
+                ? nflDecisionSystemPrompt.instructions
+                : decisionSystemPrompt.instructions,
+          model,
+        });
+        finalizer.__setLogger(noopLogger);
+        const result = await validatedModelOutput(
+          () =>
+            finalizer.generate(
+              JSON.stringify({
+                now: new Date().toISOString(),
+                market: input.market,
+                profile: input.profile,
+                protocol: input.protocol,
+                availability: input.availability,
+                evidence: input.evidence?.(),
+                untrustedResearchSummary: research.text,
+              }),
+              {
+                maxSteps: 1,
+                abortSignal: input.signal,
+                modelSettings: { maxOutputTokens: input.limits.outputTokens },
+                ...callbacks("decision"),
+                structuredOutput: { schema: assessmentSchema, logger: noopLogger },
               },
-              structuredOutput: { schema: modelAssessmentSchema },
-              toolCallConcurrency: 1,
-            },
-          ),
-        modelAssessmentSchema,
-        "research",
-        input.signal,
-      );
-      return { decision: result.object, usage: result.usage };
+            ),
+          assessmentSchema,
+          "decision",
+          input.signal,
+        );
+        if (stepFailure) {
+          throw stepFailure;
+        }
+        await input.onDiagnostic?.(
+          modelDiagnostic("decision-result", Date.now() - stepStarted, {
+            object: result.object,
+            totalUsage: result.usage,
+          }),
+        );
+        const total: Record<string, number> = {};
+        for (const usage of usages) {
+          const counts = modelDiagnostic(phase, 0, { usage }).usage;
+          for (const [key, count] of Object.entries(counts)) {
+            total[key] = (total[key] ?? 0) + count;
+          }
+        }
+        return { decision: result.object, usage: total };
+      } catch (error) {
+        const original = classifyModelFailure(error, phase, input.signal, lastStep);
+        const failure = /^(MODEL_HTTP_|MODEL_TIMEOUT|MODEL_CANCELLED|LEASE_LOST)/.test(
+          original.code,
+        )
+          ? original
+          : (stepFailure ?? original);
+        await input.onDiagnostic?.({
+          phase,
+          kind: "failure",
+          durationMs: Date.now() - started,
+          code: failure.code,
+        });
+        throw failure;
+      }
     },
+    diagnose: (mode) => diagnoseModel(model, env.MODEL_ID, mode),
     async check() {
       let called = false;
       const echo = createTool({
@@ -153,7 +355,7 @@ export function createModel(env: Environment): ResearchModel & { check(): Promis
         {
           maxSteps: 1,
           modelSettings: settings,
-          structuredOutput: { schema: modelAssessmentSchema },
+          structuredOutput: { schema: modelAssessmentSchema, logger: noopLogger },
         },
       );
       modelAssessmentSchema.parse(structured.object);

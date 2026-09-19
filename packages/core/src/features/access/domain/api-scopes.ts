@@ -14,6 +14,7 @@ export type ApiScope = (typeof API_SCOPES)[keyof typeof API_SCOPES];
 
 /** Narrow scopes an API key may be issued with. */
 export const ALLOWED_API_KEY_SCOPES = [
+  "read:agents",
   "read:wallets",
   "read:transactions",
   "sign:prepare",

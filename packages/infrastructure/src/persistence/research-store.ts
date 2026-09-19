@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { Pool, type PoolClient } from "pg";
+import { Pool } from "pg";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { and, asc, count, eq, gt, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, lte, sql, getTableColumns } from "drizzle-orm";
 import {
   DEFAULT_CONFIG,
+  effectivePlugins,
   PilotError,
   assertConfig,
   assertCanQueue,
@@ -19,7 +20,14 @@ import {
 } from "@pickler/core";
 import * as schema from "./schema.js";
 
-const { agents, runs, events, metadata } = schema;
+const { agents, runs, events, metadata, executionPolicy } = schema;
+const {
+  leaseOwner: _leaseOwner,
+  leaseExpiresAt: _leaseExpiresAt,
+  ...publicRunColumns
+} = getTableColumns(runs);
+void _leaseOwner;
+void _leaseExpiresAt;
 const DAY = 86_400_000;
 type Database = NodePgDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -31,11 +39,16 @@ const runScope = (scope: Scope) =>
 export class PostgresResearchStore implements ResearchRepository {
   readonly pool: Pool;
   readonly db: Database;
-  constructor(connectionString: string) {
+  private readonly owners = new Map<string, string>();
+  constructor(
+    connectionString: string,
+    private readonly leaseClock?: () => number,
+  ) {
     this.pool = new Pool({
       connectionString,
       max: 5,
       connectionTimeoutMillis: 10_000,
+      statement_timeout: 10_000,
       idleTimeoutMillis: 30_000,
     });
     this.pool.on("error", () => {
@@ -62,31 +75,78 @@ export class PostgresResearchStore implements ResearchRepository {
     await this.pool.end();
   }
 
-  /** Session-level ownership requires a direct connection or session pooler. */
-  async acquireWorker(onLost: () => void): Promise<() => Promise<void>> {
-    const client: PoolClient = await this.pool.connect();
+  private leaseNow() {
+    return this.leaseClock
+      ? sql`${this.leaseClock()}::bigint`
+      : sql`floor(extract(epoch from clock_timestamp()) * 1000)::bigint`;
+  }
+
+  private owned(run: RunRecord) {
+    const owner = this.owners.get(run.id);
+    if (!owner) {
+      throw new PilotError("LEASE_LOST", "Execution no longer owns this run");
+    }
+    return and(
+      eq(runs.id, run.id),
+      runScope(run),
+      eq(runs.status, "running"),
+      eq(runs.leaseOwner, owner),
+      gt(runs.leaseExpiresAt, this.leaseNow()),
+    );
+  }
+
+  async assertOwnership(run: RunRecord): Promise<void> {
+    const [owned] = await this.db.select({ id: runs.id }).from(runs).where(this.owned(run));
+    if (!owned) {
+      throw new PilotError("LEASE_LOST", "Execution lease expired");
+    }
+  }
+
+  async renew(run: RunRecord): Promise<void> {
     try {
-      const result = await client.query<{ acquired: boolean }>(
-        "SELECT pg_try_advisory_lock(761204, 1) AS acquired",
-      );
-      if (!result.rows[0]?.acquired) {
-        throw new Error("Another worker owns this Pickler database");
+      const renewed = await this.db.transaction(async (tx) => {
+        await tx
+          .select({ id: runs.id })
+          .from(runs)
+          .where(and(eq(runs.id, run.id), runScope(run)))
+          .for("update");
+        return tx
+          .update(runs)
+          .set({ leaseExpiresAt: sql`${this.leaseNow()} + 60000` })
+          .where(this.owned(run))
+          .returning({ id: runs.id });
+      });
+      if (!renewed.length) {
+        throw new PilotError("LEASE_LOST", "Execution lease expired");
       }
     } catch (error) {
-      client.release(true);
+      this.owners.delete(run.id);
       throw error;
     }
-    client.on("error", onLost);
-    client.on("end", onLost);
-    return async () => {
-      try {
-        await client.query("SELECT pg_advisory_unlock(761204, 1)");
-      } finally {
-        client.removeListener("error", onLost);
-        client.removeListener("end", onLost);
-        client.release(true);
-      }
-    };
+  }
+
+  async setConcurrency(globalLimit: number, tenantLimit: number): Promise<void> {
+    if (
+      !Number.isInteger(globalLimit) ||
+      !Number.isInteger(tenantLimit) ||
+      globalLimit < 1 ||
+      globalLimit > 250 ||
+      tenantLimit < 1 ||
+      tenantLimit > globalLimit
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Concurrency limits must be integers: 1 <= tenant <= global <= 250",
+      );
+    }
+    const updated = await this.db
+      .update(executionPolicy)
+      .set({ globalLimit, tenantLimit })
+      .where(eq(executionPolicy.id, 1))
+      .returning({ id: executionPolicy.id });
+    if (!updated.length) {
+      throw new Error("Apply execution policy migration first");
+    }
   }
 
   async bindConnectionIdentity(identity: string): Promise<void> {
@@ -141,6 +201,7 @@ export class PostgresResearchStore implements ResearchRepository {
     config: AgentConfig,
   ): Promise<AgentRecord> {
     assertConfig(config);
+    config = { ...config, plugins: effectivePlugins(config) };
     return this.db.transaction(async (tx) => {
       const agent = await this.getAgent(scope, tx, true);
       if (agent.version !== expectedVersion) {
@@ -216,7 +277,7 @@ export class PostgresResearchStore implements ResearchRepository {
   ): Promise<RunRecord> {
     const scope = { tenantId: agent.tenantId, agentId: agent.id };
     const [old] = await tx
-      .select()
+      .select(publicRunColumns)
       .from(runs)
       .where(and(runScope(scope), eq(runs.requestKey, key)));
     if (old) {
@@ -243,7 +304,7 @@ export class PostgresResearchStore implements ResearchRepository {
         configVersion: agent.version,
         config: agent.config,
       })
-      .returning();
+      .returning(publicRunColumns);
     return run!;
   }
 
@@ -263,7 +324,7 @@ export class PostgresResearchStore implements ResearchRepository {
 
   async run(tenantId: string, runId: string): Promise<RunRecord> {
     const [run] = await this.db
-      .select()
+      .select(publicRunColumns)
       .from(runs)
       .where(and(eq(runs.tenantId, tenantId), eq(runs.id, runId)));
     if (!run) {
@@ -282,64 +343,97 @@ export class PostgresResearchStore implements ResearchRepository {
   }
 
   async event(run: RunRecord, type: string, data: unknown, now: number): Promise<void> {
-    await this.run(run.tenantId, run.id);
-    await this.db
-      .insert(events)
-      .values({ runId: run.id, type, data: data ?? sql`'null'::jsonb`, createdAt: now });
+    await this.db.transaction(async (tx) => {
+      const agent = await this.getAgent(run, tx, true);
+      if (agent.version !== run.configVersion || agent.paused) {
+        throw new PilotError("CONFIG_CHANGED", "Research authorization changed");
+      }
+      // Serialize writes with finalization and recovery, then check the current DB time.
+      await tx
+        .select({ id: runs.id })
+        .from(runs)
+        .where(and(eq(runs.id, run.id), runScope(run)))
+        .for("update");
+      const [owned] = await tx.select({ id: runs.id }).from(runs).where(this.owned(run));
+      if (!owned) {
+        throw new PilotError("LEASE_LOST", "Execution lease expired");
+      }
+      await tx
+        .insert(events)
+        .values({ runId: run.id, type, data: data ?? sql`'null'::jsonb`, createdAt: now });
+    });
   }
 
   async claim(now: number): Promise<RunRecord | null> {
-    return this.db.transaction(async (tx) => {
-      // Lock agents first, like admission/config/pause/tick; skip agents owned by other transactions.
-      const candidates = await tx
+    const owner = randomUUID();
+    const claimed = await this.db.transaction(async (tx) => {
+      const [policy] = await tx
         .select()
-        .from(agents)
-        .where(
-          and(
-            eq(agents.paused, false),
-            sql`exists (select 1 from ${runs} where ${runs.tenantId} = ${agents.tenantId} and ${runs.agentId} = ${agents.id} and ${runs.status} = 'queued')`,
-          ),
-        )
-        .orderBy(agents.tenantId, agents.id)
-        .for("update", { skipLocked: true });
-      for (const agent of candidates) {
-        const scope = { tenantId: agent.tenantId, agentId: agent.id };
-        await tx
-          .update(runs)
-          .set({ status: "cancelled", error: "CONFIG_CHANGED", finishedAt: now })
-          .where(
-            and(
-              runScope(scope),
-              eq(runs.status, "queued"),
-              sql`${runs.configVersion} <> ${agent.version}`,
-            ),
-          );
-        const active = await tx
+        .from(executionPolicy)
+        .where(eq(executionPolicy.id, 1))
+        .for("update");
+      if (!policy) {
+        throw new Error("Apply execution policy migration first");
+      }
+      const active = await tx
+        .select({ tenantId: runs.tenantId })
+        .from(runs)
+        .where(eq(runs.status, "running"));
+      if (active.length >= policy.globalLimit) {
+        return null;
+      }
+      const candidates = await tx
+        .select(publicRunColumns)
+        .from(runs)
+        .where(eq(runs.status, "queued"))
+        .orderBy(asc(runs.createdAt), asc(runs.id));
+      for (const next of candidates) {
+        if (active.filter((run) => run.tenantId === next.tenantId).length >= policy.tenantLimit) {
+          continue;
+        }
+        const [agent] = await tx
+          .select()
+          .from(agents)
+          .where(agentScope(next))
+          .for("update", { skipLocked: true });
+        if (!agent || agent.paused) {
+          continue;
+        }
+        if (agent.version !== next.configVersion) {
+          await tx
+            .update(runs)
+            .set({ status: "cancelled", error: "CONFIG_CHANGED", finishedAt: now })
+            .where(and(eq(runs.id, next.id), eq(runs.status, "queued")));
+          continue;
+        }
+        const [running] = await tx
           .select({ id: runs.id })
           .from(runs)
-          .where(and(runScope(scope), eq(runs.status, "running")))
+          .where(and(runScope(next), eq(runs.status, "running")))
           .limit(1);
-        if (active.length) {
+        if (running) {
           continue;
         }
-        const [next] = await tx
-          .select()
-          .from(runs)
-          .where(and(runScope(scope), eq(runs.status, "queued")))
-          .orderBy(asc(runs.createdAt), asc(runs.id))
-          .limit(1);
-        if (!next) {
-          continue;
-        }
-        const [claimed] = await tx
+        const [result] = await tx
           .update(runs)
-          .set({ status: "running", startedAt: now })
-          .where(eq(runs.id, next.id))
-          .returning();
-        return claimed!;
+          .set({
+            status: "running",
+            startedAt: now,
+            leaseOwner: owner,
+            leaseExpiresAt: sql`${this.leaseNow()} + 60000`,
+          })
+          .where(and(eq(runs.id, next.id), eq(runs.status, "queued")))
+          .returning(publicRunColumns);
+        if (result) {
+          return result;
+        }
       }
       return null;
     });
+    if (claimed) {
+      this.owners.set(claimed.id, owner);
+    }
+    return claimed;
   }
 
   async finish(
@@ -348,18 +442,69 @@ export class PostgresResearchStore implements ResearchRepository {
     error: string | null,
     now: number,
   ): Promise<void> {
-    await this.db
-      .update(runs)
-      .set({ status: error ? "failed" : "completed", decision, error, finishedAt: now })
-      .where(and(eq(runs.id, run.id), eq(runs.tenantId, run.tenantId), eq(runs.status, "running")));
+    await this.db.transaction(async (tx) => {
+      const current = await this.getAgent(run, tx, true);
+      if (decision && (current.version !== run.configVersion || current.paused)) {
+        throw new PilotError("CONFIG_CHANGED", "Research authorization changed");
+      }
+      await tx.execute(
+        sql`select set_config('pickler.execution_owner', ${this.owners.get(run.id) ?? ""}, true)`,
+      );
+      await tx
+        .select({ id: runs.id })
+        .from(runs)
+        .where(and(eq(runs.id, run.id), runScope(run)))
+        .for("update");
+      const result = await tx
+        .update(runs)
+        .set({
+          status: error ? "failed" : "completed",
+          decision,
+          error,
+          finishedAt: now,
+          leaseOwner: null,
+          leaseExpiresAt: null,
+        })
+        .where(this.owned(run))
+        .returning({ id: runs.id });
+      if (!result.length) {
+        throw new PilotError("LEASE_LOST", "Execution lease expired");
+      }
+    });
+    this.owners.delete(run.id);
   }
 
-  /** Only the worker holding the database-wide session lock may recover interrupted work. */
-  async recover(now: number): Promise<void> {
-    await this.db
-      .update(runs)
-      .set({ status: "failed", error: "INTERRUPTED", finishedAt: now })
-      .where(eq(runs.status, "running"));
+  async recover(_now: number): Promise<void> {
+    await this.db.execute(
+      sql`UPDATE pickler.paper_orders SET status = 'interrupted', reason = 'INTERRUPTED', finished_at = ${this.leaseNow()}, lease_owner = NULL, lease_expires_at = NULL WHERE status = 'pending' AND lease_expires_at <= ${this.leaseNow()}`,
+    );
+
+    void _now; // The database clock, not the caller clock, owns lease expiration.
+    await this.db.transaction(async (tx) => {
+      const expired = await tx
+        .select({ id: runs.id })
+        .from(runs)
+        .where(and(eq(runs.status, "running"), lte(runs.leaseExpiresAt, this.leaseNow())))
+        .for("update", { skipLocked: true });
+      for (const run of expired) {
+        await tx
+          .update(runs)
+          .set({
+            status: "failed",
+            error: "INTERRUPTED",
+            finishedAt: this.leaseNow(),
+            leaseOwner: null,
+            leaseExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(runs.id, run.id),
+              eq(runs.status, "running"),
+              lte(runs.leaseExpiresAt, this.leaseNow()),
+            ),
+          );
+      }
+    });
   }
 
   async tick(now: number): Promise<void> {

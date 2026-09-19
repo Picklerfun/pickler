@@ -84,12 +84,11 @@ test("ownership prevents premature recovery; interrupted runs retain evidence an
   const queue = { send: async () => {} };
   try {
     const orphan = await store.enqueue(scope, "interrupted", null, Date.now());
-    const release = await store.acquireWorker(() => {});
     await store.claim(Date.now());
     await store.event(orphan, "partial_evidence", { preserved: true }, Date.now());
-    await assert.rejects(consumeWakeup(store, unavailable, queue), /Another worker/);
+    await consumeWakeup(store, unavailable, queue);
     assert.equal((await store.run("alpha", orphan.id)).status, "running");
-    await release();
+    await store.pool.query("UPDATE pickler.runs SET lease_expires_at = 0 WHERE status = 'running'");
     await consumeWakeup(store, unavailable, queue);
     assert.equal((await store.run("alpha", orphan.id)).error, "INTERRUPTED");
     assert.equal((await store.events("alpha", orphan.id)).length, 1);
@@ -102,13 +101,13 @@ test("ownership prevents premature recovery; interrupted runs retain evidence an
   }
 });
 
-test("consumer closes repository even when releasing ownership fails", async () => {
+test("consumer closes repository even when recovery fails", async () => {
   let closed = false;
   const repository = {
-    acquireWorker: async () => async () => {
-      throw new Error("release failed");
+    renew: async () => {},
+    recover: async () => {
+      throw new Error("recovery failed");
     },
-    recover: async () => {},
     claim: async () => null,
     tick: async () => {},
     close: async () => {
@@ -117,7 +116,71 @@ test("consumer closes repository even when releasing ownership fails", async () 
   };
   await assert.rejects(
     consumeWakeup(repository, unavailable, { send: async () => {} }),
-    /release failed/,
+    /recovery failed/,
   );
   assert.equal(closed, true);
+});
+
+test("queue fanout starts a second tenant before the first research completes", async (t) => {
+  const store = await createTestStore(t);
+  const peer = store.connectPeer();
+  for (const tenantId of ["alpha", "beta"]) {
+    const scope = { tenantId, agentId: `pickle-${tenantId}` };
+    await store.updateConfig(scope, 1, { ...DEFAULT_CONFIG, categoryIds: ["1"] });
+    await store.enqueue(scope, "parallel", null, Date.now());
+  }
+  const closeA = t.mock.method(store, "close", async () => {});
+  const closeB = t.mock.method(peer, "close", async () => {});
+  let wakeups = 0;
+  const queue = {
+    send: async () => {
+      wakeups++;
+    },
+  };
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let active = 0;
+  let maximum = 0;
+  try {
+    const a = consumeWakeup(
+      store,
+      async (run) => {
+        active++;
+        maximum = Math.max(maximum, active);
+        started();
+        await gate;
+        await store.finish(run, null, "TEST_DONE", Date.now());
+        active--;
+      },
+      queue,
+    );
+    await firstStarted;
+    assert.equal(wakeups, 1);
+    await consumeWakeup(
+      peer,
+      async (run) => {
+        active++;
+        maximum = Math.max(maximum, active);
+        await peer.finish(run, null, "TEST_DONE", Date.now());
+        active--;
+      },
+      queue,
+    );
+    release();
+    await a;
+    assert.equal(maximum, 2);
+    assert.equal(wakeups, 4);
+    await consumeWakeup(peer, unavailable, queue);
+    assert.equal(wakeups, 4);
+  } finally {
+    release();
+    closeA.mock.restore();
+    closeB.mock.restore();
+  }
 });

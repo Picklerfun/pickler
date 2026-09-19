@@ -11,3 +11,5 @@ export type * from "./agents.js";
 export type * from "./errors.js";
 
 export * from "./research.js";
+
+export * from "./paper.js";

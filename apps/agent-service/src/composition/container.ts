@@ -1,6 +1,20 @@
 import { createHash } from "node:crypto";
-import { createResearchRunner } from "@pickler/core";
-import { PostgresResearchStore, ExaResearch, PolymarketData } from "@pickler/infrastructure";
+import {
+  createResearchRunner,
+  createPaperService,
+  effectivePlugins,
+  PilotError,
+  type PluginId,
+} from "@pickler/core";
+import {
+  PostgresResearchStore,
+  PostgresPaperStore,
+  ExaResearch,
+  PolymarketData,
+  BallDontLieSports,
+  OddsApiSports,
+  PostgresPublicDataCache,
+} from "@pickler/infrastructure";
 import { readEnv } from "../config/env";
 import { createModel } from "./model";
 
@@ -22,12 +36,56 @@ export async function createContainer(env = readEnv()) {
   const search = new ExaResearch(env.EXA_API_KEY);
   const markets = new PolymarketData();
   const model = createModel(env);
+  const cache = new PostgresPublicDataCache(repository.pool);
+  const sports = env.BALLDONTLIE_API_KEY
+    ? new BallDontLieSports(env.BALLDONTLIE_API_KEY, cache)
+    : undefined;
+  const odds = env.THE_ODDS_API_KEY ? new OddsApiSports(env.THE_ODDS_API_KEY, cache) : undefined;
   let checking = false;
   return {
     env,
     repository,
     markets,
-    execute: createResearchRunner({ repository, search, reader: search, markets, model }),
+    paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
+    execute: createResearchRunner({
+      repository,
+      search,
+      reader: search,
+      markets,
+      model,
+      configured: { exa: Boolean(env.EXA_API_KEY) },
+      ...(sports ? { sports } : {}),
+      ...(odds ? { odds } : {}),
+    }),
+    async checkPlugin(scope: { tenantId: string; agentId: string }, plugin: string) {
+      const agent = await repository.agent(scope);
+      if (!effectivePlugins(agent.config).enabled.includes(plugin as PluginId)) {
+        throw new PilotError("PLUGIN_DISABLED", "Plugin is disabled");
+      }
+      const signal = AbortSignal.timeout(20000);
+      if (plugin === "balldontlie") {
+        if (!sports) {
+          throw new PilotError("PLUGIN_NOT_CONFIGURED", "Missing credentials");
+        }
+        await sports.check(signal);
+      } else if (plugin === "the-odds-api") {
+        if (!odds) {
+          throw new PilotError("PLUGIN_NOT_CONFIGURED", "Missing credentials");
+        }
+        await odds.check(signal);
+      } else if (plugin === "polymarket") {
+        await markets.categories(signal);
+      } else if (plugin === "exa") {
+        await search.search("NFL official schedule", signal);
+      } else if (plugin === "paper-trading") {
+        if (!effectivePlugins(agent.config).enabled.includes("polymarket")) {
+          throw new PilotError("PLUGIN_DISABLED", "Paper requires Polymarket");
+        }
+      } else {
+        throw new PilotError("INVALID_INPUT", "Unknown research plugin");
+      }
+      return { plugin, ok: true };
+    },
     async checkConnections() {
       if (checking) {
         throw new Error("Connection check already running");

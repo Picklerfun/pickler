@@ -1,6 +1,7 @@
 import { createResearchRunner, PilotError } from "@pickler/core";
 import { ExaResearch, PolymarketData, PostgresResearchStore } from "@pickler/infrastructure";
 import { decisionV2Schema } from "@pickler/api-schema";
+import { executeWithLease } from "../workers/lease";
 import { runEphemeralResearch } from "./ephemeral-research";
 import { createModel } from "../composition/model";
 import type { Environment } from "../config/env";
@@ -9,7 +10,8 @@ type Bindings = Environment & { PROBE_TOKEN: string };
 
 type ProbeRepository = Pick<
   PostgresResearchStore,
-  | "acquireWorker"
+  | "assertOwnership"
+  | "renew"
   | "recover"
   | "enqueue"
   | "claim"
@@ -55,10 +57,8 @@ export function createProbe(
           return Response.json({ error: "ISOLATED_DATABASE_REQUIRED" }, { status: 400 });
         }
         const repository = createRepository(env.DATABASE_URL);
-        let release: (() => Promise<void>) | undefined;
         try {
           const controller = new AbortController();
-          release = await repository.acquireWorker(() => controller.abort());
           await repository.recover(Date.now());
           // A queued probe belongs to a request that ended before claiming it. Never
           // execute that abandoned request or leave it ahead of the new probe.
@@ -75,8 +75,15 @@ export function createProbe(
           }
           if (path === "/hold") {
             await repository.event(run, "probe_wait", { providerCalls: false }, Date.now());
-            await new Promise((resolve) => setTimeout(resolve, 60_000));
-            await repository.finish(run, null, "PROBE_HOLD_ENDED", Date.now());
+            await executeWithLease(
+              repository,
+              run,
+              async () => {
+                await new Promise((resolve) => setTimeout(resolve, 60_000));
+                await repository.finish(run, null, "PROBE_HOLD_ENDED", Date.now());
+              },
+              request.signal,
+            );
             return Response.json({ run: await repository.run(scope.tenantId, run.id) });
           }
           const search = new ExaResearch(env.EXA_API_KEY);
@@ -90,7 +97,12 @@ export function createProbe(
             reader: search,
             markets: new PolymarketData(),
           });
-          await execute(run, AbortSignal.any([controller.signal, request.signal]));
+          await executeWithLease(
+            repository,
+            run,
+            execute,
+            AbortSignal.any([controller.signal, request.signal]),
+          );
           const saved = await repository.run(scope.tenantId, run.id);
           if (saved.status === "completed") {
             decisionV2Schema.parse(saved.decision);
@@ -100,11 +112,7 @@ export function createProbe(
             events: await repository.events(scope.tenantId, run.id),
           });
         } finally {
-          try {
-            await release?.();
-          } finally {
-            await repository.close();
-          }
+          await repository.close();
         }
       } catch (error) {
         return Response.json(

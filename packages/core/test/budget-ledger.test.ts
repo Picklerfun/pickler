@@ -188,3 +188,32 @@ test("hydration never overwrites live state and status thresholds match Relayer"
   );
   assert.equal(ledger.snapshot().status, "active");
 });
+
+test("refunds cannot reduce a later month's spend or a reset balance", () => {
+  const { ledger, setNow } = setup("2026-09-30T23:59:00Z");
+  ledger.configure({ payments: "100" });
+  ledger.reserve(reserve("september", "80"));
+  ledger.commit("september");
+  setNow("2026-10-01T00:00:00Z");
+  ledger.record({ category: "payments", amount: "80", eventId: "october" });
+  ledger.release("september");
+  ledger.release("september");
+  assert.equal(ledger.snapshot().categories.find((c) => c.category === "payments")!.spent, 80n);
+  assert.equal(ledger.reserve(reserve("overspend", "21")).success, false);
+  ledger.reserve(reserve("before-reset", "10"));
+  ledger.commit("before-reset");
+  ledger.configure({ payments: "100" }, { resetSpent: true });
+  ledger.record({ category: "payments", amount: "70", eventId: "after-reset" });
+  ledger.release("before-reset");
+  assert.equal(ledger.snapshot().categories.find((c) => c.category === "payments")!.spent, 70n);
+});
+
+test("a hold crossing months is refunded in the actual commit month", () => {
+  const { ledger, setNow } = setup("2026-09-30T23:59:50Z");
+  ledger.configure({ payments: "100" });
+  ledger.reserve(reserve("carry", "80"));
+  setNow("2026-10-01T00:00:00Z");
+  assert.equal(ledger.commit("carry").committedPeriod, "2026-10");
+  ledger.release("carry");
+  assert.equal(ledger.snapshot().categories.find((c) => c.category === "payments")!.spent, 0n);
+});

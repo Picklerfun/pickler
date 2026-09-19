@@ -42,6 +42,7 @@ export async function runEphemeralResearch(env: Environment, signal: AbortSignal
   const search = new ExaResearch(env.EXA_API_KEY);
   const execute = createResearchRunner({
     repository: {
+      async assertOwnership() {},
       async agent() {
         return agent;
       },

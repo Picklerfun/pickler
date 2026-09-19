@@ -31,7 +31,8 @@ test("tenant scope protects agents, configuration, runs and evidence", async (t)
   await assert.rejects(store.updateConfig({ ...scope, tenantId: "beta" }, 2, config), {
     code: "NOT_FOUND",
   });
-  const run = await store.enqueue(scope, "manual-1", null, 1000);
+  await store.enqueue(scope, "manual-1", null, 1000);
+  const run = (await store.claim(1001))!;
   await store.event(run, "source", { url: "https://example.com" }, 1001);
 
   await assert.rejects(store.run("beta", run.id), { code: "NOT_FOUND" });
@@ -79,6 +80,7 @@ test("schedule readiness, coalescing, deduplication, pause and recovery use a co
   assert.equal(scheduled.trigger, "schedule");
   assert.equal(await store.claim(due + 9 * 3_600_000), null);
   await store.event(scheduled, "partial-evidence", { id: "kept" }, due);
+  await store.pool.query("UPDATE pickler.runs SET lease_expires_at = 0 WHERE status = 'running'");
   await store.recover(due + 9 * 3_600_000 + 1);
 
   assert.equal((await store.run("alpha", scheduled.id)).error, "INTERRUPTED");
@@ -142,17 +144,15 @@ test("independent PostgreSQL connections serialize quota admission and idempoten
   assert.equal(claims.filter(Boolean).length, 1);
 });
 
-test("worker ownership is database-wide and survives until the session closes", async (t) => {
+test("execution ownership is private to the claiming repository", async (t) => {
   const store = await setup(t);
-  const other = store.connectPeer();
-  const release = await store.acquireWorker(() => {});
-  await assert.rejects(
-    other.acquireWorker(() => {}),
-    /Another worker/,
-  );
-  await release();
-  const releaseOther = await other.acquireWorker(() => {});
-  await releaseOther();
+  const peer = store.connectPeer();
+  await store.enqueue(scope, "owned", null, 0);
+  const run = (await store.claim(1))!;
+  await store.assertOwnership(run);
+  await assert.rejects(peer.assertOwnership(run), { code: "LEASE_LOST" });
+  await peer.recover(1000000);
+  assert.equal((await peer.run("alpha", run.id)).status, "running");
 });
 
 test("simultaneous schedule ticks coalesce into one persisted occurrence", async (t) => {

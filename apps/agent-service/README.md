@@ -155,11 +155,11 @@ Use the same idempotency key to retry an ambiguous dispatch. Reusing a key with 
 
 - `pickler` PostgreSQL schema: tenant configuration, queued jobs, immutable config snapshots, JSONB events and decisions, accessed through Drizzle and `pg`.
 - `mastra` PostgreSQL schema: framework storage through `@mastra/pg`, initialized by Mastra. It is operator-visible, not a public tenant resource.
-- A PostgreSQL session advisory lock admits one worker across machines. A second worker fails before recovery. Connection loss aborts the owner; database disconnection releases its lock. The pilot still processes research serially. Agent row locks, transactions and a partial unique index additionally enforce one running investigation per agent. Scaling to multiple workers requires per-job leases and recovery changes, not just increasing replicas.
+- PostgreSQL enforces five active investigations globally, two per tenant and one per agent by default. Claims use a short policy-row transaction; each investigation holds a renewable 60-second lease. Node remains sequential per process, but multiple executors may safely share a migrated database. Evidence and finalization require ownership. See [concurrency validation and migration](CLOUDFLARE-BACKGROUND.md).
 
 A job ID is its run ID. Scheduled occurrence is encoded in its unique persistent request key (`schedule:CONFIG_VERSION:DUE_TIMESTAMP`), alongside the agent's persisted `nextDueAt`. Duplicate ticks cannot enqueue duplicate work. Missed intervals collapse into one current run. An existing queued/running job prevents a new periodic enqueue. Six jobs per rolling 24 hours is the default; failed/cancelled jobs also consume the conservative admission quota.
 
-Interrupted running jobs become `failed/INTERRUPTED` on worker restart and retain their events. They are never automatically retried. Unstarted manual jobs remain pending. Pausing cancels pending jobs and prevents future tool calls in running jobs; it cannot undo a provider call already in flight. Resuming keeps the configured schedule, coalescing missed occurrences. A config edit cancels stale pending work at claim time and blocks subsequent calls from an old running version.
+Running jobs with expired leases become `failed/INTERRUPTED` during reconciliation and retain their events. They are never automatically retried. Unstarted manual jobs remain pending. Pausing cancels pending jobs and prevents future tool calls in running jobs; it cannot undo a provider call already in flight. Resuming keeps the configured schedule, coalescing missed occurrences. A config edit cancels stale pending work at claim time and blocks subsequent calls from an old running version.
 
 Scheduling starts disabled. Enabling it requires a successful connection check plus completed manual research for the agent's current config. Changing model endpoint, model ID or provider credentials invalidates readiness and disables schedules. Restarting with the same settings preserves scheduling. The default interval is four hours, configurable from one hour to seven days.
 
@@ -188,7 +188,7 @@ src/
   prompts/                 # Versioned system instructions and SHA-256 snapshots
   config/env.ts            # Required server-only configuration
   plugins/registry.ts      # Reviewed research@1.0.0 and prediction-markets@1.0.0
-  workers/main.ts          # Exclusive worker lifecycle and restart recovery
+  workers/main.ts          # Sequential leased executor and expired-job recovery
   cli.ts                   # Operator commands
 ../../packages/core/src/features/research/
   types.ts                 # Entities and capability/repository ports
@@ -245,3 +245,21 @@ For a Vinicius-like proposal with estimate 0.003, range 0.0005–0.01, HIGH unce
 See [CLOUDFLARE-PROBE.md](CLOUDFLARE-PROBE.md) for the isolated workerd experiment, verified live local research, interruption behavior and remaining remote/production boundaries. This does not change the normal Studio or worker startup.
 
 For the separate local `202 + runId` → Queue consumer → PostgreSQL → status polling experiment, see [Cloudflare background research](CLOUDFLARE-BACKGROUND.md). It uses an isolated Supabase database and does not change the retained remote probe or the normal Node pilot.
+
+Operator concurrency configuration (no provider calls):
+
+```sh
+npm run agent -- concurrency 5 2
+```
+
+Arguments are the global and default per-tenant limits; values are persisted in PostgreSQL. Existing work is not aborted when lowering limits. No new environment variables are required. Stop old executors before applying migrations 0001/0002 and restart only updated binaries. Migrations preserve queued work/history and interrupt old unleased running jobs; the database guard rejects legacy recovery of another execution's valid lease.
+
+See [research reliability](RELIABILITY.md) for the two-phase model flow, pre-event Sports policy, safe diagnostic events and explicit model diagnostic commands.
+
+See [Configurable NFL research](NFL-RESEARCH.md) for plugin configuration, structured sources, decision v3 and explicit evaluation commands.
+
+See [Manual paper trading](PAPER-TRADING.md) for the optional paper plugin, endpoints, CLI, migration and simulation assumptions.
+
+## Sports categories
+
+See [MARKET-CATEGORIES.md](MARKET-CATEGORIES.md) for category/subcategory configuration, automatic NFL/general research protocols, decision v4, compatibility and local validation.

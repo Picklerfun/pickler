@@ -12,15 +12,43 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1789700525874,
-      "tag": "0001_product_schemas",
+      "when": 1789642852757,
+      "tag": "0001_execution_leases",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
+      "when": 1789643609497,
+      "tag": "0002_legacy_executor_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789651574774,
+      "tag": "0003_needy_sebastian_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789658870970,
+      "tag": "0004_stormy_puppet_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789700525874,
+      "tag": "0005_product_schemas",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
       "when": 1789700530416,
-      "tag": "0002_product_functions_and_grants",
+      "tag": "0006_product_functions_and_grants",
       "breakpoints": true
     }
   ]

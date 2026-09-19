@@ -141,7 +141,7 @@ test("principals and permission decisions follow Relayer's guard", () => {
 
   const scopedKey = buildApiKeyPrincipal({ id: "k1", scopes: ["integrator"] }, "i1");
   assert.equal(scopedKey.kind, "apikey");
-  assert.equal(checkPermission(scopedKey, required).allowed, true);
+  assert.equal(checkPermission(scopedKey, required).allowed, false);
 
   const adminKey = buildApiKeyPrincipal(
     { id: "k2", scopes: ["admin", "internal", "read:wallets"] },
@@ -167,4 +167,28 @@ test("core modules are always active and required modules use OR", () => {
   assert.equal(hasActiveModule(["agent"], ["action"]), false);
   assert.equal(hasActiveModule(["agent", "action"], ["action"]), true);
   assert.equal(hasActiveModule([], null), true);
+});
+
+test("API keys require explicit permissions and workspace context", () => {
+  const read = { action: "read", subject: "Agent" } as const;
+  for (const scopes of [
+    [],
+    ["read:wallets"],
+    ["integrator"],
+    ["internal"],
+    ["admin"],
+    ["unknown"],
+  ]) {
+    assert.equal(
+      checkPermission(buildApiKeyPrincipal({ id: "k", scopes }, "w1"), read).allowed,
+      false,
+    );
+  }
+  const key = buildApiKeyPrincipal({ id: "k", scopes: ["read:agents"] }, "w1");
+  assert.equal(checkPermission(key, read).allowed, true);
+  assert.equal(checkPermission(key, { action: "update", subject: "Agent" }).allowed, false);
+  assert.equal(
+    checkPermission(buildApiKeyPrincipal({ id: "k", scopes: ["read:agents"] }, null), read).allowed,
+    false,
+  );
 });

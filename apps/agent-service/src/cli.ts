@@ -15,6 +15,14 @@ if (command === "init") {
   console.log(
     "Created .env with distinct local tokens. Fill in database connection URLs and the four provider variables before starting.",
   );
+} else if (command === "concurrency") {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required for the operator command");
+  }
+  const { setConcurrency } = await import("./composition/set-concurrency");
+  await setConcurrency(databaseUrl, Number(args[0]), Number(args[1]));
+  console.log("Shared concurrency policy updated; active research was not aborted.");
 } else {
   const tenant = args[0] ?? "alpha";
   if (!["alpha", "beta"].includes(tenant)) {
@@ -32,6 +40,9 @@ if (command === "init") {
     case "agents":
       path = "/agents";
       break;
+    case "market-categories":
+      path = "/market-categories";
+      break;
     case "categories":
       path = "/categories";
       break;
@@ -48,6 +59,14 @@ if (command === "init") {
       path = `/agents/${agent}/runs`;
       method = "POST";
       body = args[1] ? { marketId: args[1] } : {};
+      break;
+    case "paper-buy":
+      path = `/runs/${encodeURIComponent(args[1] ?? "")}/paper-order`;
+      method = "POST";
+      body = {};
+      break;
+    case "paper-result":
+      path = `/runs/${encodeURIComponent(args[1] ?? "")}/paper-order`;
       break;
     case "result":
       path = `/runs/${encodeURIComponent(args[1] ?? "")}`;
@@ -71,7 +90,7 @@ if (command === "init") {
       break;
     default:
       throw new Error(
-        "Commands: init, agents, categories, check, configure, run, result, events, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
+        "Commands: init, agents, categories, market-categories, check, configure, run, result, events, paper-buy, paper-result, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
       );
   }
   const response = await fetch(`http://127.0.0.1:4111/pilot${path}`, {
@@ -79,7 +98,8 @@ if (command === "init") {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "Idempotency-Key": randomUUID(),
+      "Idempotency-Key":
+        command === "paper-buy" ? (args[2] ?? `paper:${args[1] ?? ""}`) : randomUUID(),
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(240_000),

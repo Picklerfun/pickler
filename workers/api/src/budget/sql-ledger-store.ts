@@ -48,6 +48,17 @@ export function migrateLedger(sql: SqlExec): void {
   for (const statement of LEDGER_SCHEMA) {
     sql.exec(statement).toArray();
   }
+  // Additive upgrade: existing reservations have unknown charge periods and cannot credit spend.
+  const columns = (table: string) => sql.exec(`PRAGMA table_info(${table})`).toArray();
+  if (!columns("budget").some((row) => row.name === "spend_generation")) {
+    sql.exec("ALTER TABLE budget ADD COLUMN spend_generation INTEGER NOT NULL DEFAULT 0").toArray();
+  }
+  if (!columns("reservation").some((row) => row.name === "committed_period")) {
+    sql.exec("ALTER TABLE reservation ADD COLUMN committed_period TEXT").toArray();
+  }
+  if (!columns("reservation").some((row) => row.name === "committed_generation")) {
+    sql.exec("ALTER TABLE reservation ADD COLUMN committed_generation INTEGER").toArray();
+  }
 }
 
 const toReservation = (row: Record<string, unknown>): Reservation => ({
@@ -59,6 +70,8 @@ const toReservation = (row: Record<string, unknown>): Reservation => ({
   sourceRef: row.source_ref === null ? null : String(row.source_ref),
   createdAt: new Date(String(row.created_at)),
   expiresAt: new Date(String(row.expires_at)),
+  committedPeriod: row.committed_period == null ? null : String(row.committed_period),
+  committedGeneration: row.committed_generation == null ? null : Number(row.committed_generation),
 });
 
 export function createSqlLedgerStore(sql: SqlExec): LedgerStore {
@@ -72,20 +85,22 @@ export function createSqlLedgerStore(sql: SqlExec): LedgerStore {
             spent: BigInt(String(row.spent_amount)),
             reserved: BigInt(String(row.reserved_amount)),
             periodKey: String(row.period_key),
+            spendGeneration: Number(row.spend_generation),
           }
         : null;
     },
     putCategory(state: CategoryState) {
       sql
         .exec(
-          `INSERT INTO budget (category, limit_amount, spent_amount, reserved_amount, period_key) VALUES (?, ?, ?, ?, ?)
+          `INSERT INTO budget (category, limit_amount, spent_amount, reserved_amount, period_key, spend_generation) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT (category) DO UPDATE SET limit_amount = excluded.limit_amount, spent_amount = excluded.spent_amount,
-           reserved_amount = excluded.reserved_amount, period_key = excluded.period_key`,
+           reserved_amount = excluded.reserved_amount, period_key = excluded.period_key, spend_generation = excluded.spend_generation`,
           state.category,
           state.limit.toString(),
           state.spent.toString(),
           state.reserved.toString(),
           state.periodKey,
+          state.spendGeneration ?? 0,
         )
         .toArray();
     },
@@ -96,8 +111,8 @@ export function createSqlLedgerStore(sql: SqlExec): LedgerStore {
     putReservation(r) {
       sql
         .exec(
-          `INSERT INTO reservation (id, category, amount, state, source, source_ref, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT (id) DO UPDATE SET state = excluded.state`,
+          `INSERT INTO reservation (id, category, amount, state, source, source_ref, created_at, expires_at, committed_period, committed_generation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET state = excluded.state, committed_period = excluded.committed_period, committed_generation = excluded.committed_generation`,
           r.id,
           r.category,
           r.amount.toString(),
@@ -106,6 +121,8 @@ export function createSqlLedgerStore(sql: SqlExec): LedgerStore {
           r.sourceRef,
           r.createdAt.toISOString(),
           r.expiresAt.toISOString(),
+          r.committedPeriod ?? null,
+          r.committedGeneration ?? null,
         )
         .toArray();
     },

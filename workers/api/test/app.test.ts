@@ -116,7 +116,7 @@ test("business errors map to statuses; internals are hidden in production", asyn
   }
 });
 
-test("module and permission middleware follow Relayer's guards", async () => {
+test("module and permission middleware deny management to read-only keys", async () => {
   const { Hono } = await import("hono");
   const { handleError } = await import("../src/http/error-handler.ts");
   const make = (principal: unknown, ws: typeof workspace | null) => {
@@ -148,6 +148,6 @@ test("module and permission middleware follow Relayer's guards", async () => {
     memberRole: "viewer",
   });
   assert.equal((await make(viewer, workspace).request("/agents", {}, env)).status, 403);
-  const key = buildApiKeyPrincipal({ id: "k", scopes: ["integrator"] }, "w1");
-  assert.equal((await make(key, workspace).request("/agents", {}, env)).status, 200);
+  const key = buildApiKeyPrincipal({ id: "k", scopes: ["read:agents"] }, "w1");
+  assert.equal((await make(key, workspace).request("/agents", {}, env)).status, 403);
 });

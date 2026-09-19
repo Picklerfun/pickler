@@ -59,20 +59,26 @@ if (command === "prepare") {
   const store = new PostgresResearchStore(vars.DATABASE_URL);
   try {
     await store.init();
-    const scope = { tenantId: "alpha", agentId: "pickle-alpha" };
-    const agent = await store.agent(scope);
-    await store.updateConfig(scope, agent.version, { ...agent.config, categoryIds: ["1"] });
+    for (const tenantId of ["alpha", "beta"]) {
+      const scope = { tenantId, agentId: `pickle-${tenantId}` };
+      const agent = await store.agent(scope);
+      await store.updateConfig(scope, agent.version, { ...agent.config, categoryIds: ["1"] });
+    }
   } finally {
     await store.close();
   }
   console.log(`Prepared ${database}; Sports selected; scheduling disabled; no providers called.`);
 } else {
   const vars = JSON.parse(readFileSync(statePath, "utf8"));
+  const tenant = process.env.LAB_TENANT ?? "alpha";
+  if (!["alpha", "beta"].includes(tenant)) {
+    throw new Error("LAB_TENANT must be alpha or beta");
+  }
   const request = async (path, method = "GET", body) => {
     const response = await fetch(`${base}${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${vars.TENANT_ALPHA_TOKEN}`,
+        Authorization: `Bearer ${vars[`TENANT_${tenant.toUpperCase()}_TOKEN`]}`,
         "Content-Type": "application/json",
         "Idempotency-Key": process.env.RUN_KEY ?? randomUUID(),
       },
@@ -85,9 +91,23 @@ if (command === "prepare") {
     }
     return { http: response.status, result };
   };
-  if (command === "run") {
+  if (command === "worker") {
+    execFileSync(process.execPath, ["--import", "tsx", "src/workers/main.ts"], {
+      cwd: app,
+      env: { ...process.env, ...vars },
+      stdio: "inherit",
+    });
+  } else if (command === "policy") {
+    const store = new PostgresResearchStore(vars.DATABASE_URL);
+    try {
+      await store.setConcurrency(Number(process.argv[3]), Number(process.argv[4]));
+      console.log("Shared execution limits updated; active jobs were not aborted.");
+    } finally {
+      await store.close();
+    }
+  } else if (command === "run") {
     const started = Date.now();
-    const accepted = await request("/agents/pickle-alpha/runs", "POST", {});
+    const accepted = await request(`/agents/pickle-${tenant}/runs`, "POST", {});
     console.log({ ...accepted, acceptanceMs: Date.now() - started });
   } else if (command === "poll") {
     const runId = process.argv[3];
@@ -115,6 +135,8 @@ if (command === "prepare") {
   } else if (command === "check") {
     console.log(await request("/connections/check", "POST", {}));
   } else {
-    throw new Error("Use prepare, run, poll <runId>, tick or check.");
+    throw new Error(
+      "Use prepare, run, poll <runId>, tick, check, worker or policy <global> <tenant>.",
+    );
   }
 }

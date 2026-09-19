@@ -98,8 +98,8 @@ export function buildApiKeyPrincipal(
     id: apiKey.id,
     tenantId,
     scopes,
-    // Only admin-scoped keys are evaluated through abilities; others are scope-checked.
-    abilities: scopes.includes(API_SCOPES.ADMIN) ? abilitiesForApiKey(scopes) : emptyAbility(),
+    // Every key is evaluated against explicit scope grants.
+    abilities: abilitiesForApiKey(scopes),
   };
   return scopes.includes(API_SCOPES.INTERNAL)
     ? { kind: "service", ...base }

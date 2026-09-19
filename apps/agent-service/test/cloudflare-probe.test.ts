@@ -38,6 +38,7 @@ test("database probe recovers the stale-claim failure chain without executing or
 
   // This test owns the store lifetime; production still closes its request-scoped pool.
   const close = t.mock.method(store, "close", async () => {});
+  await store.pool.query("UPDATE pickler.runs SET lease_expires_at = 0 WHERE status = 'running'");
   const probe = createProbe(() => store);
   try {
     const response = await probe.fetch(interruptRequest(), env);
@@ -69,34 +70,16 @@ test("database probe recovers the stale-claim failure chain without executing or
   }
 });
 
-test("database probe closes its pool even when ownership release rejects", async (t) => {
+test("database probe closes its pool when recovery rejects", async (t) => {
   const store = await createTestStore(t);
-  await store.updateConfig(scope, 1, { ...DEFAULT_CONFIG, categoryIds: ["1"] });
-  const fetch = t.mock.method(globalThis, "fetch", async () => {
-    throw new Error("No provider calls are allowed during interruption recovery");
-  });
-  const acquire = store.acquireWorker.bind(store);
-  t.mock.method(store, "acquireWorker", async (onLost: () => void) => {
-    const release = await acquire(onLost);
-    return async () => {
-      await release();
-      throw new Error("Simulated unlock failure");
-    };
-  });
   const close = t.mock.method(store, "close", async () => {});
-  const probe = createProbe(() => store);
-
+  t.mock.method(store, "recover", async () => {
+    throw new Error("recovery failed");
+  });
   try {
-    const response = await probe.fetch(interruptRequest(), env);
+    const response = await createProbe(() => store).fetch(interruptRequest(), env);
     assert.equal(response.status, 500);
-    assert.deepEqual(await response.json(), { error: "PROBE_FAILED" });
     assert.equal(close.mock.callCount(), 1);
-    assert.equal(fetch.mock.callCount(), 0);
-
-    // The terminal failure is retained, and another owner can acquire the database.
-    assert.equal(await store.claim(Date.now()), null);
-    const release = await acquire(() => {});
-    await release();
   } finally {
     close.mock.restore();
   }

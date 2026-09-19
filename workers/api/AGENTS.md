@@ -64,3 +64,9 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 ## Commands
 
 From the repository root: `npm run typecheck --workspace=@pickler/api`, `npm test`, `npm run lint`. From `workers/api`: `npx wrangler dev` (local workerd) and `npx wrangler deploy --dry-run --outdir <dir>` to check the bundle. Deploying requires explicit authorization.
+
+All API-key routes enforce explicit scope abilities; use `read:agents` for product agent reads.
+Broad legacy labels alone grant no route authority. SQLite ledger upgrades are additive and retain
+history; committed reservation refunds require a matching period and spend generation. `.wrangler`
+state is local generated output and must never be tracked. The product workspace/agent registry is
+not yet connected to research tenants; see [integration boundaries](../../docs/frontend-integration.md).

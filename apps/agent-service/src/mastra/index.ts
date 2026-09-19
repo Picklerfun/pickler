@@ -1,3 +1,4 @@
+import { MARKET_CATALOG } from "@pickler/core";
 import { Mastra } from "@mastra/core/mastra";
 import { registerApiRoute } from "@mastra/core/server";
 import { createWorkflow, createStep } from "@mastra/core/workflows";
@@ -7,7 +8,7 @@ import { z } from "zod";
 import { setTimeout } from "node:timers/promises";
 import { createContainer } from "../composition/container";
 import { createApi } from "../api/app";
-import { agentConfigSchema, agentResponseSchema } from "@pickler/api-schema";
+import { agentConfigSchema, agentResponseSchema, marketCatalogSchema } from "@pickler/api-schema";
 import { plugins } from "../plugins/registry";
 
 let pendingContainer: ReturnType<typeof createContainer> | undefined;
@@ -91,6 +92,7 @@ const configure = createWorkflow({
   )
   .commit();
 const catalogOutput = z.object({
+  marketCategories: marketCatalogSchema,
   categories: z.array(z.object({ id: z.string(), label: z.string() })),
   agents: z.array(agentResponseSchema),
   plugins: z.unknown(),
@@ -108,6 +110,7 @@ const catalog = createWorkflow({
       execute: async () => {
         const c = await getContainer();
         return {
+          marketCategories: marketCatalogSchema.parse(MARKET_CATALOG),
           categories: await c.markets.categories(AbortSignal.timeout(20000)),
           agents: [...(await c.repository.agents("alpha")), ...(await c.repository.agents("beta"))],
           plugins,

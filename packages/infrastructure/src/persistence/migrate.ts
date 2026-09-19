@@ -1,7 +1,5 @@
-import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { migrateDatabase } from "./migrate-database.js";
 
 const url = process.env.DATABASE_MIGRATION_URL;
 if (!url) {
@@ -9,10 +7,7 @@ if (!url) {
 }
 const pool = new Pool({ connectionString: url, max: 1, connectionTimeoutMillis: 10_000 });
 try {
-  await migrate(drizzle(pool), {
-    migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)),
-    migrationsSchema: "pickler_migrations",
-  });
+  await migrateDatabase(pool);
   console.log("Pickler migrations applied.");
 } finally {
   await pool.end();

@@ -68,7 +68,7 @@ test("rest client sends legacy JWT keys as a bearer token too", async () => {
   );
 });
 
-test("rest client maps HTTP errors, network errors and timeouts to DataSourceUnavailableError", async () => {
+test("rest client maps HTTP errors, network errors and timeouts to DataSourceUnavailableError", async (t) => {
   const failing = [
     fakeFetch(() => new Response("nope", { status: 500 })),
     fakeFetch(() => Promise.reject(new TypeError("fetch failed"))),
@@ -79,6 +79,9 @@ test("rest client maps HTTP errors, network errors and timeouts to DataSourceUna
     await assert.rejects(client.rpc("ticker_available"), DataSourceUnavailableError);
   }
 
+  // Real fetch owns an I/O handle; this pending mock needs a referenced handle on Node 22.
+  const keepAlive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(keepAlive));
   const hanging = ((_: RequestInfo | URL, init?: RequestInit) =>
     new Promise((_resolve, reject) =>
       init?.signal?.addEventListener("abort", () => reject(init.signal?.reason)),

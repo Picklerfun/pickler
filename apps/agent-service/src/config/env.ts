@@ -16,7 +16,9 @@ const schema = z.object({
   MODEL_BASE_URL: z.string().url(),
   MODEL_ID: z.string().min(1),
   MODEL_API_KEY: z.string().min(1),
-  EXA_API_KEY: z.string().min(1),
+  EXA_API_KEY: z.string().default(""),
+  BALLDONTLIE_API_KEY: z.string().optional(),
+  THE_ODDS_API_KEY: z.string().optional(),
   TENANT_ALPHA_TOKEN: z.string().min(32),
   TENANT_BETA_TOKEN: z.string().min(32),
 });

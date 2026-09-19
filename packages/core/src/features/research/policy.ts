@@ -1,9 +1,10 @@
+import { hasMarketSelection } from "./market-scope.js";
 import { PilotError, type AgentRecord } from "./types.js";
 export function assertCanQueue(agent: AgentRecord, recentRuns: number): void {
   if (agent.paused) {
     throw new PilotError("PAUSED", "Agent is paused");
   }
-  if (!agent.config.categoryIds.length) {
+  if (!hasMarketSelection(agent.config)) {
     throw new PilotError("CATEGORIES_REQUIRED", "Select permitted categories");
   }
   if (recentRuns >= agent.config.limits.dailyRuns) {
@@ -16,7 +17,12 @@ export function assertCanSchedule(
   connectionsChecked: boolean,
   manualSucceeded: boolean,
 ): void {
-  if (!connectionsChecked || !manualSucceeded || agent.paused || !agent.config.categoryIds.length) {
+  if (
+    !connectionsChecked ||
+    !manualSucceeded ||
+    agent.paused ||
+    !hasMarketSelection(agent.config)
+  ) {
     throw new PilotError(
       "NOT_READY",
       "Validate connections and complete manual research for this configuration first",

@@ -33,8 +33,8 @@ See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.m
 - Keep Next.js, React, transport objects, database clients, and provider SDKs out of core. Use business-owned interfaces and dependency injection.
 - Keep HTTP DTOs in `api-schema`; keep public on-chain artifacts in `chain`. Neither package carries credentials or server implementation details.
 - Use declared workspace dependencies and public package exports. Do not bypass package boundaries with relative imports into another project's source.
-- Drizzle in `packages/infrastructure` owns database migrations for the whole repository, including the product schemas the web app reads. Generate with `npm run db:generate` and apply with `npm run db:migrate`; see [supabase/AGENTS.md](supabase/AGENTS.md). Do not add a second migration tool.
-- The local agent pilot uses Mastra, Exa, Polymarket and PostgreSQL. Provider credentials and the exact OpenAI-compatible model are operator supplied. No trading, wallets, public login, deployed external queue, contracts or Firecrawl integration exists. A separate local Cloudflare Queue experiment is documented in `apps/agent-service/CLOUDFLARE-BACKGROUND.md`. Do not describe offline tests as a verified live model run.
+- Drizzle in `packages/infrastructure` owns all database migrations, including product schemas. Use `npm run db:generate` and `npm run db:migrate`; never reset existing schemas to reconcile histories.
+- The research runtime uses Mastra, configurable providers and private PostgreSQL persistence. The public frontend and Cloudflare API add Supabase login and product profiles; their agents are not yet linked to research tenants. Manual paper trading is opt-in. Real trading from PR #22 is outside this integration. Read `docs/frontend-integration.md` for current boundaries and the proposed connection. Do not describe controlled tests as live-provider validation.
 
 ## Branch and pull request workflow
 
@@ -75,6 +75,8 @@ Run `npm run format` to format files and `npm run format:check` to verify them. 
 
 Write one statement per line and separate logical phases with blank lines. Expand schemas, transaction blocks and complex callbacks for readability. Prefer named predicates or explicit branches over nested ternaries. Write long SQL queries as multiline template literals without changing query semantics or parameter order. Separate test setup, action and assertions visually. Keep formatting-only changes distinguishable from behavior changes; do not add abstractions solely to satisfy a line-length target.
 
-PostgreSQL is hosted by Supabase in deployed environments. Drizzle and database clients belong only in infrastructure. Use direct or session-pooler connections: worker ownership uses a session advisory lock. Never expose `pickler`, `pickler_migrations`, or `mastra` through the Supabase Data API. Local PostgreSQL runs through `compose.yaml`; credentials there are disposable local development values only.
+PostgreSQL is hosted by Supabase in deployed environments. Drizzle and database clients belong only in infrastructure. Use direct or session-pooler connections. Research ownership uses renewable per-run leases; concurrency admission uses a short transaction. Never expose `pickler`, `pickler_migrations`, or `mastra` through the Supabase Data API. Local PostgreSQL runs through `compose.yaml`; credentials there are disposable local development values only.
 
 The full local Supabase stack is configured in `supabase/config.toml`; read `supabase/AGENTS.md` before changing it. Use `npm run supabase:start` and `npm run test:supabase` for the Supabase-specific integration run. Its database uses port 54522; the PostgreSQL-only Docker alternative uses 55432.
+
+Manual paper trading is an opt-in plugin, with no model-executable tool. Read [the simulation guide](apps/agent-service/PAPER-TRADING.md) for permissions, reservations and exclusions.

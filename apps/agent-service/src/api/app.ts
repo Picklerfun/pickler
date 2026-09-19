@@ -2,8 +2,14 @@ import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { PilotError, type ResearchRepository, type MarketData } from "@pickler/core";
 import {
+  MARKET_CATALOG,
+  PilotError,
+  type ResearchRepository,
+  type MarketData,
+} from "@pickler/core";
+import {
+  marketCatalogSchema,
   agentResponseSchema,
   runResponseSchema,
   eventResponseSchema,
@@ -11,6 +17,7 @@ import {
   runRequestSchema,
   scheduleSchema,
   pauseSchema,
+  paperOrderSchema,
 } from "@pickler/api-schema";
 
 function errorStatus(code: string): 400 | 404 | 409 | 429 | 502 {
@@ -34,6 +41,11 @@ export function createApi(deps: {
   tokens: Record<string, string>;
   checkConnections(): Promise<unknown>;
   notifyQueued?(): Promise<void>;
+  paper?: {
+    create(tenantId: string, runId: string, key: string): Promise<unknown>;
+    get(tenantId: string, runId: string): Promise<unknown>;
+  };
+  checkPlugin?(scope: { tenantId: string; agentId: string }, plugin: string): Promise<unknown>;
 }) {
   const api = new Hono<{ Variables: { tenant: string } }>();
   api.use("*", bodyLimit({ maxSize: 16_384 }));
@@ -61,6 +73,7 @@ export function createApi(deps: {
     return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
   });
   const repo = deps.repository;
+  api.get("/market-categories", (c) => c.json(marketCatalogSchema.parse(MARKET_CATALOG)));
   api.get("/categories", async (c) =>
     c.json({
       categories: await deps.markets.categories(AbortSignal.timeout(20_000)),
@@ -110,6 +123,29 @@ export function createApi(deps: {
   api.get("/runs/:id", async (c) =>
     c.json(runResponseSchema.parse(await repo.run(c.get("tenant"), c.req.param("id")))),
   );
+  api.post("/runs/:id/paper-order", async (c) => {
+    if (!deps.paper) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper service unavailable");
+    }
+    const raw = await c.req.text();
+    if (raw) {
+      z.object({}).strict().parse(JSON.parse(raw));
+    }
+    const result = paperOrderSchema.parse(
+      await deps.paper.create(
+        c.get("tenant"),
+        c.req.param("id"),
+        c.req.header("Idempotency-Key") ?? "",
+      ),
+    );
+    return c.json(result, result.status === "pending" ? 202 : 200);
+  });
+  api.get("/runs/:id/paper-order", async (c) => {
+    if (!deps.paper) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper service unavailable");
+    }
+    return c.json(paperOrderSchema.parse(await deps.paper.get(c.get("tenant"), c.req.param("id"))));
+  });
   api.get("/runs/:id/events", async (c) =>
     c.json({
       events: eventResponseSchema
@@ -130,6 +166,17 @@ export function createApi(deps: {
     const { paused } = pauseSchema.parse(await c.req.json());
     await repo.pause({ tenantId: c.get("tenant"), agentId: c.req.param("id") }, paused);
     return c.json({ ok: true });
+  });
+  api.post("/agents/:id/plugins/:plugin/check", async (c) => {
+    if (!deps.checkPlugin) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Plugin checks unavailable");
+    }
+    return c.json(
+      await deps.checkPlugin(
+        { tenantId: c.get("tenant"), agentId: c.req.param("id") },
+        c.req.param("plugin"),
+      ),
+    );
   });
   // Explicit operator-triggered paid diagnostics; never called at startup.
   api.post("/connections/check", async (c) => c.json(await deps.checkConnections()));

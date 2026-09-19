@@ -1,6 +1,6 @@
 // Ported from Relayer apps/api/src/core/auth/casl-ability.factory.ts (commit bb6bb1226e92).
-// Grant matrices are unchanged; see the Relayer file for the history behind each rule.
-// Behaviour change: none. `createForWorkspaceRole` is not ported (no production caller).
+// Behaviour change: API keys require explicit grants; read:agents grants read-only agent access.
+// `createForWorkspaceRole` is not ported (no production caller).
 
 import { AbilityBuilder, createMongoAbility, type MongoAbility } from "@casl/ability";
 
@@ -80,6 +80,9 @@ export function abilitiesForApiKey(scopes: readonly string[]): AppAbility {
     }
     if (scope === "read:wallets" || scope === "read:transactions") {
       can("read", "Signing");
+    }
+    if (scope === "read:agents") {
+      can("read", "Agent");
     }
     if (scope === "sign:prepare") {
       can("create", "Signing");

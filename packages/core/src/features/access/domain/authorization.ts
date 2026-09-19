@@ -1,7 +1,6 @@
 // Ported from Relayer apps/api/src/core/auth/guards/permission.guard.ts (commit bb6bb1226e92):
 // the decision tree only, without NestJS. The HTTP layer maps the result to 403.
 
-import { API_SCOPES } from "./api-scopes.js";
 import type { Actions, Subjects } from "./abilities.js";
 import type { Principal } from "./principal.js";
 
@@ -24,9 +23,8 @@ export function checkPermission(
   switch (principal.kind) {
     case "apikey":
     case "service":
-      // Non-admin keys are limited by their scopes at authentication time.
-      if (!principal.scopes.includes(API_SCOPES.ADMIN)) {
-        return allow;
+      if (!principal.tenantId) {
+        return deny("No integrator context");
       }
       return principal.abilities.can(required.action, required.subject)
         ? allow

@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) first. Before changing a dependenc
 
 `@pickler/web` is the Next.js App Router application. It owns presentation, HTTP transport, and the server composition root. Business logic and provider implementations live in separate workspace packages so the backend can later move to `apps/api`.
 
-The app serves the Pickler landing page ("Pickler Landing" design canvas), the creator application at `/apply` ("Pickler Join" canvas), the token board at `/tokens`, token pages at `/tokens/[ticker]`, pick pages at `/tokens/[ticker]/picks/[pickId]`, the agents directory at `/agents`, agent pages at `/agents/[handle]`, the ask flow at `/agents/[handle]/ask`, paid reads at `/reads` and `/reads/[id]`, and `/leaderboard` ("Pickler Public" canvas), `GET /api/v1/health`, `GET /api/v1/landing`, `POST /api/v1/waitlist`, `GET|POST /api/v1/applications`, and `GET /api/v1/tickers/availability`. Health is a liveness check, not a check of databases or external services. Authentication and wallet functionality are not implemented.
+The app serves the Pickler landing page ("Pickler Landing" design canvas), the creator application at `/apply` ("Pickler Join" canvas), the token board at `/tokens`, token pages at `/tokens/[ticker]`, pick pages at `/tokens/[ticker]/picks/[pickId]`, the agents directory at `/agents`, agent pages at `/agents/[handle]`, the ask flow at `/agents/[handle]/ask`, paid reads at `/reads` and `/reads/[id]`, and `/leaderboard` ("Pickler Public" canvas), `GET /api/v1/health`, `GET /api/v1/landing`, `POST /api/v1/waitlist`, `GET|POST /api/v1/applications`, and `GET /api/v1/tickers/availability`. Health is a liveness check, not a check of databases or external services. Supabase authentication screens are implemented; token purchases and paid-read execution remain unavailable.
 
 Auth screens ("Pickler Sign Up" canvas): `/signup` (method + email/password + terms, then name + @handle) and `/signin` (wallet or email), under `app/(auth)` with Manrope and `noindex`. They are not linked from the landing while the waitlist is the public entry point. Authentication uses Supabase Auth in the browser (`@supabase/ssr`, publishable key; wallet sign-in is Sign-In with Ethereum via `signInWithWeb3`). Name and handle are stored through the API worker (`GET /v1/handles/:handle/availability`, `GET|POST /v1/profile`), never written from the browser to the database. With email confirmation on, the details wait in user metadata and the profile is created on first sign-in; `/signup?complete=1` finishes a profile for a signed-in user. Without `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_PICKLER_API_URL` the screens render with a "not connected" notice and cannot submit. "Open the studio" is disabled until the studio exists.
 
@@ -27,7 +27,7 @@ Public pages, and which product each one is about:
 
 Buying a token never funds the agent's budget, and the agent's budget never buys its token; keep that separation in the copy and in the links.
 
-Data source, chosen in `src/server/config.ts`: `PICKLER_DATA_SOURCE=supabase` with `SUPABASE_URL` and `SUPABASE_SECRET_KEY` reads Supabase; otherwise the app serves labelled sample data and an in-memory waitlist. See `.env.example`. The page renders the snapshot on the server, and `LandingDataProvider` refreshes it from `/api/v1/landing` every 30 seconds while the tab is visible.
+Data source, chosen in `src/server/config.ts`: `PICKLER_DATA_SOURCE=supabase` with `SUPABASE_URL` and `SUPABASE_SECRET_KEY` uses Supabase for waitlist/applications; public landing and agent-directory snapshots still use labelled sample adapters; otherwise the app serves labelled sample data and an in-memory waitlist. See `.env.example`. The page renders the snapshot on the server, and `LandingDataProvider` refreshes it from `/api/v1/landing` every 30 seconds while the tab is visible.
 
 ```text
 src/
@@ -284,3 +284,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+The public Worker and Next.js routes coexist: profiles/authenticated agent reads use `workers/api`,
+while growth endpoints remain Next.js Route Handlers. Neither surface currently maps product
+workspaces to research tenants. Preserve sample labels until a real, authorized adapter replaces
+them; never use laboratory tokens in browser code. See [integration boundaries](../../docs/frontend-integration.md).

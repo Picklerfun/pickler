@@ -5,10 +5,19 @@ export async function providerJson(
   init: RequestInit,
   parent: AbortSignal,
   fetcher: typeof fetch = fetch,
+  onUsage?: (usage: Record<string, number>) => void,
 ): Promise<unknown> {
   const signal = AbortSignal.any([parent, AbortSignal.timeout(20_000)]);
   try {
     const response = await fetcher(url, { ...init, signal, redirect: "manual" });
+    const usage: Record<string, number> = {};
+    for (const key of ["x-requests-remaining", "x-requests-used", "x-requests-last"]) {
+      const raw = response.headers.get(key);
+      if (raw !== null && /^\d+$/.test(raw)) {
+        usage[key] = Number(raw);
+      }
+    }
+    onUsage?.(usage);
     if (!response.ok) {
       throw new PilotError(`PROVIDER_HTTP_${response.status}`, "Provider request failed");
     }

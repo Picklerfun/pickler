@@ -34,6 +34,8 @@ export interface CategoryState {
   reserved: bigint;
   /** "YYYY-MM" the spend belongs to. */
   periodKey: string;
+  /** Incremented on an explicit spend reset; legacy rows start at zero. */
+  spendGeneration?: number;
 }
 
 export type ReservationState = "held" | "committed" | "released";
@@ -47,6 +49,9 @@ export interface Reservation {
   sourceRef: string | null;
   createdAt: Date;
   expiresAt: Date;
+  /** Actual charge period/generation, not the reservation creation month. */
+  committedPeriod?: string | null;
+  committedGeneration?: number | null;
 }
 
 /** Synchronous store, matching Durable Object SQLite. The caller wraps each operation in a transaction. */
@@ -272,12 +277,19 @@ export function createBudgetLedger(store: LedgerStore, clock: () => Date) {
         reserved: state.reserved - reservation.amount,
         spent: state.spent + reservation.amount,
       });
-      const committed = { ...reservation, state: "committed" as const };
+      const committed = {
+        ...reservation,
+        state: "committed" as const,
+        committedPeriod: state.periodKey,
+        committedGeneration: state.spendGeneration ?? 0,
+      };
       store.putReservation(committed);
       return committed;
     },
 
-    /** Releases a held reservation, or refunds a committed one (spend floored at 0). Idempotent. */
+    /** Releases once; a refund affects active spend only when its recorded charge period matches.
+     * Historical/legacy charges remain in the reservation history, never credit a newer balance.
+     */
     release(reservationId: string): Reservation {
       const reservation = store.getReservation(reservationId);
       if (!reservation) {
@@ -292,7 +304,10 @@ export function createBudgetLedger(store: LedgerStore, clock: () => Date) {
           ...state,
           reserved: state.reserved > reservation.amount ? state.reserved - reservation.amount : 0n,
         });
-      } else {
+      } else if (
+        reservation.committedPeriod === state.periodKey &&
+        reservation.committedGeneration === (state.spendGeneration ?? 0)
+      ) {
         store.putCategory({
           ...state,
           spent: state.spent > reservation.amount ? state.spent - reservation.amount : 0n,
@@ -334,6 +349,7 @@ export function createBudgetLedger(store: LedgerStore, clock: () => Date) {
           ...state,
           limit: parseMicroUsd(value),
           spent: options.resetSpent ? 0n : state.spent,
+          spendGeneration: (state.spendGeneration ?? 0) + (options.resetSpent ? 1 : 0),
         });
       }
     },

@@ -203,8 +203,24 @@ test("tenant isolation, viewer denial and unauthenticated access", async () => {
   assert.equal((await app(viewer).request(`/v1/agents/${A1}/status`, {}, env)).status, 403);
   assert.equal((await app(viewer).request("/v1/agents", {}, env)).status, 403);
 
-  const key = buildApiKeyPrincipal({ id: "k", scopes: ["integrator"] }, "w1");
+  const key = buildApiKeyPrincipal({ id: "k", scopes: ["read:agents"] }, "w1");
   assert.equal((await app(key).request(`/v1/agents/${A1}`, {}, env)).status, 200);
 
   assert.equal((await app().request("/v1/agents", {}, env)).status, 401);
+});
+
+test("unrelated and legacy broad API scopes cannot read any agent route", async () => {
+  for (const scopes of [[], ["read:wallets"], ["integrator"], ["internal"], ["admin"]]) {
+    const key = buildApiKeyPrincipal({ id: "k", scopes }, "w1");
+    for (const suffix of [
+      "",
+      `/${A1}`,
+      `/${A1}/status`,
+      `/${A1}/analytics`,
+      `/${A1}/budget`,
+      `/${A1}/audit`,
+    ]) {
+      assert.equal((await app(key).request(`/v1/agents${suffix}`, {}, env)).status, 403);
+    }
+  }
 });

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Pickler — frontend and research integration</title
+  ><style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #020617;
+      color: #e2e8f0;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      padding: 36px;
+      line-height: 1.6;
+    }
+    main {
+      max-width: 1120px;
+      margin: auto;
+    }
+    h1 {
+      font-size: 28px;
+    }
+    h2 {
+      font-size: 20px;
+      color: #f8fafc;
+    }
+    p {
+      color: #94a3b8;
+      max-width: 95ch;
+    }
+    section {
+      border: 1px solid #334155;
+      background: #080f21;
+      border-radius: 16px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    svg {
+      width: 100%;
+      display: block;
+    }
+    .note {
+      border-left: 3px solid #fbbf24;
+      padding-left: 16px;
+      color: #cbd5e1;
+    }
+    footer {
+      font-size: 12px;
+    }
+    @media (max-width: 700px) {
+      body {
+        padding: 12px;
+      }
+      section {
+        padding: 12px;
+        overflow: auto;
+      }
+      svg {
+        min-width: 760px;
+      }
+    }
+  </style>
+  <main>
+    <h1>Pickler: one product, two existing backends</h1>
+    <p>
+      Code-level architecture • main + PR #21 • September 18, 2026. The third diagram is a proposed
+      integration, not a deployed system. Live trading PR #22 is excluded.
+    </p>
+    <section>
+      <h2>1 · Existing research runtime</h2>
+      <p>
+        The local Node host and the Cloudflare background experiment share core use cases and
+        adapters.
+      </p>
+      <svg role="img" aria-label="1 · Existing research runtime" viewBox="0 0 980 410">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0L8 4L0 8" fill="#64748b" />
+          </marker>
+        </defs>
+        <path d="M290 64 L370 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 64 L690 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M500 98 L500 165" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M160 98 L160 165" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M160 233 L370 339" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M500 233 L500 305" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 339 L690 339" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M820 98 L820 260" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M820 260 L560 305" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <rect
+          x="30"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#22d3ee"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="57" text-anchor="middle" fill="#22d3ee" font-size="15">
+          Studio / CLI / local API
+        </text>
+        <text x="160.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Local operator + tenant tokens
+        </text>
+        <rect
+          x="370"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="57" text-anchor="middle" fill="#34d399" font-size="15">
+          Hono · research API
+        </text>
+        <text x="500.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Admission → 202 + runId
+        </text>
+        <rect
+          x="690"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#a78bfa"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="57" text-anchor="middle" fill="#a78bfa" font-size="15">
+          PostgreSQL · private
+        </text>
+        <text x="820.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          pickler: jobs, leases, evidence
+        </text>
+        <rect
+          x="30"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="192" text-anchor="middle" fill="#34d399" font-size="15">
+          Node executor
+        </text>
+        <text x="160.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Sequential local host
+        </text>
+        <rect
+          x="370"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#fb923c"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="192" text-anchor="middle" fill="#fb923c" font-size="15">
+          Cloudflare Queue + Cron
+        </text>
+        <text x="500.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Local background experiment
+        </text>
+        <rect
+          x="370"
+          y="305"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="332" text-anchor="middle" fill="#34d399" font-size="15">
+          Mastra research runner
+        </text>
+        <text x="500.0" y="354" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Research → structured decision
+        </text>
+        <rect
+          x="690"
+          y="305"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#94a3b8"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="332" text-anchor="middle" fill="#94a3b8" font-size="15">
+          Provider plugins
+        </text>
+        <text x="820.0" y="354" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          LLM / Exa / markets / sports
+        </text>
+      </svg>
+      <p class="note">
+        PostgreSQL owns research authority. Queue messages are wakeups; consumers do the work.
+        Studio is not public user authentication.
+      </p>
+    </section>
+    <section>
+      <h2>2 · Juve’s PR #21</h2>
+      <p>
+        Next.js handles public-page endpoints; a separate Hono Worker handles authenticated product
+        endpoints.
+      </p>
+      <svg role="img" aria-label="2 · Juve’s PR #21" viewBox="0 0 980 410">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0L8 4L0 8" fill="#64748b" />
+          </marker>
+        </defs>
+        <path d="M290 64 L370 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 64 L690 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M160 98 L160 165" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M290 199 L370 199" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M290 85 L370 177" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 199 L690 199" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M500 233 L500 305" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <rect
+          x="30"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#22d3ee"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="57" text-anchor="middle" fill="#22d3ee" font-size="15">
+          Next.js frontend
+        </text>
+        <text x="160.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Pages / signup / agent views
+        </text>
+        <rect
+          x="370"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="57" text-anchor="middle" fill="#34d399" font-size="15">
+          Next.js API Routes
+        </text>
+        <text x="500.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Landing / waitlist / applications
+        </text>
+        <rect
+          x="690"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#94a3b8"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="57" text-anchor="middle" fill="#94a3b8" font-size="15">
+          Product data adapters
+        </text>
+        <text x="820.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Sample board + growth RPCs
+        </text>
+        <rect
+          x="30"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#fb7185"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="192" text-anchor="middle" fill="#fb7185" font-size="15">
+          Supabase Auth
+        </text>
+        <text x="160.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Browser signs in → JWT
+        </text>
+        <rect
+          x="370"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="192" text-anchor="middle" fill="#34d399" font-size="15">
+          Cloudflare · workers/api
+        </text>
+        <text x="500.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Profiles / agents / budgets
+        </text>
+        <rect
+          x="690"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#a78bfa"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="192" text-anchor="middle" fill="#a78bfa" font-size="15">
+          Supabase product schemas
+        </text>
+        <text x="820.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          identity / agents / budget / …
+        </text>
+        <rect
+          x="370"
+          y="305"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#a78bfa"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="332" text-anchor="middle" fill="#a78bfa" font-size="15">
+          AgentLedger · Durable Object
+        </text>
+        <text x="500.0" y="354" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          SQLite budget reservations
+        </text>
+      </svg>
+      <p class="note">
+        Product agents and research agents are not linked. Public agent pages still use labelled
+        sample data. The Durable Object ledger does not enforce research quotas.
+      </p>
+    </section>
+    <section>
+      <h2>3 · Proposed joined system</h2>
+      <p>
+        Keep the frontend. Use the public Worker to authorize research access, then reuse the
+        existing execution pipeline.
+      </p>
+      <svg role="img" aria-label="3 · Proposed joined system" viewBox="0 0 980 410">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0L8 4L0 8" fill="#64748b" />
+          </marker>
+        </defs>
+        <path d="M290 64 L370 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M160 165 L160 98" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 64 L690 64" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M500 98 L500 165" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 199 L690 199" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M820 233 L630 339" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M500 305 L500 233" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M630 339 L690 339" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+        <rect
+          x="30"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#22d3ee"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="57" text-anchor="middle" fill="#22d3ee" font-size="15">
+          Next.js product
+        </text>
+        <text x="160.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Preserved design and auth screens
+        </text>
+        <rect
+          x="370"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="57" text-anchor="middle" fill="#34d399" font-size="15">
+          Public Cloudflare API
+        </text>
+        <text x="500.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          JWT → membership → tenant
+        </text>
+        <rect
+          x="690"
+          y="30"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#a78bfa"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="57" text-anchor="middle" fill="#a78bfa" font-size="15">
+          PostgreSQL · source of truth
+        </text>
+        <text x="820.0" y="79" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Explicit product ↔ runtime mapping
+        </text>
+        <rect
+          x="30"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#fb7185"
+          stroke-width="1.5"
+        />
+        <text x="160.0" y="192" text-anchor="middle" fill="#fb7185" font-size="15">
+          Supabase Auth
+        </text>
+        <text x="160.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          User identity; no lab tokens
+        </text>
+        <rect
+          x="370"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="192" text-anchor="middle" fill="#34d399" font-size="15">
+          Research use cases
+        </text>
+        <text x="500.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Authorize / configure / enqueue
+        </text>
+        <rect
+          x="690"
+          y="165"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#fb923c"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="192" text-anchor="middle" fill="#fb923c" font-size="15">
+          Cloudflare Queue + Cron
+        </text>
+        <text x="820.0" y="214" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Wakeup / due-job reconciliation
+        </text>
+        <rect
+          x="370"
+          y="305"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#34d399"
+          stroke-width="1.5"
+        />
+        <text x="500.0" y="332" text-anchor="middle" fill="#34d399" font-size="15">
+          Research consumer · Mastra
+        </text>
+        <text x="500.0" y="354" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Leases / plugins / decisions
+        </text>
+        <rect
+          x="690"
+          y="305"
+          width="260"
+          height="68"
+          rx="8"
+          fill="#0f172a"
+          stroke="#94a3b8"
+          stroke-width="1.5"
+        />
+        <text x="820.0" y="332" text-anchor="middle" fill="#94a3b8" font-size="15">
+          Provider plugins
+        </text>
+        <text x="820.0" y="354" text-anchor="middle" fill="#cbd5e1" font-size="11">
+          Permission checks per operation
+        </text>
+      </svg>
+      <p class="note">
+        Next.js growth routes may remain. Research results return by polling the authorized API.
+        Private research schemas stay outside PostgREST. Product budget integration is a separate
+        decision; no duplicate research quota authority.
+      </p>
+    </section>
+    <footer>
+      Cyan: interface · Green: executable services · Purple: persistence · Orange: scheduling ·
+      Pink: authentication.<br />Solid arrows describe calls/data dependencies, not deployment
+      verification.
+    </footer>
+  </main>
+</html>

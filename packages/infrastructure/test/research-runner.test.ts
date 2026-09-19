@@ -156,8 +156,7 @@ test("disabled tool blocks work before external requests", async (t) => {
   await f.execute();
 
   const events = await f.repository.events("alpha", f.run.id);
-  assert.equal(events[0]?.type, "runtime");
-  assert.deepEqual((events[0]!.data as { prompts: unknown }).prompts, f.model.metadata().prompts);
+  assert.equal(events.length, 0, "Revoked configuration cannot append new runtime events");
   assert.equal(called, false);
   assert.equal((await f.repository.run("alpha", f.run.id)).status, "failed");
 });
@@ -331,7 +330,7 @@ test("no future candidates fails without a model call", async (t) => {
     throw new Error("Must not call model");
   };
   await f.execute();
-  assert.equal((await f.repository.run("alpha", f.run.id)).error, "NO_MARKETS");
+  assert.equal((await f.repository.run("alpha", f.run.id)).error, "NO_ELIGIBLE_MARKETS");
 });
 
 test("manual markets and refreshed selected markets must still be open before research", async (t) => {
@@ -464,4 +463,116 @@ test("malformed uncertainty is failed research with original evidence retained",
   assert.ok(
     (await f.repository.events("alpha", f.run.id)).some((e) => e.type === "model_assessment"),
   );
+});
+
+test("resolution links can be read without search but do not authorize siblings or private destinations", async (t) => {
+  const f = await setup(t);
+  f.markets.get = async () => ({
+    ...market,
+    resolutionUrls: ["https://example.com/rules", "http://127.0.0.1/private"],
+  });
+  const reads: string[] = [];
+  f.reader.read = async () => {
+    reads.push("read");
+    return { ...source, url: "https://example.com/rules" };
+  };
+  f.model.research = async ({ tools, evidence }) => {
+    await assert.rejects(tools.readPage!("https://example.com/other"), { code: "INVALID_INPUT" });
+    await assert.rejects(tools.readPage!("http://127.0.0.1/private"), { code: "INVALID_INPUT" });
+    const read = await tools.readPage!("https://example.com/rules#result");
+    assert.equal(read.provenance, "resolution-rule-link");
+    assert.equal(read.requestedUrl, "https://example.com/rules");
+    assert.equal(evidence?.().sources[0]?.id, source.id);
+    assert.equal(evidence?.().quotes.length, 2);
+    await tools.searchWeb!("support", "supporting");
+    await tools.searchWeb!("opposition", "contradicting");
+    return { decision, usage: {} };
+  };
+  await f.execute();
+  assert.equal(reads.length, 1);
+  assert.equal((await f.repository.run("alpha", f.run.id)).status, "completed");
+  const events = await f.repository.events("alpha", f.run.id);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "source" && (event.data as Source).provenance === "resolution-rule-link",
+    ),
+  );
+});
+
+test("pre-event discovery excludes started games before any model call and preserves exclusions", async (t) => {
+  const f = await setup(t);
+  // Persisted config is updated before claiming a new run; historical snapshots stay unchanged.
+  await f.repository.finish(f.run, null, "FIXTURE_SETUP", 201);
+  const policy = {
+    version: 1 as const,
+    mode: "pre-event" as const,
+    minLeadMinutes: 15,
+    maxHorizonDays: 7,
+  };
+  await f.repository.updateConfig(scope, 2, { ...f.run.config, discoveryPolicy: policy });
+  await f.repository.enqueue(scope, "pre-event", null, 202);
+  const run = (await f.repository.claim(203))!;
+  f.model.select = async () => {
+    assert.fail("No model selection should run");
+  };
+  f.markets.list = async () => [
+    { ...market, startsAt: new Date(100).toISOString(), timingSource: "polymarket.gameStartTime" },
+  ];
+  await createResearchRunner(f)(run);
+  assert.equal((await f.repository.run("alpha", run.id)).error, "NO_ELIGIBLE_MARKETS");
+  const events = await f.repository.events("alpha", run.id);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "discovery_exclusions" &&
+        JSON.stringify(event.data).includes("EVENT_STARTED_OR_TOO_SOON"),
+    ),
+  );
+});
+
+test("manual pre-event markets and final trade refresh use the same lead window", async (t) => {
+  for (const mode of ["manual", "refresh"] as const) {
+    await t.test(mode, async (t) => {
+      const f = await setup(t);
+      await f.repository.finish(f.run, null, "FIXTURE_SETUP", 201);
+      await f.repository.updateConfig(scope, 2, {
+        ...f.run.config,
+        discoveryPolicy: { version: 1, mode: "pre-event", minLeadMinutes: 15, maxHorizonDays: 7 },
+      });
+      await f.repository.enqueue(scope, "timing", "1", 202);
+      const run = (await f.repository.claim(203))!;
+      let clock = 200;
+      f.now = () => clock;
+      f.markets.get = async () => ({
+        ...market,
+        closesAt: new Date(3000000).toISOString(),
+        startsAt: new Date(mode === "manual" ? 100 : 900500).toISOString(),
+        timingSource: "polymarket.gameStartTime",
+      });
+      f.model.select = async () => {
+        assert.fail("Manual selection must skip the model");
+      };
+      f.model.research = async ({ tools }) => {
+        assert.equal(mode, "refresh");
+        await tools.searchWeb!("support", "supporting");
+        await tools.searchWeb!("opposition", "contradicting");
+        clock = 1000;
+        return {
+          decision: {
+            ...decision,
+            action: "TRADE",
+            outcomeId: "99",
+            probability: { lower: 0.6, estimate: 0.7, upper: 0.8 },
+            limitPrice: "0.4",
+            expiresAt: new Date(10000).toISOString(),
+            abstentionReason: null,
+          },
+          usage: {},
+        };
+      };
+      await createResearchRunner(f)(run);
+      assert.equal((await f.repository.run("alpha", run.id)).error, "NO_ELIGIBLE_MARKETS");
+    });
+  }
 });

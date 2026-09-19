@@ -15,7 +15,7 @@
         "queue": "pickler-research-local",
         "max_batch_size": 1,
         "max_batch_timeout": 0,
-        "max_concurrency": 1,
+        "max_concurrency": 5,
         "max_retries": 3,
         "retry_delay": 30,
       },
