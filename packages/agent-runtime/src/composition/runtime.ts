@@ -18,10 +18,14 @@ import type { Environment } from "../environment.js";
 import { createModel } from "./model.js";
 
 export function createRuntime(env: Environment) {
-  const repository = new PostgresResearchStore(env.DATABASE_URL);
+  const model = createModel(env);
+  const repository = new PostgresResearchStore(
+    env.DATABASE_URL,
+    undefined,
+    env.APP_ENV ? { environment: env.APP_ENV, ca: env.DATABASE_CA_CERT } : undefined,
+  );
   const search = new ExaResearch(env.EXA_API_KEY);
   const markets = new PolymarketData();
-  const model = createModel(env);
   const cache = new PostgresPublicDataCache(repository.pool);
   const sports = env.BALLDONTLIE_API_KEY
     ? new BallDontLieSports(env.BALLDONTLIE_API_KEY, cache)
