@@ -101,6 +101,21 @@ pulido. `readAccountId` confirma que la wallet sigue siendo dueña de la cuenta 
     es el estado esperado: la key de Perpl del simulador la borró el Sign out de la fase anterior y
     la wallet tiene 29 AUSD contra un mínimo de 100. Se deja así.
 
+### Correcciones tras la revisión final
+
+Commit `3efb6ca` (`fix(mobile): legible Withdraw amount, Markets copy, dev chip a11y label`) cerró
+tres hallazgos de la revisión final de F1:
+
+1. `wallet.tsx`: el input de monto de Withdraw cambió de `lh: 1` / `paddingVertical: 0` a
+   `lh: 1.3` / `paddingVertical: 4` (sin quitar `display`). Verificado en el simulador
+   (`2B2A0BAD-7B14-4DAE-8652-C7E9472505E0`): "0.01" se ve completo, sin recortar. Sólo se tocó este
+   input — `market.tsx`, `markets.tsx` y `perpsFunds.tsx` no usan `display` y no se modificaron.
+2. Copy muerto "Back to Trade" → "Back to Markets" en los tres botones de `market.tsx` y
+   `perpsFunds.tsx` que ya navegaban a `markets`.
+3. `DevControls.tsx`: `PChip` ahora reenvía `accessibilityLabel={`dev-${label...}`}` a `Chip`, así
+   que los controles de desarrollo son ubicables por accesibilidad y por Maestro (cierra el
+   residual de la ruling 7).
+
 ## Lo aprendido
 
 1. **`expo prebuild` avisa que `ios.backgroundColor` no se aplica sin `expo-system-ui`**
@@ -108,12 +123,14 @@ pulido. `readAccountId` confirma que la wallet sigue siendo dueña de la cuenta 
    `backgroundColor: "#05061A"` de D10 queda declarado en `app.config.ts` pero no llega al nativo.
    En la práctica no se nota porque el `Backdrop` pinta el gradiente encima, pero el color de fondo
    real durante el arranque no es el del diseño.
-2. **La cifra `display 30` dentro de un `TextInput` se recorta por arriba.** En
+2. **La cifra `display 30` dentro de un `TextInput` se recorta por arriba — sólo en Withdraw.** En
    `05-withdraw-edit.png` el "0.01" aparece con el tercio superior cortado; en
    `06-withdraw-review.png`, donde la misma cifra es un `T`, se ve entera. La causa es
-   `textStyle(700, 30, { lh: 1 })` con `paddingVertical: 0`: en un `TextInput` de iOS ese line
-   height no deja sitio a los ascendentes de Chakra Petch. Lo mismo aplicaría al input de monto del
-   ticket y al de Enable trading.
+   `textStyle(700, 30, { lh: 1, display: true })` con `paddingVertical: 0` en `wallet.tsx`: en un
+   `TextInput` de iOS ese line height no deja sitio a los ascendentes de Chakra Petch. El input de
+   monto del ticket (`market.tsx`) y el de Enable trading (`markets.tsx`) usan Manrope, no
+   `display`, así que el defecto **no** los alcanza — la revisión final lo corrigió sólo en
+   `wallet.tsx` (ver "Correcciones tras la revisión final").
 3. **Siguen los dos simuladores arrancados**, así que `booted` sigue siendo ambiguo: todo
    (`expo run:ios --device`, `simctl io … screenshot`, `maestro --udid`) se hizo con el UDID
    `2B2A0BAD-7B14-4DAE-8652-C7E9472505E0`.
@@ -147,12 +164,9 @@ pulido. `readAccountId` confirma que la wallet sigue siendo dueña de la cuenta 
 
 No bloqueantes, salidos de esta verificación:
 
-- **Cifra recortada en los `TextInput` de display** (Withdraw, y por herencia el monto del ticket y
-  el de Enable trading): subir `lh` o devolver `paddingVertical` al input.
 - **`expo-system-ui` ausente**: sin él, `ios.backgroundColor` de D10 no llega al nativo.
 - **Falta `02-signin-held.png`**: la tarjeta de acción retenida está verificada por test, no en
   simulador (ruling 9).
-- **`accessibilityLabel` en los chips de `DevControls`** para que Maestro los encuentre por texto.
 - **El pill activo de apalancamiento en `market` se ve blanco, no lima** (`11-market.png`): revisar
   `pill(on)` contra el diseño al re-maquetar en F2.
 - Residuales heredados del audit de `mobile-polish` que F1 no tocó porque viven en pantallas de F2.
