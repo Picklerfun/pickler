@@ -14,15 +14,15 @@ export type OrderResult =
   | { step: "unknown" };
 
 const TONES = {
-  sent: { title: "Order accepted — waiting for the fill", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" },
-  filled: { title: "Filled", fg: C.lime, bd: "rgba(200,240,58,0.45)", bg: "rgba(200,240,58,0.07)" },
-  failed: { title: "Order failed", fg: C.down, bd: "rgba(242,119,122,0.5)", bg: "rgba(242,119,122,0.08)" },
-  unknown: { title: "No confirmation yet", fg: C.warn, bd: "rgba(245,195,91,0.5)", bg: "rgba(245,195,91,0.1)" },
+  sent: { title: "Order accepted — waiting for the fill", fg: C.warn, bd: C.warnBd, bg: C.warnBg },
+  filled: { title: "Filled", fg: C.lime, bd: C.limeBd, bg: C.limeBg06 },
+  failed: { title: "Order failed", fg: C.down, bd: C.downBd, bg: C.downBg },
+  unknown: { title: "No confirmation yet", fg: C.warn, bd: C.warnBd, bg: C.warnBg },
 } as const;
 
 const primaryBtn = { paddingVertical: 15, borderRadius: 14, backgroundColor: C.lime, alignItems: "center" } as const;
-const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair2, alignItems: "center" } as const;
-const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair2 } as const;
+const secondaryBtn = { flex: 1, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: C.hair22, alignItems: "center" } as const;
+const chipBtn = { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.hair22 } as const;
 
 /** Estados Sent / Filled / Failed / Unknown, compartidos por apertura y cierre. */
 export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResult; onBack: () => void; onEdit?: () => void }) {
@@ -50,7 +50,7 @@ export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResul
 
 type Step = { step: "edit" } | { step: "review" } | { step: "result"; result: OrderResult };
 
-export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
+export function MarketScreen({ S, set, perpl, nav }: AppCtx) {
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId);
   const side: Side = S.perpsSide ?? "long";
   const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
@@ -61,8 +61,8 @@ export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
   if (!market) {
     return (
       <View style={{ padding: 16, gap: 13 }}>
-        <T w={400} s={13} color={C.mute}>{perpl.contextError ? `Couldn't load markets. ${perpl.contextError}` : "Loading market…"}</T>
-        <Touch onPress={() => nav("perps")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
+        <T w={400} s={13} color={C.faint}>{perpl.contextError ? `Couldn't load markets. ${perpl.contextError}` : "Loading market…"}</T>
+        <Touch onPress={() => nav("markets")} style={primaryBtn}><T w={700} s={14.5} color={C.onLime}>Back to Trade</T></Touch>
       </View>
     );
   }
@@ -103,7 +103,7 @@ export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
   if (st.step === "result") {
     return (
       <View style={{ padding: 16 }}>
-        <OrderResultCard result={st.result} onBack={() => nav("perps")} onEdit={() => setSt({ step: "edit" })} />
+        <OrderResultCard result={st.result} onBack={() => nav("markets")} onEdit={() => setSt({ step: "edit" })} />
       </View>
     );
   }
@@ -111,53 +111,61 @@ export function PerpsMarketScreen({ S, set, perpl, nav }: AppCtx) {
   if (st.step === "review") {
     return (
       <View style={{ padding: 16, gap: 13 }}>
-        <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: side === "long" ? C.lime : C.down, borderRadius: 14, backgroundColor: C.surf2 }}>
-          <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>{side === "long" ? "Long" : "Short"} {sym} · {lvUsed}x · market order</T>
+        <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: side === "long" ? C.lime : C.down, borderRadius: 14, backgroundColor: C.deep }}>
+          <T w={400} s={11.5} color={C.faint} style={{ marginBottom: 8 }}>{side === "long" ? "Long" : "Short"} {sym} · {lvUsed}x · market order</T>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
             <T w={800} s={30} lh={1} ls={-0.03}>{formatAusd(units ?? 0n)}</T>
-            <T w={500} s={14} mono color={C.mute}>AUSD</T>
+            <T w={500} s={14} mono color={C.faint}>AUSD</T>
           </View>
         </View>
-        <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, gap: 9 }}>
-          {summary.map((r, i) => <KV key={i} label={r.label} value={r.value} fg={r.fg} />)}
+        <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, gap: 9 }}>
+          {summary.map((r, i) => <KV key={i} k={r.label.toUpperCase()} v={r.value} vFg={r.fg} />)}
         </View>
         {lvUsed > 1 ? <T w={400} s={12} lh={1.4} color={C.warn}>Higher leverage means a closer liquidation price.</T> : null}
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Touch onPress={() => setSt({ step: "edit" })} style={secondaryBtn}><T w={700} s={13.5}>Edit</T></Touch>
-          <Touch onPress={() => { void confirm(); }} disabled={!live} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: live ? C.lime : C.tile, alignItems: "center" }}>
+          <Touch onPress={() => { void confirm(); }} disabled={!live} style={{ flex: 1, paddingVertical: 14, borderRadius: 13, backgroundColor: live ? C.lime : C.card10, alignItems: "center" }}>
             <T w={700} s={13.5} color={live ? C.onLime : C.disabled}>{live ? `Confirm ${side}` : "Connecting…"}</T>
           </Touch>
         </View>
-        <T w={400} s={11.5} lh={1.45} color={C.mute}>Market order with up to {market.maxSlippageBps / 100}% slippage. Forwarded orders pay no gas.</T>
+        <T w={400} s={11.5} lh={1.45} color={C.faint}>Market order with up to {market.maxSlippageBps / 100}% slippage. Forwarded orders pay no gas.</T>
       </View>
     );
   }
 
   return (
     <View style={{ padding: 16, gap: 13 }}>
-      <Segmented options={(["long", "short"] as const).map((k) => ({
-        label: k === "long" ? "Long" : "Short", bg: side === k ? (k === "long" ? C.lime : C.down) : "transparent", fg: side === k ? C.onLime : C.dim, strong: side === k, onPress: () => set({ perpsSide: k }),
-      }))} />
-      <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.surf2 }}>
-        <T w={400} s={11.5} color={C.mute} style={{ marginBottom: 8 }}>Amount in AUSD</T>
+      <Segmented
+        options={[["long", "Long"], ["short", "Short"]] as const}
+        value={side}
+        onChange={(k) => set({ perpsSide: k })}
+        tone={(k) => ({ bg: k === "long" ? C.lime : C.down, fg: C.onLime })}
+      />
+      <View style={{ padding: 16, paddingHorizontal: 14, borderWidth: 1.5, borderColor: C.lime, borderRadius: 14, backgroundColor: C.deep }}>
+        <T w={400} s={11.5} color={C.faint} style={{ marginBottom: 8 }}>Amount in AUSD</T>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <TextInput value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.mute} keyboardType="decimal-pad" style={[textStyle(800, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]} />
-          <T w={500} s={14} mono color={C.mute}>AUSD</T>
+          <TextInput value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.faint} keyboardType="decimal-pad" style={[textStyle(700, 30, { lh: 1, ls: -0.03, color: C.ink }), { flex: 1, paddingVertical: 0 }]} />
+          <T w={500} s={14} mono color={C.faint}>AUSD</T>
           <Touch onPress={() => setAmount(formatUnits(max, AUSD_DECIMALS))} style={chipBtn}><T w={600} s={12}>Max</T></Touch>
         </View>
         <T w={400} s={12} lh={1.4} color={C.dim} style={{ marginTop: 10 }}>{formatAusd(free)} AUSD free in trading</T>
       </View>
       <View>
-        <T w={500} s={11} mono color={C.mute} style={{ marginBottom: 7 }}>LEVERAGE</T>
-        <Segmented options={leverages.map((l) => ({ label: `${l}x`, bg: lvUsed === l ? C.ink : "transparent", fg: lvUsed === l ? C.onInk : C.dim, onPress: () => setLv(l) }))} />
-        {leverages.length < 4 ? <T w={400} s={11.5} lh={1.4} color={C.mute} style={{ marginTop: 6 }}>{sym} allows up to {market.maxLeverage}x.</T> : null}
+        <T w={500} s={11} mono color={C.faint} style={{ marginBottom: 7 }}>LEVERAGE</T>
+        <Segmented
+          options={leverages.map((l) => [String(l), `${l}x`] as const)}
+          value={String(lvUsed)}
+          onChange={(k) => setLv(Number(k))}
+          tone={() => ({ bg: C.ink, fg: C.onDeep })}
+        />
+        {leverages.length < 4 ? <T w={400} s={11.5} lh={1.4} color={C.faint} style={{ marginTop: 6 }}>{sym} allows up to {market.maxLeverage}x.</T> : null}
       </View>
-      <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.surf, gap: 9 }}>
-        {summary.map((r, i) => <KV key={i} label={r.label} value={r.value} fg={r.fg} />)}
+      <View style={{ padding: 13, paddingHorizontal: 14, borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, gap: 9 }}>
+        {summary.map((r, i) => <KV key={i} k={r.label.toUpperCase()} v={r.value} vFg={r.fg} />)}
       </View>
       {lvUsed > 1 ? <T w={400} s={12} lh={1.4} color={C.warn}>Higher leverage means a closer liquidation price.</T> : null}
       {error ? <T w={400} s={12} lh={1.4} color={C.warn}>{error}</T> : null}
-      <Touch onPress={() => setSt({ step: "review" })} disabled={!ok} style={{ ...primaryBtn, backgroundColor: ok ? C.lime : C.tile }}>
+      <Touch onPress={() => setSt({ step: "review" })} disabled={!ok} style={{ ...primaryBtn, backgroundColor: ok ? C.lime : C.card10 }}>
         <T w={700} s={14.5} color={ok ? C.onLime : C.disabled}>Review</T>
       </Touch>
     </View>
