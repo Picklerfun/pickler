@@ -30,8 +30,9 @@ function truncate(value: string, places: number): string {
   return `${whole}.${(frac + "0".repeat(places)).slice(0, places)}`;
 }
 
-export function formatAusd(raw: bigint): string {
-  return truncate(formatUnits(raw, AUSD_DECIMALS), 2);
+/** AUSD con `decimals` decimales truncados (2 para saldos y montos; 4 para fees, D20). */
+export function formatAusd(raw: bigint, decimals = 2): string {
+  return truncate(formatUnits(raw, AUSD_DECIMALS), decimals);
 }
 
 export function formatMon(raw: bigint): string {
