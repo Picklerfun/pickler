@@ -39,13 +39,23 @@ failed before opening a session and applied no SQL. It was refreshed before the 
 - Public-key Data API probes returned PGRST106 for pickler, pickler_migrations, mastra and
   internal: those schemas remain unexposed.
 
-## Remaining configuration
+## Data API configuration
 
-The Data API also rejects growth because the product schemas have not yet been enabled.
-The attempted allowlist update did not execute: automatic approval review requires explicit
-confirmation for exposing identity, agents, budget, audit, growth and market through PostgREST.
-Existing database grants and RLS are not a substitute for that pending approval. No private
-research schema is proposed for exposure.
+After explicit user authorization, the authenticator role was configured to expose public,
+graphql_public, identity, agents, budget, audit, growth and market; PostgREST configuration
+and schema reloads were requested. Existing grants and RLS were preserved. The earlier
+approval rejection applied no SQL; the change was executed only after confirmation.
+
+Read-only HTTP checks requested zero records from a representative table in each product
+schema. All six rejected the public/anonymous key with HTTP 401 and PostgreSQL code 42501.
+All six accepted the backend service credential with HTTP 200. Pickler, pickler_migrations,
+mastra and internal continued to return PGRST106 (unexposed schema). Service credentials
+were used only against this project's Supabase endpoint and never copied to the web.
+
+Hono remains the single Pickler business API. Supabase Data API access is its internal
+persistence transport, not an additional public business service or permission grant to users.
+
+## Remaining deployment
 
 This report establishes the hosted database upgrade only. Cloudflare provisioning, Worker
 versions, HTTPS authentication and the capped live research acceptance are still pending.
