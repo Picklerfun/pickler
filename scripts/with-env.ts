@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { childEnvironment, readEnvironment, root, selectEnvironment } from "./environment.mjs";
+import { childEnvironment, readEnvironment, root, selectEnvironment } from "./environment.ts";
 
 const [target, command, ...args] = process.argv.slice(2);
 const environment = process.env.PICKLER_ENVIRONMENT ?? "local";
-if (!command) {
-  throw new Error("Usage: with-env.mjs <target> <command> [...arguments]");
+if (!target || !command) {
+  throw new Error("Usage: with-env.ts <target> <command> [...arguments]");
 }
 for (const path of ["apps/web", "apps/agent-service", "workers/api", "workers/research"]) {
   for (const name of readdirSync(`${root}${path}`)) {
@@ -35,7 +35,7 @@ if (target === "web-worker" || process.env.PICKLER_WEB_RUNTIME === "worker") {
 // Wrangler treats these already-filtered variables as local secrets; no per-Worker files.
 env.CLOUDFLARE_INCLUDE_PROCESS_ENV = "true";
 const child = spawn(command, args, { stdio: "inherit", env });
-for (const signal of ["SIGINT", "SIGTERM"]) {
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => child.kill(signal));
 }
 child.on("error", () => {
