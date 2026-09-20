@@ -57,3 +57,8 @@ the research quota authority.
 ## Unified console access
 
 `features/console/access.ts` owns user-session-only research authorization and the console directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+
+Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
+not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
+and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a
+terminal result; the existing lease recovery path remains authoritative.
