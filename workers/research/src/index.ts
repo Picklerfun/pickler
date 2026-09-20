@@ -19,5 +19,6 @@ export default createResearchWorker({
     new PostgresResearchStore(env.DATABASE_URL, undefined, {
       environment: env.APP_ENV || "staging",
       ca: env.DATABASE_CA_CERT,
+      allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
     }),
 });
