@@ -1,0 +1,670 @@
+<!doctype html>
+<!--
+  Plantilla canónica para project overviews de Pickler (F2 — CSS externo).
+
+  Uso:
+  1. Copia este archivo a docs/overview/YYYY-MM-DD-<topic>.html
+  2. Cambia el valor de <body data-slug="..."> al slug del proyecto (sin .html).
+     Es la key de localStorage para persistir cambios de tasks/status.
+  3. Reemplaza placeholders [[…]] con contenido real.
+  4. Ajusta el número de phase-cards según las fases del proyecto.
+  5. Agrega entry al manifest con el botón "+ Nueva entrada" del index.
+
+  Estilos:
+  - Paleta + componentes universales cargados desde _styles.css (verde brand).
+  - Estilos locales solo si el overview tiene SVG inline custom o diagrams.
+
+  Interactividad (Tier 1 del HTML Maximalism roadmap):
+  - Cada .phase-card tiene un <select> de status que muta data-status y actualiza
+    el status board en vivo.
+  - Cada task dentro de <details class="tasks"> es un <input type="checkbox">
+    persistido en localStorage con prefix `pickler-docs:<slug>:`.
+  - Botones "Copy progress as MD" / "Copy HTML diff" / "Reset local changes"
+    exportan o limpian el delta vs el snapshot inicial.
+
+  Tabs opcionales (F2): si el overview crece, agrupar secciones largas en
+  <div class="tabs"> + <button class="tab" aria-controls="..."> y .tab-panel.
+  Ejemplo abajo (comentado).
+
+  <title> = texto completo del h1 (principal + acento) + ' · Pickler'.
+
+  Reglas completas en docs/CLAUDE.md.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Ask, Agents y Trade con order book: lecturas de agente sobre la matriz nivel × horizonte, medidas contra Perpl · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-ask">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-ask</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler — Ask, Agents y Trade con order book: <span class="accent">lecturas de agente sobre la matriz nivel × horizonte, medidas contra Perpl</span></h1>
+    <p class="lede">Los pills Ask y Agents de Market dejan de ser «coming soon»: un agente (Claude Sonnet 5 con su persona) da una lectura pagada con créditos simulados sobre una celda de la matriz nivel × horizonte —probabilidad, tres razones, límites— y un cron la resuelve right/wrong contra el mark real de Perpl y avisa por push. Agents lista los agentes con récord verificable; Trade sigue manual y gana order book L2 y «Trade this level» con recordatorios. Backend propio en el esquema <code>mobile</code> del Supabase compartido con Gilbert.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="">—</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Los pills Ask y Agents de Market dejan de ser «coming soon»: un agente (Claude Sonnet 5 con su persona) da una lectura pagada con créditos simulados sobre una celda de la matriz nivel × horizonte —probabilidad, tres razones, límites— y un cron la resuelve right/wrong contra el mark real de Perpl y avisa por push. Agents lista los agentes con récord verificable; Trade sigue manual y gana order book L2 y «Trade this level» con recordatorios. Backend propio en el esquema <code>mobile</code> del Supabase compartido con Gilbert.</p>
+        <p>Decisiones que lo ordenan: la matriz es 5 niveles × 4 horizontes sobre el mark real; el cobro es simulado (20 créditos por wallet, reembolso si la lectura no llega en 60 s); la identidad es una firma de wallet válida 24 h; el modelo es <code>claude-sonnet-5</code> con salida estructurada; los pushes salen del servidor por APNs directo (con fallback local decidido de antemano). Sin cierre automático ni take-profit: fuera del bounty. Cuatro fases con checkpoint; al cierre, build 6 de TestFlight. Deadline: 13 oct 2026.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo). Las tasks del plan aparecen
+        en cada card cuando el plan de esa fase esté escrito; los checkboxes persisten en localStorage
+        y los botones de abajo exportan el estado para pegarlo en Claude al avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="plan_ready">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Backend propio: esquema <code>mobile</code>, seis edge functions, cron y APNs</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Migraciones 0001–0003 aplicadas con el migrador propio (Management API, ledger <code>mobile.migrations</code>), seed de tres agentes, funciones <code>agents-list</code> · <code>read-request</code> · <code>read-get</code> · <code>reads-list</code> · <code>reminder-set</code> · <code>resolve-reads</code> con auth por firma de wallet, cobro/reembolso de créditos en una transacción, lectura con <code>claude-sonnet-5</code> y salida estructurada, cron por minuto que resuelve contra el mark de Perpl y manda push por APNs directo (o fallback local decidido aquí).</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Una read pedida y resuelta por <code>curl</code> con firma de prueba; esquemas de Gilbert intactos (conteo antes/después)</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">CLI de Supabase ≥ 2.111 con <code>SUPABASE_ACCESS_TOKEN</code>; key APNs (.p8) del portal de Apple</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> Task 0: CLI ≥ 2.111, esqueleto de services/reads e inventario del proyecto compartido</label></li>
+              <li><label><input type="checkbox"> Task 1: Migrador propio y 0001_schema.sql aplicado</label></li>
+              <li><label><input type="checkbox"> Task 2: matrix.ts, auth.ts, http.ts con deno test</label></li>
+              <li><label><input type="checkbox"> Task 3: perpl.ts, claude.ts, db.ts, dto.ts</label></li>
+              <li><label><input type="checkbox"> Task 4: Seed de agentes, cuatro funciones de lectura, despliegue y smoke</label></li>
+              <li><label><input type="checkbox"> Task 5: apns.ts con la key de Apple en secretos</label></li>
+              <li><label><input type="checkbox"> Task 6: reminder-set, resolve-reads, cron y smoke de APNs</label></li>
+              <li><label><input type="checkbox"> Task 7: Spec, overview, manifest, audit y revisión independiente</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Phase 2 ====================================================== -->
+      <article class="phase-card" data-phase="2" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F2</span>
+            <h3 class="phase-title">App: Ask (matriz, AskSheet, ReadCard, My reads), Agents, créditos, firma y push de resolución</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 2 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Sesión firmada <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code> en SecureStore (24 h, se borra en Sign out), <code>useReads</code> y <code>useNotifications</code>, pantalla Ask con segmentado New read | My reads, matriz 5×4 sobre el mark vivo, hoja de la celda con chips de agente y «Ask · 1 credit», card de resultado con cuenta regresiva, lista de lecturas con estado, y pill Agents con récord. <code>expo-notifications</code> (rebuild nativo); tocar el push abre la read.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Recorrido completo en el simulador con la cuenta #620: pedir → pending → lectura → push de resolución → My reads</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1</div></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Phase 3 ====================================================== -->
+      <article class="phase-card" data-phase="3" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F3</span>
+            <h3 class="phase-title">Trade: order book L2, «Trade this level» y recordatorios push</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 3 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p><code>MarketDataSocket</code> sobre <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>order-book@&lt;id&gt;</code>, mt 15/16, un socket por ticket visible, sin pings), <code>BookCard</code> con 5 niveles por lado y spread, <code>LevelCard</code> con lado sugerido y <code>reminder-set</code> tras el fill (15 min antes y al vencer, con el mark en el push). Sin cierre automático ni take-profit.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Book vivo en el simulador, frames grabados a fixture, una orden de 2 AUSD con sus dos recordatorios enviados por el cron</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620</div></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Phase 4 ====================================================== -->
+      <article class="phase-card" data-phase="4" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F4</span>
+            <h3 class="phase-title">TestFlight build 0.1.0 (6)</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 4 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p><code>buildNumber 6</code>, archive con entitlement <code>aps-environment</code> verificado, upload, <code>VALID</code> con el grupo Equipo y tracker <code>pickler-dev-new</code>. En el iPhone de Jesús: una lectura completa hasta el push de resolución y un nivel con recordatorio.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Build 6 distribuido al grupo Equipo con tracker en <code>docs/overview/dev/</code></div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F3; autorización explícita de Jesús para subir</div></div>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>D1–D2 · Una read = pregunta binaria sobre una celda; matriz +2.5 · +1.0 · +0.5 · −0.5 · −1.0 % × 1H · 4H · 12H · 24H</td>
+            <td>Probabilidad de «sí», tres razones y límites; el target sale del mark real de Perpl que el servidor vuelve a leer al crear la read. Verificable por un jurado: número, fecha, resultado.</td>
+          </tr>
+          <tr>
+            <td>D3 · Cron por minuto resuelve right/wrong y Brier contra <code>pub/context</code>; 30 min sin Perpl → void + reembolso</td>
+            <td>Un minuto es el grano del horizonte más corto; <code>void</code> evita juzgar con un mark viejo.</td>
+          </tr>
+          <tr>
+            <td>D4–D5 · Backend propio en el Supabase <code>pickler</code>, esquema <code>mobile</code>, migrador propio vía Management API; seis edge functions con auth propia</td>
+            <td>Proyecto compartido con Gilbert: nada de Drizzle, <code>db push</code> ni sus esquemas; el MCP de la sesión apunta a Proflores y no se usa.</td>
+          </tr>
+          <tr>
+            <td>D6 · Identidad = firma de wallet <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code>, 24 h en SecureStore, headers en cada llamada</td>
+            <td>Sin cuentas ni JWT: la wallet ya es la identidad. Un Face ID por día.</td>
+          </tr>
+          <tr>
+            <td>D7 · 20 créditos simulados por wallet; cobro e insert en una transacción; reembolso si el modelo falla o la read queda <code>pending</code> &gt; 60 s</td>
+            <td>Ledger auditable; la regla de 60 s se cumple por dos caminos independientes.</td>
+          </tr>
+          <tr>
+            <td>D8 · <code>claude-sonnet-5</code> con <code>messages.parse</code> + <code>output_config.format</code> (zod); persona del agente cacheada; effort medium, timeout 50 s</td>
+            <td>Salida estructurada sin parseo frágil; latencia bajo el minuto. El agente ve los mismos datos que el usuario.</td>
+          </tr>
+          <tr>
+            <td>D9 · Tres agentes seed (<code>jesus</code> primero, <code>drift</code>, <code>anchor</code>); récord desde la vista <code>agent_records</code></td>
+            <td>«El agente de Jesús» es la demo; dos personas más hacen que elegir agente signifique algo.</td>
+          </tr>
+          <tr>
+            <td>D10 · Push por APNs directo desde las funciones (key .p8, HTTP/2); permiso al confirmar la primera lectura; fallback local si el edge runtime no negocia HTTP/2</td>
+            <td>Sin cuenta de Expo ni EAS. El servidor sabe el resultado y el mark, por eso manda él. El fallback está decidido antes de probar.</td>
+          </tr>
+          <tr>
+            <td>D11 · Order book L2 por market-data WS, un socket por ticket visible, sin pings; parser puro con fixture</td>
+            <td>Doc pública verificada 2026-09-19; límites de 16 subs y 10 req/min respetados por construcción.</td>
+          </tr>
+          <tr>
+            <td>D12 · «Trade this level» pone lado y <code>LevelCard</code>; recordatorios sólo tras <code>filled</code>/<code>open</code>; nada cierra la posición</td>
+            <td>Puente lectura → trade real sin custodiar keys ni prometer un cierre que Perpl no ejecuta por tiempo.</td>
+          </tr>
+          <tr>
+            <td>D13–D16 · Store con <code>askView</code>, <code>askCell</code>, <code>askAgentId</code>, <code>tradeLevel</code>; pantallas <code>ask.tsx</code>, <code>agents.tsx</code>; módulos <code>reads/*</code> puros + <code>useReads</code></td>
+            <td>Misma arquitectura que Perpl: módulos puros con tests, un hook que orquesta.</td>
+          </tr>
+          <tr>
+            <td>D17–D18 · Cuatro fases con checkpoint; fuera: auto-cierre, take-profit, créditos reales, follow, Polymarket, Android</td>
+            <td>24 días; F1+F2 son el mínimo demostrable, F3 puede recortarse en el checkpoint de F2.</td>
+          </tr>
+          <tr>
+            <td>D19–D20 · Secretos vía <code>supabase secrets set</code>, cron secret en Vault, rate limit 10 reads/10 min por dirección, funciones idempotentes</td>
+            <td>El servicio es público aunque la app sea privada; el API key de Anthropic sí vale.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">Quién habla con quién y la tabla central del esquema <code>mobile</code>. El detalle completo (siete tablas, la vista <code>agent_records</code>, los contratos JSON de las seis funciones) está en el spec §2.</p>
+
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px;">
+        <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arquitectura de Ask: app, edge functions, Postgres mobile, Claude, Perpl, APNs" style="width:100%;height:auto;display:block;">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8C8C88"/>
+            </marker>
+            <style>
+              .box   { fill:#17171B; stroke:rgba(243,241,236,0.22); stroke-width:1.5; rx:8; }
+              .box-g { fill:rgba(200,240,58,0.14); stroke:#C8F03A; stroke-width:1.5; rx:8; }
+              .box-a { fill:rgba(122,92,255,0.18); stroke:#7A5CFF; stroke-width:1.5; rx:8; }
+              .lbl   { font-family: "Manrope", sans-serif; font-size: 12px; fill:#F3F1EC; font-weight:600; }
+              .sub   { font-family: "JetBrains Mono", monospace; font-size: 10px; fill:#8C8C88; }
+              .arrow { stroke:#8C8C88; stroke-width:1.5; fill:none; }
+            </style>
+          </defs>
+          <rect class="box-g" x="20" y="110" width="150" height="70"/>
+          <text class="lbl" x="32" y="135">App Expo (iOS)</text>
+          <text class="sub" x="32" y="152">Ask · Agents · Trade</text>
+          <text class="sub" x="32" y="167">firma x-pickler-*</text>
+
+          <rect class="box-a" x="235" y="110" width="190" height="70"/>
+          <text class="lbl" x="247" y="135">Edge functions</text>
+          <text class="sub" x="247" y="152">read-request · reads-list</text>
+          <text class="sub" x="247" y="167">reminders · resolve-reads</text>
+
+          <rect class="box" x="460" y="20" width="170" height="56"/>
+          <text class="lbl" x="472" y="44">Postgres · mobile</text>
+          <text class="sub" x="472" y="61">7 tablas + 1 vista</text>
+
+          <rect class="box" x="460" y="96" width="170" height="56"/>
+          <text class="lbl" x="472" y="120">Claude Sonnet 5</text>
+          <text class="sub" x="472" y="137">persona + output_config</text>
+
+          <rect class="box" x="460" y="172" width="170" height="56"/>
+          <text class="lbl" x="472" y="196">Perpl testnet</text>
+          <text class="sub" x="472" y="213">context · market-data</text>
+
+          <rect class="box" x="460" y="248" width="170" height="40"/>
+          <text class="lbl" x="472" y="273">APNs → iPhone</text>
+
+          <rect class="box" x="235" y="205" width="190" height="36"/>
+          <text class="lbl" x="247" y="221">pg_cron · cada minuto</text>
+          <text class="sub" x="247" y="234">→ resolve-reads</text>
+
+          <path d="M 170 145 L 235 145" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 425 128 L 460 52" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 425 140 L 460 124" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 425 155 L 460 200" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 425 170 L 460 265" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 330 205 L 330 180" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 100 180 C 120 300, 430 300, 460 215" class="arrow" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+          <text class="sub" x="120" y="294">order-book@id · sólo con el ticket visible</text>
+        </svg>
+        <p style="font-size:12px;color:var(--ink-3);text-align:center;margin:10px 0 0;font-style:italic">
+          La app sólo habla con las funciones (firmadas) y con Perpl (market-data); el cron resuelve y APNs avisa.
+        </p>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Tabla central (SQL)</h3>
+<pre><code class="language-sql">-- mobile.reads · una lectura por celda, agente y wallet (spec §2.1)
+create table mobile.reads (
+  id uuid primary key default gen_random_uuid(),
+  address text not null references mobile.wallets(address),
+  agent_id text not null references mobile.agents(id),
+  market_id int not null, symbol text not null,
+  level_bps int not null check (level_bps in (250, 100, 50, -50, -100)),
+  horizon_min int not null check (horizon_min in (60, 240, 720, 1440)),
+  price_decimals int not null, mark_at_request bigint not null, target bigint not null,
+  question text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'open', 'right', 'wrong', 'void', 'failed')),
+  probability numeric(4,3), reasons jsonb, limits text,
+  model text, latency_ms int, usage jsonb, credits_charged int not null, error text,
+  created_at timestamptz not null default now(), expires_at timestamptz not null,
+  resolved_at timestamptz, mark_at_resolution bigint, outcome boolean, brier numeric(5,4)
+);
+create index on mobile.reads (expires_at) where status = 'open';
+</code></pre>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
+       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 escrito)</p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

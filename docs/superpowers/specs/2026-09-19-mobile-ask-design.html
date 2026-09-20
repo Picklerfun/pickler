@@ -1,0 +1,447 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-19-mobile-ask-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Ask: lecturas de agente sobre la matriz nivel × horizonte, Agents con récord y Trade con order book y recordatorios · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-19-mobile-ask-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-19-mobile-ask-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Ask: lecturas de agente sobre la matriz nivel × horizonte, Agents con récord y Trade con order book y recordatorios</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-19-mobile-ask-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</a></li><li><a href="#2-unidades">2. Unidades</a></li><li><a href="#21-esquema-mobile-f1">2.1 Esquema `mobile` (F1)</a></li><li><a href="#22-servicesreads-f1">2.2 `services/reads/` (F1)</a></li><li><a href="#23-app-modulos-nuevos-f2-salvo-donde-se-indica">2.3 App — módulos nuevos (F2 salvo donde se indica)</a></li><li><a href="#3-verificacion">3. Verificación</a></li><li><a href="#4-riesgos-conocidos">4. Riesgos conocidos</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-19-mobile-ask-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-ask-lecturas-de-agente-sobre-la-matriz-nivel-horizonte-agents-con-record-y-trade-con-order-book-y-recordatorios">App móvil Pickler — Ask: lecturas de agente sobre la matriz nivel × horizonte, Agents con récord y Trade con order book y recordatorios</h1>
+<p><strong>Fecha</strong>: 2026-09-19 <strong>Estado</strong>: spec en revisión (sin plan todavía) <strong>Slug</strong>: <code>mobile-ask</code> <strong>Rama</strong>: <code>feat/mobile-ask</code>, base <code>main</code> (<code>5ed4e1c</code>, = <code>origin/main</code>), worktree <code>.claude/worktrees/mobile-ask</code> <strong>Contexto</strong>: el build 5 de TestFlight (2026-09-19) deja Wallet y Trade reales con el diseño hi-fi, y los pills <strong>Ask</strong> y <strong>Agents</strong> de <code>Market</code> en <em>coming soon</em> (spec <code>mobile-hifi</code> D17). El brainstorm del 2026-09-19 cerró el diseño de las dos piezas que faltan para el &quot;uso creativo&quot; del bounty: <strong>Ask</strong> (un agente da una lectura pagada sobre una celda de la matriz nivel × horizonte y se le mide contra el mark real de Perpl) y <strong>Agents</strong> (lista con récord verificable). <strong>Trade sigue manual</strong> y gana el order book y un botón &quot;Trade this level&quot; con recordatorios push. Todo lo nuevo del lado servidor vive en un backend <strong>propio</strong> en el Supabase <code>pickler</code> de Sherry Labs. Quedan <strong>24 días</strong> para el bounty (13 oct 2026, 21:59 CST); el spec cierra en el build 6 de TestFlight.</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ol>
+<li><strong>Ask</strong> = matriz de 5 niveles (+2.5 · +1.0 · +0.5 · −0.5 · −1.0 % sobre el mark real) × 4 horizontes</li>
+<p>(1H · 4H · 12H · 24H). Tocar una celda arma la pregunta; el usuario elige agente, paga <strong>créditos simulados</strong> (20 por wallet) y recibe <strong>probabilidad + 3 razones + límites</strong>. Al vencer, un cron resuelve <strong>right / wrong</strong> contra el mark de Perpl y manda push. Segmentado <strong>New read | My reads</strong>.</p>
+<li><strong>Backend propio</strong> en Supabase <code>pickler</code> (<code>yvdipvcrpbqvofayteqf</code>), <strong>todo en el esquema <code>mobile</code></strong>,</li>
+<p>migraciones y funciones en <code>services/reads/</code>. Nunca el migrador Drizzle de Gilbert ni sus esquemas. Seis edge functions; <code>resolve-reads</code> corre por <code>pg_cron</code> cada minuto.</p>
+<li><strong>Modelo</strong>: <code>claude-sonnet-5</code> con la persona del agente y salida estructurada; <code>ANTHROPIC_API_KEY</code></li>
+<p>como secreto de las funciones.</p>
+<li><strong>Identidad</strong> app → servicio: firma de wallet <code>pickler-reads:&lt;address&gt;:&lt;timestamp&gt;</code>, una vez por sesión,</li>
+<p>24 h en SecureStore. Créditos y lecturas por dirección.</p>
+<li><strong>Agents</strong> (pill): lista de <code>mobile.agents</code> con récord real (right/wrong, Brier). El primero es &quot;el</li>
+<p>agente de Jesús&quot;.</p>
+<li><strong>Trade</strong> (pill verde) sigue manual y gana <strong>order book L2</strong> (market-data WS, conectado sólo con el</li>
+<p>ticket visible) y <strong>&quot;Trade this level&quot;</strong> desde la celda: sugiere lado y programa push 15 min antes y al vencer. <strong>Sin cierre automático y sin take-profit trigger.</strong></p>
+<li><strong>Cuatro fases</strong> con checkpoint: F1 backend · F2 app Ask + Agents + créditos + firma · F3 Trade (book,</li>
+<p>botón, push) · F4 TestFlight build 6.</p>
+</ol>
+<hr>
+<h2 id="1-decisiones-que-fija-este-spec">1. Decisiones que fija este spec</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>D1</td><td>Qué es una lectura</td><td>Una <strong>read</strong> es la respuesta de un agente a la pregunta que arma una celda: <code>¿El mark de {symbol} estará en o por encima de {target} a las {expires_at}?</code> (nivel positivo) o <code>…en o por debajo de…</code> (nivel negativo). La respuesta es <code>probability</code> (0.01–0.99, probabilidad de <strong>sí</strong>), <code>reasons</code> (exactamente 3, ≤ 140 caracteres cada una) y <code>limits</code> (≤ 240 caracteres: qué la invalidaría). El <strong>call</strong> del agente es <code>yes</code> si <code>probability ≥ 0.5</code>, <code>no</code> si no.</td><td>Es lo que el prototipo prometía en Ask y lo que un jurado puede verificar: pregunta binaria, número, fecha, resultado.</td></tr>
+<tr><td>D2</td><td>La matriz</td><td><code>LEVELS_BPS = [250, 100, 50, -50, -100]</code> (filas, de arriba abajo) × <code>HORIZONS_MIN = [60, 240, 720, 1440]</code> (columnas 1H · 4H · 12H · 24H). <code>target = round(mark × (1 + bps / 10000))</code> en unidades de <code>priceDecimals</code>; <code>expires_at = created_at + horizon</code>. El <strong>mark real</strong> es <code>market.mark</code> del <code>GET /v1/pub/context</code> de Perpl: la app lo usa para la vista previa de la celda y <strong>el servidor lo vuelve a leer</strong> al crear la lectura y guarda el suyo (<code>mark_at_request</code>); la app muestra los valores del servidor una vez creada.</td><td>Escalera del prototipo (asimétrica a propósito: la app es para apostar a favor con apalancamiento). El servidor como fuente del mark evita lecturas armadas con un precio viejo o manipulado.</td></tr>
+<tr><td>D3</td><td>Resolución</td><td><code>resolve-reads</code> corre <strong>cada minuto</strong> (<code>pg_cron</code> → <code>pg_net</code> → la función, con <code>x-cron-secret</code>). Toma las reads <code>open</code> con <code>expires_at ≤ now()</code>, lee <strong>un</strong> <code>pub/context</code>, guarda <code>mark_at_resolution</code> y decide <code>outcome</code> (<code>yes</code> si <code>mark ≥ target</code> con nivel positivo, <code>mark ≤ target</code> con negativo; <code>no</code> si no). <code>status = right</code> si <code>call = outcome</code>, <code>wrong</code> si no; <code>brier = (probability − outcome)²</code> con <code>outcome ∈ {0, 1}</code>. Si Perpl no responde, la read se queda <code>open</code> y se reintenta al minuto; con <strong>más de 30 min</strong> de retraso pasa a <code>void</code> y <strong>reembolsa</strong>. Cada read resuelta o anulada genera un push (D10).</td><td>Un cron por minuto es el grano del horizonte más corto (1H) sin desperdiciar llamadas; <code>void</code> evita marcar right/wrong con un mark viejo.</td></tr>
+<tr><td>D4</td><td>Backend</td><td>Supabase proyecto <strong><code>pickler</code></strong> de Sherry Labs (<code>yvdipvcrpbqvofayteqf</code>), compartido con <code>Relayerfi/pickler</code> de Gilbert. <strong>Todo lo nuestro en el esquema <code>mobile</code></strong>: tablas <code>agents</code>, <code>wallets</code>, <code>credit_events</code>, <code>reads</code>, <code>reminders</code>, <code>devices</code>, <code>migrations</code> y la vista <code>agent_records</code> (§2.1). Código en <code>services/reads/</code> (§2.2). <strong>Prohibido</strong>: correr su migrador Drizzle, tocar <code>public</code> o cualquier esquema suyo, <code>supabase db push</code> / <code>db reset</code> (comparten <code>supabase_migrations.schema_migrations</code> con su historial), y el MCP de Supabase de la sesión (apunta a Proflores). Migraciones nuestras: SQL numerado en <code>services/reads/supabase/migrations/</code>, aplicado por <code>services/reads/scripts/migrate.mjs</code> contra el endpoint de consulta del Management API (<code>POST /v1/projects/{ref}/database/query</code>, token <code>SUPABASE_ACCESS_TOKEN</code>) con ledger propio <code>mobile.migrations</code>. Extensiones <code>pg_cron</code> y <code>pg_net</code> se habilitan sólo si no están (idempotente, no tocan esquemas ajenos).</td><td>Un esquema propio aísla tablas, nombres y permisos; un migrador propio evita pisar el historial de Gilbert. El Management API es la vía que la CLI y el MCP usan por debajo, sin necesitar la contraseña de la base.</td></tr>
+<tr><td>D5</td><td>Edge functions</td><td>Seis, en <code>services/reads/supabase/functions/&lt;name&gt;/index.ts</code> con <code>verify_jwt = false</code> (auth propia, D6): <strong><code>agents-list</code></strong> (GET, público: agentes activos con récord); <strong><code>read-request</code></strong> (POST firmado: crea la read, cobra, llama al modelo, devuelve la read); <strong><code>read-get</code></strong> (GET firmado: una read por id, sólo del firmante); <strong><code>reads-list</code></strong> (GET firmado: reads del firmante, filtro opcional <code>market_id</code>, + créditos); <strong><code>reminder-set</code></strong> (POST firmado: crea los recordatorios de un nivel); <strong><code>resolve-reads</code></strong> (POST con <code>x-cron-secret</code>: resuelve reads vencidas, manda recordatorios vencidos, reembolsa <code>pending</code> huérfanas). Código compartido en <code>_shared/</code> (<code>auth.ts</code>, <code>db.ts</code>, <code>perpl.ts</code>, <code>claude.ts</code>, <code>apns.ts</code>, <code>matrix.ts</code>). Con <code>--no-verify-jwt</code> al desplegar.</td><td>Una función por verbo del brainstorm más <code>agents-list</code>, que faltaba (exponer <code>mobile</code> por PostgREST tocaría la configuración de API del proyecto compartido).</td></tr>
+<tr><td>D6</td><td>Identidad y sesión</td><td>La app firma con la cuenta de la wallet (<code>wallet.account.signMessage</code>, <code>personal_sign</code>) el texto <strong><code>pickler-reads:&lt;address en minúsculas&gt;:&lt;timestamp ms&gt;</code></strong> y manda en cada llamada firmada los headers <code>x-pickler-address</code>, <code>x-pickler-ts</code>, <code>x-pickler-sig</code>. El servidor verifica con <code>verifyMessage</code> de viem, acepta <code>ts ∈ [now − 24 h, now + 5 min]</code> y usa la dirección recuperada como identidad. La app guarda <code>{ address, ts, sig }</code> en SecureStore (<code>pickler.reads.v1</code>, sin gate biométrico: la firma sólo autoriza créditos simulados y lecturas) y la renueva cuando faltan &lt; 1 h; se firma con <code>openWallet()</code> (Face ID) la primera vez que Ask lo necesita y <strong>se borra en Sign out</strong> junto con la key de trading.</td><td>Sin cuentas ni JWT: la wallet ya es la identidad del producto. Stateless en el servidor. 24 h reduce prompts de Face ID a uno por día.</td></tr>
+<tr><td>D7</td><td>Créditos</td><td><code>mobile.wallets(address pk, credits int)</code>; la primera llamada firmada de una dirección hace upsert con <strong>20</strong> créditos y evento <code>grant</code>. Cada agente tiene <code>price_credits</code> (seed: 1). <code>read-request</code> cobra en <strong>una sola transacción</strong> con el insert de la read (<code>mobile.request_read(...)</code>, función SQL <code>security definer</code>); sin saldo → <code>402 { error: &quot;no_credits&quot; }</code>. <strong>Reembolso</strong> (evento <code>refund</code>, read <code>failed</code> o <code>void</code>): si el modelo falla o tarda &gt; 50 s dentro de <code>read-request</code>, o si el cron encuentra una read <code>pending</code> con más de <strong>60 s</strong> (la función murió). Ledger `mobile.credit_events(delta, reason ∈ grant</td><td>charge</td><td>refund, read_id)`. Sin compra de créditos.</td><td>Cobro simulado y auditable: el saldo siempre es la suma del ledger. La regla de 60 s del brainstorm se cumple por dos caminos independientes.</td></tr>
+<tr><td>D8</td><td>El modelo</td><td><code>claude-sonnet-5</code> (fijado por Jesús) vía <code>@anthropic-ai/sdk</code> (<code>npm:</code> en Deno) con <code>client.messages.parse</code> y <code>output_config.format</code> = <code>zodOutputFormat(ReadSchema)</code> (<code>probability</code> number 0.01–0.99, <code>reasons</code> array de 3 strings ≤ 140, <code>limits</code> string ≤ 240). <code>system</code> = reglas fijas de Pickler + <code>agents.persona</code> (con <code>cache_control: { type: &quot;ephemeral&quot; }</code>); <code>user</code> = JSON con <code>symbol</code>, <code>name</code>, <code>mark</code>, <code>prev</code>, <code>change24hPct</code>, <code>target</code>, <code>levelBps</code>, <code>horizonMin</code>, <code>expiresAtUtc</code>, <code>nowUtc</code>. <code>max_tokens: 1024</code>, <code>output_config.effort: &quot;medium&quot;</code>, <code>timeout: 50_000</code> ms, <code>maxRetries: 1</code>. Se guardan <code>model</code>, <code>latency_ms</code> y <code>usage</code> (<code>input_tokens</code>, <code>output_tokens</code>) en la read. Sin herramientas ni búsqueda web en el bounty.</td><td>Salida estructurada quita el parseo frágil; <code>effort medium</code> mantiene la lectura por debajo de los 60 s. Los datos que ve el agente son los mismos que ve el usuario (mark, 24 h): la lectura es honesta sobre su fuente.</td></tr>
+<tr><td>D9</td><td>Agentes</td><td><code>mobile.agents(id, handle, name, owner, persona, price_credits, active, sort)</code>. Seed de <strong>tres</strong>: <code>jesus</code> (<strong>&quot;Jesús&#39;s agent&quot;</strong>, <code>owner = &quot;Jesús&quot;</code>, primero en <code>sort</code>; persona placeholder en el plan F1 que Jesús puede reescribir), <code>drift</code> (momentum: sigue el cambio 24 h) y <code>anchor</code> (reversión a la media). Récord por agente en la vista <code>mobile.agent_records</code>: <code>reads</code>, <code>resolved</code>, <code>right</code>, <code>accuracy = right / resolved</code>, <code>brier_avg</code>. El pill <strong>Agents</strong> lista <code>agents-list</code> con <code>name</code>, <code>by {owner}</code>, récord y precio; tocar uno lo preselecciona en Ask.</td><td>&quot;El agente de Jesús&quot; es la demo; dos personas más hacen que elegir agente signifique algo y que los récords diverjan. El récord sale de reads reales, no de un contador.</td></tr>
+<tr><td>D10</td><td>Notificaciones push</td><td><strong>APNs directo</strong> desde las funciones (<code>_shared/apns.ts</code>: JWT ES256 con WebCrypto a partir de <code>APNS_KEY_P8</code>, <code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID = 2PBQJ37Q8W</code>; <code>fetch</code> HTTP/2 a <code>api.push.apple.com</code> para TestFlight y <code>api.sandbox.push.apple.com</code> para builds <code>__DEV__</code>). Tabla `mobile.devices(address, token, env ∈ sandbox</td><td>production, updated_at)<code>; la app manda </code>pushToken<code>/</code>pushEnv<code> en </code>read-request<code> y </code>reminder-set<code> y el servidor hace upsert. App: </code>expo-notifications<code> (plugin → entitlement </code>aps-environment<code>), permiso pedido la **primera vez** que se confirma una lectura o un nivel; </code>getDevicePushTokenAsync()<code>; si el usuario niega, la app lo dice en la card y sigue sin push. Tres tipos: **resolución** (&quot;BTC +1.0% · 4H — Jesús&#39;s agent was right&quot;), **recordatorio previo** (15 min antes: &quot;BTC at 65,120 · your level 65,900 · 15 min left&quot;) y **recordatorio al vencer** (con el mark). Tocar el push abre la app en </code>market<code> con el pill correspondiente. **Fallback registrado** (riesgo §4): si el </code>fetch<code> HTTP/2 a APNs no funciona desde el edge runtime en la prueba de F1, las tres notificaciones pasan a **locales** programadas por la app (sin mark en el texto) y </code>mobile.devices` queda sin uso.</td><td>Sin cuenta nueva de Expo ni EAS: sólo una key APNs en el portal de Apple, que Jesús ya opera. El servidor es quien sabe el resultado y el mark; por eso manda él.</td></tr>
+<tr><td>D11</td><td>Order book</td><td><code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>PERPL_MARKET_DATA_WS</code> en <code>perpl/config.ts</code>, override <code>perplMarketDataWs</code> en <code>app.config.ts</code>). Suscripción <code>{ mt: 5, subs: [{ stream: &quot;order-book@&lt;id&gt;&quot;, subscribe: true }] }</code>; respuesta <code>mt: 6</code> (<code>sid</code>, <code>code</code>); <strong><code>mt: 15</code> snapshot</strong> y <strong><code>mt: 16</code> update</strong> con <code>sid</code>, <code>at</code>, <code>bid[]</code>, <code>ask[]</code> de <code>{ p, s, o }</code> (escalados por <code>priceDecimals</code> / <code>sizeDecimals</code>, mejor precio primero). <strong>Sin pings</strong> (el servidor mantiene vivo el socket con datos por bloque). Límites por conexión: 16 suscripciones, 10 requests/min: <strong>una suscripción por socket y un socket por ticket visible</strong> (se abre al montar <code>TradeTab</code>, se cierra al desmontar o al cambiar de pill), reconexión con <code>RECONNECT_DELAYS_MS</code>. Clase pura <code>MarketDataSocket</code> (<code>src/perpl/marketData.ts</code>) con <code>parseBookFrame</code> / <code>applyBookFrame</code>, probada con frames grabados en <code>__tests__/fixtures/perpl/market-data-frames.json</code> (se capturan en F3 con un script, como se hizo con <code>ws-frames.json</code>). UI: <code>BookCard</code> en Trade con <strong>5 niveles por lado</strong>, spread en bps y, si hay nivel activo (D12), la fila del target resaltada o &quot;target above/below book&quot;.</td><td>Doc pública verificada 2026-09-19 (<code>PerplFoundation/api-docs</code>, README y <code>websocket.md</code>). Sólo el ticket lo necesita; un socket por pantalla respeta los límites sin contar requests. La semántica exacta de <code>mt: 16</code> (reemplazo por nivel vs. delta) se fija en F3 contra frames reales.</td></tr>
+<tr><td>D12</td><td>Trade this level</td><td>Botón en la <strong>hoja de la celda</strong> (antes de pedir la lectura) y en la <strong>card del resultado</strong>. Pone <code>S.tradeLevel = { marketId, levelBps, horizonMin, target, expiresAt, readId? }</code>, <code>perpsSide = levelBps &gt; 0 ? &quot;long&quot; : &quot;short&quot;</code> y <code>marketTab = &quot;trade&quot;</code>. Trade muestra <strong><code>LevelCard</code></strong> (target, horizonte, &quot;resolves at …&quot;, lado sugerido, <code>Remove level</code>). Cuando la orden termina en <code>filled</code> u <code>open</code>, la app llama <code>reminder-set</code> con el nivel → dos filas en <code>mobile.reminders</code> (<code>kind = pre</code> en <code>expires_at − 15 min</code> si faltan más de 15 min, <code>kind = expiry</code> en <code>expires_at</code>), que <code>resolve-reads</code> manda cuando <code>fire_at ≤ now()</code> con el mark del momento. <strong>Nada cierra la posición ni coloca take-profit</strong>: el usuario cierra a mano desde Markets.</td><td>Es el puente entre la lectura y el trade real sin custodiar keys ni prometer un cierre que Perpl no ejecuta por tiempo. El recordatorio se programa sólo si hubo orden.</td></tr>
+<tr><td>D13</td><td>Store y navegación</td><td><code>StoreState</code> gana `askView: &quot;new&quot; \</td><td>&quot;mine&quot;<code> (default </code>new<code>), </code>askCell?: { levelBps, horizonMin }<code>, </code>askAgentId?: string<code>, </code>askFocusReadId?: string<code> (para abrir una read desde un push), </code>tradeLevel?: TradeLevel<code>. </code>marketTab<code> conserva default </code>trade<code>. </code>headerFor(&quot;market&quot;)<code> subtitula por pill: </code>trade<code> → &quot;Perpl · isolated margin · market order&quot;, </code>ask<code> → &quot;Ask an agent · simulated credits&quot;, </code>agents<code> → &quot;Who reads this market&quot;. </code>COMING<em>SOON</em>COPY<code> pierde </code>ask<code> y </code>agents<code>; </code>ComingSoonCard<code> sólo queda para los tabs. </code>signedOutState` no cambia; el Sign out borra además la sesión de reads (D6).</td><td>Cambios mínimos sobre el store de <code>mobile-hifi</code>; todo lo nuevo es opcional y se prueba en <code>store.test.ts</code>.</td></tr>
+<tr><td>D14</td><td>Pantalla Ask</td><td><code>src/screens/ask.tsx</code>: <code>Segmented</code> **New read</td><td>My reads<strong>. </strong>New read<strong>: fila de créditos (<code>Tag CREDITS</code> + cifra mono + &quot;1 credit per read&quot;), <code>MatrixGrid</code> 5×4 (celda = <code>pill(on)</code> con <code>+2.5%</code> y el target en mono 9.5; columnas 1H 4H 12H 24H; el mark actual arriba: &quot;Mark 65,120 · updates every 5 s&quot;), y al tocar una celda la </strong><code>AskSheet</code><strong> inline debajo de la matriz: la pregunta en <code>display 16</code>, chips de agente (<code>name · by owner · price</code>), <code>Btn lime</code> </strong>&quot;Ask {agent} · 1 credit&quot;<strong>, <code>Btn outline</code> </strong>&quot;Trade this level&quot;<strong>. Estados: <code>pending</code> (<code>StatusCard</code> &quot;Reading… up to 60 s&quot; con spinner), <code>failed</code> (&quot;Refunded 1 credit&quot;), y </strong><code>ReadCard</code><strong> (probabilidad <code>display 30</code> &quot;62 %&quot;, <code>Chip</code> YES/NO call, <code>Tag REASONS</code> + 3 filas, <code>Tag WHAT WOULD BREAK IT</code> + texto, &quot;Resolves in 3 h 58 m&quot; (cuenta regresiva de <code>expires_at</code>), <code>Btn</code> &quot;Trade this level&quot;, <code>Btn ghost</code> &quot;Ask another&quot;). </strong>My reads**: lista <code>ReadRow</code> (celda <code>+1.0% · 4H</code>, agente, probabilidad, <code>Chip</code> OPEN/RIGHT/WRONG/VOID/FAILED con tonos <code>warn</code>/<code>up</code>/<code>down</code>/<code>faint</code>, &quot;resolves in…&quot; o &quot;resolved at {mark}&quot;), tocar abre la <code>ReadCard</code>; vacío: &quot;No reads on {symbol} yet.&quot; Sin créditos: <code>Btn</code> deshabilitado &quot;No credits left&quot; + copy &quot;Credits are simulated for the testnet.&quot;</td><td>Es la pantalla Ask del prototipo con las primitivas de <code>mobile-hifi</code> (D12 de ese spec) y sin inventar componentes nuevos salvo la matriz.</td></tr>
+<tr><td>D15</td><td>Pantalla Agents</td><td><code>src/screens/agents.tsx</code>: lista <code>TouchCard</code> por agente (<code>Avatar</code> con inicial, <code>name</code> <code>700 14</code>, <code>by {owner}</code> <code>faint</code>, récord mono &quot;7/10 right · Brier 0.21&quot; o &quot;No resolved reads yet&quot;, precio &quot;1 credit&quot;); tocar → <code>set({ askAgentId, marketTab: &quot;ask&quot;, askView: &quot;new&quot; })</code>. Carga <code>agents-list</code> al montar y en pull-to-refresh del Shell (<code>refreshable</code> gana <code>market</code>).</td><td>Lista con récord real, nada más: el detalle por agente queda fuera (D18).</td></tr>
+<tr><td>D16</td><td>Cliente de reads en la app</td><td><code>src/config/reads.ts</code> (<code>READS_URL = https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1</code>, override <code>readsUrl</code> en <code>app.config.ts</code>), <code>src/reads/types.ts</code> (tipos y parsers estrictos como <code>perpl/context.ts</code>), <code>src/reads/matrix.ts</code> (puro: <code>targetFor</code>, <code>questionFor</code>, <code>LEVELS_BPS</code>, <code>HORIZONS_MIN</code>, <code>callOf</code>, <code>outcomeOf</code>), <code>src/reads/session.ts</code> (D6), <code>src/reads/api.ts</code> (<code>fetch</code> con <code>AbortController</code> + <code>setTimeout</code> de 65 s en <code>read-request</code>, 15 s en el resto: <code>AbortSignal.timeout</code> no existe en RN), <code>src/hooks/useReads.ts</code> (créditos, lista por mercado, <code>request</code>, <code>get</code>, polling de 15 s mientras Ask está visible y refetch al volver al foreground), <code>src/hooks/useNotifications.ts</code> (permiso, token, handler de tap → <code>nav(&quot;market&quot;, {...})</code>).</td><td>Misma arquitectura que Perpl: módulos puros con tests y un hook que los orquesta.</td></tr>
+<tr><td>D17</td><td>Fases</td><td><strong>F1 backend</strong> (D3–D5, D7–D10 lado servidor): migraciones, seed, funciones, cron, <code>migrate.mjs</code>, prueba de APNs con <code>curl</code>; se cierra con una read pedida y resuelta por <code>curl</code> con una firma generada por script. <strong>F2 app Ask + Agents</strong> (D6, D13–D16, y el push de resolución de D10): <code>expo-notifications</code>, sesión firmada, matriz, <code>AskSheet</code>, <code>ReadCard</code>, My reads, Agents. <strong>F3 Trade</strong> (D11, D12): <code>MarketDataSocket</code>, <code>BookCard</code>, <code>LevelCard</code>, <code>reminder-set</code>, recordatorios. <strong>F4</strong> build 6 de TestFlight con tracker <code>pickler-dev-new</code>. Cada fase: plan propio, revisión independiente por subagente, audit.</td><td>El backend se puede probar sin la app; la app sin el book; el book sin TestFlight. Cuatro checkpoints en 24 días.</td></tr>
+<tr><td>D18</td><td>Fuera de alcance</td><td>Cierre automático de posiciones, órdenes trigger/take-profit, compra de créditos o créditos reales, detalle por agente y follow, agentes creados por usuarios, Polymarket, mudar el servicio al runtime de Gilbert, Launchpad/Activity/Portfolio (siguen <em>coming soon</em>), Android, búsqueda web o herramientas en el modelo, PostgREST/RLS sobre <code>mobile</code> (todo pasa por funciones con service role).</td><td>24 días; nada de esto es necesario para que un jurado vea Ask → Trade → resolución.</td></tr>
+<tr><td>D19</td><td>Secretos y despliegue</td><td><code>.env.pickler</code> en la raíz (gitignored) es la fuente local; <code>services/reads/.env.example</code> documenta los nombres. Secretos de funciones (<code>supabase secrets set --project-ref yvdipvcrpbqvofayteqf</code>): <code>ANTHROPIC_API_KEY</code>, <code>CRON_SECRET</code>, <code>APNS_KEY_P8</code>, <code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>, <code>PERPL_REST</code> (<code>SUPABASE_URL</code> y <code>SUPABASE_SERVICE_ROLE_KEY</code> los inyecta la plataforma). CLI de Supabase <strong>≥ 2.111</strong> (hoy 2.22.12: <code>brew upgrade supabase</code> antes de F1) con <code>SUPABASE_ACCESS_TOKEN</code>; despliegue <code>supabase functions deploy &lt;name&gt; --project-ref … --no-verify-jwt</code>. El cron guarda <code>CRON_SECRET</code> en Vault (<code>vault.create_secret</code>) y lo lee en el <code>cron.schedule</code>, no en texto plano en <code>cron.job</code>. Nada de esto se commitea.</td><td>Un solo lugar para las llaves y un despliegue reproducible desde la CLI, sin depender del MCP equivocado.</td></tr>
+<tr><td>D20</td><td>Guardas</td><td><code>read-request</code>: máximo <strong>10 reads por dirección cada 10 min</strong> (<code>429 rate_limited</code>), body validado con zod, mercado debe existir y estar abierto en el context, celda debe pertenecer a la matriz. Todas las funciones responden <code>{ error: string }</code> con 4xx/5xx y nunca devuelven la persona del agente ni tokens. <code>resolve-reads</code> es idempotente (marca por <code>id</code> con <code>status = &#39;open&#39;</code> en el <code>WHERE</code>). Logs sin direcciones completas (solo <code>0x1234…abcd</code>).</td><td>El servicio es público en internet aunque la app sea privada; los créditos simulados no valen nada pero el API key de Anthropic sí.</td></tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-unidades">2. Unidades</h2>
+<h3 id="21-esquema-mobile-f1">2.1 Esquema <code>mobile</code> (F1)</h3>
+<pre><code class="language-sql">create schema if not exists mobile;
+
+create table mobile.migrations (name text primary key, applied_at timestamptz not null default now());
+
+create table mobile.agents (
+  id text primary key,                 -- &#39;jesus&#39; | &#39;drift&#39; | &#39;anchor&#39;
+  handle text not null unique,
+  name text not null,
+  owner text not null,
+  persona text not null,               -- system prompt; nunca sale por la API
+  price_credits int not null default 1 check (price_credits &gt; 0),
+  active boolean not null default true,
+  sort int not null default 100,
+  created_at timestamptz not null default now()
+);
+
+create table mobile.wallets (
+  address text primary key check (address = lower(address)),
+  credits int not null default 20 check (credits &gt;= 0),
+  created_at timestamptz not null default now()
+);
+
+create table mobile.credit_events (
+  id bigserial primary key,
+  address text not null references mobile.wallets(address),
+  delta int not null,
+  reason text not null check (reason in (&#39;grant&#39;, &#39;charge&#39;, &#39;refund&#39;)),
+  read_id uuid,
+  created_at timestamptz not null default now()
+);
+
+create table mobile.reads (
+  id uuid primary key default gen_random_uuid(),
+  address text not null references mobile.wallets(address),
+  agent_id text not null references mobile.agents(id),
+  market_id int not null,
+  symbol text not null,
+  level_bps int not null check (level_bps in (250, 100, 50, -50, -100)),
+  horizon_min int not null check (horizon_min in (60, 240, 720, 1440)),
+  price_decimals int not null,
+  mark_at_request bigint not null,     -- escalado por price_decimals, como Perpl
+  target bigint not null,
+  question text not null,
+  status text not null default &#39;pending&#39;
+    check (status in (&#39;pending&#39;, &#39;open&#39;, &#39;right&#39;, &#39;wrong&#39;, &#39;void&#39;, &#39;failed&#39;)),
+  probability numeric(4,3),
+  reasons jsonb,                       -- [&quot;…&quot;, &quot;…&quot;, &quot;…&quot;]
+  limits text,
+  model text,
+  latency_ms int,
+  usage jsonb,
+  credits_charged int not null,
+  error text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  resolved_at timestamptz,
+  mark_at_resolution bigint,
+  outcome boolean,
+  brier numeric(5,4)
+);
+create index on mobile.reads (address, created_at desc);
+create index on mobile.reads (expires_at) where status = &#39;open&#39;;
+create index on mobile.reads (created_at) where status = &#39;pending&#39;;
+
+create table mobile.reminders (
+  id uuid primary key default gen_random_uuid(),
+  address text not null references mobile.wallets(address),
+  read_id uuid references mobile.reads(id),
+  market_id int not null,
+  symbol text not null,
+  level_bps int not null,
+  horizon_min int not null,
+  price_decimals int not null,
+  target bigint not null,
+  side text not null check (side in (&#39;long&#39;, &#39;short&#39;)),
+  kind text not null check (kind in (&#39;pre&#39;, &#39;expiry&#39;)),
+  fire_at timestamptz not null,
+  status text not null default &#39;scheduled&#39; check (status in (&#39;scheduled&#39;, &#39;sent&#39;, &#39;failed&#39;)),
+  sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index on mobile.reminders (fire_at) where status = &#39;scheduled&#39;;
+
+create table mobile.devices (
+  address text primary key references mobile.wallets(address),
+  token text not null,
+  env text not null check (env in (&#39;sandbox&#39;, &#39;production&#39;)),
+  updated_at timestamptz not null default now()
+);
+
+create view mobile.agent_records as
+select a.id, a.handle, a.name, a.owner, a.price_credits, a.sort,
+       count(r.id) filter (where r.status in (&#39;open&#39;,&#39;right&#39;,&#39;wrong&#39;)) as reads,
+       count(r.id) filter (where r.status in (&#39;right&#39;,&#39;wrong&#39;)) as resolved,
+       count(r.id) filter (where r.status = &#39;right&#39;) as right,
+       avg(r.brier) filter (where r.status in (&#39;right&#39;,&#39;wrong&#39;)) as brier_avg
+from mobile.agents a left join mobile.reads r on r.agent_id = a.id
+where a.active group by a.id;
+
+-- Cobro + insert en una transacción (security definer; la llama sólo el service role).
+create function mobile.request_read(p_address text, p_agent text, p_market int, p_symbol text,
+  p_level int, p_horizon int, p_pd int, p_mark bigint, p_target bigint, p_question text, p_expires timestamptz)
+returns mobile.reads language plpgsql security definer as $$ … $$;
+
+-- Reembolso idempotente (usa el estado previo en el WHERE).
+create function mobile.refund_read(p_read uuid, p_status text, p_error text) returns void …;</code></pre>
+<p>Sin RLS ni grants a <code>anon</code>/<code>authenticated</code>: sólo el service role (las funciones) lee y escribe <code>mobile</code>.</p>
+<h3 id="22-servicesreads-f1">2.2 <code>services/reads/</code> (F1)</h3>
+<pre><code>services/reads/
+  README.md                      cómo migrar, desplegar, probar; qué NO tocar del proyecto compartido
+  .env.example                   nombres de las variables (valores en ../../.env.pickler)
+  package.json                   scripts: migrate, test (deno test), sign (firma de prueba)
+  scripts/migrate.mjs            aplica supabase/migrations/*.sql pendientes vía Management API; ledger mobile.migrations
+  scripts/sign.mjs               genera headers x-pickler-* con una private key de prueba (para curl)
+  scripts/smoke.sh               agents-list → read-request → read-get → (espera) → resolve-reads
+  supabase/config.toml           [functions.&lt;name&gt;] verify_jwt = false
+  supabase/migrations/0001_schema.sql · 0002_seed_agents.sql · 0003_cron.sql
+  supabase/functions/_shared/{auth,db,perpl,claude,apns,matrix,http}.ts
+  supabase/functions/{agents-list,read-request,read-get,reads-list,reminder-set,resolve-reads}/index.ts
+  supabase/functions/_shared/*.test.ts   deno test: auth (firma válida/vencida/ajena), matrix (target, pregunta, outcome, brier), apns (JWT), claude (parseo del schema con respuesta grabada)</code></pre>
+<p>Contratos (JSON; fechas ISO UTC; enteros escalados como Perpl y <code>priceDecimals</code> al lado):</p>
+<ul>
+<li><code>GET agents-list</code> → <code>{ agents: [{ id, handle, name, owner, priceCredits, record: { reads, resolved, right, brierAvg } }] }</code></li>
+<li><code>POST read-request</code> <code>{ marketId, levelBps, horizonMin, agentId, pushToken?, pushEnv? }</code> → <code>200 { read, credits }</code>;</li>
+<p><code>402 no_credits</code> · <code>409 market_closed</code> · <code>422 bad_cell</code> · <code>429 rate_limited</code> · <code>503 perpl_unavailable</code>. <code>read</code> = <code>{ id, marketId, symbol, priceDecimals, levelBps, horizonMin, markAtRequest, target, question, status, probability, reasons, limits, agentId, createdAt, expiresAt, resolvedAt, markAtResolution, outcome, creditsCharged }</code>.</p>
+<li><code>GET read-get?id=</code> → <code>{ read }</code> (404 si no es del firmante).</li>
+<li><code>GET reads-list?marketId=</code> → <code>{ reads: [...], credits }</code> (máx. 50, más recientes primero).</li>
+<li><code>POST reminder-set</code> <code>{ marketId, levelBps, horizonMin, target, expiresAt, side, readId?, pushToken?, pushEnv? }</code> → <code>{ reminders: [{ id, kind, fireAt }] }</code>.</li>
+<li><code>POST resolve-reads</code> (header <code>x-cron-secret</code>) → <code>{ resolved, voided, refunded, remindersSent }</code>.</li>
+</ul>
+<p><code>0003_cron.sql</code>: <code>select cron.schedule(&#39;mobile-resolve-reads&#39;, &#39;* * * * *&#39;, $$ select net.http_post(url := &#39;&lt;SUPABASE_URL&gt;/functions/v1/resolve-reads&#39;, headers := jsonb_build_object(&#39;x-cron-secret&#39;, (select decrypted_secret from vault.decrypted_secrets where name = &#39;mobile_cron_secret&#39;)), body := &#39;{}&#39;::jsonb) $$);</code></p>
+<h3 id="23-app-modulos-nuevos-f2-salvo-donde-se-indica">2.3 App — módulos nuevos (F2 salvo donde se indica)</h3>
+<ul>
+<li><code>src/config/reads.ts</code>, <code>src/reads/{types,matrix,session,api}.ts</code>, <code>src/hooks/useReads.ts</code>, <code>src/hooks/useNotifications.ts</code> (D16).</li>
+<li><code>src/screens/ask.tsx</code> (<code>AskTab</code>, <code>MatrixGrid</code>, <code>AskSheet</code>, <code>ReadCard</code>, <code>ReadRow</code>) y <code>src/screens/agents.tsx</code> (<code>AgentsTab</code>) (D14, D15).</li>
+<li><code>src/screens/market.tsx</code>: <code>PillTabs</code> enruta a <code>AskTab</code> / <code>TradeTab</code> / <code>AgentsTab</code>; <code>TradeTab</code> gana <code>LevelCard</code> y <code>BookCard</code> (F3).</li>
+<li><code>src/perpl/marketData.ts</code> (<code>MarketDataSocket</code>, <code>parseBookFrame</code>, <code>applyBookFrame</code>, <code>BookState</code>) y <code>src/hooks/useOrderBook.ts</code> (F3, D11). <code>perpl/config.ts</code> gana <code>PERPL_MARKET_DATA_WS</code>.</li>
+<li><code>src/store.ts</code> (D13), <code>src/ctx.ts</code> (<code>AppCtx</code> gana <code>reads: Reads</code> y <code>notifications: Notifications</code>), <code>src/hooks/useAccount.ts</code> (<code>signOut</code> borra también <code>pickler.reads.v1</code>), <code>src/screens/comingSoonCopy.ts</code> (sin <code>ask</code>/<code>agents</code>).</li>
+<li><code>App.tsx</code>: <code>useReads</code> y <code>useNotifications</code> montados junto a <code>usePerpl</code>; <code>PERPL_SCREENS</code> sin cambio.</li>
+<li><code>app.config.ts</code>: plugin <code>expo-notifications</code>, <code>extra.readsUrl</code>, <code>extra.perplMarketDataWs</code>; <code>package.json</code>: <code>expo-notifications</code> a la versión que resuelva <code>npx expo install</code> para SDK 57. Rebuild nativo (<code>npx expo run:ios</code>).</li>
+<li>Tests jest: <code>reads-matrix.test.ts</code> (targets con <code>priceDecimals</code> de BTC/ETH/MON, preguntas, <code>outcomeOf</code>, <code>callOf</code>), <code>reads-session.test.ts</code> (mensaje canónico, vigencia, borrado), <code>reads-types.test.ts</code> (parseo estricto de <code>read</code>), <code>store.test.ts</code> (ampliado), <code>perpl-market-data.test.ts</code> (F3: snapshot, update, reconexión, un solo sub por socket).</li>
+</ul>
+<hr>
+<h2 id="3-verificacion">3. Verificación</h2>
+<p>Regla general: <code>npm test</code> y <code>npx tsc --noEmit</code> en <code>apps/mobile</code> y <code>deno test</code> en <code>services/reads</code> en verde en cada fase, con la salida pegada en el audit; revisión independiente por subagente antes de cerrar cada fase; <code>npm run agents:check</code> y <code>npm run docs:check</code> en la raíz. Simulador: <strong>UDID <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>, nunca <code>booted</code></strong>. Nada de push, merge ni TestFlight sin autorización de Jesús en esa sesión.</p>
+<ul>
+<li><strong>F1</strong>: <code>supabase --version</code> ≥ 2.111 y <code>supabase projects list</code> muestra sólo <code>pickler</code>; <code>migrate.mjs</code></li>
+<p>aplica 0001–0003 y una segunda corrida no aplica nada; <code>select * from mobile.agent_records</code> devuelve los tres agentes; <code>smoke.sh</code> con una key de prueba: <code>agents-list</code> 200, <code>read-request</code> 200 en &lt; 60 s con <code>probability</code> y 3 razones, <code>credits</code> pasa de 20 a 19, <code>read-get</code> 200, <code>reads-list</code> la lista; una read con <code>horizon_min = 60</code> forzada a <code>expires_at = now()</code> (por SQL) queda <code>right</code> o <code>wrong</code> con <code>mark_at_resolution</code> al minuto siguiente por el cron (<code>cron.job_run_details</code>); una read <code>pending</code> insertada a mano con <code>created_at = now() − 2 min</code> queda <code>failed</code> y reembolsada; una firma vencida o de otra dirección da 401; sin créditos da 402. APNs: <code>curl</code> HTTP/2 con el JWT generado por <code>apns.ts</code> a un token del simulador (o del iPhone de Jesús) llega como notificación → si no, se activa el fallback de D10 y queda en el audit. Los esquemas y tablas de Gilbert no cambian: <code>\dn</code> y un <code>select count(*) from information_schema.tables where table_schema &lt;&gt; &#39;mobile&#39;</code> antes y después, iguales.</p>
+<li><strong>F2</strong>: en el simulador con la cuenta #620: Ask muestra créditos 20, mark vivo y la matriz con</li>
+<p>targets coherentes (BTC +1.0 % = mark × 1.01 a <code>priceDecimals</code>); primera lectura pide Face ID una sola vez, luego no; <code>AskSheet</code> → <code>pending</code> → <code>ReadCard</code> en &lt; 60 s; créditos 19; My reads la lista como OPEN; Agents muestra los tres con &quot;No resolved reads yet&quot; y tocar uno preselecciona; con una read forzada a vencer por SQL, el cron la resuelve y <strong>el push llega al simulador</strong> (o la notificación local del fallback) y tocarlo abre <code>market</code> en My reads con esa read; Sign out + sign in vuelve a pedir la firma. Capturas de cada estado; saldos AUSD/MON sin cambio (no se mueve dinero).</p>
+<li><strong>F3</strong>: en el simulador, Trade muestra el <code>BookCard</code> con bids/asks que cambian y el spread; cambiar</li>
+<p>de pill cierra el socket (log) y volver lo reabre; &quot;Trade this level&quot; desde una celda pone el lado y la <code>LevelCard</code>; una orden de 2.00 AUSD a 1x en <code>filled</code> crea dos recordatorios (<code>reminders-list</code> no existe: se verifica por SQL) y, con <code>fire_at</code> forzado a <code>now()</code>, el cron manda el push con el mark; cerrar la posición a mano desde Markets. Frames de market-data grabados a fixture. Saldos re-medidos por RPC en el audit.</p>
+<li><strong>F4</strong>: <code>buildNumber 6</code>, archive, upload, <code>VALID</code> con el grupo Equipo, tracker</li>
+<p><code>docs/overview/dev/&lt;fecha&gt;-testflight-build6.html</code>; en el iPhone de Jesús: una lectura completa (pedir → push de resolución) y un nivel con recordatorio.</p>
+</ul>
+<hr>
+<h2 id="4-riesgos-conocidos">4. Riesgos conocidos</h2>
+<table>
+<thead>
+<tr><th>Riesgo</th><th>Mitigación</th></tr>
+</thead>
+<tbody>
+<tr><td>APNs exige HTTP/2; el edge runtime de Supabase (Deno) podría negociar sólo HTTP/1.1 en <code>fetch</code>.</td><td>Se prueba en F1 antes de escribir nada en la app (<code>curl --http2</code> desde local y luego desde la función); fallback a notificaciones locales (D10) decidido de antemano, sin rediseño.</td></tr>
+<tr><td>Proyecto Supabase compartido: un comando equivocado (<code>db push</code>, <code>db reset</code>, migrador Drizzle) toca lo de Gilbert.</td><td>Migrador propio vía Management API y ledger <code>mobile.migrations</code>; README de <code>services/reads</code> con la lista de comandos prohibidos; conteo de tablas ajenas antes/después en el audit.</td></tr>
+<tr><td><code>pg_cron</code> / <code>pg_net</code> / Vault pueden no estar habilitados en el proyecto o requerir el rol <code>postgres</code>.</td><td>F1 empieza con <code>select * from pg_extension</code>; habilitar es idempotente; si Vault no está, <code>CRON_SECRET</code> va en <code>cron.job</code> como último recurso y queda anotado.</td></tr>
+<tr><td>Latencia del modelo &gt; 50 s en picos → reads <code>failed</code> y reembolsadas de más.</td><td><code>effort medium</code>, <code>max_tokens 1024</code>, <code>maxRetries 1</code>; se mide <code>latency_ms</code> en el smoke y en el audit; si el p95 supera 30 s se baja a <code>effort low</code>.</td></tr>
+<tr><td>Edge functions con <code>verify_jwt = false</code> quedan abiertas a internet.</td><td>Auth por firma en todo lo que escribe, rate limit por dirección, <code>x-cron-secret</code> en el cron, <code>agents-list</code> sólo devuelve datos públicos.</td></tr>
+<tr><td><code>expo-notifications</code> es módulo nativo: exige capability Push en el App ID y perfil nuevo; el archive usa <code>-allowProvisioningUpdates</code>.</td><td>Rebuild <code>npx expo run:ios</code> en F2 y verificación del entitlement <code>aps-environment</code> en el <code>.ipa</code> de F4 (<code>codesign -d --entitlements</code>).</td></tr>
+<tr><td>Límite de 10 requests/min en market-data: reconexiones agresivas cierran el socket con <code>1008</code>.</td><td>Un socket por ticket, una suscripción, <code>RECONNECT_DELAYS_MS</code> con backoff; los frames van al fixture para que el parser no dependa del testnet vivo.</td></tr>
+<tr><td>El mark de la app (poll de 5 s) y el del servidor difieren al crear la read.</td><td>El servidor manda la verdad; la app pinta los valores devueltos y el copy dice &quot;at request&quot;.</td></tr>
+<tr><td>Cuenta #620 con dos keys de trading de más y 0.0551 MON.</td><td>Revocar en <code>testnet.perpl.xyz/apikeys</code> antes de F3; F3 gasta gas sólo en la orden de prueba.</td></tr>
+<tr><td>24 días y cuatro fases.</td><td>F1 y F2 son el mínimo demostrable (Ask completo); F3 puede reducirse a <code>LevelCard</code> + recordatorios sin book si el tiempo aprieta, decisión en el checkpoint de F2.</td></tr>
+</tbody>
+</table>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-19-mobile-ask-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
