@@ -7,6 +7,7 @@ import {
 } from "@pickler/core";
 import {
   PostgresResearchStore,
+  type DatabaseConnectionOptions,
   PostgresPaperStore,
   ExaResearch,
   PolymarketData,
@@ -17,18 +18,19 @@ import {
 import type { Environment } from "../environment.js";
 import { createModel } from "./model.js";
 
-export function createRuntime(env: Environment) {
+export function createRuntime(env: Environment, databaseOptions?: DatabaseConnectionOptions) {
   const model = createModel(env);
   const repository = new PostgresResearchStore(
     env.DATABASE_URL,
     undefined,
-    env.APP_ENV
-      ? {
-          environment: env.APP_ENV,
-          ca: env.DATABASE_CA_CERT,
-          allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
-        }
-      : undefined,
+    databaseOptions ??
+      (env.APP_ENV
+        ? {
+            environment: env.APP_ENV,
+            ca: env.DATABASE_CA_CERT,
+            allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
+          }
+        : undefined),
   );
   const search = new ExaResearch(env.EXA_API_KEY);
   const markets = new PolymarketData();
