@@ -56,3 +56,11 @@ compatibility. Change the shared implementation, not the forwarding files. Local
 retains laboratory initialization; deployed composition never calls it. `validate:agent` is an
 explicit paid operator command for a managed tenant/agent and validates readiness for that
 configuration version. It does not initialize alpha/beta or change their global validation.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
