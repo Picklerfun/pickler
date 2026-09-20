@@ -1,6 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { generatePrivateKey, privateKeyToAccount } from "npm:viem@2.56.8/accounts";
-import { authenticate, canonicalMessage, SESSION_MAX_AGE_MS } from "./auth.ts";
+import { authenticate, canonicalMessage, SESSION_FUTURE_MS, SESSION_MAX_AGE_MS } from "./auth.ts";
 
 const account = privateKeyToAccount(generatePrivateKey());
 const NOW = 1_790_000_000_000;
@@ -40,4 +40,11 @@ Deno.test("headers ausentes o malformados → missing_signature", async () => {
   const h = await headersFor(NOW);
   h.set("x-pickler-sig", "0x1234");
   assertEquals(await authenticate(h, NOW), { ok: false, status: 401, error: "missing_signature" });
+});
+
+Deno.test("los límites exactos de la ventana se aceptan (intervalo cerrado)", async () => {
+  const oldest = await authenticate(await headersFor(NOW - SESSION_MAX_AGE_MS), NOW);
+  assertEquals(oldest, { ok: true, address: account.address.toLowerCase() });
+  const newest = await authenticate(await headersFor(NOW + SESSION_FUTURE_MS), NOW);
+  assertEquals(newest, { ok: true, address: account.address.toLowerCase() });
 });
