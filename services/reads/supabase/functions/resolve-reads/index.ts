@@ -29,8 +29,13 @@ Deno.serve(async (req) => {
 
   const smoke = Smoke.safeParse(body);
   if (smoke.success) {
-    const r = await sendPush({ ...smoke.data.apnsSmoke, title: "Pickler", body: "APNs smoke" }, await providerJwt());
-    return json({ apns: r });
+    try {
+      const r = await sendPush({ ...smoke.data.apnsSmoke, title: "Pickler", body: "APNs smoke" }, await providerJwt());
+      return json({ apns: r });
+    } catch (e) {
+      console.error(`apns smoke: ${e instanceof Error ? e.message : e}`);
+      return fail(503, "apns_unavailable");
+    }
   }
 
   let refunded = 0, resolved = 0, voided = 0, remindersSent = 0, pushSent = 0;
@@ -62,19 +67,23 @@ Deno.serve(async (req) => {
 
   const pushes: Push[] = [];
   for (const r of due) {
-    const mark = markets?.get(r.market_id)?.mark;
-    if (mark === undefined) {
-      if (new Date(r.expires_at).getTime() < now - VOID_AFTER_MS) {
-        const [{ ok }] = await sql<{ ok: boolean }[]>`select mobile.refund_read(${r.id}::uuid, 'void', 'perpl_unavailable') as ok`;
-        if (ok) { voided++; if (r.token && r.env) pushes.push({ ...readVoidPush(r), token: r.token, env: r.env }); }
+    try {
+      const mark = markets?.get(r.market_id)?.mark;
+      if (mark === undefined) {
+        if (new Date(r.expires_at).getTime() < now - VOID_AFTER_MS) {
+          const [{ ok }] = await sql<{ ok: boolean }[]>`select mobile.refund_read(${r.id}::uuid, 'void', 'perpl_unavailable') as ok`;
+          if (ok) { voided++; if (r.token && r.env) pushes.push({ ...readVoidPush(r), token: r.token, env: r.env }); }
+        }
+        continue; // sin mark y sin 30 min: se reintenta al minuto
       }
-      continue; // sin mark y sin 30 min: se reintenta al minuto
+      const res = resolveRead({ level_bps: r.level_bps, target: Number(r.target), probability: r.probability === null ? null : Number(r.probability) }, mark);
+      const updated = await sql`
+        update mobile.reads set status = ${res.status}, outcome = ${res.outcome}, brier = ${res.brier}, mark_at_resolution = ${mark}, resolved_at = now()
+        where id = ${r.id} and status = 'open' returning id`;
+      if (updated.length > 0) { resolved++; if (r.token && r.env) pushes.push({ ...readResolvedPush(r, res.status, mark), token: r.token, env: r.env }); }
+    } catch (e) {
+      console.error(`resolve ${r.id}: ${e instanceof Error ? e.message : e}`);
     }
-    const res = resolveRead({ level_bps: r.level_bps, target: Number(r.target), probability: r.probability === null ? null : Number(r.probability) }, mark);
-    const updated = await sql`
-      update mobile.reads set status = ${res.status}, outcome = ${res.outcome}, brier = ${res.brier}, mark_at_resolution = ${mark}, resolved_at = now()
-      where id = ${r.id} and status = 'open' returning id`;
-    if (updated.length > 0) { resolved++; if (r.token && r.env) pushes.push({ ...readResolvedPush(r, res.status, mark), token: r.token, env: r.env }); }
   }
 
   for (const m of reminders) {
