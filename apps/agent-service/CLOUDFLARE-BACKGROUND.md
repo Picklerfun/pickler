@@ -14,12 +14,12 @@ Messages contain only `{ kind: "research-wakeup" }`. Tenant identity, permission
 
 ## Local commands
 
-From the repository root, with Supabase running and provider credentials configured in `apps/agent-service/.env`:
+From the repository root, with Supabase running and provider credentials configured in the root `.env`:
 
 ```sh
 npm run build:shared
 node apps/agent-service/src/cloudflare/background/client.mjs prepare
-npx wrangler dev --config apps/agent-service/src/cloudflare/background/wrangler.jsonc --ip 127.0.0.1 --port 8799 --test-scheduled
+node apps/agent-service/src/cloudflare/background/client.mjs serve --test-scheduled
 ```
 
 Preparation creates `pickler_cf_queue_<random>` with explicit Drizzle migrations, seeds lab tenants, selects Sports (`1`) for both tenants and leaves schedules disabled. Credentials are written to ignored files with owner-only permissions. It refuses to overwrite existing configuration. The worker rejects non-loopback database hosts and database names outside this isolated prefix. Do not run the Node worker against this database.
