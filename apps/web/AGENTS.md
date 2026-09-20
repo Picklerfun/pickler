@@ -130,3 +130,11 @@ the console; public wallet/token/read demonstrations retain their existing desig
 OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --workspace=@pickler/web`;
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
