@@ -11,7 +11,7 @@ explicitly with `PICKLER_ENVIRONMENT=staging`; hosted Auth/database values never
 The staging password components are assembled into a PostgreSQL URL in memory, with escaping.
 `STAGING_DATABASE_CA_CERT` accepts a quoted multiline PEM for verified Node connections.
 
-Workspace commands call `scripts/with-env.mjs`, which selects a reviewed list of variables for
+Workspace commands call `scripts/with-env.ts`, which selects a reviewed list of variables for
 each process. Next.js receives only public Auth settings and its local API URL. The Hono API
 receives database/Auth settings, never model credentials. Research receives database/provider
 settings, never the Supabase service key or tenant tokens. Shell secrets are not inherited.
