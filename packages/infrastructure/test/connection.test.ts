@@ -217,3 +217,27 @@ test("hosted plaintext is explicit, staging-only, and cannot bypass endpoint gua
     );
   }
 });
+
+test("Hyperdrive uses only a trusted binding endpoint and retains invocation limits", () => {
+  const url = "postgresql://user:secret@binding.hyperdrive.local:5432/postgres";
+  const config = databasePoolConfig(url + "?sslmode=disable", {
+    environment: "staging",
+    transport: "hyperdrive",
+  });
+  assert.equal(config.ssl, false); // Origin TLS is configured in Hyperdrive, not pg.
+  assert.equal(config.max, 2);
+  assert.equal(config.statement_timeout, 10_000);
+  assert.throws(() => databasePoolConfig(url, { environment: "staging" }));
+  for (const invalid of [remote, local, url + "?sslmode=require", url.replace(":5432", ":6543")]) {
+    assert.throws(() =>
+      databasePoolConfig(invalid, { environment: "staging", transport: "hyperdrive" }),
+    );
+  }
+  assert.throws(() =>
+    databasePoolConfig(url, {
+      environment: "staging",
+      transport: "hyperdrive",
+      allowInsecureStaging: true,
+    }),
+  );
+});
