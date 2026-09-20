@@ -245,3 +245,19 @@ browser-flow test was skipped. Format, lint, types, provisioned topology and res
 build passed. The remote transport diagnostic made no provider calls or committed application
 writes. No new paid investigations were launched and the manual/manual/scheduled acceptance
 remains pending a new explicit allowance. Admissions and schedules remain closed.
+
+The corrected research Worker was deployed from source commit `541cc75` as version
+`11e01a78-08ef-4311-aee8-6580075b0eb3`, with admissions false and no plaintext override.
+API remains `8fe3efa6-d0bf-4699-a445-ff353d4b8dda`; web remains unchanged. All workspace
+builds passed after allowing the existing Next.js font downloads. No database migrations
+were necessary. The remote preview was stopped after verification.
+
+Rollback of this correction should first keep admissions closed. Restoring research version
+`c344e979-d3cb-487a-95cb-6acb1609710e` also restores its known large-payload direct-transport
+failure and plaintext exception; it is not a working research fallback. Preserve failed-run
+history and the Hyperdrive/CA resources during diagnosis. No PR was merged.
+
+A scheduled recovery invocation of research version `11e01a78-08ef-4311-aee8-6580075b0eb3`
+completed with outcome `ok`, no exceptions, 968 ms wall time and 23 ms CPU. With admissions
+closed, this exercised repository recovery/connection cleanup only, not interval admission or
+research. The diagnostic tail was stopped afterward.
