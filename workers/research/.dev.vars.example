@@ -10,3 +10,7 @@ ADMISSIONS_ENABLED=false
 
 # Optional PEM CA for Node connections; Workers uses platform TLS verification.
 DATABASE_CA_CERT=
+
+# Temporary hosted plaintext exception: only valid with APP_ENV=staging.
+# Leave false for local development and normal TLS deployment.
+ALLOW_INSECURE_STAGING_DATABASE=false
