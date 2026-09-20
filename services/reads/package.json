@@ -14,5 +14,11 @@
     "smoke": "bash scripts/smoke.sh",
     "deploy": "npx supabase functions deploy --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt"
   },
-  "devDependencies": { "viem": "2.56.8", "supabase": "2.117.0" }
+  "devDependencies": {
+    "viem": "2.56.8",
+    "supabase": "2.117.0",
+    "@anthropic-ai/sdk": "0.127.0",
+    "zod": "4.6.5",
+    "postgres": "3.4.9"
+  }
 }
