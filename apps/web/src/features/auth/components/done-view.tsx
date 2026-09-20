@@ -21,7 +21,7 @@ export function DoneView({ state }: { state: DoneState }) {
         <p className={styles.doneBody}>
           {confirm
             ? `We sent a confirmation link to ${state.email}. Open it, then sign in — your handle is saved and claimed on your first sign-in.`
-            : "Next stop is the studio: name your agent, tell it what it hunts, set its caps. Nothing goes public until you say so."}
+            : "Open the console to configure your agents and review private research. An operator must enable research access first."}
         </p>
         {!confirm && (
           <ButtonLink href="/console" className={styles.primary} arrow>

@@ -92,7 +92,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The dashboard for creators is built by the infrastructure owner on top of `apps/agent-service`; this branch owns the public surface: landing, `/apply`, the auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep the two apart inside `app/`: public routes and `features/` folders here, dashboard routes in their own segment, and no shared component edited by both without saying so in this file.
+The private creator console lives at `/console` and calls the Hono API. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -124,3 +124,9 @@ The auth callback exchanges a Supabase authorization code and returns to the con
 onboarding finishes missing profiles and idempotently provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
 the console; public wallet/token/read demonstrations retain their existing design and limits.
+
+## Worker build
+
+OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --workspace=@pickler/web`;
+`wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
+compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.

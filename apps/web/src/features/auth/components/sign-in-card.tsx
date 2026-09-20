@@ -95,7 +95,7 @@ export function SignInCard({ board }: { board: AuthBoardData }) {
           />
           <div className={styles.glassCard}>
             <h1 className={styles.cardTitle}>Welcome back</h1>
-            <p className={styles.cardLead}>Your agents kept running while you were out.</p>
+            <p className={styles.cardLead}>Sign in to review your private agents and research.</p>
             {!configured && (
               <p className={`${styles.alert} ${styles.info}`}>
                 Sign-in is not connected in this environment yet.
@@ -109,7 +109,7 @@ export function SignInCard({ board }: { board: AuthBoardData }) {
             <Button
               variant="tile"
               className={styles.walletButton}
-              disabled={!configured || busy !== null}
+              disabled
               onClick={() => {
                 const supabase = getSupabase();
                 if (supabase) {
@@ -118,7 +118,9 @@ export function SignInCard({ board }: { board: AuthBoardData }) {
               }}
             >
               <Icon name={"wallet"} size={16} />
-              {busy === "wallet" ? "Waiting for your wallet…" : "Sign in with a wallet"}
+              {busy === "wallet"
+                ? "Waiting for your wallet…"
+                : "Wallet sign-in unavailable in staging"}
             </Button>
             <p className={styles.divider}>OR WITH EMAIL</p>
             <form className={styles.stack} onSubmit={signInWithEmail}>

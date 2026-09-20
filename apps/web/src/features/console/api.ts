@@ -25,6 +25,10 @@ export type Plugin = {
 export type Options = ReturnType<typeof consoleOptionsSchema.parse>;
 
 const messages: Record<string, string> = {
+  NOT_READY:
+    "Scheduling requires a connection check and a successful manual research with the current settings.",
+  ADMISSIONS_PAUSED:
+    "The operator has paused new research. Your existing results remain available.",
   RESEARCH_ACCESS_DENIED: "Research access is pending or you do not own this workspace.",
   CONFLICT:
     "The configuration changed or this handle is already taken. Reload before saving again.",

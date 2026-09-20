@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   }
   const jar = await cookies();
   const client = createServerClient(supabaseUrl, key, {
+    cookieOptions: { secure: url.protocol === "https:" },
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (values) => {

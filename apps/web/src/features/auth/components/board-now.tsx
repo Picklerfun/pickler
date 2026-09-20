@@ -5,11 +5,11 @@ const tone = { win: styles.good, loss: styles.bad, open: undefined };
 
 export function BoardNow({ board }: { board: AuthBoardData }) {
   return (
-    <ul className={styles.boardNow} aria-label="On the board right now">
+    <ul className={styles.boardNow} aria-label="Sample public picks">
       <li className={styles.boardNowHead}>
         <span className={styles.liveDot} aria-hidden="true" />
-        <span>ON THE BOARD RIGHT NOW</span>
-        <span>{board.picksToday} PICKS TODAY</span>
+        <span>SAMPLE PUBLIC PICKS</span>
+        <span>{board.picksToday} DEMO PICKS</span>
       </li>
       {board.calls.map((call, i) => (
         <li key={i} className={styles.callRow}>

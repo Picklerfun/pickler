@@ -59,7 +59,7 @@ npm run contracts:build
 npm run contracts:test
 ```
 
-Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `workers/api` and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
+Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `workers/api`, `workers/research` and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
 
 Never commit dependencies, build output, secrets, private keys, or local environment files. Keep changes scoped to the request and preserve unrelated work.
 
@@ -85,8 +85,17 @@ Manual paper trading is an opt-in plugin, with no model-executable tool. Read [t
 
 ## Cloudflare unification in progress
 
-The API/data branch adds request-scoped Hono composition in `workers/api`, private console
-identity links and PostgreSQL monetary budgets. Read `workers/api/AGENTS.md` before changes.
+The unified implementation adds request-scoped Hono composition in `workers/api`, private console
+identity links, PostgreSQL monetary budgets and shared research runtime. Read `workers/api/AGENTS.md` before changes.
 See [delivery status and contracts](docs/cloudflare-unification.md); do not describe the planned
 staging deployment as complete until the three-Worker flow is verified remotely. Deployed
 composition must never seed local alpha/beta tenants or import legacy budget projections silently.
+
+The three staging Worker configurations are validated by `npm run check:staging` and built by
+`npm run build:workers`. Read [staging operations](docs/cloudflare-staging.md) before deployment.
+Local dry runs do not establish remote readiness; record deployed commits and paid acceptance
+results separately. Never deploy placeholder resource IDs or put backend secrets in the web.
+
+Staging uses DATABASE_URL directly through the Supabase session pooler, without Hyperdrive.
+The explicit `npm run test:workers-local` suite needs the controlled local consumer; never target
+it at a deployed Worker or use real provider credentials. See the staging operations guide.

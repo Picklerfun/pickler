@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { databasePoolConfig, type DatabaseConnectionOptions } from "./connection.js";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, asc, count, eq, gt, inArray, lte, sql, getTableColumns } from "drizzle-orm";
 import {
@@ -43,14 +44,9 @@ export class PostgresResearchStore implements ResearchRepository {
   constructor(
     connectionString: string,
     private readonly leaseClock?: () => number,
+    connectionOptions?: DatabaseConnectionOptions,
   ) {
-    this.pool = new Pool({
-      connectionString,
-      max: 5,
-      connectionTimeoutMillis: 10_000,
-      statement_timeout: 10_000,
-      idleTimeoutMillis: 30_000,
-    });
+    this.pool = new Pool(databasePoolConfig(connectionString, connectionOptions));
     this.pool.on("error", () => {
       console.error("PostgreSQL closed an idle pool connection; it will be replaced.");
     });

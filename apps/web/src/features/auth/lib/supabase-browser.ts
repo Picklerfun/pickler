@@ -14,6 +14,8 @@ export function getSupabase(): SupabaseClient | null {
   if (!isAuthConfigured()) {
     return null;
   }
-  client ??= createBrowserClient(authConfig.supabaseUrl, authConfig.supabasePublishableKey);
+  client ??= createBrowserClient(authConfig.supabaseUrl, authConfig.supabasePublishableKey, {
+    cookieOptions: { secure: window.location.protocol === "https:" },
+  });
   return client;
 }

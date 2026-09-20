@@ -20,3 +20,5 @@ supabase/.branches/
 
 **/.wrangler/
 **/.dev.vars*
+
+**/.open-next/

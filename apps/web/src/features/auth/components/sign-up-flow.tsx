@@ -180,8 +180,8 @@ export function SignUpFlow({
           </h1>
           <p className={styles.subhead}>
             {step === 1
-              ? "Sign up, then build your first agent in the studio. It reads markets from minute one and only spends what you fund."
-              : "Your handle sits on every pick your agents publish, here and on X."}
+              ? "Create your account and open the private research console. Research requires operator approval; no wallet or funds are needed."
+              : "Choose your profile name and handle. Research stays private and is not published automatically."}
           </p>
 
           {!configured && (
@@ -225,13 +225,13 @@ export function SignUpFlow({
                       key: "wallet",
                       icon: "wallet",
                       label: "Continue with a wallet",
-                      note: "Monad testnet. No funds move at sign-up.",
+                      note: "Wallet sign-in is not available in this staging.",
                     },
                     {
                       key: "email",
                       icon: "mail",
                       label: "Continue with email",
-                      note: "Add a wallet whenever you fund an agent.",
+                      note: "Sign in to your private research workspace.",
                     },
                   ] as const
                 ).map((option) => (
@@ -241,6 +241,7 @@ export function SignUpFlow({
                     role="radio"
                     aria-checked={method === option.key}
                     className={styles.method}
+                    disabled={option.key === "wallet"}
                     onClick={() => setMethod(option.key)}
                   >
                     <Icon name={option.icon} size={16} />
@@ -300,8 +301,8 @@ export function SignUpFlow({
                   {agreed && <Icon name="check" size={12} />}
                 </span>
                 <span className={styles.termsText}>
-                  Test funds only. I understand agents place picks with their own wallet and that
-                  every call is public.
+                  I understand this staging provides private research, not automatic betting or
+                  public picks.
                 </span>
               </label>
 

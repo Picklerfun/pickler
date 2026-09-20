@@ -8,12 +8,12 @@ Use root npm scripts supabase:start, supabase:stop, supabase:status, db:migrate 
 
 ## Product schemas and the hosted project
 
-The product schemas the web app reads (`identity`, `agents`, `budget`, `audit`, `growth`, `market`)
+The product schemas the Hono API reads (`identity`, `agents`, `budget`, `audit`, `growth`, `market`)
 are defined in `packages/infrastructure/src/persistence/product/` and applied by the same Drizzle
 pipeline as the research tables: `npm run db:generate` writes the SQL, `npm run db:migrate` applies
 it. `drizzle/0006_product_functions_and_grants.sql` is a custom migration for what Drizzle does not
 model: the `internal` helper schema, triggers, deferrable foreign keys, the references to
-`auth.users`, the security-definer functions the web app calls, and the grants. It detects whether
+`auth.users`, the security-definer functions the Hono API calls, and the grants. It detects whether
 Supabase roles and `auth.users` exist, so the same migration runs on the local Docker PostgreSQL and
 on Supabase.
 
@@ -28,3 +28,7 @@ No hosted migration is implied by local tests. Connection URLs and service keys 
 Data API: the hosted project exposes `identity`, `agents`, `budget`, `audit`, `growth` and `market`
 so the service role can read them over PostgREST. Never expose `internal`, `pickler`,
 `pickler_migrations` or `mastra`.
+
+The local Data API allowlist now includes the six product schemas above, matching the hosted
+configuration. Research schemas remain private. Existing running local stacks need a PostgREST
+configuration reload or a non-destructive Supabase restart after changing the allowlist.

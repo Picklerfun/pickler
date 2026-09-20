@@ -51,3 +51,16 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 ## Unified console persistence
 
 `src/console` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables. Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
+
+## Invocation database connections
+
+Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass
+APP_ENV and optional DATABASE_CA_CERT through composition; pools are invocation-local and limited
+to two connections. Staging requires the Supabase session pooler on port 5432 and verified TLS.
+Only explicit local mode permits plaintext loopback connections. No Hyperdrive binding is used.
+Historical Node callers retain their existing connection configuration. Never expose a test clock
+or controlled provider adapter through deployed environment configuration.
+
+When invocation connection options are supplied, DATABASE_URL permits only the application_name
+query parameter. Reject endpoint, TLS, timeout, and other pg overrides before selecting transport;
+encoded hostnames are rejected because pg can decode them as Unix socket paths.

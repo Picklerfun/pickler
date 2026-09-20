@@ -11,6 +11,7 @@ export default defineConfig([
   { settings: { next: { rootDir: "apps/web/" } } },
   globalIgnores([
     "**/.next/**",
+    "**/.open-next/**",
     "**/dist/**",
     "**/.mastra/**",
     "**/.turbo/**",

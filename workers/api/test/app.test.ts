@@ -151,3 +151,16 @@ test("module and permission middleware deny management to read-only keys", async
   const key = buildApiKeyPrincipal({ id: "k", scopes: ["read:agents"] }, "w1");
   assert.equal((await make(key, workspace).request("/agents", {}, env)).status, 403);
 });
+
+test("staging conceals unexpected database/provider error details", async () => {
+  const { Hono } = await import("hono");
+  const { handleError } = await import("../src/http/error-handler.js");
+  const app = new Hono();
+  app.onError(handleError as never);
+  app.get("/failure", () => {
+    throw new Error("postgresql://user:private-password@host/db");
+  });
+  const response = await app.request("/failure", {}, { APP_ENV: "staging" });
+  assert.equal(response.status, 500);
+  assert.ok(!(await response.text()).includes("private-password"));
+});

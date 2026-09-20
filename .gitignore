@@ -19,3 +19,7 @@ contracts/broadcast/
 
 **/.wrangler/
 **/.dev.vars*
+
+**/.open-next/
+
+!**/.dev.vars.example

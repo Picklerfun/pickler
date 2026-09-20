@@ -44,7 +44,7 @@ export function SpawnBoard({ board }: { board: AuthBoardData }) {
   const next = items.length ? items[cursor % items.length] : undefined;
 
   return (
-    <aside className={styles.board} aria-label="Agents on the testnet">
+    <aside className={styles.board} aria-label="Sample agent activity">
       <div className={styles.boardHead}>
         <Image
           src="/brand/mascot.webp"
@@ -57,10 +57,10 @@ export function SpawnBoard({ board }: { board: AuthBoardData }) {
         <span>
           <span className={styles.liveRow}>
             <span className={styles.liveDot} aria-hidden="true" />
-            AGENTS SPAWNING
+            SAMPLE AGENT ACTIVITY
           </span>
           <span className={styles.bigNumber}>{board.agentsCreated.toLocaleString("en-US")}</span>
-          <span className={styles.smallNote}>built on testnet so far</span>
+          <span className={styles.smallNote}>demonstration data</span>
         </span>
       </div>
       <div className={styles.boardBody}>
@@ -94,8 +94,8 @@ export function SpawnBoard({ board }: { board: AuthBoardData }) {
         )}
       </div>
       <p className={styles.boardFoot}>
-        Free on testnet. Your first agent takes about two minutes — and it only ever spends what you
-        fund.
+        Demonstration data only. These balances and public agents are separate from your private
+        research workspace.
       </p>
     </aside>
   );

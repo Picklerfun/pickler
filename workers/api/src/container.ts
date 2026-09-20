@@ -57,12 +57,18 @@ function required<
 
 /** Request-scoped composition; no model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
-  const connectionString =
-    env.HYPERDRIVE?.connectionString ?? (env.APP_ENV === "local" ? env.DATABASE_URL : undefined);
+  const connectionString = env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("Missing HYPERDRIVE binding");
+    throw new Error("Missing DATABASE_URL");
   }
-  const repository = new PostgresResearchStore(connectionString);
+  // Validate all required bindings before allocating the invocation's pool.
+  required(env, "SUPABASE_URL");
+  required(env, "SUPABASE_SECRET_KEY");
+  required(env, "JWT_ISSUER");
+  const repository = new PostgresResearchStore(connectionString, undefined, {
+    environment: env.APP_ENV,
+    ca: env.DATABASE_CA_CERT,
+  });
   const directory = new PostgresConsoleDirectory(repository.pool);
   const db = createSupabaseAdmin({
     url: required(env, "SUPABASE_URL"),
