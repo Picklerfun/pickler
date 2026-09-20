@@ -37,18 +37,14 @@ start before application migrations. After initialize and the reconciled migrato
 marker-guarded expose-api setup step enables product schemas only in that disposable database.
 The setup regression creates configuration files only; it never starts containers.
 
-## Temporary staging transport exception
+## Hosted database transport
 
-The operator authorized plaintext PostgreSQL for staging pending Hyperdrive integration.
-`ALLOW_INSECURE_STAGING_DATABASE=true` is an explicit deployment override, permitted only
-with `APP_ENV=staging` and a validated Supabase shared-pooler host. It does not weaken
-endpoint/query-parameter guards. TLS remains the default; production rejects this override.
-The staging runtime uses transaction-pooler port 6543 during this exception; port 5432 remains
-supported for session connections. Keep migrations and local Studio on their existing direct
-or session connections. No named prepared statements or session-scoped locks are used by
-the deployed research repositories; ownership settings and locks must remain transaction-local.
-Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
-the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+Both deployed backend Workers require the trusted `DATABASE` Hyperdrive binding. The origin
+uses Supabase session port 5432, verify-full with its CA, and disabled query caching.
+There is no hosted direct-secret fallback or plaintext staging exception. Keep pools scoped
+to each invocation, limited to two connections, and close them on every outcome. Local development
+uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
+operator connection. Admission controls remain independent of transport.
 
 ## Hosted database binding and explicit diagnostic
 
