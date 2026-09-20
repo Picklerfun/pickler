@@ -20,3 +20,12 @@ Deno.test("fetchMarkets: usa fetch inyectado y lanza PerplUnavailable con 5xx", 
   assertEquals(ok.get(32)?.symbol, "ETH");
   await assertRejects(() => fetchMarkets("https://x.test/api", 1000, async () => new Response("nope", { status: 503 })), PerplUnavailable);
 });
+
+Deno.test("fetchMarkets: un fetch que aborta por timeout o falla en red sale como PerplUnavailable", async () => {
+  const aborting = (_url: string, init: RequestInit) =>
+    new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    });
+  await assertRejects(() => fetchMarkets("https://x.test/api", 10, aborting), PerplUnavailable);
+  await assertRejects(() => fetchMarkets("https://x.test/api", 1000, async () => { throw new TypeError("network down"); }), PerplUnavailable);
+});
