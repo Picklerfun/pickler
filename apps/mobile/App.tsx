@@ -33,7 +33,22 @@ export default function App() {
   const store = useAppStore({ hasAccount, perpsMarkets: perpl.context?.markets ?? [] });
   const { requireAccount } = store;
   // Tap en un push: abre Market en la read (o en Trade para un recordatorio) respetando el gate (P7).
-  const onPushTarget = useCallback((t: PushTarget) => requireAccount("market", patchForPush(t)), [requireAccount]);
+  // En frío, la última respuesta llega antes de que la cuenta cargue (account === null): se encola y se
+  // navega cuando la cuenta se conoce, para que el gate no mande a Sign in a quien sí tiene wallet.
+  const pendingPush = useRef<PushTarget | null>(null);
+  const accountLoaded = account !== null;
+  const accountLoadedRef = useRef(accountLoaded);
+  accountLoadedRef.current = accountLoaded;
+  const onPushTarget = useCallback((t: PushTarget) => {
+    if (!accountLoadedRef.current) { pendingPush.current = t; return; }
+    requireAccount("market", patchForPush(t));
+  }, [requireAccount]);
+  useEffect(() => {
+    if (!accountLoaded || pendingPush.current === null) return;
+    const t = pendingPush.current;
+    pendingPush.current = null;
+    requireAccount("market", patchForPush(t));
+  }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
   const booted = useRef(false);
