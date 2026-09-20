@@ -5,17 +5,12 @@ import {
   type Market,
   type ModelAssessment,
 } from "@pickler/core";
-import { PostgresResearchStore } from "@pickler/infrastructure";
+import { ControlledResearchStore } from "./fixture-repository.js";
 import { createResearchWorker } from "../src/worker.js";
 
 /** Local-only compiled test entry. Production never imports this module. */
-const repository = (env: { DATABASE_URL: string }) => {
-  const url = new URL(env.DATABASE_URL);
-  if (url.hostname !== "127.0.0.1") {
-    throw new Error("Controlled tests require loopback PostgreSQL");
-  }
-  return new PostgresResearchStore(env.DATABASE_URL, undefined, { environment: "local" });
-};
+const repository = (env: { DATABASE_URL: string; CONTROLLED_TEST_DATABASE_ID?: string }) =>
+  new ControlledResearchStore(env.DATABASE_URL, env.CONTROLLED_TEST_DATABASE_ID);
 export default createResearchWorker({
   repository,
   runtime(env) {
