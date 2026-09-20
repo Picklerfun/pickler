@@ -206,7 +206,7 @@ services/reads/
   scripts/smoke.mjs              (F1: .mjs, no .sh) agents-list → reads-list → read-request → read-get → reads-list → read-get ajeno (401)
   supabase/config.toml           [functions.<name>] verify_jwt = false
   supabase/migrations/0001_schema.sql · 0002_function_privileges.sql · 0003_seed_agents.sql · 0004_cron.sql ·
-                                 0005_refund_transitions.sql   (F1: cuatro, no tres; 0005 revisión final F1)
+                                 0005_refund_transitions.sql   (F1: cinco, no tres; 0005 de la revisión final)
   supabase/functions/_shared/{auth,db,perpl,claude,apns,matrix,http,dto,copy}.ts
   supabase/functions/{agents-list,read-request,read-get,reads-list,reminder-set,resolve-reads}/index.ts
   supabase/functions/_shared/*.test.ts   deno test (F1: 28): auth (firma válida/vencida/ajena, límites de la ventana), matrix (target, pregunta,
