@@ -28,7 +28,13 @@ for (const worker of [api, research]) {
   assert.equal(worker.routes, undefined);
   assert.equal(worker.durable_objects, undefined);
   assert.equal(worker.vars.ADMISSIONS_ENABLED, "false", "Deploy with admissions closed first");
-  assert.equal(worker.hyperdrive, undefined, "Hyperdrive must not be configured");
+  if (worker === api) {
+    assert.equal(worker.hyperdrive, undefined, "API still uses its explicit staging transport");
+  } else {
+    assert.equal(worker.hyperdrive?.length, 1);
+    assert.equal(worker.hyperdrive[0].binding, "DATABASE");
+    assert.match(worker.hyperdrive[0].id, /^[a-f0-9]{32}$/);
+  }
   assert.equal(worker.vars.DATABASE_URL, undefined, "Database credentials must be secrets");
   if (requireProvisioned) {
     assert.match(worker.account_id ?? "", /^[a-f0-9]{32}$/, "Pin the verified Cloudflare account");
