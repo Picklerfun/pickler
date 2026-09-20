@@ -3,9 +3,10 @@ import type { PoolConfig } from "pg";
 export interface DatabaseConnectionOptions {
   environment: string;
   ca?: string | undefined;
+  allowInsecureStaging?: boolean | undefined;
 }
 
-/** Invocation-local pools; never relax TLS for a hosted database. */
+/** Invocation-local pools; hosted plaintext requires an explicit staging-only exception. */
 export function databasePoolConfig(
   connectionString: string,
   options?: DatabaseConnectionOptions,
@@ -46,6 +47,9 @@ export function databasePoolConfig(
       throw new Error("DATABASE_URL only supports the application_name query parameter");
     }
   }
+  if (options.allowInsecureStaging && options.environment !== "staging") {
+    throw new Error("Insecure hosted database connections are restricted to staging");
+  }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (options.environment === "local") {
     if (!local) {
@@ -53,14 +57,22 @@ export function databasePoolConfig(
     }
     config.ssl = false;
   } else {
-    if (local || !url.hostname.endsWith(".pooler.supabase.com") || url.port !== "5432") {
-      throw new Error("Staging requires the Supabase session pooler on port 5432");
+    if (
+      local ||
+      !url.hostname.endsWith(".pooler.supabase.com") ||
+      !["5432", "6543"].includes(url.port)
+    ) {
+      throw new Error("Hosted connections require the Supabase pooler on port 5432 or 6543");
     }
-    config.ssl = {
-      rejectUnauthorized: true,
-      servername: url.hostname,
-      ...(options.ca ? { ca: options.ca } : {}),
-    };
+    if (options.allowInsecureStaging) {
+      config.ssl = false;
+    } else {
+      config.ssl = {
+        rejectUnauthorized: true,
+        servername: url.hostname,
+        ...(options.ca ? { ca: options.ca } : {}),
+      };
+    }
   }
   return config;
 }
