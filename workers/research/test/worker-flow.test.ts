@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { withFixtureUserCleanup } from "./fixture-user-cleanup.js";
+import { assertControlledDatabase, assertControlledDatabaseUrl } from "./fixture-isolation.js";
 
 const enabled = process.env.TEST_WORKERS_URL !== undefined;
 test(
@@ -13,7 +15,8 @@ test(
     assert.equal(new URL(base).hostname, "127.0.0.1");
     const status = JSON.parse(readFileSync(process.env.SUPABASE_LOCAL_STATUS_FILE!, "utf8"));
     assert.equal(new URL(status.API_URL).hostname, "127.0.0.1");
-    assert.equal(new URL(status.DB_URL).hostname, "127.0.0.1");
+    assert.equal(new URL(status.API_URL).port, "55521");
+    assertControlledDatabaseUrl(status.DB_URL);
     const db = new Pool({ connectionString: status.DB_URL, max: 1 });
     const suffix = randomUUID().replaceAll("-", "").slice(0, 8);
     const actors: { id: string; token: string; refresh: string; agent: string }[] = [];
@@ -35,7 +38,8 @@ test(
       });
       return { status: response.status, body: await response.json(), headers: response.headers };
     };
-    try {
+    await withFixtureUserCleanup(db, async (trackCreatedUser) => {
+      await assertControlledDatabase(db, process.env.CONTROLLED_TEST_DATABASE_ID);
       assert.equal((await request("/console/agents")).status, 401);
       for (const index of [0, 1]) {
         const email = `direct-${suffix}-${index}@example.com`;
@@ -51,6 +55,7 @@ test(
         });
         assert.equal(created.status, 200);
         const user = await created.json();
+        trackCreatedUser(user.id);
         const login = await fetch(status.API_URL + "/auth/v1/token?grant_type=password", {
           method: "POST",
           headers: { apikey: status.ANON_KEY, "Content-Type": "application/json" },
@@ -174,14 +179,6 @@ test(
           403,
         );
       }
-    } finally {
-      // Retain labelled local results for inspection; revoke access to the test users.
-      for (const actor of actors) {
-        await db.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
-          actor.id,
-        ]);
-      }
-      await db.end();
-    }
+    });
   },
 );
