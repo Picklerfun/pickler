@@ -32,7 +32,7 @@ Use the repository's supported Node version. From the repository root:
 ```sh
 npm run build:shared
 node apps/agent-service/src/cloudflare/client.mjs prepare
-npx wrangler dev --config apps/agent-service/wrangler.probe.jsonc --ip 127.0.0.1 --port 8797 --inspector-port 9247
+node apps/agent-service/src/cloudflare/client.mjs serve --inspector-port 9247
 ```
 
 Preparation reads the existing ignored agent-service `.env`, requires a local PostgreSQL connection with database-creation permission, creates a unique `pickler_cf_probe_*` database, applies migrations and configures Sports for its beta preset. It writes a dedicated random probe token and required provider variables to ignored `.dev.vars` and `.data/cf-probe.json`. It refuses to overwrite existing files. It does not call providers or change the ordinary pilot database.
