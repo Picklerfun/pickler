@@ -6,6 +6,8 @@ markets. La app móvil vive en `apps/mobile` (Expo, npm; cómo correr y verifica
 sólo trae el tooling de documentación y agentes: `npm run agents:check`,
 `agents:test`, `agents:inventory`, `docs:html`, `docs:check`. Sin workspaces:
 `apps/mobile` se instala y ejecuta dentro de su carpeta, nunca desde raíz.
+El backend de Ask vive en `services/reads/` (Supabase `pickler`, esquema `mobile`; comandos y
+prohibiciones en su `README.md`).
 
 ## Reglas del repo
 

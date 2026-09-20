@@ -36,7 +36,7 @@ window.DOCS = [
     status: 'active',
     tags: ['mobile', 'expo', 'perpl', 'supabase', 'claude', 'agentes', 'push'],
     phases: [
-      { num: 1, status: 'plan_ready' },
+      { num: 1, status: 'in_progress' },
       { num: 2, status: 'pending' },
       { num: 3, status: 'pending' },
       { num: 4, status: 'pending' },

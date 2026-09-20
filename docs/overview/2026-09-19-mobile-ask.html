@@ -135,7 +135,7 @@
       </div>
 
       <!-- Phase 1 ====================================================== -->
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="in_progress">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -144,14 +144,14 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
-              <option value="in_progress">in_progress</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress" selected>in_progress</option>
               <option value="completed">completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
-          <p>Migraciones 0001–0003 aplicadas con el migrador propio (Management API, ledger <code>mobile.migrations</code>), seed de tres agentes, funciones <code>agents-list</code> · <code>read-request</code> · <code>read-get</code> · <code>reads-list</code> · <code>reminder-set</code> · <code>resolve-reads</code> con auth por firma de wallet, cobro/reembolso de créditos en una transacción, lectura con <code>claude-sonnet-5</code> y salida estructurada, cron por minuto que resuelve contra el mark de Perpl y manda push por APNs directo (o fallback local decidido aquí).</p>
+          <p>Migraciones 0001–0004 aplicadas con el migrador propio (Management API, ledger <code>mobile.migrations</code>), seed de tres agentes, funciones <code>agents-list</code> · <code>read-request</code> · <code>read-get</code> · <code>reads-list</code> · <code>reminder-set</code> · <code>resolve-reads</code> con auth por firma de wallet, cobro/reembolso de créditos en una transacción, lectura con <code>claude-sonnet-5</code> y salida estructurada, cron por minuto que resuelve contra el mark de Perpl y manda push por APNs directo (o fallback local decidido aquí).</p>
           <div class="phase-meta">
             <div><div class="k">Entregable</div><div class="v">Una read pedida y resuelta por <code>curl</code> con firma de prueba; esquemas de Gilbert intactos (conteo antes/después)</div></div>
             <div><div class="k">Prerequisitos</div><div class="v">CLI de Supabase ≥ 2.111 con <code>SUPABASE_ACCESS_TOKEN</code>; key APNs (.p8) del portal de Apple</div></div>
@@ -162,14 +162,14 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 0: CLI ≥ 2.111, esqueleto de services/reads e inventario del proyecto compartido</label></li>
-              <li><label><input type="checkbox"> Task 1: Migrador propio y 0001_schema.sql aplicado</label></li>
-              <li><label><input type="checkbox"> Task 2: matrix.ts, auth.ts, http.ts con deno test</label></li>
-              <li><label><input type="checkbox"> Task 3: perpl.ts, claude.ts, db.ts, dto.ts</label></li>
-              <li><label><input type="checkbox"> Task 4: Seed de agentes, cuatro funciones de lectura, despliegue y smoke</label></li>
+              <li><label><input type="checkbox" checked> Task 0: CLI ≥ 2.111, esqueleto de services/reads e inventario del proyecto compartido</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Migrador propio y 0001_schema.sql aplicado</label></li>
+              <li><label><input type="checkbox" checked> Task 2: matrix.ts, auth.ts, http.ts con deno test</label></li>
+              <li><label><input type="checkbox" checked> Task 3: perpl.ts, claude.ts, db.ts, dto.ts</label></li>
+              <li><label><input type="checkbox" checked> Task 4: Seed de agentes, cuatro funciones de lectura, despliegue y smoke</label></li>
               <li><label><input type="checkbox"> Task 5: apns.ts con la key de Apple en secretos</label></li>
               <li><label><input type="checkbox"> Task 6: reminder-set, resolve-reads, cron y smoke de APNs</label></li>
-              <li><label><input type="checkbox"> Task 7: Spec, overview, manifest, audit y revisión independiente</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Spec, overview, manifest, audit y revisión independiente</label></li>
             </ol>
           </details>
         </div>
@@ -409,7 +409,8 @@ create index on mobile.reads (expires_at) where status = 'open';
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
-       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 escrito)</p>
+       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 escrito) ·
+       audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1)</p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>
