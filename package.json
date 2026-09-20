@@ -13,9 +13,9 @@
   "scripts": {
     "dev": "turbo run dev --filter=@pickler/web",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "npm run typecheck:scripts && turbo run typecheck",
     "lint": "eslint .",
-    "test": "npm run build:shared && node --import tsx --test scripts/test/*.test.mjs packages/core/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts",
+    "test": "npm run build:shared && node --import tsx --test scripts/test/*.test.ts packages/core/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",
@@ -35,7 +35,8 @@
     "check:staging": "node scripts/check-staging.mjs",
     "build:workers": "npm run build:shared && npm run build:worker --workspace=@pickler/api && npm run build:worker --workspace=@pickler/research-worker && npm run build:worker --workspace=@pickler/web",
     "test:workers-local": "node --import tsx --test workers/research/test/worker-flow.test.ts",
-    "dev:workers": "node scripts/local-workers.mjs"
+    "dev:workers": "node --import tsx scripts/local-workers.ts",
+    "typecheck:scripts": "tsc -p scripts/tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
