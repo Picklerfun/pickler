@@ -176,7 +176,7 @@
       </article>
 
       <!-- Phase 2 ====================================================== -->
-      <article class="phase-card" data-phase="2" data-status="pending">
+      <article class="phase-card" data-phase="2" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -185,7 +185,7 @@
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
               <option value="pending">pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
@@ -195,8 +195,27 @@
           <p>Sesión firmada <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code> en SecureStore (24 h, se borra en Sign out), <code>useReads</code> y <code>useNotifications</code>, pantalla Ask con segmentado New read | My reads, matriz 5×4 sobre el mark vivo, hoja de la celda con chips de agente y «Ask · 1 credit», card de resultado con cuenta regresiva, lista de lecturas con estado, y pill Agents con récord. <code>expo-notifications</code> (rebuild nativo); tocar el push abre la read.</p>
           <div class="phase-meta">
             <div><div class="k">Entregable</div><div class="v">Recorrido completo en el simulador con la cuenta #620: pedir → pending → lectura → push de resolución → My reads</div></div>
-            <div><div class="k">Prerequisitos</div><div class="v">F1</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1 (el push real de resolución exige además la key APNs, pendiente 1 del audit F1; el tap se prueba con <code>simctl push</code>)</div></div>
           </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> Task 0: expo-notifications, readsUrl, src/config/reads.ts y rebuild nativo</label></li>
+              <li><label><input type="checkbox"> Task 1: src/reads/matrix.ts — matriz, target, pregunta, etiquetas, cuenta regresiva</label></li>
+              <li><label><input type="checkbox"> Task 2: src/reads/types.ts — tipos y parseo estricto de los DTOs</label></li>
+              <li><label><input type="checkbox"> Task 3: Sesión firmada (session.ts, storage/reads.ts, Sign out)</label></li>
+              <li><label><input type="checkbox"> Task 4: src/reads/api.ts — cliente HTTP con timeouts y errores</label></li>
+              <li><label><input type="checkbox"> Task 5: Store — askView, askCell, askAgentId, askFocusReadId, tradeLevel, headerFor</label></li>
+              <li><label><input type="checkbox"> Task 6: push.ts + useNotifications — permiso, token, tap, fallback local</label></li>
+              <li><label><input type="checkbox"> Task 7: useReads — sesión, créditos, lista, agentes, ask(), polling</label></li>
+              <li><label><input type="checkbox"> Task 8: Pantalla Ask — gate, matriz, AskSheet, ReadCard, My reads</label></li>
+              <li><label><input type="checkbox"> Task 9: AgentsTab, enrutado, hooks montados y recorrido en el simulador</label></li>
+              <li><label><input type="checkbox"> Task 10: README, spec, overview, manifest, audit F2 y revisión independiente</label></li>
+            </ol>
+          </details>
         </div>
       </article>
 
@@ -409,7 +428,7 @@ create index on mobile.reads (expires_at) where status = 'open';
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
-       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 escrito) ·
+       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 y F2 escritos) ·
        audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1)</p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
