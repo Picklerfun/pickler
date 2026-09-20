@@ -16,8 +16,9 @@ No trading/signing tools or paid retries. Build shared dependencies before local
 
 Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass
 APP_ENV and optional DATABASE_CA_CERT through composition; pools are invocation-local and limited
-to two connections. Staging requires the Supabase session pooler on port 5432 and verified TLS.
-Only explicit local mode permits plaintext loopback connections. No Hyperdrive binding is used.
+to two connections. Direct hosted connections require a validated Supabase pooler endpoint and verified TLS unless
+the explicit staging exception is enabled. Hosted research now uses the trusted Hyperdrive
+transport described below; only explicit local mode permits plaintext loopback connections.
 Historical Node callers retain their existing connection configuration. Never expose a test clock
 or controlled provider adapter through deployed environment configuration.
 
