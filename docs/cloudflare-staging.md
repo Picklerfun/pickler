@@ -112,7 +112,7 @@ Stop the controlled Workers afterward, then stop only this dedicated Supabase st
 
 Resolve the Cloudflare project account and a separate Supabase staging project first. Never
 reuse production identifiers or data. Create Queue `pickler-research-staging` and pin the verified account ID in all three configs.
-API and research connect using the DATABASE_URL secret to the Supabase session pooler on port 5432. No Hyperdrive resource or binding is used. Pools belong to one invocation, have at most
+API and research connect using the DATABASE_URL secret to the Supabase shared pooler (5432 session or 6543 transaction). No Hyperdrive resource or binding is used. Pools belong to one invocation, have at most
 two connections and close before the invocation ends. PostgreSQL remains the transactional authority.
 
 Hosted connections require TLS and hostname verification. Do not add connection override parameters to DATABASE_URL;
@@ -148,7 +148,7 @@ Set ALLOWED_ORIGINS to the exact web URL. Configure Supabase site URL and allowe
    Use each committed Wrangler config explicitly. Backend workers.dev and previews stay disabled.
 5. Verify the web through its public URL, including binding transport, auth refresh/signout,
    private no-store responses and cookie flags. Check fresh reads and transaction behavior through
-   the actual session-pooler connection before opening admissions.
+   the actual selected pooler connection before opening admissions.
 6. Enable staging admissions explicitly for the acceptance window, recording the override and
    resulting Worker versions. A subsequent default deployment closes admissions again.
 
@@ -190,3 +190,29 @@ Queue consumers have a separate wall-clock allowance from CPU limits; retain the
 research deadline and validate real CPU/memory rather than interpreting waiting time as CPU.
 See [Queues limits](https://developers.cloudflare.com/queues/platform/limits/) and
 [OpenNext setup](https://opennext.js.org/cloudflare/get-started).
+
+## Temporary operator-approved plaintext staging
+
+On September 20, 2026, the operator explicitly authorized disabling TLS for staging while
+Hyperdrive is prepared. This supersedes the verified-TLS deployment requirement above for
+this temporary staging window only. Browser/Auth HTTPS is unchanged; the database connection
+from API/research to Supabase is unencrypted. Never describe this as TLS-verified acceptance.
+
+Set the backend DATABASE_URL secrets to the shared transaction pooler on port 6543. Deploy
+both API and research with the native Wrangler override
+`--var ALLOW_INSECURE_STAGING_DATABASE:true`. The committed configs default to false.
+The override only works with APP_ENV=staging; production and other environments reject it.
+Existing limits, invocation-local connection cleanup, and URL guards remain enforced.
+No server-wide SSL-enforcement change is required if the dedicated Supabase project already
+accepts plaintext. If it rejects the connection, report the server setting rather than silently
+changing it or retrying with another transport.
+
+Keep migrations on their separate direct/session connection. In transaction mode use unnamed
+parameterized queries, transaction-scoped locks, and transaction-local settings. Do not add
+SQL PREPARE, session advisory locks, LISTEN, or session state across transactions.
+
+Exit procedure: configure Hyperdrive with the Supabase CA, verify-full and query caching
+disabled; validate remote queries, transactions and lease renewals; remove the plaintext
+override and its implementation. Until that follow-up is deployed, retain the explicit
+plaintext limitation in the acceptance record. Admissions are a separate control and stay
+closed until connection and user-isolation checks pass.
