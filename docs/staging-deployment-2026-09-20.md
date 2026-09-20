@@ -49,18 +49,44 @@ onboarding uses the PostgreSQL transport. Explicit `/console/onboard` also retur
 The identical idempotent onboarding transaction succeeds from the operator's Node connection.
 The acceptance user's research access remains disabled.
 
-A loopback-only workerd probe against the same hosted pooler reproduces
-`Connection terminated unexpectedly` using the production pg configuration. A native
-`node:net`/`node:tls` probe initially reports `authorized: true`, but fails with
-`Network connection lost` when it sends the PostgreSQL startup message. That early flag is
-**not** evidence of a successful database handshake. No transport substitution was committed.
+### Confirmed diagnosis: certificate trust
 
-The checked pg version is 8.20.0 with pg-cloudflare 1.4.0. pg selects CloudflareSocket in Workers;
-its TLS upgrade delegates to `cloudflare:sockets`. The inspected workerd native TLS upgrade also
-delegates to that socket API, rather than installing the supplied CA as Node does. This is evidence
-of a TLS compatibility limitation, but the generic connection-close error does not by itself prove
-the exact remote handshake rejection. Do not disable verification or claim changing libraries has
-resolved it without a successful query and negative hostname/certificate tests.
+The pooler's leaf certificate is `*.pooler.supabase.com`, issued by
+`Supabase Intermediate 2021 CA`, with expiry March 11, 2030. Its trust chain requires the
+Supabase root CA supplied by the operator. The password is valid and the certificate is not expired.
+
+A controlled A/B experiment ran the **same production pg connection configuration** and
+`SELECT 1` in two local workerd instances. Both received the same DATABASE_URL and
+DATABASE_CA_CERT. Only the host runtime's trusted CA store differed:
+
+| Runtime      | Certificate trust                                 | Result                               |
+| ------------ | ------------------------------------------------- | ------------------------------------ |
+| Node / pg    | Explicit Supabase CA, verification enabled        | Query succeeds; TLS 1.3, authorized  |
+| Node / pg    | Default system CAs, verification enabled          | `SELF_SIGNED_CERT_IN_CHAIN`          |
+| workerd / pg | Default runtime CAs; CA present in pg SSL options | `Connection terminated unexpectedly` |
+| workerd / pg | Supabase CA added to the host runtime trust store | Identical query succeeds             |
+
+This isolates certificate trust as the connection blocker; database credentials, SQL, migrations,
+TCP reachability and pg's query execution are not the cause of this reproduced failure.
+
+The installed pg version is 8.20.0 with pg-cloudflare 1.4.0. pg chooses CloudflareSocket in
+Workers and delegates TLS to `cloudflare:sockets`. Its pg SSL `ca` option does not install a
+trusted root in that runtime. Supplying DATABASE_CA_CERT as a Worker secret therefore does not
+have the same effect as passing that CA to Node's TLS client.
+
+For the successful diagnostic only, Miniflare reads the host process's `NODE_EXTRA_CA_CERTS`
+and injects its PEM certificates into workerd's `internet.network.tlsOptions.trustedCertificates`.
+This changes the **local host runtime**, not the Worker application. Setting a similarly named
+secret on a hosted Worker is not an equivalent fix. No such secret, application TLS bypass,
+transport replacement, or remotely deployed diagnostic endpoint was introduced.
+
+The earlier native `node:tls` experiment's initial `authorized: true` flag was misleading: the
+connection failed when exchanging the PostgreSQL startup message. Acceptance must require a real
+query; that early flag is insufficient.
+
+The remote deployment remains unchanged, admissions closed. The successful local trust-store
+experiment confirms the diagnosis, **not** a working hosted solution. A compatible hosted TLS
+trust path must be established before completing remote acceptance.
 
 References: [Workers sockets](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/),
 [Workers TLS](https://developers.cloudflare.com/workers/runtime-apis/nodejs/tls/),
