@@ -1,0 +1,14 @@
+project_id = "yvdipvcrpbqvofayteqf"
+
+[functions.agents-list]
+verify_jwt = false
+[functions.read-request]
+verify_jwt = false
+[functions.read-get]
+verify_jwt = false
+[functions.reads-list]
+verify_jwt = false
+[functions.reminder-set]
+verify_jwt = false
+[functions.resolve-reads]
+verify_jwt = false

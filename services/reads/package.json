@@ -1,0 +1,18 @@
+{
+  "name": "pickler-reads",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:dry": "node scripts/migrate.mjs --dry",
+    "query": "node scripts/query.mjs",
+    "test:scripts": "node --test scripts/",
+    "test:deno": "deno test -A supabase/functions/_shared/",
+    "test": "npm run test:scripts && npm run test:deno",
+    "sign": "node scripts/sign.mjs",
+    "smoke": "bash scripts/smoke.sh",
+    "deploy": "supabase functions deploy --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt"
+  },
+  "devDependencies": { "viem": "2.56.8", "supabase": "2.117.0" }
+}
