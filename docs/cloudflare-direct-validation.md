@@ -1,5 +1,9 @@
 # Direct PostgreSQL Worker validation — 2026-09-19
 
+> Historical pre-review validation. The controlled consumer used shared local storage at this
+> point; the team review found and corrected that isolation defect. See
+> [review follow-up](pr26-team-review-validation.md) for the dedicated-stack acceptance.
+
 ## Result and tested version
 
 Implementation commit: `ae513281ddf9f312774f80e77b3d71b8a9da6a91`.
