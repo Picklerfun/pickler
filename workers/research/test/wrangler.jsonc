@@ -13,5 +13,7 @@
     ],
   },
   "triggers": { "crons": ["* * * * *"] },
+  // DATABASE_URL and CONTROLLED_TEST_DATABASE_ID come from the dedicated stack initializer.
+  // The fixture rejects ordinary local databases before any background mutation.
   "vars": { "APP_ENV": "local", "ADMISSIONS_ENABLED": "true" },
 }
