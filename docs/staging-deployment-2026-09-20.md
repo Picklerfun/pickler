@@ -197,3 +197,51 @@ were closed again with these current versions:
 The failed-run records and events are retained for diagnosis. The web stays published at the
 staging URL. The temporary operator-approved database transport exception remains active; this
 window does not establish verified-TLS acceptance or any actual trading capability.
+
+## Research failure isolation and transport correction
+
+An explicit remote Wrangler preview reproduced a connection loss without any model or Exa
+calls. A read-only PostgreSQL JSONB parameter query succeeded at 1,000, 32,000, 48,000 and
+64,000 payload characters; the same query with 65,536 and 100,000 characters terminated the
+connection. The subsequent pg-cloudflare cleanup could mask the original error with a TypeError
+while closing a null socket. The failure also occurred with the native node:net socket, split
+writes and both Supabase pooler ports. Local workerd had passed the earlier large-payload test.
+These are observations of this deployed direct connection path, not a claimed universal
+PostgreSQL/Cloudflare limit or an attribution to a particular vendor's internal component.
+
+A fresh 69-market snapshot was 108,868 UTF-8 bytes. Through Hyperdrive, that complete snapshot
+round-tripped through Drizzle and JSONB inside a rolled-back temporary-table transaction.
+Transaction-local settings were cleared and the table was absent afterward. Synthetic 100 KB
+and 250 KB parameter tests also passed. The committed explicit diagnostic in
+`workers/research/test/database-probe.ts` passed remotely with a 352,091-byte payload and
+`preserved=true`, `removed=true`, `cleared=true`.
+
+This reproduces a sufficient cause for a failure at candidate persistence and verifies a
+correction to that path. The original failed runs did not retain their candidate payloads or raw
+database exceptions, so their exact historical exceptions cannot be recovered. Their records
+remain unchanged; no retrospective failure code or decision was fabricated.
+
+Provisioned resources, all in the existing staging account:
+
+- Hyperdrive `pickler-database-staging`: `05150d06f7164d26a991288a88044710`.
+- Public CA `pickler-supabase-staging-ca`: `e1560a68-1639-42bc-a509-88885c08a832`.
+- Origin: the existing dedicated Supabase session pooler on port 5432, verify-full using that CA,
+  query caching disabled, origin connection limit 10.
+
+Research Queue and Cron now resolve that binding with no hosted direct-secret fallback. Pools
+remain invocation-local, capped at two connections with ten-second timeouts. Node/local callers
+retain their current connection configuration. API remains on the earlier plaintext exception;
+this change does not claim that all staging database connections are encrypted.
+
+Persistence errors are now distinguished from provider failures, including errors inside the
+provider's discovery-report callback. Persisted diagnostics contain only the operation, event
+type and normalized reason (`CONNECTION_LOST`, `QUERY_TIMEOUT`, `DATABASE_ERROR`); no raw SQL,
+parameters, provider text, driver messages or credentials. Lease and configuration failures
+retain their original codes. A failure to persist diagnostics is not converted into a success
+or an abstention, and existing lease recovery remains in effect.
+
+Controlled validation: 267 Supabase tests passed, zero failures; one optional three-Worker
+browser-flow test was skipped. Format, lint, types, provisioned topology and research Worker
+build passed. The remote transport diagnostic made no provider calls or committed application
+writes. No new paid investigations were launched and the manual/manual/scheduled acceptance
+remains pending a new explicit allowance. Admissions and schedules remain closed.
