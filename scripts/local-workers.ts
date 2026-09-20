@@ -3,7 +3,16 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import ts from "typescript";
-import { childEnvironment, readEnvironment, root, selectEnvironment } from "./environment.mjs";
+import { childEnvironment, readEnvironment, root, selectEnvironment } from "./environment.ts";
+
+interface LocalWorkerConfiguration {
+  $schema?: string;
+  name: string;
+  main: string;
+  services?: Array<{ service: string }>;
+  queues?: { producers?: Array<{ queue: string }>; consumers?: Array<{ queue: string }> };
+  assets?: { directory: string };
+}
 
 // Wrangler's multi-Worker host needs per-target secrets. These private generated files are
 // ephemeral transport artifacts, never additional operator-maintained configuration.
@@ -13,7 +22,7 @@ if (process.env.PICKLER_ENVIRONMENT && process.env.PICKLER_ENVIRONMENT !== "loca
 }
 const temporary = mkdtempSync(join(tmpdir(), "pickler-worker-env-"));
 const source = readEnvironment();
-const files = [
+const files: Array<readonly [string, string]> = [
   ["web-worker", "apps/web/wrangler.jsonc"],
   ["api", "workers/api/wrangler.staging.jsonc"],
   [
@@ -21,9 +30,9 @@ const files = [
     fixture ? "workers/research/test/wrangler.jsonc" : "workers/research/wrangler.jsonc",
   ],
 ];
-const configs = [];
-const suffix = temporary.split("-").at(-1).toLowerCase();
-const names = {
+const configs: string[] = [];
+const suffix = temporary.slice(temporary.lastIndexOf("-") + 1).toLowerCase();
+const names: Record<string, string> = {
   "pickler-web-staging": `pickler-web-local-${suffix}`,
   "pickler-api-staging": `pickler-api-local-${suffix}`,
   "pickler-research-staging": `pickler-research-local-${suffix}`,
@@ -35,9 +44,13 @@ try {
     if (parsed.error) {
       throw new Error(`Invalid Worker config: ${relative}`);
     }
-    const config = parsed.config;
+    const config = parsed.config as LocalWorkerConfiguration;
     delete config.$schema;
-    config.name = names[config.name];
+    const localName = names[config.name];
+    if (!localName) {
+      throw new Error(`Unknown Worker name in ${relative}`);
+    }
+    config.name = localName;
     for (const binding of config.services ?? []) {
       binding.service = names[binding.service] ?? binding.service;
     }
@@ -87,7 +100,7 @@ try {
       env: childEnvironment({}),
     },
   );
-  for (const signal of ["SIGINT", "SIGTERM"]) {
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => child.kill(signal));
   }
   child.on("error", () => {
