@@ -93,6 +93,25 @@ References: [Workers sockets](https://developers.cloudflare.com/workers/runtime-
 [Supabase SSL verification](https://supabase.com/docs/guides/platform/ssl-enforcement),
 [workerd TLS implementation](https://github.com/cloudflare/workerd/blob/main/src/node/internal/internal_tls_wrap.ts).
 
+## Transaction-pooler follow-up
+
+At the operator's request, the same Supabase shared-pooler host was tested on port `6543`
+(transaction mode) before changing deployment settings. The password and certificate validation
+requirements were unchanged. No application data was written.
+
+- Node with the supplied CA: query and transaction succeed; TLS is authorized.
+- A transaction-local `set_config(..., true)` remains visible inside the transaction and clears
+  after rollback. A `pg_advisory_xact_lock` succeeds and is released by transaction completion.
+- workerd with default runtime certificate trust: `Connection terminated unexpectedly`.
+- Identical workerd probe with the Supabase CA added to its local host trust store: query,
+  transaction-local setting and transaction-scoped advisory lock succeed.
+
+Transaction mode therefore does **not** resolve the TLS blocker. These focused checks establish
+only the tested transaction behavior, not full application compatibility or remote acceptance.
+The deployed DATABASE_URL and session-mode guard were left unchanged rather than rolling out
+an endpoint that fails under the same deployed trust constraints. No paid provider calls occurred.
+Migrators continue to require the separately configured direct or session connection.
+
 ## Remaining acceptance and rollback
 
 Resolve the verified-TLS PostgreSQL transport first, retaining the agreed no-Hyperdrive architecture
