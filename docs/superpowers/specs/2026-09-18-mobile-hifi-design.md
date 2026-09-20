@@ -1,7 +1,7 @@
 # App móvil Pickler — Rediseño hi-fi: tema, navegación MARKETS, Wallet y Trade re-vestidos
 
 **Fecha**: 2026-09-18
-**Estado**: F1 y F2 ejecutadas (planes `docs/superpowers/plans/2026-09-18-mobile-hifi-f1.md`, `docs/superpowers/plans/2026-09-18-mobile-hifi-f2.md`; audits `docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md`, `docs/superpowers/audits/2026-09-18-mobile-hifi-f2-rulings.md`); pendiente el build 5 de TestFlight (Task 10 del plan de F2)
+**Estado**: F1 y F2 ejecutadas (planes `docs/superpowers/plans/2026-09-18-mobile-hifi-f1.md`, `docs/superpowers/plans/2026-09-18-mobile-hifi-f2.md`; audits `docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md`, `docs/superpowers/audits/2026-09-18-mobile-hifi-f2-rulings.md`); build 0.1.0 (5) subido a TestFlight el 2026-09-19 (VALID, grupo Equipo; tracker `docs/overview/dev/2026-09-19-testflight-build5.html`)
 **Slug**: `mobile-hifi`
 **Rama**: `feat/mobile-hifi`, base `main` (`48f82a4`), worktree `.claude/worktrees/mobile-hifi`; F2 en `feat/mobile-hifi-f2`, worktree `.claude/worktrees/mobile-hifi-f2`
 **Contexto**: el equipo subió hoy el diseño hi-fi de la app (`jjesusaf/pickler-mobile@a0e353e`,
