@@ -124,3 +124,25 @@ test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SO
   for (const s of COMING_SOON) expect(isComingSoonTab(s)).toBe(true);
   for (const s of ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "signin"] as const) expect(isComingSoonTab(s)).toBe(false);
 });
+
+test("Ask state: New read by default, a cell, an agent and a focused read travel in the patch (D13)", () => {
+  expect(INITIAL.askView).toBe("new");
+  expect(INITIAL.askCell).toBeUndefined();
+  const s = navState(INITIAL, "market", { perpsMarketId: 16, marketTab: "ask", askView: "mine", askFocusReadId: "r1", askAgentId: "drift", askCell: { levelBps: 100, horizonMin: 240 } });
+  expect(s).toMatchObject({ marketTab: "ask", askView: "mine", askFocusReadId: "r1", askAgentId: "drift", askCell: { levelBps: 100, horizonMin: 240 } });
+  expect(navState(INITIAL, "market", { tradeLevel: { marketId: 16, levelBps: 100, horizonMin: 240, target: 770181, expiresAt: "2026-09-20T07:35:06.712Z" } }).tradeLevel?.target).toBe(770181);
+});
+
+test("the Market header subtitle follows the pill (D13)", () => {
+  expect(headerFor("market", "BTC", "trade")).toEqual(["BTC Perp", "Perpl · isolated margin · market order"]);
+  expect(headerFor("market", "BTC", "ask")).toEqual(["BTC Perp", "Ask an agent · simulated credits"]);
+  expect(headerFor("market", "BTC", "agents")).toEqual(["BTC Perp", "Who reads this market"]);
+  expect(headerFor("market", undefined)).toEqual(["Perp", "Perpl · isolated margin · market order"]);
+});
+
+test("sign out keeps the store reset contract and lands on Sign in (unchanged by Ask)", () => {
+  const s = signedOutState(navState(INITIAL, "market", { askView: "mine", askFocusReadId: "r1" }));
+  expect(s.screen).toBe("signin");
+  expect(s.stack).toEqual([]);
+  expect(s.next).toBe("wallet");
+});
