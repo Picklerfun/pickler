@@ -11,7 +11,7 @@ npm ci
 npm run agent -- init
 ```
 
-Edit `apps/agent-service/.env`. `init` generates distinct random laboratory tokens without printing them and refuses to overwrite an existing file. Supply both database URLs described below and all four provider settings:
+Edit the root `.env`. `init` generates distinct random laboratory tokens without printing them and refuses to overwrite an existing file. Supply both database URLs described below and all four provider settings:
 
 - `MODEL_BASE_URL`: the exact OpenAI-compatible API base URL, including its version path when required.
 - `MODEL_ID`: the exact model identifier accepted by that endpoint.
@@ -43,7 +43,7 @@ Studio is privileged **local operator access**, not a tenant login. Raw research
 Use one PostgreSQL database with separate `pickler` and `mastra` schemas. Supabase hosts PostgreSQL; this backend connects using the PostgreSQL connection string, not the Supabase browser client, anon key, or service-role API key.
 
 1. In your Supabase project's **Connect** panel, copy the **Direct connection** URL when your network supports it, or the **Session pooler** URL for IPv4. Use session mode on port 5432, not transaction mode on port 6543: worker ownership requires a persistent PostgreSQL session.
-2. Set `DATABASE_URL` in `apps/agent-service/.env`. Keep the provider's TLS settings and enable SSL enforcement in Supabase. Never disable certificate verification. URL-encode special characters in the database password.
+2. Set `AGENT_DATABASE_URL` in the root `.env`. Keep the provider's TLS settings and enable SSL enforcement in Supabase. Never disable certificate verification. URL-encode special characters in the database password.
 3. Set `DATABASE_MIGRATION_URL` to a direct or session connection with schema creation privileges. For this operator-only pilot, both URLs can use the same database owner. Runtime must own the Pickler tables (or have BYPASSRLS) because no tenant-facing SQL policies are installed. Mastra currently initializes its own schema at startup, so its connection also needs schema/table creation privileges.
 4. Run `npm run db:migrate` from the repository root. This applies committed Drizzle migrations; running it again is safe. Run one migration process per deployment. Start the agent afterwards; startup seeds the two lab agents idempotently.
 
@@ -58,7 +58,7 @@ npm run supabase:start
 npm run agent -- init # Once; refuses to overwrite an existing .env
 ```
 
-Set both database URLs in `apps/agent-service/.env` to `postgresql://postgres:postgres@127.0.0.1:54522/postgres`, then run:
+Set `AGENT_DATABASE_URL` in the root `.env` to `postgresql://postgres:postgres@127.0.0.1:54522/postgres`, then run:
 
 ```sh
 npm run db:migrate
