@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node ../../scripts/with-env.mjs database node --import tsx src/persistence/migrate.ts",
+    "db:migrate": "node --import tsx ../../scripts/with-env.ts database node --import tsx src/persistence/migrate.ts",
     "research-access": "tsx src/console/operator.ts"
   },
   "devDependencies": {
