@@ -7,3 +7,7 @@ Reuse the tenant API and research runner. PostgreSQL queued records are the dura
 No paid calls at startup. Do not deploy this configuration or upload database/tenant secrets. Tests may inject execution fixtures, but runtime must use real providers. Always close request-scoped database pools, even if releasing ownership fails.
 
 The local Queue emulator serializes consumer callbacks in the observed validation. Use the `worker` client command to start the updated Node executor against this same isolated database for a reproducible cross-host overlap test. This does not prove remote Cloudflare consumer concurrency. Never alter the normal pilot database for this experiment.
+
+Environment preparation reads the root `.env` and retains generated isolated state in `.data`.
+It no longer creates `.dev.vars`. Use the corresponding `client.mjs serve` command to inject
+that generated state into local Wrangler without a second maintained environment file.
