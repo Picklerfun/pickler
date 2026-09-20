@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { childEnvironment, selectEnvironment } from "../environment.mjs";
+import { childEnvironment, selectEnvironment } from "../environment.ts";
 
 test("web receives public settings only, including when the shell contains secrets", () => {
   const values = selectEnvironment(
@@ -57,6 +57,7 @@ test("password components are URL encoded and Studio retains its independent loc
     LOCAL_DATABASE_URL: "postgres://workers",
   };
   const result = selectEnvironment(source, "database", "staging");
+  assert.ok(result.DATABASE_URL);
   assert.equal(
     decodeURIComponent(new URL(result.DATABASE_URL).password),
     source.STAGING_DATABASE_PASSWORD,
