@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:worker": "wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler/build",
-    "dev": "node ../../scripts/with-env.mjs research wrangler dev"
+    "dev": "node --import tsx ../../scripts/with-env.ts research wrangler dev"
   },
   "dependencies": {
     "@pickler/agent-runtime": "*",
