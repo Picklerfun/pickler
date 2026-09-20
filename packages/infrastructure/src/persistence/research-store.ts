@@ -1,3 +1,4 @@
+import { eventFailure } from "./event-failure.js";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { databasePoolConfig, type DatabaseConnectionOptions } from "./connection.js";
@@ -359,25 +360,29 @@ export class PostgresResearchStore implements ResearchRepository {
   }
 
   async event(run: RunRecord, type: string, data: unknown, now: number): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const agent = await this.getAgent(run, tx, true);
-      if (agent.version !== run.configVersion || agent.paused) {
-        throw new PilotError("CONFIG_CHANGED", "Research authorization changed");
-      }
-      // Serialize writes with finalization and recovery, then check the current DB time.
-      await tx
-        .select({ id: runs.id })
-        .from(runs)
-        .where(and(eq(runs.id, run.id), runScope(run)))
-        .for("update");
-      const [owned] = await tx.select({ id: runs.id }).from(runs).where(this.owned(run));
-      if (!owned) {
-        throw new PilotError("LEASE_LOST", "Execution lease expired");
-      }
-      await tx
-        .insert(events)
-        .values({ runId: run.id, type, data: data ?? sql`'null'::jsonb`, createdAt: now });
-    });
+    await this.db
+      .transaction(async (tx) => {
+        const agent = await this.getAgent(run, tx, true);
+        if (agent.version !== run.configVersion || agent.paused) {
+          throw new PilotError("CONFIG_CHANGED", "Research authorization changed");
+        }
+        // Serialize writes with finalization and recovery, then check the current DB time.
+        await tx
+          .select({ id: runs.id })
+          .from(runs)
+          .where(and(eq(runs.id, run.id), runScope(run)))
+          .for("update");
+        const [owned] = await tx.select({ id: runs.id }).from(runs).where(this.owned(run));
+        if (!owned) {
+          throw new PilotError("LEASE_LOST", "Execution lease expired");
+        }
+        await tx
+          .insert(events)
+          .values({ runId: run.id, type, data: data ?? sql`'null'::jsonb`, createdAt: now });
+      })
+      .catch((error: unknown) => {
+        throw eventFailure(error, type);
+      });
   }
 
   async claim(now: number): Promise<RunRecord | null> {
