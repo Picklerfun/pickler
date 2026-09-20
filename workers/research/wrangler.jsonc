@@ -23,5 +23,9 @@
   "triggers": { "crons": ["* * * * *"] },
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
-  "vars": { "APP_ENV": "staging", "ADMISSIONS_ENABLED": "false" },
+  "vars": {
+    "APP_ENV": "staging",
+    "ADMISSIONS_ENABLED": "false",
+    "ALLOW_INSECURE_STAGING_DATABASE": "false",
+  },
 }
