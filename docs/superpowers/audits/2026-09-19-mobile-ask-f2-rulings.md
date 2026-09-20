@@ -604,6 +604,14 @@ vs `in_progress`** (el ítem «push llega al simulador» sigue en ✗; ambos est
 **Markets `readOnly` sin key de Perpl bloquea Ask — decidir antes de F4** (el jurado no podrá llegar a Ask con
 una wallet nueva sin reconectar).
 
+**Re-review de la ola de fixes (sonnet, 2026-09-20):** los cuatro puntos ADDRESSED, sin breakage Critical/Important. Gap
+residual nuevo, **parked** con ruling del controlador: el `setRequest` de éxito/fallo (y el `upsert` en `reads`) de `ask()`
+en `useReads.ts` no comparan contra `marketIdRef.current` como sí hace `loadReads`; si el usuario pide una read en el
+mercado A y abre el mercado B antes de que resuelva (ventana ≤ 65 s), la card de A puede reaparecer sobre el Ask de B
+hasta «Ask another» (y la read de A entra en la lista local hasta el siguiente `reads-list`). Ruling: queda como residual
+(carrera estrecha, sin efecto en créditos ni en el servidor; el fix es el mismo guard de `loadReads`); no se abre una
+segunda ola de fixes. Coste si es erróneo: una card ajena visible unos segundos.
+
 ## 6. Siguiente punto de decisión
 
 F2 termina aquí en `completed` (ruling 10): **sin push, sin merge y sin key APNs**. La rama `feat/mobile-ask-f2`
