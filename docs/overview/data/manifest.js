@@ -28,6 +28,15 @@
 window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
+    date: '2026-09-19',
+    title: 'TestFlight build 5',
+    summary: 'Build 0.1.0 (5) con la fase F2 del rediseño hi-fi: Markets, Market y Trading funds re-vestidos, "Reconnect trading" tras Sign out + sign in, aviso de reloj desfasado y fees a cuatro decimales; subido a App Store Connect. El grupo interno "Equipo" recibe cada build automáticamente (hasAccessToAllBuilds).',
+    file: 'dev/2026-09-19-testflight-build5.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios', 'perpl'],
+  },
+  {
     date: '2026-09-18',
     title: 'App móvil Pickler — Rediseño hi-fi: tema, MARKETS, Wallet y Trade re-vestidos',
     summary: 'La app adopta el diseño hi-fi (pickler-mobile@a0e353e): tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET; Wallet y el trading en Perpl se re-visten sin perder lógica, el resto queda en «coming soon» y entran los tres fixes del build 5 (reloj, fees, Reconnect trading).',
