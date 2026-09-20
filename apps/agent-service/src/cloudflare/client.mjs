@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -12,10 +12,11 @@ const stateFile = `${app}.data/cf-probe.json`;
 const command = process.argv[2];
 
 if (command === "prepare") {
-  if (existsSync(stateFile) || existsSync(`${app}.dev.vars`)) {
+  if (existsSync(stateFile)) {
     throw new Error("Probe configuration already exists; preserve or explicitly remove it first.");
   }
-  config({ path: `${app}.env`, quiet: true });
+  config({ path: `${root}.env`, quiet: true });
+  process.env.DATABASE_URL = process.env.AGENT_DATABASE_URL ?? process.env.LOCAL_DATABASE_URL;
   const keys = ["MODEL_BASE_URL", "MODEL_ID", "MODEL_API_KEY", "EXA_API_KEY"];
   for (const key of [...keys, "DATABASE_URL"]) {
     if (!process.env[key]) {
@@ -39,13 +40,6 @@ if (command === "prepare") {
   vars.PROBE_TOKEN = randomBytes(32).toString("hex");
   mkdirSync(`${app}.data`, { recursive: true });
   writeFileSync(stateFile, JSON.stringify(vars), { mode: 0o600 });
-  writeFileSync(
-    `${app}.dev.vars`,
-    Object.entries(vars)
-      .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-      .join("\n") + "\n",
-    { mode: 0o600 },
-  );
   execFileSync("npm", ["run", "db:migrate"], {
     cwd: root,
     env: { ...process.env, DATABASE_MIGRATION_URL: vars.DATABASE_URL },
@@ -61,6 +55,42 @@ if (command === "prepare") {
     await store.close();
   }
   console.log(`Prepared isolated database ${database}. No providers called.`);
+} else if (command === "serve") {
+  const vars = JSON.parse(readFileSync(stateFile, "utf8"));
+  const child = spawn(
+    "npx",
+    [
+      "wrangler",
+      "dev",
+      "--config",
+      "wrangler.probe.jsonc",
+      "--ip",
+      "127.0.0.1",
+      "--port",
+      "8797",
+      ...process.argv.slice(3),
+    ],
+    {
+      cwd: app,
+      stdio: "inherit",
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        TMPDIR: process.env.TMPDIR,
+        CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
+        ...vars,
+      },
+    },
+  );
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => child.kill(signal));
+  }
+  child.on("error", () => {
+    process.exitCode = 1;
+  });
+  child.on("exit", (code) => {
+    process.exitCode = code ?? 1;
+  });
 } else if (
   ["health", "check", "research", "interrupt", "research-ephemeral", "hold"].includes(command)
 ) {
