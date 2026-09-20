@@ -112,7 +112,9 @@ Stop the controlled Workers afterward, then stop only this dedicated Supabase st
 
 Resolve the Cloudflare project account and a separate Supabase staging project first. Never
 reuse production identifiers or data. Create Queue `pickler-research-staging` and pin the verified account ID in all three configs.
-API and research connect using the DATABASE_URL secret to the Supabase shared pooler (5432 session or 6543 transaction). No Hyperdrive resource or binding is used. Pools belong to one invocation, have at most
+API uses its DATABASE_URL secret and the temporary transport exception below. Research requires
+the DATABASE Hyperdrive binding; its origin uses the Supabase session pooler on port 5432,
+verify-full with the Supabase CA, and query caching disabled. Pools belong to one invocation, have at most
 two connections and close before the invocation ends. PostgreSQL remains the transactional authority.
 
 Hosted connections require TLS and hostname verification. Do not add connection override parameters to DATABASE_URL;
@@ -121,13 +123,14 @@ Workers uses its platform TLS trust and hostname verification. Never disable cer
 Local plaintext connections require APP_ENV=local and a loopback host. A local success does not
 establish remote TLS compatibility: test the actual hosted path before opening admissions.
 
-| Destination          | Configuration                                                                                       |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| Web build/browser    | Public Supabase URL and publishable key only                                                        |
-| API secrets          | SUPABASE_URL, SUPABASE_SECRET_KEY, JWT_ISSUER, ALLOWED_ORIGINS                                      |
-| Research secrets     | MODEL_BASE_URL, MODEL_ID, MODEL_API_KEY, EXA_API_KEY; optional sports keys only for enabled plugins |
-| Both backend Workers | DATABASE_URL (secret), APP_ENV=staging                                                              |
-| Operator only        | Direct/session database migration URL and deployment authentication                                 |
+| Destination       | Configuration                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Web build/browser | Public Supabase URL and publishable key only                                                        |
+| API secrets       | SUPABASE_URL, SUPABASE_SECRET_KEY, JWT_ISSUER, ALLOWED_ORIGINS                                      |
+| Research secrets  | MODEL_BASE_URL, MODEL_ID, MODEL_API_KEY, EXA_API_KEY; optional sports keys only for enabled plugins |
+| API database      | DATABASE_URL (secret), APP_ENV=staging                                                              |
+| Research database | DATABASE Hyperdrive binding, APP_ENV=staging; origin credentials reside in Hyperdrive               |
+| Operator only     | Direct/session database migration URL and deployment authentication                                 |
 
 Use secret input through stdin or the provider's secret UI; do not put secrets in command
 arguments, PRs, logs or shell history. Keep `ADMISSIONS_ENABLED=false` for initial deployment.
@@ -196,10 +199,10 @@ See [Queues limits](https://developers.cloudflare.com/queues/platform/limits/) a
 On September 20, 2026, the operator explicitly authorized disabling TLS for staging while
 Hyperdrive is prepared. This supersedes the verified-TLS deployment requirement above for
 this temporary staging window only. Browser/Auth HTTPS is unchanged; the database connection
-from API/research to Supabase is unencrypted. Never describe this as TLS-verified acceptance.
+from API to Supabase is currently unencrypted. Research has moved to Hyperdrive with verified origin TLS. Never describe this as TLS-verified acceptance.
 
-Set the backend DATABASE_URL secrets to the shared transaction pooler on port 6543. Deploy
-both API and research with the native Wrangler override
+Set the API DATABASE_URL secret to the shared transaction pooler on port 6543. Deploy
+API only with the native Wrangler override
 `--var ALLOW_INSECURE_STAGING_DATABASE:true`. The committed configs default to false.
 The override only works with APP_ENV=staging; production and other environments reject it.
 Existing limits, invocation-local connection cleanup, and URL guards remain enforced.
@@ -216,3 +219,34 @@ disabled; validate remote queries, transactions and lease renewals; remove the p
 override and its implementation. Until that follow-up is deployed, retain the explicit
 plaintext limitation in the acceptance record. Admissions are a separate control and stay
 closed until connection and user-isolation checks pass.
+
+## Research Hyperdrive correction and diagnostic
+
+Research uses `pickler-database-staging` (`05150d06f7164d26a991288a88044710`) with origin
+session port 5432, query caching disabled, origin connection limit 10, `sslmode=verify-full` and
+CA `e1560a68-1639-42bc-a509-88885c08a832`. Do not set the research plaintext override.
+Hyperdrive's binding URL contains `sslmode=disable` for its private Cloudflare hop; this does
+not disable verification on the Hyperdrive-to-Supabase connection. Hosted research fails
+closed when the binding is absent. API conversion remains a separate follow-up.
+
+An explicit diagnostic is available in `workers/research/test/database-probe.ts`. It contains
+synthetic data only, creates a temporary table inside a transaction, verifies the full JSONB
+round trip and rolls back. It also checks transaction-local state cleanup. It does not use
+application tables or call providers. Create an ignored `.data/database-probe.jsonc` with:
+
+```json
+{
+  "name": "pickler-database-probe",
+  "main": "../workers/research/test/database-probe.ts",
+  "account_id": "bc8d4adf4860284fda426b24e7377bc2",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }]
+}
+```
+
+Run `npm run build:shared`, then `npx wrangler dev --remote --config .data/database-probe.jsonc
+--ip 127.0.0.1 --port 8796` as one command. Request `http://127.0.0.1:8796` and require
+`preserved`, `removed`, and `cleared` to all be true. Stop the preview afterward. Never deploy
+this diagnostic as a public endpoint. It verifies persistence transport, not full research or
+provider acceptance. The committed normal CI suite never calls this remote diagnostic.
