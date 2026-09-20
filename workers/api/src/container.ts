@@ -23,6 +23,7 @@ import {
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
+import { apiDatabase } from "./database";
 
 import { createGrowthServices } from "./growth/services";
 
@@ -57,19 +58,12 @@ function required<
 
 /** Request-scoped composition; no model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
-  const connectionString = env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("Missing DATABASE_URL");
-  }
+  const database = apiDatabase(env);
   // Validate all required bindings before allocating the invocation's pool.
   required(env, "SUPABASE_URL");
   required(env, "SUPABASE_SECRET_KEY");
   required(env, "JWT_ISSUER");
-  const repository = new PostgresResearchStore(connectionString, undefined, {
-    environment: env.APP_ENV,
-    ca: env.DATABASE_CA_CERT,
-    allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
-  });
+  const repository = new PostgresResearchStore(database.url, undefined, database.options);
   const directory = new PostgresConsoleDirectory(repository.pool);
   const db = createSupabaseAdmin({
     url: required(env, "SUPABASE_URL"),

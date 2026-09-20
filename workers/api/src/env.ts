@@ -5,8 +5,8 @@ import type { AgentLedger } from "./budget/agent-ledger";
 export interface Env {
   APP_ENV: string;
   ADMISSIONS_ENABLED?: string;
-  DATABASE_CA_CERT?: string;
-  ALLOW_INSECURE_STAGING_DATABASE?: string;
+  DATABASE?: Hyperdrive;
+  /** Loopback development only; hosted requests require DATABASE. */
   DATABASE_URL?: string;
   RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" }>;
   SUPABASE_URL: string;

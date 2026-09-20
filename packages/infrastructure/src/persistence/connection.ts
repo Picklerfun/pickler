@@ -5,10 +5,9 @@ export interface DatabaseConnectionOptions {
   /** Only set by a trusted Worker binding, never from DATABASE_URL or user input. */
   transport?: "direct" | "hyperdrive";
   ca?: string | undefined;
-  allowInsecureStaging?: boolean | undefined;
 }
 
-/** Invocation-local pools; hosted plaintext requires an explicit staging-only exception. */
+/** Invocation-local pools; hosted origins require verified TLS. */
 export function databasePoolConfig(
   connectionString: string,
   options?: DatabaseConnectionOptions,
@@ -59,15 +58,9 @@ export function databasePoolConfig(
       throw new Error("DATABASE_URL only supports the application_name query parameter");
     }
   }
-  if (options.allowInsecureStaging && options.environment !== "staging") {
-    throw new Error("Insecure hosted database connections are restricted to staging");
-  }
   if (options.transport === "hyperdrive") {
     if (!url.hostname.endsWith(".hyperdrive.local") || url.port !== "5432") {
       throw new Error("Hyperdrive connections require a trusted binding endpoint");
-    }
-    if (options.allowInsecureStaging) {
-      throw new Error("Hyperdrive cannot use the plaintext staging exception");
     }
     // The binding is a private Cloudflare transport; Hyperdrive verifies origin TLS.
     config.ssl = false;
@@ -87,15 +80,11 @@ export function databasePoolConfig(
     ) {
       throw new Error("Hosted connections require the Supabase pooler on port 5432 or 6543");
     }
-    if (options.allowInsecureStaging) {
-      config.ssl = false;
-    } else {
-      config.ssl = {
-        rejectUnauthorized: true,
-        servername: url.hostname,
-        ...(options.ca ? { ca: options.ca } : {}),
-      };
-    }
+    config.ssl = {
+      rejectUnauthorized: true,
+      servername: url.hostname,
+      ...(options.ca ? { ca: options.ca } : {}),
+    };
   }
   return config;
 }

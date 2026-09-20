@@ -56,8 +56,7 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 
 Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass
 APP_ENV and optional DATABASE_CA_CERT through composition; pools are invocation-local and limited
-to two connections. Direct hosted connections require a validated Supabase pooler endpoint and verified TLS unless
-the explicit staging exception is enabled. Hosted research now uses the trusted Hyperdrive
+to two connections. Direct hosted connections require a validated Supabase pooler endpoint and verified TLS. Hosted research now uses the trusted Hyperdrive
 transport described below; only explicit local mode permits plaintext loopback connections.
 Historical Node callers retain their existing connection configuration. Never expose a test clock
 or controlled provider adapter through deployed environment configuration.
@@ -66,18 +65,14 @@ When invocation connection options are supplied, DATABASE_URL permits only the a
 query parameter. Reject endpoint, TLS, timeout, and other pg overrides before selecting transport;
 encoded hostnames are rejected because pg can decode them as Unix socket paths.
 
-## Temporary staging transport exception
+## Hosted database transport
 
-The operator authorized plaintext PostgreSQL for staging pending Hyperdrive integration.
-`ALLOW_INSECURE_STAGING_DATABASE=true` is an explicit deployment override, permitted only
-with `APP_ENV=staging` and a validated Supabase shared-pooler host. It does not weaken
-endpoint/query-parameter guards. TLS remains the default; production rejects this override.
-The staging runtime uses transaction-pooler port 6543 during this exception; port 5432 remains
-supported for session connections. Keep migrations and local Studio on their existing direct
-or session connections. No named prepared statements or session-scoped locks are used by
-the deployed research repositories; ownership settings and locks must remain transaction-local.
-Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
-the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+Both deployed backend Workers require the trusted `DATABASE` Hyperdrive binding. The origin
+uses Supabase session port 5432, verify-full with its CA, and disabled query caching.
+There is no hosted direct-secret fallback or plaintext staging exception. Keep pools scoped
+to each invocation, limited to two connections, and close them on every outcome. Local development
+uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
+operator connection. Admission controls remain independent of transport.
 
 The trusted research binding now selects `transport: "hyperdrive"` in databasePoolConfig.
 Only Hyperdrive's `.hyperdrive.local:5432` endpoint and its exact `sslmode=disable` binding

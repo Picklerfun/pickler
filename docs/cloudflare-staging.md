@@ -112,7 +112,7 @@ Stop the controlled Workers afterward, then stop only this dedicated Supabase st
 
 Resolve the Cloudflare project account and a separate Supabase staging project first. Never
 reuse production identifiers or data. Create Queue `pickler-research-staging` and pin the verified account ID in all three configs.
-API uses its DATABASE_URL secret and the temporary transport exception below. Research requires
+API and research require
 the DATABASE Hyperdrive binding; its origin uses the Supabase session pooler on port 5432,
 verify-full with the Supabase CA, and query caching disabled. Pools belong to one invocation, have at most
 two connections and close before the invocation ends. PostgreSQL remains the transactional authority.
@@ -128,7 +128,7 @@ establish remote TLS compatibility: test the actual hosted path before opening a
 | Web build/browser | Public Supabase URL and publishable key only                                                        |
 | API secrets       | SUPABASE_URL, SUPABASE_SECRET_KEY, JWT_ISSUER, ALLOWED_ORIGINS                                      |
 | Research secrets  | MODEL_BASE_URL, MODEL_ID, MODEL_API_KEY, EXA_API_KEY; optional sports keys only for enabled plugins |
-| API database      | DATABASE_URL (secret), APP_ENV=staging                                                              |
+| API database      | DATABASE Hyperdrive binding, APP_ENV=staging                                                        |
 | Research database | DATABASE Hyperdrive binding, APP_ENV=staging; origin credentials reside in Hyperdrive               |
 | Operator only     | Direct/session database migration URL and deployment authentication                                 |
 
@@ -194,40 +194,21 @@ research deadline and validate real CPU/memory rather than interpreting waiting 
 See [Queues limits](https://developers.cloudflare.com/queues/platform/limits/) and
 [OpenNext setup](https://opennext.js.org/cloudflare/get-started).
 
-## Temporary operator-approved plaintext staging
+## Retired temporary transport
 
-On September 20, 2026, the operator explicitly authorized disabling TLS for staging while
-Hyperdrive is prepared. This supersedes the verified-TLS deployment requirement above for
-this temporary staging window only. Browser/Auth HTTPS is unchanged; the database connection
-from API to Supabase is currently unencrypted. Research has moved to Hyperdrive with verified origin TLS. Never describe this as TLS-verified acceptance.
-
-Set the API DATABASE_URL secret to the shared transaction pooler on port 6543. Deploy
-API only with the native Wrangler override
-`--var ALLOW_INSECURE_STAGING_DATABASE:true`. The committed configs default to false.
-The override only works with APP_ENV=staging; production and other environments reject it.
-Existing limits, invocation-local connection cleanup, and URL guards remain enforced.
-No server-wide SSL-enforcement change is required if the dedicated Supabase project already
-accepts plaintext. If it rejects the connection, report the server setting rather than silently
-changing it or retrying with another transport.
-
-Keep migrations on their separate direct/session connection. In transaction mode use unnamed
-parameterized queries, transaction-scoped locks, and transaction-local settings. Do not add
-SQL PREPARE, session advisory locks, LISTEN, or session state across transactions.
-
-Exit procedure: configure Hyperdrive with the Supabase CA, verify-full and query caching
-disabled; validate remote queries, transactions and lease renewals; remove the plaintext
-override and its implementation. Until that follow-up is deployed, retain the explicit
-plaintext limitation in the acceptance record. Admissions are a separate control and stay
-closed until connection and user-isolation checks pass.
+The earlier plaintext deployment is historical, documented in staging-deployment-2026-09-20.md.
+The exception has been removed from runtime configuration. API and research now require
+Hyperdrive. Do not deploy older API versions that require the retired exception as a rollback;
+use a compatible Hyperdrive version and keep admissions closed.
 
 ## Research Hyperdrive correction and diagnostic
 
-Research uses `pickler-database-staging` (`05150d06f7164d26a991288a88044710`) with origin
+API and research use `pickler-database-staging` (`05150d06f7164d26a991288a88044710`) with origin
 session port 5432, query caching disabled, origin connection limit 10, `sslmode=verify-full` and
-CA `e1560a68-1639-42bc-a509-88885c08a832`. Do not set the research plaintext override.
+CA `e1560a68-1639-42bc-a509-88885c08a832`. No plaintext override is supported.
 Hyperdrive's binding URL contains `sslmode=disable` for its private Cloudflare hop; this does
 not disable verification on the Hyperdrive-to-Supabase connection. Hosted research fails
-closed when the binding is absent. API conversion remains a separate follow-up.
+closed when the binding is absent; the API enforces the same rule.
 
 An explicit diagnostic is available in `workers/research/test/database-probe.ts`. It contains
 synthetic data only, creates a temporary table inside a transaction, verifies the full JSONB

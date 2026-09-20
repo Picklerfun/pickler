@@ -28,7 +28,6 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
         ? {
             environment: env.APP_ENV,
             ca: env.DATABASE_CA_CERT,
-            allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
           }
         : undefined),
   );

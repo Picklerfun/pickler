@@ -96,29 +96,24 @@ The three staging Worker configurations are validated by `npm run check:staging`
 Local dry runs do not establish remote readiness; record deployed commits and paid acceptance
 results separately. Never deploy placeholder resource IDs or put backend secrets in the web.
 
-Staging API currently uses its explicit DATABASE_URL transport; research uses a trusted DATABASE
+Staging API and research use a trusted DATABASE
 Hyperdrive binding with verified origin TLS and query caching disabled.
 The explicit `npm run test:workers-local` suite needs the controlled local consumer; never target
 it at a deployed Worker or use real provider credentials. See the staging operations guide.
 
-## Temporary staging transport exception
+## Hosted database transport
 
-The operator authorized plaintext PostgreSQL for staging pending Hyperdrive integration.
-`ALLOW_INSECURE_STAGING_DATABASE=true` is an explicit deployment override, permitted only
-with `APP_ENV=staging` and a validated Supabase shared-pooler host. It does not weaken
-endpoint/query-parameter guards. TLS remains the default; production rejects this override.
-The staging runtime uses transaction-pooler port 6543 during this exception; port 5432 remains
-supported for session connections. Keep migrations and local Studio on their existing direct
-or session connections. No named prepared statements or session-scoped locks are used by
-the deployed research repositories; ownership settings and locks must remain transaction-local.
-Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
-the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+Both deployed backend Workers require the trusted `DATABASE` Hyperdrive binding. The origin
+uses Supabase session port 5432, verify-full with its CA, and disabled query caching.
+There is no hosted direct-secret fallback or plaintext staging exception. Keep pools scoped
+to each invocation, limited to two connections, and close them on every outcome. Local development
+uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
+operator connection. Admission controls remain independent of transport.
 
 ## Research transport correction
 
 The research Worker now requires the `DATABASE` Hyperdrive binding for Queue and Cron. Its
-origin uses the Supabase CA, verify-full, session port 5432 and disabled query caching. The
-API still uses the temporary plaintext exception; do not claim all database traffic is encrypted.
+origin uses the Supabase CA, verify-full, session port 5432 and disabled query caching. Both deployed backends use this binding.
 No direct-secret fallback is allowed for hosted research. See the deployment record for the
 remote large-payload regression and remaining paid acceptance. No new provider calls are
 required to run the explicit rollback-only database probe.
