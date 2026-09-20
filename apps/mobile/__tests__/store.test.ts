@@ -140,9 +140,18 @@ test("the Market header subtitle follows the pill (D13)", () => {
   expect(headerFor("market", undefined)).toEqual(["Perp", "Perpl · isolated margin · market order"]);
 });
 
-test("sign out keeps the store reset contract and lands on Sign in (unchanged by Ask)", () => {
-  const s = signedOutState(navState(INITIAL, "market", { askView: "mine", askFocusReadId: "r1" }));
+test("sign out lands on Sign in and clears the Ask state", () => {
+  const s = signedOutState(navState(INITIAL, "market", {
+    askView: "mine", askFocusReadId: "r1", askAgentId: "drift",
+    askCell: { levelBps: 100, horizonMin: 240 },
+    tradeLevel: { marketId: 16, levelBps: 100, horizonMin: 240, target: 770181, expiresAt: "2026-09-20T07:35:06.712Z" },
+  }));
   expect(s.screen).toBe("signin");
   expect(s.stack).toEqual([]);
   expect(s.next).toBe("wallet");
+  expect(s.askView).toBe("new");
+  expect(s.askCell).toBeUndefined();
+  expect(s.askAgentId).toBeUndefined();
+  expect(s.askFocusReadId).toBeUndefined();
+  expect(s.tradeLevel).toBeUndefined();
 });

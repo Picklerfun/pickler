@@ -85,9 +85,17 @@ export function resetState(s: StoreState, screen: Screen): StoreState {
   return { ...s, screen, stack: [], next: undefined, nextPatch: undefined };
 }
 
-/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar. */
+/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar.
+ *  También limpia el estado de Ask (revisión final F2, Minor 3): con otra cuenta no debe
+ *  quedar una celda, agente o read enfocada de la sesión anterior. */
 export function signedOutState(s: StoreState): StoreState {
-  return bootState(resetState(s, "signin"), false);
+  return bootState(
+    resetState(
+      { ...s, askView: "new", askCell: undefined, askAgentId: undefined, askFocusReadId: undefined, tradeLevel: undefined },
+      "signin",
+    ),
+    false,
+  );
 }
 
 /** `←` sólo si la pantalla lo permite Y hay algo en el stack al que volver. */

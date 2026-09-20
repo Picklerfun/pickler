@@ -123,6 +123,8 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
       } catch (e) {
         setStatus("none");
         setSessionError(describeError(e)); // "" si canceló Face ID
+        // sin gesto del usuario no se reintenta: evita signing → none → signing si la firma falla por algo que no es 401
+        droppedRef.current = true;
         return false;
       }
     };
@@ -136,6 +138,9 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   useEffect(() => {
     if (active && status === "none" && account.status === "unlocked" && !droppedRef.current) void ensureSession();
   }, [active, status, account.status, ensureSession]);
+
+  // Al cambiar de mercado, la card done/failed no debe seguir pintada en el Ask de otro mercado (revisión final F2, Minor 4).
+  useEffect(() => { setRequest({ step: "idle" }); }, [marketId]);
 
   const loadAgents = useCallback(async () => {
     try { setAgents(await fetchAgents(READS_URL)); setAgentsError(""); }
