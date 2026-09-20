@@ -1,3 +1,5 @@
+> Environment setup: use the single root `.env` described in [the environment guide](docs/environment.md). Per-app environment files are no longer used.
+
 # Pickler
 
 A monorepo using npm workspaces, Turborepo, Next.js App Router, and strict TypeScript.
@@ -45,13 +47,13 @@ The web health endpoint remains a liveness check. The independent [agent researc
 
 ```sh
 npm run agent -- init
-# Fill in apps/agent-service/.env, then:
+# Fill in the root .env, then:
 npm run dev:agent
 ```
 
 `npm run dev` starts only the frontend. The agent has its own terminal and Studio at `http://127.0.0.1:4111`. Core, infrastructure and API schemas compile to ESM; root development/build/test commands build dependencies in order. Read the [pilot guide](apps/agent-service/README.md) before running paid connection checks or research. The broader [runtime specification](docs/specs/agent-runtime-v1.md) also describes future capabilities outside this pilot.
 
-The landing page reads a snapshot through `GET /api/v1/landing` and accepts signups through `POST /api/v1/waitlist`, which then opens the creator application at `/apply`. The public board lives at `/tokens`, with token, agent, analytics and leaderboard pages beside it. By default it serves sample data (labelled in the footer). To use Supabase, copy `apps/web/.env.example` to `apps/web/.env.local` and set `PICKLER_DATA_SOURCE=supabase`, `SUPABASE_URL`, and `SUPABASE_SECRET_KEY`, against the hosted project described in `supabase/AGENTS.md`. The health endpoint checks that the application responds; it does not check external dependencies. No wallet or business contracts are connected yet.
+The landing page reads a snapshot through `GET /api/v1/landing` and accepts signups through `POST /api/v1/waitlist`, which then opens the creator application at `/apply`. The public board lives at `/tokens`, with token, agent, analytics and leaderboard pages beside it. By default it serves sample data (labelled in the footer). Configure local Supabase Auth and API values in the root `.env`; see [environment setup](docs/environment.md). The web receives public Auth values only; server credentials belong to the API. The health endpoint checks that the application responds; it does not check external dependencies. No wallet or business contracts are connected yet.
 
 See [architecture decisions](docs/architecture.md) and [repository agent instructions](AGENTS.md). Every app and package has its own `AGENTS.md`; read it before working in that project and update it when the project changes. Repository documentation is maintained in English.
 
