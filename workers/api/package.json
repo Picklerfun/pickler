@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ../../scripts/with-env.mjs api wrangler dev --config wrangler.staging.jsonc",
+    "dev": "node --import tsx ../../scripts/with-env.ts api wrangler dev --config wrangler.staging.jsonc",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "build:worker": "wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir .wrangler/build"
