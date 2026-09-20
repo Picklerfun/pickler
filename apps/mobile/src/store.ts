@@ -38,6 +38,11 @@ export function backState(s: StoreState): StoreState {
 
 /** Tabs que todavía no hacen nada real: el Shell renderiza "Coming soon" (D5, D17). */
 export const COMING_SOON: readonly ComingSoonTab[] = ["launchpad", "activity", "portfolio"];
+
+export function isComingSoonTab(screen: Screen): screen is ComingSoonTab {
+  return (COMING_SOON as readonly Screen[]).includes(screen);
+}
+
 /** Pantallas que exigen cuenta. Los coming soon nunca la piden. */
 export const GATED: readonly Screen[] = ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw"];
 export const CAN_BACK: readonly Screen[] = ["market", "perpsFunds", "deposit", "withdraw", "signin"];
@@ -153,7 +158,7 @@ export function useAppStore({ hasAccount, perpsMarkets }: StoreInput): AppStore 
     hasAccount, scr: S.screen, headerTitle, headerSub,
     canBack: canBackFor(S.screen, S.stack),
     showTabs: SHOW_TABS.includes(S.screen),
-    comingSoon: (COMING_SOON as readonly Screen[]).includes(S.screen),
+    comingSoon: isComingSoonTab(S.screen),
     held: heldActionFor(S.next),
   };
 }

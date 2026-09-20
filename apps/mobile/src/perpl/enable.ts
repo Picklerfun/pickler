@@ -39,6 +39,7 @@ async function at<T>(step: EnableStep, onStep: (s: EnableStep) => void, run: () 
 export async function runEnable(deps: EnableDeps, amount: bigint, onStep: (step: EnableStep) => void): Promise<TradingKey> {
   let accountId = await at(1, onStep, async () => {
     const id = await deps.readAccountId();
+    if (id === 0n && amount === 0n) throw new Error("This wallet has no Perpl account yet."); // reconnect sin cuenta: el gate vuelve a Enable (spec §4)
     if (id === 0n) {
       if ((await deps.walletAusd()) < amount) throw new Error("That is more than the AUSD in your wallet.");
       if ((await deps.readAllowance()) < amount) await deps.approve(amount);

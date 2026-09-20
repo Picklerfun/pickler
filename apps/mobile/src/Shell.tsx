@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useMemo, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
@@ -76,6 +76,11 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
 
   const isRoot = ROOT_OF[S.screen] === S.screen;
 
+  // Una sola ScrollView sirve a todas las pantallas: sin esto, entrar a Market desde
+  // una lista ya scrolleada hereda el offset y el ticket abre a media página.
+  const body = useRef<ScrollView>(null);
+  useEffect(() => { body.current?.scrollTo({ y: 0, animated: false }); }, [S.screen]);
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
       <Backdrop />
@@ -102,6 +107,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
         {/* cuerpo */}
         <View style={{ flex: 1 }} {...(ctx.canBack ? pan.panHandlers : {})}>
           <ScrollView
+            ref={body}
             style={{ flex: 1 }}
             contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={false}

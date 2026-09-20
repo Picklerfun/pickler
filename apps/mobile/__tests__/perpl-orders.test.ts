@@ -2,7 +2,7 @@ import contextJson from "./fixtures/perpl/context.json";
 import frames from "./fixtures/perpl/ws-frames.json";
 import { parseContext } from "../src/perpl/context";
 import {
-  change24h, closeIntent, describeOrderStatus, formatPrice, formatSize, leveragesFor, liquidationPrice,
+  change24h, closeIntent, describeOrderStatus, formatPrice, formatPnl, formatSize, leveragesFor, liquidationPrice,
   lockedCollateral, notionalAusd, openIntent, orderFrame, positionPnl, sizeFromAusd, takerFee, unrealisedPnl,
 } from "../src/perpl/orders";
 
@@ -111,4 +111,14 @@ test("unrealisedPnl sums positionPnl across markets and skips unknown markets", 
   expect(unrealisedPnl([longMon, orphan], [MON, BTC])).toBe(4000n);
   expect(unrealisedPnl([orphan], [MON, BTC])).toBeNull();
   expect(unrealisedPnl([], [MON, BTC])).toBeNull();
+});
+
+test("formatPnl rounds anything under one displayed cent to +0.00 and keeps the sign otherwise", () => {
+  expect(formatPnl(0n)).toBe("+0.00");
+  expect(formatPnl(-9_999n)).toBe("+0.00");
+  expect(formatPnl(9_999n)).toBe("+0.00");
+  expect(formatPnl(10_000n)).toBe("+0.01");
+  expect(formatPnl(-10_000n)).toBe("−0.01");
+  expect(formatPnl(-1_500_000n)).toBe("−1.50");
+  expect(formatPnl(123_456_789n)).toBe("+123.45");
 });

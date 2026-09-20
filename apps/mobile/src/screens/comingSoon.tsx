@@ -1,19 +1,15 @@
 import { View } from "react-native";
 import type { AppCtx } from "../ctx";
-import type { Screen } from "../store";
+import { isComingSoonTab, type Screen } from "../store";
 import { Btn, Card, Chip, Icon, T, Tag } from "../ui/primitives";
 import { C } from "../ui/theme";
-import { COMING_SOON_COPY, MARKET_COMING_SOON, type ComingSoonTab } from "./comingSoonCopy";
+import { COMING_SOON_COPY, MARKET_COMING_SOON } from "./comingSoonCopy";
 
 export { COMING_SOON_COPY } from "./comingSoonCopy";
 
-function isTab(screen: Screen): screen is ComingSoonTab {
-  return screen === "launchpad" || screen === "activity" || screen === "portfolio";
-}
-
 /** Pantalla completa de los tabs sin función (D17). */
 export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; requireAccount: AppCtx["requireAccount"] }) {
-  if (!isTab(screen)) throw new Error(`ComingSoonScreen: ${screen} is not a coming-soon tab`);
+  if (!isComingSoonTab(screen)) throw new Error(`ComingSoonScreen: ${screen} is not a coming-soon tab`);
   const c = COMING_SOON_COPY[screen];
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 14 }}>

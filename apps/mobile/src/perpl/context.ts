@@ -12,7 +12,7 @@ export type Market = {
   mark: number; prev: number;
 };
 export type Instance = { exchange: Address; minAccountOpen: bigint; minDeposit: bigint; minWithdraw: bigint };
-export type Context = { markets: Market[]; instance: Instance; geoBlock: string[] };
+export type Context = { markets: Market[]; instance: Instance; geoBlock: string[]; serverTime: number | null };
 
 type Rec = Record<string, unknown>;
 const rec = (v: unknown, what: string): Rec => {
@@ -63,7 +63,17 @@ export function parseContext(body: unknown): Context {
   };
   const markets = c.markets.map(parseMarket).filter((m) => m.isOpen).sort((a, b) => a.id - b.id);
   const geoBlock = Array.isArray(c.geo_block) ? c.geo_block.filter((g): g is string => typeof g === "string") : [];
-  return { markets, instance, geoBlock };
+  return { markets, instance, geoBlock, serverTime: null };
+}
+
+/** Header `Date` (RFC 1123) → ms desde epoch; null si falta o no parsea (un CDN puede quitarlo).
+ *  `age` (segundos que la respuesta pasó en caché) se suma: un hit de Cloudflare trae un Date de hasta 10 s de antigüedad. */
+export function parseServerTime(dateHeader: string | null, ageHeader: string | null = null): number | null {
+  if (!dateHeader) return null;
+  const ms = Date.parse(dateHeader);
+  if (Number.isNaN(ms)) return null;
+  const age = Number(ageHeader ?? 0);
+  return ms + (Number.isFinite(age) && age > 0 ? age * 1000 : 0);
 }
 
 export async function fetchContext(rest: string): Promise<Context> {
@@ -72,7 +82,8 @@ export async function fetchContext(rest: string): Promise<Context> {
   try {
     const res = await fetch(`${rest}/v1/pub/context`, { signal: controller.signal });
     if (!res.ok) throw new Error(`Perpl responded ${res.status}`);
-    return parseContext(await res.json());
+    const serverTime = parseServerTime(res.headers.get("date"), res.headers.get("age"));
+    return { ...parseContext(await res.json()), serverTime };
   } finally {
     clearTimeout(timer);
   }

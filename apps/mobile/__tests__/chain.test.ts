@@ -72,3 +72,10 @@ test("ERC20 ABI has approve and allowance", () => {
   const names = ERC20_ABI.filter((f) => f.type === "function").map((f) => f.name);
   expect(names).toEqual(expect.arrayContaining(["balanceOf", "transfer", "approve", "allowance"]));
 });
+
+test("formatAusd takes an optional number of decimals for fees", () => {
+  expect(formatAusd(500n, 4)).toBe("0.0005");
+  expect(formatAusd(500n)).toBe("0.00");
+  expect(formatAusd(1_234_567n, 4)).toBe("1.2345");
+  expect(formatAusd(1_234_567n, 6)).toBe("1.234567");
+});

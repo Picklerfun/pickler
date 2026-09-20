@@ -1,4 +1,4 @@
-import { AUSD_DECIMALS } from "../config/chain";
+import { AUSD_DECIMALS, formatAusd } from "../config/chain";
 import { LEVERAGES } from "./config";
 import type { Market } from "./context";
 
@@ -53,14 +53,23 @@ export function lockedCollateral(positions: readonly { c: bigint }[]): bigint {
 
 /** Σ positionPnl sobre las posiciones con mercado conocido; null si ninguna lo tiene (la UI oculta la línea). */
 export function unrealisedPnl(positions: readonly PositionLike[], markets: readonly Market[]): bigint | null {
-  let sum = 0n, any = false;
+  let sum = 0n, matched = false;
   for (const p of positions) {
     const m = markets.find((x) => x.id === p.mkt);
     if (!m) continue;
-    any = true;
+    matched = true;
     sum += positionPnl(p, m.mark, m.priceDecimals, m.sizeDecimals);
   }
-  return any ? sum : null;
+  return matched ? sum : null;
+}
+
+const ONE_CENT = 10_000n; // 0.01 AUSD en unidades de 6 decimales: lo mínimo que formatAusd (truncado) muestra distinto de 0.00
+
+/** PnL con signo para la UI: por debajo de un centavo es "+0.00" (D22), nunca "−0.00". */
+export function formatPnl(raw: bigint): string {
+  const abs = raw < 0n ? -raw : raw;
+  if (abs < ONE_CENT) return "+0.00";
+  return `${raw < 0n ? "−" : "+"}${formatAusd(abs)}`;
 }
 
 export function change24h(mark: number, prev: number): number {

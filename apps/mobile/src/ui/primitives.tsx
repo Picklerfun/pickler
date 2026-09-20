@@ -207,7 +207,7 @@ export function PillTabs<K extends string>({ options, value, onChange, flex = tr
         const on = value === k;
         return (
           <Chip
-            key={k} label={label} onPress={() => onChange(k)} accessibilityLabel={`tab-${k}`}
+            key={k} label={label} onPress={() => onChange(k)} accessibilityLabel={`pill-${k}`}
             fg={on ? C.lime : C.dim} bd={on ? C.limeBd : C.hair18} bg={on ? C.limeBg14 : "transparent"}
             s={11.5} py={8} px={flex ? 6 : 12} style={flex ? { flex: 1 } : null}
           />
@@ -254,7 +254,7 @@ export function StatusCard({ tag, title, body, tone, big, children }: { tag: str
   );
 }
 
-export function Screen({ children, style, gap = 11, top = 14 }: { children?: ReactNode; style?: StyleProp<ViewStyle>; gap?: number; top?: number }) {
+export function Page({ children, style, gap = 11, top = 14 }: { children?: ReactNode; style?: StyleProp<ViewStyle>; gap?: number; top?: number }) {
   return <View style={[{ paddingTop: top, paddingHorizontal: 15, paddingBottom: 20, gap }, style]}>{children}</View>;
 }
 

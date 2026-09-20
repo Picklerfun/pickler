@@ -19,7 +19,7 @@ const config: ExpoConfig = {
   backgroundColor: "#05061A",
   ios: {
     bundleIdentifier,
-    buildNumber: "4",
+    buildNumber: "5",
     supportsTablet: false,
     backgroundColor: "#05061A",
     associatedDomains: [`webcredentials:${rpId}`],
