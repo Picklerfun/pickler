@@ -1,0 +1,2033 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-19-mobile-ask-f1.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask — F1: backend propio en el esquema `mobile` (Supabase `pickler`) — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-19-mobile-ask-f1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-19-mobile-ask-f1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Ask — F1: backend propio en el esquema `mobile` (Supabase `pickler`) — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-19-mobile-ask-f1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-0-cli-2111-esqueleto-de-servicesreads-e-inventario-del-proyecto-compartido">Task 0: CLI ≥ 2.111, esqueleto de `services/reads` e inventario del proyecto compartido</a></li><li><a href="#task-1-migrador-propio-y-0001schemasql-aplicado-d4-d7-21-p2-p4-p12">Task 1: Migrador propio y `0001_schema.sql` aplicado (D4, D7, §2.1, P2, P4, P12)</a></li><li><a href="#task-2-sharedmatrixts-sharedauthts-sharedhttpts-con-deno-test-d1-d2-d3-d6-p3-p5">Task 2: `_shared/matrix.ts`, `_shared/auth.ts`, `_shared/http.ts` con `deno test` (D1, D2, D3, D6, P3, P5)</a></li><li><a href="#task-3-sharedperplts-sharedclaudets-shareddbts-shareddtots-d2-d8-p1">Task 3: `_shared/perpl.ts`, `_shared/claude.ts`, `_shared/db.ts`, `_shared/dto.ts` (D2, D8, P1)</a></li><li><a href="#task-4-seed-de-agentes-funciones-agents-list-read-request-read-get-reads-list-despliegue-y-smoke-d5-d7-d8-d9-d20-p8-p9-p11-p12">Task 4: Seed de agentes, funciones `agents-list` · `read-request` · `read-get` · `reads-list`, despliegue y smoke (D5, D7, D8, D9, D20, P8, P9, P11, P12)</a></li><li><a href="#task-5-sharedapnsts-jwt-es256-y-envio-a-apns-con-la-key-de-apple-en-secretos-d10-p6-p7">Task 5: `_shared/apns.ts` — JWT ES256 y envío a APNs, con la key de Apple en secretos (D10, P6, P7)</a></li><li><a href="#task-6-reminder-set-resolve-reads-cron-por-minuto-y-smoke-de-apns-d3-d10-d12-lado-servidor-d19-p6-p10-p13">Task 6: `reminder-set`, `resolve-reads`, cron por minuto y smoke de APNs (D3, D10, D12 lado servidor, D19, P6, P10, P13)</a></li><li><a href="#task-7-spec-overview-manifest-claudemd-audit-de-f1-y-revision-independiente">Task 7: Spec, overview, manifest, CLAUDE.md, audit de F1 y revisión independiente</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-19-mobile-ask-f1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="ask-f1-backend-propio-en-el-esquema-mobile-supabase-pickler-implementation-plan">Ask — F1: backend propio en el esquema <code>mobile</code> (Supabase <code>pickler</code>) — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Un servicio propio, desplegado en el proyecto Supabase <code>pickler</code> (<code>yvdipvcrpbqvofayteqf</code>) dentro del esquema <code>mobile</code>, con el que se puede pedir una lectura firmada por <code>curl</code> (cobro de créditos simulados, lectura de <code>claude-sonnet-5</code> con salida estructurada), listarla, y verla resuelta <strong>right/wrong</strong> por un cron que corre cada minuto contra el mark de Perpl y manda el push por APNs; sin tocar nada de Gilbert en el proyecto compartido.</p>
+<p><strong>Architecture:</strong> Todo vive en <code>services/reads/</code>. Las migraciones SQL (<code>supabase/migrations/000N_*.sql</code>) se aplican con un migrador propio (<code>scripts/migrate.mjs</code>) contra el endpoint de consulta del Management API y un ledger <code>mobile.migrations</code>, nunca con <code>supabase db push</code>. Seis edge functions en Deno (<code>supabase/functions/&lt;name&gt;/index.ts</code>) comparten módulos puros y probados en <code>_shared/</code> (<code>matrix</code>, <code>auth</code>, <code>perpl</code>, <code>claude</code>, <code>apns</code>, <code>db</code>, <code>http</code>, <code>dto</code>); hablan con Postgres por <code>SUPABASE_DB_URL</code> (postgres.js) y con Perpl por <code>GET /v1/pub/context</code>. La atomicidad de cobro + insert y de reembolso vive en dos funciones SQL <code>security definer</code> (<code>mobile.request_read</code>, <code>mobile.refund_read</code>). <code>pg_cron</code> + <code>pg_net</code> invocan <code>resolve-reads</code> cada minuto con un secreto guardado en Vault.</p>
+<p><strong>Tech Stack:</strong> Supabase CLI ≥ 2.111 (<code>SUPABASE_ACCESS_TOKEN</code>), Deno 2.7 (edge runtime), <code>npm:@anthropic-ai/sdk@0.127.0</code> + <code>npm:zod@4.6.5</code> (structured outputs), <code>npm:viem@2.56.8</code> (recuperar la firma), <code>npm:postgres@3.4.9</code>, <code>jsr:@std/assert@1</code> para <code>deno test</code>, Node 22 para los scripts (<code>node --test</code>). Postgres: <code>pg_cron</code>, <code>pg_net</code>, <code>vault</code>.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> (D1–D10, D17, D19, D20 y §2.1–§2.2 son el contrato de esta fase; D11–D16 son contexto de lo que la app consumirá en F2/F3). Léelo antes de empezar: el plan argumenta desde ahí.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-ask</code>, rama <code>feat/mobile-ask</code> (base <code>main</code> = <code>5ed4e1c</code>). Todo se corre desde <code>services/reads</code> dentro del worktree salvo los checks de docs (raíz). Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(reads): …</code> / <code>chore(reads): …</code> / <code>docs(mobile-ask): …</code> con trailer <code>Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;</code>. <strong>No commitear ni pushear sin que Jesús lo pida</strong>: los pasos &quot;Commit&quot; de cada task se ejecutan sólo si él ya autorizó commits en la sesión; si no, se deja el árbol listo y se anota en el handoff.</li>
+<li><strong>Proyecto Supabase compartido con Gilbert</strong> (<code>Relayerfi/pickler</code>). Prohibido: <code>supabase db push</code>, <code>supabase db reset</code>, <code>supabase migration repair</code>, <code>supabase link</code> seguido de comandos de base, cualquier <code>drizzle-kit</code>, cualquier <code>create</code>/<code>alter</code>/<code>drop</code> fuera del esquema <code>mobile</code> (excepción única: <code>create extension if not exists pg_cron</code> / <code>pg_net</code>, que no crean objetos en esquemas suyos), y cambiar &quot;Exposed schemas&quot; u otra configuración del proyecto en el dashboard. El MCP de Supabase de la sesión apunta a <strong>Proflores</strong>: no usarlo para nada de Pickler.</li>
+<li>Llaves en <code>.env.pickler</code> de la raíz del checkout principal (<code>/Users/josedejesusacevedoflores/Documents/predict/.env.pickler</code>, gitignored; el worktree no lo tiene): <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>SUPABASE_ACCESS_TOKEN</code>. Esta fase añade ahí <code>CRON_SECRET</code>, <code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>, <code>APNS_KEY_P8_B64</code> (Task 5). Ningún valor se escribe en archivos del repo, en migraciones ni en <code>cron.job</code>.</li>
+<li>CLI de Supabase <strong>≥ 2.111</strong> (hoy 2.22.12); Task 0 la actualiza. Todo comando remoto lleva <code>--project-ref yvdipvcrpbqvofayteqf</code>; se verifica con <code>supabase projects list</code> que el token sólo ve <code>pickler</code>.</li>
+<li><code>deno test -A supabase/functions/_shared/</code> y <code>node --test scripts/</code> en verde al cierre de cada task a partir de la que los introduce. Ninguna prueba unitaria llama a Anthropic, a Perpl ni a APNs: todo lo externo se prueba con dobles y el fixture; lo real se prueba en los smokes (Tasks 4, 5, 6).</li>
+<li>Cobros y créditos son <strong>simulados</strong>; ninguna task mueve AUSD ni MON ni toca la cuenta #620.</li>
+<li>Copy de la API y de los pushes en inglés; SQL y código con nombres del spec §2.1 (snake_case en la base, camelCase en JSON).</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td>Las funciones hablan con Postgres por <strong><code>SUPABASE_DB_URL</code></strong> (variable automática del edge runtime) con <code>npm:postgres@3.4.9</code> y <code>prepare: false</code>, no con supabase-js/PostgREST.</td><td>PostgREST sólo sirve los esquemas listados en &quot;Exposed schemas&quot; del proyecto; añadir <code>mobile</code> ahí es un cambio de configuración del proyecto compartido (Global Constraints). Con la conexión directa no hace falta.</td></tr>
+<tr><td>P2</td><td><code>migrate.mjs</code> manda cada archivo como <strong>una sola consulta</strong> envuelta en <code>begin; … ; insert into mobile.migrations (name) values (&#39;&lt;archivo&gt;&#39;); commit;</code>. El esquema y la tabla <code>mobile.migrations</code> se crean con <code>if not exists</code> antes de consultar el ledger (bootstrap fuera del ledger).</td><td>Una migración a medias no deja el ledger mintiendo; el endpoint acepta varias sentencias en una consulta (es lo que hace <code>apply_migration</code> del MCP oficial).</td></tr>
+<tr><td>P3</td><td>Imports de Deno con <strong>especificador <code>npm:</code>/<code>jsr:</code> y versión fija en cada archivo</strong>; sin <code>deno.json</code> ni import map.</td><td>Cada función se despliega aislada; una versión escrita donde se usa es lo único que garantiza que <code>deno test</code> local y el runtime desplegado resuelvan lo mismo.</td></tr>
+<tr><td>P4</td><td>La vista <code>mobile.agent_records</code> llama <code>right_count</code> a la columna que el spec §2.1 llama <code>right</code>.</td><td><code>right</code> es palabra reservada en SQL: obligaría a entrecomillar en cada consulta. Se corrige en el spec en Task 7.</td></tr>
+<tr><td>P5</td><td>La firma se verifica con <code>recoverMessageAddress</code> de viem y comparación en minúsculas, no con <code>verifyMessage</code>.</td><td><code>viem</code> exporta dos <code>verifyMessage</code> (utilidad y acción con cliente); recuperar la dirección es inequívoco y cubre exactamente EOA, que es lo que Mera produce.</td></tr>
+<tr><td>P6</td><td>El smoke de APNs en F1 manda a un <strong>token inventado</strong> y espera <code>400 {&quot;reason&quot;:&quot;BadDeviceToken&quot;}</code>. Un <code>403 InvalidProviderToken</code> es JWT mal hecho; un error de transporte (sin respuesta HTTP/2) activa el fallback de D10.</td><td>Sin la app con <code>expo-notifications</code> no hay token real hasta F2. <code>BadDeviceToken</code> sólo lo devuelve APNs tras aceptar TLS, HTTP/2 y el JWT: prueba lo que F1 necesita probar.</td></tr>
+<tr><td>P7</td><td><code>APNS_KEY_P8_B64</code> = el <code>.p8</code> completo en base64 (una línea). <code>apns.ts</code> lo decodifica y saca el bloque PEM.</td><td><code>supabase secrets set</code> toma pares <code>NAME=value</code> de una línea; un PEM con saltos no viaja bien.</td></tr>
+<tr><td>P8</td><td><code>scripts/sign.mjs</code> genera una private key <strong>efímera</strong> por corrida salvo que exista <code>READS_TEST_KEY</code> en el entorno; cada corrida del smoke crea una wallet nueva con 20 créditos. Limpieza documentada en el README (<code>delete from mobile.wallets where address in (…)</code> en cascada manual).</td><td>No hay que guardar una key de prueba en ningún sitio; las wallets de prueba no cuestan nada.</td></tr>
+<tr><td>P9</td><td><code>read-request</code> es <strong>síncrona</strong>: inserta <code>pending</code>, llama al modelo, actualiza a <code>open</code> y responde con la read completa. <code>pending</code> sólo lo ve un cliente que reintenta con <code>read-get</code> mientras la primera llamada sigue viva.</td><td>Una sola llamada HTTP desde la app (D14 muestra &quot;Reading… up to 60 s&quot;); el reembolso a los 60 s lo garantiza el cron aunque la función muera.</td></tr>
+<tr><td>P10</td><td><code>resolve-reads</code> procesa como máximo <strong>50 reads y 50 recordatorios por corrida</strong>, ordenados por vencimiento; el resto lo toma la corrida siguiente.</td><td>Idempotente por construcción (<code>where status = &#39;open&#39;</code>), sin riesgo de pasar el límite de tiempo de la función.</td></tr>
+<tr><td>P11</td><td>La persona del agente <code>jesus</code> en el seed es un <strong>placeholder</strong> que Jesús reescribe (D9); <code>drift</code> y <code>anchor</code> son definitivas. Las personas nunca salen por la API.</td><td>D9 lo deja a Jesús; el seed tiene que existir para que el smoke corra.</td></tr>
+<tr><td>P12</td><td><code>mobile.ensure_wallet(address)</code> crea la wallet con 20 créditos (evento <code>grant</code>) y devuelve el saldo; la llaman <code>reads-list</code> y <code>request_read</code>.</td><td>La app debe ver &quot;20 credits&quot; antes de la primera lectura (D14).</td></tr>
+<tr><td>P13</td><td>El <code>x-cron-secret</code> se genera con <code>openssl rand -hex 32</code>, se guarda como secreto de funciones (<code>CRON_SECRET</code>) y en Vault (<code>mobile_cron_secret</code>) con <code>scripts/query.mjs</code>, nunca en una migración. La URL del proyecto va en claro en <code>0003_cron.sql</code> (no es secreta).</td><td>D19: nada secreto en archivos versionados; <code>cron.job</code> sólo referencia Vault.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>services/reads/README.md</code>, <code>.env.example</code>, <code>package.json</code>, <code>.gitignore</code>, <code>supabase/config.toml</code></td><td>0</td><td>Esqueleto, comandos, lista de prohibiciones</td></tr>
+<tr><td><code>services/reads/scripts/env.mjs</code>, <code>scripts/api.mjs</code>, <code>scripts/query.mjs</code></td><td>0</td><td>Cargar <code>.env.pickler</code>; consulta al Management API; inventario del proyecto</td></tr>
+<tr><td><code>services/reads/scripts/migrate.mjs</code> + <code>scripts/migrate.test.mjs</code></td><td>1</td><td>Migrador propio con ledger</td></tr>
+<tr><td><code>services/reads/supabase/migrations/0001_schema.sql</code></td><td>1</td><td>Esquema <code>mobile</code> completo (§2.1) + <code>ensure_wallet</code>, <code>request_read</code>, <code>refund_read</code></td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/matrix.ts</code> + <code>matrix.test.ts</code></td><td>2</td><td>Matriz, target, pregunta, outcome, Brier</td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/auth.ts</code> + <code>auth.test.ts</code></td><td>2</td><td>Firma <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code></td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/http.ts</code></td><td>2</td><td>Respuestas JSON y errores</td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/perpl.ts</code> + <code>perpl.test.ts</code> + <code>fixtures/context.json</code></td><td>3</td><td>Mercados y mark desde <code>pub/context</code></td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/claude.ts</code> + <code>claude.test.ts</code></td><td>3</td><td>Prompt, schema y llamada al modelo</td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/db.ts</code>, <code>dto.ts</code> + <code>dto.test.ts</code></td><td>3</td><td>Conexión Postgres; fila → JSON</td></tr>
+<tr><td><code>services/reads/supabase/migrations/0002_seed_agents.sql</code></td><td>4</td><td>Tres agentes</td></tr>
+<tr><td><code>services/reads/supabase/functions/{agents-list,read-request,read-get,reads-list}/index.ts</code></td><td>4</td><td>Las cuatro funciones de lectura</td></tr>
+<tr><td><code>services/reads/scripts/sign.mjs</code>, <code>scripts/smoke.sh</code></td><td>4</td><td>Firma de prueba y smoke por <code>curl</code></td></tr>
+<tr><td><code>services/reads/supabase/functions/_shared/apns.ts</code> + <code>apns.test.ts</code>, <code>scripts/apns-smoke.mjs</code></td><td>5</td><td>JWT ES256 y envío a APNs</td></tr>
+<tr><td><code>services/reads/supabase/functions/{reminder-set,resolve-reads}/index.ts</code>, <code>supabase/migrations/0003_cron.sql</code></td><td>6</td><td>Recordatorios, resolución, cron</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code></td><td>7</td><td>Docs de cierre y audit</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-0-cli-2111-esqueleto-de-servicesreads-e-inventario-del-proyecto-compartido">Task 0: CLI ≥ 2.111, esqueleto de <code>services/reads</code> e inventario del proyecto compartido</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/README.md</code>, <code>services/reads/.env.example</code>, <code>services/reads/package.json</code>, <code>services/reads/.gitignore</code>, <code>services/reads/supabase/config.toml</code>, <code>services/reads/scripts/env.mjs</code>, <code>services/reads/scripts/api.mjs</code>, <code>services/reads/scripts/query.mjs</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>loadEnv(): Record&lt;string,string&gt;</code> y <code>PROJECT_REF = &quot;yvdipvcrpbqvofayteqf&quot;</code> en <code>env.mjs</code>; <code>runQuery(env, sql, { readOnly }): Promise&lt;unknown[]&gt;</code> en <code>api.mjs</code>; CLI <code>node scripts/query.mjs [--read-only] [--file x.sql | &quot;sql&quot;]</code>. Los usan Tasks 1, 4, 6, 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Actualizar la CLI y comprobar el token</strong></label></li>
+</ul>
+<pre><code class="language-bash">brew upgrade supabase &amp;&amp; supabase --version
+cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask
+set -a; source /Users/josedejesusacevedoflores/Documents/predict/.env.pickler; set +a
+supabase projects list</code></pre>
+<p>Expected: versión <code>2.111.0</code> o mayor; la lista muestra <strong>sólo</strong> <code>pickler</code> con ref <code>yvdipvcrpbqvofayteqf</code>. Si aparece otro proyecto, parar: el token no es el de Pickler.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Esqueleto</strong></label></li>
+</ul>
+<p><code>services/reads/package.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;pickler-reads&quot;,
+  &quot;private&quot;: true,
+  &quot;type&quot;: &quot;module&quot;,
+  &quot;engines&quot;: { &quot;node&quot;: &quot;&gt;=22&quot; },
+  &quot;scripts&quot;: {
+    &quot;migrate&quot;: &quot;node scripts/migrate.mjs&quot;,
+    &quot;migrate:dry&quot;: &quot;node scripts/migrate.mjs --dry&quot;,
+    &quot;query&quot;: &quot;node scripts/query.mjs&quot;,
+    &quot;test:scripts&quot;: &quot;node --test scripts/&quot;,
+    &quot;test:deno&quot;: &quot;deno test -A supabase/functions/_shared/&quot;,
+    &quot;test&quot;: &quot;npm run test:scripts &amp;&amp; npm run test:deno&quot;,
+    &quot;sign&quot;: &quot;node scripts/sign.mjs&quot;,
+    &quot;smoke&quot;: &quot;bash scripts/smoke.sh&quot;,
+    &quot;deploy&quot;: &quot;supabase functions deploy --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt&quot;
+  },
+  &quot;devDependencies&quot;: { &quot;viem&quot;: &quot;2.56.8&quot; }
+}</code></pre>
+<p><code>services/reads/.gitignore</code>:</p>
+<pre><code>node_modules/
+.env
+.env.*
+!.env.example</code></pre>
+<p><code>services/reads/.env.example</code> (sólo nombres, sin valores):</p>
+<pre><code># Valores reales en ../../.env.pickler (gitignored). Nunca aquí.
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ACCESS_TOKEN=
+ANTHROPIC_API_KEY=
+CRON_SECRET=
+APNS_KEY_ID=
+APNS_TEAM_ID=
+APNS_KEY_P8_B64=</code></pre>
+<p><code>services/reads/supabase/config.toml</code>:</p>
+<pre><code class="language-toml">project_id = &quot;yvdipvcrpbqvofayteqf&quot;
+
+[functions.agents-list]
+verify_jwt = false
+[functions.read-request]
+verify_jwt = false
+[functions.read-get]
+verify_jwt = false
+[functions.reads-list]
+verify_jwt = false
+[functions.reminder-set]
+verify_jwt = false
+[functions.resolve-reads]
+verify_jwt = false</code></pre>
+<p><code>services/reads/scripts/env.mjs</code>:</p>
+<pre><code class="language-js">import { execSync } from &quot;node:child_process&quot;;
+import fs from &quot;node:fs&quot;;
+import path from &quot;node:path&quot;;
+import { fileURLToPath } from &quot;node:url&quot;;
+
+export const PROJECT_REF = &quot;yvdipvcrpbqvofayteqf&quot;;
+export const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
+const here = path.dirname(fileURLToPath(import.meta.url));
+const worktreeRoot = path.resolve(here, &quot;../../..&quot;);
+
+/** `.env.pickler` vive en el checkout principal (gitignored): en un worktree se busca vía git-common-dir. */
+export function envFile() {
+  if (process.env.PICKLER_ENV_FILE) return process.env.PICKLER_ENV_FILE;
+  const local = path.join(worktreeRoot, &quot;.env.pickler&quot;);
+  if (fs.existsSync(local)) return local;
+  const common = execSync(&quot;git rev-parse --path-format=absolute --git-common-dir&quot;, { cwd: worktreeRoot, encoding: &quot;utf8&quot; }).trim();
+  return path.join(path.dirname(common), &quot;.env.pickler&quot;);
+}
+
+export function parseEnv(text) {
+  const out = {};
+  for (const line of text.split(&quot;\n&quot;)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m) out[m[1]] = m[2].replace(/^([&#39;&quot;])(.*)\1$/, &quot;$2&quot;);
+  }
+  return out;
+}
+
+export function loadEnv() {
+  const file = envFile();
+  if (!fs.existsSync(file)) throw new Error(`No existe ${file}`);
+  return parseEnv(fs.readFileSync(file, &quot;utf8&quot;));
+}</code></pre>
+<p><code>services/reads/scripts/api.mjs</code>:</p>
+<pre><code class="language-js">import { PROJECT_REF } from &quot;./env.mjs&quot;;
+
+/** POST /v1/projects/{ref}/database/query del Management API. Devuelve las filas (array) o null sin cuerpo. */
+export async function runQuery(env, query, { readOnly = false } = {}) {
+  if (!env.SUPABASE_ACCESS_TOKEN) throw new Error(&quot;Falta SUPABASE_ACCESS_TOKEN&quot;);
+  const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+    method: &quot;POST&quot;,
+    headers: { authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, &quot;content-type&quot;: &quot;application/json&quot; },
+    body: JSON.stringify({ query, read_only: readOnly }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Management API ${res.status}: ${text.slice(0, 800)}`);
+  return text ? JSON.parse(text) : null;
+}</code></pre>
+<p><code>services/reads/scripts/query.mjs</code>:</p>
+<pre><code class="language-js">import fs from &quot;node:fs&quot;;
+import { runQuery } from &quot;./api.mjs&quot;;
+import { loadEnv } from &quot;./env.mjs&quot;;
+
+const args = process.argv.slice(2);
+const readOnly = args.includes(&quot;--read-only&quot;);
+const fileIx = args.indexOf(&quot;--file&quot;);
+const sql = fileIx &gt;= 0 ? fs.readFileSync(args[fileIx + 1], &quot;utf8&quot;) : args.filter((a) =&gt; !a.startsWith(&quot;--&quot;)).join(&quot; &quot;);
+if (!sql.trim()) { console.error(&quot;uso: node scripts/query.mjs [--read-only] (--file x.sql | \&quot;select 1\&quot;)&quot;); process.exit(2); }
+const rows = await runQuery(loadEnv(), sql, { readOnly });
+console.log(JSON.stringify(rows, null, 2));</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Inventario del proyecto compartido (sólo lectura) y guardarlo para el audit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd services/reads &amp;&amp; npm install
+node scripts/query.mjs --read-only &quot;select n.nspname as schema, count(c.oid) filter (where c.relkind in (&#39;r&#39;,&#39;v&#39;,&#39;m&#39;)) as rels from pg_namespace n left join pg_class c on c.relnamespace = n.oid where n.nspname not in (&#39;pg_catalog&#39;,&#39;information_schema&#39;,&#39;pg_toast&#39;) and n.nspname not like &#39;pg_temp%&#39; and n.nspname not like &#39;pg_toast%&#39; group by n.nspname order by 1&quot; &gt; /tmp/reads-inventory-before.json
+node scripts/query.mjs --read-only &quot;select extname, extversion from pg_extension order by 1&quot; &gt; /tmp/reads-extensions-before.json
+cat /tmp/reads-inventory-before.json /tmp/reads-extensions-before.json</code></pre>
+<p>Expected: JSON con los esquemas actuales (los de Gilbert, <code>public</code>, <code>auth</code>, <code>storage</code>, …) y <strong>sin</strong> <code>mobile</code>; en extensiones se ve si <code>pg_cron</code>, <code>pg_net</code> y <code>supabase_vault</code> ya están. Copia los dos JSON a <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code> en Task 7 (sección &quot;Inventario antes/después&quot;).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: README con las prohibiciones y los comandos</strong></label></li>
+</ul>
+<p><code>services/reads/README.md</code>:</p>
+<pre><code class="language-markdown"># services/reads — backend de Ask (esquema `mobile`)
+
+Proyecto Supabase **compartido** `pickler` (`yvdipvcrpbqvofayteqf`, Sherry Labs) con `Relayerfi/pickler` de Gilbert.
+Todo lo nuestro vive en el esquema `mobile`. Spec: `docs/superpowers/specs/2026-09-19-mobile-ask-design.md`.
+
+## Prohibido en este proyecto
+- `supabase db push`, `supabase db reset`, `supabase migration repair`, `supabase link` + comandos de base.
+- Cualquier `drizzle-kit` (el migrador de Gilbert) y cualquier DDL fuera de `mobile` (salvo `create extension if not exists pg_cron|pg_net`).
+- Cambiar configuración del proyecto en el dashboard (API &quot;Exposed schemas&quot;, auth, etc.).
+- El MCP de Supabase de las sesiones de Claude apunta a Proflores: no usarlo.
+
+## Llaves
+`../../.env.pickler` (gitignored; en un worktree se lee del checkout principal). Nombres en `.env.example`.
+
+## Comandos
+- `npm run migrate:dry` / `npm run migrate` — aplica `supabase/migrations/*.sql` pendientes vía Management API; ledger `mobile.migrations`.
+- `npm run query -- --read-only &quot;select …&quot;` — consulta puntual.
+- `npm test` — `node --test scripts/` + `deno test -A supabase/functions/_shared/`.
+- `npm run deploy -- &lt;function&gt;` — `supabase functions deploy &lt;function&gt; --project-ref … --no-verify-jwt`.
+- `npm run sign` — headers `x-pickler-*` con una key efímera (o `READS_TEST_KEY`).
+- `npm run smoke` — agents-list → read-request → read-get → reads-list.
+- Secretos de funciones: `set -a; source ../../.env.pickler; set +a; supabase secrets set --project-ref yvdipvcrpbqvofayteqf ANTHROPIC_API_KEY=&quot;$ANTHROPIC_API_KEY&quot; CRON_SECRET=&quot;$CRON_SECRET&quot; APNS_KEY_ID=&quot;$APNS_KEY_ID&quot; APNS_TEAM_ID=&quot;$APNS_TEAM_ID&quot; APNS_KEY_P8_B64=&quot;$APNS_KEY_P8_B64&quot; PERPL_REST=https://testnet.perpl.xyz/api`
+
+## Limpieza de wallets de prueba
+`delete from mobile.credit_events where address in (…); delete from mobile.reminders where address in (…); delete from mobile.reads where address in (…); delete from mobile.devices where address in (…); delete from mobile.wallets where address in (…);`</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verificar y commit</strong></label></li>
+</ul>
+<p>Run: <code>cd services/reads &amp;&amp; node -e &quot;import(&#39;./scripts/env.mjs&#39;).then(m=&gt;console.log(Object.keys(m.loadEnv())))&quot;</code> Expected: <code>[ &#39;SUPABASE_URL&#39;, &#39;SUPABASE_ANON_KEY&#39;, &#39;SUPABASE_SERVICE_ROLE_KEY&#39;, &#39;ANTHROPIC_API_KEY&#39;, &#39;SUPABASE_ACCESS_TOKEN&#39; ]</code> (sin valores en pantalla).</p>
+<pre><code class="language-bash">git add services/reads/README.md services/reads/.env.example services/reads/package.json services/reads/package-lock.json services/reads/.gitignore services/reads/supabase/config.toml services/reads/scripts/env.mjs services/reads/scripts/api.mjs services/reads/scripts/query.mjs
+git commit -m &quot;chore(reads): esqueleto de services/reads, scripts de entorno y consulta al Management API&quot;</code></pre>
+<hr>
+<h3 id="task-1-migrador-propio-y-0001schemasql-aplicado-d4-d7-21-p2-p4-p12">Task 1: Migrador propio y <code>0001_schema.sql</code> aplicado (D4, D7, §2.1, P2, P4, P12)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/scripts/migrate.mjs</code>, <code>services/reads/scripts/migrate.test.mjs</code>, <code>services/reads/supabase/migrations/0001_schema.sql</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>loadEnv</code>, <code>runQuery</code> (Task 0).</li>
+<li>Produces: en Postgres, el esquema <code>mobile</code> de §2.1 con la vista <code>agent_records</code> (columnas <code>id, handle, name, owner, price_credits, sort, reads, resolved, right_count, brier_avg</code>) y las funciones <code>mobile.ensure_wallet(text) returns int</code>, <code>mobile.request_read(…) returns mobile.reads</code> (errores <code>unknown_agent</code> = SQLSTATE <code>P0001</code>, <code>no_credits</code> = <code>P0002</code>), <code>mobile.refund_read(uuid, text, text) returns boolean</code>. Exports de <code>migrate.mjs</code>: <code>pendingMigrations(files, applied)</code>, <code>wrapMigration(name, sql)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test del migrador (falla)</strong></label></li>
+</ul>
+<p><code>services/reads/scripts/migrate.test.mjs</code>:</p>
+<pre><code class="language-js">import assert from &quot;node:assert/strict&quot;;
+import { test } from &quot;node:test&quot;;
+import { pendingMigrations, wrapMigration } from &quot;./migrate.mjs&quot;;
+
+test(&quot;pendingMigrations: sólo NNNN_*.sql, ordenadas, sin las aplicadas&quot;, () =&gt; {
+  const files = [&quot;0002_seed_agents.sql&quot;, &quot;notas.md&quot;, &quot;0001_schema.sql&quot;, &quot;0003_cron.sql&quot;];
+  assert.deepEqual(pendingMigrations(files, new Set([&quot;0001_schema.sql&quot;])), [&quot;0002_seed_agents.sql&quot;, &quot;0003_cron.sql&quot;]);
+  assert.deepEqual(pendingMigrations(files, new Set()), [&quot;0001_schema.sql&quot;, &quot;0002_seed_agents.sql&quot;, &quot;0003_cron.sql&quot;]);
+});
+
+test(&quot;wrapMigration: transacción con el insert al ledger al final&quot;, () =&gt; {
+  const sql = wrapMigration(&quot;0001_schema.sql&quot;, &quot;create table mobile.x (id int);&quot;);
+  assert.equal(sql, &quot;begin;\ncreate table mobile.x (id int);\ninsert into mobile.migrations (name) values (&#39;0001_schema.sql&#39;);\ncommit;&quot;);
+});</code></pre>
+<p>Run: <code>cd services/reads &amp;&amp; node --test scripts/</code> → Expected: FAIL (<code>Cannot find module &#39;./migrate.mjs&#39;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>migrate.mjs</code></strong></label></li>
+</ul>
+<pre><code class="language-js">import fs from &quot;node:fs&quot;;
+import path from &quot;node:path&quot;;
+import { fileURLToPath } from &quot;node:url&quot;;
+import { runQuery } from &quot;./api.mjs&quot;;
+import { loadEnv } from &quot;./env.mjs&quot;;
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+export const MIGRATIONS_DIR = path.resolve(here, &quot;../supabase/migrations&quot;);
+const BOOTSTRAP = `create schema if not exists mobile;
+create table if not exists mobile.migrations (name text primary key, applied_at timestamptz not null default now());`;
+
+export function pendingMigrations(files, applied) {
+  return files.filter((f) =&gt; /^\d{4}_[a-z0-9_]+\.sql$/.test(f)).sort().filter((f) =&gt; !applied.has(f));
+}
+
+export function wrapMigration(name, sql) {
+  return `begin;\n${sql.trim()}\ninsert into mobile.migrations (name) values (&#39;${name}&#39;);\ncommit;`;
+}
+
+async function main() {
+  const dry = process.argv.includes(&quot;--dry&quot;);
+  const env = loadEnv();
+  await runQuery(env, BOOTSTRAP);
+  const applied = new Set((await runQuery(env, &quot;select name from mobile.migrations&quot;, { readOnly: true })).map((r) =&gt; r.name));
+  const pending = pendingMigrations(fs.readdirSync(MIGRATIONS_DIR), applied);
+  console.log(`aplicadas: ${[...applied].sort().join(&quot;, &quot;) || &quot;(ninguna)&quot;}`);
+  console.log(`pendientes: ${pending.join(&quot;, &quot;) || &quot;(ninguna)&quot;}`);
+  for (const name of pending) {
+    const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, name), &quot;utf8&quot;);
+    if (dry) { console.log(`--- ${name} (dry) ---\n${sql}`); continue; }
+    await runQuery(env, wrapMigration(name, sql));
+    console.log(`✓ ${name}`);
+  }
+}
+
+if (process.argv[1] &amp;&amp; path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) =&gt; { console.error(e.message); process.exit(1); });
+}</code></pre>
+<p>Run: <code>node --test scripts/</code> → Expected: 2 pass.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>0001_schema.sql</code></strong></label></li>
+</ul>
+<pre><code class="language-sql">-- Esquema mobile · Ask (spec 2026-09-19-mobile-ask §2.1). Sólo el rol de las funciones lo usa; sin RLS ni grants a anon/authenticated.
+create table mobile.agents (
+  id text primary key,
+  handle text not null unique,
+  name text not null,
+  owner text not null,
+  persona text not null,
+  price_credits int not null default 1 check (price_credits &gt; 0),
+  active boolean not null default true,
+  sort int not null default 100,
+  created_at timestamptz not null default now()
+);
+
+create table mobile.wallets (
+  address text primary key check (address = lower(address)),
+  credits int not null default 20 check (credits &gt;= 0),
+  created_at timestamptz not null default now()
+);
+
+create table mobile.credit_events (
+  id bigserial primary key,
+  address text not null references mobile.wallets(address),
+  delta int not null,
+  reason text not null check (reason in (&#39;grant&#39;, &#39;charge&#39;, &#39;refund&#39;)),
+  read_id uuid,
+  created_at timestamptz not null default now()
+);
+
+create table mobile.reads (
+  id uuid primary key default gen_random_uuid(),
+  address text not null references mobile.wallets(address),
+  agent_id text not null references mobile.agents(id),
+  market_id int not null,
+  symbol text not null,
+  level_bps int not null check (level_bps in (250, 100, 50, -50, -100)),
+  horizon_min int not null check (horizon_min in (60, 240, 720, 1440)),
+  price_decimals int not null,
+  mark_at_request bigint not null,
+  target bigint not null,
+  question text not null,
+  status text not null default &#39;pending&#39;
+    check (status in (&#39;pending&#39;, &#39;open&#39;, &#39;right&#39;, &#39;wrong&#39;, &#39;void&#39;, &#39;failed&#39;)),
+  probability numeric(4,3),
+  reasons jsonb,
+  limits text,
+  model text,
+  latency_ms int,
+  usage jsonb,
+  credits_charged int not null,
+  error text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  resolved_at timestamptz,
+  mark_at_resolution bigint,
+  outcome boolean,
+  brier numeric(5,4)
+);
+create index reads_address_created on mobile.reads (address, created_at desc);
+create index reads_open_expires on mobile.reads (expires_at) where status = &#39;open&#39;;
+create index reads_pending_created on mobile.reads (created_at) where status = &#39;pending&#39;;
+
+create table mobile.reminders (
+  id uuid primary key default gen_random_uuid(),
+  address text not null references mobile.wallets(address),
+  read_id uuid references mobile.reads(id),
+  market_id int not null,
+  symbol text not null,
+  level_bps int not null,
+  horizon_min int not null,
+  price_decimals int not null,
+  target bigint not null,
+  side text not null check (side in (&#39;long&#39;, &#39;short&#39;)),
+  kind text not null check (kind in (&#39;pre&#39;, &#39;expiry&#39;)),
+  fire_at timestamptz not null,
+  status text not null default &#39;scheduled&#39; check (status in (&#39;scheduled&#39;, &#39;sent&#39;, &#39;failed&#39;)),
+  sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index reminders_due on mobile.reminders (fire_at) where status = &#39;scheduled&#39;;
+
+create table mobile.devices (
+  address text primary key references mobile.wallets(address),
+  token text not null,
+  env text not null check (env in (&#39;sandbox&#39;, &#39;production&#39;)),
+  updated_at timestamptz not null default now()
+);
+
+create view mobile.agent_records as
+select a.id, a.handle, a.name, a.owner, a.price_credits, a.sort,
+       count(r.id) filter (where r.status in (&#39;open&#39;, &#39;right&#39;, &#39;wrong&#39;)) as reads,
+       count(r.id) filter (where r.status in (&#39;right&#39;, &#39;wrong&#39;)) as resolved,
+       count(r.id) filter (where r.status = &#39;right&#39;) as right_count,
+       avg(r.brier) filter (where r.status in (&#39;right&#39;, &#39;wrong&#39;)) as brier_avg
+from mobile.agents a
+left join mobile.reads r on r.agent_id = a.id
+where a.active
+group by a.id;
+
+-- Wallet con 20 créditos iniciales (evento grant); devuelve el saldo actual.
+create function mobile.ensure_wallet(p_address text) returns int
+language plpgsql security definer set search_path = mobile, pg_temp as $$
+declare v_credits int;
+begin
+  insert into mobile.wallets (address) values (p_address) on conflict (address) do nothing;
+  if found then
+    insert into mobile.credit_events (address, delta, reason) values (p_address, 20, &#39;grant&#39;);
+  end if;
+  select credits into v_credits from mobile.wallets where address = p_address;
+  return v_credits;
+end $$;
+
+-- Cobro + insert de la read en una transacción. Errores: unknown_agent (P0001), no_credits (P0002).
+create function mobile.request_read(
+  p_address text, p_agent text, p_market int, p_symbol text, p_level int, p_horizon int,
+  p_pd int, p_mark bigint, p_target bigint, p_question text, p_expires timestamptz
+) returns mobile.reads
+language plpgsql security definer set search_path = mobile, pg_temp as $$
+declare v_price int; v_read mobile.reads;
+begin
+  perform mobile.ensure_wallet(p_address);
+  select price_credits into v_price from mobile.agents where id = p_agent and active;
+  if v_price is null then raise exception &#39;unknown_agent&#39; using errcode = &#39;P0001&#39;; end if;
+  perform 1 from mobile.wallets where address = p_address for update;
+  update mobile.wallets set credits = credits - v_price where address = p_address and credits &gt;= v_price;
+  if not found then raise exception &#39;no_credits&#39; using errcode = &#39;P0002&#39;; end if;
+  insert into mobile.reads (address, agent_id, market_id, symbol, level_bps, horizon_min, price_decimals,
+                            mark_at_request, target, question, credits_charged, expires_at)
+  values (p_address, p_agent, p_market, p_symbol, p_level, p_horizon, p_pd,
+          p_mark, p_target, p_question, v_price, p_expires)
+  returning * into v_read;
+  insert into mobile.credit_events (address, delta, reason, read_id) values (p_address, -v_price, &#39;charge&#39;, v_read.id);
+  return v_read;
+end $$;
+
+-- Reembolso idempotente: sólo desde pending/open; p_status es &#39;failed&#39; o &#39;void&#39;.
+create function mobile.refund_read(p_read uuid, p_status text, p_error text) returns boolean
+language plpgsql security definer set search_path = mobile, pg_temp as $$
+declare v mobile.reads;
+begin
+  update mobile.reads
+     set status = p_status, error = p_error,
+         resolved_at = case when p_status = &#39;void&#39; then now() else resolved_at end
+   where id = p_read and status in (&#39;pending&#39;, &#39;open&#39;)
+  returning * into v;
+  if not found then return false; end if;
+  update mobile.wallets set credits = credits + v.credits_charged where address = v.address;
+  insert into mobile.credit_events (address, delta, reason, read_id) values (v.address, v.credits_charged, &#39;refund&#39;, v.id);
+  return true;
+end $$;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Dry run, aplicar, comprobar idempotencia</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm run migrate:dry      # imprime 0001 sin aplicar
+npm run migrate          # ✓ 0001_schema.sql
+npm run migrate          # pendientes: (ninguna)
+node scripts/query.mjs --read-only &quot;select name, applied_at from mobile.migrations&quot;
+node scripts/query.mjs --read-only &quot;select table_name from information_schema.tables where table_schema = &#39;mobile&#39; order by 1&quot;
+node scripts/query.mjs --read-only &quot;select routine_name from information_schema.routines where routine_schema = &#39;mobile&#39; order by 1&quot;</code></pre>
+<p>Expected: <code>0001_schema.sql</code> en el ledger; tablas <code>agent_records, agents, credit_events, devices, migrations, reads, reminders, wallets</code>; rutinas <code>ensure_wallet, refund_read, request_read</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Probar las funciones SQL contra el defecto (sin agentes todavía)</strong></label></li>
+</ul>
+<pre><code class="language-bash">node scripts/query.mjs &quot;select mobile.ensure_wallet(&#39;0x00000000000000000000000000000000000000aa&#39;) as credits&quot;
+node scripts/query.mjs &quot;select mobile.ensure_wallet(&#39;0x00000000000000000000000000000000000000aa&#39;) as credits&quot;
+node scripts/query.mjs --read-only &quot;select count(*) from mobile.credit_events where address = &#39;0x00000000000000000000000000000000000000aa&#39; and reason = &#39;grant&#39;&quot;
+node scripts/query.mjs &quot;select mobile.request_read(&#39;0x00000000000000000000000000000000000000aa&#39;,&#39;nope&#39;,16,&#39;BTC&#39;,100,60,1,762555,770181,&#39;q&#39;,now())&quot;
+node scripts/query.mjs &quot;delete from mobile.credit_events where address = &#39;0x00000000000000000000000000000000000000aa&#39;; delete from mobile.wallets where address = &#39;0x00000000000000000000000000000000000000aa&#39;;&quot;</code></pre>
+<p>Expected: <code>20</code> dos veces; <strong>un solo</strong> evento <code>grant</code>; <code>request_read</code> con agente inexistente falla con <code>unknown_agent</code> (el error del Management API contiene ese texto); la limpieza deja la wallet fuera.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/scripts/migrate.mjs services/reads/scripts/migrate.test.mjs services/reads/supabase/migrations/0001_schema.sql
+git commit -m &quot;feat(reads): migrador propio vía Management API y esquema mobile (0001)&quot;</code></pre>
+<hr>
+<h3 id="task-2-sharedmatrixts-sharedauthts-sharedhttpts-con-deno-test-d1-d2-d3-d6-p3-p5">Task 2: <code>_shared/matrix.ts</code>, <code>_shared/auth.ts</code>, <code>_shared/http.ts</code> con <code>deno test</code> (D1, D2, D3, D6, P3, P5)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/supabase/functions/_shared/matrix.ts</code>, <code>_shared/matrix.test.ts</code>, <code>_shared/auth.ts</code>, <code>_shared/auth.test.ts</code>, <code>_shared/http.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (<code>matrix.ts</code>): <code>LEVELS_BPS</code>, <code>HORIZONS_MIN</code>, <code>isCell(level, horizon)</code>, <code>targetFor(mark, levelBps)</code>, <code>formatScaled(v, decimals)</code>, <code>questionFor(symbol, levelBps, target, pd, expiresAt)</code>, <code>expiresAtFor(createdAt, horizonMin)</code>, <code>callOf(probability)</code>, <code>outcomeOf(levelBps, target, mark)</code>, <code>brierOf(probability, outcome)</code>, <code>resolveRead({ level_bps, target, probability }, mark)</code>.</li>
+<li>Produces (<code>auth.ts</code>): <code>canonicalMessage(address, ts)</code>, <code>authenticate(headers, now?)</code> → <code>{ ok: true, address } | { ok: false, status: 401, error }</code>; constantes <code>SESSION_MAX_AGE_MS = 86_400_000</code>, <code>SESSION_FUTURE_MS = 300_000</code>.</li>
+<li>Produces (<code>http.ts</code>): <code>json(body, status?)</code>, <code>fail(status, code)</code>, <code>methodIs(req, method)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests de la matriz (fallan)</strong></label></li>
+</ul>
+<p><code>services/reads/supabase/functions/_shared/matrix.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals, assertThrows } from &quot;jsr:@std/assert@1&quot;;
+import { brierOf, callOf, expiresAtFor, formatScaled, HORIZONS_MIN, isCell, LEVELS_BPS, outcomeOf, questionFor, resolveRead, targetFor } from &quot;./matrix.ts&quot;;
+
+Deno.test(&quot;la matriz es 5 niveles × 4 horizontes&quot;, () =&gt; {
+  assertEquals([...LEVELS_BPS], [250, 100, 50, -50, -100]);
+  assertEquals([...HORIZONS_MIN], [60, 240, 720, 1440]);
+  assertEquals(isCell(100, 240), true);
+  assertEquals(isCell(0, 240), false);
+  assertEquals(isCell(100, 30), false);
+});
+
+Deno.test(&quot;targetFor redondea sobre el mark escalado (BTC pd=1 del fixture)&quot;, () =&gt; {
+  assertEquals(targetFor(762555, 100), 770181);   // 762555 × 1.01 = 770180.55
+  assertEquals(targetFor(762555, -50), 758742);   // × 0.995 = 758742.225
+  assertEquals(targetFor(2221, 250), 2277);       // MON pd=5: 2276.525
+});
+
+Deno.test(&quot;formatScaled pone el punto según price_decimals&quot;, () =&gt; {
+  assertEquals(formatScaled(762555, 1), &quot;76255.5&quot;);
+  assertEquals(formatScaled(2221, 5), &quot;0.02221&quot;);
+  assertEquals(formatScaled(5, 0), &quot;5&quot;);
+});
+
+Deno.test(&quot;questionFor: &#39;at or above&#39; con nivel positivo, &#39;at or below&#39; con negativo, hora UTC&quot;, () =&gt; {
+  const at = new Date(&quot;2026-09-20T14:00:00.000Z&quot;);
+  assertEquals(questionFor(&quot;BTC&quot;, 100, 770181, 1, at), &quot;Will the BTC mark be at or above 77018.1 at 2026-09-20 14:00 UTC?&quot;);
+  assertEquals(questionFor(&quot;MON&quot;, -100, 2199, 5, at), &quot;Will the MON mark be at or below 0.02199 at 2026-09-20 14:00 UTC?&quot;);
+});
+
+Deno.test(&quot;expiresAtFor suma el horizonte&quot;, () =&gt; {
+  assertEquals(expiresAtFor(new Date(&quot;2026-09-20T10:00:00.000Z&quot;), 240).toISOString(), &quot;2026-09-20T14:00:00.000Z&quot;);
+});
+
+Deno.test(&quot;callOf, outcomeOf, brierOf y resolveRead&quot;, () =&gt; {
+  assertEquals(callOf(0.5), true);
+  assertEquals(callOf(0.499), false);
+  assertEquals(outcomeOf(100, 770181, 770181), true);
+  assertEquals(outcomeOf(100, 770181, 770180), false);
+  assertEquals(outcomeOf(-50, 758742, 758742), true);
+  assertEquals(outcomeOf(-50, 758742, 758743), false);
+  assertEquals(brierOf(0.7, true), 0.09);
+  assertEquals(brierOf(0.7, false), 0.49);
+  assertEquals(resolveRead({ level_bps: 100, target: 770181, probability: 0.62 }, 771000), { status: &quot;right&quot;, outcome: true, brier: 0.1444 });
+  assertEquals(resolveRead({ level_bps: 100, target: 770181, probability: 0.62 }, 760000), { status: &quot;wrong&quot;, outcome: false, brier: 0.3844 });
+  assertEquals(resolveRead({ level_bps: -100, target: 2199, probability: 0.2 }, 2300), { status: &quot;right&quot;, outcome: false, brier: 0.04 });
+  assertThrows(() =&gt; resolveRead({ level_bps: 100, target: 770181, probability: null }, 771000), Error, &quot;no probability&quot;);
+});</code></pre>
+<p>Run: <code>cd services/reads &amp;&amp; deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./matrix.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>matrix.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Matriz nivel × horizonte y resolución. Puro: sin Deno.env ni red.
+export const LEVELS_BPS = [250, 100, 50, -50, -100] as const;
+export const HORIZONS_MIN = [60, 240, 720, 1440] as const;
+export type LevelBps = (typeof LEVELS_BPS)[number];
+export type HorizonMin = (typeof HORIZONS_MIN)[number];
+
+export function isCell(level: number, horizon: number): boolean {
+  return (LEVELS_BPS as readonly number[]).includes(level) &amp;&amp; (HORIZONS_MIN as readonly number[]).includes(horizon);
+}
+
+/** Target en las mismas unidades escaladas que el mark (price_decimals). */
+export function targetFor(mark: number, levelBps: number): number {
+  return Math.round((mark * (10000 + levelBps)) / 10000);
+}
+
+export function formatScaled(v: number, decimals: number): string {
+  const neg = v &lt; 0;
+  const s = String(Math.abs(v)).padStart(decimals + 1, &quot;0&quot;);
+  const out = decimals === 0 ? s : `${s.slice(0, -decimals)}.${s.slice(-decimals)}`;
+  return neg ? `-${out}` : out;
+}
+
+export function questionFor(symbol: string, levelBps: number, target: number, pd: number, expiresAt: Date): string {
+  const dir = levelBps &gt; 0 ? &quot;at or above&quot; : &quot;at or below&quot;;
+  const when = expiresAt.toISOString().slice(0, 16).replace(&quot;T&quot;, &quot; &quot;);
+  return `Will the ${symbol} mark be ${dir} ${formatScaled(target, pd)} at ${when} UTC?`;
+}
+
+export function expiresAtFor(createdAt: Date, horizonMin: number): Date {
+  return new Date(createdAt.getTime() + horizonMin * 60_000);
+}
+
+export const callOf = (probability: number): boolean =&gt; probability &gt;= 0.5;
+
+export function outcomeOf(levelBps: number, target: number, mark: number): boolean {
+  return levelBps &gt; 0 ? mark &gt;= target : mark &lt;= target;
+}
+
+export function brierOf(probability: number, outcome: boolean): number {
+  return Math.round((probability - (outcome ? 1 : 0)) ** 2 * 10000) / 10000;
+}
+
+export type Resolution = { status: &quot;right&quot; | &quot;wrong&quot;; outcome: boolean; brier: number };
+
+export function resolveRead(read: { level_bps: number; target: number; probability: number | null }, mark: number): Resolution {
+  if (read.probability === null) throw new Error(&quot;resolveRead: no probability&quot;);
+  const outcome = outcomeOf(read.level_bps, read.target, mark);
+  return { status: callOf(read.probability) === outcome ? &quot;right&quot; : &quot;wrong&quot;, outcome, brier: brierOf(read.probability, outcome) };
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 6 pass.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tests de la firma (fallan)</strong></label></li>
+</ul>
+<p><code>services/reads/supabase/functions/_shared/auth.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals } from &quot;jsr:@std/assert@1&quot;;
+import { generatePrivateKey, privateKeyToAccount } from &quot;npm:viem@2.56.8/accounts&quot;;
+import { authenticate, canonicalMessage, SESSION_MAX_AGE_MS } from &quot;./auth.ts&quot;;
+
+const account = privateKeyToAccount(generatePrivateKey());
+const NOW = 1_790_000_000_000;
+
+async function headersFor(ts: number, address = account.address, signer = account): Promise&lt;Headers&gt; {
+  const sig = await signer.signMessage({ message: canonicalMessage(address, ts) });
+  return new Headers({ &quot;x-pickler-address&quot;: address, &quot;x-pickler-ts&quot;: String(ts), &quot;x-pickler-sig&quot;: sig });
+}
+
+Deno.test(&quot;canonicalMessage usa la dirección en minúsculas&quot;, () =&gt; {
+  assertEquals(canonicalMessage(&quot;0xABCDEF0000000000000000000000000000000001&quot;, 5), &quot;pickler-reads:0xabcdef0000000000000000000000000000000001:5&quot;);
+});
+
+Deno.test(&quot;firma válida → ok con la dirección en minúsculas&quot;, async () =&gt; {
+  const r = await authenticate(await headersFor(NOW - 1000), NOW);
+  assertEquals(r, { ok: true, address: account.address.toLowerCase() });
+});
+
+Deno.test(&quot;firma de hace más de 24 h → signature_expired&quot;, async () =&gt; {
+  const r = await authenticate(await headersFor(NOW - SESSION_MAX_AGE_MS - 1), NOW);
+  assertEquals(r, { ok: false, status: 401, error: &quot;signature_expired&quot; });
+});
+
+Deno.test(&quot;timestamp más de 5 min en el futuro → signature_expired&quot;, async () =&gt; {
+  const r = await authenticate(await headersFor(NOW + 6 * 60_000), NOW);
+  assertEquals(r, { ok: false, status: 401, error: &quot;signature_expired&quot; });
+});
+
+Deno.test(&quot;firma de otra wallet → bad_signature&quot;, async () =&gt; {
+  const other = privateKeyToAccount(generatePrivateKey());
+  const r = await authenticate(await headersFor(NOW, account.address, other), NOW);
+  assertEquals(r, { ok: false, status: 401, error: &quot;bad_signature&quot; });
+});
+
+Deno.test(&quot;headers ausentes o malformados → missing_signature&quot;, async () =&gt; {
+  assertEquals(await authenticate(new Headers(), NOW), { ok: false, status: 401, error: &quot;missing_signature&quot; });
+  const h = await headersFor(NOW);
+  h.set(&quot;x-pickler-sig&quot;, &quot;0x1234&quot;);
+  assertEquals(await authenticate(h, NOW), { ok: false, status: 401, error: &quot;missing_signature&quot; });
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./auth.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>auth.ts</code> y <code>http.ts</code></strong></label></li>
+</ul>
+<p><code>auth.ts</code>:</p>
+<pre><code class="language-ts">// Identidad app → servicio (D6): firma personal_sign de `pickler-reads:&lt;address&gt;:&lt;ts&gt;`, válida 24 h.
+import { type Hex, isAddress, recoverMessageAddress } from &quot;npm:viem@2.56.8&quot;;
+
+export const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export const SESSION_FUTURE_MS = 5 * 60 * 1000;
+
+export type AuthResult = { ok: true; address: string } | { ok: false; status: 401; error: &quot;missing_signature&quot; | &quot;signature_expired&quot; | &quot;bad_signature&quot; };
+
+export function canonicalMessage(address: string, ts: number): string {
+  return `pickler-reads:${address.toLowerCase()}:${ts}`;
+}
+
+export async function authenticate(headers: Headers, now = Date.now()): Promise&lt;AuthResult&gt; {
+  const address = headers.get(&quot;x-pickler-address&quot;)?.toLowerCase() ?? &quot;&quot;;
+  const tsRaw = headers.get(&quot;x-pickler-ts&quot;) ?? &quot;&quot;;
+  const sig = headers.get(&quot;x-pickler-sig&quot;) ?? &quot;&quot;;
+  if (!isAddress(address) || !/^\d{13}$/.test(tsRaw) || !/^0x[0-9a-fA-F]{130}$/.test(sig)) {
+    return { ok: false, status: 401, error: &quot;missing_signature&quot; };
+  }
+  const ts = Number(tsRaw);
+  if (ts &lt; now - SESSION_MAX_AGE_MS || ts &gt; now + SESSION_FUTURE_MS) return { ok: false, status: 401, error: &quot;signature_expired&quot; };
+  let recovered: string;
+  try {
+    recovered = await recoverMessageAddress({ message: canonicalMessage(address, ts), signature: sig as Hex });
+  } catch {
+    return { ok: false, status: 401, error: &quot;bad_signature&quot; };
+  }
+  return recovered.toLowerCase() === address ? { ok: true, address } : { ok: false, status: 401, error: &quot;bad_signature&quot; };
+}</code></pre>
+<p><code>http.ts</code>:</p>
+<pre><code class="language-ts">export function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { &quot;content-type&quot;: &quot;application/json&quot; } });
+}
+
+/** Toda respuesta de error es `{ error: code }` (D20). */
+export function fail(status: number, code: string): Response {
+  return json({ error: code }, status);
+}
+
+export function methodIs(req: Request, method: string): boolean {
+  return req.method.toUpperCase() === method;
+}
+
+/** Prefijo corto para logs: nunca la dirección completa (D20). */
+export function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 12 pass (6 matriz + 6 firma).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/supabase/functions/_shared/matrix.ts services/reads/supabase/functions/_shared/matrix.test.ts services/reads/supabase/functions/_shared/auth.ts services/reads/supabase/functions/_shared/auth.test.ts services/reads/supabase/functions/_shared/http.ts
+git commit -m &quot;feat(reads): matriz nivel × horizonte, resolución y auth por firma de wallet&quot;</code></pre>
+<hr>
+<h3 id="task-3-sharedperplts-sharedclaudets-shareddbts-shareddtots-d2-d8-p1">Task 3: <code>_shared/perpl.ts</code>, <code>_shared/claude.ts</code>, <code>_shared/db.ts</code>, <code>_shared/dto.ts</code> (D2, D8, P1)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/supabase/functions/_shared/perpl.ts</code>, <code>_shared/perpl.test.ts</code>, <code>_shared/fixtures/context.json</code> (copia de <code>apps/mobile/__tests__/fixtures/perpl/context.json</code>), <code>_shared/claude.ts</code>, <code>_shared/claude.test.ts</code>, <code>_shared/db.ts</code>, <code>_shared/dto.ts</code>, <code>_shared/dto.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (<code>perpl.ts</code>): <code>type PerplMarket = { id, symbol, name, priceDecimals, mark, prev, isOpen }</code>; <code>parseMarkets(body): Map&lt;number, PerplMarket&gt;</code>; <code>fetchMarkets(rest?, timeoutMs?): Promise&lt;Map&lt;number, PerplMarket&gt;&gt;</code> (lanza <code>PerplUnavailable</code>).</li>
+<li>Produces (<code>claude.ts</code>): <code>MODEL = &quot;claude-sonnet-5&quot;</code>, <code>ReadSchema</code> (zod), <code>type ReadOutput</code>, <code>type ReadInput</code>, <code>buildMessages(input)</code>, <code>readWithAgent(client, persona, input) → { output, latencyMs, usage }</code>, <code>newClient()</code>.</li>
+<li>Produces (<code>db.ts</code>): <code>sql</code> (cliente postgres.js, esquema <code>mobile</code> por nombre calificado en cada consulta).</li>
+<li>Produces (<code>dto.ts</code>): <code>toReadDto(row): ReadDto</code>, <code>toReminderDto(row)</code>, <code>toAgentDto(row)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Fixture y test de Perpl (falla)</strong></label></li>
+</ul>
+<pre><code class="language-bash">mkdir -p services/reads/supabase/functions/_shared/fixtures
+cp apps/mobile/__tests__/fixtures/perpl/context.json services/reads/supabase/functions/_shared/fixtures/context.json</code></pre>
+<p><code>_shared/perpl.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals, assertRejects } from &quot;jsr:@std/assert@1&quot;;
+import context from &quot;./fixtures/context.json&quot; with { type: &quot;json&quot; };
+import { fetchMarkets, parseMarkets, PerplUnavailable } from &quot;./perpl.ts&quot;;
+
+Deno.test(&quot;parseMarkets: mercados abiertos por id con mark y price_decimals del fixture&quot;, () =&gt; {
+  const m = parseMarkets(context);
+  assertEquals([...m.keys()], [16, 32, 48, 64, 256, 272, 320]);
+  assertEquals(m.get(16), { id: 16, symbol: &quot;BTC&quot;, name: m.get(16)!.name, priceDecimals: 1, mark: 762555, prev: m.get(16)!.prev, isOpen: true });
+  assertEquals(m.get(64)?.priceDecimals, 5);
+});
+
+Deno.test(&quot;parseMarkets rechaza un payload sin markets&quot;, () =&gt; {
+  let threw = false;
+  try { parseMarkets({ instances: [] }); } catch { threw = true; }
+  assertEquals(threw, true);
+});
+
+Deno.test(&quot;fetchMarkets: usa fetch inyectado y lanza PerplUnavailable con 5xx&quot;, async () =&gt; {
+  const ok = await fetchMarkets(&quot;https://x.test/api&quot;, 1000, async () =&gt; new Response(JSON.stringify(context), { status: 200 }));
+  assertEquals(ok.get(32)?.symbol, &quot;ETH&quot;);
+  await assertRejects(() =&gt; fetchMarkets(&quot;https://x.test/api&quot;, 1000, async () =&gt; new Response(&quot;nope&quot;, { status: 503 })), PerplUnavailable);
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./perpl.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>perpl.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Mercados y mark de Perpl desde GET /v1/pub/context (misma forma que apps/mobile/src/perpl/context.ts).
+export type PerplMarket = { id: number; symbol: string; name: string; priceDecimals: number; mark: number; prev: number; isOpen: boolean };
+export class PerplUnavailable extends Error {}
+
+type Rec = Record&lt;string, unknown&gt;;
+const rec = (v: unknown, what: string): Rec =&gt; {
+  if (v === null || typeof v !== &quot;object&quot;) throw new Error(`Perpl context: ${what} is not an object`);
+  return v as Rec;
+};
+const num = (r: Rec, k: string, what: string): number =&gt; {
+  const v = r[k];
+  if (typeof v !== &quot;number&quot;) throw new Error(`Perpl context: ${what}.${k} is not a number`);
+  return v;
+};
+const str = (r: Rec, k: string, what: string): string =&gt; {
+  const v = r[k];
+  if (typeof v !== &quot;string&quot;) throw new Error(`Perpl context: ${what}.${k} is not a string`);
+  return v;
+};
+
+export function parseMarkets(body: unknown): Map&lt;number, PerplMarket&gt; {
+  const c = rec(body, &quot;context&quot;);
+  if (!Array.isArray(c.markets)) throw new Error(&quot;Perpl context: no markets&quot;);
+  const out = new Map&lt;number, PerplMarket&gt;();
+  for (const raw of c.markets) {
+    const m = rec(raw, &quot;market&quot;);
+    const cfg = rec(m.config, &quot;market.config&quot;);
+    const st = rec(m.state, &quot;market.state&quot;);
+    const market: PerplMarket = {
+      id: num(m, &quot;id&quot;, &quot;market&quot;), symbol: str(m, &quot;symbol&quot;, &quot;market&quot;), name: str(m, &quot;name&quot;, &quot;market&quot;),
+      priceDecimals: num(cfg, &quot;price_decimals&quot;, &quot;config&quot;), mark: num(st, &quot;mrk&quot;, &quot;state&quot;), prev: num(st, &quot;prv&quot;, &quot;state&quot;),
+      isOpen: cfg.is_open === true,
+    };
+    if (market.isOpen) out.set(market.id, market);
+  }
+  return new Map([...out.entries()].sort((a, b) =&gt; a[0] - b[0]));
+}
+
+export const PERPL_REST_DEFAULT = &quot;https://testnet.perpl.xyz/api&quot;;
+
+export async function fetchMarkets(
+  rest = Deno.env.get(&quot;PERPL_REST&quot;) ?? PERPL_REST_DEFAULT,
+  timeoutMs = 10_000,
+  doFetch: (url: string, init: RequestInit) =&gt; Promise&lt;Response&gt; = fetch,
+): Promise&lt;Map&lt;number, PerplMarket&gt;&gt; {
+  const controller = new AbortController();
+  const timer = setTimeout(() =&gt; controller.abort(), timeoutMs);
+  try {
+    const res = await doFetch(`${rest}/v1/pub/context`, { signal: controller.signal });
+    if (!res.ok) throw new PerplUnavailable(`Perpl responded ${res.status}`);
+    return parseMarkets(await res.json());
+  } catch (e) {
+    if (e instanceof PerplUnavailable) throw e;
+    throw new PerplUnavailable(e instanceof Error ? e.message : String(e));
+  } finally {
+    clearTimeout(timer);
+  }
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 15 pass.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Test de Claude con cliente falso (falla)</strong></label></li>
+</ul>
+<p><code>_shared/claude.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals, assertRejects } from &quot;jsr:@std/assert@1&quot;;
+import { buildMessages, MODEL, type ReadInput, readWithAgent, RULES } from &quot;./claude.ts&quot;;
+
+const input: ReadInput = {
+  symbol: &quot;BTC&quot;, name: &quot;Bitcoin&quot;, mark: &quot;76255.5&quot;, prev: &quot;75100.0&quot;, change24hPct: 1.54, target: &quot;77018.1&quot;,
+  levelBps: 100, horizonMin: 240, expiresAtUtc: &quot;2026-09-20 14:00 UTC&quot;, nowUtc: &quot;2026-09-20 10:00 UTC&quot;,
+};
+
+Deno.test(&quot;buildMessages: un turno de usuario con el JSON de la celda&quot;, () =&gt; {
+  const msgs = buildMessages(input);
+  assertEquals(msgs.length, 1);
+  assertEquals(msgs[0].role, &quot;user&quot;);
+  assertEquals(typeof msgs[0].content, &quot;string&quot;);
+  assertEquals((msgs[0].content as string).includes(&#39;&quot;target&quot;: &quot;77018.1&quot;&#39;), true);
+});
+
+Deno.test(&quot;readWithAgent: manda persona + reglas con cache_control, modelo sonnet 5, y devuelve parsed_output&quot;, async () =&gt; {
+  let captured: Record&lt;string, unknown&gt; = {};
+  const fake = { messages: { parse: async (params: Record&lt;string, unknown&gt;) =&gt; { captured = params; return { parsed_output: { probability: 0.62, reasons: [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;], limits: &quot;x&quot; }, usage: { input_tokens: 700, output_tokens: 120 } }; } } };
+  // deno-lint-ignore no-explicit-any
+  const r = await readWithAgent(fake as any, &quot;You are Drift.&quot;, input, () =&gt; 1000);
+  assertEquals(r.output, { probability: 0.62, reasons: [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;], limits: &quot;x&quot; });
+  assertEquals(r.usage, { input_tokens: 700, output_tokens: 120 });
+  assertEquals(captured.model, MODEL);
+  assertEquals(captured.max_tokens, 1024);
+  const system = captured.system as { type: string; text: string; cache_control: { type: string } }[];
+  assertEquals(system[0].text.startsWith(RULES), true);
+  assertEquals(system[0].text.endsWith(&quot;You are Drift.&quot;), true);
+  assertEquals(system[0].cache_control, { type: &quot;ephemeral&quot; });
+  assertEquals((captured.output_config as { effort: string }).effort, &quot;medium&quot;);
+});
+
+Deno.test(&quot;readWithAgent: parsed_output null → error&quot;, async () =&gt; {
+  const fake = { messages: { parse: async () =&gt; ({ parsed_output: null, usage: { input_tokens: 1, output_tokens: 1 } }) } };
+  // deno-lint-ignore no-explicit-any
+  await assertRejects(() =&gt; readWithAgent(fake as any, &quot;p&quot;, input), Error, &quot;unparsed&quot;);
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./claude.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>claude.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Lectura del agente (D8): claude-sonnet-5, salida estructurada, persona cacheada.
+import Anthropic from &quot;npm:@anthropic-ai/sdk@0.127.0&quot;;
+import { zodOutputFormat } from &quot;npm:@anthropic-ai/sdk@0.127.0/helpers/zod&quot;;
+import { z } from &quot;npm:zod@4.6.5&quot;;
+
+export const MODEL = &quot;claude-sonnet-5&quot;;
+
+export const ReadSchema = z.object({
+  probability: z.number().min(0.01).max(0.99).describe(&quot;Probability that the statement in `question` is true&quot;),
+  reasons: z.array(z.string().max(140)).length(3).describe(&quot;Exactly three short reasons, most important first&quot;),
+  limits: z.string().max(240).describe(&quot;What would make this read wrong&quot;),
+});
+export type ReadOutput = z.infer&lt;typeof ReadSchema&gt;;
+
+export type ReadInput = {
+  symbol: string; name: string; mark: string; prev: string; change24hPct: number; target: string;
+  levelBps: number; horizonMin: number; expiresAtUtc: string; nowUtc: string;
+};
+
+export const RULES = `You are a trading agent on Pickler, a mobile app where users pay a simulated credit for your read on a perpetual futures market on Perpl (Monad testnet).
+You receive one binary question about where the mark price will be at a given time, plus the only market data you have: the current mark, the mark 24 hours ago, and the implied 24h change.
+Rules:
+- Answer with a calibrated probability that the statement is TRUE (0.01–0.99). Do not hedge at 0.5 unless you truly have no view.
+- Give exactly three reasons, each under 140 characters, most important first. Reasons must follow from the data you were given or from general market structure; never invent news or prices.
+- In &quot;limits&quot;, say in under 240 characters what would make this read wrong.
+- Your read will be scored against the real mark at expiry. Be honest about uncertainty over short horizons.
+Persona:`;
+
+export function buildMessages(input: ReadInput): Anthropic.MessageParam[] {
+  const body = {
+    question: `Will the ${input.symbol} mark be ${input.levelBps &gt; 0 ? &quot;at or above&quot; : &quot;at or below&quot;} ${input.target} at ${input.expiresAtUtc}?`,
+    market: { symbol: input.symbol, name: input.name },
+    mark: input.mark,
+    mark_24h_ago: input.prev,
+    change_24h_pct: input.change24hPct,
+    target: input.target,
+    level_bps: input.levelBps,
+    horizon_minutes: input.horizonMin,
+    now: input.nowUtc,
+    expires_at: input.expiresAtUtc,
+  };
+  return [{ role: &quot;user&quot;, content: JSON.stringify(body, null, 2) }];
+}
+
+export type ReadResult = { output: ReadOutput; latencyMs: number; usage: { input_tokens: number; output_tokens: number } };
+
+export async function readWithAgent(client: Anthropic, persona: string, input: ReadInput, now: () =&gt; number = Date.now): Promise&lt;ReadResult&gt; {
+  const t0 = now();
+  const res = await client.messages.parse(
+    {
+      model: MODEL,
+      max_tokens: 1024,
+      system: [{ type: &quot;text&quot;, text: `${RULES}\n${persona}`, cache_control: { type: &quot;ephemeral&quot; } }],
+      output_config: { format: zodOutputFormat(ReadSchema), effort: &quot;medium&quot; },
+      messages: buildMessages(input),
+    },
+    { timeout: 50_000, maxRetries: 1 },
+  );
+  if (!res.parsed_output) throw new Error(&quot;claude: unparsed output&quot;);
+  return { output: res.parsed_output, latencyMs: now() - t0, usage: { input_tokens: res.usage.input_tokens, output_tokens: res.usage.output_tokens } };
+}
+
+export function newClient(): Anthropic {
+  const apiKey = Deno.env.get(&quot;ANTHROPIC_API_KEY&quot;);
+  if (!apiKey) throw new Error(&quot;ANTHROPIC_API_KEY missing&quot;);
+  return new Anthropic({ apiKey });
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 18 pass. Si <code>zodOutputFormat</code> rechaza zod 4 en esta versión del SDK, bajar a <code>npm:zod@3.25.76</code> en <code>claude.ts</code> y anotarlo en el audit (el SDK declara <code>^3.25 || ^4</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>db.ts</code>, <code>dto.ts</code> y su test</strong></label></li>
+</ul>
+<p><code>db.ts</code>:</p>
+<pre><code class="language-ts">// Conexión directa a Postgres (P1): SUPABASE_DB_URL la inyecta el edge runtime. Esquema `mobile` calificado en cada consulta.
+import postgres from &quot;npm:postgres@3.4.9&quot;;
+
+const url = Deno.env.get(&quot;SUPABASE_DB_URL&quot;);
+if (!url) throw new Error(&quot;SUPABASE_DB_URL missing&quot;);
+
+export const sql = postgres(url, { prepare: false, max: 3, idle_timeout: 20, connect_timeout: 10 });</code></pre>
+<p><code>dto.ts</code>:</p>
+<pre><code class="language-ts">// Fila de Postgres → JSON de la API (spec §2.2). postgres.js entrega int8 y numeric como string y timestamptz como Date.
+export type ReadRow = {
+  id: string; address: string; agent_id: string; market_id: number; symbol: string; level_bps: number; horizon_min: number;
+  price_decimals: number; mark_at_request: string | number; target: string | number; question: string; status: string;
+  probability: string | number | null; reasons: unknown; limits: string | null; model: string | null; latency_ms: number | null;
+  credits_charged: number; error: string | null; created_at: Date; expires_at: Date; resolved_at: Date | null;
+  mark_at_resolution: string | number | null; outcome: boolean | null; brier: string | number | null;
+};
+
+export type ReadDto = {
+  id: string; agentId: string; marketId: number; symbol: string; priceDecimals: number; levelBps: number; horizonMin: number;
+  markAtRequest: number; target: number; question: string; status: string; probability: number | null; reasons: string[] | null;
+  limits: string | null; creditsCharged: number; error: string | null; createdAt: string; expiresAt: string; resolvedAt: string | null;
+  markAtResolution: number | null; outcome: boolean | null; brier: number | null;
+};
+
+const n = (v: string | number | null): number | null =&gt; (v === null ? null : Number(v));
+const iso = (d: Date | null): string | null =&gt; (d === null ? null : new Date(d).toISOString());
+
+export function toReadDto(r: ReadRow): ReadDto {
+  return {
+    id: r.id, agentId: r.agent_id, marketId: r.market_id, symbol: r.symbol, priceDecimals: r.price_decimals,
+    levelBps: r.level_bps, horizonMin: r.horizon_min, markAtRequest: Number(r.mark_at_request), target: Number(r.target),
+    question: r.question, status: r.status, probability: n(r.probability),
+    reasons: Array.isArray(r.reasons) ? r.reasons.map(String) : null, limits: r.limits, creditsCharged: r.credits_charged,
+    error: r.error, createdAt: iso(r.created_at)!, expiresAt: iso(r.expires_at)!, resolvedAt: iso(r.resolved_at),
+    markAtResolution: n(r.mark_at_resolution), outcome: r.outcome, brier: n(r.brier),
+  };
+}
+
+export type ReminderRow = { id: string; kind: string; fire_at: Date };
+export const toReminderDto = (r: ReminderRow) =&gt; ({ id: r.id, kind: r.kind, fireAt: new Date(r.fire_at).toISOString() });
+
+export type AgentRow = { id: string; handle: string; name: string; owner: string; price_credits: number; reads: string | number; resolved: string | number; right_count: string | number; brier_avg: string | number | null };
+export function toAgentDto(r: AgentRow) {
+  return {
+    id: r.id, handle: r.handle, name: r.name, owner: r.owner, priceCredits: r.price_credits,
+    record: { reads: Number(r.reads), resolved: Number(r.resolved), right: Number(r.right_count), brierAvg: n(r.brier_avg) },
+  };
+}</code></pre>
+<p><code>dto.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals } from &quot;jsr:@std/assert@1&quot;;
+import { toAgentDto, toReadDto } from &quot;./dto.ts&quot;;
+
+Deno.test(&quot;toReadDto convierte int8/numeric en número, fechas a ISO y reasons a string[]&quot;, () =&gt; {
+  const dto = toReadDto({
+    id: &quot;r1&quot;, address: &quot;0xabc&quot;, agent_id: &quot;jesus&quot;, market_id: 16, symbol: &quot;BTC&quot;, level_bps: 100, horizon_min: 240, price_decimals: 1,
+    mark_at_request: &quot;762555&quot;, target: &quot;770181&quot;, question: &quot;q&quot;, status: &quot;open&quot;, probability: &quot;0.620&quot;, reasons: [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;], limits: &quot;l&quot;,
+    model: &quot;claude-sonnet-5&quot;, latency_ms: 4200, credits_charged: 1, error: null, created_at: new Date(&quot;2026-09-20T10:00:00Z&quot;),
+    expires_at: new Date(&quot;2026-09-20T14:00:00Z&quot;), resolved_at: null, mark_at_resolution: null, outcome: null, brier: null,
+  });
+  assertEquals(dto.markAtRequest, 762555);
+  assertEquals(dto.probability, 0.62);
+  assertEquals(dto.reasons, [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]);
+  assertEquals(dto.expiresAt, &quot;2026-09-20T14:00:00.000Z&quot;);
+  assertEquals(dto.resolvedAt, null);
+  assertEquals(&quot;address&quot; in dto, false);
+});
+
+Deno.test(&quot;toAgentDto arma el récord y nunca incluye persona&quot;, () =&gt; {
+  const dto = toAgentDto({ id: &quot;drift&quot;, handle: &quot;drift&quot;, name: &quot;Drift&quot;, owner: &quot;Pickler&quot;, price_credits: 1, reads: &quot;3&quot;, resolved: &quot;2&quot;, right_count: &quot;1&quot;, brier_avg: &quot;0.2100&quot; });
+  assertEquals(dto.record, { reads: 3, resolved: 2, right: 1, brierAvg: 0.21 });
+  assertEquals(&quot;persona&quot; in dto, false);
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 20 pass (<code>db.ts</code> no se importa en tests: exige <code>SUPABASE_DB_URL</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/supabase/functions/_shared/perpl.ts services/reads/supabase/functions/_shared/perpl.test.ts services/reads/supabase/functions/_shared/fixtures/context.json services/reads/supabase/functions/_shared/claude.ts services/reads/supabase/functions/_shared/claude.test.ts services/reads/supabase/functions/_shared/db.ts services/reads/supabase/functions/_shared/dto.ts services/reads/supabase/functions/_shared/dto.test.ts
+git commit -m &quot;feat(reads): mercados de Perpl, lectura con claude-sonnet-5, conexión a Postgres y DTOs&quot;</code></pre>
+<hr>
+<h3 id="task-4-seed-de-agentes-funciones-agents-list-read-request-read-get-reads-list-despliegue-y-smoke-d5-d7-d8-d9-d20-p8-p9-p11-p12">Task 4: Seed de agentes, funciones <code>agents-list</code> · <code>read-request</code> · <code>read-get</code> · <code>reads-list</code>, despliegue y smoke (D5, D7, D8, D9, D20, P8, P9, P11, P12)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/supabase/migrations/0002_seed_agents.sql</code>, <code>services/reads/supabase/functions/agents-list/index.ts</code>, <code>read-request/index.ts</code>, <code>read-get/index.ts</code>, <code>reads-list/index.ts</code>, <code>services/reads/scripts/sign.mjs</code>, <code>services/reads/scripts/smoke.mjs</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>authenticate</code>, <code>fail/json/methodIs/shortAddress</code>, <code>sql</code>, <code>toReadDto/toAgentDto</code>, <code>fetchMarkets/PerplUnavailable</code>, <code>readWithAgent/newClient/MODEL</code>, <code>targetFor/questionFor/expiresAtFor/formatScaled</code> (Tasks 2–3); <code>mobile.request_read</code>, <code>mobile.refund_read</code>, <code>mobile.ensure_wallet</code>, vista <code>mobile.agent_records</code> (Task 1).</li>
+<li>Produces: los cuatro endpoints con los contratos de spec §2.2 (<code>GET agents-list</code>, <code>POST read-request</code>, <code>GET read-get?id=</code>, <code>GET reads-list?marketId=</code>), desplegados en <code>https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/&lt;name&gt;</code>; <code>node scripts/sign.mjs [--headers]</code>; <code>node scripts/smoke.mjs [marketId] [agentId]</code> que termina con <code>SMOKE OK</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>0002_seed_agents.sql</code> y aplicarla</strong></label></li>
+</ul>
+<pre><code class="language-sql">-- Tres agentes (D9, P11). La persona de `jesus` es un placeholder que Jesús reescribe; nunca sale por la API.
+insert into mobile.agents (id, handle, name, owner, persona, price_credits, sort) values
+(&#39;jesus&#39;, &#39;jesus&#39;, &#39;Jesús&#39;&#39;s agent&#39;, &#39;Jesús&#39;,
+$p$You are Jesús&#39;s agent: a disciplined swing trader on Monad perps who prefers 4H–24H horizons, respects the 24h trend but fades extended moves past +2.5%, and keeps calls honest: if the data is thin, say so in the limits and stay close to the base rate for the horizon.$p$, 1, 10),
+(&#39;drift&#39;, &#39;drift&#39;, &#39;Drift&#39;, &#39;Pickler&#39;,
+$p$You are Drift, a momentum agent. You lean with the 24h change: a positive change raises your probability for &quot;at or above&quot; targets and lowers it for &quot;at or below&quot; ones, scaled by how far the target sits from the mark relative to the horizon. You distrust levels beyond ±1% on horizons under 4H.$p$, 1, 20),
+(&#39;anchor&#39;, &#39;anchor&#39;, &#39;Anchor&#39;, &#39;Pickler&#39;,
+$p$You are Anchor, a mean-reversion agent. You treat the 24h change as stretch: the bigger the move, the more you expect the mark to drift back toward the 24h-ago price within the horizon. You give the base rate the benefit of the doubt on short horizons and never exceed 0.8 or go below 0.2 without a stretched move.$p$, 1, 30);</code></pre>
+<pre><code class="language-bash">npm run migrate
+node scripts/query.mjs --read-only &quot;select id, name, owner, price_credits, reads, resolved, right_count, brier_avg from mobile.agent_records order by sort&quot;</code></pre>
+<p>Expected: <code>✓ 0002_seed_agents.sql</code>; tres filas con <code>reads 0, resolved 0, right_count 0, brier_avg null</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>agents-list/index.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { sql } from &quot;../_shared/db.ts&quot;;
+import { type AgentRow, toAgentDto } from &quot;../_shared/dto.ts&quot;;
+import { fail, json, methodIs } from &quot;../_shared/http.ts&quot;;
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;GET&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const rows = await sql&lt;AgentRow[]&gt;`
+    select id, handle, name, owner, price_credits, reads, resolved, right_count, brier_avg
+    from mobile.agent_records order by sort, id`;
+  return json({ agents: rows.map(toAgentDto) });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>read-request/index.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// POST { marketId, levelBps, horizonMin, agentId, pushToken?, pushEnv? } → { read, credits } (spec §2.2, D7, D8, D20, P9).
+import { z } from &quot;npm:zod@4.6.5&quot;;
+import { authenticate } from &quot;../_shared/auth.ts&quot;;
+import { MODEL, newClient, readWithAgent } from &quot;../_shared/claude.ts&quot;;
+import { sql } from &quot;../_shared/db.ts&quot;;
+import { type ReadRow, toReadDto } from &quot;../_shared/dto.ts&quot;;
+import { fail, json, methodIs, shortAddress } from &quot;../_shared/http.ts&quot;;
+import { expiresAtFor, formatScaled, questionFor, targetFor } from &quot;../_shared/matrix.ts&quot;;
+import { fetchMarkets, PerplUnavailable } from &quot;../_shared/perpl.ts&quot;;
+
+const Body = z.object({
+  marketId: z.number().int().positive(),
+  levelBps: z.union([z.literal(250), z.literal(100), z.literal(50), z.literal(-50), z.literal(-100)]),
+  horizonMin: z.union([z.literal(60), z.literal(240), z.literal(720), z.literal(1440)]),
+  agentId: z.string().min(1).max(32),
+  pushToken: z.string().min(16).max(512).optional(),
+  pushEnv: z.enum([&quot;sandbox&quot;, &quot;production&quot;]).optional(),
+});
+
+const RATE_LIMIT = 10; // por dirección cada 10 min (D20)
+const utc = (d: Date) =&gt; `${d.toISOString().slice(0, 16).replace(&quot;T&quot;, &quot; &quot;)} UTC`;
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;POST&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const auth = await authenticate(req.headers);
+  if (!auth.ok) return fail(auth.status, auth.error);
+  const parsed = Body.safeParse(await req.json().catch(() =&gt; null));
+  if (!parsed.success) return fail(422, &quot;bad_body&quot;);
+  const b = parsed.data;
+
+  const [{ count }] = await sql&lt;{ count: number }[]&gt;`
+    select count(*)::int as count from mobile.reads where address = ${auth.address} and created_at &gt; now() - interval &#39;10 minutes&#39;`;
+  if (count &gt;= RATE_LIMIT) return fail(429, &quot;rate_limited&quot;);
+
+  let markets;
+  try {
+    markets = await fetchMarkets();
+  } catch (e) {
+    if (e instanceof PerplUnavailable) return fail(503, &quot;perpl_unavailable&quot;);
+    throw e;
+  }
+  const market = markets.get(b.marketId);
+  if (!market) return fail(409, &quot;market_closed&quot;);
+
+  const now = new Date();
+  const expiresAt = expiresAtFor(now, b.horizonMin);
+  const target = targetFor(market.mark, b.levelBps);
+  const question = questionFor(market.symbol, b.levelBps, target, market.priceDecimals, expiresAt);
+
+  let row: ReadRow | undefined;
+  try {
+    [row] = await sql&lt;ReadRow[]&gt;`
+      select * from mobile.request_read(${auth.address}, ${b.agentId}, ${market.id}, ${market.symbol}, ${b.levelBps}, ${b.horizonMin},
+        ${market.priceDecimals}, ${market.mark}, ${target}, ${question}, ${expiresAt})`;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes(&quot;no_credits&quot;)) return fail(402, &quot;no_credits&quot;);
+    if (msg.includes(&quot;unknown_agent&quot;)) return fail(422, &quot;unknown_agent&quot;);
+    throw e;
+  }
+  if (!row) return fail(500, &quot;request_failed&quot;);
+
+  if (b.pushToken &amp;&amp; b.pushEnv) {
+    await sql`insert into mobile.devices (address, token, env) values (${auth.address}, ${b.pushToken}, ${b.pushEnv})
+      on conflict (address) do update set token = excluded.token, env = excluded.env, updated_at = now()`;
+  }
+
+  const [{ persona }] = await sql&lt;{ persona: string }[]&gt;`select persona from mobile.agents where id = ${b.agentId}`;
+  const pd = market.priceDecimals;
+  try {
+    const r = await readWithAgent(newClient(), persona, {
+      symbol: market.symbol, name: market.name, mark: formatScaled(market.mark, pd), prev: formatScaled(market.prev, pd),
+      change24hPct: market.prev &gt; 0 ? Math.round((market.mark / market.prev - 1) * 10000) / 100 : 0,
+      target: formatScaled(target, pd), levelBps: b.levelBps, horizonMin: b.horizonMin, expiresAtUtc: utc(expiresAt), nowUtc: utc(now),
+    });
+    const [updated] = await sql&lt;ReadRow[]&gt;`
+      update mobile.reads set status = &#39;open&#39;, probability = ${r.output.probability}, reasons = ${sql.json(r.output.reasons)},
+        limits = ${r.output.limits}, model = ${MODEL}, latency_ms = ${r.latencyMs}, usage = ${sql.json(r.usage)}
+      where id = ${row.id} and status = &#39;pending&#39; returning *`;
+    // Sin fila: el cron ya la marcó failed y reembolsó (más de 60 s); se devuelve tal cual quedó.
+    [row] = updated ? [updated] : await sql&lt;ReadRow[]&gt;`select * from mobile.reads where id = ${row.id}`;
+  } catch (e) {
+    const msg = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+    console.error(`read-request ${shortAddress(auth.address)} model failed: ${msg}`);
+    await sql`select mobile.refund_read(${row.id}::uuid, &#39;failed&#39;, ${msg})`;
+    [row] = await sql&lt;ReadRow[]&gt;`select * from mobile.reads where id = ${row.id}`;
+  }
+
+  const [{ credits }] = await sql&lt;{ credits: number }[]&gt;`select credits from mobile.wallets where address = ${auth.address}`;
+  return json({ read: toReadDto(row), credits });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>read-get/index.ts</code> y <code>reads-list/index.ts</code></strong></label></li>
+</ul>
+<p><code>read-get/index.ts</code>:</p>
+<pre><code class="language-ts">import { authenticate } from &quot;../_shared/auth.ts&quot;;
+import { sql } from &quot;../_shared/db.ts&quot;;
+import { type ReadRow, toReadDto } from &quot;../_shared/dto.ts&quot;;
+import { fail, json, methodIs } from &quot;../_shared/http.ts&quot;;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;GET&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const auth = await authenticate(req.headers);
+  if (!auth.ok) return fail(auth.status, auth.error);
+  const id = new URL(req.url).searchParams.get(&quot;id&quot;) ?? &quot;&quot;;
+  if (!UUID.test(id)) return fail(422, &quot;bad_id&quot;);
+  const [row] = await sql&lt;ReadRow[]&gt;`select * from mobile.reads where id = ${id} and address = ${auth.address}`;
+  if (!row) return fail(404, &quot;not_found&quot;);
+  return json({ read: toReadDto(row) });
+});</code></pre>
+<p><code>reads-list/index.ts</code>:</p>
+<pre><code class="language-ts">import { authenticate } from &quot;../_shared/auth.ts&quot;;
+import { sql } from &quot;../_shared/db.ts&quot;;
+import { type ReadRow, toReadDto } from &quot;../_shared/dto.ts&quot;;
+import { fail, json, methodIs } from &quot;../_shared/http.ts&quot;;
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;GET&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const auth = await authenticate(req.headers);
+  if (!auth.ok) return fail(auth.status, auth.error);
+  const raw = new URL(req.url).searchParams.get(&quot;marketId&quot;);
+  const marketId = raw === null ? null : Number(raw);
+  if (marketId !== null &amp;&amp; !Number.isInteger(marketId)) return fail(422, &quot;bad_market&quot;);
+  const [{ credits }] = await sql&lt;{ credits: number }[]&gt;`select mobile.ensure_wallet(${auth.address}) as credits`;
+  const rows = await sql&lt;ReadRow[]&gt;`
+    select * from mobile.reads where address = ${auth.address} ${marketId === null ? sql`` : sql`and market_id = ${marketId}`}
+    order by created_at desc limit 50`;
+  return json({ reads: rows.map(toReadDto), credits });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>sign.mjs</code> y <code>smoke.mjs</code></strong></label></li>
+</ul>
+<p><code>scripts/sign.mjs</code>:</p>
+<pre><code class="language-js">import { generatePrivateKey, privateKeyToAccount } from &quot;viem/accounts&quot;;
+
+const key = process.env.READS_TEST_KEY ?? generatePrivateKey();
+const account = privateKeyToAccount(key);
+const address = account.address.toLowerCase();
+const ts = Date.now();
+const sig = await account.signMessage({ message: `pickler-reads:${address}:${ts}` });
+const headers = `-H &quot;x-pickler-address: ${address}&quot; -H &quot;x-pickler-ts: ${ts}&quot; -H &quot;x-pickler-sig: ${sig}&quot;`;
+console.log(process.argv.includes(&quot;--headers&quot;) ? headers : JSON.stringify({ key, address, ts, sig, headers }, null, 2));</code></pre>
+<p><code>scripts/smoke.mjs</code>:</p>
+<pre><code class="language-js">// agents-list → reads-list (20 créditos) → read-request → read-get → reads-list → read-get con otra dirección (401).
+import { generatePrivateKey, privateKeyToAccount } from &quot;viem/accounts&quot;;
+import { SUPABASE_URL } from &quot;./env.mjs&quot;;
+
+const BASE = `${SUPABASE_URL}/functions/v1`;
+const [marketId = &quot;16&quot;, agentId = &quot;jesus&quot;] = process.argv.slice(2);
+const account = privateKeyToAccount(process.env.READS_TEST_KEY ?? generatePrivateKey());
+const address = account.address.toLowerCase();
+const ts = Date.now();
+const sig = await account.signMessage({ message: `pickler-reads:${address}:${ts}` });
+const H = { &quot;x-pickler-address&quot;: address, &quot;x-pickler-ts&quot;: String(ts), &quot;x-pickler-sig&quot;: sig };
+
+async function call(name, path, init = {}) {
+  const t0 = Date.now();
+  const res = await fetch(`${BASE}/${path}`, init);
+  const body = await res.json().catch(() =&gt; null);
+  console.log(`→ ${name}: HTTP ${res.status} · ${Date.now() - t0} ms\n${JSON.stringify(body, null, 2)}`);
+  return { status: res.status, body };
+}
+
+console.log(`wallet de prueba ${address}`);
+const agents = await call(&quot;agents-list&quot;, &quot;agents-list&quot;);
+const list0 = await call(&quot;reads-list (wallet nueva)&quot;, &quot;reads-list&quot;, { headers: H });
+const req = await call(&quot;read-request&quot;, &quot;read-request&quot;, {
+  method: &quot;POST&quot;, headers: { ...H, &quot;content-type&quot;: &quot;application/json&quot; },
+  body: JSON.stringify({ marketId: Number(marketId), levelBps: 100, horizonMin: 60, agentId }),
+});
+if (req.status !== 200) { console.log(&quot;SMOKE FAILED (read-request)&quot;); process.exit(1); }
+const get = await call(&quot;read-get&quot;, `read-get?id=${req.body.read.id}`, { headers: H });
+const list1 = await call(&quot;reads-list&quot;, `reads-list?marketId=${marketId}`, { headers: H });
+const bad = await call(&quot;read-get con otra dirección&quot;, `read-get?id=${req.body.read.id}`, { headers: { ...H, &quot;x-pickler-address&quot;: &quot;0x0000000000000000000000000000000000000001&quot; } });
+
+const checks = {
+  &quot;3 agentes&quot;: agents.body?.agents?.length === 3,
+  &quot;20 créditos iniciales&quot;: list0.body?.credits === 20 &amp;&amp; list0.body?.reads?.length === 0,
+  &quot;read open con 3 razones&quot;: req.body.read.status === &quot;open&quot; &amp;&amp; req.body.read.reasons?.length === 3 &amp;&amp; req.body.read.probability &gt; 0 &amp;&amp; req.body.read.probability &lt; 1,
+  &quot;19 créditos tras la read&quot;: req.body.credits === 19,
+  &quot;read-get devuelve la misma read&quot;: get.body?.read?.id === req.body.read.id,
+  &quot;reads-list la lista&quot;: list1.body?.reads?.[0]?.id === req.body.read.id &amp;&amp; list1.body?.credits === 19,
+  &quot;otra dirección → 401&quot;: bad.status === 401,
+};
+for (const [k, v] of Object.entries(checks)) console.log(`${v ? &quot;✓&quot; : &quot;✗&quot;} ${k}`);
+const ok = Object.values(checks).every(Boolean);
+console.log(ok ? &quot;SMOKE OK&quot; : &quot;SMOKE FAILED&quot;);
+process.exit(ok ? 0 : 1);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Secretos y despliegue</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd services/reads
+set -a; source /Users/josedejesusacevedoflores/Documents/predict/.env.pickler; set +a
+supabase secrets set --project-ref yvdipvcrpbqvofayteqf ANTHROPIC_API_KEY=&quot;$ANTHROPIC_API_KEY&quot; PERPL_REST=https://testnet.perpl.xyz/api
+supabase secrets list --project-ref yvdipvcrpbqvofayteqf
+for f in agents-list read-request read-get reads-list; do supabase functions deploy &quot;$f&quot; --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt; done
+supabase functions list --project-ref yvdipvcrpbqvofayteqf</code></pre>
+<p>Expected: <code>secrets list</code> muestra <code>ANTHROPIC_API_KEY</code> y <code>PERPL_REST</code> (sólo nombres y digest); <code>functions list</code> muestra las cuatro con <code>verify_jwt: false</code>. Si el deploy se queja de <code>SUPABASE_DB_URL</code> en el arranque, no es de aquí: esa variable la inyecta el runtime y sólo se lee al recibir la primera petición.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Smoke real y prueba contra el defecto</strong></label></li>
+</ul>
+<pre><code class="language-bash">node scripts/smoke.mjs 16 jesus</code></pre>
+<p>Expected: <code>SMOKE OK</code>, con <code>read-request</code> en <strong>&lt; 60 000 ms</strong> (anotar el tiempo), <code>probability</code> entre 0.01 y 0.99, tres <code>reasons</code>, <code>limits</code> no vacío, <code>question</code> como <code>Will the BTC mark be at or above &lt;target&gt; at &lt;fecha&gt; UTC?</code>.</p>
+<p>Luego, con la misma wallet, el caso sin créditos y el de agente inexistente:</p>
+<pre><code class="language-bash">KEY=$(node -e &#39;import(&quot;viem/accounts&quot;).then(m=&gt;console.log(m.generatePrivateKey()))&#39;)
+READS_TEST_KEY=$KEY node scripts/smoke.mjs 32 drift        # segunda wallet, ETH con Drift
+ADDR=$(READS_TEST_KEY=$KEY node scripts/sign.mjs | node -e &#39;let s=&quot;&quot;;process.stdin.on(&quot;data&quot;,d=&gt;s+=d).on(&quot;end&quot;,()=&gt;console.log(JSON.parse(s).address))&#39;)
+node scripts/query.mjs &quot;update mobile.wallets set credits = 0 where address = &#39;$ADDR&#39;&quot;
+H=$(READS_TEST_KEY=$KEY node scripts/sign.mjs --headers)
+eval curl -sS -o /dev/null -w &quot;&#39;%{http_code}\n&#39;&quot; $H -H &quot;&#39;content-type: application/json&#39;&quot; -d &quot;&#39;{\&quot;marketId\&quot;:32,\&quot;levelBps\&quot;:-50,\&quot;horizonMin\&quot;:240,\&quot;agentId\&quot;:\&quot;drift\&quot;}&#39;&quot; https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/read-request
+eval curl -sS $H -H &quot;&#39;content-type: application/json&#39;&quot; -d &quot;&#39;{\&quot;marketId\&quot;:32,\&quot;levelBps\&quot;:-50,\&quot;horizonMin\&quot;:240,\&quot;agentId\&quot;:\&quot;nadie\&quot;}&#39;&quot; https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/read-request
+eval curl -sS $H -H &quot;&#39;content-type: application/json&#39;&quot; -d &quot;&#39;{\&quot;marketId\&quot;:32,\&quot;levelBps\&quot;:75,\&quot;horizonMin\&quot;:240,\&quot;agentId\&quot;:\&quot;drift\&quot;}&#39;&quot; https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/read-request
+node scripts/query.mjs --read-only &quot;select reason, sum(delta) from mobile.credit_events where address = &#39;$ADDR&#39; group by reason&quot;</code></pre>
+<p>Expected: <code>402</code>; <code>{&quot;error&quot;:&quot;unknown_agent&quot;}</code> (422); <code>{&quot;error&quot;:&quot;bad_body&quot;}</code> (422); el ledger de esa wallet suma <code>grant 20</code> y <code>charge -1</code> (una sola read), sin <code>refund</code>. Guardar las salidas para el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/supabase/migrations/0002_seed_agents.sql services/reads/supabase/functions/agents-list/index.ts services/reads/supabase/functions/read-request/index.ts services/reads/supabase/functions/read-get/index.ts services/reads/supabase/functions/reads-list/index.ts services/reads/scripts/sign.mjs services/reads/scripts/smoke.mjs
+git commit -m &quot;feat(reads): agentes seed y funciones agents-list, read-request, read-get, reads-list&quot;</code></pre>
+<hr>
+<h3 id="task-5-sharedapnsts-jwt-es256-y-envio-a-apns-con-la-key-de-apple-en-secretos-d10-p6-p7">Task 5: <code>_shared/apns.ts</code> — JWT ES256 y envío a APNs, con la key de Apple en secretos (D10, P6, P7)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/supabase/functions/_shared/apns.ts</code>, <code>_shared/apns.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: nada del repo; secretos <code>APNS_KEY_P8_B64</code>, <code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>.</li>
+<li>Produces: <code>APNS_TOPIC = &quot;fun.pickler.app&quot;</code>, <code>pemToPkcs8(pem)</code>, <code>importP8(pem)</code>, <code>makeProviderJwt(key, keyId, teamId, nowSec?)</code>, <code>decodeJwt(jwt)</code>, <code>providerJwt()</code> (cacheado 40 min desde env), <code>type Push = { token, env, title, body, data? }</code>, <code>sendPush(push, jwt, doFetch?) → { status, reason }</code>. Task 6 los consume.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Insumo de Jesús — la key APNs</strong></label></li>
+</ul>
+<p>En el portal de Apple Developer (Certificates, Identifiers &amp; Profiles → Keys → +, &quot;Apple Push Notifications service (APNs)&quot;) con el Team <code>2PBQJ37Q8W</code>: crear la key, anotar el <strong>Key ID</strong> y descargar el <code>.p8</code> (se descarga una sola vez). Verificar que el App ID <code>fun.pickler.app</code> tiene la capability <strong>Push Notifications</strong> habilitada (si no, habilitarla: lo exige el entitlement de F2). Añadir a <code>.env.pickler</code>:</p>
+<pre><code class="language-bash">APNS_KEY_ID=&lt;Key ID de 10 caracteres&gt;
+APNS_TEAM_ID=2PBQJ37Q8W
+APNS_KEY_P8_B64=$(base64 -i ~/Downloads/AuthKey_&lt;KeyID&gt;.p8 | tr -d &#39;\n&#39;)</code></pre>
+<p>Si Jesús no tiene la key a mano al llegar aquí, <strong>esta task y el smoke de APNs de Task 6 quedan bloqueados</strong> (no es el fallback de D10: el fallback es para HTTP/2 fallando, no para una key ausente). Se sigue con el resto de Task 6 y se anota en el handoff.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests (fallan)</strong></label></li>
+</ul>
+<p><code>_shared/apns.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals } from &quot;jsr:@std/assert@1&quot;;
+import { APNS_TOPIC, decodeJwt, importP8, makeProviderJwt, pemToPkcs8, sendPush } from &quot;./apns.ts&quot;;
+
+async function testKeyPem(): Promise&lt;{ pem: string; publicKey: CryptoKey }&gt; {
+  const pair = await crypto.subtle.generateKey({ name: &quot;ECDSA&quot;, namedCurve: &quot;P-256&quot; }, true, [&quot;sign&quot;, &quot;verify&quot;]);
+  const der = new Uint8Array(await crypto.subtle.exportKey(&quot;pkcs8&quot;, pair.privateKey));
+  const b64 = btoa(String.fromCharCode(...der)).replace(/(.{64})/g, &quot;$1\n&quot;);
+  return { pem: `-----BEGIN PRIVATE KEY-----\n${b64}\n-----END PRIVATE KEY-----\n`, publicKey: pair.publicKey };
+}
+
+Deno.test(&quot;pemToPkcs8 quita cabeceras y saltos&quot;, async () =&gt; {
+  const { pem } = await testKeyPem();
+  const der = pemToPkcs8(pem);
+  assertEquals(der[0], 0x30); // SEQUENCE
+});
+
+Deno.test(&quot;makeProviderJwt: header ES256+kid, claims iss+iat, firma verificable con la pública&quot;, async () =&gt; {
+  const { pem, publicKey } = await testKeyPem();
+  const jwt = await makeProviderJwt(await importP8(pem), &quot;ABC123DEFG&quot;, &quot;2PBQJ37Q8W&quot;, 1_790_000_000);
+  const { header, payload } = decodeJwt(jwt);
+  assertEquals(header, { alg: &quot;ES256&quot;, kid: &quot;ABC123DEFG&quot; });
+  assertEquals(payload, { iss: &quot;2PBQJ37Q8W&quot;, iat: 1_790_000_000 });
+  const [h, p, s] = jwt.split(&quot;.&quot;);
+  const sig = Uint8Array.from(atob(s.replace(/-/g, &quot;+&quot;).replace(/_/g, &quot;/&quot;)), (c) =&gt; c.charCodeAt(0));
+  const ok = await crypto.subtle.verify({ name: &quot;ECDSA&quot;, hash: &quot;SHA-256&quot; }, publicKey, sig, new TextEncoder().encode(`${h}.${p}`));
+  assertEquals(ok, true);
+});
+
+Deno.test(&quot;sendPush: host por entorno, cabeceras APNs y payload aps.alert&quot;, async () =&gt; {
+  let url = &quot;&quot;, init: RequestInit = {};
+  const fake = async (u: string, i: RequestInit) =&gt; { url = u; init = i; return new Response(JSON.stringify({ reason: &quot;BadDeviceToken&quot; }), { status: 400 }); };
+  const r = await sendPush({ token: &quot;abc&quot;, env: &quot;sandbox&quot;, title: &quot;T&quot;, body: &quot;B&quot;, data: { kind: &quot;read&quot;, readId: &quot;r1&quot; } }, &quot;jwt.x.y&quot;, fake);
+  assertEquals(r, { status: 400, reason: &quot;BadDeviceToken&quot; });
+  assertEquals(url, &quot;https://api.sandbox.push.apple.com/3/device/abc&quot;);
+  const h = new Headers(init.headers);
+  assertEquals(h.get(&quot;authorization&quot;), &quot;bearer jwt.x.y&quot;);
+  assertEquals(h.get(&quot;apns-topic&quot;), APNS_TOPIC);
+  assertEquals(h.get(&quot;apns-push-type&quot;), &quot;alert&quot;);
+  assertEquals(JSON.parse(init.body as string), { aps: { alert: { title: &quot;T&quot;, body: &quot;B&quot; }, sound: &quot;default&quot; }, pickler: { kind: &quot;read&quot;, readId: &quot;r1&quot; } });
+  await sendPush({ token: &quot;abc&quot;, env: &quot;production&quot;, title: &quot;T&quot;, body: &quot;B&quot; }, &quot;j&quot;, fake);
+  assertEquals(url, &quot;https://api.push.apple.com/3/device/abc&quot;);
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./apns.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>apns.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Push por APNs directo (D10): JWT ES256 con WebCrypto, HTTP/2 vía fetch. Token del dispositivo lo manda la app (F2).
+export const APNS_TOPIC = &quot;fun.pickler.app&quot;;
+const JWT_TTL_MS = 40 * 60 * 1000; // Apple acepta hasta 60 min
+
+const utf8 = (s: string) =&gt; new TextEncoder().encode(s);
+const b64url = (bytes: ArrayBuffer | Uint8Array): string =&gt;
+  btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, &quot;-&quot;).replace(/\//g, &quot;_&quot;).replace(/=+$/, &quot;&quot;);
+const b64urlDecode = (s: string): string =&gt; atob(s.replace(/-/g, &quot;+&quot;).replace(/_/g, &quot;/&quot;));
+
+export function pemToPkcs8(pem: string): Uint8Array {
+  const body = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s+/g, &quot;&quot;);
+  return Uint8Array.from(atob(body), (c) =&gt; c.charCodeAt(0));
+}
+
+export function importP8(pem: string): Promise&lt;CryptoKey&gt; {
+  return crypto.subtle.importKey(&quot;pkcs8&quot;, pemToPkcs8(pem), { name: &quot;ECDSA&quot;, namedCurve: &quot;P-256&quot; }, false, [&quot;sign&quot;]);
+}
+
+export async function makeProviderJwt(key: CryptoKey, keyId: string, teamId: string, nowSec = Math.floor(Date.now() / 1000)): Promise&lt;string&gt; {
+  const data = `${b64url(utf8(JSON.stringify({ alg: &quot;ES256&quot;, kid: keyId })))}.${b64url(utf8(JSON.stringify({ iss: teamId, iat: nowSec })))}`;
+  const sig = await crypto.subtle.sign({ name: &quot;ECDSA&quot;, hash: &quot;SHA-256&quot; }, key, utf8(data)); // r‖s de 64 bytes = formato JOSE
+  return `${data}.${b64url(sig)}`;
+}
+
+export function decodeJwt(jwt: string): { header: unknown; payload: unknown } {
+  const [h, p] = jwt.split(&quot;.&quot;);
+  return { header: JSON.parse(b64urlDecode(h)), payload: JSON.parse(b64urlDecode(p)) };
+}
+
+let cached: { jwt: string; at: number } | null = null;
+
+/** JWT de proveedor desde los secretos, cacheado 40 min por instancia. Lanza si falta algún secreto. */
+export async function providerJwt(now = Date.now()): Promise&lt;string&gt; {
+  if (cached &amp;&amp; now - cached.at &lt; JWT_TTL_MS) return cached.jwt;
+  const p8b64 = Deno.env.get(&quot;APNS_KEY_P8_B64&quot;), keyId = Deno.env.get(&quot;APNS_KEY_ID&quot;), teamId = Deno.env.get(&quot;APNS_TEAM_ID&quot;);
+  if (!p8b64 || !keyId || !teamId) throw new Error(&quot;APNS secrets missing&quot;);
+  const jwt = await makeProviderJwt(await importP8(atob(p8b64)), keyId, teamId, Math.floor(now / 1000));
+  cached = { jwt, at: now };
+  return jwt;
+}
+
+export type Push = { token: string; env: &quot;sandbox&quot; | &quot;production&quot;; title: string; body: string; data?: Record&lt;string, unknown&gt; };
+
+export async function sendPush(p: Push, jwt: string, doFetch: (url: string, init: RequestInit) =&gt; Promise&lt;Response&gt; = fetch): Promise&lt;{ status: number; reason: string | null }&gt; {
+  const host = p.env === &quot;sandbox&quot; ? &quot;api.sandbox.push.apple.com&quot; : &quot;api.push.apple.com&quot;;
+  const res = await doFetch(`https://${host}/3/device/${p.token}`, {
+    method: &quot;POST&quot;,
+    headers: { authorization: `bearer ${jwt}`, &quot;apns-topic&quot;: APNS_TOPIC, &quot;apns-push-type&quot;: &quot;alert&quot;, &quot;apns-priority&quot;: &quot;10&quot;, &quot;content-type&quot;: &quot;application/json&quot; },
+    body: JSON.stringify({ aps: { alert: { title: p.title, body: p.body }, sound: &quot;default&quot; }, ...(p.data ? { pickler: p.data } : {}) }),
+  });
+  const body = await res.json().catch(() =&gt; ({}));
+  return { status: res.status, reason: typeof body?.reason === &quot;string&quot; ? body.reason : null };
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 23 pass.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Subir los secretos de APNs</strong></label></li>
+</ul>
+<pre><code class="language-bash">set -a; source /Users/josedejesusacevedoflores/Documents/predict/.env.pickler; set +a
+supabase secrets set --project-ref yvdipvcrpbqvofayteqf APNS_KEY_ID=&quot;$APNS_KEY_ID&quot; APNS_TEAM_ID=&quot;$APNS_TEAM_ID&quot; APNS_KEY_P8_B64=&quot;$APNS_KEY_P8_B64&quot;
+supabase secrets list --project-ref yvdipvcrpbqvofayteqf</code></pre>
+<p>Expected: los tres nombres en la lista. El smoke contra APNs real se hace en Task 6 Step 7, desde la función desplegada (P6).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/supabase/functions/_shared/apns.ts services/reads/supabase/functions/_shared/apns.test.ts
+git commit -m &quot;feat(reads): JWT de proveedor y envío a APNs con WebCrypto&quot;</code></pre>
+<hr>
+<h3 id="task-6-reminder-set-resolve-reads-cron-por-minuto-y-smoke-de-apns-d3-d10-d12-lado-servidor-d19-p6-p10-p13">Task 6: <code>reminder-set</code>, <code>resolve-reads</code>, cron por minuto y smoke de APNs (D3, D10, D12 lado servidor, D19, P6, P10, P13)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>services/reads/supabase/functions/_shared/copy.ts</code>, <code>_shared/copy.test.ts</code>, <code>services/reads/supabase/functions/reminder-set/index.ts</code>, <code>resolve-reads/index.ts</code>, <code>services/reads/supabase/migrations/0003_cron.sql</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo de Tasks 1–5.</li>
+<li>Produces (<code>copy.ts</code>): <code>horizonLabel(min)</code>, <code>levelLabel(bps)</code>, <code>readResolvedPush(read, status, mark)</code>, <code>readVoidPush(read)</code>, <code>reminderPush(reminder, mark)</code> → <code>Push</code>. Endpoints <code>POST reminder-set</code> → <code>{ reminders: [{ id, kind, fireAt }] }</code> y <code>POST resolve-reads</code> (header <code>x-cron-secret</code>) → <code>{ refunded, resolved, voided, remindersSent, pushSent }</code>; con body <code>{ &quot;apnsSmoke&quot;: { &quot;token&quot;, &quot;env&quot; } }</code> devuelve <code>{ apns: { status, reason } }</code> sin tocar la base (P6). Cron <code>mobile-resolve-reads</code> cada minuto.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests de los textos de push (fallan)</strong></label></li>
+</ul>
+<p><code>_shared/copy.test.ts</code>:</p>
+<pre><code class="language-ts">import { assertEquals } from &quot;jsr:@std/assert@1&quot;;
+import { horizonLabel, levelLabel, readResolvedPush, readVoidPush, reminderPush } from &quot;./copy.ts&quot;;
+
+const read = { id: &quot;r1&quot;, market_id: 16, symbol: &quot;BTC&quot;, level_bps: 100, horizon_min: 240, price_decimals: 1, agent_name: &quot;Drift&quot; };
+
+Deno.test(&quot;labels&quot;, () =&gt; {
+  assertEquals([60, 240, 720, 1440].map(horizonLabel), [&quot;1H&quot;, &quot;4H&quot;, &quot;12H&quot;, &quot;24H&quot;]);
+  assertEquals([250, 50, -50, -100].map(levelLabel), [&quot;+2.5%&quot;, &quot;+0.5%&quot;, &quot;−0.5%&quot;, &quot;−1.0%&quot;]);
+});
+
+Deno.test(&quot;readResolvedPush y readVoidPush&quot;, () =&gt; {
+  assertEquals(readResolvedPush(read, &quot;right&quot;, 771000), {
+    token: &quot;&quot;, env: &quot;production&quot;, title: &quot;BTC +1.0% · 4H&quot;, body: &quot;Drift was right · mark 77100.0&quot;,
+    data: { kind: &quot;read&quot;, readId: &quot;r1&quot;, marketId: 16 },
+  });
+  assertEquals(readVoidPush(read).body, &quot;Read voided: Perpl was unavailable at expiry. Your credit is back.&quot;);
+});
+
+Deno.test(&quot;reminderPush: 15 min antes y al vencer&quot;, () =&gt; {
+  const rem = { id: &quot;m1&quot;, market_id: 64, symbol: &quot;MON&quot;, level_bps: -50, horizon_min: 60, price_decimals: 5, target: 2210, read_id: null };
+  assertEquals(reminderPush({ ...rem, kind: &quot;pre&quot; }, 2221), {
+    token: &quot;&quot;, env: &quot;production&quot;, title: &quot;MON −0.5% · 15 min left&quot;, body: &quot;MON at 0.02221 · your level 0.02210&quot;,
+    data: { kind: &quot;reminder&quot;, reminderId: &quot;m1&quot;, marketId: 64, readId: null },
+  });
+  assertEquals(reminderPush({ ...rem, kind: &quot;expiry&quot; }, 2200).title, &quot;MON −0.5% · horizon reached&quot;);
+  assertEquals(reminderPush({ ...rem, kind: &quot;expiry&quot; }, 2200).body, &quot;MON at 0.02200 · your level 0.02210 · close by hand if you&#39;re done&quot;);
+});</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: FAIL (<code>Module not found &quot;./copy.ts&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>copy.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Textos de los pushes (D10). `token`/`env` los rellena quien manda; aquí sólo el contenido.
+import type { Push } from &quot;./apns.ts&quot;;
+import { formatScaled } from &quot;./matrix.ts&quot;;
+
+const HORIZONS: Record&lt;number, string&gt; = { 60: &quot;1H&quot;, 240: &quot;4H&quot;, 720: &quot;12H&quot;, 1440: &quot;24H&quot; };
+export const horizonLabel = (min: number): string =&gt; HORIZONS[min] ?? `${min}m`;
+export const levelLabel = (bps: number): string =&gt; `${bps &gt; 0 ? &quot;+&quot; : &quot;−&quot;}${(Math.abs(bps) / 100).toFixed(1)}%`;
+
+export type ReadForPush = { id: string; market_id: number; symbol: string; level_bps: number; horizon_min: number; price_decimals: number; agent_name: string };
+export type ReminderForPush = { id: string; market_id: number; symbol: string; level_bps: number; horizon_min: number; price_decimals: number; target: number; kind: string; read_id: string | null };
+
+const title = (symbol: string, bps: number, tail: string) =&gt; `${symbol} ${levelLabel(bps)} · ${tail}`;
+
+export function readResolvedPush(r: ReadForPush, status: &quot;right&quot; | &quot;wrong&quot;, mark: number): Push {
+  return { token: &quot;&quot;, env: &quot;production&quot;, title: title(r.symbol, r.level_bps, horizonLabel(r.horizon_min)),
+    body: `${r.agent_name} was ${status} · mark ${formatScaled(mark, r.price_decimals)}`, data: { kind: &quot;read&quot;, readId: r.id, marketId: r.market_id } };
+}
+
+export function readVoidPush(r: ReadForPush): Push {
+  return { token: &quot;&quot;, env: &quot;production&quot;, title: title(r.symbol, r.level_bps, horizonLabel(r.horizon_min)),
+    body: &quot;Read voided: Perpl was unavailable at expiry. Your credit is back.&quot;, data: { kind: &quot;read&quot;, readId: r.id, marketId: r.market_id } };
+}
+
+export function reminderPush(m: ReminderForPush, mark: number): Push {
+  const pre = m.kind === &quot;pre&quot;;
+  const body = `${m.symbol} at ${formatScaled(mark, m.price_decimals)} · your level ${formatScaled(m.target, m.price_decimals)}${pre ? &quot;&quot; : &quot; · close by hand if you&#39;re done&quot;}`;
+  return { token: &quot;&quot;, env: &quot;production&quot;, title: title(m.symbol, m.level_bps, pre ? &quot;15 min left&quot; : &quot;horizon reached&quot;), body,
+    data: { kind: &quot;reminder&quot;, reminderId: m.id, marketId: m.market_id, readId: m.read_id } };
+}</code></pre>
+<p>Run: <code>deno test -A supabase/functions/_shared/</code> → Expected: 26 pass.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>reminder-set/index.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// POST { marketId, levelBps, horizonMin, target, expiresAt, side, readId?, pushToken?, pushEnv? } → { reminders } (D12, spec §2.2).
+import { z } from &quot;npm:zod@4.6.5&quot;;
+import { authenticate } from &quot;../_shared/auth.ts&quot;;
+import { sql } from &quot;../_shared/db.ts&quot;;
+import { type ReminderRow, toReminderDto } from &quot;../_shared/dto.ts&quot;;
+import { fail, json, methodIs } from &quot;../_shared/http.ts&quot;;
+import { fetchMarkets, PerplUnavailable } from &quot;../_shared/perpl.ts&quot;;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const Body = z.object({
+  marketId: z.number().int().positive(),
+  levelBps: z.union([z.literal(250), z.literal(100), z.literal(50), z.literal(-50), z.literal(-100)]),
+  horizonMin: z.union([z.literal(60), z.literal(240), z.literal(720), z.literal(1440)]),
+  target: z.number().int().positive(),
+  expiresAt: z.string().refine((s) =&gt; !Number.isNaN(Date.parse(s)), &quot;iso date&quot;),
+  side: z.enum([&quot;long&quot;, &quot;short&quot;]),
+  readId: z.string().regex(UUID).optional(),
+  pushToken: z.string().min(16).max(512).optional(),
+  pushEnv: z.enum([&quot;sandbox&quot;, &quot;production&quot;]).optional(),
+});
+const PRE_MS = 15 * 60_000;
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;POST&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const auth = await authenticate(req.headers);
+  if (!auth.ok) return fail(auth.status, auth.error);
+  const parsed = Body.safeParse(await req.json().catch(() =&gt; null));
+  if (!parsed.success) return fail(422, &quot;bad_body&quot;);
+  const b = parsed.data;
+  const expiresAt = new Date(b.expiresAt);
+  const now = Date.now();
+  if (expiresAt.getTime() &lt;= now) return fail(422, &quot;expired&quot;);
+
+  let markets;
+  try {
+    markets = await fetchMarkets();
+  } catch (e) {
+    if (e instanceof PerplUnavailable) return fail(503, &quot;perpl_unavailable&quot;);
+    throw e;
+  }
+  const market = markets.get(b.marketId);
+  if (!market) return fail(409, &quot;market_closed&quot;);
+
+  if (b.readId) {
+    const [own] = await sql`select 1 from mobile.reads where id = ${b.readId} and address = ${auth.address}`;
+    if (!own) return fail(404, &quot;read_not_found&quot;);
+  }
+  await sql`select mobile.ensure_wallet(${auth.address})`;
+  if (b.pushToken &amp;&amp; b.pushEnv) {
+    await sql`insert into mobile.devices (address, token, env) values (${auth.address}, ${b.pushToken}, ${b.pushEnv})
+      on conflict (address) do update set token = excluded.token, env = excluded.env, updated_at = now()`;
+  }
+
+  const kinds: { kind: &quot;pre&quot; | &quot;expiry&quot;; fireAt: Date }[] = [];
+  if (expiresAt.getTime() - PRE_MS &gt; now) kinds.push({ kind: &quot;pre&quot;, fireAt: new Date(expiresAt.getTime() - PRE_MS) });
+  kinds.push({ kind: &quot;expiry&quot;, fireAt: expiresAt });
+  const rows: ReminderRow[] = [];
+  for (const k of kinds) {
+    const [row] = await sql&lt;ReminderRow[]&gt;`
+      insert into mobile.reminders (address, read_id, market_id, symbol, level_bps, horizon_min, price_decimals, target, side, kind, fire_at)
+      values (${auth.address}, ${b.readId ?? null}, ${market.id}, ${market.symbol}, ${b.levelBps}, ${b.horizonMin}, ${market.priceDecimals}, ${b.target}, ${b.side}, ${k.kind}, ${k.fireAt})
+      returning id, kind, fire_at`;
+    rows.push(row);
+  }
+  return json({ reminders: rows.map(toReminderDto) });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>resolve-reads/index.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Cron por minuto (D3, D10, P10): reembolsa pending huérfanas, resuelve reads vencidas contra el mark de Perpl,
+// anula con &gt;30 min sin Perpl, manda recordatorios vencidos y los pushes. Sólo con x-cron-secret.
+import { z } from &quot;npm:zod@4.6.5&quot;;
+import { providerJwt, type Push, sendPush } from &quot;../_shared/apns.ts&quot;;
+import { readResolvedPush, readVoidPush, reminderPush } from &quot;../_shared/copy.ts&quot;;
+import { sql } from &quot;../_shared/db.ts&quot;;
+import { fail, json, methodIs } from &quot;../_shared/http.ts&quot;;
+import { resolveRead } from &quot;../_shared/matrix.ts&quot;;
+import { fetchMarkets, type PerplMarket } from &quot;../_shared/perpl.ts&quot;;
+
+const BATCH = 50;
+const VOID_AFTER_MS = 30 * 60_000;
+const Smoke = z.object({ apnsSmoke: z.object({ token: z.string().min(1), env: z.enum([&quot;sandbox&quot;, &quot;production&quot;]) }) });
+
+type DueRead = {
+  id: string; address: string; market_id: number; symbol: string; level_bps: number; horizon_min: number; price_decimals: number;
+  target: string; probability: string | null; expires_at: Date; agent_name: string; token: string | null; env: &quot;sandbox&quot; | &quot;production&quot; | null;
+};
+type DueReminder = {
+  id: string; address: string; read_id: string | null; market_id: number; symbol: string; level_bps: number; horizon_min: number;
+  price_decimals: number; target: string; kind: string; token: string | null; env: &quot;sandbox&quot; | &quot;production&quot; | null;
+};
+
+Deno.serve(async (req) =&gt; {
+  if (!methodIs(req, &quot;POST&quot;)) return fail(405, &quot;method_not_allowed&quot;);
+  const secret = Deno.env.get(&quot;CRON_SECRET&quot;);
+  if (!secret || req.headers.get(&quot;x-cron-secret&quot;) !== secret) return fail(401, &quot;bad_secret&quot;);
+  const body = await req.json().catch(() =&gt; ({}));
+
+  const smoke = Smoke.safeParse(body);
+  if (smoke.success) {
+    const r = await sendPush({ ...smoke.data.apnsSmoke, title: &quot;Pickler&quot;, body: &quot;APNs smoke&quot; }, await providerJwt());
+    return json({ apns: r });
+  }
+
+  let refunded = 0, resolved = 0, voided = 0, remindersSent = 0, pushSent = 0;
+  const now = Date.now();
+
+  // 1. pending con más de 60 s: la función que las creó murió (D7).
+  const orphans = await sql&lt;{ id: string }[]&gt;`
+    select id from mobile.reads where status = &#39;pending&#39; and created_at &lt; now() - interval &#39;60 seconds&#39; order by created_at limit ${BATCH}`;
+  for (const o of orphans) {
+    const [{ ok }] = await sql&lt;{ ok: boolean }[]&gt;`select mobile.refund_read(${o.id}::uuid, &#39;failed&#39;, &#39;timeout&#39;) as ok`;
+    if (ok) refunded++;
+  }
+
+  // 2. reads vencidas y recordatorios vencidos.
+  const due = await sql&lt;DueRead[]&gt;`
+    select r.id, r.address, r.market_id, r.symbol, r.level_bps, r.horizon_min, r.price_decimals, r.target, r.probability, r.expires_at,
+           a.name as agent_name, d.token, d.env
+    from mobile.reads r join mobile.agents a on a.id = r.agent_id left join mobile.devices d on d.address = r.address
+    where r.status = &#39;open&#39; and r.expires_at &lt;= now() order by r.expires_at limit ${BATCH}`;
+  const reminders = await sql&lt;DueReminder[]&gt;`
+    select m.id, m.address, m.read_id, m.market_id, m.symbol, m.level_bps, m.horizon_min, m.price_decimals, m.target, m.kind, d.token, d.env
+    from mobile.reminders m left join mobile.devices d on d.address = m.address
+    where m.status = &#39;scheduled&#39; and m.fire_at &lt;= now() order by m.fire_at limit ${BATCH}`;
+
+  let markets: Map&lt;number, PerplMarket&gt; | null = null;
+  if (due.length &gt; 0 || reminders.length &gt; 0) {
+    try { markets = await fetchMarkets(); } catch (e) { console.error(`resolve-reads: perpl unavailable: ${e instanceof Error ? e.message : e}`); }
+  }
+
+  const pushes: Push[] = [];
+  for (const r of due) {
+    const mark = markets?.get(r.market_id)?.mark;
+    if (mark === undefined) {
+      if (new Date(r.expires_at).getTime() &lt; now - VOID_AFTER_MS) {
+        const [{ ok }] = await sql&lt;{ ok: boolean }[]&gt;`select mobile.refund_read(${r.id}::uuid, &#39;void&#39;, &#39;perpl_unavailable&#39;) as ok`;
+        if (ok) { voided++; if (r.token &amp;&amp; r.env) pushes.push({ ...readVoidPush(r), token: r.token, env: r.env }); }
+      }
+      continue; // sin mark y sin 30 min: se reintenta al minuto
+    }
+    const res = resolveRead({ level_bps: r.level_bps, target: Number(r.target), probability: r.probability === null ? null : Number(r.probability) }, mark);
+    const updated = await sql`
+      update mobile.reads set status = ${res.status}, outcome = ${res.outcome}, brier = ${res.brier}, mark_at_resolution = ${mark}, resolved_at = now()
+      where id = ${r.id} and status = &#39;open&#39; returning id`;
+    if (updated.length &gt; 0) { resolved++; if (r.token &amp;&amp; r.env) pushes.push({ ...readResolvedPush(r, res.status, mark), token: r.token, env: r.env }); }
+  }
+
+  for (const m of reminders) {
+    const mark = markets?.get(m.market_id)?.mark;
+    if (mark === undefined) continue; // reintenta al minuto
+    if (!m.token || !m.env) { await sql`update mobile.reminders set status = &#39;failed&#39;, sent_at = now() where id = ${m.id} and status = &#39;scheduled&#39;`; continue; }
+    let status = 0, reason: string | null = &quot;no_jwt&quot;;
+    try { ({ status, reason } = await sendPush({ ...reminderPush({ ...m, target: Number(m.target) }, mark), token: m.token, env: m.env }, await providerJwt())); }
+    catch (e) { reason = e instanceof Error ? e.message : String(e); }
+    await sql`update mobile.reminders set status = ${status === 200 ? &quot;sent&quot; : &quot;failed&quot;}, sent_at = now() where id = ${m.id} and status = &#39;scheduled&#39;`;
+    if (status === 200) remindersSent++; else console.error(`reminder ${m.id}: ${status} ${reason}`);
+  }
+
+  if (pushes.length &gt; 0) {
+    let jwt: string | null = null;
+    try { jwt = await providerJwt(); } catch (e) { console.error(`apns: ${e instanceof Error ? e.message : e}`); }
+    if (jwt) for (const p of pushes) {
+      const r = await sendPush(p, jwt);
+      if (r.status === 200) pushSent++; else console.error(`push ${p.data?.kind} ${p.data?.readId}: ${r.status} ${r.reason}`);
+    }
+  }
+  return json({ refunded, resolved, voided, remindersSent, pushSent });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Secreto del cron, Vault y <code>0003_cron.sql</code></strong></label></li>
+</ul>
+<pre><code class="language-bash">cd services/reads
+echo &quot;CRON_SECRET=$(openssl rand -hex 32)&quot; &gt;&gt; /Users/josedejesusacevedoflores/Documents/predict/.env.pickler
+set -a; source /Users/josedejesusacevedoflores/Documents/predict/.env.pickler; set +a
+supabase secrets set --project-ref yvdipvcrpbqvofayteqf CRON_SECRET=&quot;$CRON_SECRET&quot;
+node scripts/query.mjs &quot;select vault.create_secret(&#39;$CRON_SECRET&#39;, &#39;mobile_cron_secret&#39;)&quot;
+node scripts/query.mjs --read-only &quot;select name from vault.decrypted_secrets where name = &#39;mobile_cron_secret&#39;&quot;</code></pre>
+<p><code>supabase/migrations/0003_cron.sql</code>:</p>
+<pre><code class="language-sql">-- resolve-reads cada minuto (D3, D19, P13). El secreto vive en Vault (mobile_cron_secret), nunca aquí.
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule(
+  &#39;mobile-resolve-reads&#39;,
+  &#39;* * * * *&#39;,
+  $$
+  select net.http_post(
+    url := &#39;https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/resolve-reads&#39;,
+    headers := jsonb_build_object(
+      &#39;content-type&#39;, &#39;application/json&#39;,
+      &#39;x-cron-secret&#39;, (select decrypted_secret from vault.decrypted_secrets where name = &#39;mobile_cron_secret&#39;)
+    ),
+    body := &#39;{}&#39;::jsonb,
+    timeout_milliseconds := 55000
+  ) as request_id;
+  $$
+);</code></pre>
+<p>Desplegar primero las dos funciones nuevas, después la migración:</p>
+<pre><code class="language-bash">for f in reminder-set resolve-reads; do supabase functions deploy &quot;$f&quot; --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt; done
+npm run migrate
+node scripts/query.mjs --read-only &quot;select jobid, jobname, schedule, active from cron.job where jobname = &#39;mobile-resolve-reads&#39;&quot;
+sleep 75
+node scripts/query.mjs --read-only &quot;select status, return_message, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = &#39;mobile-resolve-reads&#39;) order by start_time desc limit 2&quot;
+node scripts/query.mjs --read-only &quot;select id, status_code, left(content::text, 120) as content, created from net._http_response order by id desc limit 2&quot;</code></pre>
+<p>Expected: el job activo; <code>job_run_details</code> con <code>status = succeeded</code>; <code>net._http_response</code> con <code>status_code 200</code> y contenido <code>{&quot;refunded&quot;:0,&quot;resolved&quot;:0,&quot;voided&quot;:0,&quot;remindersSent&quot;:0,&quot;pushSent&quot;:0}</code>. Si <code>create extension</code> falla por permisos, habilitar <code>pg_cron</code>/<code>pg_net</code> desde Database → Extensions del dashboard es la única acción permitida allí (no toca esquemas ajenos) y se anota en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Pruebas forzadas por SQL (resolución, huérfana, void, recordatorio sin dispositivo)</strong></label></li>
+</ul>
+<p>Con <code>$KEY</code> y <code>$ADDR</code> de Task 4 Step 7 (la segunda wallet, que quedó en 0 créditos: se le devuelven primero) y <code>$READ</code> = el id de su read <code>open</code> (la de ETH con Drift):</p>
+<pre><code class="language-bash">node scripts/query.mjs &quot;update mobile.wallets set credits = 19 where address = &#39;$ADDR&#39;&quot;
+READ=$(node scripts/query.mjs --read-only &quot;select id from mobile.reads where address = &#39;$ADDR&#39; and status = &#39;open&#39; order by created_at desc limit 1&quot; | node -e &#39;let s=&quot;&quot;;process.stdin.on(&quot;data&quot;,d=&gt;s+=d).on(&quot;end&quot;,()=&gt;console.log(JSON.parse(s)[0].id))&#39;)
+node scripts/query.mjs &quot;update mobile.reads set expires_at = now() - interval &#39;1 second&#39; where id = &#39;$READ&#39;&quot;
+sleep 70
+node scripts/query.mjs --read-only &quot;select status, outcome, brier, mark_at_resolution, resolved_at, target from mobile.reads where id = &#39;$READ&#39;&quot;</code></pre>
+<p>Expected: <code>status</code> <code>right</code> o <code>wrong</code>, <code>outcome</code> booleano coherente con <code>mark_at_resolution</code> vs <code>target</code> (nivel +1.0 %: <code>right</code> ⇔ <code>(mark ≥ target) = (probability ≥ 0.5)</code>), <code>brier</code> entre 0 y 1.</p>
+<p>Huérfana (<code>pending</code> de más de 60 s → <code>failed</code> + reembolso):</p>
+<pre><code class="language-bash">node scripts/query.mjs &quot;select id, status from mobile.request_read(&#39;$ADDR&#39;,&#39;anchor&#39;,16,&#39;BTC&#39;,50,60,1,762555,766368,&#39;forced pending&#39;, now() + interval &#39;1 hour&#39;)&quot;
+node scripts/query.mjs &quot;update mobile.reads set created_at = now() - interval &#39;2 minutes&#39; where address = &#39;$ADDR&#39; and status = &#39;pending&#39;&quot;
+sleep 70
+node scripts/query.mjs --read-only &quot;select status, error from mobile.reads where address = &#39;$ADDR&#39; and question = &#39;forced pending&#39;&quot;
+node scripts/query.mjs --read-only &quot;select reason, sum(delta) from mobile.credit_events where address = &#39;$ADDR&#39; group by reason order by reason&quot;</code></pre>
+<p>Expected: <code>failed</code> / <code>timeout</code>; el ledger tiene un <code>refund 1</code> que compensa ese <code>charge</code>.</p>
+<p>Void (más de 30 min vencida sin mark: mercado inexistente):</p>
+<pre><code class="language-bash">node scripts/query.mjs &quot;with r as (select id from mobile.request_read(&#39;$ADDR&#39;,&#39;anchor&#39;,999999,&#39;XXX&#39;,50,60,1,1000,1005,&#39;forced void&#39;, now() - interval &#39;31 minutes&#39;)) update mobile.reads set status = &#39;open&#39;, probability = 0.6 where id = (select id from r)&quot;
+sleep 70
+node scripts/query.mjs --read-only &quot;select status, error, resolved_at from mobile.reads where address = &#39;$ADDR&#39; and question = &#39;forced void&#39;&quot;</code></pre>
+<p>Expected: <code>void</code> / <code>perpl_unavailable</code>, <code>resolved_at</code> no nulo, y un segundo <code>refund</code> en el ledger.</p>
+<p>Recordatorio sin dispositivo (→ <code>failed</code>) y <code>reminder-set</code> real:</p>
+<pre><code class="language-bash">H=$(READS_TEST_KEY=$KEY node scripts/sign.mjs --headers)   # la misma key que creó $ADDR
+EXP=$(node -e &#39;console.log(new Date(Date.now()+20*60000).toISOString())&#39;)
+eval curl -sS $H -H &quot;&#39;content-type: application/json&#39;&quot; -d &quot;&#39;{\&quot;marketId\&quot;:16,\&quot;levelBps\&quot;:100,\&quot;horizonMin\&quot;:60,\&quot;target\&quot;:770181,\&quot;expiresAt\&quot;:\&quot;$EXP\&quot;,\&quot;side\&quot;:\&quot;long\&quot;}&#39;&quot; https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/reminder-set
+node scripts/query.mjs &quot;update mobile.reminders set fire_at = now() - interval &#39;1 second&#39; where address = &#39;$ADDR&#39; and kind = &#39;pre&#39;&quot;
+sleep 70
+node scripts/query.mjs --read-only &quot;select kind, status, sent_at from mobile.reminders where address = &#39;$ADDR&#39; order by fire_at&quot;</code></pre>
+<p>Expected: <code>reminder-set</code> devuelve dos recordatorios (<code>pre</code> ≈ +5 min, <code>expiry</code> ≈ +20 min); tras el cron, <code>pre</code> queda <code>failed</code> (sin token) y <code>expiry</code> sigue <code>scheduled</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Smoke de APNs desde la función desplegada (P6)</strong></label></li>
+</ul>
+<pre><code class="language-bash">curl -sS -X POST -H &quot;x-cron-secret: $CRON_SECRET&quot; -H &quot;content-type: application/json&quot; \
+  -d &#39;{&quot;apnsSmoke&quot;:{&quot;token&quot;:&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,&quot;env&quot;:&quot;production&quot;}}&#39; \
+  https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/resolve-reads</code></pre>
+<p>Expected: <code>{&quot;apns&quot;:{&quot;status&quot;:400,&quot;reason&quot;:&quot;BadDeviceToken&quot;}}</code> → TLS, HTTP/2 y el JWT aceptados por Apple; el push real se verifica en F2 con un token del simulador. Otros resultados: <code>403 InvalidProviderToken</code> = key/kid/team mal (revisar <code>.env.pickler</code> y los secretos); <code>403 MissingProviderToken</code> = cabecera vacía; un <code>500</code> con <code>error</code> de red o <code>status 0</code> = el runtime no negoció HTTP/2 → <strong>fallback de D10</strong> (notificaciones locales en F2), anotarlo como ruling en el audit y dejar <code>apns.ts</code> en su sitio.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add services/reads/supabase/functions/_shared/copy.ts services/reads/supabase/functions/_shared/copy.test.ts services/reads/supabase/functions/reminder-set/index.ts services/reads/supabase/functions/resolve-reads/index.ts services/reads/supabase/migrations/0003_cron.sql
+git commit -m &quot;feat(reads): reminder-set, resolve-reads con pushes y cron por minuto&quot;</code></pre>
+<hr>
+<h3 id="task-7-spec-overview-manifest-claudemd-audit-de-f1-y-revision-independiente">Task 7: Spec, overview, manifest, CLAUDE.md, audit de F1 y revisión independiente</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> (D4, D5, D10, D19, §2.1, §2.2), <code>docs/overview/2026-09-19-mobile-ask.html</code> (phase-card F1), <code>docs/overview/data/manifest.js</code> (F1 <code>completed</code>), <code>CLAUDE.md</code> de la raíz (una línea sobre <code>services/reads</code>)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Correcciones al spec (lo que el plan decidió distinto o más preciso)</strong></label></li>
+</ul>
+<p>En el spec, sin reescribir secciones enteras:</p>
+<ul>
+<li>D4: añadir «Las funciones acceden a <code>mobile</code> por <code>SUPABASE_DB_URL</code> con postgres.js (P1 del plan F1), no por PostgREST: <code>mobile</code> no se expone en la API del proyecto.»</li>
+<li>D5: «<code>resolve-reads</code> acepta además <code>{ apnsSmoke: { token, env } }</code> con el secreto del cron para probar APNs sin tocar la base.»</li>
+<li>D10 / D19: <code>APNS_KEY_P8</code> → <code>APNS_KEY_P8_B64</code> (base64 de una línea).</li>
+<li>§2.1: la vista <code>agent_records</code> llama <code>right_count</code> a la columna <code>right</code>; añadir <code>mobile.ensure_wallet(text) returns int</code>.</li>
+<li>§2.2: el contrato de <code>resolve-reads</code> devuelve también <code>pushSent</code>; <code>read-request</code> responde <code>422 unknown_agent</code> y <code>422 bad_body</code>.</li>
+<li>Cabecera <strong>Estado</strong>: «F1 ejecutada (plan <code>docs/superpowers/plans/2026-09-19-mobile-ask-f1.md</code>, audit <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code>)».</li>
+</ul>
+<p>Run: <code>npm run docs:html</code> (raíz) → Expected: <code>[ok]</code> para el spec y el plan.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Overview y manifest</strong></label></li>
+</ul>
+<p>En <code>docs/overview/2026-09-19-mobile-ask.html</code>, phase-card <code>data-phase=&quot;1&quot;</code>: <code>data-status=&quot;completed&quot;</code>, y dentro de <code>.phase-body</code>, después de <code>.phase-meta</code>, el bloque de tasks con las ocho tasks de este plan (Task 0–7) marcadas <code>checked</code> sólo las que realmente cerraron:</p>
+<pre><code class="language-html">          &lt;details class=&quot;tasks&quot;&gt;
+            &lt;summary&gt;
+              &lt;span&gt;Tasks del plan&lt;/span&gt;
+              &lt;span class=&quot;progress-pill&quot; data-tasks-counter&gt;0/0&lt;/span&gt;
+            &lt;/summary&gt;
+            &lt;ol&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 0: CLI ≥ 2.111, esqueleto de services/reads e inventario del proyecto compartido&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 1: Migrador propio y 0001_schema.sql aplicado&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 2: matrix.ts, auth.ts, http.ts con deno test&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 3: perpl.ts, claude.ts, db.ts, dto.ts&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 4: Seed de agentes, cuatro funciones de lectura, despliegue y smoke&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 5: apns.ts con la key de Apple en secretos&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 6: reminder-set, resolve-reads, cron y smoke de APNs&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 7: Spec, overview, manifest, audit y revisión independiente&lt;/label&gt;&lt;/li&gt;
+            &lt;/ol&gt;
+          &lt;/details&gt;</code></pre>
+<p>Si Task 5/6 quedaron bloqueadas por la key APNs, F1 queda <code>in_progress</code> con esas casillas sin marcar, no <code>completed</code>. En <code>manifest.js</code>: <code>phases[0].status</code> a <code>completed</code> (o <code>in_progress</code>), <code>types: [&#39;spec&#39;, &#39;plan&#39;]</code>.</p>
+<p>En <code>CLAUDE.md</code> de la raíz, tras la frase «La raíz sólo trae el tooling…», añadir: «El backend de Ask vive en <code>services/reads/</code> (Supabase <code>pickler</code>, esquema <code>mobile</code>; comandos y prohibiciones en su <code>README.md</code>).» Comprobar que <code>npm run agents:check</code> sigue midiendo la cadena por debajo de 24 KiB.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Audit de F1</strong></label></li>
+</ul>
+<p><code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code> con estas secciones, en este orden, y con la evidencia pegada (no descrita):</p>
+<ol>
+<li><strong>Qué quedó hecho y verificado</strong> — por task: comando corrido y salida (versión de la CLI, <code>migrate</code> ×2, <code>deno test</code> con el conteo final, <code>node --test</code>, <code>functions list</code>, <code>SMOKE OK</code> con el tiempo de <code>read-request</code>, los tres códigos 402/422/422, <code>cron.job</code>, <code>job_run_details</code>, <code>net._http_response</code>, las cuatro pruebas forzadas, la respuesta del smoke de APNs).</li>
+<li><strong>Decisiones tomadas durante la ejecución (rulings)</strong> — numeradas; cualquier desviación de P1–P13 o del spec, con el porqué.</li>
+<li><strong>Correcciones a afirmaciones previas</strong> — del spec o de este plan.</li>
+<li><strong>Inventario antes/después del proyecto compartido</strong> — los dos JSON de Task 0 Step 3 y los mismos dos queries corridos al final: la única diferencia admisible es el esquema <code>mobile</code> (y <code>pg_cron</code>/<code>pg_net</code> si no estaban).</li>
+<li><strong>Estado del servicio al cierre</strong> — funciones desplegadas, migraciones aplicadas, secretos presentes (sólo nombres), wallets de prueba creadas (direcciones) y si se limpiaron, resultado del smoke de APNs y si aplica el fallback de D10.</li>
+<li><strong>Pendientes / residuales</strong> — ordenados por peso; incluir «persona de <code>jesus</code> es placeholder» y lo que F2 necesita del servidor.</li>
+<li><strong>Siguiente punto de decisión</strong> — plan de F2.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Revisión independiente</strong></label></li>
+</ul>
+<p>Dispatch de un subagente revisor (regla global) con: el spec, este plan, <code>git diff main...HEAD -- services/reads docs CLAUDE.md</code> y el audit. Pedirle que verifique: (a) ninguna sentencia SQL toca objetos fuera de <code>mobile</code> salvo <code>create extension</code>; (b) <code>request_read</code> y <code>refund_read</code> son atómicas y el ledger cuadra con <code>credits</code>; (c) <code>authenticate</code> rechaza firma ajena/vencida y <code>resolve-reads</code> exige el secreto; (d) ningún secreto en archivos versionados (<code>git grep -n &quot;sbp_\|sk-ant\|BEGIN PRIVATE&quot;</code> vacío); (e) los contratos JSON coinciden con el spec §2.2 corregido. Aplicar lo que proceda y anotar la revisión (hallazgos y qué se hizo) en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Checks finales</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd services/reads &amp;&amp; npm test
+git status --short</code></pre>
+<p>Expected: <code>docs:check</code> <code>errors=0</code>; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; <code>deno test</code> y <code>node --test</code> en verde; el árbol muestra sólo lo que va en los commits de esta task.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit (sólo si Jesús autorizó commits) y handoff</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-19-mobile-ask-f1.md docs/superpowers/plans/2026-09-19-mobile-ask-f1.html docs/overview/2026-09-19-mobile-ask.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md CLAUDE.md
+git commit -m &quot;docs(mobile-ask): F1 ejecutada — spec corregido, overview, manifest y audit F1&quot;</code></pre>
+<p>Handoff al cierre: qué quedó desplegado, qué falta (key APNs, persona de Jesús, limpieza de wallets de prueba), y que el siguiente paso es el <strong>plan de F2</strong> (app), que no se escribe en la misma sesión sin checkpoint. <strong>Sin push, sin merge.</strong></p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del spec (F1)</strong>: D1/D2 → Task 2 (<code>matrix.ts</code>) y Task 4 (<code>read-request</code> arma target y pregunta con el mark del servidor); D3 → Task 6; D4 → Tasks 0–1 (migrador, prohibiciones, inventario); D5 → Tasks 4 y 6 (seis funciones, <code>verify_jwt = false</code>); D6 → Task 2 (<code>auth.ts</code>); D7 → Task 1 (<code>request_read</code>, <code>refund_read</code>, <code>ensure_wallet</code>) + Task 6 (huérfanas); D8 → Task 3 (<code>claude.ts</code>); D9 → Task 4 (seed) + vista en Task 1; D10 → Tasks 5–6 (APNs, smoke, fallback documentado); D17 → este plan es F1; D19 → Tasks 0, 4, 5, 6 (secretos y despliegue); D20 → Task 4 (rate limit, zod, errores <code>{ error }</code>), Task 6 (secreto e idempotencia), <code>shortAddress</code> en logs. §2.1 completo en Task 1 (con <code>right_count</code> y <code>ensure_wallet</code> como diferencias declaradas). §2.2: <code>scripts/migrate.mjs</code>, <code>sign.mjs</code>, <code>smoke.mjs</code> (<code>smoke.sh</code> del spec pasa a <code>.mjs</code>, P8 y Task 4), <code>config.toml</code>, tres migraciones, <code>_shared/*</code> con tests. Verificación §3 F1 cubierta en Tasks 4, 6 y 7 (inventario antes/después).</li>
+<li><strong>Placeholders</strong>: ninguno; la única entrada externa es la key APNs (Task 5 Step 0), declarada como bloqueo, no como TBD.</li>
+<li><strong>Consistencia de tipos</strong>: <code>ReadRow</code>/<code>toReadDto</code> (Task 3) los usan Tasks 4 y 6; <code>AgentRow</code> incluye <code>right_count</code> como la vista de Task 1; <code>Push</code> de Task 5 lo rellenan <code>copy.ts</code> y <code>resolve-reads</code> con <code>token</code>/<code>env</code>; <code>resolveRead</code> recibe <code>{ level_bps, target: number, probability: number | null }</code> y Task 6 convierte los <code>string</code> de postgres.js con <code>Number(...)</code>; <code>fetchMarkets(rest?, timeoutMs?, doFetch?)</code> se llama sin argumentos en las funciones y con los tres en el test.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-19-mobile-ask-f1.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-19-mobile-ask-f1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
