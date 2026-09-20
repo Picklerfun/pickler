@@ -7,7 +7,7 @@
     "migrate": "node scripts/migrate.mjs",
     "migrate:dry": "node scripts/migrate.mjs --dry",
     "query": "node scripts/query.mjs",
-    "test:scripts": "node --test scripts/",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
     "test:deno": "deno test -A supabase/functions/_shared/",
     "test": "npm run test:scripts && npm run test:deno",
     "sign": "node scripts/sign.mjs",
