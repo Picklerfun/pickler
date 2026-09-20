@@ -18,6 +18,7 @@ import { publicSourceUrl } from "./source-url.js";
 import { evaluateDecision } from "./decision-policy.js";
 import {
   PilotError,
+  PersistenceFailure,
   ModelFailure,
   DEFAULT_UNCERTAINTY_POLICY,
   assertMarket,
@@ -74,11 +75,14 @@ export function createResearchRunner(deps: {
       }
     };
     const external = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+      let result: T;
       try {
-        const result = await fn();
-        await event(name, result);
-        return result;
+        result = await fn();
       } catch (error) {
+        // Discovery can persist scan diagnostics inside the provider callback.
+        if (error instanceof PersistenceFailure) {
+          throw error;
+        }
         providerFailure = true;
         await event("provider_failure", {
           operation: name,
@@ -86,6 +90,8 @@ export function createResearchRunner(deps: {
         });
         throw error;
       }
+      await event(name, result);
+      return result;
     };
     try {
       await event("runtime", {
@@ -487,6 +493,9 @@ export function createResearchRunner(deps: {
       await repo.assertOwnership(run);
       if (error instanceof ModelFailure) {
         await event("model_failure", { code: error.code, ...error.details });
+      }
+      if (error instanceof PersistenceFailure) {
+        await event("persistence_failure", { code: error.code, ...error.details });
       }
       const code =
         error instanceof PilotError
