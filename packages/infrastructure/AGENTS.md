@@ -77,3 +77,10 @@ or session connections. No named prepared statements or session-scoped locks are
 the deployed research repositories; ownership settings and locks must remain transaction-local.
 Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
 the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+
+The trusted research binding now selects `transport: "hyperdrive"` in databasePoolConfig.
+Only Hyperdrive's `.hyperdrive.local:5432` endpoint and its exact `sslmode=disable` binding
+parameter are accepted in that mode. This is the private binding hop; the Hyperdrive origin
+requires verify-full and the Supabase CA with query caching disabled. Other direct URL guards
+remain unchanged. Event write failures are normalized by `event-failure.ts` without retaining
+raw SQL, parameters, error messages or causes; ownership/configuration errors pass through.
