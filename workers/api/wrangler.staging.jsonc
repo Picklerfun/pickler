@@ -9,5 +9,10 @@
   "preview_urls": false,
   "queues": { "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }] },
   "observability": { "enabled": true },
-  "vars": { "APP_ENV": "staging", "ADMISSIONS_ENABLED": "false", "JWT_AUDIENCE": "authenticated" },
+  "vars": {
+    "APP_ENV": "staging",
+    "ADMISSIONS_ENABLED": "false",
+    "ALLOW_INSECURE_STAGING_DATABASE": "false",
+    "JWT_AUDIENCE": "authenticated",
+  },
 }
