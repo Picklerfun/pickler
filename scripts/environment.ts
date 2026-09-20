@@ -20,7 +20,7 @@ const auth = [
   "ENCRYPTION_KEY",
 ];
 const database = ["DATABASE_URL", "DATABASE_CA_CERT"];
-const targets = {
+const targets: Record<string, readonly string[]> = {
   fixture: [...database, "CONTROLLED_TEST_DATABASE_ID", "ADMISSIONS_ENABLED"],
   web: [
     "NEXT_PUBLIC_SUPABASE_URL",
@@ -45,17 +45,22 @@ const targets = {
   database: [...database, "DATABASE_MIGRATION_URL"],
 };
 
-export function selectEnvironment(source, target, environment = "local") {
+export function selectEnvironment(
+  source: Readonly<Record<string, string | undefined>>,
+  target: string,
+  environment = "local",
+): Record<string, string> {
+  const keys = targets[target];
   if (
-    !targets[target] ||
+    !keys ||
     !["local", "staging"].includes(environment) ||
     (target === "fixture" && environment !== "local")
   ) {
     throw new Error("Choose web, api, research, agent or database and local or staging");
   }
-  const values = {};
+  const values: Record<string, string> = {};
   const prefix = environment === "staging" ? "STAGING_" : "LOCAL_";
-  for (const key of targets[target]) {
+  for (const key of keys) {
     // Hosted values never fall back to local credentials. Provider keys may be shared by the operator.
     const value =
       source[prefix + key] ??
@@ -70,6 +75,9 @@ export function selectEnvironment(source, target, environment = "local") {
     !values.DATABASE_URL &&
     source.STAGING_DATABASE_PASSWORD
   ) {
+    if (!source.STAGING_DATABASE_HOST || !source.STAGING_DATABASE_USER) {
+      throw new Error("Staging database host and user are required with a password");
+    }
     const url = new URL(
       `postgresql://${source.STAGING_DATABASE_HOST}:${source.STAGING_DATABASE_PORT ?? "5432"}/${source.STAGING_DATABASE_NAME ?? "postgres"}`,
     );
@@ -83,7 +91,9 @@ export function selectEnvironment(source, target, environment = "local") {
       source.AGENT_DATABASE_MIGRATION_URL ?? source.AGENT_DATABASE_URL;
   }
   if (target === "database" || target === "agent") {
-    values.DATABASE_MIGRATION_URL ??= values.DATABASE_URL;
+    if (!values.DATABASE_MIGRATION_URL && values.DATABASE_URL) {
+      values.DATABASE_MIGRATION_URL = values.DATABASE_URL;
+    }
   }
   if (["api", "research", "fixture"].includes(target)) {
     values.APP_ENV = environment;
@@ -96,9 +106,12 @@ export function readEnvironment(path = `${root}.env`) {
   return existsSync(path) ? parseEnv(readFileSync(path, "utf8")) : {};
 }
 
-export function childEnvironment(selected, inherited = process.env) {
+export function childEnvironment(
+  selected: Readonly<Record<string, string>>,
+  inherited: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
   // Do not leak operator/database/provider variables to the web or another Worker.
-  const result = {};
+  const result: Record<string, string> = {};
   for (const key of [
     "PATH",
     "HOME",
