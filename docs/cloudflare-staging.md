@@ -1,3 +1,5 @@
+> Configuration update: maintain only the root `.env`; see [the environment guide](environment.md). For the controlled stack, put its values in the root `LOCAL_*` section. Generated fixture identity/status files are disposable test state. Do not create persistent per-app `.env.local` or `.dev.vars` files.
+
 # Cloudflare staging operations
 
 ## Status and scope
@@ -20,14 +22,11 @@ npm run check:staging
 npm run build:workers
 ```
 
-For authenticated local browsing, set only public Supabase URL/publishable-key values in the
-web's ignored `.env.local` before building. Set API secrets in its ignored `.dev.vars`. Set APP_ENV=local and DATABASE_URL in each backend Worker’s ignored .dev.vars for
-the disposable loopback database. The consumer may keep admissions disabled for UI tests:
+Configure the root `LOCAL_*` settings for public Auth, backend database and API identity.
+Start the compiled three-Worker host; each receives only its selected variables:
 
 ```sh
-npx wrangler dev --config apps/web/wrangler.jsonc \
-  --config workers/api/wrangler.staging.jsonc \
-  --config workers/research/wrangler.jsonc --ip 127.0.0.1 --port 8780
+npm run dev:workers
 ```
 
 This runs the OpenNext output with bindings under workerd. Rebuild after changes. No paid
@@ -59,7 +58,7 @@ Initialization requires an empty application database and creates a private iden
 It writes the consumer's bindings to `$CONTROLLED_STACK/consumer.dev.vars`. Keep the
 `status.json` file private: it includes local credentials. Initialize before applying Pickler
 migrations. Set `DATABASE_MIGRATION_URL` from this status file's `DB_URL` using an ignored
-local environment file, then run `npm run db:migrate` against that dedicated database. After
+root environment section, then run `npm run db:migrate` against that dedicated database. After
 migrations succeed, enable the product Data API schemas:
 
 ```sh
@@ -73,20 +72,21 @@ migrations, test-marker and internal schemas remain private. The role-setting re
 [PostgREST's in-database configuration](https://docs.postgrest.org/en/v14/references/configuration.html#in-database-configuration).
 
 Use `workers/research/test/wrangler.jsonc` for the controlled consumer; it must never be
-deployed. Copy the generated consumer bindings into `workers/research/test/.dev.vars`.
-Point the API's ignored `.dev.vars` at the **same dedicated stack**: use its `DB_URL`,
-`API_URL`, service-role key and JWT issuer, with `APP_ENV=local` and
-`ADMISSIONS_ENABLED=true`. Rebuild the web with the dedicated stack's public Supabase URL
-and public key. Preserve your ordinary local environment files separately while doing this.
-No model/provider secrets are needed. `CONTROLLED_TEST_DATABASE_ID` belongs only to test
-bindings and the test process, never production configuration.
+deployed. Set the root `LOCAL_*` values to the dedicated database/API/public Auth settings and
+`LOCAL_CONTROLLED_TEST_DATABASE_ID` to the generated identity. Enable local admissions only for
+this controlled test. Rebuild the web. Keep ordinary local values safely recoverable while
+switching the single file; do not create per-app environment files. No provider secrets are
+passed to the fixture target.
+
+Start all three compiled Workers with the controlled consumer:
 
 ```sh
-npx wrangler dev --config apps/web/wrangler.jsonc \
-  --config workers/api/wrangler.staging.jsonc \
-  --config workers/research/test/wrangler.jsonc --ip 127.0.0.1 --port 8790 \
-  --persist-to "$CONTROLLED_STACK/worker-state"
+npm run dev:workers -- --fixture
 ```
+
+The launcher creates owner-only temporary binding files from the root environment, deletes
+them on normal shutdown or setup failure, and never changes the source file. A forced OS kill
+may leave its temporary directory; those artifacts can be removed after the process is stopped.
 
 In another terminal, set `CONTROLLED_STACK` to the temporary directory printed during setup:
 
