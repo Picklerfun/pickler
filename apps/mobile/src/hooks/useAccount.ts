@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountState } from "../account";
 import { clearTradingKey } from "../storage/perpl";
+import { clearReadsSession } from "../storage/reads";
 import { clearStoredAccount, loadStoredAccount } from "../storage/storage";
 import type { Wallet } from "../wallet/wallet";
 
@@ -47,7 +48,7 @@ export function useAccount(): { account: AccountState | null } & AccountActions 
   }, [replace]);
 
   const signOut = useCallback(async () => {
-    await Promise.all([clearStoredAccount(), clearTradingKey()]);
+    await Promise.all([clearStoredAccount(), clearTradingKey(), clearReadsSession()]); // D6: la sesión de reads muere con la cuenta
     replace({ status: "none" });
   }, [replace]);
 
