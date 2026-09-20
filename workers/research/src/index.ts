@@ -1,9 +1,11 @@
 import { createRuntime, type Environment } from "@pickler/agent-runtime";
+import { researchDatabase } from "./database.js";
 import { createResearchWorker } from "./worker.js";
 import { PostgresResearchStore } from "@pickler/infrastructure";
 
 export interface Env extends Environment {
   APP_ENV: string;
+  DATABASE?: Hyperdrive;
   RESEARCH_QUEUE: Queue<{ kind: "research-wakeup" }>;
   ADMISSIONS_ENABLED: string;
 }
@@ -13,11 +15,11 @@ export default createResearchWorker({
     if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
       throw new Error("Model bindings unavailable");
     }
-    return createRuntime({ ...env, APP_ENV: env.APP_ENV || "staging" });
+    const database = researchDatabase(env);
+    return createRuntime({ ...env, DATABASE_URL: database.url }, database.options);
   },
-  repository: (env) =>
-    new PostgresResearchStore(env.DATABASE_URL, undefined, {
-      environment: env.APP_ENV || "staging",
-      ca: env.DATABASE_CA_CERT,
-    }),
+  repository: (env) => {
+    const database = researchDatabase(env);
+    return new PostgresResearchStore(database.url, undefined, database.options);
+  },
 });

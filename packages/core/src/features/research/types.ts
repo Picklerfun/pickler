@@ -307,6 +307,21 @@ export class PilotError extends Error {
   }
 }
 
+export class PersistenceFailure extends PilotError {
+  constructor(
+    public readonly details: {
+      operation: "event";
+      eventType: string;
+      reason: "CONNECTION_LOST" | "QUERY_TIMEOUT" | "DATABASE_ERROR";
+    },
+  ) {
+    super(
+      "PERSISTENCE_FAILURE",
+      "Research persistence failed; inspect the persistence_failure event",
+    );
+  }
+}
+
 export const DEFAULT_CONFIG: AgentConfig = {
   profile:
     "Research carefully. Read resolution rules, seek contrary evidence, and abstain when evidence is insufficient.",

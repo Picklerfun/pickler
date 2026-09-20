@@ -1,5 +1,5 @@
 {
   "extends": "@pickler/typescript-config/base.json",
   "compilerOptions": { "lib": ["ES2022"], "types": ["@cloudflare/workers-types"] },
-  "include": ["src/**/*.ts", "test/fixture-worker.ts"]
+  "include": ["src/**/*.ts", "test/fixture-worker.ts", "test/database-probe.ts"]
 }

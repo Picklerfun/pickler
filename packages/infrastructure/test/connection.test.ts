@@ -21,7 +21,7 @@ test("deployed connections enforce TLS and reject overrides without disclosing c
   });
   for (const url of [
     remote + "?sslmode=disable",
-    remote.replace(":5432", ":6543"),
+    remote.replace(":5432", ":9999"),
     local,
     "password-not-a-url",
   ]) {
@@ -115,6 +115,7 @@ test("accepted URLs retain their effective pg endpoint, TLS and safe query optio
     ["localhost", "local", 5432],
     ["[::1]", "local", 5432],
     ["aws-0-us-east-1.pooler.supabase.com", "staging", 5432],
+    ["aws-0-us-east-1.pooler.supabase.com", "staging", 6543],
   ] as const) {
     const url = `postgresql://user:secret@${host}:${port}/postgres?application_name=connection-test`;
     const config = databasePoolConfig(url, { environment, ca: "test-ca" });
@@ -181,4 +182,62 @@ test("a lease renews using the second connection while the first is occupied", a
     await held.query("ROLLBACK");
     held.release();
   }
+});
+
+test("hosted plaintext is explicit, staging-only, and cannot bypass endpoint guards", () => {
+  const url = remote.replace(":5432", ":6543");
+  assert.notEqual(databasePoolConfig(url, { environment: "staging" }).ssl, false);
+  assert.equal(
+    databasePoolConfig(url, {
+      environment: "staging",
+      allowInsecureStaging: true,
+    }).ssl,
+    false,
+  );
+  for (const environment of ["production", "local", "preview", ""]) {
+    assert.throws(
+      () =>
+        databasePoolConfig(url, {
+          environment,
+          allowInsecureStaging: true,
+        }),
+      /restricted to staging/,
+    );
+  }
+  for (const invalid of [
+    url.replace("pooler.supabase.com", "example.com"),
+    url + "?sslmode=disable",
+    local,
+  ]) {
+    assert.throws(() =>
+      databasePoolConfig(invalid, {
+        environment: "staging",
+        allowInsecureStaging: true,
+      }),
+    );
+  }
+});
+
+test("Hyperdrive uses only a trusted binding endpoint and retains invocation limits", () => {
+  const url = "postgresql://user:secret@binding.hyperdrive.local:5432/postgres";
+  const config = databasePoolConfig(url + "?sslmode=disable", {
+    environment: "staging",
+    transport: "hyperdrive",
+  });
+  assert.equal(config.ssl, false); // Origin TLS is configured in Hyperdrive, not pg.
+  assert.equal(config.max, 2);
+  assert.equal(config.statement_timeout, 10_000);
+  assert.throws(() => databasePoolConfig(url, { environment: "staging" }));
+  for (const invalid of [remote, local, url + "?sslmode=require", url.replace(":5432", ":6543")]) {
+    assert.throws(() =>
+      databasePoolConfig(invalid, { environment: "staging", transport: "hyperdrive" }),
+    );
+  }
+  assert.throws(() =>
+    databasePoolConfig(url, {
+      environment: "staging",
+      transport: "hyperdrive",
+      allowInsecureStaging: true,
+    }),
+  );
 });

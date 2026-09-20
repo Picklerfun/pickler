@@ -1,5 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "bc8d4adf4860284fda426b24e7377bc2",
   "name": "pickler-api-staging",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
@@ -8,5 +9,10 @@
   "preview_urls": false,
   "queues": { "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }] },
   "observability": { "enabled": true },
-  "vars": { "APP_ENV": "staging", "ADMISSIONS_ENABLED": "false", "JWT_AUDIENCE": "authenticated" },
+  "vars": {
+    "APP_ENV": "staging",
+    "ADMISSIONS_ENABLED": "false",
+    "ALLOW_INSECURE_STAGING_DATABASE": "false",
+    "JWT_AUDIENCE": "authenticated",
+  },
 }

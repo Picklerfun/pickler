@@ -12,11 +12,12 @@
     "@pickler/infrastructure": "*"
   },
   "devDependencies": {
-    "@pickler/typescript-config": "*",
     "@cloudflare/workers-types": "^4.20260702.1",
-    "wrangler": "4.133.0",
     "@pickler/core": "*",
+    "@pickler/typescript-config": "*",
+    "@types/pg": "8.23.1",
+    "drizzle-orm": "0.45.2",
     "pg": "8.20.0",
-    "@types/pg": "8.23.1"
+    "wrangler": "4.133.0"
   }
 }

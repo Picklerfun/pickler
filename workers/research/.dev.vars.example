@@ -8,5 +8,6 @@ BALLDONTLIE_API_KEY=
 THE_ODDS_API_KEY=
 ADMISSIONS_ENABLED=false
 
-# Optional PEM CA for Node connections; Workers uses platform TLS verification.
-DATABASE_CA_CERT=
+# DATABASE_URL is for local development only.
+# Hosted research requires the DATABASE Hyperdrive binding configured in Wrangler.
+# Origin credentials and the verified CA belong to Hyperdrive, never this Worker.
