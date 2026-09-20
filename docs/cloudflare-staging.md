@@ -36,33 +36,77 @@ research test. An enqueued job is not evidence of completed research.
 
 ## Controlled end-to-end suite
 
-For the free integration suite, replace the research config with
-`workers/research/test/wrangler.jsonc`. Its separate entry imports controlled providers only;
-it must never be deployed. Put the disposable local DATABASE_URL in that test directory's
-ignored `.dev.vars`. Keep API APP_ENV=local and ADMISSIONS_ENABLED=true in its `.dev.vars`.
-No model/provider secrets are needed in the controlled consumer.
+The synthetic consumer requires its own disposable Supabase stack, on ports 55520–55529,
+with a unique database identity. It rejects the normal Supabase database (54522), the Node
+pilot database (55432), and databases without the matching identity **before** claims,
+expired-lease recovery, or schedule reconciliation. It reuses the production repository
+algorithms after this check. Never put ordinary local jobs or provider credentials in this stack.
+
+Create a fresh configuration from the repository's Supabase configuration. The setup script
+writes into a new temporary directory and never modifies or resets an existing stack. It starts
+with only `public` and `graphql_public` exposed: the product schemas do not exist until migrations
+run, and exposing them sooner prevents a fresh PostgREST instance from becoming healthy:
+
+```sh
+CONTROLLED_STACK=$(node workers/research/test/prepare-controlled-stack.mjs prepare)
+npx --yes supabase@2.111.0 start --workdir "$CONTROLLED_STACK" \
+  --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+(umask 077; npx supabase@2.111.0 status --workdir "$CONTROLLED_STACK" --output json > "$CONTROLLED_STACK/status.json")
+node workers/research/test/prepare-controlled-stack.mjs initialize "$CONTROLLED_STACK"
+```
+
+Initialization requires an empty application database and creates a private identity marker.
+It writes the consumer's bindings to `$CONTROLLED_STACK/consumer.dev.vars`. Keep the
+`status.json` file private: it includes local credentials. Initialize before applying Pickler
+migrations. Set `DATABASE_MIGRATION_URL` from this status file's `DB_URL` using an ignored
+local environment file, then run `npm run db:migrate` against that dedicated database. After
+migrations succeed, enable the product Data API schemas:
+
+```sh
+node workers/research/test/prepare-controlled-stack.mjs expose-api "$CONTROLLED_STACK"
+```
+
+This explicit step checks the dedicated database identity and requires every product schema to
+exist. It updates only that database's PostgREST role setting, sends configuration/schema reload
+notifications, and updates the generated Supabase configuration for future restarts. Research,
+migrations, test-marker and internal schemas remain private. The role-setting reload follows
+[PostgREST's in-database configuration](https://docs.postgrest.org/en/v14/references/configuration.html#in-database-configuration).
+
+Use `workers/research/test/wrangler.jsonc` for the controlled consumer; it must never be
+deployed. Copy the generated consumer bindings into `workers/research/test/.dev.vars`.
+Point the API's ignored `.dev.vars` at the **same dedicated stack**: use its `DB_URL`,
+`API_URL`, service-role key and JWT issuer, with `APP_ENV=local` and
+`ADMISSIONS_ENABLED=true`. Rebuild the web with the dedicated stack's public Supabase URL
+and public key. Preserve your ordinary local environment files separately while doing this.
+No model/provider secrets are needed. `CONTROLLED_TEST_DATABASE_ID` belongs only to test
+bindings and the test process, never production configuration.
 
 ```sh
 npx wrangler dev --config apps/web/wrangler.jsonc \
   --config workers/api/wrangler.staging.jsonc \
   --config workers/research/test/wrangler.jsonc --ip 127.0.0.1 --port 8790 \
-  --persist-to /tmp/pickler-direct-worker-state
+  --persist-to "$CONTROLLED_STACK/worker-state"
 ```
 
-In another terminal, save `supabase status --output json` into a mode-0600 temporary file
-without printing its credentials, then run:
+In another terminal, set `CONTROLLED_STACK` to the temporary directory printed during setup:
 
 ```sh
+export CONTROLLED_TEST_DATABASE_ID=$(node -p 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).identity' "$CONTROLLED_STACK/controlled-stack.json")
 TEST_WORKERS_URL=http://127.0.0.1:8790 \
-SUPABASE_LOCAL_STATUS_FILE=/absolute/path/to/private-local-status.json \
+SUPABASE_LOCAL_STATUS_FILE="$CONTROLLED_STACK/status.json" \
 npm run test:workers-local
 ```
 
-The test requires loopback destinations, creates labelled disposable local users/agents,
-revokes their research access afterward, and retains their results for inspection. It checks
-three controlled market IDs: 1 (abstain), 2 (trade proposal), 3 (technical failure). These are
-synthetic fixtures, never claims about the actual provider's markets. The ordinary suite skips
-this test unless TEST_WORKERS_URL is explicitly supplied. Stop the controlled stack afterward.
+The test validates the dedicated endpoints and identity before creating users. It creates
+labelled disposable users/agents, revokes every created user's research access afterward
+(including failures during setup), and always closes its database pool. Results remain in this
+dedicated stack for inspection. The scenarios use synthetic market IDs 1 (abstain), 2 (trade
+proposal), and 3 (technical failure), never actual provider forecasts. The ordinary suite skips
+this flow unless `TEST_WORKERS_URL` is supplied; its isolation regression separately proves
+that a refused fixture connection leaves foreign queued jobs and historical evidence unchanged.
+
+Stop the controlled Workers afterward, then stop only this dedicated Supabase stack with
+`npx supabase@2.111.0 stop --workdir "$CONTROLLED_STACK"`. Do not reset or remove the ordinary stack.
 
 ## Dedicated resources and secrets
 
@@ -71,8 +115,8 @@ reuse production identifiers or data. Create Queue `pickler-research-staging` an
 API and research connect using the DATABASE_URL secret to the Supabase session pooler on port 5432. No Hyperdrive resource or binding is used. Pools belong to one invocation, have at most
 two connections and close before the invocation ends. PostgreSQL remains the transactional authority.
 
-Hosted connections require TLS and hostname verification. Do not add SSL parameters to DATABASE_URL;
-they can override driver options. Node operators can supply the project CA using DATABASE_CA_CERT;
+Hosted connections require TLS and hostname verification. Do not add connection override parameters to DATABASE_URL;
+only the harmless `application_name` query key is accepted. Node operators can supply the project CA using DATABASE_CA_CERT;
 Workers uses its platform TLS trust and hostname verification. Never disable certificate validation.
 Local plaintext connections require APP_ENV=local and a loopback host. A local success does not
 establish remote TLS compatibility: test the actual hosted path before opening admissions.
