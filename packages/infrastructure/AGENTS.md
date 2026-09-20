@@ -60,3 +60,7 @@ to two connections. Staging requires the Supabase session pooler on port 5432 an
 Only explicit local mode permits plaintext loopback connections. No Hyperdrive binding is used.
 Historical Node callers retain their existing connection configuration. Never expose a test clock
 or controlled provider adapter through deployed environment configuration.
+
+When invocation connection options are supplied, DATABASE_URL permits only the application_name
+query parameter. Reject endpoint, TLS, timeout, and other pg overrides before selecting transport;
+encoded hostnames are rejected because pg can decode them as Unix socket paths.
