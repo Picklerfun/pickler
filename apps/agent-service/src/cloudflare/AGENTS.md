@@ -11,3 +11,7 @@ The operator explicitly authorized retaining `pickler-mastra-runtime-probe` and 
 The database probe recovers expired leases and fails orphan queued requests as `PROBE_REQUEST_INTERRUPTED`, without provider calls. It only then enqueues its new request. Orphan records remain for inspection and still count toward admission quotas. Use the shared lease heartbeat for active research and the hold probe; always close the request repository. `createProbe` accepts a repository factory for lifecycle regression tests; runtime uses the PostgreSQL adapter.
 
 `background/` is a separate local-only Queue experiment with its own instructions, configuration, isolated database and tenant tokens. Unlike the HTTP probe, it preserves queued work and executes research in an awaited Queue consumer. Its more specific instructions govern that lifecycle. Do not apply the probe's orphan-queued cancellation policy to it.
+
+Environment preparation reads the root `.env` and retains generated isolated state in `.data`.
+It no longer creates `.dev.vars`. Use the corresponding `client.mjs serve` command to inject
+that generated state into local Wrangler without a second maintained environment file.
