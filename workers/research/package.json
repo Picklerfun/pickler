@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build:worker": "wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler/build"
+    "build:worker": "wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler/build",
+    "dev": "node ../../scripts/with-env.mjs research wrangler dev"
   },
   "dependencies": {
     "@pickler/agent-runtime": "*",
