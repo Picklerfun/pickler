@@ -2,13 +2,17 @@ import { ChakraPetch_600SemiBold, ChakraPetch_700Bold } from "@expo-google-fonts
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ActivityIndicator, StatusBar, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { AppCtx } from "./src/ctx";
 import { useAccount } from "./src/hooks/useAccount";
+import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
+import { useReads } from "./src/hooks/useReads";
 import { useTreasury } from "./src/hooks/useTreasury";
+import type { PushTarget } from "./src/reads/push";
+import { patchForPush } from "./src/reads/push";
 import { Shell } from "./src/Shell";
 import { type Screen, useAppStore } from "./src/store";
 import { C } from "./src/ui/theme";
@@ -27,6 +31,11 @@ export default function App() {
   const perpl = usePerpl(account ?? NONE, onWallet, treasury);
   const hasAccount = account !== null && account.status !== "none";
   const store = useAppStore({ hasAccount, perpsMarkets: perpl.context?.markets ?? [] });
+  const { requireAccount } = store;
+  // Tap en un push: abre Market en la read (o en Trade para un recordatorio) respetando el gate (P7).
+  const onPushTarget = useCallback((t: PushTarget) => requireAccount("market", patchForPush(t)), [requireAccount]);
+  const notifications = useNotifications(onPushTarget);
+  const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
   const booted = useRef(false);
   const { boot } = store;
   // Una sola vez, cuando la cuenta deja de ser null: sin cuenta pasa por Sign in (D3).
@@ -37,8 +46,11 @@ export default function App() {
     boot(hasAccount);
   }, [account, hasAccount, boot]);
   const perpsActive = PERPL_SCREENS.includes(store.S.screen);
+  const readsActive = store.S.screen === "market" && store.S.marketTab !== "trade";
   const { setActive } = perpl;
+  const { setActive: setReadsActive } = reads;
   useEffect(() => { setActive(perpsActive); }, [perpsActive, setActive]);
+  useEffect(() => { setReadsActive(readsActive); }, [readsActive, setReadsActive]);
 
   if (!fontsLoaded || account === null) {
     return (
@@ -48,7 +60,7 @@ export default function App() {
     );
   }
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, onWallet, lock, signOut };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };
 
   return (
     <SafeAreaProvider>

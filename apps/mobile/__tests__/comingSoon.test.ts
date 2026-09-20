@@ -1,4 +1,4 @@
-import { COMING_SOON_COPY, MARKET_COMING_SOON } from "../src/screens/comingSoonCopy";
+import { COMING_SOON_COPY } from "../src/screens/comingSoonCopy";
 import { COMING_SOON } from "../src/store";
 
 test("every coming-soon tab has its lucide icon, title and one-line copy", () => {
@@ -8,7 +8,7 @@ test("every coming-soon tab has its lucide icon, title and one-line copy", () =>
   expect(COMING_SOON_COPY.portfolio).toEqual({ icon: "layers", title: "Portfolio", copy: "Tokens · Perps · Reads" });
 });
 
-test("the Ask and Agents pills of Market have their inline copy", () => {
-  expect(MARKET_COMING_SOON.ask.copy).toBe("Ask an agent for a read on this market");
-  expect(MARKET_COMING_SOON.agents.copy).toBe("Who trades and who reads this market");
+test("Ask and Agents are real now: no inline coming-soon copy for Market pills (D13)", () => {
+  expect((COMING_SOON_COPY as Record<string, unknown>).ask).toBeUndefined();
+  expect((COMING_SOON_COPY as Record<string, unknown>).agents).toBeUndefined();
 });

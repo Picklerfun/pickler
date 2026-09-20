@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import type { AppCtx } from "../ctx";
-import type { Notifications } from "../hooks/useNotifications";
 import type { Reads } from "../hooks/useReads";
 import type { Market } from "../perpl/context";
 import { formatPrice } from "../perpl/orders";
@@ -12,8 +11,6 @@ import type { Agent, Read, ReadStatus } from "../reads/types";
 import type { AskCell } from "../store";
 import { Btn, Card, Chip, Segmented, StatusCard, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, pill } from "../ui/theme";
-
-type Ctx = AppCtx & { reads: Reads; notifications: Notifications };
 
 /** Tick de 30 s para las cuentas regresivas de toda la pantalla (P14). */
 function useNow(everyMs: number): number {
@@ -170,7 +167,7 @@ function ReadRow({ read, name, now, onPress }: { read: Read; name: string; now: 
   );
 }
 
-export function AskTab(ctx: Ctx) {
+export function AskTab(ctx: AppCtx) {
   const { S, set, perpl, reads, notifications } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const now = useNow(30_000);

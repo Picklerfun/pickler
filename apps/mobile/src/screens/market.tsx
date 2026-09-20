@@ -6,7 +6,8 @@ import type { AppCtx } from "../ctx";
 import { formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
 import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, StatusCard, T, Tag, type Tone } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
-import { ComingSoonCard } from "./comingSoon";
+import { AgentsTab } from "./agents";
+import { AskTab } from "./ask";
 
 export type OrderResult =
   | { step: "sent" }
@@ -160,7 +161,7 @@ export function MarketScreen(ctx: AppCtx) {
       <View style={{ paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}>
         <PillTabs options={[["ask", "Ask"], ["trade", "Trade"], ["agents", "Agents"]] as const} value={S.marketTab} onChange={(k) => set({ marketTab: k })} />
       </View>
-      {S.marketTab === "trade" ? <TradeTab {...ctx} /> : <Page top={13}><ComingSoonCard which={S.marketTab} /></Page>}
+      {S.marketTab === "trade" ? <TradeTab {...ctx} /> : S.marketTab === "ask" ? <AskTab {...ctx} /> : <AgentsTab {...ctx} />}
     </View>
   );
 }
