@@ -400,7 +400,79 @@ Ordenados por peso:
 
 ## Revisión final de rama
 
-Pendiente: la corre el controlador tras este audit; sus hallazgos se anotan aquí.
+**Veredicto: with fixes** (opus). Revisión de toda la rama `feat/mobile-ask` sobre `services/reads/`; tres
+hallazgos *important*, corregidos en esta misma sesión con una tanda de fixes (un commit) y verificados
+contra el proyecto compartido `pickler`.
+
+### Important — corregidos
+
+1. **Tope global de reads.** `read-request` sólo limitaba por dirección (10/10 min); sin un tope agregado,
+   muchas wallets nuevas en paralelo podían disparar gasto de Anthropic sin límite. Fix: en
+   `services/reads/supabase/functions/read-request/index.ts`, tras el `count` por dirección, una segunda
+   consulta cuenta `mobile.reads` de los últimos 10 minutos de **todas** las wallets y devuelve
+   `503 { "error": "busy" }` a partir de `GLOBAL_LIMIT = 60`. Redeploy: `npx supabase functions deploy
+   read-request --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt` → `{"project_ref":"yvdipvcrpbqvofayteqf","functions":["read-request"],…,"message":"Deployed Functions."}`.
+   Evidencia: `node scripts/smoke.mjs 16 anchor` → `SMOKE OK` (wallet `0xdea47c75a81ec6bd367bbe6114e4c63b6bbf6616`,
+   `read-request` 200 en 7310 ms, el tope no se disparó con una sola read).
+2. **`refund_read` reembolsaba desde cualquiera de `pending`/`open`, sin exigir la transición correcta.**
+   Una carrera entre el cron marcando una `pending` huérfana como `failed` y la misma función `read-request`
+   respondiendo tarde y marcándola `void` (o viceversa) podía reembolsar dos veces la misma read (ver
+   Incidente 2, §2, del audit de ejecución: la wallet `0x1449…1408` terminó con `refund 3` en vez de 2 por
+   una secuencia manual, no por este bug, pero el guard faltante es la misma clase de problema). Fix:
+   migración `services/reads/supabase/migrations/0005_refund_transitions.sql`, `create or replace` de
+   `mobile.refund_read` con `where id = p_read and status = case when p_status = 'failed' then 'pending'
+   else 'open' end` (antes: `status in ('pending', 'open')` sin importar `p_status`); vuelve a revocar
+   `execute` de `public`. Aplicada: `npm run migrate` → `✓ 0005_refund_transitions.sql`; segunda corrida →
+   `aplicadas: 0001_schema.sql, 0002_function_privileges.sql, 0003_seed_agents.sql, 0004_cron.sql,
+   0005_refund_transitions.sql` / `pendientes: (ninguna)`. Verificación por SQL:
+   `node scripts/query.mjs "select mobile.refund_read(gen_random_uuid(), 'failed', 'x') as r"` → `[{ "r": false }]`
+   (uuid inexistente, ninguna fila que cumpla la transición); privilegios sin cambio:
+   `has_function_privilege('anon', p.oid, 'execute')` → `false` para `refund_read` (junto con `ensure_wallet`
+   y `request_read`). Redeploy: no aplica (es SQL, no una función Edge).
+3. **Válvula de recordatorios sin mark.** En `resolve-reads`, un recordatorio (`mobile.reminders`) de un
+   mercado sin mark en Perpl (cerrado/deslistado) se reintentaba cada minuto para siempre —nunca se
+   descartaba, a diferencia de las reads vencidas, que sí anulan a los 30 min (D10, `VOID_AFTER_MS`). Fix:
+   en `services/reads/supabase/functions/resolve-reads/index.ts`, el loop de recordatorios ahora marca
+   `status = 'failed'` cuando `fire_at` tiene más de 30 min y sigue sin mark, igual que el `void` de las
+   reads; se agregó `fire_at: Date` a `DueReminder` y a la columna `m.fire_at` del `select`. Redeploy:
+   `npx supabase functions deploy resolve-reads --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt` →
+   `{"project_ref":"yvdipvcrpbqvofayteqf","functions":["resolve-reads"],…,"message":"Deployed Functions."}`.
+   Evidencia: `deno check supabase/functions/read-request/index.ts supabase/functions/resolve-reads/index.ts`
+   limpio (`Check` × 2, sin errores); llamada real con `CRON_SECRET`:
+   `curl -sS -X POST -H "x-cron-secret: $CRON_SECRET" -d '{}' https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/resolve-reads`
+   → `HTTP 200 {"refunded":0,"resolved":0,"voided":0,"remindersSent":0,"pushSent":0}` (cola vacía al momento
+   de correrlo; el código nuevo no se ejerció con datos reales porque no había recordatorios sin mark
+   pendientes, pero el `deno check` y los 28 tests de `_shared` (sin cambios de contrato) cubren el resto de
+   la función).
+
+### Known — corregido
+
+- **`npm run smoke` apuntaba a `scripts/smoke.sh`, que no existe.** `services/reads/package.json`:
+  `"smoke": "node scripts/smoke.mjs"`. `services/reads/README.md` actualizado: la sección `npm test`
+  documenta `node --test 'scripts/*.test.mjs'` + `deno test -A supabase/functions/_shared/` y que hay que
+  correr `npm install` antes de `deno test` (con `node_modules` presente, Deno resuelve los `npm:` de los
+  tests desde ahí); se agregó la advertencia de que el migrador envuelve cada archivo en una transacción y
+  no admite sentencias que no puedan ir dentro de una (`create index concurrently`, `vacuum`…); la línea de
+  `npm run smoke` ahora describe `scripts/smoke.mjs [marketId] [agentId]`.
+
+### Minors — pendientes (deferred)
+
+Todos pueden esperar salvo `smoke`, corregido aquí:
+
+(a) `read.error` crudo en el DTO. (b) `500` sin `{ error }` en throws no capturados (un `onError` común).
+(c) `pushToken` sin forma (`^[0-9a-fA-F]{64}$`). (d) `reminder-set` sin cota de `expiresAt` ni tope por
+dirección, dos inserts sin transacción. (e) **spec D8**: `maxRetries: 1` + `timeout: 50_000` puede superar
+los 60 s del reembolso (propuesta: `maxRetries: 0`; decisión de Jesús). (f) `cache_control` sin efecto
+(< 1024 tokens). (g) push duplicado si dos corridas se solapan (> 60 s). (h) `questionFor` trunca al minuto.
+(i) rate limit por dirección no estricto bajo concurrencia. (j) recomendación operativa: **spend limit en la
+consola de Anthropic** además del tope global.
+
+### Verificación de conjunto
+
+`deno check` limpio en `read-request` y `resolve-reads`; `cd services/reads && npm test` →
+`# tests 2 / # pass 2 / # fail 0` (node) y `ok | 28 passed | 0 failed` (deno); ambas funciones redesplegadas;
+`node scripts/smoke.mjs 16 anchor` → `SMOKE OK` (wallet nueva `0xdea47c75a81ec6bd367bbe6114e4c63b6bbf6616`);
+`curl` con `x-cron-secret` contra `resolve-reads` en producción → `200` con los cinco contadores.
 
 ## 7. Siguiente punto de decisión
 

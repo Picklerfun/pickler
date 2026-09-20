@@ -18,6 +18,7 @@ const Body = z.object({
 });
 
 const RATE_LIMIT = 10; // por dirección cada 10 min (D20)
+const GLOBAL_LIMIT = 60; // reads de todas las wallets cada 10 min: acota el gasto de Anthropic (revisión final F1)
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 Deno.serve(async (req) => {
@@ -31,6 +32,10 @@ Deno.serve(async (req) => {
   const [{ count }] = await sql<{ count: number }[]>`
     select count(*)::int as count from mobile.reads where address = ${auth.address} and created_at > now() - interval '10 minutes'`;
   if (count >= RATE_LIMIT) return fail(429, "rate_limited");
+
+  const [{ total }] = await sql<{ total: number }[]>`
+    select count(*)::int as total from mobile.reads where created_at > now() - interval '10 minutes'`;
+  if (total >= GLOBAL_LIMIT) return fail(503, "busy");
 
   let markets;
   try {

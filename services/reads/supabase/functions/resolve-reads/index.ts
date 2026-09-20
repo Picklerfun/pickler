@@ -18,7 +18,7 @@ type DueRead = {
 };
 type DueReminder = {
   id: string; address: string; read_id: string | null; market_id: number; symbol: string; level_bps: number; horizon_min: number;
-  price_decimals: number; target: string; kind: string; token: string | null; env: "sandbox" | "production" | null;
+  price_decimals: number; target: string; kind: string; token: string | null; env: "sandbox" | "production" | null; fire_at: Date;
 };
 
 Deno.serve(async (req) => {
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     from mobile.reads r join mobile.agents a on a.id = r.agent_id left join mobile.devices d on d.address = r.address
     where r.status = 'open' and r.expires_at <= now() order by r.expires_at limit ${BATCH}`;
   const reminders = await sql<DueReminder[]>`
-    select m.id, m.address, m.read_id, m.market_id, m.symbol, m.level_bps, m.horizon_min, m.price_decimals, m.target, m.kind, d.token, d.env
+    select m.id, m.address, m.read_id, m.market_id, m.symbol, m.level_bps, m.horizon_min, m.price_decimals, m.target, m.kind, m.fire_at, d.token, d.env
     from mobile.reminders m left join mobile.devices d on d.address = m.address
     where m.status = 'scheduled' and m.fire_at <= now() order by m.fire_at limit ${BATCH}`;
 
@@ -88,7 +88,13 @@ Deno.serve(async (req) => {
 
   for (const m of reminders) {
     const mark = markets?.get(m.market_id)?.mark;
-    if (mark === undefined) continue; // reintenta al minuto
+    if (mark === undefined) {
+      // Mercado sin mark (cerrado/deslistado) más de 30 min después de fire_at: se descarta, como el void de las reads (revisión final F1).
+      if (new Date(m.fire_at).getTime() < now - VOID_AFTER_MS) {
+        await sql`update mobile.reminders set status = 'failed', sent_at = now() where id = ${m.id} and status = 'scheduled'`;
+      }
+      continue;
+    }
     if (!m.token || !m.env) { await sql`update mobile.reminders set status = 'failed', sent_at = now() where id = ${m.id} and status = 'scheduled'`; continue; }
     let status = 0, reason: string | null = "no_jwt";
     try { ({ status, reason } = await sendPush({ ...reminderPush({ ...m, target: Number(m.target) }, mark), token: m.token, env: m.env }, await providerJwt())); }

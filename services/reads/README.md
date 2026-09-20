@@ -14,11 +14,14 @@ Todo lo nuestro vive en el esquema `mobile`. Spec: `docs/superpowers/specs/2026-
 
 ## Comandos
 - `npm run migrate:dry` / `npm run migrate` — aplica `supabase/migrations/*.sql` pendientes vía Management API; ledger `mobile.migrations`.
+  El migrador envuelve cada archivo en una transacción: no admite sentencias que no pueden ir dentro de una
+  (`create index concurrently`, `vacuum`…).
 - `npm run query -- --read-only "select …"` — consulta puntual.
-- `npm test` — `node --test scripts/` + `deno test -A supabase/functions/_shared/`.
+- `npm test` — `node --test 'scripts/*.test.mjs'` + `deno test -A supabase/functions/_shared/` (correr `npm install`
+  antes de `deno test`: con `node_modules` presente, Deno resuelve los `npm:` de los tests desde ahí).
 - `npm run deploy -- <function>` — `npx supabase functions deploy <function> --project-ref … --no-verify-jwt`.
 - `npm run sign` — headers `x-pickler-*` con una key efímera (o `READS_TEST_KEY`).
-- `npm run smoke` — agents-list → read-request → read-get → reads-list.
+- `npm run smoke` — `scripts/smoke.mjs [marketId] [agentId]`: agents-list → reads-list → read-request → read-get → reads-list → read-get ajeno (401).
 - Secretos de funciones: `set -a; source ../../.env.pickler; set +a; npx supabase secrets set --project-ref yvdipvcrpbqvofayteqf ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" CRON_SECRET="$CRON_SECRET" APNS_KEY_ID="$APNS_KEY_ID" APNS_TEAM_ID="$APNS_TEAM_ID" APNS_KEY_P8_B64="$APNS_KEY_P8_B64" PERPL_REST=https://testnet.perpl.xyz/api`
 - La CLI de Supabase está fijada como devDependency (`supabase@2.117.0`); usa siempre `npx supabase …` desde `services/reads`, no la global.
 

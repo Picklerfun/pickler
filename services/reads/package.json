@@ -11,7 +11,7 @@
     "test:deno": "deno test -A supabase/functions/_shared/",
     "test": "npm run test:scripts && npm run test:deno",
     "sign": "node scripts/sign.mjs",
-    "smoke": "bash scripts/smoke.sh",
+    "smoke": "node scripts/smoke.mjs",
     "deploy": "npx supabase functions deploy --project-ref yvdipvcrpbqvofayteqf --no-verify-jwt"
   },
   "devDependencies": {
