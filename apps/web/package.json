@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "node ../../scripts/with-env.mjs web next dev",
-    "build": "node ../../scripts/with-env.mjs web next build",
-    "start": "node ../../scripts/with-env.mjs web next start",
+    "dev": "node --import tsx ../../scripts/with-env.ts web next dev",
+    "build": "node --import tsx ../../scripts/with-env.ts web next build",
+    "start": "node --import tsx ../../scripts/with-env.ts web next start",
     "typecheck": "next typegen && tsc --noEmit",
-    "build:worker": "node ../../scripts/with-env.mjs web-worker opennextjs-cloudflare build",
-    "preview": "node ../../scripts/with-env.mjs web-worker opennextjs-cloudflare preview"
+    "build:worker": "node --import tsx ../../scripts/with-env.ts web-worker opennextjs-cloudflare build",
+    "preview": "node --import tsx ../../scripts/with-env.ts web-worker opennextjs-cloudflare preview"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.6",
