@@ -64,3 +64,11 @@ or controlled provider adapter through deployed environment configuration.
 When invocation connection options are supplied, DATABASE_URL permits only the application_name
 query parameter. Reject endpoint, TLS, timeout, and other pg overrides before selecting transport;
 encoded hostnames are rejected because pg can decode them as Unix socket paths.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
