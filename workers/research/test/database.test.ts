@@ -10,7 +10,6 @@ test("research uses the binding and never silently falls back to a hosted secret
     DATABASE: {
       connectionString: "postgresql://user:secret@binding.hyperdrive.local:5432/postgres",
     },
-    ALLOW_INSECURE_STAGING_DATABASE: "true",
   } as unknown as Env;
   assert.deepEqual(researchDatabase(env), {
     url: env.DATABASE!.connectionString,
