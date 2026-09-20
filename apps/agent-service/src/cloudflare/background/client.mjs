@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -8,16 +8,16 @@ import { decisionV2Schema } from "@pickler/api-schema";
 
 const app = fileURLToPath(new URL("../../../", import.meta.url));
 const root = fileURLToPath(new URL("../../../../../", import.meta.url));
-const varsPath = fileURLToPath(new URL(".dev.vars", import.meta.url));
 const statePath = `${app}.data/cf-queue.json`;
 const command = process.argv[2];
 const base = "http://127.0.0.1:8799";
 
 if (command === "prepare") {
-  if (existsSync(statePath) || existsSync(varsPath)) {
+  if (existsSync(statePath)) {
     throw new Error("Queue experiment already configured; preserve existing state.");
   }
-  const source = parse(readFileSync(`${app}.env`));
+  const source = parse(readFileSync(`${root}.env`));
+  source.DATABASE_URL = source.AGENT_DATABASE_URL ?? source.LOCAL_DATABASE_URL;
   const keys = ["MODEL_BASE_URL", "MODEL_ID", "MODEL_API_KEY", "EXA_API_KEY"];
   for (const key of [...keys, "DATABASE_URL"]) {
     if (!source[key]) {
@@ -44,13 +44,6 @@ if (command === "prepare") {
   });
   mkdirSync(`${app}.data`, { recursive: true });
   writeFileSync(statePath, JSON.stringify(vars), { mode: 0o600 });
-  writeFileSync(
-    varsPath,
-    Object.entries(vars)
-      .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-      .join("\n") + "\n",
-    { mode: 0o600 },
-  );
   execFileSync("npm", ["run", "db:migrate"], {
     cwd: root,
     env: { ...process.env, DATABASE_MIGRATION_URL: vars.DATABASE_URL },
@@ -68,6 +61,42 @@ if (command === "prepare") {
     await store.close();
   }
   console.log(`Prepared ${database}; Sports selected; scheduling disabled; no providers called.`);
+} else if (command === "serve") {
+  const vars = JSON.parse(readFileSync(statePath, "utf8"));
+  const child = spawn(
+    "npx",
+    [
+      "wrangler",
+      "dev",
+      "--config",
+      "src/cloudflare/background/wrangler.jsonc",
+      "--ip",
+      "127.0.0.1",
+      "--port",
+      "8799",
+      ...process.argv.slice(3),
+    ],
+    {
+      cwd: app,
+      stdio: "inherit",
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        TMPDIR: process.env.TMPDIR,
+        CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
+        ...vars,
+      },
+    },
+  );
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => child.kill(signal));
+  }
+  child.on("error", () => {
+    process.exitCode = 1;
+  });
+  child.on("exit", (code) => {
+    process.exitCode = code ?? 1;
+  });
 } else {
   const vars = JSON.parse(readFileSync(statePath, "utf8"));
   const tenant = process.env.LAB_TENANT ?? "alpha";
