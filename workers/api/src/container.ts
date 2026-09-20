@@ -68,6 +68,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const repository = new PostgresResearchStore(connectionString, undefined, {
     environment: env.APP_ENV,
     ca: env.DATABASE_CA_CERT,
+    allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
   });
   const directory = new PostgresConsoleDirectory(repository.pool);
   const db = createSupabaseAdmin({
