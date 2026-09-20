@@ -150,3 +150,50 @@ rolling back to them restores that known connection failure. There is no previou
 remote agent version to roll back to. For subsequent compatible releases, use native Wrangler
 rollback with the version IDs above and the matching configuration. Retain database and Queue data;
 never reverse migrations or roll back to an executor with legacy global recovery.
+
+## Bounded remote research acceptance
+
+The next acceptance window used backend implementation commit `681b8bf` (documentation head
+`6e5aef6`). The public web remained on version `6b4eff4b-a893-4338-897b-bde03a655e10`.
+Operator-invoked connection checks passed for both acceptance agents, using the configured model,
+its controlled tool/structured-output fixture, Polymarket categories and Exa search/read. These
+checks ran from the local Node runtime against real providers; they do not establish deployed
+Worker model compatibility.
+
+Two manual investigations were admitted through the deployed web Service Binding with HTTP 202:
+
+| Scope             | Run                                    | Terminal result                      | Duration      |
+| ----------------- | -------------------------------------- | ------------------------------------ | ------------- |
+| American football | `c267f3a8-144a-44de-8b58-1b11fecd87cb` | `failed / PROVIDER_OR_MODEL_FAILURE` | 9.887 seconds |
+| Soccer            | `06a932c4-bb99-4fa1-b04d-dbc22ba411b9` | `failed / PROVIDER_OR_MODEL_FAILURE` | 8.666 seconds |
+
+Both runs persisted a `runtime` event, a five-page `discovery_scan` event (69 and 75 raw
+candidates respectively), then a `provider_failure` event for operation `candidates`. Neither
+persisted a candidate list, model-call diagnostics, source evidence or a decision. The runs were
+sequential, so this window does not validate concurrent remote research. No research was retried.
+No model call was reached in either research path; provider connection checks are separate usage.
+
+The exact cause remains unproven. The current `external` wrapper catches both provider operations
+and their event writes, so `provider_failure` alone cannot distinguish those failures. A subsequent
+local workerd diagnostic against the same hosted transaction pooler successfully sent a frozen
+108,868-byte candidate JSON payload and inserted it through Drizzle in an explicitly rolled-back
+transaction. No diagnostic event was committed to either run. This rules out a blanket JSONB
+payload/transport incompatibility for that sample, not an intermittent or hosted-runtime failure.
+Do not attribute this incident to the LLM, Exa or Polymarket without further evidence.
+
+The scheduled acceptance was not enabled: it requires a successful manual investigation. Both
+manual acceptance slots are consumed. Any further complete paid investigation needs a new explicit
+allowance; do not use a scheduling attempt to bypass this limit. End-to-end research acceptance
+remains **failed/pending correction**, not complete. Browser session-lifecycle acceptance also
+remains separate from the HTTP checks reported above.
+
+Cleanup verified two terminal failed runs and no queued/running runs for the acceptance tenants.
+Both test users' research access was revoked; their schedules remain disabled. Backend admissions
+were closed again with these current versions:
+
+- API: `8fe3efa6-d0bf-4699-a445-ff353d4b8dda`.
+- Research: `c344e979-d3cb-487a-95cb-6acb1609710e`.
+
+The failed-run records and events are retained for diagnosis. The web stays published at the
+staging URL. The temporary operator-approved database transport exception remains active; this
+window does not establish verified-TLS acceptance or any actual trading capability.
