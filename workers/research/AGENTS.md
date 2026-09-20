@@ -4,7 +4,8 @@ Read the root and packages/agent-runtime instructions first. This is the deploye
 Cron host, distinct from the protected local experiment in apps/agent-service. Do not remove
 that experiment's database/loopback guards. No HTTP handler, Studio, or tenant tokens here.
 
-Use request-scoped PostgreSQL via DATABASE_URL and the Supabase session pooler (5432), with verified TLS. Await one leased research per
+Use invocation-scoped PostgreSQL through the DATABASE Hyperdrive binding. Hyperdrive verifies
+origin TLS against the Supabase CA on session-pooler port 5432, with query caching disabled. Await one leased research per
 Queue delivery, including heartbeat cleanup and database closure. Generic wakeup messages
 never authorize a tenant. PostgreSQL controls admission, quotas, ownership and configuration.
 No automatic paid retries; a redelivery can claim another queued run, never restart a running
@@ -48,3 +49,16 @@ or session connections. No named prepared statements or session-scoped locks are
 the deployed research repositories; ownership settings and locks must remain transaction-local.
 Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
 the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+
+## Hosted database binding and explicit diagnostic
+
+`src/database.ts` resolves the binding for both Queue and Cron; hosted execution fails closed if
+it is missing and never falls back to DATABASE_URL. Only APP_ENV=local uses DATABASE_URL.
+No plaintext override or database-origin credentials are needed by the hosted research Worker.
+The API transport remains separately configured.
+
+`test/database-probe.ts` is an explicitly invoked remote-preview diagnostic. It round-trips a
+large synthetic JSONB payload using the production pool options and Drizzle, within a rolled-back
+transaction and temporary table. It never invokes providers, creates agents or modifies application
+history. Do not import it into the deployed Worker or configure a public diagnostic endpoint.
+See docs/cloudflare-staging.md for invocation and deployment validation.
