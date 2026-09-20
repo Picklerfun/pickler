@@ -22,7 +22,13 @@ export function createRuntime(env: Environment) {
   const repository = new PostgresResearchStore(
     env.DATABASE_URL,
     undefined,
-    env.APP_ENV ? { environment: env.APP_ENV, ca: env.DATABASE_CA_CERT } : undefined,
+    env.APP_ENV
+      ? {
+          environment: env.APP_ENV,
+          ca: env.DATABASE_CA_CERT,
+          allowInsecureStaging: env.ALLOW_INSECURE_STAGING_DATABASE === "true",
+        }
+      : undefined,
   );
   const search = new ExaResearch(env.EXA_API_KEY);
   const markets = new PolymarketData();
