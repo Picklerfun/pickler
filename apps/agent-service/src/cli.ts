@@ -1,12 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
-import { config } from "dotenv";
 const [command, ...args] = process.argv.slice(2);
-config({ quiet: true });
 if (command === "init") {
-  const template = await readFile(".env.example", "utf8");
+  const template = await readFile(new URL("../../../.env.example", import.meta.url), "utf8");
   await writeFile(
-    ".env",
+    new URL("../../../.env", import.meta.url),
     template
       .replace("TENANT_ALPHA_TOKEN=", `TENANT_ALPHA_TOKEN=${randomBytes(32).toString("hex")}`)
       .replace("TENANT_BETA_TOKEN=", `TENANT_BETA_TOKEN=${randomBytes(32).toString("hex")}`),
