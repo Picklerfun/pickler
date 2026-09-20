@@ -99,3 +99,11 @@ results separately. Never deploy placeholder resource IDs or put backend secrets
 Staging uses DATABASE_URL directly through the Supabase session pooler, without Hyperdrive.
 The explicit `npm run test:workers-local` suite needs the controlled local consumer; never target
 it at a deployed Worker or use real provider credentials. See the staging operations guide.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
