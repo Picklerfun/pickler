@@ -131,7 +131,7 @@ function MatrixGrid({ market, selected, onSelect }: { market: Market; selected?:
   );
 }
 
-function AskSheet({ market, cell, reads, agentId, onAgent, onAsk }: { market: Market; cell: AskCell; reads: Reads; agentId: string | undefined; onAgent: (id: string) => void; onAsk: () => void }) {
+function AskSheet({ market, cell, reads, agentId, onAgent, onAsk }: { market: Market; cell: AskCell; reads: Reads; agentId: string | undefined; onAgent: (id: string) => void; onAsk: (agentId: string) => void }) {
   const target = targetFor(market.mark, cell.levelBps);
   const question = questionFor(market.symbol, cell.levelBps, target, market.priceDecimals, expiresAtFor(new Date(), cell.horizonMin));
   const agent = reads.agents?.find((a) => a.id === agentId) ?? reads.agents?.[0];
@@ -149,7 +149,7 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onAsk }: { market: Ma
           })}
         </View>
       )}
-      <Btn label={noCredits ? "No credits left" : agent ? `Ask ${agent.name} · ${agent.priceCredits} credit` : "Ask"} onPress={onAsk} variant="lime" py={14} disabled={noCredits || !agent} accessibilityLabel="ask" />
+      <Btn label={noCredits ? "No credits left" : agent ? `Ask ${agent.name} · ${agent.priceCredits} credit` : "Ask"} onPress={() => { if (agent) onAsk(agent.id); }} variant="lime" py={14} disabled={noCredits || !agent} accessibilityLabel="ask" />
       {noCredits ? <T w={400} s={11} lh={1.4} color={C.faint}>Credits are simulated for the testnet.</T> : null}
     </Card>
   );
@@ -203,7 +203,7 @@ export function AskTab(ctx: Ctx) {
         <MatrixGrid market={market} selected={S.askCell} onSelect={(c) => set({ askCell: c })} />
         {S.askCell ? (
           <AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId} onAgent={(id) => set({ askAgentId: id })}
-            onAsk={() => { void reads.ask(S.askCell!, S.askAgentId ?? reads.agents?.[0]?.id ?? "jesus"); }} />
+            onAsk={(id) => { void reads.ask(S.askCell!, id); }} />
         ) : <T w={400} s={11} lh={1.4} color={C.faint}>Tap a cell: level above or below the mark × horizon.</T>}
         {reads.listError ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
       </View>
