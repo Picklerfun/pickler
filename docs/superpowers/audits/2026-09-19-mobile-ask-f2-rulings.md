@@ -502,14 +502,107 @@ Ordenados por peso:
 
 ## Revisión final de rama
 
-Pendiente al escribir este audit: la corre el controlador sobre toda la rama `feat/mobile-ask-f2`
-(`git diff main...HEAD -- apps/mobile docs`) con los puntos del Step 5 del plan — (a) la sesión nunca se firma
-sin gesto del usuario con la wallet bloqueada, se borra en Sign out y un `401` la descarta; (b) `pushToken`
-sólo viaja con permiso concedido y `pushEnv` es `sandbox` en `__DEV__`; (c) `targetFor`/`questionFor` de la
-app coinciden con `_shared/matrix.ts` del servidor (mismos números en ambos tests); (d) ningún secreto ni
-token de dispositivo en archivos versionados ni en este audit; (e) la `ReadCard` cubre los seis `status`;
-(f) `AbortController` en todos los `fetch` y ningún `AbortSignal.timeout` — y sus hallazgos se anexan aquí,
-como en F1 (ruling 10).
+Revisión de rama completa (opus, 2026-09-20) sobre `feat/mobile-ask-f2` e0101d9..4c47e0d, en tres pasadas:
+(1) módulos puros `src/reads/*`, `config`, `storage` cotejados línea a línea con
+`services/reads/.../_shared/{matrix,auth,dto,copy,apns}.ts` y `read-request/index.ts`; (2) hooks, pantallas,
+`App.tsx`, `Shell`, `store`, `ctx`, `market`, `comingSoon*`, `useAccount`, `app.config`; (3) tests, docs
+(audit, spec, overview, manifest, README) y ledger. `npx tsc --noEmit` → limpio; `npm test` → 30 suites /
+230 tests.
+
+**Veredicto: With fixes.**
+
+### Strengths
+- Contratos app ↔ servidor idénticos: `targetFor`, `expiresAtFor`, `questionFor`, `callOf`, `outcomeOf` copia
+  literal de `_shared/matrix.ts`; `formatPrice` ≡ `formatScaled`; `levelLabel`/`horizonLabel` (U+2212) iguales
+  a `copy.ts`; `types.ts` refleja `ReadDto`/`toAgentDto` campo por campo; `signedHeaders` = lo que exige
+  `auth.ts:14-17`; body de `requestRead` = zod `Body` de `read-request`.
+- D20 limpio: `git grep` de `sbp_|sk-ant|BEGIN PRIVATE|eyJ` sólo hits preexistentes de F1; ningún `0x…{130}`
+  ni hex ≥ 64 en tracked files ni en el audit; `mobile.devices` sólo con `length(token)`; `console.warn` de
+  `useNotifications.ts:42` sin token; headers firmados sólo hacia `READS_URL`.
+- Sesión (D6/P2/P3): firma silenciosa sólo con `unlocked` (sin prompt posible); con `locked` sólo por gesto;
+  un 401 → `dropSession` + `droppedRef`, el polling se detiene solo → sin bucle. `signOut` borra los tres
+  stores. `ask()` renueva de verdad (P2).
+- Hooks: `stale` guards, `marketIdRef`, `signingRef`, `addressRef`, `AbortController` + `clearTimeout` en
+  `finally`, `Promise.allSettled` en el refresh. Fix del push en frío correcto (`useLayoutEffect(boot)` antes
+  del `useEffect` de drenado; dedupe por identifier).
+- Tests reales: `createSession` contra `signMessage` real de viem; fixture = read real del smoke F1;
+  timeouts con fake timers y `AbortError`; `test.each` de los 7 códigos del servidor.
+- Audit con evidencia pegada, 12 rulings con coste, correcciones `(F2)`, estado de cuentas y dinero antes/después.
+
+### Issues
+
+**Critical**: ninguno.
+
+**Important**
+1. `useReads.ts` `ensureSession` — bucle de reintento si la firma silenciosa falla por algo que no es 401
+   (p. ej. `saveReadsSession` falla en keychain): el `catch` vuelve a `status = "none"` sin marcar nada y el
+   efecto P3 re-dispara `signing → none → signing…`. Fix: `droppedRef.current = true` en el `catch`.
+
+**Minor**
+2. El polling no revalida la vigencia (P2): `loadReads` usa `sessionRef.current` sin `sessionFor(…, now)`; al
+   cruzar las 23 h con la app abierta sigue hasta el 401 de las 24 h → gate (un toque de más).
+3. `resetState` conserva `askView/askCell/askAgentId/askFocusReadId/tradeLevel` tras sign out (concern 3 de 9b).
+4. `request` (card done/failed) sobrevive al cambio de mercado: una `ReadCard` de BTC puede quedar pintada en
+   el Ask de otro mercado hasta «Ask another».
+5. Sin guard de doble tap en `ask()` (hoy inalcanzable).
+6. `expo-notifications: "~57.0.20"` (tilde) y `expo-constants@57.0.19` anidado en el lock.
+7. `getLastNotificationResponseAsync` deprecada en 57.0.20 a favor de `getLastNotificationResponse()`.
+8. `heldActionFor("market")` dice «Trading on Perpl» también cuando lo retenido es un push de Ask.
+9. Tests baratos que faltan: `isSessionError`; `parseSession` con `ts` de 13 dígitos.
+
+### Triage de minors diferidos y rulings del ledger
+Rulings: preflight 1–2, Task 7 (`droppedRef`), Task 8 (agente resuelto), 9a/9b, Lock entre sign out/sign in,
+fix 3a15792 — not an issue. Trailers por modelo — can wait (irrelevante con squash). **F2 `completed` —
+decisión de Jesús**: el ítem «push llega al simulador» del §3 F2 está en ✗; el overview lo declara como
+follow-up honesto; `in_progress` sería igual de honesto.
+
+Minors: T0 tilde — can wait; T1 — not an issue; T2 `Date.parse` — can wait, resto not an issue; T3 tope de
+`ts` — can wait (test sugerido), trailer en 400ed10 — can wait; T4 timeouts/`isSessionError` — can wait, 2xx
+no JSON — not an issue; T5 — not an issue; T6 — not an issue salvo la API deprecada (can wait); T7 doble tap
+— can wait, resto not an issue; T8 — not an issue; 9b fix test — can wait (P12). Concerns de 9b:
+(1) Markets `readOnly` bloquea Ask sin key de Perpl — **decidir antes de F4** (el jurado no podrá llegar a
+Ask con una wallet nueva sin reconectar); (2) Face ID en simulador — can wait (iPhone); (3) `resetState` —
+Minor 3; (4) token 160 — not an issue; (5) acento — not an issue; (6) fix sin test — can wait.
+
+### Recommendations
+1. Fix del Important 1 antes del merge (una línea). 2. Opcional en el mismo commit: Minor 3 (con test en
+`store.test.ts`) y Minor 4. 3. Anexar este informe al audit («Revisión final de rama»). 4. Antes de F4
+resolver Markets `readOnly` (pendiente 3).
+
+**Ready to merge? With fixes.** La implementación cumple D6, D10 (lado app), D13–D16 y D20 con contratos
+verificados contra el servidor, sin secretos ni firmas sin gesto y sin nada fuera del alcance F2; lo único
+que pide cerrar antes del merge es el bucle de reintento ante un fallo no-401.
+
+### Fixes aplicados tras la revisión
+
+Commit `bc00c7f` (`fix(mobile): useReads sin bucle de reintento, Ask limpio en sign out y al cambiar de
+mercado`):
+1. **Important 1** — `apps/mobile/src/hooks/useReads.ts`, `catch` de `run()` dentro de `ensureSession`: se
+   agrega `droppedRef.current = true;` junto a `setStatus("none")`/`setSessionError(...)`, para que un fallo
+   de firma silenciosa que no sea 401 no reintente en bucle `signing → none → signing`.
+2. **Minor 4** — `apps/mobile/src/hooks/useReads.ts`: nuevo `useEffect(() => { setRequest({ step: "idle" }); }, [marketId])`
+   para que la `ReadCard` de un mercado no quede pintada en el Ask de otro.
+3. **Minor 3** — `apps/mobile/src/store.ts`, `signedOutState`: ahora limpia también `askView` (a `"new"`),
+   `askCell`, `askAgentId`, `askFocusReadId` y `tradeLevel`, sin tocar `resetState` (sus otros llamadores
+   quedan igual). Test TDD en `apps/mobile/__tests__/store.test.ts`: se renombró
+   `"sign out keeps the store reset contract and lands on Sign in (unchanged by Ask)"` a
+   `"sign out lands on Sign in and clears the Ask state"`, se agregaron asserts de `askView === "new"` y de
+   `askCell`/`askAgentId`/`askFocusReadId`/`tradeLevel` `undefined` — RED confirmado (`askView` seguía en
+   `"mine"`) antes de tocar `store.ts`, GREEN después.
+
+Evidencia: `npx tsc --noEmit` sin salida; `npm test` → 30 suites / 230 tests (mismo conteo que la revisión,
+un test renombrado con más asserts, no uno nuevo); `grep -n "droppedRef.current = true" apps/mobile/src/hooks/useReads.ts`
+→ dos apariciones (`dropSession` y el `catch` de `ensureSession`).
+
+### Pendientes / residuales
+No resueltos en esta ola (quedan para después, según el triage): Minor 2 (polling no revalida vigencia,
+P2), Minor 5 (sin guard de doble tap en `ask()`), Minor 6 (`expo-notifications` con tilde y
+`expo-constants` anidado en el lock), Minor 7 (`getLastNotificationResponseAsync` deprecada), Minor 8
+(`heldActionFor("market")` no distingue push de Ask de Trading on Perpl), Minor 9 (tests baratos que faltan:
+`isSessionError`, `parseSession` con `ts` de 13 dígitos). Decisiones pendientes del equipo: **F2 `completed`
+vs `in_progress`** (el ítem «push llega al simulador» sigue en ✗; ambos estados son honestos, decide Jesús) y
+**Markets `readOnly` sin key de Perpl bloquea Ask — decidir antes de F4** (el jurado no podrá llegar a Ask con
+una wallet nueva sin reconectar).
 
 ## 6. Siguiente punto de decisión
 
