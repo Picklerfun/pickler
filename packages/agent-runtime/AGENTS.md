@@ -33,3 +33,7 @@ or session connections. No named prepared statements or session-scoped locks are
 the deployed research repositories; ownership settings and locks must remain transaction-local.
 Remove this exception when Hyperdrive with verified TLS is accepted. Database traffic during
 the exception is unencrypted. See docs/cloudflare-staging.md from the repository root.
+
+`createRuntime` accepts optional trusted database connection options from its host. The research
+Worker supplies Hyperdrive options and its binding URL; local Node callers retain direct/session
+connections. Never derive the transport choice from model input or public agent configuration.
