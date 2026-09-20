@@ -1,7 +1,5 @@
-import { config } from "dotenv";
 import { createRuntime, type Environment } from "@pickler/agent-runtime";
 
-config({ quiet: true });
 const [tenantId, agentId] = process.argv.slice(2);
 if (!tenantId || !agentId) {
   throw new Error("Usage: validate:agent <tenant UUID> <agent UUID>");
