@@ -243,9 +243,11 @@ relaunch), no sólo en tests.
 
 No bloqueantes, ordenados por lo que más pesa:
 
-- **Falta el build 5 de TestFlight** (Task 10 del plan): sólo con autorización explícita de Jesús en
-  la sesión. Es la razón de que el proyecto siga `active` en el manifest aunque las dos fases estén
-  `completed`.
+- ~~Falta el build 5 de TestFlight~~ **Hecho el 2026-09-19 con autorización de Jesús**: `.ipa` 0.1.0 (5),
+  `UPLOAD SUCCEEDED` (Delivery UUID `fa90b5b5-8056-4469-a64b-06ca53a3ac70`), `VALID` en App Store
+  Connect a las 16:46 PDT con el grupo interno «Equipo» vinculado; tracker
+  `docs/overview/dev/2026-09-19-testflight-build5.html`. La rama se mergeó a `main` (`d37c618`) y se
+  pusheó en la misma sesión.
 - **iPhone de Jesús: el mismo recorrido con su cuenta real vía TestFlight build 5 (lo hace Jesús).**
   Es lo único que puede confirmar si el `3401` del build 4 era realmente el reloj: en el simulador el
   desfase medido fue 0 s.
