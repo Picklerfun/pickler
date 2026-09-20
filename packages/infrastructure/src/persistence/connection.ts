@@ -29,10 +29,21 @@ export function databasePoolConfig(
   if (!["postgres:", "postgresql:"].includes(url.protocol)) {
     throw new Error("Invalid DATABASE_URL protocol");
   }
+  // pg decodes the hostname, including encoded Unix socket paths.
+  if (url.hostname.includes("%")) {
+    throw new Error("DATABASE_URL requires an unencoded host");
+  }
   // pg connection-string SSL parameters can override the explicit TLS object.
   for (const key of url.searchParams.keys()) {
+    if (["host", "port"].includes(key.toLowerCase())) {
+      throw new Error("Configure the database endpoint in the URL authority, not URL parameters");
+    }
     if (key.toLowerCase().startsWith("ssl")) {
       throw new Error("Configure database TLS through connection options, not URL parameters");
+    }
+    // pg merges every query key into its config, including timeout overrides.
+    if (key !== "application_name") {
+      throw new Error("DATABASE_URL only supports the application_name query parameter");
     }
   }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
