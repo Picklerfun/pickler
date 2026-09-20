@@ -35,3 +35,11 @@ Fresh controlled stacks initially expose only the default public API schemas so 
 start before application migrations. After initialize and the reconciled migrator, the explicit
 marker-guarded expose-api setup step enables product schemas only in that disposable database.
 The setup regression creates configuration files only; it never starts containers.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
