@@ -53,10 +53,22 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const [request, setRequest] = useState<RequestState>({ step: "idle" });
   const [active, setActive] = useState(false);
   const sessionRef = useRef<ReadsSession | null>(null);
+  // Actualizados en cada render (no en un efecto) para que el trabajo async en vuelo pueda comparar
+  // contra el valor vivo, no contra el que tenía cuando arrancó (Findings #2 y #4).
+  const addressRef = useRef(address);
+  addressRef.current = address;
+  const marketIdRef = useRef(marketId);
+  marketIdRef.current = marketId;
+  // true tras un 401 hasta que el usuario pulsa "Unlock" (ensureSession de nuevo): evita el bucle
+  // firma → 401 → firma silenciosa cada 15 s (Finding #1, D6/P2).
+  const droppedRef = useRef(false);
+  // Promesa de firma en vuelo: una segunda llamada concurrente la reutiliza en vez de abrir Face ID dos veces (Finding #3).
+  const signingRef = useRef<Promise<boolean> | null>(null);
   const { ensurePermission, scheduleLocal } = notifications; // el objeto cambia por render; las funciones son estables
 
   const dropSession = useCallback(async () => {
     sessionRef.current = null;
+    droppedRef.current = true;
     setStatus("none");
     setCredits(null);
     setReads([]);
@@ -67,6 +79,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   useEffect(() => {
     let stale = false;
     sessionRef.current = null;
+    droppedRef.current = false;
     setStatus("none");
     setCredits(null);
     setReads([]);
@@ -82,28 +95,46 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     return () => { stale = true; };
   }, [address]);
 
-  const ensureSession = useCallback(async (): Promise<boolean> => {
-    if (!address) return false;
-    if (sessionRef.current && sessionFor(sessionRef.current, address)) return true;
-    setStatus("signing");
-    setSessionError("");
-    try {
-      const wallet = await openWallet();
-      const s = await createSession((m) => wallet.account.signMessage({ message: m }), wallet.address);
-      await saveReadsSession(s);
-      sessionRef.current = s;
-      setStatus("ready");
-      return true;
-    } catch (e) {
-      setStatus("none");
-      setSessionError(describeError(e)); // "" si canceló Face ID
-      return false;
-    }
+  const ensureSession = useCallback((): Promise<boolean> => {
+    if (signingRef.current) return signingRef.current; // ya hay una firma en vuelo: no abrir Face ID otra vez (Finding #3)
+    const run = async (): Promise<boolean> => {
+      droppedRef.current = false; // el usuario (o ask()) pidió sesión explícitamente: se puede volver a intentar
+      if (!address) return false;
+      if (sessionRef.current && sessionFor(sessionRef.current, address)) return true;
+      setStatus("signing");
+      setSessionError("");
+      try {
+        const wallet = await openWallet();
+        const s = await createSession((m) => wallet.account.signMessage({ message: m }), wallet.address);
+        // La cuenta pudo cambiar mientras se firmaba: si ya no coincide, no se persiste nada (Finding #4).
+        const current = addressRef.current;
+        if (
+          current === null ||
+          current.toLowerCase() !== address.toLowerCase() ||
+          wallet.address.toLowerCase() !== address.toLowerCase()
+        ) {
+          setStatus("none");
+          return false;
+        }
+        await saveReadsSession(s);
+        sessionRef.current = s;
+        setStatus("ready");
+        return true;
+      } catch (e) {
+        setStatus("none");
+        setSessionError(describeError(e)); // "" si canceló Face ID
+        return false;
+      }
+    };
+    const p = run().finally(() => { signingRef.current = null; });
+    signingRef.current = p;
+    return p;
   }, [address, openWallet]);
 
-  // Con la wallet ya abierta no hay prompt: se firma sola al activar Ask (P3).
+  // Con la wallet ya abierta no hay prompt: se firma sola al activar Ask (P3), pero nunca tras un 401
+  // sin que el usuario toque el botón "Unlock" del gate (Finding #1, D6/P2).
   useEffect(() => {
-    if (active && status === "none" && account.status === "unlocked") void ensureSession();
+    if (active && status === "none" && account.status === "unlocked" && !droppedRef.current) void ensureSession();
   }, [active, status, account.status, ensureSession]);
 
   const loadAgents = useCallback(async () => {
@@ -114,13 +145,16 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const loadReads = useCallback(async () => {
     const s = sessionRef.current;
     if (!s) return;
+    const requestedMarketId = marketId; // el marketId puede cambiar mientras el fetch está en vuelo (Finding #2)
     try {
-      const r = await fetchReads(READS_URL, s, marketId);
+      const r = await fetchReads(READS_URL, s, requestedMarketId);
+      if (marketIdRef.current !== requestedMarketId) return; // respuesta tardía de un mercado que ya no es el activo
       setReads(r.reads);
       setCredits(r.credits);
       setListError("");
     } catch (e) {
-      if (isSessionError(e)) { await dropSession(); return; }
+      if (isSessionError(e)) { await dropSession(); return; } // la sesión es inválida sin importar el mercado
+      if (marketIdRef.current !== requestedMarketId) return;
       setListError(describeReadsError(e));
     }
   }, [marketId, dropSession]);
