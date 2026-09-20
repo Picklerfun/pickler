@@ -59,11 +59,11 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 - No Node-only APIs, TCP connections or process-level state. Use Durable Objects, KV, Queues and Cron Triggers for what Relayer did with Redis, timers and `@nestjs/schedule`.
 - CORS: browser origins must be listed in `ALLOWED_ORIGINS` (comma-separated).
 - Responses keep Relayer's field names (snake_case agent payloads) so existing dashboard and SDK clients parse them unchanged.
-- Secrets (`SUPABASE_SECRET_KEY`, `ENCRYPTION_KEY`) come from `wrangler secret put` or a local `.dev.vars` (see `.dev.vars.example`). Never commit them or log them.
+- Secrets (`SUPABASE_SECRET_KEY`, `ENCRYPTION_KEY`) come from `wrangler secret put` or the filtered root `.env` for local development. Never commit them or log them.
 
 ## Commands
 
-From the repository root: `npm run typecheck --workspace=@pickler/api`, `npm test`, `npm run lint`. From `workers/api`: `npx wrangler dev` (local workerd) and `npx wrangler deploy --dry-run --outdir <dir>` to check the bundle. Deploying requires explicit authorization.
+From the repository root: `npm run typecheck --workspace=@pickler/api`, `npm test`, `npm run lint`. From `workers/api`: `npm run dev` (local workerd with root environment selection) and `npx wrangler deploy --dry-run --outdir <dir>` to check the bundle. Deploying requires explicit authorization.
 
 All API-key routes enforce explicit scope abilities; use `read:agents` for product agent reads.
 Broad legacy labels alone grant no route authority. SQLite ledger upgrades are additive and retain
@@ -81,3 +81,11 @@ Use `wrangler.staging.jsonc` for the unified staging API. It has no Durable Obje
 public HTTP route. The web Service Binding is its entry point; JWT checks remain mandatory.
 Run `npm run build:worker --workspace=@pickler/api` for a deployment dry run. Read the staging
 operations guide before changing resource IDs or enabling admissions.
+
+## Single environment source
+
+Maintain only the repository-root `.env`, based on the root `.env.example`. Workspace commands
+use `scripts/with-env.mjs` to select variables for their target; never add a per-app `.env` or
+`.dev.vars`. Local and staging values remain separate; staging is explicit. The web must never
+receive backend credentials. Read `docs/environment.md` from the repository root for commands
+and generated test-state exceptions. Cloudflare secrets remain scoped to each Worker.
