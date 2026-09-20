@@ -6,6 +6,7 @@ import {
   PilotError,
   ModelFailure,
   type ResearchModel,
+  type RunRecord,
   type Market,
   type Source,
   type ModelAssessment,
@@ -575,4 +576,57 @@ test("manual pre-event markets and final trade refresh use the same lead window"
       assert.equal((await f.repository.run("alpha", run.id)).error, "NO_ELIGIBLE_MARKETS");
     });
   }
+});
+
+for (const eventType of ["candidates", "discovery_scan"]) {
+  test(`discovery ${eventType} persistence failure is not reported as provider failure`, async (t) => {
+    const { PersistenceFailure } = await import("@pickler/core");
+    const f = await setup(t);
+    f.markets.list = async (_categories, _signal, report) => {
+      await report?.({ pages: 1 });
+      return [market];
+    };
+    f.model.select = async () => assert.fail("Model must not run after persistence failure");
+    const original = f.repository.event.bind(f.repository);
+    t.mock.method(
+      f.repository,
+      "event",
+      async (run: RunRecord, type: string, data: unknown, now: number) => {
+        if (type === eventType) {
+          throw new PersistenceFailure({
+            operation: "event",
+            eventType,
+            reason: "CONNECTION_LOST",
+          });
+        }
+        return original(run, type, data, now);
+      },
+    );
+
+    await f.execute();
+
+    assert.equal((await f.repository.run("alpha", f.run.id)).error, "PERSISTENCE_FAILURE");
+    const events = await f.repository.events("alpha", f.run.id);
+    assert.ok(events.some((event) => event.type === "runtime"));
+    assert.ok(!events.some((event) => event.type === "provider_failure"));
+    assert.deepEqual(events.find((event) => event.type === "persistence_failure")?.data, {
+      code: "PERSISTENCE_FAILURE",
+      operation: "event",
+      eventType,
+      reason: "CONNECTION_LOST",
+    });
+  });
+}
+
+test("large candidate evidence round-trips completely under a live lease", async (t) => {
+  const f = await setup(t);
+  const candidates = Array.from({ length: 100 }, (_, index) => ({
+    ...market,
+    id: String(index),
+    rules: "Complete resolution evidence é🟢".repeat(100),
+  }));
+  assert.ok(Buffer.byteLength(JSON.stringify(candidates)) > 250_000);
+  await f.repository.event(f.run, "candidates", candidates, Date.now());
+  const events = await f.repository.events("alpha", f.run.id);
+  assert.deepEqual(events.find((event) => event.type === "candidates")?.data, candidates);
 });
