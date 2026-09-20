@@ -7,6 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
+  "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
   "queues": {
     "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }],
     "consumers": [
@@ -26,6 +27,5 @@
   "vars": {
     "APP_ENV": "staging",
     "ADMISSIONS_ENABLED": "false",
-    "ALLOW_INSECURE_STAGING_DATABASE": "false",
   },
 }
