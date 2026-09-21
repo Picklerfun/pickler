@@ -194,6 +194,9 @@ test("tradingLineState: live, last seen, skeleton only while the socket is activ
   expect(tradingLineState(null, null, true)).toBe("skeleton"); // Markets connecting
   expect(tradingLineState({ account: null }, null, true)).toBe("skeleton"); // socket open, no account frame yet
   expect(tradingLineState(null, null, false)).toBe("unknown"); // Wallet: no socket, nothing seen
+  expect(tradingLineState({ account: null, keyRejected: true, status: "closed" }, null, true)).toBe("unknown"); // key rejected: terminal, not skeleton (R2)
+  expect(tradingLineState({ account: null, keyRejected: false, status: "closed" }, null, true)).toBe("unknown"); // socket closed for good: terminal, not skeleton (R2)
+  expect(tradingLineState({ account: null, keyRejected: false, status: "connecting" }, null, true)).toBe("skeleton"); // still connecting: skeleton stands
 });
 
 test("screenHasData follows the null contract of the hooks", () => {

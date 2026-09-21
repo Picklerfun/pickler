@@ -143,10 +143,12 @@ export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
 export type TradingLineState = "live" | "lastSeen" | "skeleton" | "unknown";
 
 /** Qué pinta la línea/card «AUSD in trading»: `socketActive` = la pantalla tiene el socket de Perpl (PERPL_SCREENS);
- *  en Wallet no, así que `live === null` es «desconocido», no «cargando» (D2: skeleton sólo mientras algo se carga). */
-export function tradingLineState(live: { account: unknown } | null, lastBalance: bigint | null, socketActive: boolean): TradingLineState {
+ *  en Wallet no, así que `live === null` es «desconocido», no «cargando» (D2: skeleton sólo mientras algo se carga);
+ *  socket cerrado definitivo o key rechazada = desconocido, no cargando. */
+export function tradingLineState(live: { account: unknown; keyRejected?: boolean; status?: string } | null, lastBalance: bigint | null, socketActive: boolean): TradingLineState {
   if (live?.account) return "live";
   if (lastBalance !== null) return "lastSeen";
+  if (live !== null && (live.keyRejected || live.status === "closed")) return "unknown";
   return socketActive ? "skeleton" : "unknown";
 }
 
