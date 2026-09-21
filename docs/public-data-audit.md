@@ -172,6 +172,37 @@ The fix is the same in every row and it already has a precedent in this repo:
 core's market rules for exactly this reason, the way `CATEGORY_OPTIONS` mirrors `CATEGORIES`. Every
 row above wants that treatment. None of them needs a table.
 
+## The decision: only the landing stays sample
+
+Decided 2026-09-21. `pickler.fun` itself may keep a sample snapshot — it is the marketing page and
+it already labels itself. **Every other route must stop inventing.** That is a stricter rule than
+"label it", and it changes what the work is, so it is worth being plain about what it costs.
+
+Switching the fixtures off today does not make those pages real. It makes most of them empty,
+because the tables behind them are either unwritten or undefined:
+
+| Route                        | What it could show with no fixture                                             | Distance to real                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/markets`                   | nothing today                                                                  | **short** — a venue client for marks, funding and open interest. No schema, no contracts, no indexer. The one page on this list that is only integration work |
+| `/agents`                    | the agents real creators registered in `agents.agents`, with no offer attached | **short-ish** — the read service (price, markets, SLA, slots) needs a small schema; the agents themselves already exist                                       |
+| `/tokens`                    | empty                                                                          | **long** — needs the launch contracts and an indexer to fill `market.*`                                                                                       |
+| `/reads`                     | empty                                                                          | **long** — needs a schema, a payment and the publish bridge                                                                                                   |
+| `/leaderboard`, `/analytics` | zeros                                                                          | **long** — they are functions of picks and reads                                                                                                              |
+| `/portfolio`, `/activity`    | the native balance, which is already real                                      | **medium** — history needs a per-address store                                                                                                                |
+
+An empty page that says "no agent has launched a token yet" is honest, and it is better than nine
+invented agents. But it is a product choice to ship that, not only an engineering one, so the two
+ways to get there are worth naming:
+
+- **Empty now.** Delete the fixtures, ship real empty states, and each page fills as its source
+  lands. The site tells the truth from day one and looks unfinished for a while.
+- **Real in order.** Keep each fixture only until its source exists, and remove it in the same
+  change that makes the page real. Nothing ever looks empty; the fiction lives longer, and every
+  day it does is a day someone can mistake it for a product.
+
+Either way the fixtures stop being permanent furniture, and `/markets` goes first because it is the
+only one whose distance is measured in days.
+
 ## What each capability needs
 
 "Schema" means a table that does not exist. Several capabilities need no new schema at all — they
@@ -189,19 +220,23 @@ need something to _write_ the tables that are already defined.
 | Agent calls on a square               | part of `/v1/markets/:symbol`                                                  | **yes** — small: agent, market, level, horizon, state         | picks first, since a call is one                                                        | picks                                                               |
 | A person's positions and history      | `/v1/positions`, `/v1/reads?address=`                                          | **yes** for history; positions can be read from the venue     | writing `identity.wallet_links`, which exists and nothing writes                        | wallet identity, which the passkey account now supplies client-side |
 
-### The order I would do it in
+### The order this implies
 
-1. **Label the sample data.** Hours, not days, and it is a rule the repo already wrote down.
-2. **Mirror the duplicated rules through `api-schema`** and delete the hand-copies. No schema, no
-   endpoint, no coordination — and it stops the UI and the backend drifting apart on numbers that
-   decide money. Start with the curve depth, which is the only one that is currently invented
-   rather than merely copied.
-3. **Make the landing figures that can be real, real.** One port method. It also proves the
-   sample/live split works end to end on a page that already distinguishes them.
-4. **Decide the publish bridge** — what turns a private research run into a public pick. Everything
-   in the middle of the table waits on that one decision, and it is a product decision.
-5. **Picks, then reads, then the leaderboard**, in that order, because each is the input to the
-   next and the leaderboard is fiction until the first two are real.
-6. **The indexer** whenever the contracts land. `market.*` is waiting for it and needs no design.
-7. **Perp marks last** of the data work: it is the most visible fiction but the least entangled —
-   one venue client replaces one adapter, with no schema and no migration behind it.
+1. **`/markets` against the real venue.** A Perpl client behind `MarketBoard`, replacing
+   `createSampleMarketBoard`. No schema, no migration, no contracts — the port and the two
+   endpoints already exist and the page does not change. It is the only route on the list that can
+   be true this week, which is why it goes first now rather than last.
+2. **Label whatever is still sample while it lasts.** The public DTOs need the `source` field
+   `LandingResponse` already has. Cheap, and it stops being a permanent apology: each page drops
+   the tag as it becomes real, and the landing keeps it for good.
+3. **Mirror the duplicated rules through `api-schema`** and delete the hand-copies. Independent of
+   everything else. Start with the curve depth, which is invented rather than merely copied.
+4. **A read service schema**, so `/agents` can list the agents real creators registered along with
+   what each one actually offers. The agents exist in `agents.agents`; the offer does not exist
+   anywhere.
+5. **Decide the publish bridge** — what turns a private research run into a public pick. Everything
+   below waits on that one decision, and it is a product decision, not an engineering one.
+6. **Picks, then reads, then the leaderboard**, in that order, because each is the input to the
+   next and the leaderboard is a function of the first two.
+7. **The indexer** whenever the contracts land, which is what finally fills `/tokens`. `market.*`
+   is waiting for it and needs no design.
