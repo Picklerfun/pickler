@@ -32,11 +32,11 @@ window.DOCS = [
     title: 'Navegación nativa en la app móvil — gesto atrás iOS, pilas por pestaña y tab bar con pastilla arrastrable',
     summary: 'Migrar la navegación a react-navigation nativa (native-stack + bottom-tabs, una pila por pestaña) sin cambiar la API de las pantallas: gesto atrás interactivo, adelante animado, cabecera que viaja con la página; y una tab bar con pastilla lima que se arrastra sin despegar el dedo y selecciona al soltar.',
     file: '2026-09-21-mobile-nav.html',
-    types: ['spec'],
+    types: ['spec', 'plan'],
     status: 'active',
     tags: ['mobile', 'expo', 'navigation', 'ui'],
     phases: [
-      { num: 1, status: 'pending' },
+      { num: 1, status: 'plan_ready' },
       { num: 2, status: 'pending' },
     ],
   },

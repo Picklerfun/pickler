@@ -128,7 +128,7 @@
         <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
       </div>
 
-      <article class="phase-card" data-phase="1" data-status="pending">
+      <article class="phase-card" data-phase="1" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -136,8 +136,8 @@
           </div>
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
-              <option value="pending" selected>pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
@@ -155,7 +155,14 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Por definir — el plan F1 se escribe en la siguiente etapa</label></li>
+              <li><label><input type="checkbox"> Task 1: Dependencias nativas, <code>GestureHandlerRootView</code> y rebuild con la app actual</label></li>
+              <li><label><input type="checkbox"> Task 2: Tabla de rutas y gate puros (<code>navigation/routes.ts</code>)</label></li>
+              <li><label><input type="checkbox"> Task 3: Adaptador sobre <code>navigationRef</code> (<code>navigation/ref.ts</code>)</label></li>
+              <li><label><input type="checkbox"> Task 4: <code>useRefreshSeal</code> y <code>useCurrentScreen</code></label></li>
+              <li><label><input type="checkbox"> Task 5: <code>Page</code>, <code>TabBar</code> y <code>Navigator</code> (compilan sin usarse)</label></li>
+              <li><label><input type="checkbox"> Task 6: Conmutación — store sólo con datos, <code>App.tsx</code> con <code>Navigator</code>, adiós <code>Shell</code></label></li>
+              <li><label><input type="checkbox"> Task 7: Recorrido en el simulador (capturas D12)</label></li>
+              <li><label><input type="checkbox"> Task 8: Docs — marcas (F1), F1 completed, audit, README, nota en el tracker del fix gate</label></li>
             </ol>
           </details>
         </div>
