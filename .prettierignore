@@ -15,6 +15,9 @@ contracts/cache/
 contracts/broadcast/
 contracts/lib/
 
+# Generated from contracts/test/CurveVectors.t.sol; formatting it would hide regeneration diffs
+packages/core/test/fixtures/curve-vectors.json
+
 # Generated local Supabase state
 supabase/.temp/
 supabase/.branches/
