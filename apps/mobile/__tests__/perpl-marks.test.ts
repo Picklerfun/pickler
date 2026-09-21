@@ -17,7 +17,7 @@ test("appendMarks keeps the last SPARK_POINTS marks per market without mutating 
 });
 
 test("sparkPoints normalizes to a 0..100 viewBox with y inverted; flat with < 2 or equal marks (P2)", () => {
-  expect(sparkPoints([10, 20, 15, 30])).toEqual([[0, 100], [33.3, 50], [66.7, 75], [100, 0]]);
+  expect(sparkPoints([10, 20, 15, 30])).toEqual([[0, 94], [33.3, 50], [66.7, 72], [100, 6]]);
   expect(sparkPoints([7, 7, 7])).toEqual([[0, 50], [50, 50], [100, 50]]);
   expect(sparkPoints([])).toEqual([[0, 50], [100, 50]]);
   expect(sparkPoints([812345])).toEqual([[0, 50], [100, 50]]);

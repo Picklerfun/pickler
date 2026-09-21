@@ -116,11 +116,11 @@ function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Marke
         <View style={{ flex: 1, minWidth: 0 }}>
           {LEVELS_BPS.map((bps, i) => {
             const rowOn = selected?.levelBps === bps;
-            const markRule = bps > 0 && LEVELS_BPS[i + 1] < 0; // la regla bajo el último nivel positivo es el mark (P4)
+            const markRule = bps > 0 && (LEVELS_BPS[i + 1] ?? 0) < 0; // la regla bajo el último nivel positivo es el mark (P4)
             return (
               <View key={bps} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: markRule ? GRID_MARK_RULE : C.hair08 }}>
                 <View style={{ width: 58, justifyContent: "center", paddingLeft: 7, borderRightWidth: 1, borderRightColor: C.hair08 }}>
-                  <T w={500} s={9.5} lh={1} mono color={rowOn ? acc.fg : C.faint}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
+                  <T w={500} s={9.5} lh={1} mono color={rowOn ? acc.fg : C.faint} numberOfLines={1}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
                 </View>
                 {HORIZONS_MIN.map((h) => {
                   const colOn = selected?.horizonMin === h;
@@ -164,12 +164,12 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
   return (
     <Card bd={C.vioBd45} bg={C.vioBg07} gap={9}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Chip label={`Asking ${agent?.name ?? "…"} · ${price}`} fg={C.vio} bd={C.vioBd} bg={C.vioBg} s={10.5} py={5} px={9} />
+        <Chip label={`Asking ${agent?.name ?? "…"} · ${price}`} fg={C.vio} bd={C.vioBd} bg={C.vioBg} s={10.5} py={5} px={9} style={{ flexShrink: 1 }} />
         <Touch onPress={() => setPicking((p) => !p)} style={{ paddingVertical: 5, paddingHorizontal: 8 }} accessibilityLabel="ask-change">
           <T w={600} s={10.5} lh={1} color={C.faint}>{picking ? "Done" : "Change"}</T>
         </Touch>
       </View>
-      {picking ? (reads.agents === null ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError || "Loading agents…"}</T> : (
+      {reads.agents === null ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError || "Loading agents…"}</T> : picking ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {reads.agents.map((a) => {
             const on = a.id === agent?.id;
@@ -179,7 +179,7 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
             );
           })}
         </View>
-      )) : null}
+      ) : null}
       <Tag color={C.vio}>YOUR QUESTION · NOTHING SENT</Tag>
       <T w={700} s={14} lh={1.3} ls={-0.01}>{question}</T>
       <T w={500} s={10} lh={1.4} mono color={C.faint}>RESOLVES ON PERPL MARK · {distanceLabel(cell.levelBps)}</T>

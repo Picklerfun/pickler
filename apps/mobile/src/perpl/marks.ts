@@ -17,12 +17,14 @@ export function appendMarks(history: MarkHistory, markets: readonly { id: number
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
-/** Puntos de la polilínea en un viewBox 0..100: x por índice, y invertida (0 = máximo, 100 = mínimo). Con < 2 puntos o todos iguales, línea plana a media altura. */
+const SPARK_PAD = 6;
+
+/** Puntos de la polilínea en un viewBox 0..100: x por índice, y invertida (6 = máximo, 94 = mínimo; margen para que el trazo no muera bajo la hairline de la card). Con < 2 puntos o todos iguales, línea plana a media altura. */
 export function sparkPoints(marks: readonly number[]): [number, number][] {
   if (marks.length < 2) return [[0, 50], [100, 50]];
   const min = Math.min(...marks);
   const max = Math.max(...marks);
   const span = max - min;
   const last = marks.length - 1;
-  return marks.map((v, i) => [round1((i / last) * 100), span === 0 ? 50 : round1(100 - ((v - min) / span) * 100)]);
+  return marks.map((v, i) => [round1((i / last) * 100), span === 0 ? 50 : round1(SPARK_PAD + (100 - 2 * SPARK_PAD) * (1 - (v - min) / span))]);
 }
