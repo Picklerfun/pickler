@@ -107,7 +107,7 @@
     <div class="dev-status-board">
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
-        <div><span class="dev-sb-pill in_progress"><span>In progress</span></span></div>
+        <div><span class="dev-sb-pill shipped"><span>Shipped</span></span></div>
       </div>
       <div>
         <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
@@ -204,10 +204,10 @@
         imagen del splash referenciada (<code>grep -c "splash-mark|SplashScreenLogo" ios/Pickler/SplashScreen.storyboard</code>
         → 2). <code>altool</code>: UPLOAD SUCCEEDED with no errors (Delivery UUID
         <code>1eefc54c-6427-4326-8698-19de0b771db9</code>, log de subida de esta sesión, 2026-09-21 ~12:22 CST).
-        App Store Connect (API, consultado al minuto de la subida): el build 7 aún no aparecía en
-        <code>/v1/builds</code> (builds 4–6 <code>VALID</code>, grupo «Equipo» <code>hasAccessToAllBuilds</code>,
-        que toma los builds nuevos al procesarse). <b>Estado de procesamiento: no verificado todavía</b>
-        — ver la nota al pie de esta sección.
+        App Store Connect (API): build 7 <code>VALID</code> (uploaded 2026-09-21 11:21 PDT, id
+        <code>1eefc54c-…</code>, visible en <code>/v1/builds</code> a las 12:23 CST, ~1 min después de la
+        subida); <code>/v1/betaGroups/39d7ad5c-…/builds</code> lista el build 7 en el grupo interno «Equipo»
+        (<code>hasAccessToAllBuilds</code>), junto a los builds 3–6.
       </p>
       <p>
         <b>Sin probar aún en el iPhone de Jesús.</b> Lo que hay que ver ahí: el splash con la P (no blanco) al

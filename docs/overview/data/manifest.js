@@ -30,10 +30,10 @@ window.DOCS = [
   {
     date: '2026-09-21',
     title: 'TestFlight build 7',
-    summary: 'Build 0.1.0 (7): carga visible F1 — skeletons por sección, sello UPDATED / COULDN\'T REFRESH por pantalla y splash nativo con la P lima; fixes de la revisión final (in trading sin socket, sello por cuenta). Subido (UPLOAD SUCCEEDED); procesamiento en App Store Connect sin verificar aún.',
+    summary: 'Build 0.1.0 (7): carga visible F1 — skeletons por sección, sello UPDATED / COULDN\'T REFRESH por pantalla y splash nativo con la P lima; fixes de la revisión final (in trading sin socket, sello por cuenta). UPLOAD SUCCEEDED; VALID en App Store Connect y en el grupo «Equipo».',
     file: 'dev/2026-09-21-testflight-build7.html',
     types: ['feature'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'testflight', 'ios', 'loading'],
   },
   {
