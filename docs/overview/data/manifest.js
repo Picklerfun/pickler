@@ -30,10 +30,10 @@ window.DOCS = [
   {
     date: '2026-09-21',
     title: 'TestFlight build 8',
-    summary: 'Build 0.1.0 (8): navegación nativa F1 (react-navigation 7, pilas por pestaña) — gesto atrás interactivo de iOS, adelante animado, cabecera que viaja con la página; primer build con screens/gesture-handler/reanimated. UPLOAD SUCCEEDED; procesamiento en App Store Connect pendiente de verificar.',
+    summary: 'Build 0.1.0 (8): navegación nativa F1 (react-navigation 7, pilas por pestaña) — gesto atrás interactivo de iOS, adelante animado, cabecera que viaja con la página; primer build con screens/gesture-handler/reanimated. UPLOAD SUCCEEDED; VALID en App Store Connect y en el grupo «Equipo».',
     file: 'dev/2026-09-21-testflight-build8.html',
     types: ['feature'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'testflight', 'ios', 'navigation'],
   },
   {
