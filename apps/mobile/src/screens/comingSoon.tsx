@@ -1,9 +1,9 @@
 import { View } from "react-native";
 import type { AppCtx } from "../ctx";
 import { isComingSoonTab, type Screen } from "../store";
-import { Btn, Card, Chip, Icon, T, Tag } from "../ui/primitives";
+import { Btn, Chip, Icon, T } from "../ui/primitives";
 import { C } from "../ui/theme";
-import { COMING_SOON_COPY, MARKET_COMING_SOON } from "./comingSoonCopy";
+import { COMING_SOON_COPY } from "./comingSoonCopy";
 
 export { COMING_SOON_COPY } from "./comingSoonCopy";
 
@@ -21,17 +21,5 @@ export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; r
       <T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center", maxWidth: 260 }}>{c.copy}</T>
       <Btn label="Go to Wallet" onPress={() => requireAccount("wallet")} variant="outline" py={14} style={{ marginTop: 6, paddingHorizontal: 22 }} accessibilityLabel="go-to-wallet" />
     </View>
-  );
-}
-
-/** Tarjeta inline para los pills Ask y Agents de Market (D14). */
-export function ComingSoonCard({ which }: { which: "ask" | "agents" }) {
-  const c = MARKET_COMING_SOON[which];
-  return (
-    <Card bd={C.vioBd40} bg={C.vioBg06} gap={8}>
-      <Tag color={C.vio}>COMING SOON</Tag>
-      <T w={700} s={14} lh={1.3}>{c.title}</T>
-      <T w={400} s={11.5} lh={1.45} color={C.dim}>{c.copy}</T>
-    </Card>
   );
 }

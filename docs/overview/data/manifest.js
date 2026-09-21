@@ -28,6 +28,15 @@
 window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
+    date: '2026-09-20',
+    title: 'Matriz de Ask como el Grid del prototipo',
+    summary: 'Sparkline real, escalera de precios, celdas con punto y hoja violeta con steppers; corrige D14 del spec de Ask.',
+    file: 'dev/2026-09-20-mobile-ask-matrix.html',
+    types: ['feature'],
+    status: 'in_progress',
+    tags: ['mobile', 'ask', 'ui'],
+  },
+  {
     date: '2026-09-19',
     title: 'App móvil Pickler — Ask, Agents y Trade con order book: lecturas de agente sobre la matriz nivel × horizonte, medidas contra Perpl',
     summary: 'Ask y Agents dejan de ser «coming soon»: un agente (Claude Sonnet 5 con su persona) da una lectura pagada con créditos simulados sobre una celda nivel × horizonte, un cron la resuelve right/wrong contra el mark de Perpl y avisa por push; Agents lista agentes con récord real; Trade sigue manual y gana order book L2 y «Trade this level» con recordatorios. Backend propio en el esquema mobile del Supabase pickler compartido.',
@@ -37,7 +46,7 @@ window.DOCS = [
     tags: ['mobile', 'expo', 'perpl', 'supabase', 'claude', 'agentes', 'push'],
     phases: [
       { num: 1, status: 'in_progress' },
-      { num: 2, status: 'pending' },
+      { num: 2, status: 'completed' },
       { num: 3, status: 'pending' },
       { num: 4, status: 'pending' },
     ],

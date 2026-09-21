@@ -51,21 +51,25 @@ function Backdrop() {
 }
 
 export function Shell({ ctx }: { ctx: AppCtx }) {
-  const { S, back, requireAccount, treasury, perpl } = ctx;
+  const { S, back, requireAccount, treasury, perpl, reads } = ctx;
   const [controls, setControls] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const Current = SCREENS[ctx.scr];
 
-  const refreshable = S.screen === "wallet" || S.screen === "markets";
-  // Wallet = saldos + movimientos; Markets = contexto de Perpl. allSettled: un fallo no deja el spinner colgado.
+  const refreshable = S.screen === "wallet" || S.screen === "markets" || S.screen === "market";
+  // Wallet = saldos + movimientos; Markets/Market = contexto de Perpl (+ reads en Market). allSettled: un fallo no deja el spinner colgado.
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.allSettled(S.screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()] : [perpl.refreshContext()]);
+      await Promise.allSettled(
+        S.screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()]
+        : S.screen === "market" ? [perpl.refreshContext(), reads.refresh()]
+        : [perpl.refreshContext()],
+      );
     } finally {
       setRefreshing(false);
     }
-  }, [S.screen, treasury, perpl]);
+  }, [S.screen, treasury, perpl, reads]);
 
   // Captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
   const pan = useMemo(() => PanResponder.create({

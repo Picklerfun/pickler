@@ -1,4 +1,4 @@
-import { C, fam, pill, textStyle } from "../src/ui/theme";
+import { C, fam, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE, pill, textStyle } from "../src/ui/theme";
 
 test("weights map to the loaded Manrope families; 800 collapses to 700", () => {
   expect(fam(400)).toBe("Manrope_400Regular");
@@ -39,4 +39,11 @@ test("tokens come verbatim from the hi-fi design", () => {
 test("pill(on) is the selected filter chip of the design", () => {
   expect(pill(true)).toEqual({ bd: C.limeBd, bg: C.limeBg14, fg: C.lime });
   expect(pill(false)).toEqual({ bd: C.hair18, bg: "transparent", fg: C.dim });
+});
+
+test("the matrix accent is the prototype's accFg/accOn/accSoft: violet in Ask, lime in Trade", () => {
+  expect(GRID_ACCENT.ask).toEqual({ fg: C.vio, on: "rgba(155,123,255,0.45)", soft: "rgba(155,123,255,0.09)" });
+  expect(GRID_ACCENT.trade).toEqual({ fg: C.lime, on: "rgba(200,240,58,0.45)", soft: "rgba(200,240,58,0.09)" });
+  expect(GRID_DOT).toBe("rgba(245,246,255,0.35)");
+  expect(GRID_MARK_RULE).toBe("rgba(200,240,58,0.35)");
 });

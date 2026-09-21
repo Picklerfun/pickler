@@ -1,0 +1,2038 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-19-mobile-ask-f2.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask — F2: app (sesión firmada, matriz, AskSheet, ReadCard, My reads, Agents, push de resolución) — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-19-mobile-ask-f2">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-19-mobile-ask-f2.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Ask — F2: app (sesión firmada, matriz, AskSheet, ReadCard, My reads, Agents, push de resolución) — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-19-mobile-ask-f2.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-0-expo-notifications-readsurl-en-appconfigts-srcconfigreadsts-y-rebuild-nativo">Task 0: `expo-notifications`, `readsUrl` en `app.config.ts`, `src/config/reads.ts` y rebuild nativo</a></li><li><a href="#task-1-srcreadsmatrixts-matriz-target-pregunta-etiquetas-cuenta-regresiva">Task 1: `src/reads/matrix.ts` — matriz, target, pregunta, etiquetas, cuenta regresiva</a></li><li><a href="#task-2-srcreadstypests-tipos-y-parseo-estricto-de-los-dtos">Task 2: `src/reads/types.ts` — tipos y parseo estricto de los DTOs</a></li><li><a href="#task-3-sesion-firmada-srcreadssessionts-srcstoragereadsts-borrado-en-sign-out">Task 3: Sesión firmada — `src/reads/session.ts`, `src/storage/reads.ts`, borrado en Sign out</a></li><li><a href="#task-4-srcreadsapits-cliente-http-del-servicio">Task 4: `src/reads/api.ts` — cliente HTTP del servicio</a></li><li><a href="#task-5-store-askview-askcell-askagentid-askfocusreadid-tradelevel-headerfor-por-pill-d13">Task 5: Store — `askView`, `askCell`, `askAgentId`, `askFocusReadId`, `tradeLevel`, `headerFor` por pill (D13)</a></li><li><a href="#task-6-srcreadspushts-srchooksusenotificationsts-permiso-token-tap-y-fallback-local-d10">Task 6: `src/reads/push.ts` + `src/hooks/useNotifications.ts` — permiso, token, tap y fallback local (D10)</a></li><li><a href="#task-7-srchooksusereadsts-sesion-creditos-lista-agentes-ask-polling">Task 7: `src/hooks/useReads.ts` — sesión, créditos, lista, agentes, `ask()`, polling</a></li><li><a href="#task-8-srcscreensasktsx-asktab-sessiongate-matrixgrid-asksheet-readcard-readrow-d14">Task 8: `src/screens/ask.tsx` — `AskTab`, `SessionGate`, `MatrixGrid`, `AskSheet`, `ReadCard`, `ReadRow` (D14)</a></li><li><a href="#task-9-agentstab-enrutado-de-pills-hooks-montados-pull-to-refresh-y-recorrido-en-el-simulador">Task 9: `AgentsTab`, enrutado de pills, hooks montados, pull-to-refresh y **recorrido en el simulador**</a></li><li><a href="#task-10-readme-spec-overview-manifest-audit-f2-y-revision-independiente">Task 10: README, spec, overview, manifest, audit F2 y revisión independiente</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-19-mobile-ask-f2.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="ask-f2-app-sesion-firmada-matriz-asksheet-readcard-my-reads-agents-push-de-resolucion-implementation-plan">Ask — F2: app (sesión firmada, matriz, AskSheet, ReadCard, My reads, Agents, push de resolución) — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que los pills <strong>Ask</strong> y <strong>Agents</strong> de <code>Market</code> dejen de ser <em>coming soon</em>: en el simulador (cuenta #620) el usuario firma una vez con Face ID, ve sus 20 créditos y la matriz 5×4 sobre el mark vivo, pide una lectura a un agente, la ve llegar (&lt; 60 s) como <code>ReadCard</code>, la encuentra en <strong>My reads</strong> como OPEN, ve el récord real de los tres agentes en <strong>Agents</strong>, y cuando el cron la resuelve recibe el push (o la notificación local del fallback) que abre la app en esa read. Sin mover AUSD ni MON.</p>
+<p><strong>Architecture:</strong> Misma arquitectura que Perpl: módulos puros con tests (<code>src/reads/{matrix,types,session,api,push}.ts</code>), un almacén SecureStore sin gate biométrico (<code>src/storage/reads.ts</code>, <code>pickler.reads.v1</code>) y dos hooks que los orquestan (<code>useReads</code>, <code>useNotifications</code>) montados en <code>App.tsx</code> junto a <code>usePerpl</code>. La identidad app → servicio es la firma <code>personal_sign</code> de <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code> (D6), válida 24 h, creada con <code>openWallet()</code> (Face ID) sólo cuando Ask la necesita y borrada en Sign out. Las pantallas (<code>src/screens/ask.tsx</code>, <code>src/screens/agents.tsx</code>) usan exclusivamente las primitivas de <code>mobile-hifi</code> (<code>Segmented</code>, <code>Card</code>, <code>StatusCard</code>, <code>Chip</code>, <code>Tag</code>, <code>Btn</code>, <code>TouchCard</code>, <code>Avatar</code>) más <code>MatrixGrid</code>, el único componente nuevo. El servidor es el de F1 tal cual: no cambia ningún contrato.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 (<code>expo-notifications</code> a la versión que resuelva <code>npx expo install</code>; hoy <code>57.0.20</code> según <code>npm view</code>), React Native 0.86, <code>expo-secure-store</code>, <code>viem</code> 2.55 (<code>account.signMessage</code>), jest-expo 57 (<code>__tests__/*.test.ts</code>), TypeScript 6 (<code>npx tsc --noEmit</code>). Servidor: <code>https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1</code> (F1, contratos en el spec §2.2).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> — D6, D13, D14, D15, D16 y el push de resolución de D10 son el contrato de esta fase; D1/D2 (qué es una read, la matriz) se replican en <code>matrix.ts</code> para la vista previa; D11/D12 (order book, «Trade this level», <code>LevelCard</code>, recordatorios) son <strong>F3 y quedan fuera</strong> aunque D14 los mencione en la hoja y en la card. Léelo antes de empezar. Lo que F1 dejó en el servidor está en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code> §5–§6 (léelo también: wallets de prueba, secretos ausentes, contratos reales).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-ask-f2</code>, rama <code>feat/mobile-ask-f2</code> (base <code>main</code> = <code>e0101d9</code>). Todo lo de la app se corre desde <code>apps/mobile</code> <strong>dentro del worktree</strong> (<code>npm install</code> ya hecho ahí); los checks de docs desde la raíz del worktree; <code>node scripts/query.mjs</code> desde <code>services/reads</code> del worktree (<code>env.mjs</code> encuentra <code>.env.pickler</code> del checkout principal vía <code>git-common-dir</code>; <code>smoke.mjs</code> necesita además <code>npm install</code> en <code>services/reads</code>). Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>chore(mobile): …</code> / <code>docs(mobile-ask): …</code> con trailer <code>Co-Authored-By: Claude Opus 5 (1M context) &lt;noreply@anthropic.com&gt;</code>. <strong>No commitear ni pushear sin que Jesús lo pida</strong>: los pasos &quot;Commit&quot; se ejecutan sólo si él ya autorizó commits en la sesión; si no, árbol listo y nota en el handoff. Sin merge ni TestFlight (F4).</li>
+<li><code>apps/mobile</code> es <strong>npm</strong> (no pnpm) y se instala/ejecuta dentro de su carpeta. Paquetes de Expo siempre con <code>npx expo install &lt;pkg&gt;</code> (fija la versión del SDK 57). Docs: <code>https://docs.expo.dev/versions/v57.0.0/</code> (regla del <code>AGENTS.md</code> de la app). <code>expo-notifications</code> es módulo nativo: tras instalarlo, <code>npx expo prebuild --platform ios --clean</code> y <code>npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>; <strong><code>run:ios</code> reinstala la app y borra la cuenta local</strong> (audit hifi F2, ruling 7): hay que volver a hacer Sign in con el passkey del simulador (Apple Passwords) y re-inscribir Face ID (<code>xcrun simctl spawn &lt;UDID&gt; notifyutil -s com.apple.BiometricKit.enrollmentChanged 1</code> + <code>notifyutil -p com.apple.BiometricKit.enrollmentChanged</code>; presentar cara con <code>notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>).</li>
+<li>Simulador <strong>siempre por UDID <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code></strong>, nunca <code>booted</code> (hay dos arrancados). Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot &lt;scratch&gt;/f2-shots/NN-nombre.png</code> y <strong>mirar cada captura</strong> antes de afirmar nada. La Mac es <code>arm64</code>: el simulador registra tokens APNs reales (entorno sandbox) y puede recibir pushes reales; <code>xcrun simctl push &lt;UDID&gt; fun.pickler.app &lt;archivo.apns&gt;</code> entrega un payload sin pasar por APNs (sirve para probar el tap aunque falten los secretos).</li>
+<li><strong>Cuenta #620 del simulador: no mover AUSD ni MON.</strong> Ninguna task abre órdenes, deposita ni retira. Los créditos son simulados.</li>
+<li><strong>Backend F1, prohibiciones vigentes</strong> (README de <code>services/reads</code>): nunca <code>supabase db push/reset</code>, nunca Drizzle, nunca DDL fuera de <code>mobile</code>, siempre <code>npx supabase</code> desde <code>services/reads</code>, nunca el MCP de Supabase de la sesión (apunta a Proflores). Esta fase <strong>no despliega ni migra nada</strong>; sólo consultas y <code>update</code>/<code>delete</code> sobre tablas de <code>mobile</code> para forzar estados de prueba (Task 9), con <code>node scripts/query.mjs</code>. Pruebas forzadas en <strong>dos pasos</strong> (capturar <code>id</code>, luego <code>update … where id = &#39;&lt;id&gt;&#39;</code>), nunca un CTE sobre <code>request_read</code> (incidente 2 del audit F1), y nunca dejar una <code>pending</code> forzada viva más de un tick del cron.</li>
+<li><strong>Secretos <code>APNS_*</code> ausentes al escribir este plan</strong> (audit F1, pendiente 1; <code>.env.pickler</code> sólo tiene <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>SUPABASE_ACCESS_TOKEN</code>, <code>CRON_SECRET</code>). El push <strong>real</strong> de resolución sólo se puede ver llegar cuando Jesús cree la key y se cierren Task 5 Step 3 / Task 6 Step 7 de F1. Este plan no depende de eso para cerrar: el tap del push se prueba con <code>simctl push</code> (Task 9 Step 7) y el fallback de D10 queda implementado detrás de <code>PUSH_MODE</code> (P5). Ninguna task escribe secretos en archivos del repo.</li>
+<li>Capability <strong>Push Notifications</strong> en el App ID <code>fun.pickler.app</code> (developer.apple.com → Identifiers): insumo de Jesús, igual que Associated Domains. El simulador no la necesita (no valida el perfil); el iPhone y TestFlight (F4) sí. Se anota en el handoff, no bloquea F2.</li>
+<li><code>npm test</code> y <code>npx tsc --noEmit</code> en <code>apps/mobile</code> en verde al cierre de cada task a partir de la que los toca. Ninguna prueba unitaria llama al servicio ni a Perpl: <code>fetch</code> se sustituye por un doble como en <code>perpl-context.test.ts</code>. Lo real se prueba en el simulador (Task 9).</li>
+<li>Copy de la app en inglés (como el resto de <code>mobile-hifi</code>); código y comentarios en español donde el archivo vecino los tenga en español. Tests en inglés (<code>test(&quot;…&quot;)</code>) como los existentes.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td>La sesión firmada se parte en dos módulos: <code>src/reads/session.ts</code> (<strong>puro</strong>: mensaje canónico, serialización, vigencia, headers) y <code>src/storage/reads.ts</code> (SecureStore <code>pickler.reads.v1</code>, <code>WHEN_UNLOCKED_THIS_DEVICE_ONLY</code>, sin gate biométrico), calcado de <code>perpl/apiKey.ts</code> + <code>storage/perpl.ts</code>.</td><td>Lo puro se prueba con jest sin mocks; el patrón ya existe en el repo y <code>useAccount.signOut</code> ya borra <code>storage/perpl</code> igual.</td></tr>
+<tr><td>P2</td><td>Una sesión se <strong>renueva cuando le queda menos de 1 h</strong> (<code>SESSION_TTL_MS − SESSION_RENEW_BEFORE_MS = 23 h</code> desde <code>ts</code>) y se <strong>descarta</strong> si el servidor responde <code>401</code> (<code>signature_expired</code> \</td><td><code>bad_signature</code> \</td><td><code>missing_signature</code>): se borra de SecureStore y Ask vuelve a mostrar el gate. Nunca se reintenta la firma sin que el usuario toque el botón.</td><td>El servidor acepta <code>[now − 24 h, now + 5 min]</code> (<code>auth.ts</code> F1); renovar con 1 h de margen evita que la sesión caduque a mitad de una lectura. Reintentar Face ID solo sería un prompt sorpresa.</td></tr>
+<tr><td>P3</td><td>Si la wallet ya está <code>unlocked</code> (Face ID reciente), <code>useReads</code> firma la sesión <strong>en silencio</strong> al activar Ask; si está <code>locked</code>, Ask muestra <code>SessionGate</code> («Unlock to ask») y la firma se pide <strong>al tocar el botón</strong>. Ver créditos exige sesión: <code>reads-list</code> es firmada.</td><td>D6 dice «la primera vez que Ask lo necesita»; un prompt de Face ID al abrir un tab sin que el usuario haya tocado nada es una mala sorpresa. Con la wallet ya abierta no hay prompt, así que se firma solo.</td></tr>
+<tr><td>P4</td><td><code>read-request</code> es una sola llamada síncrona (P9 de F1): la app muestra <code>pending</code> mientras la promesa vive y pinta la <code>read</code> de la respuesta. Timeout de <strong>65 s</strong> con <code>AbortController</code> + <code>setTimeout</code> (<code>AbortSignal.timeout</code> no existe en RN). Si el timeout salta, se re-lee <code>reads-list</code>: la read puede haber quedado <code>open</code> (el servidor terminó tarde) o <code>failed</code> (cron la reembolsó).</td><td>Es lo que el servidor ofrece; el reembolso a los 60 s lo garantiza el cron aunque la función muera (D7).</td></tr>
+<tr><td>P5</td><td><code>src/config/reads.ts</code> exporta `PUSH_MODE: &quot;apns&quot; \</td><td>&quot;local&quot;<code> = </code>&quot;apns&quot;<code>. Con </code>&quot;apns&quot;<code> la app manda </code>pushToken<code>/</code>pushEnv<code> en </code>read-request<code> y no programa nada; con </code>&quot;local&quot;<code> (fallback D10) programa una notificación local en </code>expiresAt<code> («Your BTC +1.0% · 4H read has resolved — open Pickler», sin mark) al recibir cada read </code>open`. El cambio de modo es una constante, sin rediseño.</td><td>El smoke de APNs de F1 no ha corrido (faltan secretos): la decisión del fallback sigue abierta. Implementar los dos caminos cuesta un <code>scheduleNotificationAsync</code>.</td></tr>
+<tr><td>P6</td><td>El permiso de notificaciones se pide <strong>la primera vez que se confirma una lectura</strong> (dentro de <code>ask()</code>, antes del <code>POST</code>), no al abrir Ask. Si el usuario lo niega, la app lo dice en la <code>ReadCard</code> («Push is off — check My reads to see the result») y sigue. <code>pushEnv</code> = <code>&quot;sandbox&quot;</code> con <code>__DEV__</code>, <code>&quot;production&quot;</code> si no.</td><td>D10 literal.</td></tr>
+<tr><td>P7</td><td>El tap del push navega con <code>requireAccount(&quot;market&quot;, patch)</code> (no <code>nav</code>): <code>{ perpsMarketId, marketTab: &quot;ask&quot;, askView: &quot;mine&quot;, askFocusReadId }</code> para <code>kind = &quot;read&quot;</code> y <code>{ perpsMarketId, marketTab: &quot;trade&quot; }</code> para <code>kind = &quot;reminder&quot;</code> (F3 añadirá <code>tradeLevel</code>). El payload se lee de <code>content.data.pickler ?? content.data</code> y, si falta, de <code>trigger.payload.pickler</code> (iOS entrega el <code>userInfo</code> completo ahí). En frío se consulta <code>getLastNotificationResponseAsync()</code> una sola vez.</td><td><code>requireAccount</code> respeta el gate (app sin cuenta → Sign in y luego aterriza). Leer las dos rutas cubre la diferencia entre <code>data</code> y <code>userInfo</code> sin depender de cómo serializa cada versión de <code>expo-notifications</code>.</td></tr>
+<tr><td>P8</td><td><strong>My reads</strong> es store-driven: tocar un <code>ReadRow</code> hace <code>set({ askFocusReadId })</code>, «Back to list» hace <code>set({ askFocusReadId: undefined })</code>. El push usa el mismo campo. La <code>ReadCard</code> de <strong>New read</strong> (resultado de la lectura recién pedida) vive en el estado local del hook (<code>request.step === &quot;done&quot;</code>), no en el store.</td><td>Un solo mecanismo para «abrir una read» desde la lista y desde el push (D13); el resultado recién pedido no tiene que sobrevivir a la navegación.</td></tr>
+<tr><td>P9</td><td><strong>«Trade this level»</strong> (hoja y card) <strong>no se renderiza en F2</strong>; F3 añade los dos botones con <code>LevelCard</code> y <code>reminder-set</code>. El tipo <code>TradeLevel</code> y el campo <code>tradeLevel?</code> del store sí se declaran ahora (D13) para que F3 no toque <code>store.ts</code> otra vez.</td><td>Alcance fijado por Jesús: Trade this level y el book son F3. Un botón que no hace nada sería peor que ninguno.</td></tr>
+<tr><td>P10</td><td>El <strong>mark de la matriz</strong> es <code>perpl.context.markets[i].mark</code> (poll de 5 s de <code>usePerpl</code>, ya activo en <code>market</code>); <code>targetFor</code> y <code>questionFor</code> se replican en <code>src/reads/matrix.ts</code> con la misma aritmética que <code>_shared/matrix.ts</code> del servidor y se prueban con los mismos números (BTC <code>762555</code> pd 1 → <code>+50 bps</code> = <code>766368</code>). Una vez creada la read, la card pinta <strong>sólo</strong> los valores del servidor (<code>markAtRequest</code>, <code>target</code>, <code>question</code>).</td><td>D2: la app previsualiza, el servidor decide. Probar con los mismos números que el servidor evita que las dos matrices diverjan sin que nadie lo note.</td></tr>
+<tr><td>P11</td><td><code>useReads</code> recibe <code>marketId</code> (= <code>S.perpsMarketId</code>) y <code>active</code> (= <code>screen === &quot;market&quot; &amp;&amp; marketTab ∈ {ask, agents}</code>) desde <code>App.tsx</code>, igual que <code>perpl.setActive</code>; con <code>active</code> y sesión lista hace <code>reads-list?marketId=</code> al activar, <strong>cada 15 s</strong> y al volver al foreground (<code>AppState</code>). <code>agents-list</code> (pública) se carga al activar y en pull-to-refresh; <code>Shell.refreshable</code> gana <code>market</code> y su <code>onRefresh</code> hace <code>Promise.allSettled([perpl.refreshContext(), reads.refresh()])</code>.</td><td>D16 y D15 literal; un solo lugar decide qué está activo.</td></tr>
+<tr><td>P12</td><td>Ninguna task añade <code>@testing-library/react-native</code>: los hooks se mantienen delgados y <strong>toda la lógica con reglas va a módulos puros con test</strong> (<code>matrix</code>, <code>types</code>, <code>session</code>, <code>api</code>, <code>push</code>, <code>store</code>). Los hooks y pantallas se verifican con <code>tsc</code> y en el simulador (Task 9).</td><td>Es la regla del repo desde <code>mobile-fase1</code>; añadir infraestructura de tests de UI no cabe en 23 días.</td></tr>
+<tr><td>P13</td><td>Antes del recorrido en el simulador (Task 9 Step 0) se <strong>borran las cuatro wallets de prueba de F1</strong> (<code>0xf73f…1b4f</code>, <code>0x6b4e…768e</code>, <code>0x1449…1408</code>, <code>0xdea4…6616</code>) con el bloque «Limpieza de wallets de prueba» del README, para que <code>agent_records</code> muestre récords limpios («No resolved reads yet» en los tres).</td><td>Pendiente 4 del audit F1: «limpiar antes de que la app de F2 muestre récords». Son tablas nuestras en <code>mobile</code>.</td></tr>
+<tr><td>P14</td><td>La cuenta regresiva («Resolves in 3 h 58 m») se calcula con <code>formatRemaining(expiresAt − now)</code> (puro) y un <code>useNow(30_000)</code> local en <code>ask.tsx</code>; no hay <code>setInterval</code> por card.</td><td>Una card no necesita precisión de segundos; un tick de 30 s para toda la pantalla basta.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/package.json</code>, <code>package-lock.json</code>, <code>app.config.ts</code>, <code>src/config/reads.ts</code>, <code>src/reads/constants.ts</code>, <code>__tests__/reads-config.test.ts</code></td><td>0</td><td><code>expo-notifications</code> + plugin, <code>extra.readsUrl</code>, <code>READS_URL</code>, <code>PUSH_MODE</code>, timeouts; rebuild nativo</td></tr>
+<tr><td><code>apps/mobile/src/reads/matrix.ts</code>, <code>__tests__/reads-matrix.test.ts</code></td><td>1</td><td>Matriz, target, pregunta, call/outcome, etiquetas, cuenta regresiva, récord</td></tr>
+<tr><td><code>apps/mobile/src/reads/types.ts</code>, <code>__tests__/reads-types.test.ts</code>, <code>__tests__/fixtures/reads/read.json</code></td><td>2</td><td>Tipos <code>Read</code>/<code>Agent</code> y parseo estricto de los DTOs de §2.2</td></tr>
+<tr><td><code>apps/mobile/src/reads/session.ts</code>, <code>src/storage/reads.ts</code>, <code>src/hooks/useAccount.ts</code>, <code>__tests__/reads-session.test.ts</code></td><td>3</td><td>Sesión firmada (D6): mensaje, vigencia, SecureStore, borrado en Sign out</td></tr>
+<tr><td><code>apps/mobile/src/reads/api.ts</code>, <code>__tests__/reads-api.test.ts</code></td><td>4</td><td>Cliente HTTP: headers firmados, timeouts, errores <code>{ error }</code> → <code>ReadsError</code>, copy</td></tr>
+<tr><td><code>apps/mobile/src/store.ts</code>, <code>__tests__/store.test.ts</code></td><td>5</td><td><code>askView</code>, <code>askCell</code>, <code>askAgentId</code>, <code>askFocusReadId</code>, <code>tradeLevel</code>, <code>headerFor</code> por pill (D13)</td></tr>
+<tr><td><code>apps/mobile/src/reads/push.ts</code>, <code>src/hooks/useNotifications.ts</code>, <code>__tests__/reads-push.test.ts</code></td><td>6</td><td>Permiso, token APNs, tap → patch del store, fallback local (D10, P5–P7)</td></tr>
+<tr><td><code>apps/mobile/src/hooks/useReads.ts</code></td><td>7</td><td>Sesión, créditos, lista por mercado, agentes, <code>ask()</code>, polling, foreground (D16, P2–P4, P11)</td></tr>
+<tr><td><code>apps/mobile/src/screens/ask.tsx</code></td><td>8</td><td><code>AskTab</code>, <code>SessionGate</code>, <code>MatrixGrid</code>, <code>AskSheet</code>, <code>ReadCard</code>, <code>ReadRow</code> (D14)</td></tr>
+<tr><td><code>apps/mobile/src/screens/agents.tsx</code>, <code>src/screens/market.tsx</code>, <code>src/screens/comingSoon.tsx</code>, <code>src/screens/comingSoonCopy.ts</code>, <code>__tests__/comingSoon.test.ts</code>, <code>src/ctx.ts</code>, <code>App.tsx</code>, <code>src/Shell.tsx</code></td><td>9</td><td><code>AgentsTab</code> (D15), enrutado de pills, hooks montados, pull-to-refresh; <strong>recorrido en el simulador</strong> con capturas</td></tr>
+<tr><td><code>apps/mobile/README.md</code>, <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code></td><td>10</td><td>Docs de cierre, audit F2, revisión independiente</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-0-expo-notifications-readsurl-en-appconfigts-srcconfigreadsts-y-rebuild-nativo">Task 0: <code>expo-notifications</code>, <code>readsUrl</code> en <code>app.config.ts</code>, <code>src/config/reads.ts</code> y rebuild nativo</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/package.json</code>, <code>apps/mobile/package-lock.json</code> (vía <code>npx expo install</code>), <code>apps/mobile/app.config.ts</code></li>
+<li>Create: <code>apps/mobile/src/config/reads.ts</code>, <code>apps/mobile/src/reads/constants.ts</code>, <code>apps/mobile/__tests__/reads-config.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>READS_URL: string</code>, <code>PUSH_MODE: &quot;apns&quot; | &quot;local&quot;</code> en <code>src/config/reads.ts</code> (importa <code>expo-constants</code>: no lo cargan los tests); <code>READS_URL_DEFAULT</code>, <code>READ_REQUEST_TIMEOUT_MS</code>, <code>READS_TIMEOUT_MS</code>, <code>READS_POLL_MS</code> en <code>src/reads/constants.ts</code> (puro). Los usan Tasks 4, 6 y 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/apps/mobile
+git status --short
+npm test 2&gt;&amp;1 | tail -4
+npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio; <code>Tests: &lt;N&gt; passed</code> (el README dice 179/24 suites; anotar el número real); <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Instalar <code>expo-notifications</code> con la versión del SDK</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo install expo-notifications
+grep -n &#39;&quot;expo-notifications&quot;&#39; package.json</code></pre>
+<p>Expected: una línea <code>&quot;expo-notifications&quot;: &quot;57.x.y&quot;</code> en <code>dependencies</code> (misma familia <code>57.0.*</code> que el resto). Si <code>expo install</code> propone otra major, parar y anotar.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Plugin y <code>extra.readsUrl</code> en <code>app.config.ts</code></strong></label></li>
+</ul>
+<p>Sustituir en <code>apps/mobile/app.config.ts</code>:</p>
+<pre><code class="language-ts">const perplWs = process.env.PICKLER_PERPL_WS ?? &quot;&quot;;</code></pre>
+<p>por:</p>
+<pre><code class="language-ts">const perplWs = process.env.PICKLER_PERPL_WS ?? &quot;&quot;;
+// Servicio de reads (services/reads, Supabase pickler). Vacío = el de producción (src/config/reads.ts).
+const readsUrl = process.env.PICKLER_READS_URL ?? &quot;&quot;;</code></pre>
+<p>En <code>plugins</code>, después del bloque de <code>expo-build-properties</code>:</p>
+<pre><code class="language-ts">    [&quot;expo-notifications&quot;, { enableBackgroundRemoteNotifications: false }],</code></pre>
+<p>Y <code>extra</code>:</p>
+<pre><code class="language-ts">  extra: { rpId, monadscanKey, perplRest, perplWs, readsUrl },</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Test de la config (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-config.test.ts</code>:</p>
+<pre><code class="language-ts">import { READS_URL_DEFAULT } from &quot;../src/reads/constants&quot;;
+
+test(&quot;the reads service lives in the pickler Supabase project (F1)&quot;, () =&gt; {
+  expect(READS_URL_DEFAULT).toBe(&quot;https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1&quot;);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-config.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/constants&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>src/reads/constants.ts</code> y <code>src/config/reads.ts</code> (GREEN)</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/reads/constants.ts</code> (puro; lo importan los tests sin cargar <code>expo-constants</code>):</p>
+<pre><code class="language-ts">// Servicio de reads (F1): edge functions del Supabase pickler, esquema mobile. Verificado 2026-09-20 (audit F1 §5).
+export const READS_URL_DEFAULT = &quot;https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1&quot;;
+export const READ_REQUEST_TIMEOUT_MS = 65_000; // read-request: el modelo tarda hasta 50 s + reembolso a los 60 s (D7, P4)
+export const READS_TIMEOUT_MS = 15_000; // el resto
+export const READS_POLL_MS = 15_000; // My reads mientras Ask está visible (D16)</code></pre>
+<p><code>apps/mobile/src/config/reads.ts</code>:</p>
+<pre><code class="language-ts">import Constants from &quot;expo-constants&quot;;
+import { READS_URL_DEFAULT } from &quot;../reads/constants&quot;;
+
+const extra = Constants.expoConfig?.extra ?? {};
+
+/** URL del servicio de reads con override desde app.config.ts (`PICKLER_READS_URL`). */
+export const READS_URL: string = typeof extra.readsUrl === &quot;string&quot; &amp;&amp; extra.readsUrl !== &quot;&quot; ? extra.readsUrl : READS_URL_DEFAULT;
+
+/** D10: &quot;apns&quot; = el servidor manda el push de resolución; &quot;local&quot; = fallback, la app programa una notificación local al vencer (P5). */
+export const PUSH_MODE: &quot;apns&quot; | &quot;local&quot; = &quot;apns&quot;;</code></pre>
+<p>Run: <code>npx jest __tests__/reads-config.test.ts</code> Expected: PASS.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Rebuild nativo e instalación en el simulador</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo prebuild --platform ios --clean 2&gt;&amp;1 | tail -3
+npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 2&gt;&amp;1 | tee &quot;$SCRATCH/build.log&quot; | tail -8
+grep -n &quot;aps-environment&quot; ios/Pickler/Pickler.entitlements</code></pre>
+<p>Expected: <code>› Build Succeeded</code>, <code>› Installing on iPhone 17 Pro</code>, bundle de Metro; el <code>.entitlements</code> generado contiene <code>&lt;key&gt;aps-environment&lt;/key&gt;&lt;string&gt;development&lt;/string&gt;</code>. Si el build falla por firma (<code>aps-environment</code> requiere la capability), en el simulador no debe pasar; si pasa, anotar y seguir con <code>--device</code> de nuevo tras <code>prebuild --clean</code>. Captura <code>00-boot.png</code> de la app arrancada (pantalla Wallet o Sign in).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add package.json package-lock.json app.config.ts src/config/reads.ts src/reads/constants.ts __tests__/reads-config.test.ts
+git commit -m &quot;chore(mobile): expo-notifications, readsUrl y config del servicio de reads&quot;</code></pre>
+<p>Expected: todos los tests en verde (+1), <code>TSC-OK</code>. <code>ios/</code> sigue ignorado (<code>git status</code> no lo lista).</p>
+<hr>
+<h3 id="task-1-srcreadsmatrixts-matriz-target-pregunta-etiquetas-cuenta-regresiva">Task 1: <code>src/reads/matrix.ts</code> — matriz, target, pregunta, etiquetas, cuenta regresiva</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/matrix.ts</code>, <code>apps/mobile/__tests__/reads-matrix.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>formatPrice(price, pd)</code> de <code>src/perpl/orders.ts</code>.</li>
+<li>Produces: <code>LEVELS_BPS</code>, <code>HORIZONS_MIN</code>, <code>LevelBps</code>, <code>HorizonMin</code>, <code>Cell = { levelBps: LevelBps; horizonMin: HorizonMin }</code>, <code>isLevel(n)</code>, <code>isHorizon(n)</code>, <code>targetFor(mark, bps): number</code>, <code>expiresAtFor(createdAt: Date, horizonMin): Date</code>, <code>questionFor(symbol, bps, target, pd, expiresAt: Date): string</code>, <code>levelLabel(bps): string</code>, <code>horizonLabel(min): string</code>, <code>cellLabel(cell): string</code> (<code>&quot;+1.0% · 4H&quot;</code>), <code>callOf(p): boolean</code>, <code>outcomeOf(bps, target, mark): boolean</code>, <code>formatRemaining(ms): string</code>, <code>formatProbability(p): string</code> (<code>&quot;62 %&quot;</code>), <code>recordLabel(record): string</code>. Los usan Tasks 6, 7, 8, 9.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-matrix.test.ts</code>:</p>
+<pre><code class="language-ts">import {
+  callOf, cellLabel, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, isHorizon, isLevel, LEVELS_BPS,
+  levelLabel, outcomeOf, questionFor, recordLabel, targetFor,
+} from &quot;../src/reads/matrix&quot;;
+
+test(&quot;the matrix is 5 levels × 4 horizons, in the spec order (D2)&quot;, () =&gt; {
+  expect(LEVELS_BPS).toEqual([250, 100, 50, -50, -100]);
+  expect(HORIZONS_MIN).toEqual([60, 240, 720, 1440]);
+  expect(isLevel(50)).toBe(true);
+  expect(isLevel(75)).toBe(false);
+  expect(isHorizon(1440)).toBe(true);
+  expect(isHorizon(30)).toBe(false);
+});
+
+// Mismos números que el servidor (_shared/matrix.ts, audit F1 Task 6): BTC mark 762555 (pd 1) → +0.5 % = 766368.
+test.each([
+  [762555, 50, 766368],
+  [762555, 100, 770181],
+  [762555, 250, 781619],
+  [762555, -50, 758742],
+  [762555, -100, 754929],
+  [2221, 250, 2277], // MON pd 5: 2221 × 1.025 = 2276.525 → 2277
+])(&quot;targetFor(%i, %i) = %i (rounded, scaled like the mark)&quot;, (mark, bps, target) =&gt; {
+  expect(targetFor(mark, bps)).toBe(target);
+});
+
+test(&quot;expiresAt is createdAt + horizon&quot;, () =&gt; {
+  const t0 = new Date(&quot;2026-09-20T06:35:06.000Z&quot;);
+  expect(expiresAtFor(t0, 60).toISOString()).toBe(&quot;2026-09-20T07:35:06.000Z&quot;);
+  expect(expiresAtFor(t0, 1440).toISOString()).toBe(&quot;2026-09-21T06:35:06.000Z&quot;);
+});
+
+test(&quot;the question reads like the server&#39;s (D1)&quot;, () =&gt; {
+  const exp = new Date(&quot;2026-09-20T07:35:06.000Z&quot;);
+  expect(questionFor(&quot;BTC&quot;, 100, 812469, 1, exp)).toBe(&quot;Will the BTC mark be at or above 81246.9 at 2026-09-20 07:35 UTC?&quot;);
+  expect(questionFor(&quot;MON&quot;, -50, 2210, 5, exp)).toBe(&quot;Will the MON mark be at or below 0.02210 at 2026-09-20 07:35 UTC?&quot;);
+});
+
+test(&quot;labels match the push copy of the server&quot;, () =&gt; {
+  expect(levelLabel(250)).toBe(&quot;+2.5%&quot;);
+  expect(levelLabel(-50)).toBe(&quot;−0.5%&quot;);
+  expect(horizonLabel(60)).toBe(&quot;1H&quot;);
+  expect(horizonLabel(1440)).toBe(&quot;24H&quot;);
+  expect(cellLabel({ levelBps: 100, horizonMin: 240 })).toBe(&quot;+1.0% · 4H&quot;);
+});
+
+test(&quot;call and outcome follow D1/D3&quot;, () =&gt; {
+  expect(callOf(0.5)).toBe(true);
+  expect(callOf(0.49)).toBe(false);
+  expect(outcomeOf(100, 770181, 770181)).toBe(true);
+  expect(outcomeOf(100, 770181, 770180)).toBe(false);
+  expect(outcomeOf(-50, 758742, 758742)).toBe(true);
+  expect(outcomeOf(-50, 758742, 758743)).toBe(false);
+});
+
+test(&quot;formatRemaining rounds down to hours and minutes&quot;, () =&gt; {
+  expect(formatRemaining(3 * 3_600_000 + 58 * 60_000 + 20_000)).toBe(&quot;3 h 58 m&quot;);
+  expect(formatRemaining(12 * 60_000)).toBe(&quot;12 m&quot;);
+  expect(formatRemaining(59_000)).toBe(&quot;&lt; 1 m&quot;);
+  expect(formatRemaining(0)).toBe(&quot;now&quot;);
+  expect(formatRemaining(-5_000)).toBe(&quot;now&quot;);
+});
+
+test(&quot;probability and record labels&quot;, () =&gt; {
+  expect(formatProbability(0.62)).toBe(&quot;62 %&quot;);
+  expect(formatProbability(0.075)).toBe(&quot;8 %&quot;);
+  expect(recordLabel({ reads: 0, resolved: 0, right: 0, brierAvg: null })).toBe(&quot;No resolved reads yet&quot;);
+  expect(recordLabel({ reads: 12, resolved: 10, right: 7, brierAvg: 0.2144 })).toBe(&quot;7/10 right · Brier 0.21&quot;);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-matrix.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/matrix&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementación (GREEN)</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/reads/matrix.ts</code>:</p>
+<pre><code class="language-ts">// Matriz nivel × horizonte (D1, D2). Puro y con la misma aritmética que services/reads/_shared/matrix.ts (P10).
+import { formatPrice } from &quot;../perpl/orders&quot;;
+
+export const LEVELS_BPS = [250, 100, 50, -50, -100] as const;
+export const HORIZONS_MIN = [60, 240, 720, 1440] as const;
+export type LevelBps = (typeof LEVELS_BPS)[number];
+export type HorizonMin = (typeof HORIZONS_MIN)[number];
+export type Cell = { levelBps: LevelBps; horizonMin: HorizonMin };
+
+export const isLevel = (v: number): v is LevelBps =&gt; (LEVELS_BPS as readonly number[]).includes(v);
+export const isHorizon = (v: number): v is HorizonMin =&gt; (HORIZONS_MIN as readonly number[]).includes(v);
+
+/** Target en las mismas unidades escaladas que el mark (priceDecimals). */
+export function targetFor(mark: number, levelBps: number): number {
+  return Math.round((mark * (10000 + levelBps)) / 10000);
+}
+
+export function expiresAtFor(createdAt: Date, horizonMin: number): Date {
+  return new Date(createdAt.getTime() + horizonMin * 60_000);
+}
+
+export function questionFor(symbol: string, levelBps: number, target: number, pd: number, expiresAt: Date): string {
+  const dir = levelBps &gt; 0 ? &quot;at or above&quot; : &quot;at or below&quot;;
+  const when = expiresAt.toISOString().slice(0, 16).replace(&quot;T&quot;, &quot; &quot;);
+  return `Will the ${symbol} mark be ${dir} ${formatPrice(target, pd)} at ${when} UTC?`;
+}
+
+const HORIZON_LABELS: Record&lt;number, string&gt; = { 60: &quot;1H&quot;, 240: &quot;4H&quot;, 720: &quot;12H&quot;, 1440: &quot;24H&quot; };
+export const horizonLabel = (min: number): string =&gt; HORIZON_LABELS[min] ?? `${min}m`;
+export const levelLabel = (bps: number): string =&gt; `${bps &gt; 0 ? &quot;+&quot; : &quot;−&quot;}${(Math.abs(bps) / 100).toFixed(1)}%`;
+export const cellLabel = (c: { levelBps: number; horizonMin: number }): string =&gt; `${levelLabel(c.levelBps)} · ${horizonLabel(c.horizonMin)}`;
+
+export const callOf = (probability: number): boolean =&gt; probability &gt;= 0.5;
+
+export function outcomeOf(levelBps: number, target: number, mark: number): boolean {
+  return levelBps &gt; 0 ? mark &gt;= target : mark &lt;= target;
+}
+
+/** &quot;3 h 58 m&quot; | &quot;12 m&quot; | &quot;&lt; 1 m&quot; | &quot;now&quot;. Redondea hacia abajo. */
+export function formatRemaining(ms: number): string {
+  if (ms &lt;= 0) return &quot;now&quot;;
+  const m = Math.floor(ms / 60_000);
+  if (m === 0) return &quot;&lt; 1 m&quot;;
+  const h = Math.floor(m / 60);
+  return h &gt; 0 ? `${h} h ${m % 60} m` : `${m} m`;
+}
+
+export const formatProbability = (p: number): string =&gt; `${Math.round(p * 100)} %`;
+
+export function recordLabel(r: { resolved: number; right: number; brierAvg: number | null }): string {
+  if (r.resolved === 0 || r.brierAvg === null) return &quot;No resolved reads yet&quot;;
+  return `${r.right}/${r.resolved} right · Brier ${r.brierAvg.toFixed(2)}`;
+}</code></pre>
+<p>Run: <code>npx jest __tests__/reads-matrix.test.ts</code> Expected: PASS (8 tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/reads/matrix.ts __tests__/reads-matrix.test.ts
+git commit -m &quot;feat(mobile): matriz de reads (target, pregunta, etiquetas, cuenta regresiva)&quot;</code></pre>
+<hr>
+<h3 id="task-2-srcreadstypests-tipos-y-parseo-estricto-de-los-dtos">Task 2: <code>src/reads/types.ts</code> — tipos y parseo estricto de los DTOs</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/types.ts</code>, <code>apps/mobile/__tests__/reads-types.test.ts</code>, <code>apps/mobile/__tests__/fixtures/reads/read.json</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>ReadStatus</code>, <code>Read</code>, <code>AgentRecord</code>, <code>Agent</code>, <code>parseRead(v): Read</code>, <code>parseReadResponse(body): { read: Read; credits: number }</code>, <code>parseReadsList(body): { reads: Read[]; credits: number }</code>, <code>parseAgentsList(body): Agent[]</code>. Los usan Tasks 4, 6, 7, 8, 9.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Fixture con la forma real del DTO de F1</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/fixtures/reads/read.json</code> (los valores son los de la read del smoke de F1, audit §1 Task 4, con el <code>id</code> de la de Task 6):</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;1fde46c6-97da-4435-8184-59b5218a771d&quot;,
+  &quot;agentId&quot;: &quot;jesus&quot;,
+  &quot;marketId&quot;: 16,
+  &quot;symbol&quot;: &quot;BTC&quot;,
+  &quot;priceDecimals&quot;: 1,
+  &quot;levelBps&quot;: 100,
+  &quot;horizonMin&quot;: 60,
+  &quot;markAtRequest&quot;: 804425,
+  &quot;target&quot;: 812469,
+  &quot;question&quot;: &quot;Will the BTC mark be at or above 81246.9 at 2026-09-20 07:35 UTC?&quot;,
+  &quot;status&quot;: &quot;open&quot;,
+  &quot;probability&quot;: 0.07,
+  &quot;reasons&quot;: [
+    &quot;A 1% move in one hour is rare for BTC outside of news.&quot;,
+    &quot;The 24h trend is mildly positive but not accelerating.&quot;,
+    &quot;Sports betting adds uncertainty in short windows.&quot;
+  ],
+  &quot;limits&quot;: &quot;A macro headline or a liquidation cascade in the next hour would invalidate this read.&quot;,
+  &quot;creditsCharged&quot;: 1,
+  &quot;error&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-09-20T06:35:06.712Z&quot;,
+  &quot;expiresAt&quot;: &quot;2026-09-20T07:35:06.712Z&quot;,
+  &quot;resolvedAt&quot;: null,
+  &quot;markAtResolution&quot;: null,
+  &quot;outcome&quot;: null,
+  &quot;brier&quot;: null
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Test (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-types.test.ts</code>:</p>
+<pre><code class="language-ts">import readJson from &quot;./fixtures/reads/read.json&quot;;
+import { parseAgentsList, parseRead, parseReadResponse, parseReadsList } from &quot;../src/reads/types&quot;;
+
+test(&quot;parseRead reads the DTO of F1 verbatim&quot;, () =&gt; {
+  const r = parseRead(readJson);
+  expect(r).toMatchObject({ id: &quot;1fde46c6-97da-4435-8184-59b5218a771d&quot;, agentId: &quot;jesus&quot;, marketId: 16, symbol: &quot;BTC&quot;, priceDecimals: 1, levelBps: 100, horizonMin: 60, markAtRequest: 804425, target: 812469, status: &quot;open&quot;, probability: 0.07, creditsCharged: 1, error: null, resolvedAt: null, markAtResolution: null, outcome: null, brier: null });
+  expect(r.reasons).toHaveLength(3);
+  expect(r.limits).toMatch(/invalidate/);
+  expect(r.expiresAt).toBe(&quot;2026-09-20T07:35:06.712Z&quot;);
+});
+
+test(&quot;parseRead accepts a resolved and a failed read&quot;, () =&gt; {
+  const right = parseRead({ ...readJson, status: &quot;right&quot;, resolvedAt: &quot;2026-09-20T07:36:00.000Z&quot;, markAtResolution: 812470, outcome: true, brier: 0.8649 });
+  expect(right).toMatchObject({ status: &quot;right&quot;, markAtResolution: 812470, outcome: true, brier: 0.8649 });
+  const failed = parseRead({ ...readJson, status: &quot;failed&quot;, probability: null, reasons: null, limits: null, error: &quot;timeout&quot; });
+  expect(failed).toMatchObject({ status: &quot;failed&quot;, probability: null, reasons: null, error: &quot;timeout&quot; });
+});
+
+test.each([
+  [&quot;not an object&quot;, null],
+  [&quot;unknown status&quot;, { ...readJson, status: &quot;maybe&quot; }],
+  [&quot;level outside the matrix&quot;, { ...readJson, levelBps: 75 }],
+  [&quot;probability out of range&quot;, { ...readJson, probability: 1.2 }],
+  [&quot;reasons not strings&quot;, { ...readJson, reasons: [1, 2, 3] }],
+  [&quot;missing expiresAt&quot;, { ...readJson, expiresAt: undefined }],
+  [&quot;expiresAt not ISO&quot;, { ...readJson, expiresAt: &quot;tomorrow&quot; }],
+])(&quot;parseRead throws on %s&quot;, (_, body) =&gt; {
+  expect(() =&gt; parseRead(body)).toThrow(/Reads API/);
+});
+
+test(&quot;parseReadResponse and parseReadsList carry the credits&quot;, () =&gt; {
+  expect(parseReadResponse({ read: readJson, credits: 19 })).toMatchObject({ credits: 19, read: { id: readJson.id } });
+  const list = parseReadsList({ reads: [readJson, readJson], credits: 18 });
+  expect(list.reads).toHaveLength(2);
+  expect(list.credits).toBe(18);
+  expect(() =&gt; parseReadsList({ reads: &quot;x&quot;, credits: 1 })).toThrow(/Reads API/);
+  expect(() =&gt; parseReadResponse({ read: readJson, credits: &quot;19&quot; })).toThrow(/Reads API/);
+});
+
+test(&quot;parseAgentsList reads the record and keeps the server order&quot;, () =&gt; {
+  const agents = parseAgentsList({ agents: [
+    { id: &quot;jesus&quot;, handle: &quot;jesus&quot;, name: &quot;Jesús&#39;s agent&quot;, owner: &quot;Jesús&quot;, priceCredits: 1, record: { reads: 1, resolved: 0, right: 0, brierAvg: null } },
+    { id: &quot;drift&quot;, handle: &quot;drift&quot;, name: &quot;Drift&quot;, owner: &quot;Pickler&quot;, priceCredits: 1, record: { reads: 2, resolved: 1, right: 1, brierAvg: 0.0144 } },
+  ] });
+  expect(agents.map((a) =&gt; a.id)).toEqual([&quot;jesus&quot;, &quot;drift&quot;]);
+  expect(agents[1].record).toEqual({ reads: 2, resolved: 1, right: 1, brierAvg: 0.0144 });
+  expect(() =&gt; parseAgentsList({ agents: [{ id: &quot;x&quot; }] })).toThrow(/Reads API/);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-types.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/types&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementación (GREEN)</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/reads/types.ts</code>:</p>
+<pre><code class="language-ts">// DTOs del servicio de reads (spec §2.2, F1 dto.ts). Parseo estricto como perpl/context.ts: lanza si la forma no es la verificada.
+import { isHorizon, isLevel } from &quot;./matrix&quot;;
+
+export type ReadStatus = &quot;pending&quot; | &quot;open&quot; | &quot;right&quot; | &quot;wrong&quot; | &quot;void&quot; | &quot;failed&quot;;
+const STATUSES: readonly ReadStatus[] = [&quot;pending&quot;, &quot;open&quot;, &quot;right&quot;, &quot;wrong&quot;, &quot;void&quot;, &quot;failed&quot;];
+
+export type Read = {
+  id: string; agentId: string; marketId: number; symbol: string; priceDecimals: number;
+  levelBps: number; horizonMin: number; markAtRequest: number; target: number; question: string;
+  status: ReadStatus; probability: number | null; reasons: string[] | null; limits: string | null;
+  creditsCharged: number; error: string | null;
+  /** ISO UTC, como los manda el servidor. */
+  createdAt: string; expiresAt: string; resolvedAt: string | null;
+  markAtResolution: number | null; outcome: boolean | null; brier: number | null;
+};
+
+export type AgentRecord = { reads: number; resolved: number; right: number; brierAvg: number | null };
+export type Agent = { id: string; handle: string; name: string; owner: string; priceCredits: number; record: AgentRecord };
+
+type Rec = Record&lt;string, unknown&gt;;
+const fail = (what: string): never =&gt; { throw new Error(`Reads API: ${what}`); };
+const rec = (v: unknown, what: string): Rec =&gt; (v === null || typeof v !== &quot;object&quot; ? fail(`${what} is not an object`) : (v as Rec));
+const num = (r: Rec, k: string, what: string): number =&gt; (typeof r[k] === &quot;number&quot; &amp;&amp; Number.isFinite(r[k]) ? (r[k] as number) : fail(`${what}.${k} is not a number`));
+const str = (r: Rec, k: string, what: string): string =&gt; (typeof r[k] === &quot;string&quot; ? (r[k] as string) : fail(`${what}.${k} is not a string`));
+const numOrNull = (r: Rec, k: string, what: string): number | null =&gt; (r[k] === null || r[k] === undefined ? null : num(r, k, what));
+const strOrNull = (r: Rec, k: string, what: string): string | null =&gt; (r[k] === null || r[k] === undefined ? null : str(r, k, what));
+const iso = (r: Rec, k: string, what: string): string =&gt; {
+  const s = str(r, k, what);
+  return Number.isNaN(Date.parse(s)) ? fail(`${what}.${k} is not a date`) : s;
+};
+const isoOrNull = (r: Rec, k: string, what: string): string | null =&gt; (r[k] === null || r[k] === undefined ? null : iso(r, k, what));
+
+export function parseRead(v: unknown): Read {
+  const r = rec(v, &quot;read&quot;);
+  const status = str(r, &quot;status&quot;, &quot;read&quot;);
+  if (!(STATUSES as readonly string[]).includes(status)) fail(`read.status ${status} is unknown`);
+  const levelBps = num(r, &quot;levelBps&quot;, &quot;read&quot;), horizonMin = num(r, &quot;horizonMin&quot;, &quot;read&quot;);
+  if (!isLevel(levelBps) || !isHorizon(horizonMin)) fail(&quot;read cell is outside the matrix&quot;);
+  const probability = numOrNull(r, &quot;probability&quot;, &quot;read&quot;);
+  if (probability !== null &amp;&amp; (probability &lt; 0 || probability &gt; 1)) fail(&quot;read.probability out of range&quot;);
+  const reasons = r.reasons === null || r.reasons === undefined ? null
+    : Array.isArray(r.reasons) &amp;&amp; r.reasons.every((x) =&gt; typeof x === &quot;string&quot;) ? (r.reasons as string[]) : fail(&quot;read.reasons is not a string array&quot;);
+  const outcome = r.outcome === null || r.outcome === undefined ? null : typeof r.outcome === &quot;boolean&quot; ? r.outcome : fail(&quot;read.outcome is not a boolean&quot;);
+  return {
+    id: str(r, &quot;id&quot;, &quot;read&quot;), agentId: str(r, &quot;agentId&quot;, &quot;read&quot;), marketId: num(r, &quot;marketId&quot;, &quot;read&quot;), symbol: str(r, &quot;symbol&quot;, &quot;read&quot;),
+    priceDecimals: num(r, &quot;priceDecimals&quot;, &quot;read&quot;), levelBps, horizonMin, markAtRequest: num(r, &quot;markAtRequest&quot;, &quot;read&quot;),
+    target: num(r, &quot;target&quot;, &quot;read&quot;), question: str(r, &quot;question&quot;, &quot;read&quot;), status: status as ReadStatus, probability, reasons,
+    limits: strOrNull(r, &quot;limits&quot;, &quot;read&quot;), creditsCharged: num(r, &quot;creditsCharged&quot;, &quot;read&quot;), error: strOrNull(r, &quot;error&quot;, &quot;read&quot;),
+    createdAt: iso(r, &quot;createdAt&quot;, &quot;read&quot;), expiresAt: iso(r, &quot;expiresAt&quot;, &quot;read&quot;), resolvedAt: isoOrNull(r, &quot;resolvedAt&quot;, &quot;read&quot;),
+    markAtResolution: numOrNull(r, &quot;markAtResolution&quot;, &quot;read&quot;), outcome, brier: numOrNull(r, &quot;brier&quot;, &quot;read&quot;),
+  };
+}
+
+export function parseReadResponse(body: unknown): { read: Read; credits: number } {
+  const b = rec(body, &quot;response&quot;);
+  return { read: parseRead(b.read), credits: num(b, &quot;credits&quot;, &quot;response&quot;) };
+}
+
+export function parseReadsList(body: unknown): { reads: Read[]; credits: number } {
+  const b = rec(body, &quot;response&quot;);
+  if (!Array.isArray(b.reads)) fail(&quot;response.reads is not an array&quot;);
+  return { reads: b.reads.map(parseRead), credits: num(b, &quot;credits&quot;, &quot;response&quot;) };
+}
+
+function parseAgent(v: unknown): Agent {
+  const a = rec(v, &quot;agent&quot;);
+  const rc = rec(a.record, &quot;agent.record&quot;);
+  return {
+    id: str(a, &quot;id&quot;, &quot;agent&quot;), handle: str(a, &quot;handle&quot;, &quot;agent&quot;), name: str(a, &quot;name&quot;, &quot;agent&quot;), owner: str(a, &quot;owner&quot;, &quot;agent&quot;),
+    priceCredits: num(a, &quot;priceCredits&quot;, &quot;agent&quot;),
+    record: { reads: num(rc, &quot;reads&quot;, &quot;record&quot;), resolved: num(rc, &quot;resolved&quot;, &quot;record&quot;), right: num(rc, &quot;right&quot;, &quot;record&quot;), brierAvg: numOrNull(rc, &quot;brierAvg&quot;, &quot;record&quot;) },
+  };
+}
+
+export function parseAgentsList(body: unknown): Agent[] {
+  const b = rec(body, &quot;response&quot;);
+  if (!Array.isArray(b.agents)) fail(&quot;response.agents is not an array&quot;);
+  return b.agents.map(parseAgent);
+}</code></pre>
+<p>Run: <code>npx jest __tests__/reads-types.test.ts</code> Expected: PASS.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/reads/types.ts __tests__/reads-types.test.ts __tests__/fixtures/reads/read.json
+git commit -m &quot;feat(mobile): tipos y parseo estricto de los DTOs del servicio de reads&quot;</code></pre>
+<hr>
+<h3 id="task-3-sesion-firmada-srcreadssessionts-srcstoragereadsts-borrado-en-sign-out">Task 3: Sesión firmada — <code>src/reads/session.ts</code>, <code>src/storage/reads.ts</code>, borrado en Sign out</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/session.ts</code>, <code>apps/mobile/src/storage/reads.ts</code>, <code>apps/mobile/__tests__/reads-session.test.ts</code></li>
+<li>Modify: <code>apps/mobile/src/hooks/useAccount.ts</code> (<code>signOut</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Wallet.account.signMessage({ message })</code> (viem <code>LocalAccount</code>, <code>src/wallet/wallet.ts</code>).</li>
+<li>Produces: <code>ReadsSession = { address: string; ts: number; sig: Hex }</code>, <code>SESSION_TTL_MS</code>, <code>SESSION_RENEW_BEFORE_MS</code>, <code>canonicalMessage(address, ts)</code>, <code>serializeSession(s)</code>, <code>parseSession(raw): ReadsSession | undefined</code>, <code>isUsable(s, now?)</code>, <code>sessionFor(s, address, now?)</code>, <code>signedHeaders(s): Record&lt;string, string&gt;</code>, <code>createSession(sign, address, now?)</code>; <code>loadReadsSession()</code>, <code>saveReadsSession(s)</code>, <code>clearReadsSession()</code>. Los usan Tasks 4 y 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-session.test.ts</code>:</p>
+<pre><code class="language-ts">import { privateKeyToAccount } from &quot;viem/accounts&quot;;
+import {
+  canonicalMessage, createSession, isUsable, parseSession, SESSION_RENEW_BEFORE_MS, SESSION_TTL_MS, serializeSession, sessionFor, signedHeaders,
+} from &quot;../src/reads/session&quot;;
+
+const account = privateKeyToAccount(&quot;0x0000000000000000000000000000000000000000000000000000000000000001&quot;);
+const ADDRESS = account.address; // checksummed: la sesión lo guarda en minúsculas
+const NOW = 1_789_600_000_000;
+const SIG = `0x${&quot;ab&quot;.repeat(65)}` as const;
+
+test(&quot;the canonical message is pickler-reads:&lt;lowercase address&gt;:&lt;ts&gt; (D6)&quot;, () =&gt; {
+  expect(canonicalMessage(ADDRESS, NOW)).toBe(`pickler-reads:${ADDRESS.toLowerCase()}:${NOW}`);
+});
+
+test(&quot;createSession signs the canonical message with the wallet account&quot;, async () =&gt; {
+  const s = await createSession((m) =&gt; account.signMessage({ message: m }), ADDRESS, NOW);
+  expect(s.address).toBe(ADDRESS.toLowerCase());
+  expect(s.ts).toBe(NOW);
+  expect(s.sig).toMatch(/^0x[0-9a-f]{130}$/);
+  expect(s.sig).toBe(await account.signMessage({ message: canonicalMessage(ADDRESS, NOW) }));
+});
+
+test(&quot;a session is usable for 23 h and belongs to one address&quot;, () =&gt; {
+  const s = { address: ADDRESS.toLowerCase(), ts: NOW, sig: SIG };
+  expect(isUsable(s, NOW)).toBe(true);
+  expect(isUsable(s, NOW + SESSION_TTL_MS - SESSION_RENEW_BEFORE_MS - 1)).toBe(true);
+  expect(isUsable(s, NOW + SESSION_TTL_MS - SESSION_RENEW_BEFORE_MS)).toBe(false); // renueva con 1 h de margen (P2)
+  expect(isUsable(s, NOW - 6 * 60_000)).toBe(false); // reloj atrasado más de 5 min: el servidor la rechazaría
+  expect(sessionFor(s, ADDRESS, NOW)).toEqual(s); // compara en minúsculas
+  expect(sessionFor(s, &quot;0x2222222222222222222222222222222222222222&quot;, NOW)).toBeUndefined();
+  expect(sessionFor(undefined, ADDRESS, NOW)).toBeUndefined();
+});
+
+test(&quot;serialize/parse round-trips and rejects malformed entries&quot;, () =&gt; {
+  const s = { address: ADDRESS.toLowerCase(), ts: NOW, sig: SIG };
+  expect(parseSession(serializeSession(s))).toEqual(s);
+  for (const raw of [
+    &quot;{&quot;,
+    JSON.stringify({ address: ADDRESS, ts: NOW, sig: SIG }), // no minúsculas
+    JSON.stringify({ address: ADDRESS.toLowerCase(), ts: &quot;x&quot;, sig: SIG }),
+    JSON.stringify({ address: ADDRESS.toLowerCase(), ts: NOW, sig: &quot;0x12&quot; }),
+    JSON.stringify({}),
+  ]) expect(parseSession(raw)).toBeUndefined();
+});
+
+test(&quot;signedHeaders are the three x-pickler-* headers&quot;, () =&gt; {
+  expect(signedHeaders({ address: ADDRESS.toLowerCase(), ts: NOW, sig: SIG })).toEqual({
+    &quot;x-pickler-address&quot;: ADDRESS.toLowerCase(), &quot;x-pickler-ts&quot;: String(NOW), &quot;x-pickler-sig&quot;: SIG,
+  });
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-session.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/session&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>src/reads/session.ts</code> (GREEN)</strong></label></li>
+</ul>
+<pre><code class="language-ts">// Sesión firmada app → servicio de reads (D6): personal_sign de `pickler-reads:&lt;address&gt;:&lt;ts&gt;`, 24 h. Puro (P1).
+import type { Hex } from &quot;viem&quot;;
+
+export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+export const SESSION_RENEW_BEFORE_MS = 60 * 60 * 1000; // se renueva cuando queda menos de 1 h (P2)
+const FUTURE_MS = 5 * 60 * 1000; // el servidor acepta ts hasta 5 min en el futuro
+
+export type ReadsSession = { address: string; ts: number; sig: Hex };
+
+export function canonicalMessage(address: string, ts: number): string {
+  return `pickler-reads:${address.toLowerCase()}:${ts}`;
+}
+
+/** Firma con la cuenta de la wallet (viem LocalAccount.signMessage). `now` en ms. */
+export async function createSession(sign: (message: string) =&gt; Promise&lt;Hex&gt;, address: string, now = Date.now()): Promise&lt;ReadsSession&gt; {
+  const lower = address.toLowerCase();
+  return { address: lower, ts: now, sig: await sign(canonicalMessage(lower, now)) };
+}
+
+export function isUsable(s: ReadsSession, now = Date.now()): boolean {
+  return now - s.ts &lt; SESSION_TTL_MS - SESSION_RENEW_BEFORE_MS &amp;&amp; s.ts &lt;= now + FUTURE_MS;
+}
+
+/** La sesión guardada sólo vale para su dirección y mientras sea usable. */
+export function sessionFor(s: ReadsSession | undefined, address: string, now = Date.now()): ReadsSession | undefined {
+  return s &amp;&amp; s.address === address.toLowerCase() &amp;&amp; isUsable(s, now) ? s : undefined;
+}
+
+export function signedHeaders(s: ReadsSession): Record&lt;string, string&gt; {
+  return { &quot;x-pickler-address&quot;: s.address, &quot;x-pickler-ts&quot;: String(s.ts), &quot;x-pickler-sig&quot;: s.sig };
+}
+
+export function serializeSession(s: ReadsSession): string {
+  return JSON.stringify(s);
+}
+
+export function parseSession(raw: string): ReadsSession | undefined {
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { return undefined; }
+  if (value === null || typeof value !== &quot;object&quot;) return undefined;
+  const { address, ts, sig } = value as Record&lt;string, unknown&gt;;
+  if (typeof address !== &quot;string&quot; || !/^0x[0-9a-f]{40}$/.test(address)) return undefined;
+  if (typeof ts !== &quot;number&quot; || !Number.isInteger(ts) || ts &lt;= 0) return undefined;
+  if (typeof sig !== &quot;string&quot; || !/^0x[0-9a-fA-F]{130}$/.test(sig)) return undefined;
+  return { address, ts, sig: sig as Hex };
+}</code></pre>
+<p>Run: <code>npx jest __tests__/reads-session.test.ts</code> Expected: PASS (5 tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>src/storage/reads.ts</code> y <code>signOut</code></strong></label></li>
+</ul>
+<p><code>apps/mobile/src/storage/reads.ts</code>:</p>
+<pre><code class="language-ts">import { deleteItemAsync, getItemAsync, type SecureStoreOptions, setItemAsync, WHEN_UNLOCKED_THIS_DEVICE_ONLY } from &quot;expo-secure-store&quot;;
+import { parseSession, type ReadsSession, serializeSession } from &quot;../reads/session&quot;;
+
+const KEY = &quot;pickler.reads.v1&quot;;
+// Sin gate biométrico (D6): la firma sólo autoriza créditos simulados y lecturas.
+const ITEM_OPTIONS = { keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY } satisfies SecureStoreOptions;
+
+/** Una entrada malformada se borra y se lee como ausente. */
+export async function loadReadsSession(): Promise&lt;ReadsSession | undefined&gt; {
+  const raw = await getItemAsync(KEY, ITEM_OPTIONS);
+  if (raw === null) return undefined;
+  const s = parseSession(raw);
+  if (s === undefined) await deleteItemAsync(KEY);
+  return s;
+}
+
+export async function saveReadsSession(s: ReadsSession): Promise&lt;void&gt; {
+  await setItemAsync(KEY, serializeSession(s), ITEM_OPTIONS);
+}
+
+export async function clearReadsSession(): Promise&lt;void&gt; {
+  await deleteItemAsync(KEY);
+}</code></pre>
+<p>En <code>apps/mobile/src/hooks/useAccount.ts</code>: añadir <code>import { clearReadsSession } from &quot;../storage/reads&quot;;</code> y cambiar <code>signOut</code>:</p>
+<pre><code class="language-ts">  const signOut = useCallback(async () =&gt; {
+    await Promise.all([clearStoredAccount(), clearTradingKey(), clearReadsSession()]); // D6: la sesión de reads muere con la cuenta
+    replace({ status: &quot;none&quot; });
+  }, [replace]);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/reads/session.ts src/storage/reads.ts src/hooks/useAccount.ts __tests__/reads-session.test.ts
+git commit -m &quot;feat(mobile): sesión firmada de reads en SecureStore, borrada en Sign out&quot;</code></pre>
+<hr>
+<h3 id="task-4-srcreadsapits-cliente-http-del-servicio">Task 4: <code>src/reads/api.ts</code> — cliente HTTP del servicio</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/api.ts</code>, <code>apps/mobile/__tests__/reads-api.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>signedHeaders</code>, <code>ReadsSession</code> (Task 3); <code>parseAgentsList</code>, <code>parseReadResponse</code>, <code>parseReadsList</code>, <code>parseRead</code> (Task 2); <code>READ_REQUEST_TIMEOUT_MS</code>, <code>READS_TIMEOUT_MS</code> (Task 0).</li>
+<li>Produces: <code>class ReadsError extends Error { status: number; code: string }</code>, <code>describeReadsError(e): string</code>, <code>ReadRequest = { marketId; levelBps; horizonMin; agentId; pushToken?; pushEnv? }</code>, <code>fetchAgents(base, doFetch?)</code>, <code>fetchReads(base, session, marketId?, doFetch?)</code>, <code>fetchRead(base, session, id, doFetch?)</code>, <code>requestRead(base, session, body, doFetch?)</code>. Los usa Task 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-api.test.ts</code>:</p>
+<pre><code class="language-ts">import readJson from &quot;./fixtures/reads/read.json&quot;;
+import { describeReadsError, type DoFetch, fetchAgents, fetchRead, fetchReads, ReadsError, requestRead } from &quot;../src/reads/api&quot;;
+import { READ_REQUEST_TIMEOUT_MS, READS_TIMEOUT_MS } from &quot;../src/reads/constants&quot;;
+
+const BASE = &quot;https://reads.test/functions/v1&quot;;
+const SESSION = { address: &quot;0x1111111111111111111111111111111111111111&quot;, ts: 1_789_600_000_000, sig: `0x${&quot;ab&quot;.repeat(65)}` as const };
+type Call = { url: string; init?: RequestInit };
+// Sin `new Response`: el entorno de jest-expo no garantiza los globals de fetch de Node (perpl-context.test.ts).
+type FakeRes = { ok: boolean; status: number; json: () =&gt; Promise&lt;unknown&gt; };
+const ok = (body: unknown): FakeRes =&gt; ({ ok: true, status: 200, json: async () =&gt; body });
+const fail = (status: number, error: string): FakeRes =&gt; ({ ok: false, status, json: async () =&gt; ({ error }) });
+const html = (status: number): FakeRes =&gt; ({ ok: false, status, json: async () =&gt; { throw new SyntaxError(&quot;not json&quot;); } });
+function fetchOnce(res: FakeRes, calls: Call[] = []) {
+  const f = jest.fn((url: string, init?: RequestInit) =&gt; { calls.push({ url, init }); return Promise.resolve(res); }) as unknown as DoFetch;
+  return { f, calls };
+}
+
+test(&quot;fetchAgents is a public GET&quot;, async () =&gt; {
+  const { f, calls } = fetchOnce(ok({ agents: [] }));
+  expect(await fetchAgents(BASE, f)).toEqual([]);
+  expect(calls[0].url).toBe(`${BASE}/agents-list`);
+  expect((calls[0].init?.headers as Record&lt;string, string&gt;)[&quot;x-pickler-address&quot;]).toBeUndefined();
+});
+
+test(&quot;fetchReads signs the request and passes marketId&quot;, async () =&gt; {
+  const { f, calls } = fetchOnce(ok({ reads: [readJson], credits: 19 }));
+  const r = await fetchReads(BASE, SESSION, 16, f);
+  expect(r.credits).toBe(19);
+  expect(r.reads[0].id).toBe(readJson.id);
+  expect(calls[0].url).toBe(`${BASE}/reads-list?marketId=16`);
+  expect(calls[0].init?.headers).toMatchObject({ &quot;x-pickler-address&quot;: SESSION.address, &quot;x-pickler-ts&quot;: String(SESSION.ts), &quot;x-pickler-sig&quot;: SESSION.sig });
+});
+
+test(&quot;fetchRead gets one read by id&quot;, async () =&gt; {
+  const { f, calls } = fetchOnce(ok({ read: readJson }));
+  expect((await fetchRead(BASE, SESSION, readJson.id, f)).id).toBe(readJson.id);
+  expect(calls[0].url).toBe(`${BASE}/read-get?id=${readJson.id}`);
+});
+
+test(&quot;requestRead posts the cell, the agent and the push token&quot;, async () =&gt; {
+  const { f, calls } = fetchOnce(ok({ read: readJson, credits: 19 }));
+  const r = await requestRead(BASE, SESSION, { marketId: 16, levelBps: 100, horizonMin: 60, agentId: &quot;jesus&quot;, pushToken: &quot;ab&quot;.repeat(32), pushEnv: &quot;sandbox&quot; }, f);
+  expect(r.credits).toBe(19);
+  expect(calls[0].url).toBe(`${BASE}/read-request`);
+  expect(calls[0].init?.method).toBe(&quot;POST&quot;);
+  expect(JSON.parse(String(calls[0].init?.body))).toEqual({ marketId: 16, levelBps: 100, horizonMin: 60, agentId: &quot;jesus&quot;, pushToken: &quot;ab&quot;.repeat(32), pushEnv: &quot;sandbox&quot; });
+  expect((calls[0].init?.headers as Record&lt;string, string&gt;)[&quot;content-type&quot;]).toBe(&quot;application/json&quot;);
+});
+
+test.each([
+  [402, &quot;no_credits&quot;], [401, &quot;signature_expired&quot;], [409, &quot;market_closed&quot;], [422, &quot;unknown_agent&quot;], [429, &quot;rate_limited&quot;], [503, &quot;busy&quot;], [503, &quot;perpl_unavailable&quot;],
+])(&quot;a %i %s becomes a ReadsError with the server code&quot;, async (status, code) =&gt; {
+  const { f } = fetchOnce(fail(status, code));
+  await expect(requestRead(BASE, SESSION, { marketId: 16, levelBps: 100, horizonMin: 60, agentId: &quot;jesus&quot; }, f)).rejects.toMatchObject({ status, code });
+});
+
+test(&quot;a non-JSON 5xx becomes bad_response and a malformed 200 throws the parser error&quot;, async () =&gt; {
+  await expect(fetchAgents(BASE, fetchOnce(html(502)).f)).rejects.toMatchObject({ status: 502, code: &quot;bad_response&quot; });
+  await expect(fetchAgents(BASE, fetchOnce(ok({ agents: &quot;x&quot; })).f)).rejects.toThrow(/Reads API/);
+});
+
+test(&quot;timeouts use AbortController: 65 s for read-request, 15 s for the rest&quot;, async () =&gt; {
+  jest.useFakeTimers();
+  const hang = jest.fn((_url: string, init?: RequestInit) =&gt; new Promise&lt;FakeRes&gt;((_, reject) =&gt; {
+    init?.signal?.addEventListener(&quot;abort&quot;, () =&gt; reject(Object.assign(new Error(&quot;Aborted&quot;), { name: &quot;AbortError&quot; })));
+  })) as unknown as DoFetch;
+  // Los handlers se cuelgan al crear las promesas: una rejection sin handler haría ruido en jest.
+  const p1 = requestRead(BASE, SESSION, { marketId: 16, levelBps: 100, horizonMin: 60, agentId: &quot;jesus&quot; }, hang).then(() =&gt; &quot;resolved&quot;, (e: ReadsError) =&gt; e.code);
+  jest.advanceTimersByTime(READ_REQUEST_TIMEOUT_MS - 1);
+  const p2 = fetchAgents(BASE, hang).then(() =&gt; &quot;resolved&quot;, (e: ReadsError) =&gt; e.code);
+  jest.advanceTimersByTime(READS_TIMEOUT_MS); // p2 vence; p1 lleva 65 s − 1 + 15 s &gt; 65 s: también
+  await expect(p2).resolves.toBe(&quot;timeout&quot;);
+  await expect(p1).resolves.toBe(&quot;timeout&quot;);
+  jest.useRealTimers();
+});
+
+test(&quot;network failures become network and the copy is human&quot;, async () =&gt; {
+  const f = jest.fn(() =&gt; Promise.reject(new TypeError(&quot;Network request failed&quot;))) as unknown as DoFetch;
+  await expect(fetchAgents(BASE, f)).rejects.toMatchObject({ code: &quot;network&quot; });
+  expect(describeReadsError(new ReadsError(402, &quot;no_credits&quot;))).toBe(&quot;No credits left. Credits are simulated for the testnet.&quot;);
+  expect(describeReadsError(new ReadsError(401, &quot;signature_expired&quot;))).toBe(&quot;Your Ask session expired. Unlock again.&quot;);
+  expect(describeReadsError(new ReadsError(0, &quot;timeout&quot;))).toMatch(/took too long/);
+  expect(describeReadsError(new ReadsError(500, &quot;weird&quot;))).toBe(&quot;The reads service responded 500.&quot;);
+  expect(describeReadsError(new Error(&quot;Reads API: read.id is not a string&quot;))).toBe(&quot;Reads API: read.id is not a string&quot;);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-api.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/api&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementación (GREEN)</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/reads/api.ts</code>:</p>
+<pre><code class="language-ts">// Cliente del servicio de reads (D16). fetch con AbortController + setTimeout: AbortSignal.timeout no existe en RN (P4).
+import { READ_REQUEST_TIMEOUT_MS, READS_TIMEOUT_MS } from &quot;./constants&quot;;
+import { type ReadsSession, signedHeaders } from &quot;./session&quot;;
+import { type Agent, parseAgentsList, parseRead, parseReadResponse, parseReadsList, type Read } from &quot;./types&quot;;
+
+export type DoFetch = (url: string, init: RequestInit) =&gt; Promise&lt;Response&gt;;
+
+/** Error del servicio: `status` HTTP (0 si no hubo respuesta) y `code` = `{ error }` del servidor o `timeout` | `network` | `bad_response`. */
+export class ReadsError extends Error {
+  constructor(public readonly status: number, public readonly code: string) {
+    super(`reads ${status} ${code}`);
+    this.name = &quot;ReadsError&quot;;
+  }
+}
+
+const COPY: Record&lt;string, string&gt; = {
+  no_credits: &quot;No credits left. Credits are simulated for the testnet.&quot;,
+  market_closed: &quot;This market is closed on Perpl right now.&quot;,
+  rate_limited: &quot;Too many reads in a row — wait a few minutes.&quot;,
+  busy: &quot;The agents are busy. Try again in a minute.&quot;,
+  perpl_unavailable: &quot;Perpl didn&#39;t answer. Try again in a moment.&quot;,
+  unknown_agent: &quot;That agent is no longer available.&quot;,
+  bad_body: &quot;That cell isn&#39;t on the matrix.&quot;,
+  missing_signature: &quot;Your Ask session expired. Unlock again.&quot;,
+  signature_expired: &quot;Your Ask session expired. Unlock again.&quot;,
+  bad_signature: &quot;Your Ask session expired. Unlock again.&quot;,
+  timeout: &quot;The agent took too long. Check My reads — your credit comes back if it failed.&quot;,
+  network: &quot;Couldn&#39;t reach the reads service.&quot;,
+  bad_response: &quot;The reads service sent something unexpected.&quot;,
+};
+
+export function describeReadsError(e: unknown): string {
+  if (e instanceof ReadsError) return COPY[e.code] ?? `The reads service responded ${e.status}.`;
+  return e instanceof Error ? e.message : String(e);
+}
+
+export const isSessionError = (e: unknown): boolean =&gt; e instanceof ReadsError &amp;&amp; e.status === 401;
+
+async function call(url: string, init: RequestInit, timeoutMs: number, doFetch: DoFetch): Promise&lt;unknown&gt; {
+  const controller = new AbortController();
+  const timer = setTimeout(() =&gt; controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await doFetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    throw new ReadsError(0, controller.signal.aborted || (e instanceof Error &amp;&amp; e.name === &quot;AbortError&quot;) ? &quot;timeout&quot; : &quot;network&quot;);
+  } finally {
+    clearTimeout(timer);
+  }
+  const body: unknown = await res.json().catch(() =&gt; undefined);
+  if (!res.ok) {
+    const code = body !== null &amp;&amp; typeof body === &quot;object&quot; &amp;&amp; typeof (body as { error?: unknown }).error === &quot;string&quot; ? (body as { error: string }).error : &quot;bad_response&quot;;
+    throw new ReadsError(res.status, code);
+  }
+  return body;
+}
+
+export function fetchAgents(base: string, doFetch: DoFetch = fetch): Promise&lt;Agent[]&gt; {
+  return call(`${base}/agents-list`, { method: &quot;GET&quot; }, READS_TIMEOUT_MS, doFetch).then(parseAgentsList);
+}
+
+export function fetchReads(base: string, session: ReadsSession, marketId?: number, doFetch: DoFetch = fetch): Promise&lt;{ reads: Read[]; credits: number }&gt; {
+  const q = marketId === undefined ? &quot;&quot; : `?marketId=${marketId}`;
+  return call(`${base}/reads-list${q}`, { method: &quot;GET&quot;, headers: signedHeaders(session) }, READS_TIMEOUT_MS, doFetch).then(parseReadsList);
+}
+
+export function fetchRead(base: string, session: ReadsSession, id: string, doFetch: DoFetch = fetch): Promise&lt;Read&gt; {
+  return call(`${base}/read-get?id=${encodeURIComponent(id)}`, { method: &quot;GET&quot;, headers: signedHeaders(session) }, READS_TIMEOUT_MS, doFetch)
+    .then((b) =&gt; parseRead((b as { read?: unknown } | null)?.read));
+}
+
+export type ReadRequest = { marketId: number; levelBps: number; horizonMin: number; agentId: string; pushToken?: string; pushEnv?: &quot;sandbox&quot; | &quot;production&quot; };
+
+export function requestRead(base: string, session: ReadsSession, body: ReadRequest, doFetch: DoFetch = fetch): Promise&lt;{ read: Read; credits: number }&gt; {
+  return call(`${base}/read-request`, {
+    method: &quot;POST&quot;, headers: { ...signedHeaders(session), &quot;content-type&quot;: &quot;application/json&quot; }, body: JSON.stringify(body),
+  }, READ_REQUEST_TIMEOUT_MS, doFetch).then(parseReadResponse);
+}</code></pre>
+<p>Run: <code>npx jest __tests__/reads-api.test.ts</code> Expected: PASS (8 tests). Si el test de timeouts se queda colgado, revisar que <code>jest.useFakeTimers()</code> va antes de crear las promesas y que el <code>finally</code> limpia el timer.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/reads/api.ts __tests__/reads-api.test.ts
+git commit -m &quot;feat(mobile): cliente HTTP del servicio de reads con timeouts y errores tipados&quot;</code></pre>
+<hr>
+<h3 id="task-5-store-askview-askcell-askagentid-askfocusreadid-tradelevel-headerfor-por-pill-d13">Task 5: Store — <code>askView</code>, <code>askCell</code>, <code>askAgentId</code>, <code>askFocusReadId</code>, <code>tradeLevel</code>, <code>headerFor</code> por pill (D13)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/store.ts</code>, <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>AskView = &quot;new&quot; | &quot;mine&quot;</code>, <code>AskCell = { levelBps: number; horizonMin: number }</code>, <code>TradeLevel = { marketId; levelBps; horizonMin; target; expiresAt: string; readId?: string }</code>; <code>StoreState</code> gana <code>askView: AskView</code> (default <code>&quot;new&quot;</code>), <code>askCell?</code>, <code>askAgentId?</code>, <code>askFocusReadId?</code>, <code>tradeLevel?</code>; <code>headerFor(screen, perpsSymbol?, marketTab?)</code>. Los usan Tasks 6–9.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests (RED)</strong> — añadir al final de <code>apps/mobile/__tests__/store.test.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;Ask state: New read by default, a cell, an agent and a focused read travel in the patch (D13)&quot;, () =&gt; {
+  expect(INITIAL.askView).toBe(&quot;new&quot;);
+  expect(INITIAL.askCell).toBeUndefined();
+  const s = navState(INITIAL, &quot;market&quot;, { perpsMarketId: 16, marketTab: &quot;ask&quot;, askView: &quot;mine&quot;, askFocusReadId: &quot;r1&quot;, askAgentId: &quot;drift&quot;, askCell: { levelBps: 100, horizonMin: 240 } });
+  expect(s).toMatchObject({ marketTab: &quot;ask&quot;, askView: &quot;mine&quot;, askFocusReadId: &quot;r1&quot;, askAgentId: &quot;drift&quot;, askCell: { levelBps: 100, horizonMin: 240 } });
+  expect(navState(INITIAL, &quot;market&quot;, { tradeLevel: { marketId: 16, levelBps: 100, horizonMin: 240, target: 770181, expiresAt: &quot;2026-09-20T07:35:06.712Z&quot; } }).tradeLevel?.target).toBe(770181);
+});
+
+test(&quot;the Market header subtitle follows the pill (D13)&quot;, () =&gt; {
+  expect(headerFor(&quot;market&quot;, &quot;BTC&quot;, &quot;trade&quot;)).toEqual([&quot;BTC Perp&quot;, &quot;Perpl · isolated margin · market order&quot;]);
+  expect(headerFor(&quot;market&quot;, &quot;BTC&quot;, &quot;ask&quot;)).toEqual([&quot;BTC Perp&quot;, &quot;Ask an agent · simulated credits&quot;]);
+  expect(headerFor(&quot;market&quot;, &quot;BTC&quot;, &quot;agents&quot;)).toEqual([&quot;BTC Perp&quot;, &quot;Who reads this market&quot;]);
+  expect(headerFor(&quot;market&quot;, undefined)).toEqual([&quot;Perp&quot;, &quot;Perpl · isolated margin · market order&quot;]);
+});
+
+test(&quot;sign out keeps the store reset contract and lands on Sign in (unchanged by Ask)&quot;, () =&gt; {
+  const s = signedOutState(navState(INITIAL, &quot;market&quot;, { askView: &quot;mine&quot;, askFocusReadId: &quot;r1&quot; }));
+  expect(s.screen).toBe(&quot;signin&quot;);
+  expect(s.stack).toEqual([]);
+  expect(s.next).toBe(&quot;wallet&quot;);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/store.test.ts</code> Expected: FAIL — <code>askView</code> no existe en <code>INITIAL</code> (TypeScript/<code>toBe(&quot;new&quot;)</code> recibe <code>undefined</code>) y <code>headerFor</code> ignora el tercer argumento.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementación (GREEN)</strong> — en <code>apps/mobile/src/store.ts</code>:</label></li>
+</ul>
+<p>Tras <code>export type MarketTab = …</code>:</p>
+<pre><code class="language-ts">export type AskView = &quot;new&quot; | &quot;mine&quot;;
+export type AskCell = { levelBps: number; horizonMin: number };
+/** Nivel elegido para «Trade this level» (D12; lo usa F3). */
+export type TradeLevel = { marketId: number; levelBps: number; horizonMin: number; target: number; expiresAt: string; readId?: string };</code></pre>
+<p>En <code>StoreState</code>, después de <code>fundsMode?: &quot;add&quot; | &quot;withdraw&quot;;</code>:</p>
+<pre><code class="language-ts">  /** Ask (D13): segmentado New read | My reads, celda armada, agente elegido, read abierta desde la lista o desde un push. */
+  askView: AskView;
+  askCell?: AskCell;
+  askAgentId?: string;
+  askFocusReadId?: string;
+  tradeLevel?: TradeLevel;</code></pre>
+<p><code>INITIAL</code>:</p>
+<pre><code class="language-ts">export const INITIAL: StoreState = { screen: &quot;wallet&quot;, stack: [], marketTab: &quot;trade&quot;, askView: &quot;new&quot; };</code></pre>
+<p><code>headerFor</code>:</p>
+<pre><code class="language-ts">const MARKET_SUBTITLES: Record&lt;MarketTab, string&gt; = {
+  trade: &quot;Perpl · isolated margin · market order&quot;,
+  ask: &quot;Ask an agent · simulated credits&quot;,
+  agents: &quot;Who reads this market&quot;,
+};
+
+export function headerFor(screen: Screen, perpsSymbol?: string, marketTab: MarketTab = &quot;trade&quot;): [string, string] {
+  switch (screen) {
+    case &quot;markets&quot;: return [&quot;Markets&quot;, &quot;Perps on Perpl · Monad&quot;];
+    case &quot;market&quot;: return [perpsSymbol ? `${perpsSymbol} Perp` : &quot;Perp&quot;, MARKET_SUBTITLES[marketTab]];
+    …(resto sin cambio)</code></pre>
+<p>En <code>useAppStore</code>: <code>const [headerTitle, headerSub] = headerFor(S.screen, perpsSymbol, S.marketTab);</code></p>
+<p>Run: <code>npx jest __tests__/store.test.ts</code> Expected: PASS (todos, incluidos los tres nuevos). <code>npx tsc --noEmit</code> limpio: <code>INITIAL</code> es el único literal de <code>StoreState</code>; si <code>tsc</code> señala otro (p. ej. en tests), añadir <code>askView: &quot;new&quot;</code> ahí.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/store.ts __tests__/store.test.ts
+git commit -m &quot;feat(mobile): estado de Ask en el store y subtítulo de Market por pill&quot;</code></pre>
+<hr>
+<h3 id="task-6-srcreadspushts-srchooksusenotificationsts-permiso-token-tap-y-fallback-local-d10">Task 6: <code>src/reads/push.ts</code> + <code>src/hooks/useNotifications.ts</code> — permiso, token, tap y fallback local (D10)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/push.ts</code>, <code>apps/mobile/src/hooks/useNotifications.ts</code>, <code>apps/mobile/__tests__/reads-push.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Patch</code> (store), <code>Read</code> (Task 2), <code>cellLabel</code> (Task 1), <code>PUSH_MODE</code> (Task 0).</li>
+<li>Produces: <code>PushTarget</code>, <code>pushTargetOf(...sources: unknown[]): PushTarget | null</code>, <code>patchForPush(t): Patch</code>, <code>pushEnvFor(dev: boolean)</code>, <code>localResolutionContent(read)</code>; <code>PushDevice = { token: string; env: &quot;sandbox&quot; | &quot;production&quot; }</code>, <code>PushPermission = &quot;unknown&quot; | &quot;granted&quot; | &quot;denied&quot; | &quot;unavailable&quot;</code>, <code>Notifications = { device; permission; ensurePermission(): Promise&lt;PushDevice | null&gt;; scheduleLocal(read: Read): Promise&lt;void&gt; }</code>, <code>useNotifications(onTarget: (t: PushTarget) =&gt; void): Notifications</code>. Los usan Tasks 7, 8, 9.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test (RED)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-push.test.ts</code>:</p>
+<pre><code class="language-ts">import readJson from &quot;./fixtures/reads/read.json&quot;;
+import { localResolutionContent, patchForPush, pushEnvFor, pushTargetOf } from &quot;../src/reads/push&quot;;
+import { parseRead } from &quot;../src/reads/types&quot;;
+
+const READ = { kind: &quot;read&quot;, readId: &quot;1fde46c6-97da-4435-8184-59b5218a771d&quot;, marketId: 16 };
+
+test(&quot;the target comes from data.pickler, from data itself, or from the raw iOS payload (P7)&quot;, () =&gt; {
+  expect(pushTargetOf({ pickler: READ })).toEqual(READ);
+  expect(pushTargetOf(READ)).toEqual(READ);
+  expect(pushTargetOf({}, { aps: { alert: {} }, pickler: READ })).toEqual(READ);
+  expect(pushTargetOf(undefined, null, { aps: {} })).toBeNull();
+  expect(pushTargetOf({ pickler: { kind: &quot;read&quot;, readId: 5, marketId: 16 } })).toBeNull();
+  expect(pushTargetOf({ pickler: { kind: &quot;reminder&quot;, reminderId: &quot;m1&quot;, marketId: 16, readId: null } })).toEqual({ kind: &quot;reminder&quot;, reminderId: &quot;m1&quot;, marketId: 16, readId: null });
+});
+
+test(&quot;a read push opens My reads on that read; a reminder opens Trade (P7)&quot;, () =&gt; {
+  expect(patchForPush({ kind: &quot;read&quot;, readId: &quot;r1&quot;, marketId: 16 })).toEqual({ perpsMarketId: 16, marketTab: &quot;ask&quot;, askView: &quot;mine&quot;, askFocusReadId: &quot;r1&quot; });
+  expect(patchForPush({ kind: &quot;reminder&quot;, reminderId: &quot;m1&quot;, marketId: 64, readId: null })).toEqual({ perpsMarketId: 64, marketTab: &quot;trade&quot; });
+});
+
+test(&quot;sandbox in __DEV__, production otherwise (D10)&quot;, () =&gt; {
+  expect(pushEnvFor(true)).toBe(&quot;sandbox&quot;);
+  expect(pushEnvFor(false)).toBe(&quot;production&quot;);
+});
+
+test(&quot;the local fallback names the cell and carries the same data as the server push (P5)&quot;, () =&gt; {
+  const c = localResolutionContent(parseRead(readJson));
+  expect(c.title).toBe(&quot;BTC +1.0% · 1H&quot;);
+  expect(c.body).toBe(&quot;Your read has resolved — open Pickler to see if the agent was right.&quot;);
+  expect(c.data).toEqual({ pickler: READ });
+});</code></pre>
+<p>Run: <code>npx jest __tests__/reads-push.test.ts</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/push&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>src/reads/push.ts</code> (GREEN)</strong></label></li>
+</ul>
+<pre><code class="language-ts">// Payload de los pushes de resolve-reads (F1 copy.ts: `pickler: { kind, readId, marketId }`) → navegación (D10, P7). Puro.
+import type { Patch } from &quot;../store&quot;;
+import { cellLabel } from &quot;./matrix&quot;;
+import type { Read } from &quot;./types&quot;;
+
+export type PushTarget =
+  | { kind: &quot;read&quot;; readId: string; marketId: number }
+  | { kind: &quot;reminder&quot;; reminderId: string; marketId: number; readId: string | null };
+
+function targetOf(v: unknown): PushTarget | null {
+  if (v === null || typeof v !== &quot;object&quot;) return null;
+  const r = v as Record&lt;string, unknown&gt;;
+  if (typeof r.marketId !== &quot;number&quot;) return null;
+  if (r.kind === &quot;read&quot; &amp;&amp; typeof r.readId === &quot;string&quot;) return { kind: &quot;read&quot;, readId: r.readId, marketId: r.marketId };
+  if (r.kind === &quot;reminder&quot; &amp;&amp; typeof r.reminderId === &quot;string&quot;) {
+    return { kind: &quot;reminder&quot;, reminderId: r.reminderId, marketId: r.marketId, readId: typeof r.readId === &quot;string&quot; ? r.readId : null };
+  }
+  return null;
+}
+
+/** Busca `pickler` (o el objeto mismo) en cada fuente: content.data, trigger.payload (userInfo de iOS). */
+export function pushTargetOf(...sources: unknown[]): PushTarget | null {
+  for (const s of sources) {
+    if (s === null || typeof s !== &quot;object&quot;) continue;
+    const t = targetOf((s as Record&lt;string, unknown&gt;).pickler) ?? targetOf(s);
+    if (t) return t;
+  }
+  return null;
+}
+
+export function patchForPush(t: PushTarget): Patch {
+  return t.kind === &quot;read&quot;
+    ? { perpsMarketId: t.marketId, marketTab: &quot;ask&quot;, askView: &quot;mine&quot;, askFocusReadId: t.readId }
+    : { perpsMarketId: t.marketId, marketTab: &quot;trade&quot; }; // F3 añadirá tradeLevel
+}
+
+export const pushEnvFor = (dev: boolean): &quot;sandbox&quot; | &quot;production&quot; =&gt; (dev ? &quot;sandbox&quot; : &quot;production&quot;);
+
+/** Fallback D10: notificación local al vencer la read, sin mark (la app no lo sabe). */
+export function localResolutionContent(read: Read): { title: string; body: string; data: Record&lt;string, unknown&gt; } {
+  return {
+    title: `${read.symbol} ${cellLabel(read)}`,
+    body: &quot;Your read has resolved — open Pickler to see if the agent was right.&quot;,
+    data: { pickler: { kind: &quot;read&quot;, readId: read.id, marketId: read.marketId } },
+  };
+}</code></pre>
+<p>Run: <code>npx jest __tests__/reads-push.test.ts</code> Expected: PASS (4 tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>src/hooks/useNotifications.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import * as Notif from &quot;expo-notifications&quot;;
+import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import { localResolutionContent, pushEnvFor, type PushTarget, pushTargetOf } from &quot;../reads/push&quot;;
+import type { Read } from &quot;../reads/types&quot;;
+
+export type PushDevice = { token: string; env: &quot;sandbox&quot; | &quot;production&quot; };
+export type PushPermission = &quot;unknown&quot; | &quot;granted&quot; | &quot;denied&quot; | &quot;unavailable&quot;;
+
+export type Notifications = {
+  /** Token APNs del dispositivo, si hay permiso y el registro funcionó. */
+  device: PushDevice | null;
+  permission: PushPermission;
+  /** Pide permiso (la primera vez que se confirma una lectura, D10/P6) y registra el token. */
+  ensurePermission: () =&gt; Promise&lt;PushDevice | null&gt;;
+  /** Fallback D10 (PUSH_MODE === &quot;local&quot;): notificación local al vencer la read. */
+  scheduleLocal: (read: Read) =&gt; Promise&lt;void&gt;;
+};
+
+// Con la app en primer plano el push se muestra igual (banner + lista): así se ve llegar en el simulador.
+Notif.setNotificationHandler({
+  handleNotification: async () =&gt; ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+});
+
+const targetOfResponse = (r: Notif.NotificationResponse): PushTarget | null =&gt;
+  pushTargetOf(r.notification.request.content.data, (r.notification.request.trigger as { payload?: unknown } | null)?.payload);
+
+export function useNotifications(onTarget: (t: PushTarget) =&gt; void): Notifications {
+  const [device, setDevice] = useState&lt;PushDevice | null&gt;(null);
+  const [permission, setPermission] = useState&lt;PushPermission&gt;(&quot;unknown&quot;);
+  const onTargetRef = useRef(onTarget);
+  onTargetRef.current = onTarget;
+  const handled = useRef&lt;string | null&gt;(null); // identifier de la última respuesta ya navegada
+
+  const register = useCallback(async (): Promise&lt;PushDevice | null&gt; =&gt; {
+    try {
+      const t = await Notif.getDevicePushTokenAsync();
+      if (t.type !== &quot;ios&quot; || typeof t.data !== &quot;string&quot;) { setPermission(&quot;unavailable&quot;); return null; }
+      const d = { token: t.data, env: pushEnvFor(__DEV__) };
+      setDevice(d);
+      return d;
+    } catch (e) {
+      console.warn(`push token: ${e instanceof Error ? e.message : e}`); // simulador sin soporte, sin entitlement…
+      setPermission(&quot;unavailable&quot;);
+      return null;
+    }
+  }, []);
+
+  // Arranque: si ya hay permiso, registra el token sin preguntar nada.
+  useEffect(() =&gt; {
+    let stale = false;
+    Notif.getPermissionsAsync()
+      .then((p) =&gt; { if (stale) return; if (p.granted) { setPermission(&quot;granted&quot;); void register(); } else if (p.status === &quot;denied&quot;) setPermission(&quot;denied&quot;); })
+      .catch(() =&gt; { if (!stale) setPermission(&quot;unavailable&quot;); });
+    return () =&gt; { stale = true; };
+  }, [register]);
+
+  // Tap en un push: en caliente (listener) y en frío (última respuesta), una sola vez por respuesta.
+  useEffect(() =&gt; {
+    const handle = (r: Notif.NotificationResponse | null) =&gt; {
+      if (!r || handled.current === r.notification.request.identifier) return;
+      handled.current = r.notification.request.identifier;
+      const t = targetOfResponse(r);
+      if (t) onTargetRef.current(t);
+    };
+    const sub = Notif.addNotificationResponseReceivedListener(handle);
+    Notif.getLastNotificationResponseAsync().then(handle).catch(() =&gt; {});
+    return () =&gt; sub.remove();
+  }, []);
+
+  const ensurePermission = useCallback(async (): Promise&lt;PushDevice | null&gt; =&gt; {
+    if (device) return device;
+    if (permission === &quot;denied&quot; || permission === &quot;unavailable&quot;) return null;
+    try {
+      const p = await Notif.requestPermissionsAsync();
+      if (!p.granted) { setPermission(&quot;denied&quot;); return null; }
+      setPermission(&quot;granted&quot;);
+      return await register();
+    } catch {
+      setPermission(&quot;unavailable&quot;);
+      return null;
+    }
+  }, [device, permission, register]);
+
+  const scheduleLocal = useCallback(async (read: Read) =&gt; {
+    const date = new Date(read.expiresAt);
+    if (date.getTime() &lt;= Date.now()) return;
+    await Notif.scheduleNotificationAsync({ identifier: `read-${read.id}`, content: localResolutionContent(read), trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date } });
+  }, []);
+
+  return { device, permission, ensurePermission, scheduleLocal };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/reads/push.ts src/hooks/useNotifications.ts __tests__/reads-push.test.ts
+git commit -m &quot;feat(mobile): useNotifications — permiso, token APNs, tap del push y fallback local&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code> (si <code>SchedulableTriggerInputTypes</code> o <code>shouldShowBanner</code> no existen en la versión instalada, consultar <code>node_modules/expo-notifications/build/Notifications.types.d.ts</code> y usar el nombre real; anotar la diferencia en el audit) y tests en verde.</p>
+<hr>
+<h3 id="task-7-srchooksusereadsts-sesion-creditos-lista-agentes-ask-polling">Task 7: <code>src/hooks/useReads.ts</code> — sesión, créditos, lista, agentes, <code>ask()</code>, polling</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hooks/useReads.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>useUnlock</code> (<code>src/hooks/useUnlock.ts</code>), <code>accountAddress</code>, <code>AccountState</code>; Tasks 0–6.</li>
+<li>Produces:</li>
+</ul>
+<pre><code class="language-ts">export type ReadsSessionStatus = &quot;none&quot; | &quot;signing&quot; | &quot;ready&quot;;
+export type RequestState = { step: &quot;idle&quot; } | { step: &quot;pending&quot;; cell: AskCell; agentId: string } | { step: &quot;done&quot;; read: Read } | { step: &quot;failed&quot;; text: string };
+export type Reads = {
+  session: ReadsSessionStatus; sessionError: string;
+  credits: number | null; reads: Read[]; listError: string;
+  agents: Agent[] | null; agentsError: string;
+  request: RequestState;
+  ensureSession: () =&gt; Promise&lt;boolean&gt;;
+  refresh: () =&gt; Promise&lt;void&gt;;
+  ask: (cell: AskCell, agentId: string) =&gt; Promise&lt;void&gt;;
+  resetRequest: () =&gt; void;
+  setActive: (active: boolean) =&gt; void;
+};
+export function useReads(account: AccountState, onUnlock: (w: Wallet) =&gt; void, notifications: Notifications, marketId: number | undefined): Reads</code></pre>
+<p>Los usan Tasks 8 y 9.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Implementación</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/hooks/useReads.ts</code>:</p>
+<pre><code class="language-ts">import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import { AppState } from &quot;react-native&quot;;
+import { accountAddress, type AccountState } from &quot;../account&quot;;
+import { PUSH_MODE, READS_URL } from &quot;../config/reads&quot;;
+import { describeReadsError, fetchAgents, fetchReads, isSessionError, requestRead } from &quot;../reads/api&quot;;
+import { READS_POLL_MS } from &quot;../reads/constants&quot;;
+import { createSession, type ReadsSession, sessionFor } from &quot;../reads/session&quot;;
+import type { Agent, Read } from &quot;../reads/types&quot;;
+import { clearReadsSession, loadReadsSession, saveReadsSession } from &quot;../storage/reads&quot;;
+import type { AskCell } from &quot;../store&quot;;
+import { describeError, type Wallet } from &quot;../wallet/wallet&quot;;
+import type { Notifications } from &quot;./useNotifications&quot;;
+import { useUnlock } from &quot;./useUnlock&quot;;
+
+export type ReadsSessionStatus = &quot;none&quot; | &quot;signing&quot; | &quot;ready&quot;;
+export type RequestState =
+  | { step: &quot;idle&quot; }
+  | { step: &quot;pending&quot;; cell: AskCell; agentId: string }
+  | { step: &quot;done&quot;; read: Read }
+  | { step: &quot;failed&quot;; text: string };
+
+export type Reads = {
+  session: ReadsSessionStatus;
+  sessionError: string;
+  credits: number | null;
+  /** Reads del mercado activo, más recientes primero (máx. 50, D16). */
+  reads: Read[];
+  listError: string;
+  agents: Agent[] | null;
+  agentsError: string;
+  request: RequestState;
+  /** Firma la sesión si hace falta (Face ID si la wallet está bloqueada). true si quedó lista. */
+  ensureSession: () =&gt; Promise&lt;boolean&gt;;
+  /** agents-list + reads-list del mercado activo (pull-to-refresh). */
+  refresh: () =&gt; Promise&lt;void&gt;;
+  ask: (cell: AskCell, agentId: string) =&gt; Promise&lt;void&gt;;
+  resetRequest: () =&gt; void;
+  setActive: (active: boolean) =&gt; void;
+};
+
+const upsert = (list: Read[], read: Read): Read[] =&gt; [read, ...list.filter((r) =&gt; r.id !== read.id)];
+
+export function useReads(account: AccountState, onUnlock: (w: Wallet) =&gt; void, notifications: Notifications, marketId: number | undefined): Reads {
+  const address = accountAddress(account);
+  const openWallet = useUnlock(account, onUnlock);
+  const [status, setStatus] = useState&lt;ReadsSessionStatus&gt;(&quot;none&quot;);
+  const [sessionError, setSessionError] = useState(&quot;&quot;);
+  const [credits, setCredits] = useState&lt;number | null&gt;(null);
+  const [reads, setReads] = useState&lt;Read[]&gt;([]);
+  const [listError, setListError] = useState(&quot;&quot;);
+  const [agents, setAgents] = useState&lt;Agent[] | null&gt;(null);
+  const [agentsError, setAgentsError] = useState(&quot;&quot;);
+  const [request, setRequest] = useState&lt;RequestState&gt;({ step: &quot;idle&quot; });
+  const [active, setActive] = useState(false);
+  const sessionRef = useRef&lt;ReadsSession | null&gt;(null);
+  const { ensurePermission, scheduleLocal } = notifications; // el objeto cambia por render; las funciones son estables
+
+  const dropSession = useCallback(async () =&gt; {
+    sessionRef.current = null;
+    setStatus(&quot;none&quot;);
+    setCredits(null);
+    setReads([]);
+    await clearReadsSession().catch(() =&gt; {});
+  }, []);
+
+  // Arranque y cambio de cuenta: la sesión guardada vale sólo para su dirección y mientras sea usable (P2).
+  useEffect(() =&gt; {
+    let stale = false;
+    sessionRef.current = null;
+    setStatus(&quot;none&quot;);
+    setCredits(null);
+    setReads([]);
+    setRequest({ step: &quot;idle&quot; });
+    if (!address) return;
+    loadReadsSession()
+      .then((s) =&gt; {
+        if (stale) return;
+        const usable = sessionFor(s, address);
+        if (usable) { sessionRef.current = usable; setStatus(&quot;ready&quot;); }
+      })
+      .catch(() =&gt; {});
+    return () =&gt; { stale = true; };
+  }, [address]);
+
+  const ensureSession = useCallback(async (): Promise&lt;boolean&gt; =&gt; {
+    if (!address) return false;
+    if (sessionRef.current &amp;&amp; sessionFor(sessionRef.current, address)) return true;
+    setStatus(&quot;signing&quot;);
+    setSessionError(&quot;&quot;);
+    try {
+      const wallet = await openWallet();
+      const s = await createSession((m) =&gt; wallet.account.signMessage({ message: m }), wallet.address);
+      await saveReadsSession(s);
+      sessionRef.current = s;
+      setStatus(&quot;ready&quot;);
+      return true;
+    } catch (e) {
+      setStatus(&quot;none&quot;);
+      setSessionError(describeError(e)); // &quot;&quot; si canceló Face ID
+      return false;
+    }
+  }, [address, openWallet]);
+
+  // Con la wallet ya abierta no hay prompt: se firma sola al activar Ask (P3).
+  useEffect(() =&gt; {
+    if (active &amp;&amp; status === &quot;none&quot; &amp;&amp; account.status === &quot;unlocked&quot;) void ensureSession();
+  }, [active, status, account.status, ensureSession]);
+
+  const loadAgents = useCallback(async () =&gt; {
+    try { setAgents(await fetchAgents(READS_URL)); setAgentsError(&quot;&quot;); }
+    catch (e) { setAgentsError(describeReadsError(e)); }
+  }, []);
+
+  const loadReads = useCallback(async () =&gt; {
+    const s = sessionRef.current;
+    if (!s) return;
+    try {
+      const r = await fetchReads(READS_URL, s, marketId);
+      setReads(r.reads);
+      setCredits(r.credits);
+      setListError(&quot;&quot;);
+    } catch (e) {
+      if (isSessionError(e)) { await dropSession(); return; }
+      setListError(describeReadsError(e));
+    }
+  }, [marketId, dropSession]);
+
+  const refresh = useCallback(async () =&gt; { await Promise.allSettled([loadAgents(), loadReads()]); }, [loadAgents, loadReads]);
+
+  // Polling de 15 s mientras Ask/Agents está visible, y refetch al volver al foreground (D16, P11).
+  useEffect(() =&gt; {
+    if (!active) return;
+    void loadAgents();
+    if (status !== &quot;ready&quot;) return;
+    void loadReads();
+    const timer = setInterval(() =&gt; { void loadReads(); }, READS_POLL_MS);
+    const sub = AppState.addEventListener(&quot;change&quot;, (st) =&gt; { if (st === &quot;active&quot;) void loadReads(); });
+    return () =&gt; { clearInterval(timer); sub.remove(); };
+  }, [active, status, loadAgents, loadReads]);
+
+  const ask = useCallback(async (cell: AskCell, agentId: string) =&gt; {
+    if (marketId === undefined) return;
+    if (!(await ensureSession())) return;
+    const s = sessionRef.current!;
+    const device = PUSH_MODE === &quot;apns&quot; ? await ensurePermission() : null; // primera confirmación → permiso (P6)
+    setRequest({ step: &quot;pending&quot;, cell, agentId });
+    try {
+      const { read, credits: left } = await requestRead(READS_URL, s, {
+        marketId, levelBps: cell.levelBps, horizonMin: cell.horizonMin, agentId,
+        ...(device ? { pushToken: device.token, pushEnv: device.env } : {}),
+      });
+      setCredits(left);
+      setReads((list) =&gt; upsert(list, read));
+      if (read.status === &quot;failed&quot;) { setRequest({ step: &quot;failed&quot;, text: &quot;The agent couldn&#39;t answer. Refunded 1 credit.&quot; }); return; }
+      setRequest({ step: &quot;done&quot;, read });
+      if (PUSH_MODE === &quot;local&quot;) void scheduleLocal(read);
+    } catch (e) {
+      if (isSessionError(e)) await dropSession();
+      setRequest({ step: &quot;failed&quot;, text: describeReadsError(e) });
+      void loadReads(); // la read puede haber quedado open o failed aunque el POST no volviera (P4)
+    }
+  }, [marketId, ensureSession, ensurePermission, scheduleLocal, dropSession, loadReads]);
+
+  const resetRequest = useCallback(() =&gt; setRequest({ step: &quot;idle&quot; }), []);
+
+  return { session: status, sessionError, credits, reads, listError, agents, agentsError, request, ensureSession, refresh, ask, resetRequest, setActive };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/hooks/useReads.ts
+git commit -m &quot;feat(mobile): useReads — sesión firmada, créditos, lista por mercado, agentes y ask()&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>; tests sin cambio.</p>
+<hr>
+<h3 id="task-8-srcscreensasktsx-asktab-sessiongate-matrixgrid-asksheet-readcard-readrow-d14">Task 8: <code>src/screens/ask.tsx</code> — <code>AskTab</code>, <code>SessionGate</code>, <code>MatrixGrid</code>, <code>AskSheet</code>, <code>ReadCard</code>, <code>ReadRow</code> (D14)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/ask.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code> con <code>reads: Reads</code>, <code>notifications: Notifications</code> (los añade Task 9 a <code>ctx.ts</code>; para que <code>tsc</code> pase en esta task, <code>ask.tsx</code> tipa sus props como <code>AppCtx &amp; { reads: Reads; notifications: Notifications }</code>), <code>perpl.context.markets</code>, <code>S.perpsMarketId</code>, <code>S.askView</code>, <code>S.askCell</code>, <code>S.askAgentId</code>, <code>S.askFocusReadId</code>, <code>set</code>; <code>matrix.ts</code>, <code>types.ts</code>.</li>
+<li>Produces: <code>AskTab(ctx)</code>, <code>ReadCard({ read, agentName, now, footer })</code> (exportada para F3). Las usa Task 9.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Implementación</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/screens/ask.tsx</code>:</p>
+<pre><code class="language-tsx">import { type ReactNode, useEffect, useMemo, useState } from &quot;react&quot;;
+import { ActivityIndicator, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import type { Notifications } from &quot;../hooks/useNotifications&quot;;
+import type { Reads } from &quot;../hooks/useReads&quot;;
+import type { Market } from &quot;../perpl/context&quot;;
+import { formatPrice } from &quot;../perpl/orders&quot;;
+import {
+  callOf, type Cell, cellLabel, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS, levelLabel, questionFor, targetFor,
+} from &quot;../reads/matrix&quot;;
+import type { Agent, Read, ReadStatus } from &quot;../reads/types&quot;;
+import type { AskCell } from &quot;../store&quot;;
+import { Btn, Card, Chip, Segmented, StatusCard, T, Tag, type Tone, Touch, TouchCard, Warn } from &quot;../ui/primitives&quot;;
+import { C, pill } from &quot;../ui/theme&quot;;
+
+type Ctx = AppCtx &amp; { reads: Reads; notifications: Notifications };
+
+/** Tick de 30 s para las cuentas regresivas de toda la pantalla (P14). */
+function useNow(everyMs: number): number {
+  const [now, setNow] = useState(() =&gt; Date.now());
+  useEffect(() =&gt; { const t = setInterval(() =&gt; setNow(Date.now()), everyMs); return () =&gt; clearInterval(t); }, [everyMs]);
+  return now;
+}
+
+/** Tonos de D14: OPEN warn · RIGHT up · WRONG down · VOID/FAILED/PENDING faint. */
+const STATUS: Record&lt;ReadStatus, { label: string; fg: string; bd: string }&gt; = {
+  pending: { label: &quot;READING&quot;, fg: C.faint, bd: C.hair18 },
+  open: { label: &quot;OPEN&quot;, fg: C.warn, bd: C.warnBd },
+  right: { label: &quot;RIGHT&quot;, fg: C.up, bd: C.limeBd },
+  wrong: { label: &quot;WRONG&quot;, fg: C.down, bd: C.downBd },
+  void: { label: &quot;VOID&quot;, fg: C.faint, bd: C.hair18 },
+  failed: { label: &quot;FAILED&quot;, fg: C.faint, bd: C.hair18 },
+};
+const READING: Tone = { bd: C.warnBd, bg: C.warnBg, fg: C.warn };
+const FAILED: Tone = { bd: C.downBd, bg: C.downBg, fg: C.down };
+const ASK: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+
+const agentName = (agents: Agent[] | null, id: string): string =&gt; agents?.find((a) =&gt; a.id === id)?.name ?? id;
+
+/** Línea de estado bajo la card: cuenta regresiva o resultado. */
+function resolutionLine(read: Read, now: number): { text: string; fg: string } {
+  const pd = read.priceDecimals;
+  switch (read.status) {
+    case &quot;open&quot;: return { text: `Resolves in ${formatRemaining(Date.parse(read.expiresAt) - now)}`, fg: C.dim };
+    case &quot;right&quot;: return { text: `Right · resolved at ${formatPrice(read.markAtResolution ?? 0, pd)}`, fg: C.up };
+    case &quot;wrong&quot;: return { text: `Wrong · resolved at ${formatPrice(read.markAtResolution ?? 0, pd)}`, fg: C.down };
+    case &quot;void&quot;: return { text: &quot;Voided — Perpl was unavailable at expiry. Credit refunded.&quot;, fg: C.faint };
+    case &quot;failed&quot;: return { text: &quot;Failed — credit refunded.&quot;, fg: C.faint };
+    case &quot;pending&quot;: return { text: &quot;Still reading…&quot;, fg: C.faint };
+  }
+}
+
+export function ReadCard({ read, agentName: name, now, pushOff, footer }: { read: Read; agentName: string; now: number; pushOff?: boolean; footer?: ReactNode }) {
+  const p = read.probability;
+  const yes = p !== null &amp;&amp; callOf(p);
+  const line = resolutionLine(read, now);
+  return (
+    &lt;Card bd={C.hair2} bg={C.deep} gap={9}&gt;
+      &lt;Tag color={C.faint}&gt;{read.symbol} {cellLabel(read)} · {name.toUpperCase()}&lt;/Tag&gt;
+      &lt;T w={400} s={12} lh={1.4} color={C.dim}&gt;{read.question}&lt;/T&gt;
+      {p !== null ? (
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10 }}&gt;
+          &lt;T w={700} s={30} lh={1.1} ls={-0.02} display&gt;{formatProbability(p)}&lt;/T&gt;
+          &lt;Chip label={yes ? &quot;YES&quot; : &quot;NO&quot;} mono s={10} fg={yes ? C.lime : C.down} bd={yes ? C.limeBd : C.downBd} accessibilityLabel={`call-${yes ? &quot;yes&quot; : &quot;no&quot;}`} /&gt;
+          &lt;T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}&gt;probability of yes · mark {formatPrice(read.markAtRequest, read.priceDecimals)} at request&lt;/T&gt;
+        &lt;/View&gt;
+      ) : null}
+      {read.reasons ? (
+        &lt;View style={{ gap: 4 }}&gt;
+          &lt;Tag&gt;REASONS&lt;/Tag&gt;
+          {read.reasons.map((r, i) =&gt; &lt;T key={i} w={400} s={12} lh={1.45} color={C.ink}&gt;· {r}&lt;/T&gt;)}
+        &lt;/View&gt;
+      ) : null}
+      {read.limits ? (
+        &lt;View style={{ gap: 4 }}&gt;
+          &lt;Tag&gt;WHAT WOULD BREAK IT&lt;/Tag&gt;
+          &lt;T w={400} s={12} lh={1.45} color={C.dim}&gt;{read.limits}&lt;/T&gt;
+        &lt;/View&gt;
+      ) : null}
+      &lt;T w={500} s={11} lh={1.3} mono color={line.fg}&gt;{line.text}&lt;/T&gt;
+      {pushOff &amp;&amp; read.status === &quot;open&quot; ? &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;Push is off — check My reads to see the result.&lt;/T&gt; : null}
+      {footer}
+    &lt;/Card&gt;
+  );
+}
+
+function SessionGate({ reads }: { reads: Reads }) {
+  const signing = reads.session === &quot;signing&quot;;
+  return (
+    &lt;StatusCard tag=&quot;ASK&quot; title=&quot;Unlock to ask&quot; body=&quot;Your wallet signs once a day to use its simulated credits. No transaction, no gas.&quot; tone={ASK}&gt;
+      &lt;Btn label={signing ? &quot;Unlocking…&quot; : &quot;Unlock with Face ID&quot;} onPress={() =&gt; { void reads.ensureSession(); }} variant=&quot;lime&quot; busy={signing} accessibilityLabel=&quot;ask-unlock&quot; /&gt;
+      {reads.sessionError ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;{reads.sessionError}&lt;/T&gt; : null}
+    &lt;/StatusCard&gt;
+  );
+}
+
+function CreditsRow({ credits }: { credits: number | null }) {
+  return (
+    &lt;Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10 }}&gt;
+      &lt;Tag&gt;CREDITS&lt;/Tag&gt;
+      &lt;T w={700} s={16} lh={1} mono accessibilityLabel=&quot;credits&quot;&gt;{credits === null ? &quot;—&quot; : String(credits)}&lt;/T&gt;
+      &lt;T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}&gt;1 credit per read · simulated for the testnet&lt;/T&gt;
+    &lt;/Card&gt;
+  );
+}
+
+function MatrixGrid({ market, selected, onSelect }: { market: Market; selected?: AskCell; onSelect: (c: Cell) =&gt; void }) {
+  return (
+    &lt;Card bd={C.hair14} bg={C.card} pad={10} gap={5}&gt;
+      &lt;T w={400} s={11} lh={1.3} color={C.faint}&gt;Mark {formatPrice(market.mark, market.priceDecimals)} · updates every 5 s&lt;/T&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 4 }}&gt;
+        &lt;View style={{ width: 46 }} /&gt;
+        {HORIZONS_MIN.map((h) =&gt; &lt;Tag key={h} style={{ flex: 1, textAlign: &quot;center&quot; }}&gt;{horizonLabel(h)}&lt;/Tag&gt;)}
+      &lt;/View&gt;
+      {LEVELS_BPS.map((bps) =&gt; (
+        &lt;View key={bps} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 4 }}&gt;
+          &lt;T w={500} s={10} lh={1} mono color={bps &gt; 0 ? C.up : C.down} style={{ width: 46 }}&gt;{levelLabel(bps)}&lt;/T&gt;
+          {HORIZONS_MIN.map((h) =&gt; {
+            const on = selected?.levelBps === bps &amp;&amp; selected?.horizonMin === h;
+            const p = pill(on);
+            return (
+              &lt;Touch key={h} onPress={() =&gt; onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
+                style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg, alignItems: &quot;center&quot; }}&gt;
+                &lt;T w={500} s={9.5} lh={1} mono color={p.fg}&gt;{formatPrice(targetFor(market.mark, bps), market.priceDecimals)}&lt;/T&gt;
+              &lt;/Touch&gt;
+            );
+          })}
+        &lt;/View&gt;
+      ))}
+    &lt;/Card&gt;
+  );
+}
+
+function AskSheet({ market, cell, reads, agentId, onAgent, onAsk }: { market: Market; cell: AskCell; reads: Reads; agentId: string | undefined; onAgent: (id: string) =&gt; void; onAsk: () =&gt; void }) {
+  const target = targetFor(market.mark, cell.levelBps);
+  const question = questionFor(market.symbol, cell.levelBps, target, market.priceDecimals, expiresAtFor(new Date(), cell.horizonMin));
+  const agent = reads.agents?.find((a) =&gt; a.id === agentId) ?? reads.agents?.[0];
+  const noCredits = reads.credits !== null &amp;&amp; reads.credits &lt;= 0;
+  return (
+    &lt;Card bd={C.limeBd} bg={C.limeBg06} gap={9}&gt;
+      &lt;Tag color={C.lime}&gt;{market.symbol} {cellLabel(cell)} · TARGET {formatPrice(target, market.priceDecimals)}&lt;/Tag&gt;
+      &lt;T w={700} s={16} lh={1.25} ls={-0.01} display&gt;{question}&lt;/T&gt;
+      {reads.agents === null ? &lt;T w={400} s={11.5} color={C.faint}&gt;{reads.agentsError || &quot;Loading agents…&quot;}&lt;/T&gt; : (
+        &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 6 }}&gt;
+          {reads.agents.map((a) =&gt; {
+            const on = a.id === agent?.id;
+            const p = pill(on);
+            return &lt;Chip key={a.id} label={`${a.name} · by ${a.owner} · ${a.priceCredits} credit`} onPress={() =&gt; onAgent(a.id)} fg={p.fg} bd={p.bd} bg={p.bg} s={10.5} accessibilityLabel={`agent-${a.id}`} /&gt;;
+          })}
+        &lt;/View&gt;
+      )}
+      &lt;Btn label={noCredits ? &quot;No credits left&quot; : agent ? `Ask ${agent.name} · ${agent.priceCredits} credit` : &quot;Ask&quot;} onPress={onAsk} variant=&quot;lime&quot; py={14} disabled={noCredits || !agent} accessibilityLabel=&quot;ask&quot; /&gt;
+      {noCredits ? &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;Credits are simulated for the testnet.&lt;/T&gt; : null}
+    &lt;/Card&gt;
+  );
+}
+
+function ReadRow({ read, name, now, onPress }: { read: Read; name: string; now: number; onPress: () =&gt; void }) {
+  const st = STATUS[read.status];
+  const line = resolutionLine(read, now);
+  return (
+    &lt;TouchCard onPress={onPress} accessibilityLabel={`read-${read.id}`} style={{ gap: 6 }}&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+        &lt;T w={700} s={12.5} lh={1} mono style={{ flex: 1 }}&gt;{cellLabel(read)}&lt;/T&gt;
+        {read.probability !== null ? &lt;T w={500} s={12} lh={1} mono color={C.dim}&gt;{formatProbability(read.probability)}&lt;/T&gt; : null}
+        &lt;Chip label={st.label} mono s={9.5} py={5} px={8} fg={st.fg} bd={st.bd} /&gt;
+      &lt;/View&gt;
+      &lt;T w={400} s={11} lh={1.3} color={C.faint}&gt;{name} · {line.text}&lt;/T&gt;
+    &lt;/TouchCard&gt;
+  );
+}
+
+export function AskTab(ctx: Ctx) {
+  const { S, set, perpl, reads, notifications } = ctx;
+  const market = perpl.context?.markets.find((m) =&gt; m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
+  const now = useNow(30_000);
+  const pushOff = notifications.permission === &quot;denied&quot; || notifications.permission === &quot;unavailable&quot;;
+  const focused = useMemo(() =&gt; (S.askFocusReadId ? reads.reads.find((r) =&gt; r.id === S.askFocusReadId) : undefined), [S.askFocusReadId, reads.reads]);
+
+  const newRead = () =&gt; {
+    if (reads.session !== &quot;ready&quot;) return &lt;SessionGate reads={reads} /&gt;;
+    const { request } = reads;
+    if (request.step === &quot;pending&quot;) {
+      return &lt;StatusCard tag=&quot;READING&quot; title=&quot;Reading… up to 60 s&quot; body={`${agentName(reads.agents, request.agentId)} is looking at ${market.symbol} ${cellLabel(request.cell)}.`} tone={READING}&gt;&lt;ActivityIndicator color={C.warn} style={{ alignSelf: &quot;flex-start&quot; }} /&gt;&lt;/StatusCard&gt;;
+    }
+    if (request.step === &quot;failed&quot;) {
+      return (
+        &lt;View style={{ gap: 11 }}&gt;
+          &lt;StatusCard tag=&quot;FAILED&quot; title=&quot;No read this time&quot; body={request.text} tone={FAILED} /&gt;
+          &lt;Btn label=&quot;Try again&quot; onPress={reads.resetRequest} variant=&quot;ghost&quot; accessibilityLabel=&quot;ask-retry&quot; /&gt;
+        &lt;/View&gt;
+      );
+    }
+    if (request.step === &quot;done&quot;) {
+      return (
+        &lt;ReadCard read={request.read} agentName={agentName(reads.agents, request.read.agentId)} now={now} pushOff={pushOff}
+          footer={&lt;Btn label=&quot;Ask another&quot; onPress={() =&gt; { reads.resetRequest(); set({ askCell: undefined }); }} variant=&quot;ghost&quot; accessibilityLabel=&quot;ask-another&quot; /&gt;} /&gt;
+      );
+    }
+    return (
+      &lt;View style={{ gap: 11 }}&gt;
+        &lt;CreditsRow credits={reads.credits} /&gt;
+        &lt;MatrixGrid market={market} selected={S.askCell} onSelect={(c) =&gt; set({ askCell: c })} /&gt;
+        {S.askCell ? (
+          &lt;AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId} onAgent={(id) =&gt; set({ askAgentId: id })}
+            onAsk={() =&gt; { void reads.ask(S.askCell!, S.askAgentId ?? reads.agents?.[0]?.id ?? &quot;jesus&quot;); }} /&gt;
+        ) : &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;Tap a cell: level above or below the mark × horizon.&lt;/T&gt;}
+        {reads.listError ? &lt;Warn title=&quot;Couldn&#39;t load your reads&quot; body={reads.listError} /&gt; : null}
+      &lt;/View&gt;
+    );
+  };
+
+  const myReads = () =&gt; {
+    if (reads.session !== &quot;ready&quot;) return &lt;SessionGate reads={reads} /&gt;;
+    if (focused) {
+      return (
+        &lt;ReadCard read={focused} agentName={agentName(reads.agents, focused.agentId)} now={now} pushOff={pushOff}
+          footer={&lt;Btn label=&quot;Back to list&quot; onPress={() =&gt; set({ askFocusReadId: undefined })} variant=&quot;ghost&quot; accessibilityLabel=&quot;read-back&quot; /&gt;} /&gt;
+      );
+    }
+    return (
+      &lt;View style={{ gap: 7 }}&gt;
+        {reads.listError ? &lt;Warn title=&quot;Couldn&#39;t load your reads&quot; body={reads.listError} /&gt; : null}
+        {reads.reads.length === 0 ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;No reads on {market.symbol} yet.&lt;/T&gt; : null}
+        {reads.reads.map((r) =&gt; &lt;ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() =&gt; set({ askFocusReadId: r.id })} /&gt;)}
+      &lt;/View&gt;
+    );
+  };
+
+  return (
+    &lt;View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 11 }}&gt;
+      &lt;Segmented options={[[&quot;new&quot;, &quot;New read&quot;], [&quot;mine&quot;, &quot;My reads&quot;]] as const} value={S.askView} onChange={(k) =&gt; set({ askView: k, askFocusReadId: undefined })} /&gt;
+      {S.askView === &quot;new&quot; ? newRead() : myReads()}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>Notas para el implementador: <code>Tag</code> recibe <code>style</code> (ya existe en primitives); <code>Segmented</code>/<code>StatusCard</code>/<code>Chip</code>/<code>TouchCard</code> se usan con las props que tienen hoy (no añadir props a <code>primitives.tsx</code>). Si <code>Touch</code> con <code>style</code> de flex no reparte el ancho, envolver la fila en <code>View</code> con <code>flexDirection: &quot;row&quot;</code> como ya se hace. <strong>Sin «Trade this level»</strong> (P9).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificación y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/screens/ask.tsx
+git commit -m &quot;feat(mobile): pantalla Ask — gate de sesión, matriz 5×4, AskSheet, ReadCard y My reads&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code> (nada la importa todavía; Task 9 la conecta).</p>
+<hr>
+<h3 id="task-9-agentstab-enrutado-de-pills-hooks-montados-pull-to-refresh-y-recorrido-en-el-simulador">Task 9: <code>AgentsTab</code>, enrutado de pills, hooks montados, pull-to-refresh y <strong>recorrido en el simulador</strong></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/agents.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/screens/market.tsx</code>, <code>apps/mobile/src/screens/comingSoon.tsx</code>, <code>apps/mobile/src/screens/comingSoonCopy.ts</code>, <code>apps/mobile/__tests__/comingSoon.test.ts</code>, <code>apps/mobile/src/ctx.ts</code>, <code>apps/mobile/App.tsx</code>, <code>apps/mobile/src/Shell.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo anterior. <code>AppCtx</code> gana <code>reads: Reads</code> y <code>notifications: Notifications</code> (con eso el tipo <code>Ctx</code> de <code>ask.tsx</code> es redundante y se puede dejar como <code>AppCtx</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Limpiar las wallets de prueba de F1 (P13)</strong> — desde <code>services/reads</code> del worktree:</label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/services/reads
+W=&quot;&#39;0xf73ffe46b43ada3e2ef0cc6da6795ffb83ea1b4f&#39;,&#39;0x6b4e000fdc719ddfb56607aaa2af3563edd0768e&#39;,&#39;0x1449bd0ef13c2a935998fed58080aec385eb1408&#39;,&#39;0xdea47c75a81ec6bd367bbe6114e4c63b6bbf6616&#39;&quot;
+node scripts/query.mjs --read-only &quot;select address, credits from mobile.wallets where address in ($W)&quot;
+node scripts/query.mjs &quot;delete from mobile.credit_events where address in ($W); delete from mobile.reminders where address in ($W); delete from mobile.reads where address in ($W); delete from mobile.devices where address in ($W); delete from mobile.wallets where address in ($W);&quot;
+node scripts/query.mjs --read-only &quot;select id, reads, resolved, right_count, brier_avg from mobile.agent_records order by sort&quot;</code></pre>
+<p>Expected: antes, 4 filas; después, <code>agent_records</code> con <code>reads 0, resolved 0</code> en <code>jesus</code>, <code>drift</code>, <code>anchor</code>. Si hay otras wallets (de otra sesión), <strong>no tocarlas</strong>; anotar.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>comingSoon.test.ts</code> (RED)</strong> — sustituir el segundo test por:</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;Ask and Agents are real now: no inline coming-soon copy for Market pills (D13)&quot;, () =&gt; {
+  expect((COMING_SOON_COPY as Record&lt;string, unknown&gt;).ask).toBeUndefined();
+  expect((COMING_SOON_COPY as Record&lt;string, unknown&gt;).agents).toBeUndefined();
+});</code></pre>
+<p>y quitar <code>MARKET_COMING_SOON</code> del import. Run: <code>npx jest __tests__/comingSoon.test.ts</code> → PASS ya (la clave nunca estuvo en <code>COMING_SOON_COPY</code>); el RED real es <code>tsc</code>: en Step 2 se borra <code>MARKET_COMING_SOON</code> y <code>ComingSoonCard</code>, y <code>market.tsx</code> deja de compilar hasta el Step 4.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Quitar el coming soon de los pills</strong></label></li>
+</ul>
+<p><code>comingSoonCopy.ts</code>: borrar <code>MarketComingSoon</code> y <code>MARKET_COMING_SOON</code> (quedan <code>ComingSoonTab</code>, <code>ComingSoonCopy</code>, <code>COMING_SOON_COPY</code>). <code>comingSoon.tsx</code>: borrar <code>ComingSoonCard</code> y el import de <code>MARKET_COMING_SOON</code>; quitar <code>Card</code> y <code>Tag</code> del import si quedan sin uso.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>src/screens/agents.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { recordLabel } from &quot;../reads/matrix&quot;;
+import { Avatar, Chip, T, TouchCard, Warn } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+
+/** Pill Agents (D15): lista de agentes con récord real; tocar uno lo preselecciona en Ask. */
+export function AgentsTab({ reads, set }: AppCtx) {
+  return (
+    &lt;View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 7 }}&gt;
+      {reads.agentsError ? (
+        &lt;Warn title=&quot;Couldn&#39;t load agents&quot; body={reads.agentsError}&gt;
+          &lt;Chip label=&quot;Retry&quot; onPress={() =&gt; { void reads.refresh(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: &quot;flex-start&quot; }} accessibilityLabel=&quot;retry-agents&quot; /&gt;
+        &lt;/Warn&gt;
+      ) : null}
+      {reads.agents === null &amp;&amp; !reads.agentsError ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;Loading agents…&lt;/T&gt; : null}
+      {(reads.agents ?? []).map((a) =&gt; (
+        &lt;TouchCard key={a.id} onPress={() =&gt; set({ askAgentId: a.id, marketTab: &quot;ask&quot;, askView: &quot;new&quot; })} accessibilityLabel={`agent-row-${a.id}`}
+          style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 11 }}&gt;
+          &lt;Avatar initials={a.name.slice(0, 1).toUpperCase()} /&gt;
+          &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+            &lt;T w={700} s={14} lh={1.2}&gt;{a.name}&lt;/T&gt;
+            &lt;T w={400} s={11} lh={1.2} color={C.faint} style={{ marginTop: 3 }}&gt;by {a.owner}&lt;/T&gt;
+          &lt;/View&gt;
+          &lt;View style={{ alignItems: &quot;flex-end&quot;, gap: 4 }}&gt;
+            &lt;T w={500} s={10.5} lh={1} mono color={C.dim}&gt;{recordLabel(a.record)}&lt;/T&gt;
+            &lt;T w={500} s={10} lh={1} mono color={C.faint}&gt;{a.priceCredits} credit&lt;/T&gt;
+          &lt;/View&gt;
+        &lt;/TouchCard&gt;
+      ))}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>ctx.ts</code>, <code>market.tsx</code>, <code>App.tsx</code>, <code>Shell.tsx</code></strong></label></li>
+</ul>
+<p><code>src/ctx.ts</code>:</p>
+<pre><code class="language-ts">import type { AccountState } from &quot;./account&quot;;
+import type { AccountActions } from &quot;./hooks/useAccount&quot;;
+import type { Notifications } from &quot;./hooks/useNotifications&quot;;
+import type { Perpl } from &quot;./hooks/usePerpl&quot;;
+import type { Reads } from &quot;./hooks/useReads&quot;;
+import type { Treasury } from &quot;./hooks/useTreasury&quot;;
+import type { AppStore } from &quot;./store&quot;;
+
+/** Todo lo que reciben Shell, DevControls y las pantallas. */
+export type AppCtx = AppStore &amp; AccountActions &amp; { account: AccountState; treasury: Treasury; perpl: Perpl; reads: Reads; notifications: Notifications };</code></pre>
+<p><code>src/screens/market.tsx</code>: quitar <code>import { ComingSoonCard } from &quot;./comingSoon&quot;;</code>, añadir <code>import { AgentsTab } from &quot;./agents&quot;;</code> y <code>import { AskTab } from &quot;./ask&quot;;</code>, y en <code>MarketScreen</code>:</p>
+<pre><code class="language-tsx">      {S.marketTab === &quot;trade&quot; ? &lt;TradeTab {...ctx} /&gt; : S.marketTab === &quot;ask&quot; ? &lt;AskTab {...ctx} /&gt; : &lt;AgentsTab {...ctx} /&gt;}</code></pre>
+<p>En <code>ask.tsx</code>, cambiar <code>type Ctx = AppCtx &amp; {…}</code> por <code>type Ctx = AppCtx;</code> (o usar <code>AppCtx</code> directo) y borrar los imports de tipo que sobren.</p>
+<p><code>App.tsx</code>:</p>
+<pre><code class="language-tsx">import { useNotifications } from &quot;./src/hooks/useNotifications&quot;;
+import { useReads } from &quot;./src/hooks/useReads&quot;;
+import { patchForPush } from &quot;./src/reads/push&quot;;
+…
+  const store = useAppStore({ hasAccount, perpsMarkets: perpl.context?.markets ?? [] });
+  const { requireAccount } = store;
+  // Tap en un push: abre Market en la read (o en Trade para un recordatorio) respetando el gate (P7).
+  const onPushTarget = useCallback((t: PushTarget) =&gt; requireAccount(&quot;market&quot;, patchForPush(t)), [requireAccount]);
+  const notifications = useNotifications(onPushTarget);
+  const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
+  …
+  const perpsActive = PERPL_SCREENS.includes(store.S.screen);
+  const readsActive = store.S.screen === &quot;market&quot; &amp;&amp; store.S.marketTab !== &quot;trade&quot;;
+  const { setActive } = perpl;
+  const { setActive: setReadsActive } = reads;
+  useEffect(() =&gt; { setActive(perpsActive); }, [perpsActive, setActive]);
+  useEffect(() =&gt; { setReadsActive(readsActive); }, [readsActive, setReadsActive]);
+  …
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };</code></pre>
+<p>(añadir <code>useCallback</code> al import de React y <code>import type { PushTarget } from &quot;./src/reads/push&quot;;</code>).</p>
+<p><code>src/Shell.tsx</code>: <code>const { S, back, requireAccount, treasury, perpl, reads } = ctx;</code>, <code>const refreshable = S.screen === &quot;wallet&quot; || S.screen === &quot;markets&quot; || S.screen === &quot;market&quot;;</code> y en <code>onRefresh</code>:</p>
+<pre><code class="language-ts">      await Promise.allSettled(
+        S.screen === &quot;wallet&quot; ? [treasury.refresh(), treasury.refreshMovements()]
+        : S.screen === &quot;market&quot; ? [perpl.refreshContext(), reads.refresh()]
+        : [perpl.refreshContext()],
+      );</code></pre>
+<p>con <code>[S.screen, treasury, perpl, reads]</code> en las deps.</p>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code></pre>
+<p>Expected: <code>TSC-OK</code>; todos los tests en verde.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Instalar y arrancar en el simulador</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/apps/mobile
+mkdir -p &quot;$SCRATCH/f2-shots&quot;
+npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 2&gt;&amp;1 | tee &quot;$SCRATCH/run.log&quot; | tail -6
+xcrun simctl spawn 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
+xcrun simctl spawn 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 notifyutil -p com.apple.BiometricKit.enrollmentChanged</code></pre>
+<p>Sign in con el passkey existente del simulador (Apple Passwords; presentar cara con <code>xcrun simctl spawn &lt;UDID&gt; notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code> cuando lo pida). Captura <code>01-wallet.png</code>. Anotar la <strong>dirección</strong> de la wallet del simulador (Wallet → dirección) en el audit: <code>$SIM_ADDR</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Recorrido Ask → Agents (con capturas, mirando cada una)</strong></label></li>
+</ul>
+<ol>
+<li>Markets → BTC → pill <strong>Ask</strong>. Wallet <code>locked</code> → <code>SessionGate</code> («Unlock to ask»). Captura <code>02-ask-gate.png</code>. Tocar «Unlock with Face ID» → presentar cara → créditos <strong>20</strong>, «Mark … · updates every 5 s», matriz con 20 targets. Verificar a mano un target: <code>+1.0%</code> de BTC = <code>round(mark × 1.01)</code> con <code>priceDecimals 1</code>. Captura <code>03-ask-matrix.png</code>.</li>
+<li>Tocar <code>cell-100-240</code> → <code>AskSheet</code> con la pregunta, tres chips de agente (el primero seleccionado) y «Ask Jesús&#39;s agent · 1 credit». Captura <code>04-ask-sheet.png</code>.</li>
+<li>Tocar «Ask» → <strong>prompt de permiso de notificaciones</strong> (primera vez; aceptar) → <code>READING</code> con spinner. Captura <code>05-ask-reading.png</code>. En &lt; 60 s aparece la <code>ReadCard</code> con probabilidad, YES/NO, 3 razones, límites y «Resolves in 3 h 5x m». Captura <code>06-ask-readcard.png</code>. Créditos: volver con «Ask another» → <strong>19</strong>. Captura <code>07-ask-19.png</code>.</li>
+<li>Verificar por SQL que llegó el token (P6):</li>
+<p>``<code>bash cd ../../services/reads &amp;&amp; node scripts/query.mjs --read-only &quot;select address, env, length(token) as len, updated_at from mobile.devices where address = &#39;$SIM_ADDR&#39;&quot; node scripts/query.mjs --read-only &quot;select id, status, level_bps, horizon_min, probability, expires_at from mobile.reads where address = &#39;$SIM_ADDR&#39; order by created_at desc limit 3&quot; </code>`<code> Expected: una fila en </code>devices<code> con </code>env sandbox<code> y </code>len 64<code>; la read </code>open<code> con </code>probability<code> no nula. Guardar </code>$READ_ID`.</p>
+<li>Segmentado <strong>My reads</strong> → un <code>ReadRow</code> <code>+1.0% · 4H</code>, agente, probabilidad, chip <code>OPEN</code> warn, «resolves in …». Captura <code>08-my-reads.png</code>. Tocarlo → <code>ReadCard</code> + «Back to list». Captura <code>09-my-reads-card.png</code>.</li>
+<li>Pill <strong>Agents</strong> → tres <code>TouchCard</code> con «No resolved reads yet» (tras P13) y «1 credit». Captura <code>10-agents.png</code>. Tocar <code>Drift</code> → vuelve a <strong>Ask · New read</strong> con Drift preseleccionado en la hoja (elegir una celda para verlo). Captura <code>11-agents-preselect.png</code>.</li>
+<li>Pill <strong>Trade</strong> y de vuelta a <strong>Ask</strong>: la sesión no vuelve a pedir Face ID; el pull-to-refresh en Market no cuelga el spinner.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Resolución forzada y push</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/services/reads
+node scripts/query.mjs &quot;update mobile.reads set expires_at = now() - interval &#39;1 second&#39; where id = &#39;$READ_ID&#39; and status = &#39;open&#39;&quot;
+sleep 75
+node scripts/query.mjs --read-only &quot;select status, outcome, brier, mark_at_resolution, resolved_at from mobile.reads where id = &#39;$READ_ID&#39;&quot;
+node scripts/query.mjs --read-only &quot;select id, status_code, left(content::text, 160) as content from net._http_response order by id desc limit 2&quot;</code></pre>
+<p>Expected: <code>right</code> o <code>wrong</code> con <code>mark_at_resolution</code>; <code>net._http_response</code> con <code>{&quot;resolved&quot;:1,…,&quot;pushSent&quot;:N}</code>.</p>
+<ul>
+<li><strong>Si existen los secretos <code>APNS_*</code></strong> (<code>npx supabase secrets list --project-ref yvdipvcrpbqvofayteqf</code> los lista): <code>pushSent</code> debe ser <strong>1</strong> y el push llega al simulador (banner «BTC +1.0% · 4H — Jesús&#39;s agent was right · mark …»). Captura <code>12-push.png</code>. Tocarlo → la app abre Market → Ask → My reads con esa read (<code>RIGHT</code>/<code>WRONG</code>). Captura <code>13-push-tap.png</code>.</li>
+<li><strong>Si no existen</strong> (estado al escribir el plan): <code>pushSent</code> es <strong>0</strong> (<code>console.error apns: APNS secrets missing</code> en los logs de la función) y el push real <strong>no se puede probar</strong>; se prueba el <strong>tap</strong> con <code>simctl push</code>:</li>
+<p>``<code>bash cat &gt; &quot;$SCRATCH/read.apns&quot; &lt;&lt;EOF { &quot;Simulator Target Bundle&quot;: &quot;fun.pickler.app&quot;, &quot;aps&quot;: { &quot;alert&quot;: { &quot;title&quot;: &quot;BTC +1.0% · 4H&quot;, &quot;body&quot;: &quot;Jesús&#39;s agent was right · mark 81250.0&quot; }, &quot;sound&quot;: &quot;default&quot; }, &quot;pickler&quot;: { &quot;kind&quot;: &quot;read&quot;, &quot;readId&quot;: &quot;$READ_ID&quot;, &quot;marketId&quot;: 16 } } EOF xcrun simctl push 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 fun.pickler.app &quot;$SCRATCH/read.apns&quot; </code>`<code> Con la app en **segundo plano** (Home): llega el banner → captura </code>12-push.png<code> → tocarlo → Market → Ask → My reads con la read enfocada mostrando </code>RIGHT<code>/</code>WRONG<code> y «resolved at …». Captura </code>13-push-tap.png<code>. Repetir con la app **cerrada** (</code>xcrun simctl terminate &lt;UDID&gt; fun.pickler.app<code>, push, tocar): debe aterrizar igual (frío, </code>getLastNotificationResponseAsync<code>). Captura </code>14-push-cold.png`. Anotar en el audit que el push real queda pendiente de la key (F1 pendiente 1).</p>
+<li>Si <code>PUSH_MODE</code> tuviera que pasar a <code>&quot;local&quot;</code> (decisión de Jesús tras el smoke de F1), no es parte de este recorrido.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Sign out / sign in</strong></label></li>
+</ul>
+<p>Wallet → «Sign out» → Sign in con el passkey → Markets → BTC → <strong>Ask</strong>: vuelve el <code>SessionGate</code> (la sesión se borró, D6) → «Unlock with Face ID» → créditos <strong>19</strong> (misma wallet) y My reads con la read resuelta. Captura <code>15-after-signout.png</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 9: Dinero y cuenta</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/services/reads
+node scripts/query.mjs --read-only &quot;select reason, sum(delta) from mobile.credit_events where address = &#39;$SIM_ADDR&#39; group by reason order by reason&quot;</code></pre>
+<p>Expected: <code>grant 20</code>, <code>charge −1</code> (sin <code>refund</code> si la read no falló). Saldos AUSD/MON del simulador <strong>sin cambio</strong> (Wallet muestra los mismos que antes del recorrido; anotar los dos números). Ninguna orden en Perpl.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 10: Verificación final y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/apps/mobile
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/screens/agents.tsx src/screens/market.tsx src/screens/comingSoon.tsx src/screens/comingSoonCopy.ts __tests__/comingSoon.test.ts src/ctx.ts App.tsx src/Shell.tsx src/screens/ask.tsx
+git commit -m &quot;feat(mobile): Ask y Agents reales en Market — hooks montados, push abre la read, pull-to-refresh&quot;</code></pre>
+<hr>
+<h3 id="task-10-readme-spec-overview-manifest-audit-f2-y-revision-independiente">Task 10: README, spec, overview, manifest, audit F2 y revisión independiente</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code>, <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code> (phase-card F2), <code>docs/overview/data/manifest.js</code></li>
+<li>Create: <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: README de la app</strong></label></li>
+</ul>
+<p>En <code>apps/mobile/README.md</code>: primer párrafo, «Reales: Wallet (…) y Markets (Perpl)» → añadir «, Ask (lecturas de agente sobre la matriz nivel × horizonte, créditos simulados) y Agents (récord real)». Sección Tests → el número real (<code>npm test 2&gt;&amp;1 | tail -4</code>). Nueva sección tras «Perpl (tab MARKETS)»:</p>
+<pre><code class="language-markdown">## Ask y Agents (pills de Market)
+
+Backend en `services/reads` (Supabase `pickler`, esquema `mobile`; URL en `src/config/reads.ts`, override
+`PICKLER_READS_URL`). La app firma una vez al día `pickler-reads:&lt;address&gt;:&lt;ts&gt;` con la wallet (Face ID si está
+bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); Sign out lo borra. Créditos simulados:
+20 por wallet, 1 por lectura, reembolso si el agente falla. El push de resolución lo manda el servidor por APNs
+(`expo-notifications`, entorno `sandbox` en dev); tocarlo abre Market → Ask → My reads en esa read. Para probar el
+tap sin APNs: `xcrun simctl push &lt;UDID&gt; fun.pickler.app payload.apns` con `{ &quot;pickler&quot;: { &quot;kind&quot;: &quot;read&quot;, &quot;readId&quot;, &quot;marketId&quot; } }`.
+`PUSH_MODE = &quot;local&quot;` (fallback D10) programa una notificación local al vencer en vez de esperar el push.
+`expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correcciones al spec</strong> (marcadas <strong>(F2)</strong>, sin reescribir secciones):</label></li>
+</ul>
+<ul>
+<li>D6: «<strong>(F2)</strong> la sesión se parte en <code>src/reads/session.ts</code> (puro) + <code>src/storage/reads.ts</code> (SecureStore); se renueva con menos de 1 h de vida; un <code>401</code> la descarta y Ask vuelve al gate (P2); con la wallet abierta se firma sin prompt, bloqueada pide Face ID al tocar «Unlock» (P3).»</li>
+<li>D10: «<strong>(F2)</strong> <code>PUSH_MODE</code> en <code>src/config/reads.ts</code> conmuta APNs / local; el tap lee <code>pickler</code> de <code>content.data</code> o del <code>userInfo</code>; navega con <code>requireAccount</code> (P7). Estado del smoke real: &lt;lo que haya pasado&gt;.»</li>
+<li>D13: <code>headerFor(screen, symbol, marketTab)</code>; <code>TradeLevel</code> declarado en F2.</li>
+<li>D14: «<strong>(F2)</strong> «Trade this level» no se renderiza hasta F3 (P9); My reads es store-driven por <code>askFocusReadId</code> (P8).»</li>
+<li>D16: <code>src/reads/constants.ts</code> (timeouts y poll, puro) y <code>src/reads/push.ts</code> (nuevo); <code>expo-notifications 57.x.y</code>.</li>
+<li>§2.3: añadir <code>push.ts</code>, <code>constants.ts</code>, <code>storage/reads.ts</code>; tests jest reales (<code>reads-config</code>, <code>reads-matrix</code>, <code>reads-types</code>, <code>reads-session</code>, <code>reads-api</code>, <code>reads-push</code>, <code>store</code>, <code>comingSoon</code>).</li>
+<li>Cabecera <strong>Estado</strong>: «F2 ejecutada (plan <code>…-f2.md</code>, audit <code>…-f2-rulings.md</code>)».</li>
+</ul>
+<p>Run: <code>npm run docs:html</code> (raíz del worktree) → <code>[ok]</code> para el spec y el plan F2.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Overview y manifest</strong></label></li>
+</ul>
+<p><code>docs/overview/2026-09-19-mobile-ask.html</code>, phase-card <code>data-phase=&quot;2&quot;</code>: <code>data-status=&quot;completed&quot;</code> (o <code>in_progress</code> si el push real quedó sin probar por la key <strong>y</strong> Jesús quiere que eso bloquee; si no, <code>completed</code> con la nota en el audit — decisión suya en el checkpoint), <code>&lt;option value=&quot;…&quot; selected&gt;</code>, y dentro de <code>.phase-body</code> tras <code>.phase-meta</code>:</p>
+<pre><code class="language-html">          &lt;details class=&quot;tasks&quot;&gt;
+            &lt;summary&gt;
+              &lt;span&gt;Tasks del plan&lt;/span&gt;
+              &lt;span class=&quot;progress-pill&quot; data-tasks-counter&gt;0/0&lt;/span&gt;
+            &lt;/summary&gt;
+            &lt;ol&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 0: expo-notifications, readsUrl, src/config/reads.ts y rebuild nativo&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 1: src/reads/matrix.ts — matriz, target, pregunta, etiquetas, cuenta regresiva&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 2: src/reads/types.ts — tipos y parseo estricto de los DTOs&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 3: Sesión firmada (session.ts, storage/reads.ts, Sign out)&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 4: src/reads/api.ts — cliente HTTP con timeouts y errores&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 5: Store — askView, askCell, askAgentId, askFocusReadId, tradeLevel, headerFor&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 6: push.ts + useNotifications — permiso, token, tap, fallback local&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 7: useReads — sesión, créditos, lista, agentes, ask(), polling&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 8: Pantalla Ask — gate, matriz, AskSheet, ReadCard, My reads&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 9: AgentsTab, enrutado, hooks montados y recorrido en el simulador&lt;/label&gt;&lt;/li&gt;
+              &lt;li&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; checked&gt; Task 10: README, spec, overview, manifest, audit F2 y revisión independiente&lt;/label&gt;&lt;/li&gt;
+            &lt;/ol&gt;
+          &lt;/details&gt;</code></pre>
+<p>(marcar <code>checked</code> sólo lo que realmente cerró). <code>manifest.js</code>: <code>phases[1].status</code> a <code>completed</code> / <code>in_progress</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Audit de F2</strong></label></li>
+</ul>
+<p><code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>, secciones en este orden, con la evidencia pegada (no descrita):</p>
+<ol>
+<li><strong>Qué quedó hecho y verificado</strong> — por task: comandos y salidas (<code>expo install</code> con la versión, <code>prebuild</code>/<code>run:ios</code> con <code>Build Succeeded</code>, <code>npm test</code> con el conteo final, <code>tsc</code>, la línea del <code>.entitlements</code>, las consultas SQL de Task 9 con sus filas, <code>net._http_response</code>, el resultado de <code>simctl push</code>, el ledger de la wallet del simulador) y la lista de capturas con lo que muestra cada una.</li>
+<li><strong>Decisiones tomadas durante la ejecución (rulings)</strong> — numeradas; cualquier desviación de P1–P14 o del spec, con <em>qué cuesta si está mal</em>.</li>
+<li><strong>Correcciones a afirmaciones previas</strong> — del spec o de este plan (nombres reales de la API de <code>expo-notifications</code>, conteos de tests, etc.).</li>
+<li><strong>Estado de las cuentas y del servicio al cierre</strong> — dirección de la wallet del simulador y sus créditos; saldos AUSD/MON antes/después (iguales); <code>mobile.devices</code> (<code>env</code>, <code>updated_at</code>, nunca el token completo); wallets de prueba borradas (P13); secretos presentes (sólo nombres) y si el push real se vio llegar o quedó pendiente de la key.</li>
+<li><strong>Pendientes / residuales</strong> — ordenados por peso; incluir: key APNs + smoke F1 + push real en el simulador; capability Push Notifications en el App ID (F4); <code>PUSH_MODE</code> (decisión tras el smoke); persona de <code>jesus</code>; minors diferidos de las revisiones.</li>
+<li><strong>Siguiente punto de decisión</strong> — F3 (<code>LevelCard</code>, <code>reminder-set</code>, <code>BookCard</code> o versión reducida según el riesgo §4 del spec) y si se mergea/pushea F2.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Revisión independiente</strong></label></li>
+</ul>
+<p>Dispatch de un subagente revisor (regla global) con: el spec, este plan, <code>git diff main...HEAD -- apps/mobile docs</code> y el audit. Pedirle que verifique: (a) la sesión nunca se firma sin gesto del usuario cuando la wallet está bloqueada, se borra en Sign out y un <code>401</code> la descarta; (b) <code>pushToken</code> sólo viaja con permiso concedido y <code>pushEnv</code> es <code>sandbox</code> en <code>__DEV__</code>; (c) <code>targetFor</code>/<code>questionFor</code> de la app coinciden con <code>services/reads/supabase/functions/_shared/matrix.ts</code> (mismos números en ambos tests); (d) ningún secreto ni token de dispositivo en archivos versionados ni en el audit (<code>git grep -n &quot;sbp_\|sk-ant\|BEGIN PRIVATE&quot;</code> vacío; <code>mobile.devices</code> sólo con <code>length(token)</code>); (e) los estados de la <code>ReadCard</code> cubren los seis <code>status</code>; (f) <code>AbortController</code> en todos los <code>fetch</code> y ningún <code>AbortSignal.timeout</code>. Aplicar lo que proceda y anotar la revisión (hallazgos y qué se hizo) en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Checks finales</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git status --short</code></pre>
+<p>Expected: <code>docs:check</code> <code>errors=0</code>; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; tests y <code>tsc</code> en verde; el árbol muestra sólo lo que va en el commit de esta task.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit (sólo si Jesús autorizó commits) y handoff</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/README.md docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-19-mobile-ask-f2.md docs/superpowers/plans/2026-09-19-mobile-ask-f2.html docs/overview/2026-09-19-mobile-ask.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md
+git commit -m &quot;docs(mobile-ask): F2 ejecutada — spec corregido, overview, manifest, README y audit F2&quot;</code></pre>
+<p>Handoff al cierre: qué quedó en la app, qué falta (push real pendiente de la key APNs, capability Push en el App ID, <code>PUSH_MODE</code>), y que el siguiente paso es el <strong>plan de F3</strong>, que no se escribe en la misma sesión sin checkpoint. <strong>Sin push, sin merge, sin TestFlight.</strong></p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del spec (F2)</strong>: D6 → Tasks 3, 4, 7 (mensaje canónico, 24 h en SecureStore, headers, borrado en Sign out, firma con <code>openWallet()</code>); D10 (push de resolución, lado app) → Tasks 0, 6, 7, 9 (plugin y entitlement, permiso en la primera confirmación, <code>pushToken</code>/<code>pushEnv</code> en <code>read-request</code>, tap → <code>market</code> con el pill, fallback local detrás de <code>PUSH_MODE</code>); D13 → Task 5 (+ <code>COMING_SOON_COPY</code>/<code>ComingSoonCard</code> en Task 9); D14 → Task 8 (Segmented, créditos, matriz, hoja, <code>READING</code>/<code>FAILED</code>/<code>ReadCard</code>, My reads con chips y vacío, «No credits left»); D15 → Task 9 (<code>AgentsTab</code>, preselección, <code>refreshable</code> gana <code>market</code>); D16 → Tasks 0–7 (<code>config/reads.ts</code>, <code>types</code>, <code>matrix</code>, <code>session</code>, <code>api</code> con 65 s/15 s, <code>useReads</code> con polling de 15 s y foreground, <code>useNotifications</code>). §2.3: todos los módulos nombrados salvo los de F3; tests jest <code>reads-matrix</code>, <code>reads-session</code>, <code>reads-types</code>, <code>store</code> como pide el spec, más <code>reads-api</code>, <code>reads-push</code>, <code>reads-config</code>. Verificación §3 F2 completa en Task 9 (créditos 20 → 19, Face ID una sola vez, pending → card &lt; 60 s, My reads OPEN, Agents con «No resolved reads yet» y preselección, read forzada por SQL + push o <code>simctl push</code> + tap que abre My reads, Sign out + sign in vuelve a pedir la firma, capturas, saldos sin cambio). Fuera a propósito: «Trade this level» y <code>LevelCard</code> (P9, F3).</li>
+<li><strong>Placeholders</strong>: ninguno; las dos entradas externas (key APNs → push real; capability Push en el App ID → F4) están declaradas como bloqueos con su camino alterno, no como TBD.</li>
+<li><strong>Consistencia de tipos</strong>: <code>ReadsSession { address, ts, sig }</code> (Task 3) lo consumen <code>signedHeaders</code> (Task 4) y <code>useReads</code> (Task 7); <code>Read</code>/<code>Agent</code> (Task 2) los usan <code>api</code>, <code>push</code>, <code>useReads</code>, <code>ask</code>, <code>agents</code>; <code>AskCell</code> del store (Task 5) es el tipo de <code>RequestState.pending.cell</code> y de <code>ask(cell, agentId)</code>; <code>Cell</code> de <code>matrix.ts</code> (literal) es asignable a <code>AskCell</code> (numérico); <code>Notifications</code> (Task 6) entra a <code>useReads</code> (Task 7) y a <code>AppCtx</code> (Task 9); <code>PushTarget</code> → <code>patchForPush</code> → <code>requireAccount</code> en <code>App.tsx</code>; <code>headerFor</code> gana un tercer parámetro con default, así las llamadas existentes siguen compilando; <code>pushEnvFor(__DEV__)</code> produce el mismo <code>&quot;sandbox&quot; | &quot;production&quot;</code> que acepta <code>ReadRequest.pushEnv</code>.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-19-mobile-ask-f2.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-19-mobile-ask-f2';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

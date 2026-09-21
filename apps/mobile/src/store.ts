@@ -6,6 +6,10 @@ export type Screen =
   | "launchpad" | "activity" | "portfolio"
   | "wallet" | "deposit" | "withdraw" | "signin";
 export type MarketTab = "ask" | "trade" | "agents";
+export type AskView = "new" | "mine";
+export type AskCell = { levelBps: number; horizonMin: number };
+/** Nivel elegido para «Trade this level» (D12; lo usa F3). */
+export type TradeLevel = { marketId: number; levelBps: number; horizonMin: number; target: number; expiresAt: string; readId?: string };
 
 export type StoreState = {
   screen: Screen;
@@ -18,11 +22,17 @@ export type StoreState = {
   perpsSide?: "long" | "short";
   marketTab: MarketTab;
   fundsMode?: "add" | "withdraw";
+  /** Ask (D13): segmentado New read | My reads, celda armada, agente elegido, read abierta desde la lista o desde un push. */
+  askView: AskView;
+  askCell?: AskCell;
+  askAgentId?: string;
+  askFocusReadId?: string;
+  tradeLevel?: TradeLevel;
 };
 
 export type Patch = Partial<Omit<StoreState, "stack">>;
 
-export const INITIAL: StoreState = { screen: "wallet", stack: [], marketTab: "trade" };
+export const INITIAL: StoreState = { screen: "wallet", stack: [], marketTab: "trade", askView: "new" };
 
 const STACK_MAX = 8;
 
@@ -75,9 +85,17 @@ export function resetState(s: StoreState, screen: Screen): StoreState {
   return { ...s, screen, stack: [], next: undefined, nextPatch: undefined };
 }
 
-/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar. */
+/** Sign out: limpia todo y vuelve a Sign in, que aterriza en Wallet al entrar.
+ *  También limpia el estado de Ask (revisión final F2, Minor 3): con otra cuenta no debe
+ *  quedar una celda, agente o read enfocada de la sesión anterior. */
 export function signedOutState(s: StoreState): StoreState {
-  return bootState(resetState(s, "signin"), false);
+  return bootState(
+    resetState(
+      { ...s, askView: "new", askCell: undefined, askAgentId: undefined, askFocusReadId: undefined, tradeLevel: undefined },
+      "signin",
+    ),
+    false,
+  );
 }
 
 /** `←` sólo si la pantalla lo permite Y hay algo en el stack al que volver. */
@@ -96,10 +114,16 @@ export function heldActionFor(next: Screen | undefined): string | null {
   }
 }
 
-export function headerFor(screen: Screen, perpsSymbol?: string): [string, string] {
+const MARKET_SUBTITLES: Record<MarketTab, string> = {
+  trade: "Perpl · isolated margin · market order",
+  ask: "Ask an agent · simulated credits",
+  agents: "Who reads this market",
+};
+
+export function headerFor(screen: Screen, perpsSymbol?: string, marketTab: MarketTab = "trade"): [string, string] {
   switch (screen) {
     case "markets": return ["Markets", "Perps on Perpl · Monad"];
-    case "market": return [perpsSymbol ? `${perpsSymbol} Perp` : "Perp", "Perpl · isolated margin · market order"];
+    case "market": return [perpsSymbol ? `${perpsSymbol} Perp` : "Perp", MARKET_SUBTITLES[marketTab]];
     case "perpsFunds": return ["Trading funds", "Between wallet and trading"];
     case "wallet": return ["Wallet", "AUSD available and movements"];
     case "deposit": return ["Deposit AUSD", "Monad network"];
@@ -151,7 +175,7 @@ export function useAppStore({ hasAccount, perpsMarkets }: StoreInput): AppStore 
   const boot = useCallback((has: boolean) => setS((s) => bootState(s, has)), []);
 
   const perpsSymbol = (perpsMarkets ?? []).find((m) => m.id === S.perpsMarketId)?.symbol;
-  const [headerTitle, headerSub] = headerFor(S.screen, perpsSymbol);
+  const [headerTitle, headerSub] = headerFor(S.screen, perpsSymbol, S.marketTab);
 
   return {
     S, set, nav, back, requireAccount, finishSignin, signedOut, boot,

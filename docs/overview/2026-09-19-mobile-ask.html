@@ -176,7 +176,7 @@
       </article>
 
       <!-- Phase 2 ====================================================== -->
-      <article class="phase-card" data-phase="2" data-status="pending">
+      <article class="phase-card" data-phase="2" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -187,7 +187,7 @@
               <option value="pending">pending</option>
               <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -195,8 +195,37 @@
           <p>Sesión firmada <code>pickler-reads:&lt;address&gt;:&lt;ts&gt;</code> en SecureStore (24 h, se borra en Sign out), <code>useReads</code> y <code>useNotifications</code>, pantalla Ask con segmentado New read | My reads, matriz 5×4 sobre el mark vivo, hoja de la celda con chips de agente y «Ask · 1 credit», card de resultado con cuenta regresiva, lista de lecturas con estado, y pill Agents con récord. <code>expo-notifications</code> (rebuild nativo); tocar el push abre la read.</p>
           <div class="phase-meta">
             <div><div class="k">Entregable</div><div class="v">Recorrido completo en el simulador con la cuenta #620: pedir → pending → lectura → push de resolución → My reads</div></div>
-            <div><div class="k">Prerequisitos</div><div class="v">F1</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1 (el push real de resolución exige además la key APNs, pendiente 1 del audit F1; el tap se prueba con <code>simctl push</code>)</div></div>
           </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 0: expo-notifications, readsUrl, src/config/reads.ts y rebuild nativo (<code>44e6663</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 1: src/reads/matrix.ts — matriz, target, pregunta, etiquetas, cuenta regresiva (<code>34d9396</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 2: src/reads/types.ts — tipos y parseo estricto de los DTOs (<code>9bd94bc</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 3: Sesión firmada (session.ts, storage/reads.ts, Sign out) (<code>400ed10</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 4: src/reads/api.ts — cliente HTTP con timeouts y errores (<code>7964e88</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: Store — askView, askCell, askAgentId, askFocusReadId, tradeLevel, headerFor (<code>b175491</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 6: push.ts + useNotifications — permiso, token, tap, fallback local (<code>70aab28</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: useReads — sesión, créditos, lista, agentes, ask(), polling (<code>92670c4</code>, fix <code>d2d3aa8</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Pantalla Ask — gate, matriz, AskSheet, ReadCard, My reads (<code>e0f2e78</code>, fix <code>72f78f3</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 9: AgentsTab, enrutado, hooks montados y recorrido en el simulador (<code>8f22ddc</code>, fix push en frío <code>3a15792</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 10: README, spec, overview, manifest, audit F2 y revisión independiente (revisión final de rama del proceso SDD)</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li><b>Push real de resolución sin ver llegar</b>: sigue pendiente de la key APNs (pendiente 1 del audit F1) → Task 5 Step 3 y Task 6 Step 7 de F1, y después ver llegar el push al simulador (<code>pushSent</code> quedó en 0; el tap se probó con <code>simctl push</code> en caliente y en frío).</li>
+              <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> (developer.apple.com): insumo de Jesús para el iPhone y TestFlight (F4); el simulador no la necesita.</li>
+              <li>Decisión de <code>PUSH_MODE</code> (<code>"apns"</code> hoy; <code>"local"</code> = fallback D10) tras el smoke real de APNs.</li>
+              <li>Markets queda <code>readOnly</code> sin trading key (tras reinstalar: card «Reconnect trading»), así que <b>Ask y Agents son inaccesibles</b> sin reconectar Perpl (tx on-chain); en el recorrido se llegó por Dev controls. Decisión de producto: abrir el mercado en Ask sin key, o limitar el gate de Perpl a Trade.</li>
+              <li>El prompt de Face ID al firmar la sesión desde el gate <b>no se observó en el simulador</b> (SecureStore resolvió sin prompt tras Lock): confirmar en el iPhone.</li>
+            </ul>
+          </details>
         </div>
       </article>
 
@@ -409,8 +438,8 @@ create index on mobile.reads (expires_at) where status = 'open';
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
-       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 escrito) ·
-       audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1)</p>
+       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 y F2 escritos) ·
+       audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1 y F2)</p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>

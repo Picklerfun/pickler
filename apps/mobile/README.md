@@ -3,7 +3,8 @@
 App Expo/iOS de Pickler. UI portada del diseño hi-fi `Pickler Mobile App.dc.html` vía
 [`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `a0e353e`):
 tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET.
-Reales: Wallet (passkey, AUSD/MON, deposit, withdraw, movimientos) y Markets (Perpl).
+Reales: Wallet (passkey, AUSD/MON, deposit, withdraw, movimientos), Markets (Perpl), Ask (lecturas de
+agente sobre la matriz nivel × horizonte, créditos simulados) y Agents (récord real).
 Launchpad, Activity y Portfolio son *coming soon*.
 El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado de la sesión.
 
@@ -39,7 +40,7 @@ notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 ## Tests
 
 ```bash
-npm test          # jest, 179/179 esperado (24 suites)
+npm test          # jest, 236/236 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -94,6 +95,19 @@ borra; "Reset trading key" enrola otra (máx. 16 por cuenta; revocar en `testnet
   `Age` del CDN.
 - Fees se muestran con 4 decimales; saldos y montos con 2.
 - Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
+
+## Ask y Agents (pills de Market)
+
+Backend en `services/reads` (Supabase `pickler`, esquema `mobile`; URL en `src/config/reads.ts`, override
+`PICKLER_READS_URL`). La app firma una vez al día `pickler-reads:<address>:<ts>` con la wallet (Face ID si está
+bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); Sign out lo borra. Créditos simulados:
+20 por wallet, 1 por lectura, reembolso si el agente falla. El push de resolución lo manda el servidor por APNs
+(`expo-notifications`, entorno `sandbox` en dev); tocarlo abre Market → Ask → My reads en esa read. Para probar el
+tap sin APNs: `xcrun simctl push <UDID> fun.pickler.app payload.apns` con `{ "pickler": { "kind": "read", "readId", "marketId" } }`.
+`PUSH_MODE = "local"` (fallback D10) programa una notificación local al vencer en vez de esperar el push.
+`expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.
+La matriz es el `Grid` del prototipo (sparkline con los últimos 60 marks que la app vio, escalera de 5 niveles, celdas
+con punto donde ya hay reads, hoja con steppers); `src/perpl/marks.ts` y `src/reads/matrix.ts` son puros y tienen test.
 
 ## Subir a TestFlight
 

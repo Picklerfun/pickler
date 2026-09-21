@@ -1,0 +1,350 @@
+<!doctype html>
+<!--
+  Plantilla one-pager para fixes / features / refactors de un solo PR.
+
+  F2 update: usa _styles.css externo + campos contenteditable + botón
+  "Export final HTML" que descarga el archivo con los valores resueltos
+  a texto fijo.
+
+  Flujo:
+  1. Abre este archivo en el browser (file:// directo).
+  2. Click sobre cualquier campo punteado para editar inline.
+  3. Cuando quede listo, presiona "Descargar HTML final".
+  4. Renombra el archivo descargado a YYYY-MM-DD-<slug>.html y mueve a
+     docs/overview/dev/.
+  5. Agrega entry al manifest con types: ['fix'] | ['feature'] | ['refactor'].
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matriz de Ask como el Grid del prototipo · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<style>
+  /* Overrides locales del dev one-pager */
+  .wrap { max-width: 820px; }
+  header.hero {
+    padding: 16px 0 32px;
+    background: linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%);
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1; margin: 14px 0 10px;
+    letter-spacing: -0.02em; font-weight: 800;
+  }
+  .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--ink-2); max-width: 680px; margin: 0;
+  }
+  main { padding: 32px 0 56px; }
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 18px; font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  section ul, section ol { margin: 0 0 12px; padding-left: 22px; }
+  section li { margin-bottom: 4px; font-size: 14px; color: var(--ink-2); }
+  section p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+
+  /* Editor toolbar (solo visible en modo plantilla; se quita en el export) */
+  .editor-toolbar {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 100;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 14px 16px;
+    display: flex; gap: 8px; align-items: center;
+    max-width: 340px;
+  }
+  .editor-toolbar .editor-hint {
+    font-size: 11px; color: var(--ink-3); line-height: 1.4;
+    margin-right: 6px;
+  }
+  .editor-toolbar .editor-hint b { color: var(--ink); font-weight: 700; }
+  .editor-toolbar button {
+    padding: 8px 14px; border-radius: var(--radius-s);
+    background: var(--brand); color: var(--on-brand); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+    white-space: nowrap;
+  }
+  .editor-toolbar button:hover { filter: brightness(1.08); }
+  .shots {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin: 12px 0 6px;
+  }
+  .shots figure { margin: 0; min-width: 0; }
+  .shots img {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--line); border-radius: 10px; background: #0b0f1a;
+  }
+  .shots figcaption { font-size: 12px; color: var(--ink-3); margin-top: 6px; line-height: 1.4; }
+</style>
+</head>
+<body data-slug="2026-09-20-mobile-ask-matrix">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">dev/<span>2026-09-20-mobile-ask-matrix</span></span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="dev-eyebrow feature" id="dev-kind">
+      <span>Feature</span>
+    </span>
+    <h1>
+      <span>Matriz de Ask como el Grid del prototipo</span>
+      <span class="accent">sparkline real, escalera, puntos y hoja con steppers</span>
+    </h1>
+    <p class="lede">
+      Sparkline real, escalera de precios, celdas con punto y hoja violeta con steppers; corrige D14 del
+      spec de Ask.
+    </p>
+
+    <div class="dev-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="dev-sb-pill in_progress"><span>In progress</span></span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div>— (rama <code>feat/mobile-ask-f2</code>, sin merge ni push; sigue a F2)</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
+        <div style="font-family:var(--mono);font-size:12.5px">1a71e86 … ff7ad27 (5, sobre 9fec62c)</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-09-20</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2>Qué cambió</h2>
+      <ul>
+        <li><code>1a71e86</code> — tokens del Grid en <code>theme.ts</code> (<code>GRID_ACCENT</code> ask/trade,
+          <code>GRID_DOT</code>, <code>GRID_MARK_RULE</code>) y helpers puros en <code>reads/matrix.ts</code>:
+          <code>stepLevel</code>, <code>stepHorizon</code> (con tope, sin envolver), <code>distanceLabel</code>,
+          <code>dotKey</code>, <code>readDots</code> (sólo reads <code>open/right/wrong</code>, un punto por celda).</li>
+        <li><code>ebf2a41</code> — buffer de marks por mercado: <code>src/perpl/marks.ts</code> (puro,
+          <code>SPARK_POINTS = 60</code>, <code>appendMarks</code> sin mutar, <code>sparkPoints</code> a viewBox
+          0..100 con Y invertida, plano con &lt; 2 puntos) y <code>Perpl.marks</code> alimentado en
+          <code>refreshContext</code> de <code>usePerpl</code>. En memoria, sin persistir.</li>
+        <li><code>783d568</code> — primitivas <code>Sparkline</code> (react-native-svg, ya instalado:
+          <code>Polyline</code> con <code>vectorEffect="non-scaling-stroke"</code>) y <code>Stepper</code>
+          (−/+ de 26 px con valor mono) en <code>ui/primitives.tsx</code>.</li>
+        <li><code>9aa7f54</code> — <code>ask.tsx</code>: <code>MatrixGrid</code> = <code>Grid</code> del prototipo
+          (columna de 74 px con sparkline, escalera de precios de 58 px, celdas de 44 px sin texto con punto de
+          5 px donde ya hay reads, fila/columna en <code>accSoft</code> y celda en <code>accOn</code>, regla lima
+          bajo <code>+0.5 %</code>, horizontes abajo); cabecera <code>HISTORY · MARK</code>; hint condicional;
+          <code>AskSheet</code> violeta con chip «Asking {agente} · 1 credit» + «Change» (chips inline),
+          <code>YOUR QUESTION · NOTHING SENT</code>, línea <code>RESOLVES ON PERPL MARK · ±x.x% FROM MARK</code>,
+          dos steppers, «Ask {agente}» outline con flecha + «Clear» ghost; card <code>MARK PRICE · PERPL ON
+          MONAD</code> sin fila FUNDING/NEXT/OI.</li>
+        <li><code>ff7ad27</code> — fix: la columna de la sparkline toma la altura de la grilla
+          (<code>StyleSheet.absoluteFill</code> en el Svg; antes la card no cerraba y la hoja quedaba fuera de
+          pantalla).</li>
+      </ul>
+      <p>Cinco niveles (D2 del spec), no los siete del prototipo. Sin «Trade this level» ni
+        <code>LevelCard</code> (F3). Proyecto completo: <a href="../2026-09-19-mobile-ask.html">overview
+        mobile-ask</a>; plan <code>docs/superpowers/plans/2026-09-20-mobile-ask-matrix.md</code>; addendum §7
+        del audit <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>.</p>
+    </section>
+
+    <section>
+      <h2>Por qué</h2>
+      <p>
+        D14 del spec de Ask describió la matriz como una grilla de pills con el target en cada celda; F2 la
+        implementó tal cual. Al compararla con el prototipo (<code>pickler-mobile</code>,
+        <code>src/screens/markets.js</code> <code>Grid</code> y <code>ConsultTab</code>) quedó claro que fue un
+        error al escribir el spec, no de la ejecución: el diseño real es el Grid con sparkline, escalera de
+        precios, celdas mudas con punto y la hoja violeta con steppers. Este cambio la corrige sobre la misma
+        rama y marca la corrección <strong>(F2-matrix)</strong> en D14/D16 del spec.
+      </p>
+      <p>
+        La sparkline usa datos reales en vez de la serie fake del prototipo: <code>pub/context</code> no da
+        historial, así que la app guarda los últimos 60 marks que vio por mercado y arranca plana.
+      </p>
+    </section>
+
+    <section>
+      <h2>Archivos tocados</h2>
+      <div class="files-box">
+        <ul>
+          <li>apps/mobile/__tests__/perpl-marks.test.ts (nuevo)</li>
+          <li>apps/mobile/__tests__/reads-matrix.test.ts</li>
+          <li>apps/mobile/__tests__/theme.test.ts</li>
+          <li>apps/mobile/src/hooks/usePerpl.ts</li>
+          <li>apps/mobile/src/perpl/marks.ts (nuevo)</li>
+          <li>apps/mobile/src/reads/matrix.ts</li>
+          <li>apps/mobile/src/screens/ask.tsx</li>
+          <li>apps/mobile/src/ui/primitives.tsx</li>
+          <li>apps/mobile/src/ui/theme.ts</li>
+        </ul>
+      </div>
+      <p><code>git diff --stat 9fec62c..HEAD</code>: 9 archivos, +258 / −42. Sin dependencias nuevas ni cambios
+        nativos; <code>useReads</code>, <code>ReadCard</code>, My reads, Agents, store y servidor sin tocar.</p>
+    </section>
+
+    <section>
+      <h2>Validación</h2>
+      <p>
+        <code>npm test</code> → 31 suites, 236/236 (230 de F2 + 4 de Task 1 + 2 de Task 2, con RED confirmado
+        antes de cada GREEN); <code>npx tsc --noEmit</code> limpio en cada commit (reportes de Tasks 1–4 y
+        audit F2 §7).
+      </p>
+      <p>
+        Recorrido en el simulador iPhone 17 Pro (Task 5, 2026-09-20 21:41–22:03 CST, 19 capturas de recorrido
+        miradas una a una; audit F2 §7): <code>00-ask-first</code> matriz sin selección con sparkline plana
+        recién arrancada, escalera 83489.9 / 82268.1 / 81860.9 / 81046.3 / 80639.1 con mark 81453.6 (verificada a
+        mano con <code>targetFor</code>), un punto en <code>+1.0% · 4H</code> (read de F2);
+        <code>01-btc-spark</code> sparkline con historia tras tres polls; <code>03-cell-selected</code> celda
+        <code>+1.0% · 4H</code> con fila/columna realzadas y la hoja violeta; <code>04-step-level</code> /
+        <code>05-step-horizon</code> / <code>05b-level-cap</code> steppers hasta el tope <code>+2.5 %</code> y
+        12H; <code>06-change</code> / <code>07-drift</code> chips inline y cambio a Drift;
+        <code>08-reading</code> / <code>09-readcard</code> read real desde la hoja nueva (Drift, 40 %, NO);
+        <code>10-credits-18</code> créditos 19 → 18; <code>11-clear</code> hoja cerrada.
+      </p>
+      <p>
+        Read real: <code>17eb2ef8-4eff-48d8-b163-cd5dcacc0bb9</code> (drift, <code>open</code>, +100 bps ·
+        240 min, <code>mark_at_request 813944</code>, <code>target 822083</code>, vence
+        2026-09-21 08:00:53 UTC; se deja resolver al cron). Créditos por SQL antes 19 y después 18.
+      </p>
+      <p>
+        Comparación con el prototipo (export del artifact <code>pickler-mobile@a0e353e</code> servido en local
+        porque claude.ai pidió login en Playwright): mismas medidas y orden de elementos; las diferencias son las
+        decididas en el plan (5 niveles, <code>CreditsRow</code>, sin FUNDING/NEXT/OI, chips inline, hint sin
+        «Drag», sparkline real) más dos residuales de producto (un solo tono de punto, precios sin separador de
+        miles). Defectos de la app: ninguno.
+      </p>
+      <div class="shots">
+        <figure>
+          <img src="../../superpowers/audits/img/2026-09-20-mobile-ask-matrix-app.png" alt="App — celda +1.0% · 4H seleccionada con la hoja violeta">
+          <figcaption>App (simulador): celda <code>+1.0% · 4H</code> con la hoja.</figcaption>
+        </figure>
+        <figure>
+          <img src="../../superpowers/audits/img/2026-09-20-mobile-ask-matrix-proto.png" alt="Prototipo — Markets → BTC-PERP → Ask con la misma celda seleccionada">
+          <figcaption>Prototipo: Markets → BTC-PERP → Ask, misma celda.</figcaption>
+        </figure>
+      </div>
+      <p>
+        Incidente durante la prueba: sign out externo en el simulador (21:46–21:47 CST, no fue la task),
+        recuperado con passkey + Face ID sin tocar «Reconnect»; por eso no hay captura de otro mercado sin
+        puntos (Markets quedó <code>readOnly</code>). Revisión independiente: pendiente, la anota el
+        controlador en el audit F2 §7.
+      </p>
+    </section>
+
+    <section>
+      <details class="followups">
+        <summary>Follow-ups conocidos</summary>
+        <ul>
+          <li>Sparkline con marks reales parece escalera y toca los bordes (padding vertical / dedupe).</li>
+          <li>Precios de la escalera sin separador de miles (decisión de producto).</li>
+          <li>Captura de matriz vacía (mercado sin reads) pendiente: requiere un mercado alcanzable sin
+            Reconnect o el iPhone.</li>
+          <li>F3 reutiliza <code>MatrixGrid</code> con <code>GRID_ACCENT.trade</code>.</li>
+        </ul>
+      </details>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>One-pager dev · rama <code>feat/mobile-ask-f2</code> (sin PR) · commits <code>1a71e86</code>…<code>ff7ad27</code></p>
+    <p>Reglas de doc en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<!-- Editor toolbar (no se exporta) ======================================== -->
+<div class="editor-toolbar" id="editor-toolbar">
+  <div class="editor-hint">
+    Click sobre los campos punteados para editar. Cuando termines, <b>Exporta</b> el HTML final.
+  </div>
+  <button type="button" id="btn-export">⬇ Descargar HTML</button>
+</div>
+
+<script>
+  // ===========================================================================
+  // Dev template editor (F2)
+  // - Marca todos los campos editables con [contenteditable="true"].
+  // - El botón "Descargar HTML" clona el documento, congela los contenteditable
+  //   a texto fijo, quita la toolbar y los placeholders/markers, y descarga el
+  //   archivo final (sin estado de editor).
+  // ===========================================================================
+
+  const $btnExport = document.getElementById('btn-export');
+
+  function exportFinalHtml() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // 1. Quitar la toolbar del editor.
+    const toolbar = clone.querySelector('#editor-toolbar');
+    if (toolbar) toolbar.remove();
+
+    // 2. Limpiar los nodos contenteditable: quitar atributo + placeholder + marker.
+    clone.querySelectorAll('[contenteditable]').forEach(node => {
+      node.removeAttribute('contenteditable');
+      node.removeAttribute('data-placeholder');
+      node.removeAttribute('data-export-as-text');
+    });
+    clone.querySelectorAll('[data-export-no-edit-attrs]').forEach(node => {
+      node.removeAttribute('data-export-no-edit-attrs');
+    });
+
+    // 3. Quitar el script del editor (esta misma lógica) — el HTML final no la necesita.
+    clone.querySelectorAll('script').forEach(s => {
+      if (s.textContent.includes('Dev template editor')) s.remove();
+    });
+
+    // 4. Slug propuesto: leer el span del breadcrumb mono.
+    const slugNode = clone.querySelector('nav.crumb .mono span') || clone.querySelector('nav.crumb .mono');
+    const slug = (slugNode?.textContent.trim() || 'dev-new').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const filename = `${slug}.html`;
+
+    // 5. Construir el HTML final.
+    const finalHtml = '<!doctype html>\n' + clone.outerHTML;
+
+    // 6. Descargar como Blob.
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $btnExport.addEventListener('click', exportFinalHtml);
+
+  // Atajo: Ctrl/Cmd + S para exportar
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      exportFinalHtml();
+    }
+  });
+</script>
+
+</body>
+</html>
