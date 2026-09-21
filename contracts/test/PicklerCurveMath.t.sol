@@ -31,4 +31,26 @@ contract PicklerCurveMathTest is Test {
 
         assertEq(tokensOut, 321);
     }
+
+    function test_quoteOutForTokensIn_matchesHandComputedValue() public pure {
+        // netSold = 500 -> x = 500, q = 2000. Selling 500 back: newQ = ceil(1_000_000 / 1000) = 1000.
+        uint256 quoteOut = PicklerCurveMath.quoteOutForTokensIn(_config(), 500, 500);
+
+        assertEq(quoteOut, 1000);
+    }
+
+    function test_quoteOutForTokensIn_returnsZeroForDust() public pure {
+        uint256 quoteOut = PicklerCurveMath.quoteOutForTokensIn(_config(), 500, 0);
+
+        assertEq(quoteOut, 0);
+    }
+
+    function test_roundTripNeverPaysMoreThanItCost() public pure {
+        PicklerCurveMath.CurveConfig memory config = _config();
+
+        uint256 bought = PicklerCurveMath.tokensOutForQuoteIn(config, 0, 1000);
+        uint256 returned = PicklerCurveMath.quoteOutForTokensIn(config, bought, bought);
+
+        assertLe(returned, 1000);
+    }
 }
