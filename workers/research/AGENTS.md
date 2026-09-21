@@ -58,3 +58,11 @@ large synthetic JSONB payload using the production pool options and Drizzle, wit
 transaction and temporary table. It never invokes providers, creates agents or modifies application
 history. Do not import it into the deployed Worker or configure a public diagnostic endpoint.
 See docs/cloudflare-staging.md for invocation and deployment validation.
+
+## Operator-enabled Studio access
+
+The staging configuration keeps admissions enabled for operator-approved users. This flag is not
+user authorization: PostgreSQL research access and workspace ownership remain mandatory. Keep
+the API and consumer flags aligned. New agents still start with scheduling disabled. For an
+emergency stop deploy both hosts with `--var ADMISSIONS_ENABLED:false`; restore only after checking
+queued jobs, active schedules and enabled users. Never enqueue a paid run as a deployment check.
