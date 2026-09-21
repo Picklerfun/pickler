@@ -29,12 +29,26 @@
   --pk-lime-hover: #d6f95c;
   --pk-on-lime: #0b1200;
   --pk-violet: #9b7bff;
+  --pk-violet-ink: #b9aeff;
   --pk-on-violet: #0b0618;
   --pk-magenta: #ff5fa2;
   --pk-cyan: #5ad8ff;
   --pk-cyan-ink: #7fe3ff;
   --pk-pink-ink: #ff9ec6;
   --pk-amber: #ffc93f;
+
+  /* Tints: the same accent as a quiet ground and an edge, for badges, banners and status rows.
+   * A tinted object reads as a state, not as a control, so it never borrows a button's fill. */
+  --pk-lime-tint: rgba(200, 240, 58, 0.1);
+  --pk-lime-edge: rgba(200, 240, 58, 0.36);
+  --pk-magenta-tint: rgba(255, 95, 162, 0.1);
+  --pk-magenta-edge: rgba(255, 95, 162, 0.36);
+  --pk-amber-tint: rgba(255, 201, 63, 0.1);
+  --pk-amber-edge: rgba(255, 201, 63, 0.36);
+  --pk-cyan-tint: rgba(90, 216, 255, 0.08);
+  --pk-cyan-edge: rgba(90, 216, 255, 0.4);
+  --pk-violet-tint: rgba(155, 123, 255, 0.1);
+  --pk-violet-edge: rgba(155, 123, 255, 0.4);
 
   --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
 
@@ -489,4 +503,45 @@
 
 .pk-panel[data-tone="quiet"] {
   background: transparent;
+}
+
+/* ---------- Tint ---------- */
+
+/* A state, not a control. Anything marked `data-tint` gets a foreground, a ground and an edge that
+ * belong together, so a badge, a banner, a status row and a dot all say "amber" the same way. Use
+ * it for what something *is*; a button's fill still comes from its variant. */
+[data-tint] {
+  --tint-fg: var(--pk-ink-muted);
+  --tint-bg: transparent;
+  --tint-bd: var(--pk-border);
+}
+[data-tint="lime"] {
+  --tint-fg: var(--pk-lime);
+  --tint-bg: var(--pk-lime-tint);
+  --tint-bd: var(--pk-lime-edge);
+}
+[data-tint="magenta"] {
+  --tint-fg: var(--pk-pink-ink);
+  --tint-bg: var(--pk-magenta-tint);
+  --tint-bd: var(--pk-magenta-edge);
+}
+[data-tint="amber"] {
+  --tint-fg: var(--pk-amber);
+  --tint-bg: var(--pk-amber-tint);
+  --tint-bd: var(--pk-amber-edge);
+}
+[data-tint="cyan"] {
+  --tint-fg: var(--pk-cyan-ink);
+  --tint-bg: var(--pk-cyan-tint);
+  --tint-bd: var(--pk-cyan-edge);
+}
+[data-tint="violet"] {
+  --tint-fg: var(--pk-violet-ink);
+  --tint-bg: var(--pk-violet-tint);
+  --tint-bd: var(--pk-violet-edge);
+}
+[data-tint="grey"] {
+  --tint-fg: var(--pk-ink-muted);
+  --tint-bg: var(--pk-surface);
+  --tint-bd: var(--pk-border);
 }
