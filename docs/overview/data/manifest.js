@@ -29,6 +29,18 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-21',
+    title: 'Carga visible en la app móvil — skeletons por sección, sello «Updated» al jalar y splash con la marca',
+    summary: 'Cada card o lista con datos remotos pinta su propio skeleton hasta que llega su dato; el pull-to-refresh deja un sello UPDATED HH:MM:SS; expo-splash-screen muestra la P lima sobre #05061A hasta que la cuenta local se resuelve.',
+    file: '2026-09-21-mobile-loading.html',
+    types: ['spec', 'plan'],
+    status: 'active',
+    tags: ['mobile', 'expo', 'ui', 'loading'],
+    phases: [
+      { num: 1, status: 'plan_ready' },
+    ],
+  },
+  {
+    date: '2026-09-21',
     title: 'TestFlight build 6',
     summary: 'Build 0.1.0 (6): Ask F1+F2 (Ask, Agents, push de resolución, My reads) y el fix Markets/trading key; primer build con aps-environment; VALID en App Store Connect, grupo «Equipo».',
     file: 'dev/2026-09-21-testflight-build6.html',

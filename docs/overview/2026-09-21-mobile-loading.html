@@ -1,0 +1,506 @@
+<!doctype html>
+<!--
+  Plantilla canónica para project overviews de Pickler (F2 — CSS externo).
+
+  Uso:
+  1. Copia este archivo a docs/overview/YYYY-MM-DD-<topic>.html
+  2. Cambia el valor de <body data-slug="..."> al slug del proyecto (sin .html).
+     Es la key de localStorage para persistir cambios de tasks/status.
+  3. Reemplaza placeholders [[…]] con contenido real.
+  4. Ajusta el número de phase-cards según las fases del proyecto.
+  5. Agrega entry al manifest con el botón "+ Nueva entrada" del index.
+
+  Estilos:
+  - Paleta + componentes universales cargados desde _styles.css (verde brand).
+  - Estilos locales solo si el overview tiene SVG inline custom o diagrams.
+
+  Interactividad (Tier 1 del HTML Maximalism roadmap):
+  - Cada .phase-card tiene un <select> de status que muta data-status y actualiza
+    el status board en vivo.
+  - Cada task dentro de <details class="tasks"> es un <input type="checkbox">
+    persistido en localStorage con prefix `pickler-docs:<slug>:`.
+  - Botones "Copy progress as MD" / "Copy HTML diff" / "Reset local changes"
+    exportan o limpian el delta vs el snapshot inicial.
+
+  Tabs opcionales (F2): si el overview crece, agrupar secciones largas en
+  <div class="tabs"> + <button class="tab" aria-controls="..."> y .tab-panel.
+  Ejemplo abajo (comentado).
+
+  <title> = texto completo del h1 (principal + acento) + ' · Pickler'.
+
+  Reglas completas en docs/CLAUDE.md.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carga visible en la app móvil — skeletons por sección, sello «Updated» al jalar y splash con la marca · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-loading">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-mobile-loading</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>Carga visible en la app móvil <span class="accent">skeletons por sección, sello «Updated» al jalar y splash con la marca</span></h1>
+    <p class="lede">Que la app de Pickler nunca muestre pantallas vacías ni un splash en blanco: cada card o lista con datos remotos pinta su propio skeleton hasta que llega su dato, el pull-to-refresh deja un sello «UPDATED HH:MM:SS» como prueba de que se actualizó, y al abrir la app aparece la P lima sobre el fondo de la marca hasta que la cuenta local se resuelve.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="">—</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Que la app de Pickler nunca muestre pantallas vacías ni un splash en blanco: cada card o lista con datos remotos pinta su propio skeleton hasta que llega su dato, el pull-to-refresh deja un sello «UPDATED HH:MM:SS» como prueba de que se actualizó, y al abrir la app aparece la P lima sobre el fondo de la marca hasta que la cuenta local se resuelve. Una sola fase (F1); las decisiones D1–D8 están en el spec.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 0 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="plan_ready">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Skeletons por sección, sello «Updated» y splash con la marca</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>D1–D8 del spec: primitiva <code>Skeleton</code>, <code>reads.reads</code> nullable, skeletons en Wallet / Markets / Market (Trade · Ask · Agents) con fade de 150 ms, sello <code>UPDATED</code> en <code>Shell</code>, <code>expo-splash-screen</code> con <code>assets/splash-mark.png</code> y hide controlado. Verificación por tests puros + capturas en el simulador de cada sección en skeleton, del sello y del splash.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Rama <code>feat/mobile-loading</code> lista para merge local; audit F1</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Build 6 en TestFlight (main <code>4be010c</code>)</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> Task 1: Helpers puros del sello en <code>store.ts</code> (<code>updatedLabel</code>, <code>refreshOk</code>, <code>screenHasData</code>)</label></li>
+              <li><label><input type="checkbox"> Task 2: Primitivas <code>Skeleton</code> y <code>Reveal</code></label></li>
+              <li><label><input type="checkbox"> Task 3: <code>reads.reads</code> nullable y skeletons de Ask / Agents</label></li>
+              <li><label><input type="checkbox"> Task 4: Skeletons de Wallet, Markets y Market (<code>MarketSkeleton</code>)</label></li>
+              <li><label><input type="checkbox"> Task 5: Sello <code>UPDATED</code> / <code>COULDN'T REFRESH</code> en <code>Shell</code></label></li>
+              <li><label><input type="checkbox"> Task 6: Splash nativo con la marca (<code>expo-splash-screen</code> + <code>splash-mark.png</code>)</label></li>
+              <li><label><input type="checkbox"> Task 7: Recorrido en el simulador (capturas)</label></li>
+              <li><label><input type="checkbox"> Task 8: Docs — marcas (F1), F1 completed, audit, README, checks</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Duplica el bloque <article class="phase-card"> para más fases. -->
+
+    </section>
+
+    <!--
+      ============================================================================
+      OPCIONAL · TABS para overviews largos (F2)
+      ============================================================================
+      Cuando un overview crece mucho (decisiones + modelo + ingesta + endpoints
+      + frontend + ...) en lugar de scroll infinito, agrupar bajo tabs:
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="tab-decisions">Decisiones</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-model">Modelo</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-api">API</button>
+      </div>
+      <section class="tab-panel" id="tab-decisions" role="tabpanel">…</section>
+      <section class="tab-panel" id="tab-model" role="tabpanel" hidden>…</section>
+      <section class="tab-panel" id="tab-api" role="tabpanel" hidden>…</section>
+
+      El init() del script de abajo activa los tabs automáticamente si encuentra
+      .tabs en el DOM.
+      ============================================================================
+    -->
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>D1 · Primitiva <code>Skeleton</code> (Line / Card / Row) con un solo pulso compartido</td>
+            <td>Un <code>Animated.Value</code> a nivel de módulo evita N loops cuando la matriz de Ask pinta muchos bloques; sin dependencias nuevas.</td>
+          </tr>
+          <tr>
+            <td>D2 · «Sin dato todavía» = <code>null</code>; <code>reads.reads</code> pasa a <code>Read[] | null</code></td>
+            <td>Es el contrato que ya tienen <code>treasury</code>, <code>perpl</code> y <code>reads</code>; sólo <code>reads.reads</code> confundía «vacío» con «no cargado». Regla única: <code>null &amp;&amp; !error</code> → skeleton.</td>
+          </tr>
+          <tr>
+            <td>D3 · Skeleton por sección, nunca por pantalla</td>
+            <td>Cabecera, pills y tabs se ven desde el primer frame; la sección lenta (movimientos de MonadScan) no retiene a las rápidas. Una sección con dato nunca vuelve a skeleton.</td>
+          </tr>
+          <tr>
+            <td>D5 · Pull-to-refresh estándar iOS + sello <code>UPDATED HH:MM:SS</code> por pantalla</td>
+            <td>El dato viejo se queda visible y el sello prueba que el jalón hizo algo; si todo falla, <code>Couldn't refresh</code> 3 s y se conserva el sello anterior. Skeleton durante el jalón fue rechazado (parpadeo, pérdida de dato en fallo).</td>
+          </tr>
+          <tr>
+            <td>D6 · Splash nativo: P lima a 140 pt sobre <code>#05061A</code> con <code>expo-splash-screen</code></td>
+            <td>El fondo es el mismo de la app, así que al ocultar el splash no hay salto; <code>icon.png</code> a pantalla completa cambiaría de violeta a <code>#05061A</code> y se recortaría en 19.5:9.</td>
+          </tr>
+          <tr>
+            <td>D7 · Hide controlado cuando <code>account !== null</code>, con timeout de 2 s</td>
+            <td><code>useAccount</code> arranca en <code>null</code> y su primer efecto resuelve <code>none</code>/<code>locked</code>; el timeout evita quedarse en el splash si el almacenamiento no responde.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-21-mobile-loading-design.md</code> ·
+       planes en <code>docs/superpowers/plans/2026-09-21-mobile-loading-f*.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>
