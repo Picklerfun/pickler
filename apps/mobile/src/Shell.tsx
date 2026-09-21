@@ -57,7 +57,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
   // Sello del pull-to-refresh (spec mobile-loading D5): por pantalla; la carga inicial también lo fija (P5 del plan F1).
   const [updatedAt, setUpdatedAt] = useState<Partial<Record<Screen, number>>>({});
   const [refreshDone, setRefreshDone] = useState(0); // se incrementa al terminar cada jalón; el efecto de abajo lo evalúa con el estado ya actualizado (P4)
-  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState<Screen | null>(null); // pantalla cuyo jalón falló (D5: el sello es por pantalla, no global)
   const Current = SCREENS[ctx.scr];
 
   const refreshable = S.screen === "wallet" || S.screen === "markets" || S.screen === "market";
@@ -80,9 +80,9 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
   // Evalúa el jalón que acaba de terminar con los errores de ESTE render (tras el await el estado puede no estar aplicado).
   useEffect(() => {
     if (refreshDone === 0) return;
-    if (refreshOk(S.screen, errors)) { setUpdatedAt((u) => ({ ...u, [S.screen]: Date.now() })); setRefreshFailed(false); return; }
-    setRefreshFailed(true);
-    const t = setTimeout(() => setRefreshFailed(false), 3000);
+    if (refreshOk(S.screen, errors)) { setUpdatedAt((u) => ({ ...u, [S.screen]: Date.now() })); setRefreshFailed(null); return; }
+    setRefreshFailed(S.screen);
+    const t = setTimeout(() => setRefreshFailed(null), 3000);
     return () => clearTimeout(t);
   }, [refreshDone]);
   // Sello inicial: la primera vez que la pantalla tiene su dato principal.
@@ -91,6 +91,7 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
     if (!refreshable || !hasData || updatedAt[S.screen] !== undefined) return;
     setUpdatedAt((u) => ({ ...u, [S.screen]: Date.now() }));
   }, [refreshable, hasData, S.screen, updatedAt]);
+  const failed = refreshFailed === S.screen;
 
   // Captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
   const pan = useMemo(() => PanResponder.create({
@@ -139,9 +140,9 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
             keyboardShouldPersistTaps="handled"
             refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
           >
-            {refreshable && (refreshFailed || updatedAt[S.screen] !== undefined) ? (
+            {refreshable && (failed || updatedAt[S.screen] !== undefined) ? (
               <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>
-                <Tag color={refreshFailed ? C.down : C.faint}>{refreshFailed ? "COULDN'T REFRESH" : updatedLabel(updatedAt[S.screen]!)}</Tag>
+                <Tag color={failed ? C.down : C.faint}>{failed ? "COULDN'T REFRESH" : updatedLabel(updatedAt[S.screen]!)}</Tag>
               </View>
             ) : null}
             <Current {...ctx} />
