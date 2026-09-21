@@ -16,6 +16,15 @@ library PicklerCurveMath {
     error SaleAllocationExceeded(uint256 requested, uint256 remaining);
     error InvalidAllocation();
 
+    /// @notice Floor below which a 1e18-scaled price stops carrying usable precision.
+    /// @dev Pair a very large supply with a very small quote reserve and the true price falls
+    ///      below what 1e18 scaling can represent, so `marginalPrice` truncates toward zero
+    ///      and every ratio derived from it is noise. The library does not enforce this —
+    ///      it is a property of the chosen preset, not of an individual trade — but preset
+    ///      validation must reject a configuration whose end price lands under it.
+    ///      See test/PicklerCurveMathPrecision.t.sol for both sides of the boundary.
+    uint256 internal constant MIN_REPRESENTABLE_END_PRICE = 1e6;
+
     /// @notice Derives the virtual reserves from the three numbers product chooses.
     /// @dev X0 = S^2 / (S - L) and Q0 = R_end * (X0 - S) / S. Both follow from requiring
     ///      R_end / L == p_end, so the pool opens at the price the curve closed at. Neither

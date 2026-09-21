@@ -21,6 +21,10 @@ contract PicklerCurveMathDerivationTest is Test {
     /// The property the whole derivation exists for: at graduation the reserve per LP token
     /// equals the marginal price, so the pool opens where the curve closed. If this fails,
     /// graduation would hand the pool a price the last buyer never paid.
+    ///
+    /// Restricted to prices a 1e18 scale can represent. Below that floor the comparison is
+    /// noise rather than a violation; PicklerCurveMathPrecision.t.sol pins down both sides of
+    /// that boundary and explains why preset validation has to enforce it.
     function testFuzz_priceIsContinuousAtGraduation(uint256 saleAllocation, uint256 lpAllocation, uint256 targetReserve)
         public
         pure
@@ -35,10 +39,11 @@ contract PicklerCurveMathDerivationTest is Test {
             virtualTokenReserve: x0, virtualQuoteReserve: q0, saleAllocation: saleAllocation
         });
 
-        uint256 endReserve = PicklerCurveMath.quoteInForTokensOut(config, 0, saleAllocation);
-
-        uint256 reservePerLpToken = (endReserve * 1e18) / lpAllocation;
         uint256 endPrice = PicklerCurveMath.marginalPrice(config, saleAllocation);
+        vm.assume(endPrice >= PicklerCurveMath.MIN_REPRESENTABLE_END_PRICE);
+
+        uint256 endReserve = PicklerCurveMath.quoteInForTokensOut(config, 0, saleAllocation);
+        uint256 reservePerLpToken = (endReserve * 1e18) / lpAllocation;
 
         assertApproxEqRel(reservePerLpToken, endPrice, 0.001e18);
     }
