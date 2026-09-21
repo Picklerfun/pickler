@@ -181,6 +181,11 @@
   color: var(--magenta);
 }
 
+/* Still running: not a result yet, so it reads as the surface's live colour rather than a verdict. */
+.open {
+  color: var(--cyan-ink);
+}
+
 .alert {
   margin: 0 0 16px;
   padding: 12px 14px;
