@@ -1,2 +1,7 @@
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable
+
+# iOS app passkeys (relying party pickler.fun): Apple requires a direct 200 with application/json.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public,max-age=3600
