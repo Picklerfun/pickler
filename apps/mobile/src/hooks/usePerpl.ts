@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { accountAddress, type AccountState } from "../account";
 import { PERPL_URLS } from "../config/perpl";
+import { appendMarks, type MarkHistory } from "../perpl/marks";
 import { enrollTradingKey, generateTradingKey } from "../perpl/apiKey";
 import { clockSkewMs as measureSkew } from "../perpl/clock";
 import { CONTEXT_POLL_MS, PERPL_CHAIN_ID, SOCKET_GRACE_MS } from "../perpl/config";
@@ -30,6 +31,8 @@ export type Perpl = {
   state: PerplState;
   context: Context | null;
   contextError: string;
+  /** Últimos SPARK_POINTS marks por mercado que llegaron por pub/context (más antiguo → más reciente), para la sparkline (F2-matrix). */
+  marks: MarkHistory;
   live: Live | null;
   lastBalance: bigint | null;
   /** serverTime − Date.now() del último pub/context; null sin header `Date` (D19). Con override de dev, el override. */
@@ -73,6 +76,7 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
   const [state, setState] = useState<PerplState>({ status: "loading" });
   const [context, setContext] = useState<Context | null>(null);
   const [contextError, setContextError] = useState("");
+  const [marks, setMarks] = useState<MarkHistory>({});
   const [live, setLive] = useState<Live | null>(null);
   const [lastBalance, setLastBalance] = useState<bigint | null>(null);
   const [measuredSkew, setMeasuredSkew] = useState<number | null>(null);
@@ -106,6 +110,7 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
       const ctx = await fetchContext(PERPL_URLS.rest);
       setMeasuredSkew(measureSkew(ctx.serverTime, Date.now()));
       setContext(ctx);
+      setMarks((m) => appendMarks(m, ctx.markets));
       setContextError("");
     } catch (e) {
       setContextError(describeError(e) || "Couldn't load markets.");
@@ -264,7 +269,7 @@ export function usePerpl(account: AccountState, onUnlock: (w: Wallet) => void, t
   }, [address, key, openWallet]);
 
   return {
-    state, context, contextError, live, lastBalance,
+    state, context, contextError, marks, live, lastBalance,
     clockSkewMs: skewOverride ?? measuredSkew, existingAccountId, setClockSkewOverride,
     enable, enableForwardingOnly, addFunds, withdraw, open, close, resetKey, setActive, refreshContext,
   };
