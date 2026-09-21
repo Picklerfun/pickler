@@ -135,7 +135,7 @@
       </div>
 
       <!-- Phase 1 ====================================================== -->
-      <article class="phase-card" data-phase="1" data-status="in_progress">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -145,8 +145,8 @@
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
               <option value="plan_ready">plan_ready</option>
-              <option value="in_progress" selected>in_progress</option>
-              <option value="completed">completed</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -167,8 +167,8 @@
               <li><label><input type="checkbox" checked> Task 2: matrix.ts, auth.ts, http.ts con deno test</label></li>
               <li><label><input type="checkbox" checked> Task 3: perpl.ts, claude.ts, db.ts, dto.ts</label></li>
               <li><label><input type="checkbox" checked> Task 4: Seed de agentes, cuatro funciones de lectura, despliegue y smoke</label></li>
-              <li><label><input type="checkbox"> Task 5: apns.ts con la key de Apple en secretos</label></li>
-              <li><label><input type="checkbox"> Task 6: reminder-set, resolve-reads, cron y smoke de APNs</label></li>
+              <li><label><input type="checkbox" checked> Task 5: apns.ts con la key de Apple en secretos</label></li>
+              <li><label><input type="checkbox" checked> Task 6: reminder-set, resolve-reads, cron y smoke de APNs</label></li>
               <li><label><input type="checkbox" checked> Task 7: Spec, overview, manifest, audit y revisión independiente</label></li>
             </ol>
           </details>
@@ -219,10 +219,10 @@
           <details class="followups">
             <summary>Pendientes (no bloqueantes)</summary>
             <ul>
-              <li><b>Push real de resolución sin ver llegar</b>: sigue pendiente de la key APNs (pendiente 1 del audit F1) → Task 5 Step 3 y Task 6 Step 7 de F1, y después ver llegar el push al simulador (<code>pushSent</code> quedó en 0; el tap se probó con <code>simctl push</code> en caliente y en frío).</li>
+              <li><b>Resuelto (2026-09-20):</b> <b>Push real de resolución sin ver llegar</b>: se vio llegar el push real al simulador (<code>{"apns":{"status":200,"reason":null}}</code> y banner en pantalla) — audit F1 §8.</li>
               <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> (developer.apple.com): insumo de Jesús para el iPhone y TestFlight (F4); el simulador no la necesita.</li>
-              <li>Decisión de <code>PUSH_MODE</code> (<code>"apns"</code> hoy; <code>"local"</code> = fallback D10) tras el smoke real de APNs.</li>
-              <li>Markets queda <code>readOnly</code> sin trading key (tras reinstalar: card «Reconnect trading»), así que <b>Ask y Agents son inaccesibles</b> sin reconectar Perpl (tx on-chain); en el recorrido se llegó por Dev controls. Decisión de producto: abrir el mercado en Ask sin key, o limitar el gate de Perpl a Trade.</li>
+              <li><b>Resuelto (2026-09-20):</b> Decisión de <code>PUSH_MODE</code>: se queda en <code>"apns"</code> (el fallback local de D10 sigue implementado y probado por test) — audit F1 §8.</li>
+              <li><b>Resuelto (2026-09-21):</b> Markets queda <code>readOnly</code> sin trading key: la lista ahora siempre abre el mercado (en Ask sin key, en Trade con key) y el gate de Perpl vive sólo en la pestaña Trade — plan <code>2026-09-21-markets-ask-gate.md</code>, tracker <code>dev/2026-09-21-markets-ask-gate.html</code>.</li>
               <li>El prompt de Face ID al firmar la sesión desde el gate <b>no se observó en el simulador</b> (SecureStore resolvió sin prompt tras Lock): confirmar en el iPhone.</li>
             </ul>
           </details>

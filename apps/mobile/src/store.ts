@@ -114,6 +114,9 @@ export function heldActionFor(next: Screen | undefined): string | null {
   }
 }
 
+/** Pill con el que se abre un mercado desde Markets: Trade con trading key, Ask sin ella (Ask y Agents no la necesitan; fix gate). */
+export const marketEntryTab = (hasKey: boolean): MarketTab => (hasKey ? "trade" : "ask");
+
 const MARKET_SUBTITLES: Record<MarketTab, string> = {
   trade: "Perpl · isolated margin · market order",
   ask: "Ask an agent · simulated credits",

@@ -137,7 +137,7 @@ range", `43` "Filled", `44` "Couldn't settle — try a smaller size"; default: `
 
 `pickler.perpl.v1` (SecureStore, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, sin `requireAuthentication`):
 `{ accountId: string; apiKey: string; privateKey: base64url }`. `loadTradingKey`,
-`saveTradingKey`, `clearTradingKey` (se llama desde `signOut` junto a `clearStoredAccount`).
+`saveTradingKey`, `clearTradingKey` (se llama desde `signOut` junto a `clearStoredAccount`). **(gate, 2026-09-21)** `signOut` ya **no** la llama: la key sobrevive al sign out (opción B; `usePerpl` la ignora si la `address` no coincide). No hay borrado explícito desde la UI: «Reset trading key» (visible sólo con key rechazada) enrola una key **nueva**; `clearTradingKey` queda exportado sin llamadores. Motivo: cada Reconnect cuesta una tx de gas y registra otra key en Perpl (límite `423`); follow-up post-bounty: key derivada de una firma determinista de la wallet (patrón dYdX v4), sin nada en disco.
 Entrada malformada → se borra y se lee como ausente (misma regla que `storage.ts`).
 
 ### 2.8 `hooks/usePerpl.ts`
@@ -238,7 +238,7 @@ valor conocido con "· last seen"). Nada más cambia en Wallet.
   abre el socket y el polling de `context`; `false` los cierra (con 2 s de gracia para
   navegaciones internas).
 - Órdenes en vuelo: `TradingSocket.pending` por `sn`; la pantalla espera la promesa.
-- Sign out: `clearTradingKey()`, socket cerrado, `state = none`. Cambio de cuenta (otra
+- Sign out: `clearTradingKey()`, socket cerrado, `state = none`. **(gate)** sin `clearTradingKey()`: socket cerrado por el cambio de `address`; con la misma wallet el estado vuelve a `ready` sin Reconnect. Residual: un Reconnect real (reinstalación) sigue reenviando `enableForwarding` porque no hay getter on-chain. Cambio de cuenta (otra
   passkey): la key guardada pertenece a otra `address` → se detecta (`address` guardada ≠
   actual) y se trata como `none`.
 - `AppCtx` gana `perpl: Perpl`.
