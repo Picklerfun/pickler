@@ -107,8 +107,8 @@
       <span class="accent"></span>
     </h1>
     <p class="lede">
-      El gate de Perpl vive en Trade; Ask y Agents funcionan sin key; cerrar sesión ya no obliga a Reconnect
-      (tx + key nueva).
+      El gate de Perpl se muestra también en Trade (el flujo real sigue en Markets); Ask y Agents funcionan sin
+      key; cerrar sesión ya no obliga a Reconnect (tx + key nueva).
     </p>
 
     <div class="dev-status-board">
@@ -150,9 +150,12 @@
           nueva en Perpl (no un borrado).</li>
         <li><code>f6aa7aa</code> — <code>MarketsList</code> navega siempre al mercado (antes, sin trading key, la
           fila quedaba <code>readOnly</code>); el pill de entrada sale de <code>marketEntryTab(hasKey)</code>. El
-          gate de Perpl (antes en la raíz de Markets) se mueve a <code>TradeGate</code> dentro de la pestaña
-          Trade, visible sólo cuando <code>perpl.status !== "ready"</code>; su botón vuelve a Markets
-          (<code>back</code>) sin disparar Reconnect. Ask y Agents dejan de depender de la key de Perpl.</li>
+          gate de Perpl se duplica como <code>TradeGate</code> en la pestaña Trade; el flujo real de
+          Enable/Reconnect sigue en Markets. <code>TradeGate</code> es visible sólo cuando
+          <code>perpl.status !== "ready"</code>; su botón vuelve a Markets (<code>back</code>) sin disparar
+          Reconnect. Ask y Agents dejan de depender de la key de Perpl.</li>
+        <li><code>91d9fef</code> — <code>TradeGate</code> navega con <code>nav("markets")</code> en vez de
+          <code>back()</code>: un push abre Market con Wallet debajo (revisión final).</li>
       </ul>
       <p>Proyecto completo: <a href="../2026-09-19-mobile-ask.html">overview mobile-ask</a>; plan
         <code>docs/superpowers/plans/2026-09-21-markets-ask-gate.md</code>; correcciones <strong>(gate)</strong>
@@ -182,6 +185,7 @@
       <h2>Archivos tocados</h2>
       <div class="files-box">
         <ul>
+          <li>apps/mobile/README.md</li>
           <li>apps/mobile/__tests__/store.test.ts</li>
           <li>apps/mobile/src/hooks/useAccount.ts</li>
           <li>apps/mobile/src/screens/market.tsx</li>
@@ -189,8 +193,9 @@
           <li>apps/mobile/src/store.ts</li>
         </ul>
       </div>
-      <p><code>git diff --stat 3a0c490..HEAD</code>: 5 archivos, +44 / −9. Sin dependencias nuevas; Ask,
-        Agents, <code>useReads</code>, <code>usePerpl</code> y <code>services/reads</code> sin cambios.</p>
+      <p><code>git diff --stat 3a0c490..91d9fef -- apps/mobile</code>: 6 archivos, +48 / −11. Sin dependencias
+        nuevas; Ask, Agents, <code>useReads</code>, <code>usePerpl</code> y <code>services/reads</code> sin
+        cambios.</p>
     </section>
 
     <section>
@@ -242,9 +247,17 @@
           <figcaption>Pestaña Trade sin key: <code>TradeGate</code>, botón vuelve a Markets.</figcaption>
         </figure>
       </div>
-      <p contenteditable="true" data-placeholder="Revisión independiente de la rama: pendiente (la corre el controlador tras este tracker); se anota aquí el veredicto cuando exista.">
-        Revisión independiente de la rama: pendiente (la corre el controlador tras este tracker, no este
-        ejecutor); se anota aquí el veredicto y, si aplica, el fix resultante.
+      <p>
+        <strong>Revisión final independiente</strong> (subagente Opus, 2026-09-21) sobre <code>3a0c490..c32be3d</code>:
+        veredicto «lista para merge local», 0 críticos / 2 importantes / 5 menores. Importante 1:
+        <code>back()</code> desde un push llevaba a Wallet en vez de Markets — corregido en <code>91d9fef</code>
+        (<code>TradeGate</code> navega con <code>nav("markets")</code>). Importante 2: este cierre documental
+        (tracker + audit F2 §7). Menores diferidos triados, ninguno bloquea el merge:
+        <code>clearTradingKey</code> se conserva como gancho de un futuro «Forget trading key»; el botón «Close»
+        de Dev controls sin respuesta a taps de Maestro y el subtítulo de la cabecera visible con
+        <code>TradeGate</code> pasan a la lista de F3/F4. Recomendación abierta: verificación empírica de sign
+        out → sign in sin Reconnect en el iPhone de Jesús, o en el simulador tras el Reconnect que él decida,
+        antes de pasar este tracker a <code>completed</code>.
       </p>
     </section>
 

@@ -939,3 +939,9 @@ sparkline con margen visible, escalera sin overflow, sin regresión visual).
 Minors 6 (`readDots` con `status: string`) y el resto del triage («No es issue») no se tocaron: no son defectos.
 
 - **(2026-09-21)** Pendiente 3 de §5 (Markets `readOnly` bloquea Ask) **resuelto** por el plan `2026-09-21-markets-ask-gate.md` (tracker `dev/2026-09-21-markets-ask-gate.html`): la lista siempre abre el mercado, el gate vive en Trade y el sign out conserva la trading key. Pendiente 1 de §5 (push real) **resuelto** el 2026-09-20 (audit F1 §8). No se pudo medir empíricamente el Step 2 de la Task 3 del fix (sign out → sign in sin Reconnect) porque el simulador quedó sin trading key desde el incidente del 2026-09-20; la garantía descansa en `useAccount.signOut` (`src/hooks/useAccount.ts:49`, ya no llama `clearTradingKey`) y en `usePerpl` ignorando una key de otra `address` vía `same(key.address, address)` (`src/hooks/usePerpl.ts:103`).
+- **(2026-09-21) Revisión final independiente del fix gate** (`final-review.md` del workspace SDD): lista para
+  merge local; hallazgo importante corregido en `91d9fef` (`TradeGate` navega con `nav("markets")`: un push abre
+  Market con Wallet en el stack y `back()` volvía a Wallet); residual aceptado (opción B): tras el sign out la
+  trading key sigue en el keychain (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`, alcance operar/no retirar) y hoy sólo se
+  borra reinstalando o con Reset ante key rechazada — follow-up «Forget trading key»; el copy de `TradeGate`
+  durante `onboarding` y el subtítulo de la cabecera con `TradeGate` van a F3/F4.
