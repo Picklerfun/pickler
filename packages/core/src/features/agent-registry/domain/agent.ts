@@ -1,5 +1,12 @@
 // Ported from Relayer apps/api/src/kits/agent/entities/Agent.ts (commit bb6bb1226e92).
-// `agent.agents` is shared with Relayer; this is its read model without secret columns.
+//
+// What is shared with Relayer is the shape, not the storage. Pickler has its own database and
+// Relayer's project is left intact and no longer developed (extraction plan, rule 4), so
+// `agents.agents` is Pickler's own redesigned table; the fields below keep Relayer's names and
+// formats only so the ported logic reads the same.
+//
+// This is the read model, without the secret columns. The custody fields have no columns in the
+// migrated table yet, and the adapter reads them as null until the `wallets` schema exists.
 
 export const AGENT_STATUSES = [
   "active",
