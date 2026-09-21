@@ -47,13 +47,35 @@ export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResul
 
 type Step = { step: "edit" } | { step: "review" } | { step: "result"; result: OrderResult };
 
-function TradeTab({ S, set, perpl, nav }: AppCtx) {
+const TRADE_GATE: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+
+/** Sin trading key en este teléfono: el gate de Perpl vive aquí, no en Markets (fix gate, P3). El flujo real de Enable/Reconnect sigue en Markets. */
+function TradeGate({ perpl, back }: Pick<AppCtx, "perpl" | "back">) {
+  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.lime} /></Page>;
+  const existing = perpl.existingAccountId;
+  const reconnect = existing !== null && existing > 0n;
+  return (
+    <Page top={13} gap={11}>
+      <StatusCard tag="TRADE" title="Trading isn't set up on this phone" tone={TRADE_GATE}
+        body={reconnect
+          ? `This wallet already has Perpl account #${String(existing)}. Reconnect registers a trading key on this phone; no AUSD moves.`
+          : "Enable trading moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps."}>
+        <Btn label={reconnect ? "Reconnect trading" : "Enable trading"} onPress={back} variant="lime" py={14} accessibilityLabel="trade-gate" />
+      </StatusCard>
+      <T w={400} s={11} lh={1.45} color={C.faint}>Ask and Agents work without a trading key.</T>
+    </Page>
+  );
+}
+
+function TradeTab({ S, set, perpl, nav, back }: AppCtx) {
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const side: Side = S.perpsSide ?? "long";
   const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
   const [amount, setAmount] = useState("");
   const [lv, setLv] = useState(1);
   const [st, setSt] = useState<Step>({ step: "edit" });
+
+  if (perpl.state.status !== "ready") return <TradeGate perpl={perpl} back={back} />;
 
   const leverages = leveragesFor(market);
   const lvUsed = leverages.includes(lv) ? lv : 1;

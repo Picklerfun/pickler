@@ -9,6 +9,7 @@ import type { Market } from "../perpl/context";
 import { ENABLE_STEPS } from "../perpl/enable";
 import { change24h, formatPnl, formatPrice, formatSize, liquidationPrice, lockedCollateral, positionPnl, unrealisedPnl } from "../perpl/orders";
 import type { Position } from "../perpl/ws";
+import { marketEntryTab } from "../store";
 import { Btn, Card, Chip, EmptyPanel, KV, Page, T, Tag, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import { describeError } from "../wallet/wallet";
@@ -21,7 +22,8 @@ const CONNECTION = {
   closed: { label: "OFFLINE", fg: C.faint, bd: C.hair18 },
 } as const;
 
-function MarketsList({ perpl, nav, readOnly }: Pick<AppCtx, "perpl" | "nav"> & { readOnly: boolean }) {
+/** Lista de mercados: siempre tocable. Con trading key entra a Trade; sin ella a Ask (fix gate, P2). */
+function MarketsList({ perpl, nav, hasKey }: Pick<AppCtx, "perpl" | "nav"> & { hasKey: boolean }) {
   return (
     <View style={{ gap: 7 }}>
       <Tag s={10}>MARKETS</Tag>
@@ -36,8 +38,8 @@ function MarketsList({ perpl, nav, readOnly }: Pick<AppCtx, "perpl" | "nav"> & {
         return (
           <TouchCard
             key={m.id} pad={13} accessibilityLabel={`market-${m.symbol}`}
-            onPress={readOnly ? undefined : () => nav("market", { perpsMarketId: m.id, perpsSide: "long", marketTab: "trade" })}
-            style={{ flexDirection: "row", alignItems: "center", gap: 11, opacity: readOnly ? 0.7 : 1 }}
+            onPress={() => nav("market", { perpsMarketId: m.id, perpsSide: "long", marketTab: marketEntryTab(hasKey) })}
+            style={{ flexDirection: "row", alignItems: "center", gap: 11 }}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
               <T w={700} s={14} lh={1.2}>{m.symbol}</T>
@@ -129,7 +131,8 @@ function Gate({ perpl, treasury, nav }: AppCtx) {
           </View>
         )}
       </Card>
-      <MarketsList perpl={perpl} nav={nav} readOnly />
+      <T w={400} s={11.5} lh={1.4} color={C.faint}>Ask an agent on any market below — no trading key needed.</T>
+      <MarketsList perpl={perpl} nav={nav} hasKey={false} />
     </Page>
   );
 }
@@ -224,7 +227,7 @@ export function MarketsScreen(ctx: AppCtx) {
         <Btn label="Withdraw to wallet" onPress={() => nav("perpsFunds", { fundsMode: "withdraw" })} variant="outline2" flex={1} accessibilityLabel="withdraw-to-wallet" />
       </View>
 
-      <MarketsList perpl={perpl} nav={nav} readOnly={false} />
+      <MarketsList perpl={perpl} nav={nav} hasKey />
 
       <View style={{ gap: 7 }}>
         <Tag s={10}>POSITIONS</Tag>
