@@ -30,7 +30,7 @@ export function LaunchingNow() {
             : Math.min(1, graduationTarget > 0 ? launch.raised / graduationTarget : 0);
           const stageStyle = graduated
             ? accentVars("lime")
-            : { ...accentVars("cyan"), "--stage-ink": "#7FE3FF" };
+            : { ...accentVars("cyan"), "--stage-ink": "var(--pk-cyan-ink)" };
           return (
             <li key={launch.agent.ticker} className={`${styles.glass} ${styles.launchCard}`}>
               <div className={styles.launchTop}>

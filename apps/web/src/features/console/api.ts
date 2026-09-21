@@ -7,6 +7,7 @@ import type {
   runResponseSchema,
   eventResponseSchema,
   marketCatalogSchema,
+  paperOrderSchema,
 } from "@pickler/api-schema";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export type Agent = ReturnType<typeof agentResponseSchema.parse> & {
@@ -23,6 +24,24 @@ export type Plugin = {
   tools: Config["tools"];
 };
 export type Options = ReturnType<typeof consoleOptionsSchema.parse>;
+export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
+
+/**
+ * The console transport answers a failure with `{ error: CODE }`. The code is what the Studio
+ * branches on — it decides which blocked state to show and which control to lock — so it travels
+ * with the error instead of being flattened into prose.
+ */
+export class ConsoleError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ConsoleError";
+  }
+}
+export const errorCode = (caught: unknown): string =>
+  caught instanceof ConsoleError ? caught.code : "";
 
 const messages: Record<string, string> = {
   NOT_READY:
@@ -46,7 +65,7 @@ export async function consoleApi<T>(path: string, init: RequestInit = {}): Promi
   }
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) {
-    throw new Error(messages.UNAUTHORIZED);
+    throw new ConsoleError("UNAUTHORIZED", messages.UNAUTHORIZED!);
   }
   const response = await fetch(`/api/v1/console${path}`, {
     ...init,
@@ -59,7 +78,8 @@ export async function consoleApi<T>(path: string, init: RequestInit = {}): Promi
   });
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(messages[body.error] ?? `Request failed: ${body.error ?? response.status}`);
+    const code = typeof body?.error === "string" ? body.error : String(response.status);
+    throw new ConsoleError(code, messages[code] ?? `Request failed: ${body?.message ?? code}`);
   }
   return body as T;
 }
