@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { currentParams, goBackIfCan, navigateTo, resetRootTo, signinIsRoot } from "./navigation/ref";
-import { gateTarget } from "./navigation/routes";
+import { currentParams, goBackIfCan, navigateTo, resetRootTo, signinIsRoot, switchTab as switchTabRoute } from "./navigation/ref";
+import { gateTarget, type TabName, TAB_ROOT } from "./navigation/routes";
 import type { Screen } from "./navigation/screens";
 import { COMING_SOON_COPY, type ComingSoonTab } from "./screens/comingSoonCopy";
 
@@ -31,7 +31,7 @@ export type Patch = Partial<StoreState>;
 
 export const INITIAL: StoreState = { marketTab: "trade", askView: "new" };
 
-/** Tabs que todavía no hacen nada real: el Shell renderiza "Coming soon" (D5, D17). */
+/** Tabs que todavía no hacen nada real: su pestaña renderiza "Coming soon" (D5, D17). */
 export const COMING_SOON: readonly ComingSoonTab[] = ["launchpad", "activity", "portfolio"];
 
 export function isComingSoonTab(screen: Screen): screen is ComingSoonTab {
@@ -62,7 +62,7 @@ export function heldActionFor(next: Screen | undefined): string | null {
 export const marketEntryTab = (hasKey: boolean): MarketTab => (hasKey ? "trade" : "ask");
 
 // ---------------------------------------------------------------------------
-// Sello del pull-to-refresh (spec mobile-loading D5). Puros: el Shell los evalúa en un efecto.
+// Sello del pull-to-refresh (spec mobile-loading D5). Puros: useRefreshSeal los evalúa en un efecto.
 
 /** `UPDATED HH:MM:SS` en hora local, 24 h. */
 export function updatedLabel(ts: number): string {
@@ -131,6 +131,8 @@ export type AppStore = {
   nav: (screen: Screen, patch?: Patch) => void;
   back: () => void;
   requireAccount: (target: Screen, patch?: Patch) => void;
+  /** Tab bar: enfoca la pestaña conservando su pila; sin cuenta, las pestañas con gate pasan por signin. */
+  switchTab: (tab: TabName) => void;
   /** Sign in terminado: vuelve a Tabs y aterriza en el `next` del gate (D5). */
   finishSignin: () => void;
   signedOut: () => void;
@@ -150,11 +152,17 @@ export function useAppStore({ hasAccount, scr }: { hasAccount: boolean; scr: Scr
     if (g.screen === "signin") { navigateTo("signin", { next: g.next, patch }); return; }
     nav(target, patch);
   }, [hasAccount, nav]);
+  const switchTab = useCallback((tab: TabName) => {
+    const root = TAB_ROOT[tab];
+    const g = gateTarget(hasAccount, root);
+    if (g.screen === "signin") { navigateTo("signin", { next: g.next }); return; }
+    switchTabRoute(tab);
+  }, [hasAccount]);
   const finishSignin = useCallback(() => {
     const p = currentParams();
     if (signinIsRoot()) resetRootTo("Tabs"); // arranque sin cuenta: no hay Tabs debajo (P3)
-    nav(p?.next ?? "wallet", p?.patch); // con Tabs debajo, navigate vuelve a Tabs y saca signin
+    nav(p?.next ?? "wallet", p?.patch); // con Tabs debajo, el `pop: true` del RootStack vuelve a Tabs y saca signin
   }, [nav]);
   const signedOut = useCallback(() => { setS(signedOutState); resetRootTo("signin"); }, []);
-  return { S, set, nav, back, requireAccount, finishSignin, signedOut, hasAccount, scr, comingSoon: isComingSoonTab(scr) };
+  return { S, set, nav, back, requireAccount, switchTab, finishSignin, signedOut, hasAccount, scr, comingSoon: isComingSoonTab(scr) };
 }

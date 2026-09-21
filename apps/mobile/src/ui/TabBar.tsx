@@ -18,7 +18,7 @@ export const TABS: readonly [Screen, string, IconName][] = [
 
 /** Tab bar custom de bottom-tabs. Oculta en pantallas no raíz (SHOW_TABS, P4); el ítem activo sale de `state.index`. */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
-  const { requireAccount } = useAppCtx();
+  const { switchTab } = useAppCtx();
   const focusedTab = state.routes[state.index];
   const focusedScreen = (getFocusedRouteNameFromRoute(focusedTab) ?? TAB_ROOT[focusedTab.name as TabName]) as Screen;
   if (!SHOW_TABS.includes(focusedScreen)) return null;
@@ -32,7 +32,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         const onPress = () => {
           // tabPress es lo que hace popToTop en la pila anidada cuando la pestaña ya está enfocada (doc bottom-tabs).
           const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-          if (!focused && !e.defaultPrevented) requireAccount(root);
+          if (!focused && !e.defaultPrevented) switchTab(route.name as TabName);
         };
         return (
           <Touch key={route.key} onPress={onPress} accessibilityLabel={`tab-${root}`} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}>
