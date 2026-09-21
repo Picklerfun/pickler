@@ -97,7 +97,7 @@ function CreditsRow({ credits }: { credits: number | null }) {
   return (
     <Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Tag>CREDITS</Tag>
-      {credits === null ? <Skeleton h={16} w={28} r={4} /> : <T w={700} s={16} lh={1} mono>{String(credits)}</T>}
+      {credits === null ? <Skeleton h={16} w={28} r={4} /> : <Reveal><T w={700} s={16} lh={1} mono>{String(credits)}</T></Reveal>}
       <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>1 credit per read · simulated for the testnet</T>
     </Card>
   );
@@ -283,7 +283,7 @@ export function AskTab(ctx: AppCtx) {
       <View style={{ gap: 7 }}>
         {reads.listError ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
         {reads.reads === null && !reads.listError ? <><Skeleton.Card lines={3} /><Skeleton.Card lines={3} /></> : null}
-        {reads.reads !== null && reads.reads.length === 0 ? <T w={400} s={12} lh={1.4} color={C.faint}>No reads on {market.symbol} yet.</T> : null}
+        {reads.reads !== null && reads.reads.length === 0 ? <Reveal><T w={400} s={12} lh={1.4} color={C.faint}>No reads on {market.symbol} yet.</T></Reveal> : null}
         {reads.reads !== null && reads.reads.length > 0 ? <Reveal style={{ gap: 7 }}>{reads.reads.map((r) => <ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() => set({ askFocusReadId: r.id })} />)}</Reveal> : null}
       </View>
     );
