@@ -34,7 +34,9 @@ Sources are listed at the end. Numbers come from public docs, articles and ARP's
 
 **pump.fun.** Solana only. Monad, Ethereum, Base and BSC subdomains suggest an expansion, but none is confirmed; reports mention 2027. Projects "on Monad" are unofficial forks.
 
-**Mera.** A client-side passkey library by Category Labs (`@category-labs/mera`, MIT/Apache, preview before 1.0, internal security review only). It derives standard BIP-44 EVM and Solana accounts from the WebAuthn PRF output and signs through sessions (`toViemAccount`), so the same account signs on any EVM chain, Robinhood Chain included. Funds are the constraint, not the wallet: users holding MON/AUSD on Monad need the quote asset on the token's chain. Risks:
+**Mera.** A client-side passkey library by Category Labs (`@category-labs/mera`, MIT/Apache, preview before 1.0, internal security review only). It signs through sessions (`toViemAccount`), so the same account signs on any EVM chain, Robinhood Chain included.
+
+Corrected 2026-09-21 against the published 0.2.0 types: it does **not** derive BIP-44 accounts on its own. The shipped API offers two models and only one crosses devices. `createSecretVaultWith…` encrypts a **random** key into a vault (`{ version, credential, prfSalt, nonce, ciphertext }`) that must travel with the person, so a passkey alone opens nothing. `getPasskeyPrfOutput({ rpId })` returns 32 bytes that are a deterministic function of the credential, the host and a fixed salt (`sha256("mera.prf.salt.v1")`, promised stable across versions); used as the private key, the same passkey is the same account everywhere with nothing to sync. The web uses the second (`apps/web/src/features/wallet/lib/mera-signer.ts`); which one the iOS app uses decides whether the two share an account. Funds are the constraint, not the wallet: users holding MON/AUSD on Monad need the quote asset on the token's chain. Risks:
 
 - Accounts are lost with the passkey unless the app offers an export or backup.
 - Passkeys are bound to the rpId, so the app domain must be fixed from day one.
