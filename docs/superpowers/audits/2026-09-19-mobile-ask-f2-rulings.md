@@ -849,7 +849,91 @@ este plan y no se atribuye aquí. Cuenta Perpl #620 sin tocar (`perpl: none` tra
   siguen siendo de F3.
 - El resto de §5 (Minor 2, 5–9; F2 `completed` vs `in_progress`; Markets `readOnly` sin key de Perpl; key APNs;
   merge/push de F1+F2) sigue igual. El siguiente punto de decisión es el de §6.
+- **Recomendación del revisor independiente para F3**: al portar `MatrixGrid` a Trade, parametrizar el acento
+  (`accent: GridAccent`) en vez de `GRID_ACCENT.ask` fijo en `ask.tsx:108` — hoy no hace falta, pero F3 lo necesita
+  para el `Grid` lima de Trade sin duplicar el componente.
 
 ### Revisión independiente
 
-<pendiente: la añade el controlador>
+Revisor independiente (Opus 5, sin subagentes), rama `9fec62c..ff7ad27`. Solo lectura: no se tocó árbol, índice ni
+HEAD. Evidencia propia: `npx jest __tests__/reads-matrix.test.ts __tests__/perpl-marks.test.ts __tests__/theme.test.ts`
+→ 3 suites / 24 tests en verde sobre `ff7ad27`; cuatro mutantes (stepper que envuelve, `readDots` contando `failed`,
+`sparkPoints` sin invertir Y, `appendMarks` que muta) evaluados contra las aserciones exactas de los tests: los cuatro
+caen en rojo. `git diff 9fec62c..ff7ad27 --stat` limitado a `package.json`, `package-lock.json`, `ios/`, `app.json`,
+`useReads.ts`, `reads/api.ts`, `reads/types.ts`, `agents.tsx`, `market.tsx`, `store.ts`, `services/` → vacío.
+
+**Veredicto: With fixes.**
+
+**Strengths** (completo en `.superpowers/sdd/2026-09-20-mobile-ask-matrix/final-review.md`):
+
+- `MatrixGrid` (`ask.tsx:107-150`) es transcripción fiel del `Grid` del prototipo (mismos 74/58/44 px, colores, radio
+  14, `overflow: hidden`, punto de 5 px, precedencia `accSoft`/`accOn`); las únicas diferencias son las decididas
+  (5 niveles D2, sparkline real P2, regla del mark por índice P4, punto de un solo tono).
+- `AskSheet` (`ask.tsx:154-200`) reproduce `ConsultTab` línea a línea; las desviaciones (P7 chips inline + «Done»,
+  P8 label «Ask {agente} · n credit», estado sin créditos de D14) están todas mandadas por el plan.
+- `agent = reads.agents?.find(id) ?? agents[0]` (`ask.tsx:161`) es la única fuente del chip, del label del botón y de
+  `onAsk(agent.id)`: lo que se muestra es lo que se cobra, con o sin chips desplegados (verificado en `07-drift.png`).
+- `marks.ts:9-16` (`appendMarks`) copia el record y crea arrays nuevos solo para mercados tocados, recorta a `max`
+  exacto incluso si `prev` ya lo excedía; `sparkPoints` invierte Y correctamente y cubre `< 2` puntos y valores iguales
+  sin dividir por cero.
+- Tests discriminantes en `reads-matrix.test.ts` y `perpl-marks.test.ts` fijan topes en ambos extremos, la exclusión de
+  `failed`/`void`/`pending`, la inmutabilidad del historial y el tope con `max` custom; los cuatro mutantes del revisor
+  fallaron todos.
+
+**Issues** (triage table verbatim del final-review, `Nivel del ledger | Veredicto` renombrado a las columnas fuente):
+
+| Severidad | Hallazgo (una línea) |
+|---|---|
+| Important 1 | `ask.tsx:167` — el error/carga de agentes queda oculto detrás de «Change»: con `reads.agents === null` la hoja no explica nada hasta que el usuario toca «Change» (botón deshabilitado sin motivo); regresión de UX chica pero real, mandada por el texto del plan (Step 3), no por el ejecutor. |
+| Minor 2 | `marks.ts:21-28` — los extremos de la sparkline se dibujan sobre el borde de la card (`overflow: hidden`) y se pierden bajo la hairline; en `10-credits-18.png`/`03-cell-selected.png` el tramo más reciente (a menudo el extremo, con ventanas de 5 min) no se ve. |
+| Minor 3 | `ask.tsx:118` — `LEVELS_BPS[i + 1] < 0` depende de `undefined < 0` (funciona hoy, mandado por el plan; se rompería con `noUncheckedIndexedAccess`). |
+| Minor 4 | `ask.tsx:158-162` — el chip «Asking {agente} · n credit» no puede encogerse; con un nombre de agente largo del servidor empujaría «Change» fuera de la card. |
+| Minor 5 | `ask.tsx:121` — escalera de 58 px con `formatPrice`: cabe hasta 8 chars con el fixture actual, pero 9 chars (BTC ≥ 1 000 000) partiría la línea en dos. |
+| Minor 6 | `matrix.ts:70` — `readDots` tipa `status: string` en vez de `ReadStatus` (plan-mandated); correcto por tipado estructural, no es defecto. |
+
+Triage table del ledger (verbatim, `final-review.md` §«Triage of deferred minors and rulings»):
+
+| Línea del ledger | Veredicto |
+|---|---|
+| T1 `readDots` con `status: string` | No es issue (estructural; ver Minor 6). |
+| T1 `GRID_ACCENT.trade.on` duplica el literal de `C.limeBd` | No es issue; el test fija el literal a propósito. Opcional `on: C.limeBd` cuando F3 toque `theme.ts`. |
+| T2 ids duplicados en una llamada a `appendMarks` | No es issue: `pub/context` no repite ids; el comportamiento (dos puntos) sería correcto igualmente. |
+| T2 trailer `Claude Haiku 4.5` | No es issue (regla de atribución veraz). |
+| T4 `LEVELS_BPS[i + 1] < 0` | Puede esperar (Minor 3). |
+| T4 residual: sparkline escalera y bordes | Puede esperar, primer follow-up recomendado (Minor 2: hay evidencia de tramo reciente invisible). La escalera en sí es honesta (P2) y no se toca. |
+| Ruling punto de un solo tono | Correcto, no es issue: la segunda opacidad del prototipo es `invalidFor(pct, h)` (celdas inválidas), no un conteo; con 5 niveles no existen. |
+| Ruling `formatPrice` en la escalera | Correcto, no es issue: cabe hasta 8 chars (Minor 5); agrupar miles es decisión de producto, no defecto. |
+| Ruling captura «matriz vacía» no obtenida | Puede esperar: `readDots([])` cubierto por test; `10-credits-18.png` muestra celdas sin punto salvo una. Dejarlo declarado en el audit. |
+| Task 5 O3 (scroll saltó una vez) | Puede esperar: no reproducido en `05d/05e`; probable interacción de Maestro. Anotar y no perseguir. |
+| Task 5 O1 (interferencia externa) | No es defecto de la app; riesgo operativo del simulador compartido, ya documentado. |
+
+#### Fixes aplicados tras la revisión
+
+Commit `213b717` (rama `feat/mobile-ask-f2`), un solo commit, tres archivos: `apps/mobile/src/screens/ask.tsx`,
+`apps/mobile/src/perpl/marks.ts`, `apps/mobile/__tests__/perpl-marks.test.ts`.
+
+1. **Important 1**: en `AskSheet`, el bloque `{picking ? (reads.agents === null ? … : chips) : null}` pasó a
+   `{reads.agents === null ? <T>{reads.agentsError || "Loading agents…"}</T> : picking ? (<chips/>) : null}` — el
+   texto de error/carga ahora es visible con `reads.agents === null` sin depender de `picking`.
+2. **Minor 2**: `sparkPoints` (`marks.ts`) ganó `SPARK_PAD = 6` (módulo-privado) y
+   `y = span === 0 ? 50 : round1(SPARK_PAD + (100 - 2 * SPARK_PAD) * (1 - (v - min) / span))`; doc comment actualizado
+   («0 = máximo, 100 = mínimo» → «6 = máximo, 94 = mínimo; margen para que el trazo no muera bajo la hairline de la
+   card»). TDD: `perpl-marks.test.ts` — `sparkPoints([10, 20, 15, 30])` cambió de `[[0,100],[33.3,50],[66.7,75],[100,0]]`
+   a `[[0,94],[33.3,50],[66.7,72],[100,6]]` (flat cases sin cambio). RED confirmado (`npx jest
+   __tests__/perpl-marks.test.ts` → 1 failed / 1 passed, valores viejos esperados vs nuevos recibidos), luego
+   implementado → GREEN (2/2 passed).
+3. **Minor 3**: `markRule` en `MatrixGrid` pasó a `bps > 0 && (LEVELS_BPS[i + 1] ?? 0) < 0`.
+4. **Minor 4**: el `Chip` «Asking …» ganó `style={{ flexShrink: 1 }}`.
+5. **Minor 5**: el `T` de la escalera (columna de 58 px) ganó `numberOfLines={1}`.
+
+Evidencia post-fix: `npx tsc --noEmit` limpio; `npm test` → 31 suites / 236 tests en verde (mismo conteo que §7 antes
+del fix wave); captura `fixwave-grid.png` en `.superpowers/sdd/2026-09-20-mobile-ask-matrix/matrix-shots/` (Ask/BTC,
+sparkline con margen visible, escalera sin overflow, sin regresión visual).
+
+**Rulings del controlador sobre esta ola:**
+
+- Ruling: Important 1 se corrige contra el Step 3 del plan (D14 pide que la hoja explique el estado; un botón
+  deshabilitado sin motivo es peor) — coste: una línea.
+- Ruling: Minors 2–5 entran en la misma ola por triviales — coste: revertir un commit.
+
+Minors 6 (`readDots` con `status: string`) y el resto del triage («No es issue») no se tocaron: no son defectos.
