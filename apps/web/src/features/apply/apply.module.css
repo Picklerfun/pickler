@@ -38,7 +38,8 @@
   color: var(--cyan);
 }
 
-.page :focus-visible {
+/* Shared inputs own their focus border, including the frame around prefixed inputs. */
+.page :focus-visible:not(:global(.pk-input)):not(:global(.pk-input-inner)) {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
