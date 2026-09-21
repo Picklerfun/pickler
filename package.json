@@ -18,6 +18,7 @@
     "test": "npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
+    "contracts:abi": "npm run contracts:build && node scripts/generate-abi.mjs",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",
     "build:shared": "turbo run build --filter=@pickler/core --filter=@pickler/infrastructure --filter=@pickler/api-schema --filter=@pickler/agent-runtime",
     "agent": "npm run cli --workspace=@pickler/agent-service --",
