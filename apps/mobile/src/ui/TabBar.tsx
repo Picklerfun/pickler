@@ -30,7 +30,8 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         const focused = state.index === i;
         const fg = ROOT_OF[focusedScreen] === root ? C.lime : C.faint;
         const onPress = () => {
-          // tabPress es lo que hace popToTop en la pila anidada cuando la pestaña ya está enfocada (doc bottom-tabs).
+          // El listener `tabPress` de native-stack (createNativeStackNavigator) es quien hace popToTop en la pila
+          // anidada al tocar la pestaña ya enfocada — no bottom-tabs, que sólo emite y reenvía el evento aquí.
           const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
           if (!focused && !e.defaultPrevented) switchTab(route.name as TabName);
         };

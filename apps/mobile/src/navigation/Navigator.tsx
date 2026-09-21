@@ -59,7 +59,14 @@ function PortfolioTab() { return <PortfolioStack.Navigator screenOptions={STACK}
 
 function TabsNav() {
   return (
-    <Tabs.Navigator initialRouteName="WalletTab" tabBar={(p) => <TabBar {...p} />} screenOptions={{ headerShown: false, animation: "none", sceneStyle: { backgroundColor: C.bgBottom } }}>
+    // backBehavior="none": el default v7 (`firstRoute`) deja `canGoBack()` en true en la raíz de cualquier pestaña
+    // que no sea la primera (Markets); `goBackIfCan()` (ref.ts) saltaría entonces a MarketsTab en vez de no hacer nada.
+    <Tabs.Navigator
+      initialRouteName="WalletTab"
+      backBehavior="none"
+      tabBar={(p) => <TabBar {...p} />}
+      screenOptions={{ headerShown: false, animation: "none", sceneStyle: { backgroundColor: C.bgBottom } }}
+    >
       <Tabs.Screen name="MarketsTab" component={MarketsTab} />
       <Tabs.Screen name="LaunchpadTab" component={LaunchpadTab} />
       <Tabs.Screen name="ActivityTab" component={ActivityTab} />
