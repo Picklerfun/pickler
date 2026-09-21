@@ -130,3 +130,14 @@ the console; public wallet/token/read demonstrations retain their existing desig
 OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --workspace=@pickler/web`;
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
+
+## Studio console integration
+
+The private console uses the Studio shell and sections under `features/console/sections`.
+Keep the existing backend permissions: research enablement is required to create or edit agents,
+not just to run them. Agent creation selects the ID returned by the API, never an array position.
+`features/console/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
+the selected trace every three seconds; stop when terminal unless scheduling needs discovery.
+Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
+Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
+run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
