@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { StatusBar, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { AppCtx } from "./src/ctx";
 import { useAccount } from "./src/hooks/useAccount";
@@ -83,11 +84,13 @@ export default function App() {
   const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
-        <Shell ctx={ctx} />
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" />
+        <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
+          <Shell ctx={ctx} />
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
