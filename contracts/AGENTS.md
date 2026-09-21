@@ -4,7 +4,15 @@ Read [the root instructions](../AGENTS.md) first. Read [chain package instructio
 
 ## Current state
 
-This is an independent Foundry project, not an npm workspace. `foundry.toml` pins Solidity 0.8.30, enables optimization with 200 runs, and configures 256 fuzz runs. `src/`, `test/`, and `script/` currently contain only placeholders. No business contracts, dependencies, networks, deployment scripts, or tests are implemented.
+This is an independent Foundry project, not an npm workspace. `foundry.toml` pins Solidity 0.8.30, enables optimization with 200 runs, and configures 256 fuzz runs, 64 invariant runs at depth 128, and write access to `../packages/core/test/fixtures` for the parity fixture below.
+
+Implemented: `src/libraries/PicklerCurveMath.sol`, a pure library holding all curve arithmetic — exact-input buy, exact-input sell, exact-output buy, remaining inventory, marginal price, and the derivation of virtual reserves from a sale allocation, an LP allocation and a target reserve. Rounding is directional: the quote reserve is floored and anything subtracted from a reserve is ceilinged, so rounding always favours the curve. Tests cover hand-computed values, the derivation's price-continuity property under fuzzing, and invariants over random buy/sell sequences.
+
+Not implemented: the token, factory, bonding curve, graduation adapter, liquidity locker and fee escrow; networks and deployment scripts. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
+
+Dependencies are git submodules pinned by commit in `foundry.lock`: forge-std `v1.11.0`. A fresh clone needs `git submodule update --init --recursive` before `forge build`.
+
+Contracts currently carry `SPDX-License-Identifier: UNLICENSED` as an explicit placeholder. Choose a real license before anything is deployed.
 
 ## Organization and rules
 
@@ -13,7 +21,8 @@ This is an independent Foundry project, not an npm workspace. `foundry.toml` pin
 - Keep compiler and dependency choices reproducible. Document any added libraries and changes to compiler or EVM target settings.
 - Treat on-chain behavior as a separate execution boundary. Do not assume off-chain writes and transactions are atomic or that submission means finality.
 - Test access control, expected state transitions, invalid inputs, failure paths, and relevant invariants. Add fuzz testing for meaningful input ranges and adversarial edge cases.
-- Generate public ABIs from compiler artifacts into `packages/chain` once contracts exist. Add and document the generation command; it does not exist today.
+- Generate public ABIs from compiler artifacts into `packages/chain` with `npm run contracts:abi` from the repository root. Add a contract to the `CONTRACTS` list in `scripts/generate-abi.mjs` when external consumers need to decode or call it. Never hand-edit the generated output; CI regenerates it and fails on a diff.
+- `test/CurveVectors.t.sol` writes `packages/core/test/fixtures/curve-vectors.json`, which the TypeScript preview in `packages/core` is tested against. Regenerate it whenever curve arithmetic changes; CI fails on a diff. The chain is the source of those numbers, never the TypeScript port.
 - Record deployments by chain ID and contract version with verified address and block information. Never commit keys or signing credentials.
 - Deployment must be explicit, never a side effect of build or test. Confirm the intended network and deployment parameters before irreversible on-chain actions unless they are already explicitly authorized.
 
@@ -24,6 +33,7 @@ From the repository root, with Foundry installed:
 ```sh
 npm run contracts:build
 npm run contracts:test
+npm run contracts:abi # Regenerate public ABIs into packages/chain
 ```
 
-For formatting, use `forge fmt --root contracts --check`. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
+For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.

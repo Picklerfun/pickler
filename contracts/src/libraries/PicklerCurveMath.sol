@@ -39,11 +39,14 @@ library PicklerCurveMath {
     }
 
     /// @notice Marginal price in quote units per token, scaled by 1e18.
+    /// @dev Multiplies before dividing so the scaling factor is not eaten by the first
+    ///      division. Overflow is left to Solidity's checked arithmetic: a configuration
+    ///      large enough to overflow `k * 1e18` reverts rather than reporting a wrong price.
     function marginalPrice(CurveConfig memory config, uint256 netSold) internal pure returns (uint256) {
         uint256 k = _invariant(config);
         uint256 x = config.virtualTokenReserve - netSold;
 
-        return ((k / x) * 1e18) / x;
+        return (k * 1e18) / x / x;
     }
 
     /// @notice Tokens delivered for a net quote amount, after fees have already been deducted.
