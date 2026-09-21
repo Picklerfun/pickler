@@ -128,7 +128,7 @@
         <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
       </div>
 
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -137,9 +137,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -155,14 +155,14 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 1: Dependencias nativas, <code>GestureHandlerRootView</code> y rebuild con la app actual</label></li>
-              <li><label><input type="checkbox"> Task 2: Tabla de rutas y gate puros (<code>navigation/routes.ts</code>)</label></li>
-              <li><label><input type="checkbox"> Task 3: Adaptador sobre <code>navigationRef</code> (<code>navigation/ref.ts</code>)</label></li>
-              <li><label><input type="checkbox"> Task 4: <code>useRefreshSeal</code> y <code>useCurrentScreen</code></label></li>
-              <li><label><input type="checkbox"> Task 5: <code>Page</code>, <code>TabBar</code> y <code>Navigator</code> (compilan sin usarse)</label></li>
-              <li><label><input type="checkbox"> Task 6: Conmutación — store sólo con datos, <code>App.tsx</code> con <code>Navigator</code>, adiós <code>Shell</code></label></li>
-              <li><label><input type="checkbox"> Task 7: Recorrido en el simulador (capturas D12)</label></li>
-              <li><label><input type="checkbox"> Task 8: Docs — marcas (F1), F1 completed, audit, README, nota en el tracker del fix gate</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Dependencias nativas, <code>GestureHandlerRootView</code> y rebuild con la app actual (<code>0931f78</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 2: Tabla de rutas y gate puros (<code>navigation/routes.ts</code>, <code>14a4777</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 3: Adaptador sobre <code>navigationRef</code> (<code>navigation/ref.ts</code>, dentro de <code>f56d282</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>useRefreshSeal</code> y <code>useCurrentScreen</code> (<code>f56d282</code>, fixes <code>68fb17b</code>/<code>5cb9d32</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: <code>Page</code>, <code>TabBar</code> y <code>Navigator</code> (compilan sin usarse, <code>95ebc0d</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Conmutación — store sólo con datos, <code>App.tsx</code> con <code>Navigator</code>, adiós <code>Shell</code> (<code>16c9f3a</code>, fix v7 <code>824a2f2</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Recorrido en el simulador — 5/5 capturas, dos por video</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Docs — marcas (F1), F1 completed, audit, README, nota en el tracker del fix gate</label></li>
             </ol>
           </details>
         </div>
@@ -223,6 +223,18 @@
           <tr><td>D11 · Pastilla que sigue el dedo y selecciona <b>al soltar</b> (no en vivo)</td><td>Como la tab bar de iOS 26; cambiar en vivo montaría y desmontaría Markets/Wallet varias veces en un solo gesto.</td></tr>
         </tbody>
       </table>
+
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li><b>PF1</b> — <code>AppCtxProvider</code>/<code>useAppCtx</code> van en <code>src/navigation/context.tsx</code> (nuevo, sin imports de la app salvo el tipo <code>AppCtx</code>); <code>Page.tsx</code>, <code>TabBar.tsx</code> y <code>Navigator.tsx</code> importan de ahí. Rompe el ciclo <code>Page ↔ Navigator</code> del plan. <b>Coste si está mal:</b> un archivo más de 12 líneas.</li>
+        <li><b>PF2</b> — Tasks 3 y 4 se despachan en lote a un solo implementador (módulos pequeños, sin archivos compartidos, código completo en el plan) con una sola revisión del diff conjunto. <b>Coste si está mal:</b> una revisión algo más larga.</li>
+        <li><b>R1</b> (Task 3+4) — <code>useRefreshSeal</code> pasa al patrón contador+efecto del <code>Shell</code> original: <code>onRefreshDone(screen)</code> sólo incrementa <code>done = { n, screen }</code>; un efecto sobre <code>done</code> evalúa <code>refreshOk(done.screen, errors)</code> con los errores de ESE render, sella o marca <code>failed = screen</code> y arma el timeout de 3 s con cleanup. <b>Coste si está mal</b> (junto con R2): un sello de Markets fechado antes de entrar a Markets (semántica igual o mejor que P5).</li>
+        <li><b>R2</b> (Task 3+4) — <code>labelFor</code> es puro; el sello inicial lo pone un efecto del propio hook sobre <code>REFRESHABLE</code> (const nueva en <code>store.ts</code>, que <code>Page</code> también usa) cuando <code>hasData(s)</code> pasa a <code>true</code> por primera vez — ya no hay <code>setState</code> en render. <b>Coste si está mal:</b> ver R1.</li>
+        <li><b>R3</b> (Task 3+4) — el efecto del sello inicial añade <code>address</code> a sus deps y se declara <b>después</b> del efecto de reset (el orden de efectos es el orden de declaración): al cambiar de cuenta, el reset limpia y el efecto re-sella si hay dato (mismo comportamiento que el <code>Shell</code> original, que re-sellaba sobre datos aún viejos). <b>Coste si está mal:</b> un sello con la hora del cambio de cuenta sobre saldos de la cuenta anterior durante &lt;1 s (paridad con lo que había).</li>
+        <li><b>R4</b> (Task 6, para Task 7) — el gesto desde el borde no se puede disparar sintéticamente (Maestro/idb); para la captura a medio camino se usa <code>fullScreenGestureEnabled: true</code> como cambio temporal NO commiteado (revertido antes del commit de Task 8) y se anota en el audit; la prueba real del borde queda para el iPhone. <b>Coste si está mal:</b> la captura muestra el mismo efecto visual con otro punto de inicio del gesto.</li>
+        <li><b>R5</b> (Task 6, corrige P3 del plan) — en <code>ref.ts</code>, <code>navigateTo(screen)</code> para pantallas de pestaña usa <code>navigationRef.navigate("Tabs", { screen: tab, params: nested }, { pop: true })</code> con <code>nested = { screen, pop: true }</code> para raíces y <code>{ screen, initial: false, pop: true }</code> para no-raíces (así Market se apila sobre Markets aunque la pestaña se monte por primera vez — D10 — y volver a una ruta existente hace pop). Nuevo <code>switchTab(tab)</code> en <code>ref.ts</code> = <code>navigate("Tabs", { screen: tab })</code> sin params anidados (sólo enfoca, conserva la pila); <code>AppStore</code> gana <code>switchTab(tab)</code> con gate; <code>TabBar</code> llama <code>switchTab</code>, no <code>requireAccount</code>. <b>Coste si está mal:</b> media ronda más; sin alternativa (la semántica v7 está verificada en el fuente).</li>
+        <li><b>R6</b> (Task 7) — un intento más con <code>xcrun simctl io &lt;UDID&gt; recordVideo</code> + swipe rápido (que sí hace pop con animación) y tap <code>market-BTC</code>, extrayendo frames con <code>ffmpeg</code>; si tampoco, quedan como residuales para el iPhone. <b>Coste si está mal:</b> ~10 min.</li>
+      </ol>
     </section>
 
 

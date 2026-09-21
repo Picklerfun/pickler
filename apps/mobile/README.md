@@ -28,6 +28,51 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 `react-native-svg` y `expo-linear-gradient` son módulos nativos: tras cambiar
 dependencias, `npx expo prebuild --platform ios --clean` antes de `run:ios`.
 
+## Navegación
+
+`react-navigation` nativo (`native-stack` sobre `react-native-screens`, dentro de
+`bottom-tabs`): `NavigationContainer` → `RootStack` con `Tabs` y `signin`; `Tabs`
+(tab bar custom) con **una pila por pestaña**, así el gesto atrás, el «adelante»
+animado y el botón `←` son los de iOS:
+
+```
+Tabs
+├── MarketsTab   (native-stack) markets → market → perpsFunds
+├── LaunchpadTab (native-stack) launchpad
+├── ActivityTab  (native-stack) activity
+├── PortfolioTab (native-stack) portfolio
+└── WalletTab    (native-stack) wallet → deposit → withdraw
+signin  (RootStack, encima de Tabs cuando hace falta cuenta; raíz si no hay ninguna)
+```
+
+- `src/navigation/screens.ts` — `Screen`, `GATED`, `CAN_BACK`, `SHOW_TABS`, `ROOT_OF`
+  (re-exportados desde `store.ts`; viven aquí para romper el ciclo de imports
+  `store.ts ↔ navigation/routes.ts` que Metro avisaba con un `Require cycle`).
+- `src/navigation/routes.ts` — tipos de params por stack, `TAB_OF`/`TAB_ROOT`/`TAB_ORDER`/
+  `SCREENS_ALL`, `screenOfRoute(name)`, `gateTarget(hasAccount, target)` (puros, con test).
+- `src/navigation/ref.ts` — adaptador sobre `navigationRef`: `navigateTo(screen, signinParams?)`,
+  `switchTab(tab)`, `goBackIfCan()`, `resetRootTo(route)`, `flushPending()` (cola hasta
+  `navigationRef.isReady()`, la usa el push en frío).
+- `src/navigation/context.tsx` — `AppCtxProvider`/`useAppCtx()` (contexto de React separado
+  del store, para romper el ciclo `Page`/`TabBar` ↔ `Navigator`).
+- `src/navigation/Navigator.tsx` — arma el árbol de arriba y registra cada pantalla con
+  `withPage(screen, Component)`.
+- `src/ui/Page.tsx` — cabecera propia por ruta (los stacks van con `headerShown: false`, así
+  la cabecera viaja con la página durante el gesto), `ScrollView` con pull-to-refresh y el
+  sello `UPDATED`/`COULDN'T REFRESH` (`useRefreshSeal`), fondo opaco (`Backdrop`).
+- `src/ui/TabBar.tsx` — tab bar custom (prop `tabBar` de bottom-tabs); devuelve `null` en
+  pantallas no-raíz de su pestaña (`SHOW_TABS`).
+
+**Para añadir una pantalla**: el `Screen` en `screens.ts`, su entrada en `TAB_OF`
+(`routes.ts`), el `Screen` en la pila de su pestaña dentro de `Navigator.tsx`, y
+registrarla con `withPage`.
+
+**react-navigation 7**: `navigate` a una ruta ya presente en la pila **apila** en vez
+de volver a ella — hace falta `{ pop: true }` explícito (semántica v6 asumida por error
+en el plan de F1, corregida en la ejecución). Las pantallas nunca llaman a
+`navigationRef` directamente: usan `ctx.nav` / `ctx.back` / `ctx.requireAccount` (el
+adaptador de `ref.ts`) y, para la tab bar, `switchTab`.
+
 **Face ID del simulador se pierde al reiniciarlo.** Volver a inscribirlo antes de
 cualquier recorrido con passkey:
 
@@ -41,15 +86,17 @@ notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 
 Skeleton (`Skeleton`/`Reveal` en `src/ui/primitives.tsx`) sólo mientras el dato de esa
 card es `null` y no hay error; con dato entra el contenido (fade 150 ms), con error su `Warn`.
-El pull-to-refresh deja `UPDATED HH:MM:SS` por pantalla en `Shell.tsx` (`COULDN'T
-REFRESH` 3 s si fallan todas las fuentes pedidas). El splash nativo muestra
+El pull-to-refresh deja `UPDATED HH:MM:SS` por pantalla vía `useRefreshSeal`
+(`src/hooks/useRefreshSeal.ts`, consumido por `Page` — el sello ya no vive en `Shell.tsx`,
+que se eliminó en mobile-nav F1) (`COULDN'T REFRESH` 3 s si fallan todas las fuentes
+pedidas). El splash nativo muestra
 `assets/splash-mark.png` (`python3 scripts/splash-mark.py assets/icon.png
 assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboard.
 
 ## Tests
 
 ```bash
-npm test          # jest, 242/242 esperado (31 suites)
+npm test          # jest, 232/232 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
