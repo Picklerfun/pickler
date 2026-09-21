@@ -14,6 +14,26 @@
 
 ---
 
+## Execution record — completed 2026-09-21
+
+All nine tasks are implemented on `codex/launchpad-development-spec`. 17 Solidity tests (including two 256-run fuzz properties and two invariants over 8192 calls each) and 3 TypeScript parity tests pass, alongside the repository's existing 280.
+
+Where execution departed from the plan, and why:
+
+1. **Task 1 — dependency pinning.** `forge install` on Foundry 1.5.1 creates a git submodule and writes `contracts/foundry.lock`, which pins forge-std to commit `8e40513` on its own. That is stricter than the planned `--no-git` copy, so the submodule was kept and `contracts/.gitignore` was never needed — the root `.gitignore` already covers `out/`, `cache/` and `broadcast/`. A fresh clone now needs `git submodule update --init --recursive`, which `contracts/AGENTS.md` records and the CI workflow passes as `submodules: recursive`.
+2. **Task 4 — revert test.** `vm.expectRevert` needs an external call boundary. Calling an internal library function directly would unwind the test itself before the cheatcode could observe it, so the test calls through an `exposedQuoteInForTokensOut` wrapper. The same applies to `exposedDeriveReserves` in Task 5.
+3. **Task 7 — file location.** The TypeScript port went to `packages/core/src/features/launch/domain/curve-math.ts`, matching the `domain`/`ports`/`application` layout every other feature in that package uses, and is re-exported from `src/index.ts` because the repository's tests import from the package barrel rather than by path.
+4. **Task 5 — extra property.** A second fuzz test, `testFuzz_targetReserveIsReached`, was added. Price continuity alone would still hold if the curve consistently ended at the wrong reserve; the two together pin both the shape and the scale.
+5. **`marginalPrice` precision.** `forge lint` flagged a divide-before-multiply that ate part of the 1e18 scale. Fixed, and `forge lint` now runs in CI.
+6. **Generated output versus Prettier.** The ABI generator and Prettier format the same files differently, so `format:check` and the ABI drift check could not both pass. The generated directories are excluded from Prettier, which is what the root instructions already prescribe for generated output.
+7. **Task 9 — CI.** Contracts got their own `.github/workflows/contracts.yml` rather than a step bolted onto the PostgreSQL workflow, since they need Foundry and submodules and nothing else in that workflow does. It also runs `forge lint` and a second drift check over the parity fixture.
+
+**Found while executing, worth carrying into A3:** near the end of the curve, an exact-input buy computes more tokens than remain. `tokensOutForQuoteIn` deliberately does not clamp — clamping would sell the last tokens at a price the curve never quoted. `PicklerBondingCurve` must compare against `remainingTokens`, revert with `ExceedsRemainingSupply`, and offer `quoteInForTokensOut` for the remainder. Both the Solidity and TypeScript doc comments say so.
+
+**Not built, deliberately:** `contracts/script/DerivePreset.s.sol` from the file table above. The derivation it would wrap lives in the library and is exercised by the fuzz tests; the script needs the surrounding preset fields that A2 fixes, so writing it now would mean writing it twice.
+
+---
+
 ## File Structure
 
 | File                                              | Responsibility                                                   |
@@ -55,7 +75,7 @@ Rounding is directional and uniform: the quote reserve `Q` is always floored, an
 - Modify: `contracts/foundry.toml`
 - Modify: `contracts/AGENTS.md`
 
-- [ ] **Step 1: Install forge-std pinned to a commit**
+- [x] **Step 1: Install forge-std pinned to a commit**
 
 ```bash
 cd contracts
@@ -64,7 +84,7 @@ forge install foundry-rs/forge-std@v1.11.0 --no-git
 
 Expected: `lib/forge-std` exists and contains `src/Test.sol`.
 
-- [ ] **Step 2: Keep dependencies and build output untracked**
+- [x] **Step 2: Keep dependencies and build output untracked**
 
 Create `contracts/.gitignore`:
 
@@ -75,7 +95,7 @@ cache/
 broadcast/
 ```
 
-- [ ] **Step 3: Record the dependency so a clean checkout can reproduce it**
+- [x] **Step 3: Record the dependency so a clean checkout can reproduce it**
 
 Add to `contracts/foundry.toml` under `[profile.default]`:
 
@@ -85,12 +105,12 @@ fs_permissions = [{ access = "read-write", path = "../packages/core/test/fixture
 
 `fs_permissions` is required by Task 7, which writes the parity fixture from a test. The path is relative to `--root contracts`, so it must reach back out to `packages/`; granting `./` would not cover it.
 
-- [ ] **Step 4: Verify the toolchain compiles**
+- [x] **Step 4: Verify the toolchain compiles**
 
 Run: `npm run contracts:build`
 Expected: `Nothing to compile` or a successful compile — not an error about a missing `lib/`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/.gitignore contracts/foundry.toml
@@ -106,7 +126,7 @@ git commit -m "Give the Foundry project something to compile against"
 - Create: `contracts/src/libraries/PicklerCurveMath.sol`
 - Create: `contracts/test/PicklerCurveMath.t.sol`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `contracts/test/PicklerCurveMath.t.sol`:
 
@@ -151,12 +171,12 @@ contract PicklerCurveMathTest is Test {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: FAIL — the compiler cannot find `../src/libraries/PicklerCurveMath.sol`.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `contracts/src/libraries/PicklerCurveMath.sol`:
 
@@ -206,12 +226,12 @@ library PicklerCurveMath {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/src/libraries/PicklerCurveMath.sol contracts/test/PicklerCurveMath.t.sol
@@ -227,7 +247,7 @@ git commit -m "Price a purchase against the curve"
 - Modify: `contracts/src/libraries/PicklerCurveMath.sol`
 - Modify: `contracts/test/PicklerCurveMath.t.sol`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `contracts/test/PicklerCurveMathTest`:
 
@@ -255,12 +275,12 @@ Append to `contracts/test/PicklerCurveMathTest`:
     }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: FAIL — `quoteOutForTokensIn` is not a member of the library.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Add to `PicklerCurveMath`:
 
@@ -285,12 +305,12 @@ Add to `PicklerCurveMath`:
     }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/src/libraries/PicklerCurveMath.sol contracts/test/PicklerCurveMath.t.sol
@@ -308,7 +328,7 @@ This is what consumes the last of the sale allocation without inventing a partia
 - Modify: `contracts/src/libraries/PicklerCurveMath.sol`
 - Modify: `contracts/test/PicklerCurveMath.t.sol`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `contracts/test/PicklerCurveMathTest`:
 
@@ -342,12 +362,12 @@ Append to `contracts/test/PicklerCurveMathTest`:
 
 The revert test calls a library function that reverts, so it cannot be `pure`.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: FAIL — `quoteInForTokensOut` and `remainingTokens` are not members of the library.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Add to `PicklerCurveMath`:
 
@@ -386,12 +406,12 @@ Add to `PicklerCurveMath`:
     }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathTest -vv`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/src/libraries/PicklerCurveMath.sol contracts/test/PicklerCurveMath.t.sol
@@ -407,7 +427,7 @@ git commit -m "Let the last buyer take exactly what is left"
 - Modify: `contracts/src/libraries/PicklerCurveMath.sol`
 - Create: `contracts/test/PicklerCurveMathDerivation.t.sol`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `contracts/test/PicklerCurveMathDerivation.t.sol`:
 
@@ -464,12 +484,12 @@ contract PicklerCurveMathDerivationTest is Test {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathDerivationTest -vv`
 Expected: FAIL — `deriveReserves`, `InvalidAllocation` and `marginalPrice` are not members of the library.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Add to `PicklerCurveMath`:
 
@@ -509,12 +529,12 @@ Add to `PicklerCurveMath`:
     }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathDerivationTest -vv`
 Expected: PASS, 3 tests including 256 fuzz runs of the continuity property.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/src/libraries/PicklerCurveMath.sol contracts/test/PicklerCurveMathDerivation.t.sol
@@ -531,7 +551,7 @@ A single round trip proving no profit is not enough. These run many operations i
 
 - Create: `contracts/test/PicklerCurveMathInvariant.t.sol`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `contracts/test/PicklerCurveMathInvariant.t.sol`:
 
@@ -615,12 +635,12 @@ contract PicklerCurveMathInvariantTest is Test {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathInvariantTest -vv`
 Expected: FAIL to compile until the file is complete; once it compiles, both invariants must pass. If `invariant_curveNeverPaysOutMoreThanItTookIn` fails, the rounding direction in Task 2 or Task 3 is wrong — fix the library, not the invariant.
 
-- [ ] **Step 3: Configure invariant depth**
+- [x] **Step 3: Configure invariant depth**
 
 Add to `contracts/foundry.toml`:
 
@@ -631,12 +651,12 @@ depth = 128
 fail_on_revert = false
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `forge test --root contracts --match-contract PicklerCurveMathInvariantTest -vv`
 Expected: PASS, 2 invariants over 64 runs of depth 128.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/test/PicklerCurveMathInvariant.t.sol contracts/foundry.toml
@@ -657,7 +677,7 @@ The TypeScript preview and the Solidity library must agree exactly. The fixture 
 - Create: `packages/core/test/curve-math.test.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Write the vector exporter**
+- [x] **Step 1: Write the vector exporter**
 
 Create `contracts/test/CurveVectors.t.sol`:
 
@@ -706,7 +726,7 @@ contract CurveVectorsTest is Test {
 }
 ```
 
-- [ ] **Step 2: Generate the fixture**
+- [x] **Step 2: Generate the fixture**
 
 ```bash
 mkdir -p packages/core/test/fixtures
@@ -715,7 +735,7 @@ forge test --root contracts --match-contract CurveVectorsTest
 
 Expected: `packages/core/test/fixtures/curve-vectors.json` exists and contains six buy vectors with non-zero `tokensOut` for every input above 1.
 
-- [ ] **Step 3: Write the failing parity test**
+- [x] **Step 3: Write the failing parity test**
 
 Create `packages/core/test/curve-math.test.ts`:
 
@@ -758,12 +778,12 @@ describe("curve math parity with Solidity", () => {
 });
 ```
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [x] **Step 4: Run the test to verify it fails**
 
 Run: `npm run build:shared && node --import tsx --test packages/core/test/curve-math.test.ts`
 Expected: FAIL — cannot find `../src/features/launch/curve-math.js`.
 
-- [ ] **Step 5: Write the TypeScript port**
+- [x] **Step 5: Write the TypeScript port**
 
 Create `packages/core/src/features/launch/curve-math.ts`:
 
@@ -802,12 +822,12 @@ function ceilDiv(numerator: bigint, denominator: bigint): bigint {
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `node --import tsx --test packages/core/test/curve-math.test.ts`
 Expected: PASS, 1 test.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add contracts/test/CurveVectors.t.sol packages/core/src/features/launch packages/core/test/curve-math.test.ts packages/core/test/fixtures/curve-vectors.json
@@ -828,7 +848,7 @@ git commit -m "Hold the preview to what the chain would answer"
 - Modify: `packages/chain/AGENTS.md`
 - Modify: `contracts/AGENTS.md`
 
-- [ ] **Step 1: Write the generator**
+- [x] **Step 1: Write the generator**
 
 Create `scripts/generate-abi.mjs`:
 
@@ -878,7 +898,7 @@ writeFileSync(
 console.log(`Generated ${CONTRACTS.length} ABI file(s) into packages/chain/src/abi/`);
 ```
 
-- [ ] **Step 2: Wire the command**
+- [x] **Step 2: Wire the command**
 
 Add to the root `package.json` scripts:
 
@@ -886,12 +906,12 @@ Add to the root `package.json` scripts:
 "contracts:abi": "npm run contracts:build && node scripts/generate-abi.mjs"
 ```
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `npm run contracts:abi`
 Expected: `Generated 1 ABI file(s) into packages/chain/src/abi/`, and `packages/chain/src/abi/PicklerCurveMath.ts` exists.
 
-- [ ] **Step 4: Export the ABIs from the package**
+- [x] **Step 4: Export the ABIs from the package**
 
 Add to `packages/chain/src/index.ts`:
 
@@ -899,16 +919,16 @@ Add to `packages/chain/src/index.ts`:
 export * from "./abi";
 ```
 
-- [ ] **Step 5: Verify the package still typechecks and stays dependency-free**
+- [x] **Step 5: Verify the package still typechecks and stays dependency-free**
 
 Run: `npm run typecheck --workspace=@pickler/chain`
 Expected: no errors. Confirm `packages/chain/package.json` still has an empty `dependencies` object.
 
-- [ ] **Step 6: Record the workflow in both instruction files**
+- [x] **Step 6: Record the workflow in both instruction files**
 
 In `contracts/AGENTS.md`, replace the sentence stating the generation command does not exist with a description of `npm run contracts:abi` and the `CONTRACTS` list in `scripts/generate-abi.mjs`. In `packages/chain/AGENTS.md`, replace the sentence stating no ABIs or generation scripts exist with the same, noting that `src/abi/` is generated output and is never hand-edited.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add scripts/generate-abi.mjs package.json packages/chain contracts/AGENTS.md
@@ -926,14 +946,14 @@ git commit -m "Generate public ABIs from the compiler instead of by hand"
 - Modify: `package.json`
 - Modify: `.github/workflows/` (the existing workflow file)
 
-- [ ] **Step 1: Add the core test glob**
+- [x] **Step 1: Add the core test glob**
 
 The root `test` script already discovers `packages/core/test/*.test.ts`, so `curve-math.test.ts` is picked up. Verify rather than assume:
 
 Run: `npm test 2>&1 | grep -c "curve math parity"`
 Expected: at least 1.
 
-- [ ] **Step 2: Add contract tests to CI**
+- [x] **Step 2: Add contract tests to CI**
 
 Add a step to the existing GitHub Actions workflow, after the Node setup:
 
@@ -953,12 +973,12 @@ Add a step to the existing GitHub Actions workflow, after the Node setup:
     git diff --exit-code packages/chain/src/abi
 ```
 
-- [ ] **Step 3: Run the full check locally**
+- [x] **Step 3: Run the full check locally**
 
 Run: `npm run contracts:test && npm test && npm run lint && npm run format:check`
 Expected: all pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add package.json .github/workflows
