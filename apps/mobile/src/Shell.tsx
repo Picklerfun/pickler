@@ -3,6 +3,7 @@ import { Image, PanResponder, RefreshControl, ScrollView, StyleSheet, View } fro
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { accountAddress } from "./account";
 import type { AppCtx } from "./ctx";
 import { DevControls } from "./DevControls";
 import { ComingSoonScreen } from "./screens/comingSoon";
@@ -11,9 +12,9 @@ import { MarketsScreen } from "./screens/markets";
 import { PerpsFundsScreen } from "./screens/perpsFunds";
 import { SigninScreen } from "./screens/signin";
 import { DepositScreen, WalletScreen, WithdrawScreen } from "./screens/wallet";
-import { ROOT_OF, type Screen } from "./store";
+import { ROOT_OF, refreshOk, screenHasData, type Screen, updatedLabel } from "./store";
 import { shouldCaptureEdgeSwipe, shouldGoBack } from "./ui/gestures";
-import { Icon, type IconName, T, Touch } from "./ui/primitives";
+import { Icon, type IconName, T, Tag, Touch } from "./ui/primitives";
 import { C } from "./ui/theme";
 
 const SCREENS: Record<Screen, (ctx: AppCtx) => ReactElement> = {
@@ -54,6 +55,10 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
   const { S, back, requireAccount, treasury, perpl, reads } = ctx;
   const [controls, setControls] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Sello del pull-to-refresh (spec mobile-loading D5): por pantalla; la carga inicial también lo fija (P5 del plan F1).
+  const [updatedAt, setUpdatedAt] = useState<Partial<Record<Screen, number>>>({});
+  const [refreshDone, setRefreshDone] = useState(0); // se incrementa al terminar cada jalón; el efecto de abajo lo evalúa con el estado ya actualizado (P4)
+  const [refreshFailed, setRefreshFailed] = useState<Screen | null>(null); // pantalla cuyo jalón falló (D5: el sello es por pantalla, no global)
   const Current = SCREENS[ctx.scr];
 
   const refreshable = S.screen === "wallet" || S.screen === "markets" || S.screen === "market";
@@ -68,8 +73,30 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
       );
     } finally {
       setRefreshing(false);
+      setRefreshDone((n) => n + 1);
     }
   }, [S.screen, treasury, perpl, reads]);
+
+  // Sin sesión de reads `reads.refresh()` no toca listError: se pasa null (fuente no pedida) para que no selle por ella (I2, revisión final F1).
+  const errors = { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null };
+  // Evalúa el jalón que acaba de terminar con los errores de ESTE render (tras el await el estado puede no estar aplicado).
+  useEffect(() => {
+    if (refreshDone === 0) return;
+    if (refreshOk(S.screen, errors)) { setUpdatedAt((u) => ({ ...u, [S.screen]: Date.now() })); setRefreshFailed(null); return; }
+    setRefreshFailed(S.screen);
+    const t = setTimeout(() => setRefreshFailed(null), 3000);
+    return () => clearTimeout(t);
+  }, [refreshDone]);
+  // El Shell no se remonta al cambiar de cuenta: sin esto, tras sign out → sign in el sello viejo quedaría sobre los skeletons (I1, revisión final F1).
+  const address = accountAddress(ctx.account);
+  useEffect(() => { setUpdatedAt({}); setRefreshFailed(null); }, [address]);
+  // Sello inicial: la primera vez que la pantalla tiene su dato principal.
+  const hasData = screenHasData(S.screen, { balances: treasury.balances, context: perpl.context });
+  useEffect(() => {
+    if (!refreshable || !hasData || updatedAt[S.screen] !== undefined) return;
+    setUpdatedAt((u) => ({ ...u, [S.screen]: Date.now() }));
+  }, [refreshable, hasData, S.screen, updatedAt]);
+  const failed = refreshFailed === S.screen;
 
   // Captura en fase *Capture* para ganarle al ScrollView; sólo desde el borde y sólo horizontal.
   const pan = useMemo(() => PanResponder.create({
@@ -118,6 +145,11 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
             keyboardShouldPersistTaps="handled"
             refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
           >
+            {refreshable && (failed || updatedAt[S.screen] !== undefined) ? (
+              <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>
+                <Tag color={failed ? C.down : C.faint}>{failed ? "COULDN'T REFRESH" : updatedLabel(updatedAt[S.screen]!)}</Tag>
+              </View>
+            ) : null}
             <Current {...ctx} />
           </ScrollView>
         </View>

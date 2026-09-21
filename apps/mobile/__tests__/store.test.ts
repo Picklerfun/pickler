@@ -1,6 +1,6 @@
 import {
   afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  isComingSoonTab, marketEntryTab, navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
+  isComingSoonTab, marketEntryTab, navState, refreshOk, requireAccountState, resetState, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
 } from "../src/store";
 
 test("nav pushes the current screen and applies the patch", () => {
@@ -159,4 +159,50 @@ test("sign out lands on Sign in and clears the Ask state", () => {
 test("a market opens on Trade with a trading key and on Ask without one (gate)", () => {
   expect(marketEntryTab(true)).toBe("trade");
   expect(marketEntryTab(false)).toBe("ask");
+});
+
+test("updatedLabel formats a local 24h timestamp", () => {
+  const ts = new Date(2026, 8, 21, 8, 5, 9).getTime(); // local time on purpose: the label is what the user sees
+  expect(updatedLabel(ts)).toBe("UPDATED 08:05:09");
+  expect(updatedLabel(new Date(2026, 8, 21, 23, 59, 0).getTime())).toBe("UPDATED 23:59:00");
+});
+
+test("refreshOk needs at least one source of the screen to succeed", () => {
+  const ok = { rpcError: "", movementsError: "", contextError: "", listError: "" };
+  expect(refreshOk("wallet", ok)).toBe(true);
+  expect(refreshOk("wallet", { ...ok, rpcError: "x" })).toBe(true); // movements still refreshed
+  expect(refreshOk("wallet", { ...ok, rpcError: "x", movementsError: "y" })).toBe(false);
+  expect(refreshOk("markets", ok)).toBe(true);
+  expect(refreshOk("markets", { ...ok, contextError: "x" })).toBe(false);
+  expect(refreshOk("market", { ...ok, contextError: "x" })).toBe(true); // reads still refreshed
+  expect(refreshOk("market", { ...ok, contextError: "x", listError: "y" })).toBe(false);
+  expect(refreshOk("signin", ok)).toBe(false); // not refreshable
+});
+
+test("refreshOk ignores a source that was not requested (listError null: no reads session)", () => {
+  const noReads = { rpcError: "", movementsError: "", contextError: "", listError: null };
+  expect(refreshOk("market", { ...noReads, contextError: "x" })).toBe(false); // Perpl failed and reads were never asked
+  expect(refreshOk("market", noReads)).toBe(true); // Perpl ok
+});
+
+test("tradingLineState: live, last seen, skeleton only while the socket is active, unknown otherwise", () => {
+  const acc = { account: { b: 1n } };
+  expect(tradingLineState(acc, null, true)).toBe("live");
+  expect(tradingLineState(acc, 5n, false)).toBe("live");
+  expect(tradingLineState({ account: null }, 5n, true)).toBe("lastSeen");
+  expect(tradingLineState(null, 5n, false)).toBe("lastSeen");
+  expect(tradingLineState(null, null, true)).toBe("skeleton"); // Markets connecting
+  expect(tradingLineState({ account: null }, null, true)).toBe("skeleton"); // socket open, no account frame yet
+  expect(tradingLineState(null, null, false)).toBe("unknown"); // Wallet: no socket, nothing seen
+  expect(tradingLineState({ account: null, keyRejected: true, status: "closed" }, null, true)).toBe("unknown"); // key rejected: terminal, not skeleton (R2)
+  expect(tradingLineState({ account: null, keyRejected: false, status: "closed" }, null, true)).toBe("unknown"); // socket closed for good: terminal, not skeleton (R2)
+  expect(tradingLineState({ account: null, keyRejected: false, status: "connecting" }, null, true)).toBe("skeleton"); // still connecting: skeleton stands
+});
+
+test("screenHasData follows the null contract of the hooks", () => {
+  expect(screenHasData("wallet", { balances: null, context: null })).toBe(false);
+  expect(screenHasData("wallet", { balances: {}, context: null })).toBe(true);
+  expect(screenHasData("markets", { balances: {}, context: null })).toBe(false);
+  expect(screenHasData("market", { balances: null, context: {} })).toBe(true);
+  expect(screenHasData("signin", { balances: {}, context: {} })).toBe(false);
 });

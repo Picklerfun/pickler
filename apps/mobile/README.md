@@ -37,10 +37,19 @@ notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 && \
 notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 ```
 
+## Carga y splash
+
+Skeleton (`Skeleton`/`Reveal` en `src/ui/primitives.tsx`) sólo mientras el dato de esa
+card es `null` y no hay error; con dato entra el contenido (fade 150 ms), con error su `Warn`.
+El pull-to-refresh deja `UPDATED HH:MM:SS` por pantalla en `Shell.tsx` (`COULDN'T
+REFRESH` 3 s si fallan todas las fuentes pedidas). El splash nativo muestra
+`assets/splash-mark.png` (`python3 scripts/splash-mark.py assets/icon.png
+assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboard.
+
 ## Tests
 
 ```bash
-npm test          # jest, 237/237 esperado (31 suites)
+npm test          # jest, 242/242 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -88,7 +97,9 @@ Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
 - Colateral: el mismo AUSD de la wallet. Mínimos (100 / 10 / 0.01) se leen de `pub/context`.
 - Apalancamiento: 1x–5x, capado por mercado (`initial_margin / 100`; MON permite 3x).
 - URLs con override para mainnet: `PICKLER_PERPL_REST` / `PICKLER_PERPL_WS` en `app.config.ts`
-  (`extra` solo se refresca con `expo run:ios`).
+  (`extra` solo se refresca con `expo run:ios`). En un dev client ya instalado, reiniciar Metro
+  con la variable puesta y relanzar la app **no** basta: `Constants.expoConfig` no recoge el
+  cambio hasta un rebuild real (`run:ios`), confirmado el 2026-09-21 (audit F1 de `mobile-loading`).
 - Perpl geobloquea US, GB, UA, RU, BY, CU, IR, KP, SY: el sign-in del WS falla con `3401`.
 - *Reconnect trading*: sin key pero con cuenta on-chain (`readAccountId > 0`), el gate reconecta con
   `enable(0n)` — sólo forwarding + key, sin mover AUSD.
@@ -101,7 +112,8 @@ Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
 ## Ask y Agents (pills de Market)
 
 Backend en `services/reads` (Supabase `pickler`, esquema `mobile`; URL en `src/config/reads.ts`, override
-`PICKLER_READS_URL`). La app firma una vez al día `pickler-reads:<address>:<ts>` con la wallet (Face ID si está
+`PICKLER_READS_URL`; en un dev client ya instalado, igual que con `PICKLER_PERPL_REST`, un reinicio de
+Metro no lo aplica — hace falta `run:ios`). La app firma una vez al día `pickler-reads:<address>:<ts>` con la wallet (Face ID si está
 bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); Sign out lo borra. Créditos simulados:
 20 por wallet, 1 por lectura, reembolso si el agente falla. El push de resolución lo manda el servidor por APNs
 (`expo-notifications`, entorno `sandbox` en dev); tocarlo abre Market → Ask → My reads en esa read. Para probar el

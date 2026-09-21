@@ -133,7 +133,7 @@
       </div>
 
       <!-- Phase 0 ====================================================== -->
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -142,9 +142,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -160,14 +160,14 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 1: Helpers puros del sello en <code>store.ts</code> (<code>updatedLabel</code>, <code>refreshOk</code>, <code>screenHasData</code>)</label></li>
-              <li><label><input type="checkbox"> Task 2: Primitivas <code>Skeleton</code> y <code>Reveal</code></label></li>
-              <li><label><input type="checkbox"> Task 3: <code>reads.reads</code> nullable y skeletons de Ask / Agents</label></li>
-              <li><label><input type="checkbox"> Task 4: Skeletons de Wallet, Markets y Market (<code>MarketSkeleton</code>)</label></li>
-              <li><label><input type="checkbox"> Task 5: Sello <code>UPDATED</code> / <code>COULDN'T REFRESH</code> en <code>Shell</code></label></li>
-              <li><label><input type="checkbox"> Task 6: Splash nativo con la marca (<code>expo-splash-screen</code> + <code>splash-mark.png</code>)</label></li>
-              <li><label><input type="checkbox"> Task 7: Recorrido en el simulador (capturas)</label></li>
-              <li><label><input type="checkbox"> Task 8: Docs — marcas (F1), F1 completed, audit, README, checks</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Helpers puros del sello en <code>store.ts</code> (<code>updatedLabel</code>, <code>refreshOk</code>, <code>screenHasData</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 2: Primitivas <code>Skeleton</code> y <code>Reveal</code></label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>reads.reads</code> nullable y skeletons de Ask / Agents</label></li>
+              <li><label><input type="checkbox" checked> Task 4: Skeletons de Wallet, Markets y Market (<code>MarketSkeleton</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: Sello <code>UPDATED</code> / <code>COULDN'T REFRESH</code> en <code>Shell</code></label></li>
+              <li><label><input type="checkbox" checked> Task 6: Splash nativo con la marca (<code>expo-splash-screen</code> + <code>splash-mark.png</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Recorrido en el simulador (capturas) — 4/5 capturas; ver residuales</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Docs — marcas (F1), F1 completed, audit, README, checks</label></li>
             </ol>
           </details>
         </div>
@@ -235,6 +235,19 @@
           </tr>
         </tbody>
       </table>
+
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li>Task 3 — los snippets del plan (<code>CreditsRow</code>, el vacío «No reads yet») no envolvían el contenido en <code>Reveal</code>; D4 dice que TODO paso skeleton→contenido entra con fade de 150 ms. Se aplicó <code>Reveal</code> en ambos y el criterio se llevó a Task 4 (cifras de Wallet/Markets). Spec manda sobre el plan. <b>Coste si está mal:</b> dos <code>Animated.View</code> de más, sin efecto funcional.</li>
+        <li>Task 5 — el plan define <code>refreshFailed</code> como <code>boolean</code> global; D5 dice «un solo sello por pantalla» y un jalón fallido en Wallet pintaría <code>COULDN'T REFRESH</code> en Markets ≤3 s si el usuario cambia de pantalla. Se cambió a <code>refreshFailed: Screen | null</code> (la pantalla cuyo jalón falló) y se pinta sólo si <code>=== S.screen</code>. Spec manda; cambio mínimo. <b>Coste si está mal:</b> un estado de un tipo distinto al del plan; sin efecto funcional adverso.</li>
+        <li>Task 7 — no se corta el WiFi del Mac para capturar <code>COULDN'T REFRESH</code> (afecta a otras sesiones y al trabajo del usuario). En Markets la única fuente del jalón es <code>perpl.refreshContext()</code>, y la URL de Perpl viene de env: se arranca Metro con <code>PICKLER_PERPL_REST</code>/WS apuntando a <code>127.0.0.1:9</code> y se jala en Markets. Mismo resultado observable sin efecto fuera del worktree. <b>Coste si está mal:</b> la captura muestra el fallo con la card de error de Perpl debajo en vez de datos viejos; si el env no aplica, queda «no capturado» cubierto por el test de <code>refreshOk</code>.</li>
+        <li>Task 7 — para <code>MarketSkeleton</code> se intenta primero relaunch estando en Market / Dev controls → «Market · ticket» tras relaunch; Sign out + sign in con passkey sólo como último recurso (fricción del sheet de Apple Passwords). <b>Coste si está mal:</b> captura no conseguida, anotada.</li>
+        <li>Task 7 — <code>skeleton-markets</code>, <code>MarketSkeleton</code>, chips de agentes, <code>Warn</code> de Ask y <code>COULDN'T REFRESH</code> quedan NO capturados: <code>perpl.context</code> resuelve en &lt;1 s contra producción (14 intentos, ráfagas incluidas) y el override por env de Metro no llega a <code>Constants.expoConfig</code> en este dev client. Se aceptan como residuales; las mismas primitivas y la regla D2 quedan verificadas en Wallet/Ask, y <code>refreshOk</code> tiene test. F1 cierra <code>completed</code> con la salvedad en el audit (precedente: Ask F2). <b>Coste si está mal:</b> un skeleton de Markets/Market con layout roto pasaría sin verse hasta el iPhone o TestFlight.</li>
+        <li>Revisión final de rama, C1 — el spec D3 («card de trading: <code>perpl.live === null</code> en ready») ignoraba que el socket de Perpl sólo corre en <code>PERPL_SCREENS</code> (Markets/Market/perpsFunds), nunca en Wallet, y que <code>lastBalance</code> no persiste: en Wallet <code>live === null</code> significa «desconocido», no «cargando», y la línea «in trading» quedaba en skeleton permanente. Helper puro <code>tradingLineState(live, lastBalance, socketActive)</code> → <code>live | lastSeen | skeleton | unknown</code> en <code>store.ts</code> con test; Wallet pasa <code>socketActive=false</code> y pinta «— AUSD in trading · Markets» (Touch conservado); Markets pasa <code>true</code> y conserva el skeleton mientras conecta. D3 corregido en el spec con marca (F1). Commit <code>e7124af</code>. <b>Coste si está mal:</b> Wallet enseña «—» donde podría enseñar un saldo si el socket llegara a correr ahí; sin regresión funcional.</li>
+        <li>Revisión final, I1 — <code>updatedAt</code>/<code>refreshFailed</code> se resetean cuando cambia la dirección de la cuenta (efecto en Shell sobre <code>accountAddress(ctx.account)</code>); no se remonta el Shell. <b>Coste si está mal:</b> un sello viejo tras sign in si la dirección no cambiara (misma cuenta): aceptable, es el mismo usuario.</li>
+        <li>Revisión final, I2 — <code>RefreshErrors.listError: string | null</code> (<code>null</code> = fuente no pedida: sin sesión de reads); <code>refreshOk("market") = !contextError || (listError !== null &amp;&amp; !listError)</code>. Shell pasa <code>null</code> cuando no hay sesión de reads. Test ampliado. <b>Coste si está mal:</b> en Market con sesión Ask y Perpl caído seguiría sellando por reads (comportamiento de D5, intencional).</li>
+        <li>Revisión final, I3 — <code>CreditsRow</code> recibe <code>error</code>; skeleton sólo con <code>credits === null &amp;&amp; !error</code>; con error pinta «—» (D2 sin excepciones). <b>Coste:</b> ninguno.</li>
+      </ol>
     </section>
 
 

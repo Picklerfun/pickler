@@ -117,6 +117,51 @@ export function heldActionFor(next: Screen | undefined): string | null {
 /** Pill con el que se abre un mercado desde Markets: Trade con trading key, Ask sin ella (Ask y Agents no la necesitan; fix gate). */
 export const marketEntryTab = (hasKey: boolean): MarketTab => (hasKey ? "trade" : "ask");
 
+// ---------------------------------------------------------------------------
+// Sello del pull-to-refresh (spec mobile-loading D5). Puros: el Shell los evalúa en un efecto.
+
+/** `UPDATED HH:MM:SS` en hora local, 24 h. */
+export function updatedLabel(ts: number): string {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `UPDATED ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/** `listError: null` = la fuente no se pidió (sin sesión de reads, `reads.refresh()` no toca el error): no cuenta como éxito. */
+export type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string | null };
+
+/** Un jalón «hizo algo» si al menos una de las fuentes pedidas por la pantalla quedó sin error (los hooks tragan errores: `allSettled` no basta). */
+export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
+  switch (screen) {
+    case "wallet": return !e.rpcError || !e.movementsError;
+    case "markets": return !e.contextError;
+    case "market": return !e.contextError || (e.listError !== null && !e.listError);
+    default: return false;
+  }
+}
+
+export type TradingLineState = "live" | "lastSeen" | "skeleton" | "unknown";
+
+/** Qué pinta la línea/card «AUSD in trading»: `socketActive` = la pantalla tiene el socket de Perpl (PERPL_SCREENS);
+ *  en Wallet no, así que `live === null` es «desconocido», no «cargando» (D2: skeleton sólo mientras algo se carga);
+ *  socket cerrado definitivo o key rechazada = desconocido, no cargando. */
+export function tradingLineState(live: { account: unknown; keyRejected?: boolean; status?: string } | null, lastBalance: bigint | null, socketActive: boolean): TradingLineState {
+  if (live?.account) return "live";
+  if (lastBalance !== null) return "lastSeen";
+  if (live !== null && (live.keyRejected || live.status === "closed")) return "unknown";
+  return socketActive ? "skeleton" : "unknown";
+}
+
+/** La pantalla ya tiene su dato principal (contrato `null` = sin dato de los hooks): fija el sello inicial. */
+export function screenHasData(screen: Screen, d: { balances: unknown; context: unknown }): boolean {
+  switch (screen) {
+    case "wallet": return d.balances !== null;
+    case "markets":
+    case "market": return d.context !== null;
+    default: return false;
+  }
+}
+
 const MARKET_SUBTITLES: Record<MarketTab, string> = {
   trade: "Perpl · isolated margin · market order",
   ask: "Ask an agent · simulated credits",
