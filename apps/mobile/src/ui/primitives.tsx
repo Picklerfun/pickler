@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle } from "react-native";
+import { type ReactNode, useEffect, useRef } from "react";
+import { Animated, Easing, Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle } from "react-native";
 import {
   Activity, ArrowLeft, ArrowRight, ChartLine, CircleQuestionMark, Layers, Rocket, Search, Send, SlidersHorizontal, Wallet,
 } from "lucide-react-native";
@@ -304,4 +304,74 @@ export function EmptyPanel({ children }: { children: ReactNode }) {
       {children}
     </View>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Skeletons (spec mobile-loading D1/D4). Un solo pulso compartido: `PULSE` vive en el módulo y el loop
+// arranca con el primer skeleton montado y se detiene con el último (refcount), aunque haya 20 bloques.
+const PULSE = new Animated.Value(1);
+let pulseLoop: Animated.CompositeAnimation | null = null;
+let pulseMounted = 0;
+
+function usePulse(): Animated.Value {
+  useEffect(() => {
+    if (pulseMounted++ === 0) {
+      pulseLoop = Animated.loop(Animated.sequence([
+        Animated.timing(PULSE, { toValue: 0.45, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(PULSE, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]));
+      pulseLoop.start();
+    }
+    return () => {
+      if (--pulseMounted === 0) { pulseLoop?.stop(); pulseLoop = null; PULSE.setValue(1); }
+    };
+  }, []);
+  return PULSE;
+}
+
+type SkeletonProps = { w?: number | `${number}%`; h?: number; r?: number; style?: StyleProp<ViewStyle> };
+
+function SkeletonBlock({ w = "100%", h = 12, r = 8, style }: SkeletonProps) {
+  const opacity = usePulse();
+  return <Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: C.hair, opacity }, style]} />;
+}
+
+/** Una línea de texto de tamaño `s` (alto ≈ 1.1·s). */
+function SkeletonLine({ s = 13, w = "60%" }: { s?: number; w?: number | `${number}%` }) {
+  return <SkeletonBlock h={Math.round(s * 1.1)} w={w} r={6} />;
+}
+
+/** Card con `lines` líneas; `big` pone la primera a 30 px (una cifra grande, como los saldos). */
+function SkeletonCard({ lines = 2, big }: { lines?: number; big?: boolean }) {
+  const widths: (number | `${number}%`)[] = ["45%", "70%", "55%", "62%"];
+  return (
+    <Card pad={big ? 15 : 13} gap={9}>
+      {Array.from({ length: lines }, (_, i) => <SkeletonBlock key={i} h={i === 0 && big ? 30 : 12} w={widths[i % widths.length]} />)}
+    </Card>
+  );
+}
+
+/** Fila de lista: título + subtítulo a la izquierda, valor + variación a la derecha (como `MarketsList`). */
+function SkeletonRow() {
+  return (
+    <Card pad={13} style={{ flexDirection: "row", alignItems: "center", gap: 11 }}>
+      <View style={{ flex: 1, gap: 6 }}>
+        <SkeletonBlock h={14} w="30%" />
+        <SkeletonBlock h={11} w="55%" />
+      </View>
+      <View style={{ alignItems: "flex-end", gap: 6 }}>
+        <SkeletonBlock h={13} w={72} />
+        <SkeletonBlock h={10} w={44} />
+      </View>
+    </Card>
+  );
+}
+
+export const Skeleton = Object.assign(SkeletonBlock, { Line: SkeletonLine, Card: SkeletonCard, Row: SkeletonRow });
+
+/** El contenido entra con un fade de 150 ms al montarse (skeleton → dato). Nada más (D4). */
+export function Reveal({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start(); }, [opacity]);
+  return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
 }
