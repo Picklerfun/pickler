@@ -683,6 +683,7 @@ export function Console() {
             <Brief
               key={`brief-${agentId}-${agent.version}`}
               agent={agent}
+              catalog={catalog}
               busy={busy}
               canManage={canManage}
               onSave={saveConfig}

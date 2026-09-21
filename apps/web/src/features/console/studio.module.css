@@ -1635,3 +1635,35 @@ a.source:hover {
   background: var(--tint-fg);
   filter: brightness(1.12);
 }
+.note[data-warn="true"] {
+  color: var(--pk-amber);
+}
+
+/* The escape hatch: what the API actually stored, for when the designed surfaces disagree with
+   reality and someone has to settle it. Closed by default — it is a tool, not a view. */
+.raw {
+  border-top: 1px solid var(--pk-rule);
+  padding-top: 12px;
+}
+.raw summary {
+  font: 500 10.5px/1 var(--pk-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+}
+.raw summary:hover {
+  color: var(--pk-ink);
+}
+.raw pre {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  max-height: 420px;
+  overflow: auto;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-field);
+  border: 1px solid var(--pk-rule);
+  font: 400 11.5px/1.6 var(--pk-font-mono);
+  color: var(--pk-ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

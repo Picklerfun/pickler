@@ -441,6 +441,11 @@ export function Picks({
               );
             })}
           </ul>
+
+          <details className={styles.raw}>
+            <summary>THE DECISION AS STORED</summary>
+            <pre>{JSON.stringify(selected.decision, null, 2)}</pre>
+          </details>
         </div>
       </div>
     </div>

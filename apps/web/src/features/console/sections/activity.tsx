@@ -185,6 +185,12 @@ export function Activity({
                     </div>
                   ))
                 )}
+                {selected.id === runId && events.length > 0 && (
+                  <details className={styles.raw}>
+                    <summary>EVERY EVENT AS STORED</summary>
+                    <pre>{JSON.stringify(events, null, 2)}</pre>
+                  </details>
+                )}
               </div>
             </div>
           )}
