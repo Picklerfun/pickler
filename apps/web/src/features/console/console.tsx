@@ -17,6 +17,7 @@ import {
   type RunEvent,
 } from "./api";
 import { useNow } from "./lib/now";
+import { startPolling } from "./lib/polling";
 import { AgentForm } from "./agent-form";
 import { Overview } from "./sections/overview";
 import { Picks } from "./sections/picks";
@@ -74,9 +75,9 @@ const BLOCKED: Record<
     tint: "magenta",
     icon: "lock",
     title: "Research is not enabled on this workspace yet",
-    note: "An operator switches it on by hand. Write the brief and pick plugins in the meantime — runs stay locked until then.",
-    cta: "Write the brief",
-    to: "brief",
+    note: "An operator switches it on by hand. Creating agents, editing settings and starting runs stay locked until then.",
+    cta: "Refresh access",
+    to: null,
   },
   NOT_READY: {
     tint: "amber",
@@ -140,6 +141,7 @@ export function Console() {
   const [runId, setRunId] = useState<string | null>(null);
   const [trace, setTrace] = useState<{ runId: string; events: RunEvent[] } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [refresh, setRefresh] = useState(0);
   const [blocked, setBlocked] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -148,7 +150,6 @@ export function Console() {
 
   const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
   const canManage = Boolean(access?.canManage);
-  const pending = runs.some((run) => run.status === "queued" || run.status === "running");
   const events = trace && trace.runId === runId ? trace.events : [];
   const now = useNow();
 
@@ -207,72 +208,37 @@ export function Console() {
     };
   }, [router, loadAgents]);
 
-  /* Runs are the studio's clock: they are polled while one is in flight and left alone otherwise. */
+  /* One cancellable read loop owns both the run list and the selected trace. */
   useEffect(() => {
     if (!agentId) {
       return;
     }
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    async function poll() {
-      if (!active || document.hidden) {
-        return;
-      }
-      try {
-        const list = await consoleApi<{ runs: Run[] }>(`/agents/${agentId}/runs`);
-        if (!active) {
-          return;
+    return startPolling(
+      async (signal) => {
+        const list = await consoleApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, { signal });
+        if (signal.aborted) {
+          return null;
         }
         setRuns(list.runs);
-        setRunId((current) => current ?? list.runs[0]?.id ?? null);
-      } catch (caught) {
-        if (active) {
-          setError(caught instanceof Error ? caught.message : "Could not refresh runs.");
+        const selected = runId ?? list.runs[0]?.id ?? null;
+        setRunId(selected);
+        if (selected) {
+          const body = await consoleApi<{ events: RunEvent[] }>(`/runs/${selected}/events`, {
+            signal,
+          });
+          if (signal.aborted) {
+            return null;
+          }
+          setTrace({ runId: selected, events: body.events });
         }
-      } finally {
-        if (active && !document.hidden) {
-          timer = setTimeout(poll, pending ? 3000 : 20000);
-        }
-      }
-    }
-    function visibility() {
-      clearTimeout(timer);
-      if (!document.hidden) {
-        void poll();
-      }
-    }
-    void poll();
-    document.addEventListener("visibilitychange", visibility);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", visibility);
-    };
-  }, [agentId, pending]);
-
-  /* The trace belongs to one run, so it is stored with that run's id and never shown under
-     another: switching runs reads as empty until the new trace lands, not as the old one. */
-  useEffect(() => {
-    if (!runId) {
-      return;
-    }
-    let active = true;
-    void (async () => {
-      try {
-        const body = await consoleApi<{ events: RunEvent[] }>(`/runs/${runId}/events`);
-        if (active) {
-          setTrace({ runId, events: body.events });
-        }
-      } catch {
-        if (active) {
-          setTrace({ runId, events: [] });
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [runId, pending]);
+        const active = list.runs.some((run) => run.status === "queued" || run.status === "running");
+        return active ? 3000 : agent?.scheduleEnabled ? 20000 : null;
+      },
+      (caught) => {
+        setError(caught instanceof Error ? caught.message : "Could not refresh research.");
+      },
+    );
+  }, [agentId, runId, agent?.scheduleEnabled, refresh]);
 
   const act = useCallback(
     async (operation: () => Promise<void>) => {
@@ -281,6 +247,7 @@ export function Console() {
       try {
         await operation();
         await loadAgents();
+        setRefresh((value) => value + 1);
       } catch (caught) {
         const code = errorCode(caught);
         if (code in BLOCKED) {
@@ -361,6 +328,9 @@ export function Console() {
   };
 
   function go(next: SectionKey) {
+    if (next === "picks" && !runs.find((run) => run.id === runId)?.decision) {
+      setRunId(runs.find((run) => run.decision)?.id ?? null);
+    }
     setSection(next);
     setCreating(false);
     setMenu(null);
@@ -420,6 +390,9 @@ export function Console() {
                       setAgentId(id);
                       setRunId(null);
                       setRuns([]);
+                      setTrace(null);
+                      setBlocked(access?.enabled ? "" : "RESEARCH_ACCESS_DENIED");
+                      setError("");
                       setMenu(null);
                     }}
                   >
@@ -590,18 +563,20 @@ export function Console() {
             </section>
           )}
 
-          {creating && catalog && options ? (
+          {creating && canManage && catalog && options ? (
             <div className={styles.section} data-narrow="true">
               <AgentForm
                 catalog={catalog}
                 options={options}
                 onCancel={() => setCreating(false)}
-                onSaved={() => {
+                onSaved={(id) => {
                   setCreating(false);
                   void act(async () => {
-                    const list = await loadAgents();
-                    const last = list[list.length - 1];
-                    setAgentId(last ? (last.productId ?? last.id) : null);
+                    await loadAgents();
+                    setAgentId(id);
+                    setRunId(null);
+                    setRuns([]);
+                    setTrace(null);
                   });
                 }}
               />
