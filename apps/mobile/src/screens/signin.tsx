@@ -1,11 +1,16 @@
+import { useRoute } from "@react-navigation/native";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import type { AppCtx } from "../ctx";
+import type { SigninParams } from "../navigation/routes";
+import { heldActionFor } from "../store";
 import { Btn, Card, Page, T } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { createAccount, describeError, signIn } from "../wallet/wallet";
 
-export function SigninScreen({ held, onWallet, finishSignin }: AppCtx) {
+export function SigninScreen({ onWallet, finishSignin }: AppCtx) {
+  // La acción retenida por el gate viaja en los params de la ruta (spec mobile-nav D5), no en el store.
+  const held = heldActionFor((useRoute().params as SigninParams)?.next);
   const [busy, setBusy] = useState<"create" | "signin" | null>(null);
   const [error, setError] = useState("");
   const off = busy !== null;

@@ -1,6 +1,6 @@
 import { createNavigationContainerRef } from "@react-navigation/native";
-import type { Screen } from "../store";
 import { type RootParamList, screenOfRoute, type SigninParams, TAB_OF } from "./routes";
+import type { Screen } from "./screens";
 
 // Adaptador de navegación (spec mobile-nav D2): las pantallas siguen hablando en `Screen`; aquí se traduce a rutas
 // anidadas de react-navigation. Antes de `isReady()` las órdenes se encolan y `flushPending` las aplica en `onReady`.

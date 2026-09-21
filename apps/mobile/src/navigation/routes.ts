@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
-import { GATED, type Patch, type Screen } from "../store";
+import type { Patch } from "../store";
+import { GATED, type Screen } from "./screens";
 
 // Tabla de rutas de react-navigation (spec mobile-nav D1/D2). Puro: sin react-native.
 
