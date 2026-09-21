@@ -29,6 +29,19 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-21',
+    title: 'Navegación nativa en la app móvil — gesto atrás iOS, pilas por pestaña y tab bar con pastilla arrastrable',
+    summary: 'Migrar la navegación a react-navigation nativa (native-stack + bottom-tabs, una pila por pestaña) sin cambiar la API de las pantallas: gesto atrás interactivo, adelante animado, cabecera que viaja con la página; y una tab bar con pastilla lima que se arrastra sin despegar el dedo y selecciona al soltar.',
+    file: '2026-09-21-mobile-nav.html',
+    types: ['spec', 'plan'],
+    status: 'active',
+    tags: ['mobile', 'expo', 'navigation', 'ui'],
+    phases: [
+      { num: 1, status: 'completed' },
+      { num: 2, status: 'pending' },
+    ],
+  },
+  {
+    date: '2026-09-21',
     title: 'TestFlight build 7',
     summary: 'Build 0.1.0 (7): carga visible F1 — skeletons por sección, sello UPDATED / COULDN\'T REFRESH por pantalla y splash nativo con la P lima; fixes de la revisión final (in trading sin socket, sello por cuenta). UPLOAD SUCCEEDED; VALID en App Store Connect y en el grupo «Equipo».',
     file: 'dev/2026-09-21-testflight-build7.html',

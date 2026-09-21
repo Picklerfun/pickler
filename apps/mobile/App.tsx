@@ -3,20 +3,24 @@ import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bol
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { StatusBar, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { StatusBar } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { AppCtx } from "./src/ctx";
+import { DevControls } from "./src/DevControls";
 import { useAccount } from "./src/hooks/useAccount";
+import { useCurrentScreen } from "./src/hooks/useCurrentScreen";
 import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
 import { useReads } from "./src/hooks/useReads";
+import { useRefreshSeal } from "./src/hooks/useRefreshSeal";
 import { useTreasury } from "./src/hooks/useTreasury";
+import { AppCtxProvider } from "./src/navigation/context";
+import { Navigator } from "./src/navigation/Navigator";
 import type { PushTarget } from "./src/reads/push";
 import { patchForPush } from "./src/reads/push";
-import { Shell } from "./src/Shell";
-import { type Screen, useAppStore } from "./src/store";
-import { C } from "./src/ui/theme";
+import { type Screen, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
 const PERPL_SCREENS: readonly Screen[] = ["markets", "market", "perpsFunds"];
@@ -35,11 +39,13 @@ export default function App() {
   const treasury = useTreasury(account ?? NONE, onWallet);
   const perpl = usePerpl(account ?? NONE, onWallet, treasury);
   const hasAccount = account !== null && account.status !== "none";
-  const store = useAppStore({ hasAccount, perpsMarkets: perpl.context?.markets ?? [] });
+  const scr = useCurrentScreen();
+  const store = useAppStore({ hasAccount, scr });
   const { requireAccount } = store;
-  // Tap en un push: abre Market en la read (o en Trade para un recordatorio) respetando el gate (P7).
+  // Tap en un push (P7 de Ask): abre Market en la read (o en Trade para un recordatorio) respetando el gate.
   // En frío, la última respuesta llega antes de que la cuenta cargue (account === null): se encola y se
   // navega cuando la cuenta se conoce, para que el gate no mande a Sign in a quien sí tiene wallet.
+  // La cola por cuenta se conserva; el adaptador encola además hasta que el container está listo (isReady).
   const pendingPush = useRef<PushTarget | null>(null);
   const accountLoaded = account !== null;
   const accountLoadedRef = useRef(accountLoaded);
@@ -56,38 +62,41 @@ export default function App() {
   }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
-  const booted = useRef(false);
-  const { boot } = store;
-  // Una sola vez, cuando la cuenta deja de ser null: sin cuenta pasa por Sign in (D3).
-  // useLayoutEffect (no useEffect): corre antes del paint, para no flashear Wallet un frame sin cuenta.
-  useLayoutEffect(() => {
-    if (account === null || booted.current) return;
-    booted.current = true;
-    boot(hasAccount);
-  }, [account, hasAccount, boot]);
   const ready = fontsLoaded && account !== null;
   useEffect(() => {
     if (ready) { void SplashScreen.hideAsync(); return; }
     const t = setTimeout(() => { void SplashScreen.hideAsync(); }, 2000);
     return () => clearTimeout(t);
   }, [ready]);
-  const perpsActive = PERPL_SCREENS.includes(store.S.screen);
-  const readsActive = store.S.screen === "market" && store.S.marketTab !== "trade";
+  const perpsActive = PERPL_SCREENS.includes(scr);
+  const readsActive = scr === "market" && store.S.marketTab !== "trade";
   const { setActive } = perpl;
   const { setActive: setReadsActive } = reads;
   useEffect(() => { setActive(perpsActive); }, [perpsActive, setActive]);
   useEffect(() => { setReadsActive(readsActive); }, [readsActive, setReadsActive]);
+  const [controls, setControls] = useState(false);
+  const seal = useRefreshSeal({
+    account: account ?? NONE,
+    errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null },
+    hasData: (s) => screenHasData(s, { balances: treasury.balances, context: perpl.context }),
+  });
+  // La ruta inicial se decide una sola vez, cuando la cuenta ya se conoce (D5): con cuenta Tabs, sin cuenta signin.
+  const initial = useRef<"Tabs" | "signin" | null>(null);
+  if (ready && initial.current === null) initial.current = hasAccount ? "Tabs" : "signin";
 
-  if (!ready) return null; // el splash nativo sigue en pantalla (P9)
+  if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut, seal, setControls };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
-        <Shell ctx={ctx} />
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" />
+        <AppCtxProvider value={ctx}>
+          <Navigator initial={initial.current} />
+          {__DEV__ ? <DevControls visible={controls} onClose={() => setControls(false)} ctx={ctx} /> : null}
+        </AppCtxProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

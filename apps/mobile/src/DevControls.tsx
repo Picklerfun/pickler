@@ -16,7 +16,7 @@ function PChip({ label, on, onPress }: { label: string; on: boolean; onPress: ()
 }
 
 export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClose: () => void; ctx: AppCtx }) {
-  const { S, requireAccount, hasAccount, account, perpl, lock, signOut, signedOut } = ctx;
+  const { scr, requireAccount, hasAccount, account, perpl, lock, signOut, signedOut } = ctx;
   const firstMarket = perpl.context?.markets[0]?.id;
   const go = (screen: Screen) => {
     requireAccount(screen, screen === "market" && firstMarket !== undefined ? { perpsMarketId: firstMarket, perpsSide: "long" } : undefined);
@@ -33,7 +33,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
             <Touch onPress={onClose} accessibilityLabel="dev-close"><T w={600} s={13} color={C.faint}>Close</T></Touch>
           </View>
           <T w={500} s={10} lh={1.4} mono color={C.faint} style={{ marginBottom: 14 }}>
-            screen: {S.screen} · account: {account.status} · perpl: {perpl.state.status} · skew: {perpl.clockSkewMs === null ? "—" : `${Math.round(perpl.clockSkewMs / 1000)}s`}
+            screen: {scr} · account: {account.status} · perpl: {perpl.state.status} · skew: {perpl.clockSkewMs === null ? "—" : `${Math.round(perpl.clockSkewMs / 1000)}s`}
           </T>
           <ScrollView showsVerticalScrollIndicator={false}>
             <Tag s={10} style={{ marginBottom: 9 }}>SCREENS</Tag>
@@ -42,7 +42,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
                 <View key={title}>
                   <T w={700} s={11} color={C.faint} style={{ marginBottom: 6 }}>{title}</T>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
-                    {items.map(([k, label]) => <PChip key={k} label={label} on={S.screen === k} onPress={() => go(k)} />)}
+                    {items.map(([k, label]) => <PChip key={k} label={label} on={scr === k} onPress={() => go(k)} />)}
                   </View>
                 </View>
               ))}
