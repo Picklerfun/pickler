@@ -33,9 +33,18 @@ export function useRefreshSeal({ account, errors, hasData }: { account: AccountS
     return () => clearTimeout(t);
   }, [done]);
 
+  const seen = useRef(new Set<Screen>());
+
+  // Otra cuenta = otro sello (I1 de la revisión final de mobile-loading). Declarado ANTES del efecto de sello
+  // inicial: los efectos corren en orden de declaración dentro del mismo commit, así que al cambiar de cuenta
+  // este reset corre primero y el sello inicial se re-evalúa después, en el mismo commit.
+  const address = accountAddress(account);
+  useEffect(() => { setUpdatedAt({}); setFailed(null); seen.current.clear(); }, [address]);
+
   // Sello inicial: la primera vez que una pantalla tiene su dato principal (P5 de mobile-loading), calculado por
   // el propio hook (no por Page vía `markInitial` en render, que actualizaba estado durante el render de Page).
-  const seen = useRef(new Set<Screen>());
+  // `address` en las deps: al cambiar de cuenta con datos ya cargados (`has` no cambia, p. ej. treasury.balances
+  // sigue no-nulo entre dos cuentas fondeadas), este efecto igual se re-ejecuta y re-sella tras el reset de arriba.
   const has = REFRESHABLE.map((s) => hasData(s));
   useEffect(() => {
     REFRESHABLE.forEach((s, i) => {
@@ -44,11 +53,7 @@ export function useRefreshSeal({ account, errors, hasData }: { account: AccountS
         setUpdatedAt((u) => (u[s] === undefined ? { ...u, [s]: Date.now() } : u));
       }
     });
-  }, [has[0], has[1], has[2]]);
-
-  // Otra cuenta = otro sello (I1 de la revisión final de mobile-loading).
-  const address = accountAddress(account);
-  useEffect(() => { setUpdatedAt({}); setFailed(null); seen.current.clear(); }, [address]);
+  }, [has[0], has[1], has[2], address]);
 
   const labelFor = useCallback((screen: Screen) => {
     const ts = updatedAt[screen];
