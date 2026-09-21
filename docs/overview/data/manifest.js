@@ -28,6 +28,15 @@
 window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
+    date: '2026-09-21',
+    title: 'Markets abre Ask sin trading key; sign out conserva la key',
+    summary: 'El gate de Perpl vive en Trade; Ask y Agents funcionan sin key; cerrar sesión ya no obliga a Reconnect (tx + key nueva).',
+    file: 'dev/2026-09-21-markets-ask-gate.html',
+    types: ['fix'],
+    status: 'in_progress',
+    tags: ['mobile', 'perpl', 'ask', 'fix'],
+  },
+  {
     date: '2026-09-20',
     title: 'Matriz de Ask como el Grid del prototipo',
     summary: 'Sparkline real, escalera de precios, celdas con punto y hoja violeta con steppers; corrige D14 del spec de Ask.',
@@ -45,7 +54,7 @@ window.DOCS = [
     status: 'active',
     tags: ['mobile', 'expo', 'perpl', 'supabase', 'claude', 'agentes', 'push'],
     phases: [
-      { num: 1, status: 'in_progress' },
+      { num: 1, status: 'completed' },
       { num: 2, status: 'completed' },
       { num: 3, status: 'pending' },
       { num: 4, status: 'pending' },

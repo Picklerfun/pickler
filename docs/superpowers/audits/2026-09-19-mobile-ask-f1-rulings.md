@@ -484,3 +484,19 @@ cual y el smoke de APNs se hace cuando exista la key; (2) la rotación de `SUPAB
 `CRON_SECRET`; (3) si se mergea/pushea F1. El siguiente paso es el **plan de F2** (app: `expo-notifications`,
 sesión firmada, matriz, `AskSheet`, `ReadCard`, My reads, Agents — D6, D13–D16), que no se escribe en la
 misma sesión sin checkpoint. Quedan 23 días para el bounty (13 oct 2026, 21:59 CST).
+
+## 8. Addendum APNs (2026-09-20, 23:22 CST): el push real llegó
+
+- **Key**: `N585YVNSFA` del team `2PBQJ37Q8W` (la key APNs de Proflores; las keys APNs de tipo token son del team, no de la app). El `.p8` se
+  recuperó de `/opt/proflores/.env` de la VPS de Proflores a `~/.private_keys/AuthKey_N585YVNSFA.p8` (600) por Jesús con un comando `!`
+  (el clasificador de auto mode bloquea mover credenciales); `openssl pkey` lo validó. `.env.pickler` ganó `APNS_KEY_ID`, `APNS_TEAM_ID`,
+  `APNS_KEY_P8_B64` (respaldo `.env.pickler.bak-2026-09-20`); `npx supabase secrets set` → `{"count":3}`; `secrets list` muestra los tres nombres.
+- **Smoke** (`resolve-reads` con `{ apnsSmoke: { token: "0"×64, env: "sandbox" } }`, header `x-cron-secret`): `http 200 {"apns":{"status":400,"reason":"BadDeviceToken"}}` — APNs aceptó TLS, HTTP/2 y el JWT (P6 del plan F1).
+- **Push real** al token del simulador (`mobile.devices`, `env sandbox`, 160 hex; leído dentro del script, no impreso): `{"apns":{"status":200,"reason":null}}`
+  y banner «Pickler · APNs smoke» en el simulador `2B2A…` (arrancado desde apagado; el primer envío no se vio porque el banner caducó antes de la captura; el segundo sí):
+
+![Banner del push real de APNs en el simulador](img/2026-09-20-apns-real-push.png)
+
+- **Decisión**: `PUSH_MODE = "apns"` se queda (el fallback local de D10 sigue implementado y probado por test). **F1 → `completed`**.
+- **Sigue pendiente (F4)**: capability Push Notifications en el App ID `fun.pickler.app` (developer.apple.com → Identifiers), insumo de Jesús;
+  el simulador no la necesita, el iPhone/TestFlight sí. Rotación de `SUPABASE_ACCESS_TOKEN`/`CRON_SECRET` (incidente 1) sigue abierta.

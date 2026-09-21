@@ -231,7 +231,7 @@ describeOrderStatus(st, sr?, fr?): { kind: &quot;sent&quot; | &quot;filled&quot;
 <p>pendientes sin resolver pasan a <code>unknown</code>. Dos <code>3401</code> seguidos → evento <code>keyRejected</code>.</p>
 </ul>
 <h3 id="27-storageperplts">2.7 <code>storage/perpl.ts</code></h3>
-<p><code>pickler.perpl.v1</code> (SecureStore, <code>WHEN_UNLOCKED_THIS_DEVICE_ONLY</code>, sin <code>requireAuthentication</code>): <code>{ accountId: string; apiKey: string; privateKey: base64url }</code>. <code>loadTradingKey</code>, <code>saveTradingKey</code>, <code>clearTradingKey</code> (se llama desde <code>signOut</code> junto a <code>clearStoredAccount</code>). Entrada malformada → se borra y se lee como ausente (misma regla que <code>storage.ts</code>).</p>
+<p><code>pickler.perpl.v1</code> (SecureStore, <code>WHEN_UNLOCKED_THIS_DEVICE_ONLY</code>, sin <code>requireAuthentication</code>): <code>{ accountId: string; apiKey: string; privateKey: base64url }</code>. <code>loadTradingKey</code>, <code>saveTradingKey</code>, <code>clearTradingKey</code> (se llama desde <code>signOut</code> junto a <code>clearStoredAccount</code>). <strong>(gate, 2026-09-21)</strong> <code>signOut</code> ya <strong>no</strong> la llama: la key sobrevive al sign out (opción B; <code>usePerpl</code> la ignora si la <code>address</code> no coincide). No hay borrado explícito desde la UI: «Reset trading key» (visible sólo con key rechazada) enrola una key <strong>nueva</strong>; <code>clearTradingKey</code> queda exportado sin llamadores. Motivo: cada Reconnect cuesta una tx de gas y registra otra key en Perpl (límite <code>423</code>); follow-up post-bounty: key derivada de una firma determinista de la wallet (patrón dYdX v4), sin nada en disco. Entrada malformada → se borra y se lee como ausente (misma regla que <code>storage.ts</code>).</p>
 <h3 id="28-hooksuseperplts">2.8 <code>hooks/usePerpl.ts</code></h3>
 <pre><code class="language-ts">type PerplState =
   | { status: &quot;loading&quot; }
@@ -285,7 +285,7 @@ type Perpl = {
 <li><code>usePerpl.setActive(true)</code> cuando <code>S.screen ∈ {perps, perpsMarket, perpsFunds}</code>; el hook</li>
 <p>abre el socket y el polling de <code>context</code>; <code>false</code> los cierra (con 2 s de gracia para navegaciones internas).</p>
 <li>Órdenes en vuelo: <code>TradingSocket.pending</code> por <code>sn</code>; la pantalla espera la promesa.</li>
-<li>Sign out: <code>clearTradingKey()</code>, socket cerrado, <code>state = none</code>. Cambio de cuenta (otra</li>
+<li>Sign out: <code>clearTradingKey()</code>, socket cerrado, <code>state = none</code>. <strong>(gate)</strong> sin <code>clearTradingKey()</code>: socket cerrado por el cambio de <code>address</code>; con la misma wallet el estado vuelve a <code>ready</code> sin Reconnect. Residual: un Reconnect real (reinstalación) sigue reenviando <code>enableForwarding</code> porque no hay getter on-chain. Cambio de cuenta (otra</li>
 <p>passkey): la key guardada pertenece a otra <code>address</code> → se detecta (<code>address</code> guardada ≠ actual) y se trata como <code>none</code>.</p>
 <li><code>AppCtx</code> gana <code>perpl: Perpl</code>.</li>
 </ul>

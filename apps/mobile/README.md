@@ -40,7 +40,7 @@ notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 ## Tests
 
 ```bash
-npm test          # jest, 236/236 esperado (31 suites)
+npm test          # jest, 237/237 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -80,8 +80,10 @@ para que la app vea otra key hay que rehacer `expo run:ios`.
 Trading manual de perps en Perpl testnet (`https://testnet.perpl.xyz`). Sin backend: las tres tx de
 onboarding (`approve`, `createAccount ≥ 100 AUSD`, `allowOrderForwarding`) y la firma EIP-712 de la
 API key las hace la wallet de Mera; las órdenes van por WebSocket firmadas con una llave Ed25519 que
-vive en SecureStore (`pickler.perpl.v1`, sin Face ID: solo puede operar, nunca retirar). Sign out la
-borra; "Reset trading key" enrola otra (máx. 16 por cuenta; revocar en `testnet.perpl.xyz/apikeys`).
+vive en SecureStore (`pickler.perpl.v1`, sin Face ID: solo puede operar, nunca retirar). Sign out
+conserva la trading key (atada a la wallet; no hay borrado desde la UI — "Reset trading key", sólo con
+key rechazada, enrola una nueva; máx. 16 por cuenta, revocar en `testnet.perpl.xyz/apikeys`); sin key,
+Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
 
 - Colateral: el mismo AUSD de la wallet. Mínimos (100 / 10 / 0.01) se leen de `pub/context`.
 - Apalancamiento: 1x–5x, capado por mercado (`initial_margin / 100`; MON permite 3x).
