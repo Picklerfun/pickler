@@ -39,20 +39,17 @@ notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 
 ## Carga y splash
 
-Cada card o lista con dato remoto pinta su propio skeleton (`Skeleton`/`Reveal` en
-`src/ui/primitives.tsx`) mientras su dato sea `null` y no haya error; con dato, el
-contenido entra con `Reveal` (fade 150 ms) y nunca vuelve a mostrar skeleton. El
-pull-to-refresh deja un sello `UPDATED HH:MM:SS` por pantalla bajo la cabecera
-(`Shell.tsx`; `COULDN'T REFRESH` 3 s si fallan todas las fuentes de esa pantalla).
-El splash nativo (`expo-splash-screen`) muestra `assets/splash-mark.png` (la P lima
-recortada de `assets/icon.png`, regenerable con `python3 scripts/splash-mark.py
-assets/icon.png assets/splash-mark.png`, requiere PIL) hasta que la cuenta local se
-resuelve; `prebuild --clean` regenera el storyboard nativo con el asset nuevo.
+Skeleton (`Skeleton`/`Reveal` en `src/ui/primitives.tsx`) sólo mientras el dato de esa
+card es `null` y no hay error; con dato entra el contenido (fade 150 ms), con error su `Warn`.
+El pull-to-refresh deja `UPDATED HH:MM:SS` por pantalla en `Shell.tsx` (`COULDN'T
+REFRESH` 3 s si fallan todas las fuentes pedidas). El splash nativo muestra
+`assets/splash-mark.png` (`python3 scripts/splash-mark.py assets/icon.png
+assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboard.
 
 ## Tests
 
 ```bash
-npm test          # jest, 240/240 esperado (31 suites)
+npm test          # jest, 242/242 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 

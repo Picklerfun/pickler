@@ -9,8 +9,9 @@ hasta que la cuenta local se resuelve. Ejecutado con subagent-driven-development
 por task (Tasks 1–8), revisión independiente en Tasks 3 y 5 con un round de fix cada una, el
 controlador commiteando por nombre de archivo y llevando el ledger (`.superpowers/sdd/2026-09-21-mobile-loading-f1/progress.md`,
 git-ignored). Rama `feat/mobile-loading`, base `main` local `00d39b0` (docs sobre `4be010c`), **8
-commits de código** `9187f3c..41773fc` (incluye dos fix commits, `b3b002a` y `ccf5d98`), más el de
-esta documentación; sin push y sin merge.
+commits de código** `9187f3c..41773fc` (incluye dos fix commits, `b3b002a` y `ccf5d98`), el de
+esta documentación (`f2ca017`) y, tras la revisión final de rama, el fix `e7124af` (C1 + I1–I3, ver §2
+y §3 E9–E12) con su commit de docs; sin push y sin merge.
 
 Spec: `docs/superpowers/specs/2026-09-21-mobile-loading-design.md` (D1–D8, marcadas **(F1)** las
 correcciones de esta fase); plan: `docs/superpowers/plans/2026-09-21-mobile-loading-f1.md` (P1–P10).
@@ -57,6 +58,11 @@ Snapshots:   0 total
 Time:        3.7xx s
 TSC-OK
 ```
+
+Tras el fix de la revisión final (`e7124af`, 2026-09-21): `npx jest __tests__/store.test.ts` en RED
+(`tradingLineState is not a function`; `refreshOk("market", {…, listError: null, contextError: "x"})`
+→ `Expected: false, Received: true`) y GREEN (`Tests: 25 passed, 25 total`); suite completa
+`Test Suites: 31 passed, 31 total · Tests: 242 passed, 242 total` (240 + 2), `TSC-OK`.
 
 `git diff --stat 00d39b0..HEAD` → `16 files changed, 329 insertions(+), 80 deletions(-)`:
 
@@ -129,7 +135,8 @@ limitación de la técnica de prueba para este dev client. Rutas afectadas: Step
 |---|---|---|
 | ![Skeleton de Wallet](img/2026-09-21-mobile-loading-skeleton-wallet.png) `skeleton-wallet` | Card AVAILABLE·AUSD con bloque skeleton pulsante de 30 px + 3 `Skeleton.Row` bajo MOVEMENTS; TESTNET/SESSION visibles sin skeleton (no dependen del fetch) | ✓ |
 | ![Skeleton de Ask](img/2026-09-21-mobile-loading-skeleton-ask.png) `skeleton-ask` | CREDITS con bloque skeleton pulsante mientras la matriz ya muestra el mark price real (estado mixto esperado por el brief) | ✓ |
-| ![Sello UPDATED](img/2026-09-21-mobile-loading-updated.png) `updated` | Sello `UPDATED HH:MM:SS` bajo la cabecera tras un pull-to-refresh; verificado que la hora cambia en dos pulls consecutivos (`10:54:56` → `11:16:37` → `11:17:14`) | ✓ |
+| ![Sello UPDATED](img/2026-09-21-mobile-loading-updated.png) `updated` | Sello `UPDATED HH:MM:SS` bajo la cabecera tras un pull-to-refresh; verificado que la hora cambia en dos pulls consecutivos (`10:54:56` → `11:16:37` → `11:17:14`). **La barra pulsante bajo «Nothing pending.» que se ve en esta captura era el defecto C1** (skeleton permanente de la línea «in trading»; ver abajo), no un estado de carga real | ✓ sello · ✗ C1 visible |
+| ![Wallet cargada tras el fix](img/2026-09-21-mobile-loading-wallet-loaded.png) `wallet-loaded` | Arranque en frío tras `e7124af`: bajo «Nothing pending.» se lee «— AUSD in trading · Markets», sin barra pulsante; sello `UPDATED 11:45:28`; saldo 29.00 AUSD y los mismos 6 movimientos | ✓ |
 | ![Splash nativo](img/2026-09-21-mobile-loading-splash.png) `splash` | Logo P lima sobre fondo navy `#05061A`, sin blanco, sin spinner (heredada de Task 6, re-revisada en Task 7) | ✓ |
 | `skeleton-markets` — **no existe** | 6 `Skeleton.Row` bajo MARKETS: 14 intentos (delays 0–10 s antes del tap, tap por punto vs. accessibility-label, sesión única de Maestro, ráfagas de 6 screenshots) nunca lo mostraron — `perpl.context` se resuelve contra producción en menos de 1 s | ✗ no capturado (ver §6) |
 
@@ -142,11 +149,25 @@ Nota de producto (no defecto de este PR): el simulador **sí tiene** trading key
 (`TRADING · AUSD 104.86`, tag `LIVE`) — el caso «sin key» de una de las rulings del controlador no
 aplicó.
 
-**Defectos observados: ninguno.** Todo lo que sí se pudo observar en ventana real de carga se
+**Defectos observados: uno (C1), detectado en la revisión final de rama, no en Task 7.** La línea
+«AUSD in trading» de Wallet (`wallet.tsx`) pintaba `Skeleton` con `perpl.live === null &&
+perpl.lastBalance === null` dentro de `status === "ready"`, tal como mandaba el spec D3 (y P3 del
+plan). Pero el socket de Perpl sólo corre en `PERPL_SCREENS = ["markets","market","perpsFunds"]`
+(`App.tsx`) — nunca en Wallet, donde `usePerpl` hace `setLive(null)` — y `lastBalance` es un
+`useState(null)` en memoria: en cada arranque en frío la línea quedaba en skeleton **para siempre**
+(visible en `updated.png`, bajo «Nothing pending.») y desaparecía el `Touch` a Markets. El spec
+confundía «sin dato todavía» con «este dato nunca llega aquí»: D2 dice que el skeleton es «cargando»,
+y en Wallet no hay nada cargando. Fix en `e7124af`: helper puro `tradingLineState(live, lastBalance,
+socketActive)` → `"live" | "lastSeen" | "skeleton" | "unknown"` en `store.ts` con test (los cuatro
+estados); Wallet pasa `socketActive: false` y pinta «— AUSD in trading · Markets» (mismo `Touch`) en
+`"unknown"`; Markets pasa `true` y conserva el skeleton mientras conecta. Verificado en
+`wallet-loaded.png` (arriba). Task 7 y la revisión de Task 8 no lo vieron porque la barra parecía un
+skeleton en curso en una captura estática. En la misma revisión final salieron tres Important (I1–I3,
+§3 E10–E12) corregidos en el mismo commit. Todo lo demás observado en ventana real de carga se
 comporta como se espera: transición limpia skeleton→dato en Wallet (~4 s) y Ask; sin overlap de
 skeleton sobre dato real; sello con hora correcta en cada pull, nunca un pull fallando en silencio;
 sin gap/aire anómalo bajo la cabecera con sello (el minor deferido de Task 5 sobre esto no se aprecia
-como defecto visual en las capturas revisadas); splash nativo correcto; ningún caso de skeleton
+como defecto visual en las capturas revisadas); splash nativo correcto; ningún otro caso de skeleton
 mostrándose sobre datos ya cargados. No se puede confirmar ni descartar el timing exacto de 150 ms del
 fade `Reveal` con screenshots estáticos — no se observó ningún artefacto visual (doble render,
 parpadeo, corte) en ninguna captura.
@@ -174,29 +195,29 @@ de F1); las decisiones tomadas **durante** la ejecución, sin consultar a Jesús
 
 **Decisiones tomadas durante la ejecución:**
 
-1. **(Task 3) D4 manda `Reveal` también en cifras escalares y vacíos, no sólo en listas.** Los
+1. **E1 (Task 3) D4 manda `Reveal` también en cifras escalares y vacíos, no sólo en listas.** Los
    snippets del plan (`CreditsRow`, el vacío «No reads yet» de My reads) no envolvían el contenido en
    `Reveal`; D4 dice que TODO paso skeleton→contenido entra con fade de 150 ms. Se aplicó `Reveal` en
    ambos y el criterio se llevó a Task 4 (cifras de Wallet/Markets/posiciones). Spec manda sobre el
    plan. **Coste si está mal:** dos `Animated.View` de más, sin efecto funcional.
-2. **(Task 5) D5 manda `refreshFailed: Screen | null`, no un `boolean` global.** El plan definía
+2. **E2 (Task 5) D5 manda `refreshFailed: Screen | null`, no un `boolean` global.** El plan definía
    `refreshFailed` como booleano único; un jalón fallido en Wallet pintaría `COULDN'T REFRESH` en
    Markets si el usuario cambiaba de pantalla dentro de la ventana de 3 s (el `Shell` es persistente;
    las pantallas se intercambian sin remount). Se cambió a `refreshFailed: Screen | null` (la pantalla
    cuyo jalón falló) y se pinta sólo si `=== S.screen`. Spec manda; cambio mínimo. **Coste si está
    mal:** un estado de un tipo distinto al del plan; sin efecto funcional adverso.
-3. **(Task 7) No se corta el WiFi del Mac para capturar `COULDN'T REFRESH`** (afecta a otras sesiones
+3. **E3 (Task 7) No se corta el WiFi del Mac para capturar `COULDN'T REFRESH`** (afecta a otras sesiones
    y al trabajo del usuario). En Markets la única fuente del jalón es `perpl.refreshContext()`, y la
    URL de Perpl viene de env: se arrancó Metro con `PICKLER_PERPL_REST`/WS apuntando a `127.0.0.1:9` y
    se jaló en Markets. Mismo resultado observable sin efecto fuera del worktree. **Coste si está
    mal:** la captura muestra el fallo con la card de error de Perpl debajo en vez de datos viejos; si
    el env no aplica (como resultó ser el caso), queda «no capturado» cubierto por el test de
    `refreshOk`.
-4. **(Task 7) Orden de intentos para `MarketSkeleton`:** primero relaunch estando en Market / Dev
+4. **E4 (Task 7) Orden de intentos para `MarketSkeleton`:** primero relaunch estando en Market / Dev
    controls → «Market · ticket» tras relaunch; Sign out + sign in con passkey sólo como último recurso
    (fricción del sheet de Apple Passwords). **Coste si está mal:** captura no conseguida, anotada (lo
    que ocurrió).
-5. **(Task 7) `skeleton-markets`, `MarketSkeleton`, chips de agentes, `Warn` de Ask y
+5. **E5 (Task 7) `skeleton-markets`, `MarketSkeleton`, chips de agentes, `Warn` de Ask y
    `COULDN'T REFRESH` quedan NO capturados**, aceptados como residuales: `perpl.context` resuelve en
    menos de 1 s contra producción (14 intentos, ráfagas incluidas) y el override por env de Metro no
    llega a `Constants.expoConfig` en este dev client (verificado: `/.expo/config` sí lo trae; la app
@@ -204,20 +225,44 @@ de F1); las decisiones tomadas **durante** la ejecución, sin consultar a Jesús
    Wallet/Ask, y `refreshOk` tiene test. F1 cierra `completed` con la salvedad en este audit
    (precedente: Ask F2). **Coste si está mal:** un skeleton de Markets/Market con layout roto pasaría
    sin verse hasta el iPhone o TestFlight.
-6. **(Task 7) CORRECCIÓN a P10 del plan y al README**: el truco `PICKLER_READS_URL`/`PICKLER_PERPL_REST`
+6. **E6 (Task 7) CORRECCIÓN a P10 del plan y al README**: el truco `PICKLER_READS_URL`/`PICKLER_PERPL_REST`
    con Metro **no** afecta al dev client instalado (el config queda resuelto en el build nativo, no en
    el manifest dinámico); no se recomienda en el README (Task 8). **Coste si está mal:** nulo — es una
    corrección documental, no un cambio de código.
-7. **(Task 6) content_size del simulador puesto en `medium`** a las 10:52 (otra sesión lo había
+7. **E7 (Task 6) content_size del simulador puesto en `medium`** a las 10:52 (otra sesión lo había
    dejado en `accessibility-extra-extra-extra-large`, lo que rompía las capturas del splash con texto
    gigante y pestañas partidas). Valor previo anotado por si la otra sesión lo necesita. **Coste si
    está mal:** la otra sesión tiene que reponer su valor (una línea de `notifyutil`/Ajustes).
-8. **(Task 8, esta task) F1 se marca `completed`** en overview y manifest, con las 8 tasks marcadas
+8. **E8 (Task 8, esta task) F1 se marca `completed`** en overview y manifest, con las 8 tasks marcadas
    (Task 7 anotada «4/5 capturas; ver residuales») y este audit documentando lo no capturado como
    residual, no como follow-up bloqueante: toda la superficie D1–D7 tiene evidencia real en el
    simulador o en tests puros, y la única brecha de D8 es una ventana de carga sub-segundo que ninguna
    técnica de automatización disponible pudo forzar. Jesús puede bajar F1 a `in_progress` en el
    checkpoint. **Coste si está mal:** cambiar un status.
+9. **E9 (revisión final de rama, C1) `tradingLineState` en vez de `live === null` para la línea «in
+   trading».** El spec D3 («card de trading: `perpl.live === null` en `ready`») ignoraba que el socket
+   de Perpl sólo corre en `PERPL_SCREENS` (Markets/Market/perpsFunds), nunca en Wallet, y que
+   `lastBalance` no persiste: en Wallet `live === null` significa «desconocido», no «cargando». Se
+   introduce el helper puro `tradingLineState(live, lastBalance, socketActive)` → `"live" | "lastSeen"
+   | "skeleton" | "unknown"` en `store.ts` con test; Wallet pasa `socketActive=false` y pinta «— AUSD
+   in trading · Markets» (`Touch` conservado) en `"unknown"`; Markets pasa `true` y conserva el
+   skeleton mientras conecta. D3 se corrige en el spec con marca (F1). Commit `e7124af`. **Coste si
+   está mal:** Wallet enseña «—» donde podría enseñar un saldo si el socket llegara a correr ahí; sin
+   regresión funcional.
+10. **E10 (revisión final, I1) `updatedAt`/`refreshFailed` se resetean cuando cambia la dirección de
+    la cuenta** (efecto en `Shell` sobre `accountAddress(ctx.account)`); no se remonta el Shell. Sin
+    esto, tras sign out → sign in el sello viejo quedaba pintado sobre los skeletons de la cuenta
+    nueva. Commit `e7124af`. **Coste si está mal:** un sello viejo tras sign in si la dirección no
+    cambiara (misma cuenta): aceptable, es el mismo usuario.
+11. **E11 (revisión final, I2) `RefreshErrors.listError: string | null`** (`null` = fuente no pedida:
+    sin sesión de reads, `reads.refresh()` no toca `listError`); `refreshOk("market") = !contextError
+    || (listError !== null && !listError)`. `Shell` pasa `null` cuando `reads.session !== "ready"`.
+    Sin esto, en Market sin sesión de Ask y Perpl caído el jalón sellaba `UPDATED` por una fuente que
+    nunca se pidió. Test ampliado. Commit `e7124af`. **Coste si está mal:** en Market con sesión Ask y
+    Perpl caído seguiría sellando por reads (comportamiento de D5, intencional).
+12. **E12 (revisión final, I3) `CreditsRow` recibe `error`**; skeleton sólo con `credits === null &&
+    !error`; con error pinta «—» (D2 sin excepciones; antes seguía en skeleton aunque hubiera
+    `listError`). Commit `e7124af`. **Coste:** ninguno.
 
 ## 4. Correcciones a afirmaciones previas
 
@@ -225,12 +270,15 @@ de F1); las decisiones tomadas **durante** la ejecución, sin consultar a Jesús
 |---|---|---|---|
 | Spec, cabecera **Estado** | «diseño aprobado por Jesús…; sin plan todavía» | «F1 ejecutada…; rama `feat/mobile-loading` lista para merge local»; nota de que `expo-splash-screen` quedó en `~57.0.9` y `setOptions` existe en esa versión | Esta task |
 | Spec D3 | Matriz completa de Ask con `MatrixGrid` recibiendo `loading` | **(F1)** `MatrixGrid` no cambia: sin `context` no hay `market`, así que Market entero pinta `MarketSkeleton` — P2 del plan | Plan (P2), reflejado en spec por esta task |
+| Spec D3, Wallet | Card de trading: skeleton con `perpl.live === null` en `ready` | **(F1)** El socket nunca corre en Wallet: la línea usa `tradingLineState(live, lastBalance, socketActive=false)` y pinta «—» sin dato; el skeleton sólo aplica en Markets (`socketActive=true`) — ruling E9 (C1) | Revisión final de rama (opus), confirmado en `updated.png` |
 | Spec D4 | Fade genérico al pasar de skeleton a contenido | **(F1)** Toda transición pasa por `Reveal`, incluidas cifras escalares y vacíos — ruling E1 | Revisión de Task 3, extendido en Task 4 |
 | Spec D5 | Un solo sello por pantalla (ya lo decía el spec) | **(F1)** Implementado con `refreshFailed: Screen \| null`, no `boolean` — el plan sí traía el tipo equivocado — ruling E2 | Revisión de Task 5 |
 | Spec D8 | Plan de captura con `PICKLER_READS_URL` inválida para forzar timeouts | **(F1)** No funciona en este dev client (`Constants.expoConfig` no recoge el env de un relanzamiento); 4/5 capturas logradas, detalle en este audit | Task 7 (hallazgo técnico) |
 | Plan P10 | Reiniciar Metro con `PICKLER_PERPL_REST`/`PICKLER_READS_URL` y relanzar fuerza el timeout de la petición | **No aplica a este dev client**: el manifest dinámico de Metro no llega a `Constants.expoConfig` tras un relanzamiento; hace falta un rebuild (`run:ios`) | Task 7, ruling E6 |
 | README (`PICKLER_PERPL_REST`/`PICKLER_READS_URL`) | Sin nota sobre el comportamiento tras un reinicio de Metro | Se agregó una frase en ambos overrides: un reinicio de Metro no basta en un dev client instalado, hace falta `run:ios` | Esta task, evidencia de Task 7 |
-| README, conteo de tests | `237/237 esperado (31 suites)` | `240/240 esperado (31 suites)` | Esta task |
+| README, conteo de tests | `237/237 esperado (31 suites)` | `240/240 esperado (31 suites)`; tras el fix `e7124af`, `242/242` | Esta task; fix final |
+| README, «Carga y splash» | «con dato, el contenido entra con `Reveal` … y nunca vuelve a mostrar skeleton» | Sección recortada a ≤ 6 líneas; dice exactamente lo que garantiza D2 (skeleton sólo con dato `null` y sin error) sin prometer más | Revisión de Task 8 |
+| Audit §3 | La prosa citaba E1–E8 pero la lista iba numerada 1–8 sin etiqueta | Cada ruling lleva su etiqueta `E<n>`; E9–E12 son los de la revisión final | Revisión de Task 8 |
 | Simulador, `content_size` | Se asumía en el valor por defecto | Otra sesión lo había dejado en `accessibility-extra-extra-extra-large`; el controlador lo puso en `medium` para las capturas de Task 7 (Dynamic Type XXXL es un minor deferido de producto, no un bug de esta fase) | Task 6 (nota del ledger) |
 
 ## 5. Estado de las cuentas y del servicio al cierre
@@ -292,6 +340,31 @@ Ordenados por peso:
 10. **Timing exacto de 150 ms del fade `Reveal`** no confirmado ni descartado con screenshots
     estáticos (no hay artefacto visual observado en ninguna captura, pero tampoco una medición del
     timing en sí).
+11. **Closure `p` local en `updatedLabel`** (minor deferido de Task 1): se recrea en cada llamada;
+    irrelevante (una función de dos líneas llamada una vez por render del sello).
+
+Minors de la revisión final de rama (`00d39b0..f2ca017`, opus), aceptados como residuales sin cambio
+de código:
+
+12. **Pantalla cambiada a mitad de jalón sella la actual**: `onRefresh` captura `S.screen` al empezar,
+    pero el efecto sobre `refreshDone` evalúa con el `S.screen` del render en que termina; si el
+    usuario cambia de pantalla durante el jalón, sella la pantalla nueva.
+13. **`Reveal` hace fade en cada montaje**, no sólo en la transición skeleton→contenido: al volver a
+    una pantalla ya cargada el contenido vuelve a entrar en fade de 150 ms.
+14. **El sello de Markets no avanza con el polling de 5 s** de `perpl.context`: `UPDATED` refleja el
+    último pull manual (o la carga inicial), no el último dato recibido. **Decisión de producto para el
+    checkpoint**: ¿el sello significa «último jalón del usuario» o «último dato fresco»?
+15. **`Skeleton.Line` y `Skeleton.Card({ big })` sin consumidores** (P1 los definió; D3 los preveía
+    para Market · Trade y Wallet, que acabaron usando `Skeleton` a secas).
+16. **Reads del mercado A visibles al entrar a B** hasta que llega la lista de B (`setReads(null)` sólo
+    al cambiar de sesión, no de mercado); ventana sub-segundo.
+17. **D3 Wallet implementado como bloque sobre la cifra** (`Skeleton h=30`), no como `Skeleton.Card`
+    de dos líneas: mejor resultado visual, distinto de la letra del spec.
+18. **Afirmación «no hay salto» del splash**: el splash es `#05061A` plano y la app abre sobre un
+    gradiente (`bgTop`→`bgBottom`); el cambio de fondo existe aunque no se aprecie en las capturas.
+19. **`pending` dentro de `Reveal`** en Wallet (movimientos): los pendientes ya se pintan fuera de
+    `Reveal` mientras `movements === null`; que vuelvan a entrar en el `Reveal` de la lista es un
+    camino muerto sin efecto visible.
 
 **Rollback**: F1 no tocó `services/reads`, migraciones, funciones ni cuentas de producto (sólo lecturas
 contra producción durante las pruebas de Task 7); no hay nada que revertir en el proyecto compartido.
