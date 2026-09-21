@@ -21,6 +21,8 @@ Everything in this section was read from the working tree, not inferred. It is t
 
 **Absent.** Every Solidity contract — `contracts/src/` holds only `.gitkeep`, and `contracts/lib/` does not exist, so `forge build` cannot compile. No ABI generation pipeline. No deployment addresses: `ContractDeployment` in `packages/chain/src/index.ts:2-6` is a type with no instances. No viem, ethers or wagmi anywhere in the monorepo; the only chain access is raw JSON-RPC `fetch`. No on-chain log indexer, and no writer for `market.*` or `identity.wallet_links`. No launchpad endpoint: `/tokens` in the web app is served from `/v1/demo/*` sample data, and `markets.ts` in `@pickler/api-schema` describes Perpl perpetuals, not launch tokens.
 
+That baseline is a snapshot of commit `397863a`, kept as written so the plan can be read against what it was planning from. Since then D0's ABI pipeline and deployment records, A1's curve library and A4's spike have landed; sections 4, 5 and 7 note what is done.
+
 **Two contradictions this specification resolves.**
 
 1. `docs/market/token-launch.md:18` names Robinhood Chain (`eip155:4663`) as the first launchpad chain. The product specification puts Robinhood out of v1 and targets Monad. That document is superseded on the choice of chain and on the Pons migrator being the primary path; its research summary and its list of backend requirements remain useful. A note to that effect belongs at the top of that file, added by the first deliverable that touches it.
@@ -89,6 +91,8 @@ Exit criteria: the four reserve compartments never mix — no amount counted as 
 
 Exit criteria: a passing fork test for every step above, the anti-pre-initialization mitigation demonstrated rather than asserted, and a written note recording the PositionManager version, the addresses used and their code hashes. If the spike fails, A5 does not start and the finding goes back to product, because the post-graduation revenue model depends on it.
 
+**Done, 2026-09-21.** Six fork tests pass in `contracts/test/fork/`; addresses and code hashes are recorded per network in `packages/chain/src/deployments.ts`; the findings, the inherited constraints for A5, and the one blocking decision the spike surfaced are in [the spike report](../market/uniswap-v4-spike.md).
+
 **A5 — graduation adapter and locker.** `finalizeGraduation` is permissionless, valid only in `READY_TO_GRADUATE`, and atomic: withdraw exactly `R_end` and `L`, create or verify the pool, add liquidity, lock the position. Any failure reverts and the funds stay in the curve. The phase becomes `POOL_ACTIVE` only after the pool and the locker's ownership are verified. Pre-flight rejects an existing pool whose price, hook or conditions deviate beyond tolerance. The locker holds the principal permanently and exposes fee collection only — no generic `execute`, no `delegatecall`, no rescue of the LP NFT, and no upgrade path that could add one later. Mint dust goes to an immutable locked-reserve destination, never to discretionary revenue.
 
 Exit criteria: finalization succeeds exactly once; a DEX failure reverts with no loss and the retry remains permissionless; a maliciously pre-initialized pool is rejected; initial pool price, ticks and decimals are coherent; the locker demonstrably collects fees without reducing liquidity or releasing principal.
@@ -117,7 +121,9 @@ Exit criteria: a replay from the first block reconstructs an identical catalogue
 
 ## 7. Meeting point
 
-A deployment script brings the real contracts up on a local anvil chain. The indexer and the API are developed against that from the moment the curve compiles — real logs, real reverts, real reorg tests via anvil's block manipulation — not against invented fixtures. Monad testnet 10143 follows once the V4 spike has passed on a fork of the target environment.
+A deployment script brings the real contracts up on a local anvil chain. The indexer and the API are developed against that from the moment the curve compiles — real logs, real reverts, real reorg tests via anvil's block manipulation — not against invented fixtures.
+
+**Revised 2026-09-21 by the A4 spike.** The plan said Monad testnet 10143 would follow. It cannot, as written: there is no official Uniswap V4 on 10143 — every address on Uniswap's deployment page returns zero code there, and the page lists Monad mainnet only. What exists is a Monad-maintained V4, which works but is a different build (its PoolManager is 34582 bytes against mainnet's 24009). The full graduation lifecycle passes against it; see [the spike findings](../market/uniswap-v4-spike.md). Choosing between graduating on mainnet only, deploying our own V4 to testnet, or demoing on the Monad-maintained one is now an open decision below, and A5 cannot be called finished until it is made.
 
 ## 8. Rules that cross every deliverable
 
@@ -148,14 +154,15 @@ Research, Perpl and the `markets.ts` DTOs, budget, Turnkey, `apps/agent-service`
 
 These block specific deliverables, not the start of work.
 
-| Decision                                       | Blocks                      | Owner                          |
-| ---------------------------------------------- | --------------------------- | ------------------------------ |
-| Preset numbers: supply, LP split, fees, target | Deployment, not development | Product, via the A1 script     |
-| Quote asset confirmed as AUSD on 10143         | B1, A2                      | Product and engineering        |
-| V4 version, fee tier and verified manifest     | A5                          | Engineering, exit of A4        |
-| Finality policy and staleness thresholds       | B3, B6                      | Engineering, measured on Monad |
-| Acceptance of the no-admin-recovery policy     | Mainnet                     | Product and security review    |
-| Launch protection and MEV posture              | Mainnet                     | Product and security           |
+| Decision                                                        | Blocks                      | Owner                          |
+| --------------------------------------------------------------- | --------------------------- | ------------------------------ |
+| Preset numbers: supply, LP split, fees, target                  | Deployment, not development | Product, via the A1 script     |
+| Quote asset confirmed as AUSD on 10143                          | B1, A2                      | Product and engineering        |
+| Where a testnet launch graduates, given no official V4 on 10143 | A5, the demo                | Product and engineering        |
+| V4 fee tier — the spike measured 1% / spacing 200               | A5                          | Product, informed by A4        |
+| Finality policy and staleness thresholds                        | B3, B6                      | Engineering, measured on Monad |
+| Acceptance of the no-admin-recovery policy                      | Mainnet                     | Product and security review    |
+| Launch protection and MEV posture                               | Mainnet                     | Product and security           |
 
 ## 12. Mapping to the product backlog
 
