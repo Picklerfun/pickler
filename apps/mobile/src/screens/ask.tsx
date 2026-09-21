@@ -11,7 +11,7 @@ import {
 } from "../reads/matrix";
 import type { Agent, Read, ReadStatus } from "../reads/types";
 import type { AskCell } from "../store";
-import { Btn, Card, Chip, Segmented, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
+import { Btn, Card, Chip, Reveal, Segmented, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
 
 /** Tick de 30 s para las cuentas regresivas de toda la pantalla (P14). */
@@ -97,7 +97,7 @@ function CreditsRow({ credits }: { credits: number | null }) {
   return (
     <Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Tag>CREDITS</Tag>
-      <T w={700} s={16} lh={1} mono>{credits === null ? "—" : String(credits)}</T>
+      {credits === null ? <Skeleton h={16} w={28} r={4} /> : <T w={700} s={16} lh={1} mono>{String(credits)}</T>}
       <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>1 credit per read · simulated for the testnet</T>
     </Card>
   );
@@ -169,7 +169,11 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
           <T w={600} s={10.5} lh={1} color={C.faint}>{picking ? "Done" : "Change"}</T>
         </Touch>
       </View>
-      {reads.agents === null ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError || "Loading agents…"}</T> : picking ? (
+      {reads.agents === null ? (
+        reads.agentsError
+          ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError}</T>
+          : <View style={{ flexDirection: "row", gap: 6 }}><Skeleton h={28} w={118} r={999} /><Skeleton h={28} w={96} r={999} /><Skeleton h={28} w={104} r={999} /></View>
+      ) : picking ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {reads.agents.map((a) => {
             const on = a.id === agent?.id;
@@ -221,7 +225,7 @@ export function AskTab(ctx: AppCtx) {
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const now = useNow(30_000);
   const pushOff = notifications.permission === "denied" || notifications.permission === "unavailable";
-  const focused = useMemo(() => (S.askFocusReadId ? reads.reads.find((r) => r.id === S.askFocusReadId) : undefined), [S.askFocusReadId, reads.reads]);
+  const focused = useMemo(() => (S.askFocusReadId ? (reads.reads ?? []).find((r) => r.id === S.askFocusReadId) : undefined), [S.askFocusReadId, reads.reads]);
 
   const newRead = () => {
     if (reads.session !== "ready") return <SessionGate reads={reads} />;
@@ -243,7 +247,7 @@ export function AskTab(ctx: AppCtx) {
           footer={<Btn label="Ask another" onPress={() => { reads.resetRequest(); set({ askCell: undefined }); }} variant="ghost" accessibilityLabel="ask-another" />} />
       );
     }
-    const dots = readDots(reads.reads);
+    const dots = readDots(reads.reads ?? []);
     return (
       <View style={{ gap: 11 }}>
         <CreditsRow credits={reads.credits} />
@@ -278,8 +282,9 @@ export function AskTab(ctx: AppCtx) {
     return (
       <View style={{ gap: 7 }}>
         {reads.listError ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
-        {reads.reads.length === 0 ? <T w={400} s={12} lh={1.4} color={C.faint}>No reads on {market.symbol} yet.</T> : null}
-        {reads.reads.map((r) => <ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() => set({ askFocusReadId: r.id })} />)}
+        {reads.reads === null && !reads.listError ? <><Skeleton.Card lines={3} /><Skeleton.Card lines={3} /></> : null}
+        {reads.reads !== null && reads.reads.length === 0 ? <T w={400} s={12} lh={1.4} color={C.faint}>No reads on {market.symbol} yet.</T> : null}
+        {reads.reads !== null && reads.reads.length > 0 ? <Reveal style={{ gap: 7 }}>{reads.reads.map((r) => <ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() => set({ askFocusReadId: r.id })} />)}</Reveal> : null}
       </View>
     );
   };

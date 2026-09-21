@@ -24,7 +24,8 @@ export type Reads = {
   sessionError: string;
   credits: number | null;
   /** Reads del mercado activo, más recientes primero (máx. 50, D16). */
-  reads: Read[];
+  /** `null` = todavía no se pidió (sin sesión o en vuelo); `[]` = pedido y vacío. */
+  reads: Read[] | null;
   listError: string;
   agents: Agent[] | null;
   agentsError: string;
@@ -46,7 +47,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const [status, setStatus] = useState<ReadsSessionStatus>("none");
   const [sessionError, setSessionError] = useState("");
   const [credits, setCredits] = useState<number | null>(null);
-  const [reads, setReads] = useState<Read[]>([]);
+  const [reads, setReads] = useState<Read[] | null>(null);
   const [listError, setListError] = useState("");
   const [agents, setAgents] = useState<Agent[] | null>(null);
   const [agentsError, setAgentsError] = useState("");
@@ -71,7 +72,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     droppedRef.current = true;
     setStatus("none");
     setCredits(null);
-    setReads([]);
+    setReads(null);
     await clearReadsSession().catch(() => {});
   }, []);
 
@@ -82,7 +83,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     droppedRef.current = false;
     setStatus("none");
     setCredits(null);
-    setReads([]);
+    setReads(null);
     setRequest({ step: "idle" });
     if (!address) return;
     loadReadsSession()
@@ -189,7 +190,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
         ...(device ? { pushToken: device.token, pushEnv: device.env } : {}),
       });
       setCredits(left);
-      setReads((list) => upsert(list, read));
+      setReads((list) => upsert(list ?? [], read));
       if (read.status === "failed") { setRequest({ step: "failed", text: "The agent couldn't answer. Refunded 1 credit." }); return; }
       setRequest({ step: "done", read });
       if (PUSH_MODE === "local") void scheduleLocal(read);
