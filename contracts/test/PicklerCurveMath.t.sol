@@ -53,4 +53,40 @@ contract PicklerCurveMathTest is Test {
 
         assertLe(returned, 1000);
     }
+
+    function test_quoteInForTokensOut_isTheInverseOfBuying() public pure {
+        // Buying exactly 500 from a fresh curve costs the 1000 that bought 500 above.
+        uint256 quoteIn = PicklerCurveMath.quoteInForTokensOut(_config(), 0, 500);
+
+        assertEq(quoteIn, 1000);
+    }
+
+    function test_quoteInForTokensOut_chargesAtLeastOneUnit() public pure {
+        // A single token off a coarse curve still costs something. Free tokens are a bug.
+        uint256 quoteIn = PicklerCurveMath.quoteInForTokensOut(_config(), 0, 1);
+
+        assertGe(quoteIn, 1);
+    }
+
+    function test_quoteInForTokensOut_revertsPastTheSaleAllocation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(PicklerCurveMath.SaleAllocationExceeded.selector, uint256(501), uint256(500))
+        );
+
+        this.exposedQuoteInForTokensOut(_config(), 0, 501);
+    }
+
+    function test_remainingTokens_reportsWhatIsLeft() public pure {
+        assertEq(PicklerCurveMath.remainingTokens(_config(), 200), 300);
+    }
+
+    /// `vm.expectRevert` needs an external call boundary; an internal library call would
+    /// revert this test function itself before the cheatcode could observe it.
+    function exposedQuoteInForTokensOut(PicklerCurveMath.CurveConfig memory config, uint256 netSold, uint256 tokensOut)
+        external
+        pure
+        returns (uint256)
+    {
+        return PicklerCurveMath.quoteInForTokensOut(config, netSold, tokensOut);
+    }
 }
