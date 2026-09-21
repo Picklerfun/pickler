@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import type { AppCtx } from "../ctx";
 import type { Reads } from "../hooks/useReads";
 import type { Market } from "../perpl/context";
@@ -111,7 +111,7 @@ function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Marke
     <View style={{ borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, overflow: "hidden" }}>
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 74, borderRightWidth: 1, borderRightColor: C.hair10 }}>
-          <Sparkline points={sparkPoints(marks)} />
+          <Sparkline points={sparkPoints(marks)} style={StyleSheet.absoluteFill} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           {LEVELS_BPS.map((bps, i) => {
