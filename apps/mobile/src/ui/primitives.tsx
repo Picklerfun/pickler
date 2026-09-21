@@ -3,6 +3,7 @@ import { Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle }
 import {
   Activity, ArrowLeft, ArrowRight, ChartLine, CircleQuestionMark, Layers, Rocket, Search, Send, SlidersHorizontal, Wallet,
 } from "lucide-react-native";
+import Svg, { Polyline } from "react-native-svg";
 import { C, textStyle } from "./theme";
 
 // ---------------------------------------------------------------------------
@@ -213,6 +214,28 @@ export function PillTabs<K extends string>({ options, value, onChange, flex = tr
           />
         );
       })}
+    </View>
+  );
+}
+
+/** Polilínea sobre un viewBox 0..100 con trazo que no escala (Sparkline del prototipo). `points` viene de `sparkPoints`. */
+export function Sparkline({ points, stroke = C.spark, style }: { points: readonly (readonly [number, number])[]; stroke?: string; style?: StyleProp<ViewStyle> }) {
+  const pts = points.map(([x, y]) => `${x},${y}`).join(" ");
+  return (
+    <Svg viewBox="0 0 100 100" preserveAspectRatio="none" style={[{ width: "100%", height: "100%" }, style]}>
+      <Polyline points={pts} fill="none" stroke={stroke} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+    </Svg>
+  );
+}
+
+/** Par «−»/«+» con el valor mono en medio (hoja de la matriz). `width` fija el ancho; sin él, flex 1. */
+export function Stepper({ value, onDown, onUp, width, accessibilityLabel }: { value: string; onDown: () => void; onUp: () => void; width?: number; accessibilityLabel: string }) {
+  const btn: ViewStyle = { width: 26, height: 26, borderRadius: 8, borderWidth: 1, borderColor: "rgba(245,246,255,0.2)", alignItems: "center", justifyContent: "center" };
+  return (
+    <View style={{ flex: width ? 0 : 1, width, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 9, borderRadius: 10, borderWidth: 1, borderColor: C.hair }}>
+      <Touch onPress={onDown} style={btn} accessibilityLabel={`${accessibilityLabel}-down`}><T w={700} s={13} lh={1}>−</T></Touch>
+      <T w={500} s={10} lh={1} mono color={C.dim}>{value}</T>
+      <Touch onPress={onUp} style={btn} accessibilityLabel={`${accessibilityLabel}-up`}><T w={700} s={13} lh={1}>+</T></Touch>
     </View>
   );
 }
