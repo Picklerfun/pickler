@@ -1,0 +1,309 @@
+<!doctype html>
+<!--
+  Plantilla one-pager para fixes / features / refactors de un solo PR.
+
+  F2 update: usa _styles.css externo + campos contenteditable + botón
+  "Export final HTML" que descarga el archivo con los valores resueltos
+  a texto fijo.
+
+  Flujo:
+  1. Abre este archivo en el browser (file:// directo).
+  2. Click sobre cualquier campo punteado para editar inline.
+  3. Cuando quede listo, presiona "Descargar HTML final".
+  4. Renombra el archivo descargado a YYYY-MM-DD-<slug>.html y mueve a
+     docs/overview/dev/.
+  5. Agrega entry al manifest con types: ['fix'] | ['feature'] | ['refactor'].
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TestFlight build 8 · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<style>
+  /* Overrides locales del dev one-pager */
+  .wrap { max-width: 820px; }
+  header.hero {
+    padding: 16px 0 32px;
+    background: linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%);
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1; margin: 14px 0 10px;
+    letter-spacing: -0.02em; font-weight: 800;
+  }
+  .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--ink-2); max-width: 680px; margin: 0;
+  }
+  main { padding: 32px 0 56px; }
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 18px; font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  section ul, section ol { margin: 0 0 12px; padding-left: 22px; }
+  section li { margin-bottom: 4px; font-size: 14px; color: var(--ink-2); }
+  section p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+
+  /* Editor toolbar (solo visible en modo plantilla; se quita en el export) */
+  .editor-toolbar {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 100;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 14px 16px;
+    display: flex; gap: 8px; align-items: center;
+    max-width: 340px;
+  }
+  .editor-toolbar .editor-hint {
+    font-size: 11px; color: var(--ink-3); line-height: 1.4;
+    margin-right: 6px;
+  }
+  .editor-toolbar .editor-hint b { color: var(--ink); font-weight: 700; }
+  .editor-toolbar button {
+    padding: 8px 14px; border-radius: var(--radius-s);
+    background: var(--brand); color: var(--on-brand); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+    white-space: nowrap;
+  }
+  .editor-toolbar button:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body data-slug="2026-09-21-testflight-build8">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">dev/<span>2026-09-21-testflight-build8</span></span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="dev-eyebrow feature" id="dev-kind">
+      <span>Feature</span>
+    </span>
+    <h1>
+      <span>TestFlight build 8</span>
+      <span class="accent">navegación nativa: gesto atrás de iOS, adelante animado, pilas por pestaña</span>
+    </h1>
+    <p class="lede">
+      Build 0.1.0 (8) con la fase F1 de <em>navegación nativa</em> (<code>mobile-nav</code>): la app pasa a
+      react-navigation 7 (<code>native-stack</code> por pestaña dentro de <code>bottom-tabs</code>). El gesto de
+      «atrás» es el interactivo de iOS (la pantalla sigue el dedo y descubre la anterior), entrar a una pantalla
+      anima desde la derecha, la cabecera viaja con la página, cada pestaña conserva su pila y su scroll. Las
+      pantallas no cambian de API; el store ya no guarda la pila. Primer build con <code>react-native-screens</code>,
+      <code>gesture-handler</code> y <code>reanimated</code> linkeados (la tab bar con pastilla arrastrable es F2).
+    </p>
+
+    <div class="dev-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="dev-sb-pill in_progress"><span>In progress</span></span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div>— (merge <code>165accf</code> de <code>feat/mobile-nav</code> en <code>main</code> local; sin push a <code>origin</code>)</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
+        <div style="font-family:var(--mono);font-size:12.5px">305e988</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-09-21</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2>Qué cambió</h2>
+      <p>Desde el build 7 (<code>3a143b7</code>): 18 commits en <code>main</code>, un merge
+        (<code>git log --oneline --merges 3a143b7..HEAD</code> → <code>165accf</code>). Spec
+        <code>2026-09-21-mobile-nav-design.md</code> (D1–D12), plan F1, audit
+        <code>2026-09-21-mobile-nav-f1-rulings.md</code>.</p>
+      <ul>
+        <li><code>0931f78</code> · dependencias del SDK 57: <code>react-native-screens ~4.26</code>,
+          <code>react-native-gesture-handler ~2.32</code>, <code>react-native-reanimated 4.5.1</code> +
+          <code>react-native-worklets 0.10.1</code>, <code>expo-haptics ~57.0.3</code>,
+          <code>@react-navigation/native 7.4</code>, <code>native-stack</code> y <code>bottom-tabs 7.19</code>;
+          <code>GestureHandlerRootView</code> en la raíz.</li>
+        <li><code>14a4777</code> · <code>navigation/routes.ts</code>: tabla pura <code>Screen → pestaña</code>,
+          tipos de params y <code>gateTarget</code> (con tests).</li>
+        <li><code>7dd8ba9</code> · <code>navigation/ref.ts</code>: adaptador sobre <code>navigationRef</code>
+          (<code>navigateTo</code>, <code>goBackIfCan</code>, <code>resetRootTo</code>, cola hasta <code>isReady</code>).</li>
+        <li><code>f56d282</code> + <code>68fb17b</code> + <code>5cb9d32</code> · <code>useRefreshSeal</code> (sello
+          fuera del Shell, veredicto del jalón en un efecto con contador, sello inicial re-evaluado al cambiar de
+          cuenta) y <code>useCurrentScreen</code> (pantalla activa por ruta).</li>
+        <li><code>95ebc0d</code> · <code>ui/Page.tsx</code> (cabecera propia + <code>ScrollView</code> + refresh +
+          sello + fondo opaco por ruta), <code>ui/TabBar.tsx</code>, <code>navigation/Navigator.tsx</code>
+          (RootStack → Tabs → pila por pestaña), <code>navigation/context.tsx</code>.</li>
+        <li><code>16c9f3a</code> · conmutación: store sólo con datos, <code>Navigator</code> en <code>App.tsx</code>,
+          Sign in con <code>next</code> por params; fuera <code>Shell.tsx</code> y <code>ui/gestures.ts</code>;
+          <code>navigation/screens.ts</code> por el <em>require cycle</em> de Metro.</li>
+        <li><code>824a2f2</code> · fix de la revisión: semántica v7 de <code>navigate</code> (<code>pop: true</code>
+          + <code>initial: false</code>) — sign-in con <code>next</code> saca <code>signin</code>, sin duplicados en
+          las pilas, Market sobre Markets (D10); <code>switchTab</code> para la tab bar.</li>
+        <li><code>b6d4442</code> · test unitario de la navegación v7 (<code>StackRouter</code> + forma de
+          <code>navigateTo</code>/<code>switchTab</code>); <code>backBehavior="none"</code> en Tabs.</li>
+        <li><code>305e988</code> · <code>ios.buildNumber</code> 7 → 8.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Por qué</h2>
+      <p>
+        Tras el build 7, Jesús pidió, mirando la app nativa de Proflores, que el gesto de «atrás» fuera el de iOS
+        (la pantalla se desliza con el dedo y descubre la anterior) y una tab bar con pastilla arrastrable. Eligió
+        migrar a react-navigation nativa con una pila por pestaña en vez de animar a mano. Este build lleva la
+        migración al iPhone; la pastilla arrastrable viene en F2. Cambio de comportamiento aprobado (D10): un push
+        abre Market en la pestaña Markets (atrás → Markets), no sobre Wallet.
+      </p>
+    </section>
+
+    <section>
+      <h2>Archivos tocados</h2>
+      <p><code>git diff --stat 3a143b7..HEAD -- apps/mobile</code>: 25 archivos, +1310 / −449.</p>
+      <div class="files-box">
+        <ul>
+          <li>apps/mobile/App.tsx · README.md · app.config.ts · package.json · package-lock.json</li>
+          <li>apps/mobile/src/navigation/Navigator.tsx · context.tsx · ref.ts · routes.ts · screens.ts (nuevos)</li>
+          <li>apps/mobile/src/ui/Page.tsx · TabBar.tsx (nuevos) · <s>gestures.ts</s></li>
+          <li>apps/mobile/src/hooks/useCurrentScreen.ts · useRefreshSeal.ts (nuevos)</li>
+          <li>apps/mobile/src/store.ts · ctx.ts · DevControls.tsx · <s>Shell.tsx</s></li>
+          <li>apps/mobile/src/screens/signin.tsx · comingSoonCopy.ts</li>
+          <li>apps/mobile/__tests__/navigation.test.ts · routes.test.ts (nuevos) · store.test.ts · <s>gestures.test.ts</s></li>
+        </ul>
+      </div>
+      <p>Fuera de la app: <code>docs/</code> (spec, plan, overview, audit con cinco capturas, manifest, nota en el tracker del fix gate).</p>
+    </section>
+
+    <section>
+      <h2>Validación</h2>
+      <p>
+        Sobre <code>main</code> tras el merge y el bump (<code>305e988</code>): <code>npm test</code> → 32 suites,
+        239/239; <code>npx tsc --noEmit</code> limpio; <code>docs:check</code> errors=0; <code>agents:check</code>
+        sin errores. Ejecución SDD con revisión por task y revisión final de rama (audit F1 §1–§3): la revisión
+        de la conmutación detectó que el plan asumía la semántica v6 de <code>navigate</code> (2 críticos + 1
+        importante) — corregido en <code>824a2f2</code> y verificado en el simulador: sign out → sign in con
+        passkey aterriza en Markets sin <code>←</code>; «Back to Markets»/«Back to wallet» hacen pop sin duplicar;
+        cambio de pestaña conserva la pila; push en frío abre Market·Ask·My reads y <code>←</code> → Markets.
+        Capturas miradas (audit F1 §2): gesto atrás a medio camino (Market deslizando con su cabecera, Markets
+        descubriéndose debajo), push entrando, Market sin tab bar, gate con tarjeta, scroll conservado. Cuenta
+        Perpl #620: 29.00 AUSD / 104.86 en trading antes y después, sin órdenes.
+      </p>
+      <p>
+        <code>.ipa</code> 0.1.0 (8), MinimumOSVersion 18.0, 19.1 MB (19 083 791 bytes; +3.9 MB frente al build 7 por
+        <code>react-native-screens</code>, <code>gesture-handler</code>, <code>reanimated</code> y <code>worklets</code>,
+        33 referencias en <code>Podfile.lock</code>); <code>prebuild --clean</code> + <code>pod install</code> sin
+        preguntas; <code>ARCHIVE SUCCEEDED</code> / <code>EXPORT SUCCEEDED</code>. <code>altool</code>: UPLOAD
+        SUCCEEDED with no errors (Delivery UUID <code>1e8119a7-8599-4207-b0e4-ea8515fead31</code>, log de subida de
+        esta sesión). App Store Connect: <b>procesamiento pendiente de verificar</b> (se actualiza abajo al
+        pasar a <code>VALID</code>).
+      </p>
+      <p>
+        <b>Sin probar aún en el iPhone de Jesús.</b> Lo que hay que ver ahí: (1) el gesto <b>desde el borde</b> en
+        Market y en Deposit (en el simulador sólo se pudo disparar con gesto de pantalla completa temporal); (2)
+        la tab bar aparece/desaparece de golpe al entrar y salir de Market (residual P4; lo resuelve F2); (3)
+        Markets → BTC → Wallet → Markets sigue en BTC; (4) un push de read abre Market en la pestaña Markets y
+        <code>←</code> vuelve a Markets. Residuales completos en el audit F1 §6.
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>One-pager dev · merge directo · commit <code>305e988</code></p>
+    <p>Reglas de doc en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+
+<!-- Editor toolbar (no se exporta) ======================================== -->
+<div class="editor-toolbar" id="editor-toolbar">
+  <div class="editor-hint">
+    Click sobre los campos punteados para editar. Cuando termines, <b>Exporta</b> el HTML final.
+  </div>
+  <button type="button" id="btn-export">⬇ Descargar HTML</button>
+</div>
+
+<script>
+  // ===========================================================================
+  // Dev template editor (F2)
+  // - Marca todos los campos editables con [contenteditable="true"].
+  // - El botón "Descargar HTML" clona el documento, congela los contenteditable
+  //   a texto fijo, quita la toolbar y los placeholders/markers, y descarga el
+  //   archivo final (sin estado de editor).
+  // ===========================================================================
+
+  const $btnExport = document.getElementById('btn-export');
+
+  function exportFinalHtml() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // 1. Quitar la toolbar del editor.
+    const toolbar = clone.querySelector('#editor-toolbar');
+    if (toolbar) toolbar.remove();
+
+    // 2. Limpiar los nodos contenteditable: quitar atributo + placeholder + marker.
+    clone.querySelectorAll('[contenteditable]').forEach(node => {
+      node.removeAttribute('contenteditable');
+      node.removeAttribute('data-placeholder');
+      node.removeAttribute('data-export-as-text');
+    });
+    clone.querySelectorAll('[data-export-no-edit-attrs]').forEach(node => {
+      node.removeAttribute('data-export-no-edit-attrs');
+    });
+
+    // 3. Quitar el script del editor (esta misma lógica) — el HTML final no la necesita.
+    clone.querySelectorAll('script').forEach(s => {
+      if (s.textContent.includes('Dev template editor')) s.remove();
+    });
+
+    // 4. Slug propuesto: leer el span del breadcrumb mono.
+    const slugNode = clone.querySelector('nav.crumb .mono span') || clone.querySelector('nav.crumb .mono');
+    const slug = (slugNode?.textContent.trim() || 'dev-new').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const filename = `${slug}.html`;
+
+    // 5. Construir el HTML final.
+    const finalHtml = '<!doctype html>\n' + clone.outerHTML;
+
+    // 6. Descargar como Blob.
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $btnExport.addEventListener('click', exportFinalHtml);
+
+  // Atajo: Ctrl/Cmd + S para exportar
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      exportFinalHtml();
+    }
+  });
+</script>
+
+</body>
+</html>

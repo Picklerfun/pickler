@@ -29,6 +29,15 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-21',
+    title: 'TestFlight build 8',
+    summary: 'Build 0.1.0 (8): navegación nativa F1 (react-navigation 7, pilas por pestaña) — gesto atrás interactivo de iOS, adelante animado, cabecera que viaja con la página; primer build con screens/gesture-handler/reanimated. UPLOAD SUCCEEDED; procesamiento en App Store Connect pendiente de verificar.',
+    file: 'dev/2026-09-21-testflight-build8.html',
+    types: ['feature'],
+    status: 'in_progress',
+    tags: ['mobile', 'testflight', 'ios', 'navigation'],
+  },
+  {
+    date: '2026-09-21',
     title: 'Navegación nativa en la app móvil — gesto atrás iOS, pilas por pestaña y tab bar con pastilla arrastrable',
     summary: 'Migrar la navegación a react-navigation nativa (native-stack + bottom-tabs, una pila por pestaña) sin cambiar la API de las pantallas: gesto atrás interactivo, adelante animado, cabecera que viaja con la página; y una tab bar con pastilla lima que se arrastra sin despegar el dedo y selecciona al soltar.',
     file: '2026-09-21-mobile-nav.html',
