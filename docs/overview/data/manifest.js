@@ -29,11 +29,20 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-21',
+    title: 'TestFlight build 6',
+    summary: 'Build 0.1.0 (6): Ask F1+F2 (Ask, Agents, push de resolución, My reads) y el fix Markets/trading key; primer build con aps-environment; VALID en App Store Connect, grupo «Equipo».',
+    file: 'dev/2026-09-21-testflight-build6.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios', 'ask', 'perpl'],
+  },
+  {
+    date: '2026-09-21',
     title: 'Markets abre Ask sin trading key; sign out conserva la key',
     summary: 'El gate de Perpl vive en Trade; Ask y Agents funcionan sin key; cerrar sesión ya no obliga a Reconnect (tx + key nueva).',
     file: 'dev/2026-09-21-markets-ask-gate.html',
     types: ['fix'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'perpl', 'ask', 'fix'],
   },
   {
@@ -42,7 +51,7 @@ window.DOCS = [
     summary: 'Sparkline real, escalera de precios, celdas con punto y hoja violeta con steppers; corrige D14 del spec de Ask.',
     file: 'dev/2026-09-20-mobile-ask-matrix.html',
     types: ['feature'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'ask', 'ui'],
   },
   {
