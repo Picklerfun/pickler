@@ -203,6 +203,24 @@ ways to get there are worth naming:
 Either way the fixtures stop being permanent furniture, and `/markets` goes first because it is the
 only one whose distance is measured in days.
 
+## What has to come from outside
+
+Not all of it. Two of these are already done and one is smaller than it sounds.
+
+| Dependency                         | State                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUSD / Agora**                   | **Done.** `@pickler/chain` carries the contract on Monad 143 and 10143, 6 decimals, the EIP-712 domain (`Agora Dollar`, not the symbol), EIP-2612 and EIP-3009 — verified 2026-09-16 by `eth_call` against each contract. There is no Agora service to integrate with: AUSD is an ERC-20 and a balance is one `balanceOf` over the public RPC. |
+| **Monad RPC**                      | **Done.** Public endpoints in `@pickler/chain`; production uses provider URLs from bindings.                                                                                                                                                                                                                                                   |
+| **Perpl market data**              | Missing, and small: marks, funding and open interest are public reads. Needs the endpoint, the symbol list, and whether a testnet instance exists. No key, no account, no contract, no signature. This is all `/markets` needs.                                                                                                                |
+| **Perpl trading**                  | Missing and large: orders, fills, positions, reconciliation — wave 8 of the extraction plan, unstarted. `/markets` does not need it, because the ticket is already built and disabled.                                                                                                                                                         |
+| **Launch contracts**               | Missing and unspecified. `token-launch.md` leaves the on-chain logic to the infra owner. No contracts, no indexer, no `/tokens`.                                                                                                                                                                                                               |
+| **Robinhood Chain**                | Missing from `@pickler/chain`, which knows only Monad. The tokens launch there first.                                                                                                                                                                                                                                                          |
+| **Payment destination for a read** | Missing. AUSD is ready as the means; where the money goes and what releases it is not designed.                                                                                                                                                                                                                                                |
+
+The useful split is the first two rows against the rest: market data is read-only public data, and
+trading is custody. They arrive separately, and the repo already separated them — the Perpl
+market-data tool is listed apart from execution in `relayer-extraction/04-mastra-runtime.md:523`.
+
 ## What each capability needs
 
 "Schema" means a table that does not exist. Several capabilities need no new schema at all — they
