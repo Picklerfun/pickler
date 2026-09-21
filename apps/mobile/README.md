@@ -40,7 +40,7 @@ notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
 ## Tests
 
 ```bash
-npm test          # jest, 230/230 esperado (30 suites)
+npm test          # jest, 236/236 esperado (31 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -106,6 +106,8 @@ bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); 
 tap sin APNs: `xcrun simctl push <UDID> fun.pickler.app payload.apns` con `{ "pickler": { "kind": "read", "readId", "marketId" } }`.
 `PUSH_MODE = "local"` (fallback D10) programa una notificación local al vencer en vez de esperar el push.
 `expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.
+La matriz es el `Grid` del prototipo (sparkline con los últimos 60 marks que la app vio, escalera de 5 niveles, celdas
+con punto donde ya hay reads, hoja con steppers); `src/perpl/marks.ts` y `src/reads/matrix.ts` son puros y tienen test.
 
 ## Subir a TestFlight
 

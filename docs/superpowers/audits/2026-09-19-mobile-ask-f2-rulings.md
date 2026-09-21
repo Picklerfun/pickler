@@ -624,3 +624,232 @@ recordatorios sin book) si el tiempo aprieta; (2) si se **mergea/pushea F2** (y 
 `PUSH_MODE`; (4) la decisión de producto de Markets `readOnly` (pendiente 3), que afecta al recorrido del
 jurado. El siguiente paso es el **plan de F3**, que no se escribe en la misma sesión sin checkpoint. Quedan
 **23 días** para el bounty (13 oct 2026, 21:59 CST).
+
+## 7. Addendum F2-matrix (2026-09-20): la matriz como el Grid del prototipo
+
+Corrección de diseño sobre la misma rama (`feat/mobile-ask-f2`, commits `1a71e86`, `ebf2a41`, `783d568`, `9aa7f54`,
+`ff7ad27` sobre `9fec62c`), plan `docs/superpowers/plans/2026-09-20-mobile-ask-matrix.md`. D14 describió la matriz como
+pills con el target; fue un error al escribir el spec, no de la ejecución de F2 (corregido en el spec con la marca
+**(F2-matrix)** en D14, D16, §2.3 y la cabecera Estado). Ejecución SDD con subagentes (implementador + revisor por
+task, ledger en `.superpowers/sdd/2026-09-20-mobile-ask-matrix/progress.md`); esta sección la escribe la Task 6 a
+partir del ledger y de los reportes `task-{1..5}-report.md` de ese workspace.
+
+### Qué quedó hecho y verificado
+
+`git log --oneline 9fec62c..HEAD`:
+
+```
+ff7ad27 fix(mobile): la columna de la sparkline toma la altura de la grilla (Svg absoluteFill)
+9aa7f54 feat(mobile): matriz de Ask como el Grid del prototipo — sparkline, escalera, puntos de reads y hoja violeta con steppers
+783d568 feat(mobile): primitivas Sparkline (react-native-svg) y Stepper del prototipo
+ebf2a41 feat(mobile): buffer de marks por mercado en usePerpl y sparkPoints para la sparkline de Ask
+1a71e86 feat(mobile): tokens del Grid (acento, punto, regla del mark) y steppers/puntos de la matriz de Ask
+```
+
+`git diff --stat 9fec62c..HEAD`: 9 archivos, +258 / −42 — `__tests__/{perpl-marks,reads-matrix,theme}.test.ts`,
+`src/hooks/usePerpl.ts`, `src/perpl/marks.ts`, `src/reads/matrix.ts`, `src/screens/ask.tsx`, `src/ui/primitives.tsx`,
+`src/ui/theme.ts`. Ni `package.json`, ni `package-lock.json`, ni `ios/`, ni `useReads`, `ReadCard`, `ReadRow`, My reads,
+`agents.tsx`, `market.tsx`, `store.ts` ni `services/reads` aparecen en el diff.
+
+| Task | Qué | Evidencia (reporte de la task) |
+|---|---|---|
+| 1 (`1a71e86`) | `GRID_ACCENT`/`GRID_DOT`/`GRID_MARK_RULE` en `theme.ts`; `stepLevel`, `stepHorizon`, `distanceLabel`, `dotKey`, `readDots` en `reads/matrix.ts` | RED: `npx jest __tests__/theme.test.ts __tests__/reads-matrix.test.ts` → 4 tests fallan (símbolos `undefined`); GREEN: 22 pasan; `npm test` → 30 suites / **234** (230 base + 4); `tsc` OK |
+| 2 (`ebf2a41`) | `src/perpl/marks.ts` (`SPARK_POINTS = 60`, `appendMarks`, `sparkPoints`), `Perpl.marks` alimentado en `refreshContext` | RED: `Cannot find module '../src/perpl/marks'`; GREEN: 2/2; `npm test` → 31 suites / **236**; `tsc` OK |
+| 3 (`783d568`) | `Sparkline` (react-native-svg 15.15.4 ya instalado; `vectorEffect="non-scaling-stroke"` válido en `VectorEffectProps`) y `Stepper` (26×26, U+2212) en `primitives.tsx` | sin test de UI (P12 del plan F2); `npm test` → 236; `tsc` OK; render verificado en Task 5 |
+| 4 (`9aa7f54`) | `MatrixGrid` = `Grid`, `AskSheet` violeta con steppers, cabecera `HISTORY · MARK`, hint condicional, card `MARK PRICE · PERPL ON MONAD` | sólo `ask.tsx` (+97 / −37); `grep` de `levelLabel`/`pill` sin matches; `npm test` → 31 / 236; `tsc` OK |
+| 4 fix (`ff7ad27`) | la columna de 74 px no tenía altura acotada y el `Svg` con `height: "100%"` se estiraba hasta el fondo (`matrix-shots/pre-00-state.png`: card sin cerrar, hint/hoja/card fuera de pantalla) → `Sparkline style={StyleSheet.absoluteFill}` | `ask.tsx` +2 / −2; `matrix-shots/fix1-grid.png`: card cerrada bajo `1H 4H 12H 24H`, hoja visible; 31 / 236; `tsc` OK |
+| 5 | recorrido en el simulador, read real, comparación con el prototipo | sin commits; ver abajo |
+
+Checks de la Task 6 (esta sección) al cierre: `npm test` → 31 suites / 236 tests, `npx tsc --noEmit` limpio,
+`docs:check` y `agents:check` sin errores (salidas en `task-6-report.md`).
+
+### Recorrido en el simulador (Task 5, 2026-09-20 21:41–22:03 CST / 2026-09-21 03:41–04:03 UTC)
+
+iPhone 17 Pro `2B2A0BAD-…` (402×874 pt), Metro con cwd en este worktree, HEAD `ff7ad27`. Capturas en
+`.superpowers/sdd/2026-09-20-mobile-ask-matrix/matrix-shots/` (19 de recorrido + 13 `pre-*` de diagnóstico + 3 del
+prototipo + `pre-00-state`/`fix1-grid` de Task 4), todas miradas una a una por el ejecutor de la Task 5.
+
+| Archivo | Qué muestra |
+|---|---|
+| `00-ask-first.png` | Markets → `market-BTC` → `pill-ask`. CREDITS 19 · HISTORY · MARK **81453.6** · sparkline **plana** (recién arrancada) · escalera 83489.9 / 82268.1 / 81860.9 / 81046.3 / 80639.1 · regla lima bajo `+0.5 %` · un punto en `+1.0% · 4H` (la read de F2) · horizontes 1H 4H 12H 24H · hint «Tap a cell: a level and a horizon.» · card MARK PRICE · PERPL ON MONAD. |
+| `01-btc-spark.png` | 20 s después (≥ 3 polls): mark 81438.5, la sparkline ya no es plana — arranca en el borde superior y cae al inferior (escalera, ver residuales). |
+| `03-cell-selected.png` | `cell-100-240`: fila `+1.0 %` y columna `4H` en `accSoft`, celda en `accOn` con el punto encima, **82191.8** y **4H** en violeta, hint «Use the steppers to move it.», hoja: chip «Asking Jesús's agent · 1 credit» + «Change», YOUR QUESTION · NOTHING SENT, «Will the BTC mark be at or above 82191.8 at 2026-09-21 07:55 UTC?», RESOLVES ON PERPL MARK · +1.0% FROM MARK, steppers `82191.8` \| `4H`, «Ask Jesús's agent · 1 credit →», «Clear», «Nothing charged yet.». |
+| `03b-sheet.png` | Tras scroll: hoja completa + card MARK PRICE debajo (mark 81357.1). |
+| `04-step-level.png` | `step-level-up`: fila `+2.5 %` (83434.3), stepper 83434.3, «+2.5% FROM MARK», pregunta con 83434.3. |
+| `05-step-horizon.png` | `step-horizon-up`: columna 12H, stepper `12H`, vence 15:56 UTC (+12 h). |
+| `05b-level-cap.png` | `step-level-up` otra vez: sigue en `+2.5 %` (tope, no envuelve) — 83448.9 con mark 81413.6. |
+| `05c-back-100-240.png` | `step-level-down` + `step-horizon-down`: de vuelta en `+1.0% · 4H` (82227.7). |
+| `05d-scrolled-before-step.png` / `05e-after-step-scroll.png` | scroll abajo → `step-horizon-up` → el scroll se conserva (12H, 82207.4). |
+| `06-change.png` | `ask-change`: «Done» y tres chips — «Jesús's agent · by Jesús · 1 credit» (violeta), «Drift · by Pickler · 1 credit», «Anchor · by Pickler · 1 credit» (gris). |
+| `07-drift.png` | `agent-drift`: chips colapsados, chip «Asking Drift · 1 credit», botón «Ask Drift · 1 credit →». |
+| `08-reading.png` | `ask`: card ámbar READING · «Reading… up to 60 s» · «Drift is looking at BTC +1.0% · 4H.» + spinner. |
+| `09-readcard.png` | ReadCard «BTC +1.0% · 4H · DRIFT» · «Will the BTC mark be at or above 82208.3 at 2026-09-21 08:00 UTC?» · **40 %** · chip NO · «mark 81394.4 at request» · 3 REASONS · WHAT WOULD BREAK IT · «Resolves in 3 h 59 m» · «Ask another». |
+| `10-credits-18.png` | `ask-another`: **CREDITS 18**, matriz sin selección, el punto sigue en `+1.0% · 4H` (la read nueva es `open` en la misma celda). |
+| `11a-cell-250-60.png` | `cell-250-60`: hoja en `+2.5% · 1H` (83492.0); el agente sigue siendo Drift (el store conserva `askAgentId`). |
+| `11-clear.png` | `ask-clear`: hoja cerrada, hint «Tap a cell: a level and a horizon.», nada realzado, créditos 18. |
+| `pre-01…pre-13` | diagnóstico del arranque y del incidente de sign out (abajo); `pre-11-after-face.png` = Wallet · 29.00 AUSD · `0xe371…51C1 · CONNECTED` · MON (GAS) 0.0468 tras recuperar la cuenta; `pre-12` = Markets con banner «Reconnect trading» (no se tocó); `pre-13` = Ask sin `SessionGate` (firma silenciosa, P3 de F2). |
+| `proto-login-wall.png` / `proto-ask-empty.png` / `proto-ask-sheet.png` | login wall de claude.ai en Playwright; prototipo servido en local (abajo) sin selección y con `+1.0 %` × `4H` + hoja. |
+
+**Escalera verificada a mano** (`targetFor(mark, bps) = round(markEscalado × (10000 + bps) / 10000)`, `priceDecimals = 1`):
+`00-ask-first`, mark 81453.6 → `+2.5 %` 83489.9 ✓, `+1.0 %` 82268.1 ✓, `+0.5 %` 81860.9 ✓, `−0.5 %` 81046.3 ✓, `−1.0 %`
+80639.1 ✓; `03-cell-selected`, mark 81378.0 → `+1.0 %` 82191.8 ✓ (stepper y pregunta). Backend: `mark_at_request 813944 ×
+1.01 = 822083.44 → target 822083` = «82208.3» de la ReadCard ✓ (misma aritmética que `services/reads/_shared/matrix.ts`).
+
+**Read real desde la hoja nueva**: antes (22:00:20 CST) `credits → 19`, `count(reads) → 1`; después:
+
+```
+id            17eb2ef8-4eff-48d8-b163-cd5dcacc0bb9
+agent_id      drift          status open
+level_bps     100            horizon_min 240
+probability   0.400          mark_at_request 813944   target 822083
+created_at    2026-09-21 04:00:53.872259+00
+expires_at    2026-09-21 08:00:53.87+00
+credits       18
+```
+
+No se forzó su resolución: vence sola a las 08:00:53 UTC y la resuelve el cron `mobile-resolve-reads`.
+
+**Incidente (no es defecto de la app)**: entre las 21:46 y las 21:47 CST, sin ningún tap de la task, el simulador pasó
+de Markets a BTC Ask con `+1.0% · 4H` seleccionada (`pre-05`) y después a «Wallet access» con `account: none · perpl:
+none` (`pre-06`/`pre-07`): un **Sign out real** hecho por otro actor (el log de Metro muestra teclado y una petición de
+passkey cancelada, `ASAuthorizationController … Code=1001`, en ese lapso). Descartado que fuera Maestro de la task
+(todas las corridas de `~/.maestro/tests` en el intervalo son propias); el simulador es el mismo que usan las sesiones
+de Proflores iOS. Recuperación: `sign-in` → llave «pickler» de Apple Passwords (la primera de dos) → `fingerTouch.match`
+→ Wallet con la misma cuenta (`pre-11`). Como el Sign out borró la trading key, Markets quedó con «Reconnect trading»
+(prohibido; no se tocó) y `readOnly`; se entró a Ask por Dev controls → «Market · ticket» (ruling 9 de F2). Créditos
+por SQL antes y después del incidente: 19 (nadie gastó). **Consecuencia:** el paso 2 de la Task 5 (matriz de otro
+mercado sin puntos) no se ejecutó: sólo BTC es alcanzable sin Reconnect.
+
+### Comparación con el prototipo
+
+El paso 7 del plan pedía abrir `https://claude.ai/artifact/KRjappPSPi48KJC3Z4G4ig` en Playwright: mostró «Inicia
+sesión para ver esta página» (`proto-login-wall.png`) y **ese paso se paró**. En su lugar se leyó el artifact con la
+herramienta Artifact (es de Jesús: `index.html` + bundle `expo/static/js/web/index-942b86…js` + fuentes), se copiaron
+las fuentes `@expo-google-fonts` desde `apps/mobile/node_modules` (mismos MD5), se sirvió en `127.0.0.1:8765` y se
+abrió a 390×844 @1x. Es el mismo export `pickler-mobile@a0e353e` que publica el artifact, **no** una captura de
+claude.ai; si se prefieren capturas del artifact real hay que pedírselas a Jesús.
+
+![App — celda +1.0% · 4H con la hoja](img/2026-09-20-mobile-ask-matrix-app.png)
+![Prototipo — Markets → BTC-PERP → Ask](img/2026-09-20-mobile-ask-matrix-proto.png)
+
+(`…-app.png` = `03-cell-selected.png`; `…-proto.png` = `proto-ask-sheet.png`; P12.)
+
+Diferencias, cada una con su causa (`00-ask-first` vs `proto-ask-empty`; `03-cell-selected`/`03b-sheet` vs
+`proto-ask-sheet`):
+
+| # | Diferencia | Causa |
+|---|---|---|
+| 1 | 5 filas (`+2.5/+1.0/+0.5/−0.5/−1.0`) vs 7 (con `+2.0/+1.5`) | spec D2 |
+| 2 | `CreditsRow` («CREDITS 19 · 1 credit per read…») encima de HISTORY · MARK; el prototipo no la tiene | P9 |
+| 3 | Segmento «New read / My reads» sobre la matriz | F2 (store `askView`) |
+| 4 | Card MARK PRICE sin la fila FUNDING 1H / NEXT / OI | P9 (no hay datos) |
+| 5 | Sparkline real: escalera que toca los bordes superior/inferior vs zig-zag suave con aire | P2 (datos reales); residual visual, abajo |
+| 6 | Un solo punto (read real) vs seis puntos de dos intensidades (datos falsos del prototipo) | datos reales; un solo tono `GRID_DOT` — ruling 5, abajo |
+| 7 | Cabecera «BTC Perp · Ask an agent · simulated credits» vs «BTC-PERP · Perpl · isolated margin · on-chain book»; sin tab bar inferior (Market es pantalla con «←») | F2 ruling 5 (`headerFor` por pill) y navegación de F2 |
+| 8 | `81453.6` / `82268.1` (1 decimal, sin separador de miles) vs `63,584.2` / `65,174` (miles con coma, escalera entera) | `formatPrice` con `priceDecimals` de Perpl — ruling 6, abajo |
+| 9 | Regla lima bajo `+0.5 %` visible en la app; en el prototipo @1x no se distingue | P4 |
+| 10 | Hint «Use the steppers to move it.» vs «Drag to move it, or use the steppers.» | P10 (no hay drag) |
+| 11 | Chip «Asking Jesús's agent · 1 credit» + «Change» al inicio de la hoja (chips inline con «Done», `06-change`) vs hoja sin agente y pantalla aparte | P7 |
+| 12 | Botón «Ask Jesús's agent · 1 credit →» vs «Choose agent →» | P7 |
+| 13 | Pregunta «Will the BTC mark be at or above 82191.8 at 2026-09-21 07:55 UTC?» vs «Will BTC-PERP mark be above 64,220 at 13:41 UTC?» | contrato `questionFor` de F1 (mismo texto que el backend) |
+| 14 | Stepper de horizonte completo (118 pt) vs recortado por el borde derecho en el prototipo a 390 px | overflow del propio prototipo |
+| 15 | Con segmento + CreditsRow la hoja llega justo al borde inferior en 874 pt («Nothing charged yet.» al ras); el prototipo cabe entero con card | P9 (más contenido arriba); hay ScrollView, no es defecto |
+
+Iguales: card `C.card`/`C.hair`/14, columna de sparkline 74 pt (≈70 px en el prototipo), filas 44 pt (≈45 px),
+etiquetas mono 9.5, celda `accOn` con el punto encima, fila/columna `accSoft`, precio y horizonte en violeta, tag YOUR
+QUESTION · NOTHING SENT, línea RESOLVES ON PERPL MARK · +1.0% FROM MARK, dos steppers, «Clear», «Nothing charged yet.»,
+borde/fondo violeta de la hoja, card MARK PRICE debajo. **Defectos de la app encontrados: ninguno.**
+
+### Rulings
+
+P1–P12 del plan se ejecutaron tal cual: P1 buffer en `usePerpl.refreshContext` (`appendMarks`, 60); P2 sparkline
+real, plana con < 2 puntos (`00-ask-first` plana, `01-btc-spark` con historia); P3 tokens fijados en `theme.test.ts`;
+P4 regla bajo `+0.5 %` (`bps > 0 && LEVELS_BPS[i + 1] < 0`); P5 `readDots` sólo `open/right/wrong`, un punto por
+celda (`10-credits-18`: la segunda read en la misma celda no añade punto); P6 steppers con tope (`05b-level-cap`), valor
+de nivel = target formateado; P7 «Change»/«Done» inline (`06-change`, `07-drift`), el agente mostrado es el que se cobra
+(la read salió con `agent_id drift`); P8 «Ask …» outline + arrow + flex, «Clear» ghost — el estado **sin créditos**
+(«No credits left» / «Credits are simulated for the testnet.») no se vio en el simulador (créditos 18) y queda cubierto
+sólo por lectura del código; P9 orden `CreditsRow` → cabecera → matriz → hint → hoja → card MARK PRICE, sin FUNDING;
+P10 hint condicional; P11 labels `ask-change`, `ask-clear`, `step-level-*`, `step-horizon-*` usados por Maestro en Task 5;
+P12 dos PNG en `docs/superpowers/audits/img/`. Rulings del controlador durante la ejecución (ledger), cada uno con *qué
+cuesta si está mal*:
+
+1. **Workspace de la Task 5**: el plan apuntaba `SC` al workspace de F2 (`.superpowers/sdd/2026-09-19-mobile-ask-f2`);
+   la regla SDD prohíbe escribir en el workspace de otro plan, así que capturas y reportes viven en
+   `.superpowers/sdd/2026-09-20-mobile-ask-matrix/` y se copiaron ahí `taplabel.sh`, `tap-point.yaml` y `flows/` de F2
+   (`taplabel.sh` ajustado para apuntar a este directorio y, en Task 5, con fallback a 402×874 cuando la jerarquía no
+   tiene el elemento «Pickler» — en Wallet no existe). **Coste si es erróneo:** rutas distintas a las del plan en el
+   reporte.
+2. **Tests de la Task 1 con `npx jest <archivos>`** (jest-expo) en vez de `npm test -- <archivo>`. **Coste:** nulo.
+3. **Fix del overflow de la sparkline** (Task 4, fix round 1): `Sparkline style={StyleSheet.absoluteFill}` dentro de la
+   columna de 74 px en `MatrixGrid` (sólo `ask.tsx`; `primitives.tsx` sin cambio). El ruling pedía
+   `StyleSheet.absoluteFillObject`; el implementador usó `absoluteFill` porque `absoluteFillObject` no existe en RN 0.86
+   (ver correcciones). **Coste si es erróneo:** un commit de una línea a revertir.
+4. **Task 5 en opus** (juicio visual y defectos, precedente ruling 7 de F2), escribiendo en este workspace. **Coste:**
+   tokens.
+5. **Un solo tono de punto (`GRID_DOT`)**: las dos opacidades del prototipo son celdas inválidas (1H con |pct| > 1.5,
+   `invalidFor`), que con los 5 niveles del spec no existen; no es conteo de reads. **Coste si es erróneo:** un token
+   más en `theme.ts`.
+6. **Precios de la escalera con `formatPrice`** (sin separador de miles), igual que el mark de la cabecera, la hoja y toda
+   la app; el prototipo usa `toLocaleString`. Se anota como residual de producto. **Coste si es erróneo:** un formatter
+   en `matrix.ts`.
+7. **Sin captura de «matriz vacía»** (sin puntos): el único mercado alcanzable sin Reconnect tras el incidente es BTC
+   (tiene reads); `readDots([])` está cubierto por test y `00-ask-first.png` muestra la matriz sin selección. **Coste
+   si es erróneo:** una captura pendiente en el iPhone.
+8. **Atribución veraz de los trailers** (continúa el ruling 3 de F2): `Claude Haiku 4.5` en `1a71e86`, `ebf2a41`,
+   `783d568`; `Claude Sonnet 5` en `9aa7f54`, `ff7ad27`; `Claude Opus 5 (1M context)` en el commit de docs de esta
+   sección. Sin amend. **Coste si es erróneo:** un `--amend` por Jesús antes del merge.
+
+Minors diferidos por los revisores (sin corregir, anotados en el ledger): `readDots` tipa `status: string` en vez de
+`ReadStatus` (así lo fijaba el plan); `GRID_ACCENT.trade.on` duplica el literal de `C.limeBd`; ids duplicados en una
+misma llamada a `appendMarks` sin test (correcto por diseño); `LEVELS_BPS[i + 1] < 0` depende de `undefined < 0` (así lo
+fijaba el plan; se rompería con `noUncheckedIndexedAccess`, que `tsconfig.json` no activa).
+
+### Correcciones a afirmaciones previas
+
+- D14 (spec) — descripción de la matriz y de la hoja: ver **(F2-matrix)** en el spec. Fue un error al escribir el spec;
+  F2 lo implementó fielmente y este addendum lo corrige.
+- El brief del fix round 1 de la Task 4 (ledger, ruling 3) pedía `StyleSheet.absoluteFillObject`: **no existe en React
+  Native 0.86** (Expo SDK 57) — ni en los tipos ni en el módulo (`tsc`: `TS2551 … Did you mean 'absoluteFill'?`). El
+  nombre real es `StyleSheet.absoluteFill`, con el mismo valor (`position: 'absolute'` + cuatro ceros). El commit
+  `ff7ad27` usa `absoluteFill`.
+- El plan (Task 5, Step 0) fija `SC=…/.superpowers/sdd/2026-09-19-mobile-ask-f2` y `$SC/matrix-shots/` como workspace
+  de las capturas: las capturas y el reporte de la Task 5 viven en el workspace de **este** plan,
+  `.superpowers/sdd/2026-09-20-mobile-ask-matrix/` (ruling 1); el de F2 sólo se leyó.
+- El plan (Task 5, Step 7) daba por hecho que el artifact del prototipo se abre en Playwright: exige login. La
+  comparación se hizo con el export del artifact servido en local (arriba), no con claude.ai.
+- §1.3 y §6 de este audit dicen «30 suites / 230 tests»: tras F2-matrix son **31 suites / 236 tests**.
+
+### Estado de las cuentas al cierre
+
+Wallet del simulador `$SIM_ADDR = 0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1`: créditos **18** (ledger: `grant +20`,
+`charge −1` F2 —`9f386c32-dce0-4242-b550-39fe8be2e784`, `right`—, `charge −1` F2-matrix —
+`17eb2ef8-4eff-48d8-b163-cd5dcacc0bb9`, `open` hasta `2026-09-21 08:00:53 UTC`); `count(reads) = 2`. Wallet abierta
+sólo por el relaunch y por la recuperación del incidente: 29.00 AUSD · `0xe371…51C1 · CONNECTED` en ambas capturas
+(`pre-02-relaunch`, `pre-11-after-face`), MON (GAS) 0.0468 en `pre-11`; **ninguna acción on-chain en la sesión** (ni
+orden, ni depósito, ni retiro, ni Reconnect). Nota: §4 cerró F2 con 0.0551 MON; la diferencia a 0.0468 es anterior a
+este plan y no se atribuye aquí. Cuenta Perpl #620 sin tocar (`perpl: none` tras el sign out externo; el banner
+«Reconnect trading» sigue sin pulsar). `services/reads` sin cambios: ninguna función redesplegada, ninguna migración.
+
+### Pendientes / residuales
+
+- **Sparkline con marks reales parece escalera y toca los bordes**: cada poll de 5 s da un mark, la serie se normaliza
+  a toda la altura y los saltos entre polls se ven como escalones que arrancan en el borde superior y caen al inferior
+  (`01-btc-spark.png`). Candidatos: padding vertical en `sparkPoints` (p. ej. 8..92) y/o dedupe de marks consecutivos
+  iguales. No se decidió en este plan (P2 sólo fija «datos reales»).
+- **Formato de la escalera sin separador de miles** (`82268.1` vs `65,174` del prototipo): decisión de producto,
+  ruling 6. Si se cambia, es un formatter en `matrix.ts` y afecta también al mark de la cabecera y a la hoja.
+- **Captura de matriz vacía pendiente** (mercado sin reads): requiere un mercado alcanzable sin Reconnect (hoy sólo BTC,
+  que ya tiene reads) o el iPhone de Jesús. `readDots([])` cubierto por test.
+- **Incidente de sign out externo en el simulador** (arriba): cualquier recorrido automatizado en este simulador
+  compartido con las sesiones de Proflores iOS corre el riesgo de interferencia; no se pudo atribuir.
+- **Estado sin créditos de la hoja** (P8) no visto en el simulador (créditos 18).
+- Minors diferidos (arriba, en «Rulings»).
+- **F3 reutiliza `MatrixGrid` con `GRID_ACCENT.trade`** (lima) sin tocar `theme.ts`; «Trade this level» y `LevelCard`
+  siguen siendo de F3.
+- El resto de §5 (Minor 2, 5–9; F2 `completed` vs `in_progress`; Markets `readOnly` sin key de Perpl; key APNs;
+  merge/push de F1+F2) sigue igual. El siguiente punto de decisión es el de §6.
+
+### Revisión independiente
+
+<pendiente: la añade el controlador>
