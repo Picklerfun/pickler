@@ -125,6 +125,9 @@ export function ConnectModal({
                       {choice.last && <span className={styles.lastUsed}>LAST USED</span>}
                     </span>
                     <span className={styles.choiceSub}>{choice.unavailable ?? copy.sub}</span>
+                    {choice.unavailable === null && choice.note && (
+                      <span className={styles.choiceNote}>{choice.note}</span>
+                    )}
                   </span>
                   {choice.unavailable === null && <Icon name="arrow" size={16} />}
                 </button>

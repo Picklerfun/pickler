@@ -29,6 +29,11 @@ export interface SignerAdapter {
    */
   unavailableReason: () => string | null;
   /**
+   * Something true about this choice that does not stop it being picked — a caveat rather than a
+   * refusal. Null when there is nothing to say.
+   */
+  note?: () => string | null;
+  /**
    * Pick up a connection that already exists, without prompting. Null when there is nothing to
    * pick up, which includes a signer that cannot resume silently at all.
    */

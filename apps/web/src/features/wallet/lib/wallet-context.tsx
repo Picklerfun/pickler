@@ -71,6 +71,8 @@ export interface WalletChoice {
   kind: SignerKind;
   /** Why it cannot be picked here, or null when it can. */
   unavailable: string | null;
+  /** A caveat worth reading before picking it. Does not stop it being picked. */
+  note: string | null;
   /** The one this browser used last. */
   last: boolean;
 }
@@ -194,6 +196,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return SIGNERS.map((signer) => ({
       kind: signer.kind,
       unavailable: mounted ? signer.unavailableReason() : "Checking this browser…",
+      note: mounted ? (signer.note?.() ?? null) : null,
       last: signer.kind === last,
     }));
   }, [mounted]);

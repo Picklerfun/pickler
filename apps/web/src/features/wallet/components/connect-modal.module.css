@@ -163,6 +163,13 @@
   text-wrap: pretty;
 }
 
+.choiceNote {
+  display: block;
+  margin-top: 4px;
+  font: 500 11.5px/1.4 var(--pk-font);
+  color: var(--pk-amber);
+}
+
 .waiting,
 .foot {
   margin: 0;
