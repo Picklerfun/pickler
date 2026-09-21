@@ -1,0 +1,307 @@
+<!doctype html>
+<!--
+  Plantilla one-pager para fixes / features / refactors de un solo PR.
+
+  F2 update: usa _styles.css externo + campos contenteditable + botón
+  "Export final HTML" que descarga el archivo con los valores resueltos
+  a texto fijo.
+
+  Flujo:
+  1. Abre este archivo en el browser (file:// directo).
+  2. Click sobre cualquier campo punteado para editar inline.
+  3. Cuando quede listo, presiona "Descargar HTML final".
+  4. Renombra el archivo descargado a YYYY-MM-DD-<slug>.html y mueve a
+     docs/overview/dev/.
+  5. Agrega entry al manifest con types: ['fix'] | ['feature'] | ['refactor'].
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TestFlight build 7 · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<style>
+  /* Overrides locales del dev one-pager */
+  .wrap { max-width: 820px; }
+  header.hero {
+    padding: 16px 0 32px;
+    background: linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%);
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1; margin: 14px 0 10px;
+    letter-spacing: -0.02em; font-weight: 800;
+  }
+  .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--ink-2); max-width: 680px; margin: 0;
+  }
+  main { padding: 32px 0 56px; }
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 18px; font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  section ul, section ol { margin: 0 0 12px; padding-left: 22px; }
+  section li { margin-bottom: 4px; font-size: 14px; color: var(--ink-2); }
+  section p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+
+  /* Editor toolbar (solo visible en modo plantilla; se quita en el export) */
+  .editor-toolbar {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 100;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 14px 16px;
+    display: flex; gap: 8px; align-items: center;
+    max-width: 340px;
+  }
+  .editor-toolbar .editor-hint {
+    font-size: 11px; color: var(--ink-3); line-height: 1.4;
+    margin-right: 6px;
+  }
+  .editor-toolbar .editor-hint b { color: var(--ink); font-weight: 700; }
+  .editor-toolbar button {
+    padding: 8px 14px; border-radius: var(--radius-s);
+    background: var(--brand); color: var(--on-brand); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+    white-space: nowrap;
+  }
+  .editor-toolbar button:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body data-slug="2026-09-21-testflight-build7">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">dev/<span>2026-09-21-testflight-build7</span></span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="dev-eyebrow feature" id="dev-kind">
+      <span>Feature</span>
+    </span>
+    <h1>
+      <span>TestFlight build 7</span>
+      <span class="accent">skeletons por sección, sello UPDATED al jalar y splash con la P lima</span>
+    </h1>
+    <p class="lede">
+      Build 0.1.0 (7) con la fase F1 de <em>carga visible</em> (<code>mobile-loading</code>): cada card o lista con
+      datos remotos pinta su propio skeleton hasta que llega su dato (regla única: dato <code>null</code> y sin
+      error), el pull-to-refresh deja un sello <code>UPDATED HH:MM:SS</code> bajo la cabecera (o
+      <code>COULDN'T REFRESH</code> 3 s si fallaron todas las fuentes de esa pantalla) y la app abre con la P lima
+      sobre <code>#05061A</code> (<code>expo-splash-screen</code>) en vez de un splash en blanco. Incluye los fixes
+      de la revisión final de rama (línea «in trading» de Wallet sin socket, sello por cuenta, créditos con error).
+    </p>
+
+    <div class="dev-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="dev-sb-pill in_progress"><span>In progress</span></span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div>— (merge <code>88032b4</code> de <code>feat/mobile-loading</code> en <code>main</code> local; sin push a <code>origin</code>)</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
+        <div style="font-family:var(--mono);font-size:12.5px">3a143b7</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-09-21</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2>Qué cambió</h2>
+      <p>Desde el build 6 (<code>3c72ff0</code>): 17 commits en <code>main</code>, un merge
+        (<code>git log --oneline --merges 3c72ff0..HEAD</code> → <code>88032b4</code>). Spec
+        <code>2026-09-21-mobile-loading-design.md</code> (D1–D8), plan F1, audit
+        <code>2026-09-21-mobile-loading-f1-rulings.md</code>.</p>
+      <ul>
+        <li><code>9187f3c</code> · helpers puros del sello en <code>store.ts</code> (<code>updatedLabel</code>,
+          <code>refreshOk</code>, <code>screenHasData</code>) con tests.</li>
+        <li><code>e3763df</code> · primitivas <code>Skeleton</code> (<code>Line</code>/<code>Card</code>/<code>Row</code>,
+          un solo pulso compartido por refcount) y <code>Reveal</code> (fade de 150 ms) en <code>ui/primitives.tsx</code>.</li>
+        <li><code>eb71294</code> + <code>b3b002a</code> · <code>reads.reads: Read[] | null</code>; skeletons de créditos,
+          chips de agentes, My reads y Agents; <code>Reveal</code> también en escalares y vacíos (D4).</li>
+        <li><code>3e30edf</code> · skeletons de Wallet (saldo, movimientos), Markets (lista × 6, card
+          <code>TRADING · AUSD</code>, posiciones) y <code>MarketSkeleton</code> para Market sin contexto (P2).</li>
+        <li><code>a011652</code> + <code>ccf5d98</code> · sello <code>UPDATED</code> / <code>COULDN'T REFRESH</code> por
+          pantalla en <code>Shell.tsx</code>, evaluado en un efecto con los errores de ese render (P4); el fallo
+          es por pantalla (<code>Screen | null</code>, D5).</li>
+        <li><code>41773fc</code> · <code>expo-splash-screen ~57.0.9</code>, <code>assets/splash-mark.png</code>
+          (recorte de la P con <code>scripts/splash-mark.py</code>), <code>preventAutoHideAsync</code> en módulo,
+          <code>hideAsync</code> al resolver la cuenta (tope 2 s); <code>App.tsx</code> ya no pinta el
+          <code>ActivityIndicator</code> intermedio.</li>
+        <li><code>e7124af</code> + <code>e07b4d6</code> · fixes de la revisión final: <code>tradingLineState()</code>
+          (en Wallet el socket de Perpl no corre → «— AUSD in trading · Markets», no skeleton permanente; key
+          rechazada o socket cerrado = desconocido), reset del sello al cambiar de cuenta, <code>refreshOk</code>
+          sin sesión de reads, <code>CreditsRow</code> con error.</li>
+        <li><code>3a143b7</code> · <code>ios.buildNumber</code> 6 → 7.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Por qué</h2>
+      <p>
+        En el build 6 la app abría con un splash en blanco (el storyboard apuntaba a una imagen inexistente),
+        cada sección remota mostraba un «Loading…» suelto y el jalón de pull-to-refresh no dejaba rastro. Jesús
+        pidió tres cosas: skeletons desde que carga la app, que el jalón «se note» y un splash con el logo.
+        Este build las lleva al iPhone; es también donde hay que mirar los cinco estados que el simulador no
+        pudo capturar (lista de Markets y <code>MarketSkeleton</code> en skeleton, chips de agentes,
+        <code>Warn</code> de Ask, <code>COULDN'T REFRESH</code>).
+      </p>
+    </section>
+
+    <section>
+      <h2>Archivos tocados</h2>
+      <p><code>git diff --stat 3c72ff0..HEAD -- apps/mobile</code>: 17 archivos, +394 / −87.</p>
+      <div class="files-box">
+        <ul>
+          <li>apps/mobile/App.tsx · README.md · app.config.ts · package.json · package-lock.json</li>
+          <li>apps/mobile/assets/splash-mark.png · scripts/splash-mark.py</li>
+          <li>apps/mobile/src/Shell.tsx · store.ts · ui/primitives.tsx</li>
+          <li>apps/mobile/src/hooks/useReads.ts</li>
+          <li>apps/mobile/src/screens/agents.tsx · ask.tsx · market.tsx · markets.tsx · wallet.tsx</li>
+          <li>apps/mobile/__tests__/store.test.ts</li>
+        </ul>
+      </div>
+      <p>Fuera de la app: <code>docs/</code> (spec, plan, overview, audit con cinco capturas, manifest).</p>
+    </section>
+
+    <section>
+      <h2>Validación</h2>
+      <p>
+        Sobre <code>main</code> tras el merge y el bump (<code>3a143b7</code>): <code>npm test</code> → 31 suites,
+        242/242; <code>npx tsc --noEmit</code> limpio; <code>docs:check</code> errors=0; <code>agents:check</code>
+        sin errores. Ejecución SDD con revisión por task y revisión final independiente de la rama (audit F1 §1–§3):
+        1 crítico (C1, línea «in trading» de Wallet en skeleton permanente — venía del spec) y 4 importantes
+        corregidos en <code>e7124af</code> / <code>e07b4d6</code>, re-revisión limpia. Simulador (cuenta Perpl #620,
+        29.00 AUSD antes y después, sin órdenes): capturas miradas de splash, Wallet y Ask en skeleton, sello
+        <code>UPDATED</code> tras dos jalones y Wallet cargada tras el fix (audit F1 §2,
+        <code>docs/superpowers/audits/img/2026-09-21-mobile-loading-*.png</code>).
+      </p>
+      <p>
+        <code>.ipa</code> 0.1.0 (7), MinimumOSVersion 18.0, 15.2 MB (15 182 181 bytes), entitlement
+        <code>aps-environment: production</code>; <code>SplashScreen.storyboardc</code> dentro del paquete con la
+        imagen del splash referenciada (<code>grep -c "splash-mark|SplashScreenLogo" ios/Pickler/SplashScreen.storyboard</code>
+        → 2). <code>altool</code>: UPLOAD SUCCEEDED with no errors (Delivery UUID
+        <code>1eefc54c-6427-4326-8698-19de0b771db9</code>, log de subida de esta sesión, 2026-09-21 ~12:22 CST).
+        App Store Connect (API, consultado al minuto de la subida): el build 7 aún no aparecía en
+        <code>/v1/builds</code> (builds 4–6 <code>VALID</code>, grupo «Equipo» <code>hasAccessToAllBuilds</code>,
+        que toma los builds nuevos al procesarse). <b>Estado de procesamiento: no verificado todavía</b>
+        — ver la nota al pie de esta sección.
+      </p>
+      <p>
+        <b>Sin probar aún en el iPhone de Jesús.</b> Lo que hay que ver ahí: el splash con la P (no blanco) al
+        abrir en frío; Wallet con el bloque de 30 px y tres filas de skeleton bajo MOVEMENTS antes de que
+        cuajen; Markets con seis filas de skeleton y la card <code>TRADING · AUSD</code>; el sello
+        <code>UPDATED</code> tras jalar y que avance con un segundo jalón; en modo avión, jalar en Wallet →
+        <code>COULDN'T REFRESH</code> rosa 3 s y el sello anterior después. Residuales del audit F1 §6:
+        el sello de Markets no avanza con el polling de 5 s (decisión de producto pendiente) y con Dynamic Type
+        muy grande las pestañas se parten (fuera de F1).
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>One-pager dev · merge directo · commit <code>3a143b7</code></p>
+    <p>Reglas de doc en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+
+<!-- Editor toolbar (no se exporta) ======================================== -->
+<div class="editor-toolbar" id="editor-toolbar">
+  <div class="editor-hint">
+    Click sobre los campos punteados para editar. Cuando termines, <b>Exporta</b> el HTML final.
+  </div>
+  <button type="button" id="btn-export">⬇ Descargar HTML</button>
+</div>
+
+<script>
+  // ===========================================================================
+  // Dev template editor (F2)
+  // - Marca todos los campos editables con [contenteditable="true"].
+  // - El botón "Descargar HTML" clona el documento, congela los contenteditable
+  //   a texto fijo, quita la toolbar y los placeholders/markers, y descarga el
+  //   archivo final (sin estado de editor).
+  // ===========================================================================
+
+  const $btnExport = document.getElementById('btn-export');
+
+  function exportFinalHtml() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // 1. Quitar la toolbar del editor.
+    const toolbar = clone.querySelector('#editor-toolbar');
+    if (toolbar) toolbar.remove();
+
+    // 2. Limpiar los nodos contenteditable: quitar atributo + placeholder + marker.
+    clone.querySelectorAll('[contenteditable]').forEach(node => {
+      node.removeAttribute('contenteditable');
+      node.removeAttribute('data-placeholder');
+      node.removeAttribute('data-export-as-text');
+    });
+    clone.querySelectorAll('[data-export-no-edit-attrs]').forEach(node => {
+      node.removeAttribute('data-export-no-edit-attrs');
+    });
+
+    // 3. Quitar el script del editor (esta misma lógica) — el HTML final no la necesita.
+    clone.querySelectorAll('script').forEach(s => {
+      if (s.textContent.includes('Dev template editor')) s.remove();
+    });
+
+    // 4. Slug propuesto: leer el span del breadcrumb mono.
+    const slugNode = clone.querySelector('nav.crumb .mono span') || clone.querySelector('nav.crumb .mono');
+    const slug = (slugNode?.textContent.trim() || 'dev-new').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const filename = `${slug}.html`;
+
+    // 5. Construir el HTML final.
+    const finalHtml = '<!doctype html>\n' + clone.outerHTML;
+
+    // 6. Descargar como Blob.
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $btnExport.addEventListener('click', exportFinalHtml);
+
+  // Atajo: Ctrl/Cmd + S para exportar
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      exportFinalHtml();
+    }
+  });
+</script>
+
+</body>
+</html>

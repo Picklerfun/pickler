@@ -29,11 +29,20 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-21',
+    title: 'TestFlight build 7',
+    summary: 'Build 0.1.0 (7): carga visible F1 — skeletons por sección, sello UPDATED / COULDN\'T REFRESH por pantalla y splash nativo con la P lima; fixes de la revisión final (in trading sin socket, sello por cuenta). Subido (UPLOAD SUCCEEDED); procesamiento en App Store Connect sin verificar aún.',
+    file: 'dev/2026-09-21-testflight-build7.html',
+    types: ['feature'],
+    status: 'in_progress',
+    tags: ['mobile', 'testflight', 'ios', 'loading'],
+  },
+  {
+    date: '2026-09-21',
     title: 'Carga visible en la app móvil — skeletons por sección, sello «Updated» al jalar y splash con la marca',
     summary: 'Cada card o lista con datos remotos pinta su propio skeleton hasta que llega su dato; el pull-to-refresh deja un sello UPDATED HH:MM:SS; expo-splash-screen muestra la P lima sobre #05061A hasta que la cuenta local se resuelve.',
     file: '2026-09-21-mobile-loading.html',
     types: ['spec', 'plan'],
-    status: 'active',
+    status: 'completed',
     tags: ['mobile', 'expo', 'ui', 'loading'],
     phases: [
       { num: 1, status: 'completed' },
