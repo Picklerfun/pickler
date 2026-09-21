@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountState } from "../account";
-import { clearTradingKey } from "../storage/perpl";
 import { clearReadsSession } from "../storage/reads";
 import { clearStoredAccount, loadStoredAccount } from "../storage/storage";
 import type { Wallet } from "../wallet/wallet";
@@ -48,7 +47,10 @@ export function useAccount(): { account: AccountState | null } & AccountActions 
   }, [replace]);
 
   const signOut = useCallback(async () => {
-    await Promise.all([clearStoredAccount(), clearTradingKey(), clearReadsSession()]); // D6: la sesión de reads muere con la cuenta
+    // D6: la sesión de reads muere con la cuenta. La trading key de Perpl se conserva (fix gate, opción B): está atada a su
+    // address y usePerpl la ignora si la wallet activa es otra; borrarla obligaba a un Reconnect (tx + key nueva) en cada sign in.
+    // «Reset trading key» sigue siendo la forma explícita de tirarla.
+    await Promise.all([clearStoredAccount(), clearReadsSession()]);
     replace({ status: "none" });
   }, [replace]);
 

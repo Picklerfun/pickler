@@ -1,6 +1,6 @@
 import {
   afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  isComingSoonTab, navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
+  isComingSoonTab, marketEntryTab, navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
 } from "../src/store";
 
 test("nav pushes the current screen and applies the patch", () => {
@@ -154,4 +154,9 @@ test("sign out lands on Sign in and clears the Ask state", () => {
   expect(s.askAgentId).toBeUndefined();
   expect(s.askFocusReadId).toBeUndefined();
   expect(s.tradeLevel).toBeUndefined();
+});
+
+test("a market opens on Trade with a trading key and on Ask without one (gate)", () => {
+  expect(marketEntryTab(true)).toBe("trade");
+  expect(marketEntryTab(false)).toBe("ask");
 });
