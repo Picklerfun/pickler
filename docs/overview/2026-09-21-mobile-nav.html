@@ -168,7 +168,7 @@
         </div>
       </article>
 
-      <article class="phase-card" data-phase="2" data-status="pending">
+      <article class="phase-card" data-phase="2" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -176,15 +176,15 @@
           </div>
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
-              <option value="pending" selected>pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
-          <p>D11 del spec: <code>TabBar.tsx</code> como <code>tabBar</code> de bottom-tabs; pastilla lima translúcida detrás del ítem activo (<code>sharedValue</code> + <code>withSpring</code>); <code>Pan</code> sobre la fila mueve la pastilla al ítem bajo el dedo con haptic al cruzar y selecciona <b>al soltar</b>; el tap sigue siendo tap; el índice activo viene de <code>state.index</code>. Puros con test: <code>tabIndexAt</code>, <code>pillX</code>.</p>
+          <p>D11 del spec + <b>D13</b> (nueva en F2: la barra queda montada y se esconde/aparece deslizando al entrar y salir de una pantalla no raíz; las raíces reservan su hueco): <code>TabBar.tsx</code> como <code>tabBar</code> de bottom-tabs; pastilla lima translúcida detrás del ítem activo (<code>sharedValue</code> + <code>withSpring</code>); <code>Pan</code> sobre la fila mueve la pastilla al ítem bajo el dedo con haptic al cruzar y selecciona <b>al soltar</b>; el tap sigue siendo tap; el índice activo viene de <code>state.index</code>. Puros con test: <code>tabIndexAt</code>, <code>pillX</code>.</p>
           <div class="phase-meta">
             <div><div class="k">Entregable</div><div class="v">Tab bar arrastrable con capturas a medio arrastre y tras soltar; audit F2</div></div>
             <div><div class="k">Prerequisitos</div><div class="v">F1 completed (gesture-handler y reanimated ya instalados)</div></div>
@@ -195,7 +195,10 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Por definir — el plan F2 se escribe tras cerrar F1</label></li>
+              <li><label><input type="checkbox"> Task 1: Geometría pura de la tab bar (<code>ui/tabbar.ts</code>) con tests</label></li>
+              <li><label><input type="checkbox"> Task 2: <code>TabBar</code> con pastilla arrastrable y barra que se esconde deslizando; <code>Page</code> reserva el hueco</label></li>
+              <li><label><input type="checkbox"> Task 3: Recorrido en el simulador (capturas por video)</label></li>
+              <li><label><input type="checkbox"> Task 4: Docs — D11 (F2), D13, F2 completed, audit, README, checks</label></li>
             </ol>
           </details>
         </div>
