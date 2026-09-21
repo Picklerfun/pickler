@@ -44,6 +44,9 @@ export function Segmented<T extends string>({
           key={option.value}
           type="button"
           className={optionClassName ? `pk-segment ${optionClassName}` : "pk-segment"}
+          // The value is on the element so a feature can tint one option differently — Ask is
+          // violet and Trade is lime in the same track — without counting children in CSS.
+          data-value={option.value}
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
         >
