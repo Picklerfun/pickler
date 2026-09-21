@@ -172,6 +172,19 @@ mostrándose sobre datos ya cargados. No se puede confirmar ni descartar el timi
 fade `Reveal` con screenshots estáticos — no se observó ningún artefacto visual (doble render,
 parpadeo, corte) en ninguna captura.
 
+**R2 — regresión detectada en la re-revisión de la ola de fixes.** El fix de C1 (commit `e7124af`)
+resolvía el caso «Wallet sin socket», pero dejaba una regresión en Markets: `tradingLineState(live,
+lastBalance, socketActive)` devolvía `"skeleton"` siempre que `!live?.account && lastBalance === null
+&& socketActive`, sin distinguir «el socket está conectando» de «el socket ya cerró para siempre o la
+trading key fue rechazada». En Markets (`socketActive: true`), cuando la key se rechaza o el socket
+cierra en definitiva, `usePerpl` mantiene `perpl.state.status === "ready"` y `live` pasa a `{ status:
+"closed", account: null, keyRejected: true, … }` (`ws.ts`, `handleClose`: no reintenta tras
+`AUTH_FAILED`); la línea «TRADING · AUSD» quedaba pulsando en skeleton para siempre — violación de D2
+(skeleton sólo mientras algo se carga), y peor que el comportamiento previo al fix (`0.00`). Corregido
+con el fix `fix(mobile): tradingLineState trata key rechazada o socket cerrado como desconocido, no
+como carga (R2)`: `tradingLineState` distingue ese estado terminal (`live.keyRejected || live.status
+=== "closed"`) de un socket en conexión y devuelve `"unknown"`.
+
 ## 3. Rulings
 
 P1–P10 son decisiones del **plan** (no rulings de ejecución; se listan para trazabilidad del alcance
@@ -263,6 +276,11 @@ de F1); las decisiones tomadas **durante** la ejecución, sin consultar a Jesús
 12. **E12 (revisión final, I3) `CreditsRow` recibe `error`**; skeleton sólo con `credits === null &&
     !error`; con error pinta «—» (D2 sin excepciones; antes seguía en skeleton aunque hubiera
     `listError`). Commit `e7124af`. **Coste:** ninguno.
+13. **E13 (re-revisión de la ola de fixes, R2) `tradingLineState` trata `keyRejected || status ===
+    "closed"` como terminal → `"unknown"`**, antes de mirar `socketActive`. Fix
+    `fix(mobile): tradingLineState trata key rechazada o socket cerrado como desconocido, no como
+    carga (R2)`. **Coste si está mal:** un «—» donde podría haber un saldo si el socket volviera solo
+    (no vuelve tras `AUTH_FAILED`).
 
 ## 4. Correcciones a afirmaciones previas
 
