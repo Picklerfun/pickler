@@ -4,10 +4,12 @@ import {
   createGetPickDetail,
   createGetAgentPersona,
   createGetLeaderboard,
+  createGetMarket,
   createGetPlatformAnalytics,
   createGetRead,
   createListAgents,
   createListDirectory,
+  createListMarkets,
   createListReads,
   createGetApplicant,
   createGetHealth,
@@ -18,6 +20,7 @@ import {
 import {
   createSampleAgentDirectory,
   createSampleLandingReadModel,
+  createSampleMarketBoard,
   createSupabaseApplicants,
   createSupabaseRestClient,
   createSupabaseWaitlist,
@@ -34,6 +37,7 @@ export function createGrowthServices(env: Env) {
   const adapters = {
     landing: createSampleLandingReadModel(systemClock),
     agents: createSampleAgentDirectory(systemClock),
+    markets: createSampleMarketBoard(),
     waitlist: createSupabaseWaitlist(growth),
     applicants: createSupabaseApplicants(growth),
   };
@@ -53,6 +57,8 @@ export function createGrowthServices(env: Env) {
     getLeaderboard: createGetLeaderboard(adapters.agents),
     listDirectory: createListDirectory(adapters.agents),
     listReads: createListReads(adapters.agents),
+    listMarkets: createListMarkets(adapters.markets),
+    getMarket: createGetMarket(adapters.markets),
     getRead: createGetRead(adapters.agents),
   };
 }

@@ -115,6 +115,17 @@ export function readQuestion(venue: Venue, market: string): string {
   return `Will ${market}’s ${priced} on ${venueName(venue)} be above the price at delivery, 24h later?`;
 }
 
+/**
+ * A read asked from the market surface names the level the square picked. Only the level moves:
+ * the clock stays at a day, so the answer is still comparable with every other read on that
+ * market. "Above" is the only framing, whichever side of the mark the square sits on — a square
+ * below the mark is the same question with a low answer, not a different question.
+ */
+export function readQuestionAtLevel(venue: Venue, market: string, levelLabel: string): string {
+  const priced = venueName(venue) === "Perpl" ? "mark price" : "price";
+  return `Will ${market}’s ${priced} on ${venueName(venue)} be above ${levelLabel} at delivery, 24h later?`;
+}
+
 /** The label the card carries while the market clock runs. */
 export function evaluationLabel(read: Pick<AgentRead, "evaluation" | "evaluatesIn">): string {
   switch (read.evaluation) {

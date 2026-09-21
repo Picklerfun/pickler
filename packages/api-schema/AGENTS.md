@@ -2,7 +2,7 @@
 
 Read [the root instructions](../../AGENTS.md) first and the local instructions of affected producers or consumers. Keep this file updated when public contracts change.
 
-`@pickler/api-schema` owns transport contracts shared by API producers and clients. Exports include `HealthResponse` and the Zod research schemas in `src/research.ts`: configuration/limits, updates, dispatch, pause, scheduling, agent/run/event responses and decisions. Public runtime imports use compiled `dist`; types resolve to source.
+`@pickler/api-schema` owns transport contracts shared by API producers and clients. Exports include `HealthResponse`, the market contracts in `src/markets.ts` and the Zod research schemas in `src/research.ts`: configuration/limits, updates, dispatch, pause, scheduling, agent/run/event responses and decisions. Public runtime imports use compiled `dist`; types resolve to source.
 
 - Keep this package portable and safe for browser imports. No Next.js, React, core, infrastructure, secrets, or provider SDK dependencies.
 - Define explicit public request and response DTOs. Do not expose database rows, domain entities, `Date`, `bigint`, or credential-bearing fields directly.
@@ -34,3 +34,15 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 ## Console contracts
 
 `src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
+
+## Markets
+
+`src/markets.ts` carries `PerpMarketDto`, `AgentSquareDto` and `MarketDetailDto`, plus the options a
+client needs to draw the surface before it can ask anyone: `HORIZON_OPTIONS`, `LEVEL_OPTIONS`,
+`READ_HORIZON_DTO`, `LEVERAGE_OPTIONS` and `PERP_LIMITS_DTO`. These mirror the business rules in
+core the way `CATEGORY_OPTIONS` mirrors `CATEGORIES`; core stays authoritative for anything sent.
+
+Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` and `funding1h` as
+signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries
+the read's sentence with `{level}` where the chosen price goes, so a page fills in a number and
+never rewrites the wording.

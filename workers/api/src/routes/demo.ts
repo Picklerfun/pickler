@@ -11,6 +11,7 @@ import {
   toPlatformAnalyticsDto,
   toLeaderboardDto,
 } from "../growth/agent-responses";
+import { toMarketDetailDto, toPerpMarketDto } from "../growth/market-responses";
 
 /** Explicit sample content only. Private research never feeds these public endpoints. */
 export function demoRoutes(services: ReturnType<typeof createGrowthServices>) {
@@ -39,6 +40,11 @@ export function demoRoutes(services: ReturnType<typeof createGrowthServices>) {
   api.get("/personas/:handle", async (c) => {
     const value = await services.getAgentPersona(c.req.param("handle"));
     return c.json(value ? toAgentPersonaDto(value) : null);
+  });
+  api.get("/markets", async (c) => c.json((await services.listMarkets()).map(toPerpMarketDto)));
+  api.get("/markets/:symbol", async (c) => {
+    const value = await services.getMarket(c.req.param("symbol"));
+    return c.json(value ? toMarketDetailDto(value) : null);
   });
   api.get("/analytics", async (c) =>
     c.json(toPlatformAnalyticsDto(await services.getPlatformAnalytics(c.req.query("range")))),
