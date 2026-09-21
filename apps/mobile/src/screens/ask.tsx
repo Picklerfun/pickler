@@ -3,14 +3,16 @@ import { ActivityIndicator, View } from "react-native";
 import type { AppCtx } from "../ctx";
 import type { Reads } from "../hooks/useReads";
 import type { Market } from "../perpl/context";
+import { sparkPoints } from "../perpl/marks";
 import { formatPrice } from "../perpl/orders";
 import {
-  callOf, type Cell, cellLabel, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS, levelLabel, questionFor, targetFor,
+  callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
+  questionFor, readDots, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
 import type { Agent, Read, ReadStatus } from "../reads/types";
 import type { AskCell } from "../store";
-import { Btn, Card, Chip, Segmented, StatusCard, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
-import { C, pill } from "../ui/theme";
+import { Btn, Card, Chip, Segmented, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
+import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
 
 /** Tick de 30 s para las cuentas regresivas de toda la pantalla (P14). */
 function useNow(everyMs: number): number {
@@ -101,53 +103,100 @@ function CreditsRow({ credits }: { credits: number | null }) {
   );
 }
 
-function MatrixGrid({ market, selected, onSelect }: { market: Market; selected?: AskCell; onSelect: (c: Cell) => void }) {
+/** El `Grid` del prototipo: sparkline a la izquierda, escalera de precios, celdas de 44 px con un punto donde ya hay reads, horizontes abajo. */
+function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Market; marks: readonly number[]; dots: Set<string>; selected?: AskCell; onSelect: (c: Cell) => void }) {
+  const acc = GRID_ACCENT.ask;
+  const pd = market.priceDecimals;
   return (
-    <Card bd={C.hair14} bg={C.card} pad={10} gap={5}>
-      <T w={400} s={11} lh={1.3} color={C.faint}>Mark {formatPrice(market.mark, market.priceDecimals)} · updates every 5 s</T>
-      <View style={{ flexDirection: "row", gap: 4 }}>
-        <View style={{ width: 46 }} />
-        {HORIZONS_MIN.map((h) => <Tag key={h} style={{ flex: 1, textAlign: "center" }}>{horizonLabel(h)}</Tag>)}
-      </View>
-      {LEVELS_BPS.map((bps) => (
-        <View key={bps} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <T w={500} s={10} lh={1} mono color={bps > 0 ? C.up : C.down} style={{ width: 46 }}>{levelLabel(bps)}</T>
-          {HORIZONS_MIN.map((h) => {
-            const on = selected?.levelBps === bps && selected?.horizonMin === h;
-            const p = pill(on);
+    <View style={{ borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, overflow: "hidden" }}>
+      <View style={{ flexDirection: "row" }}>
+        <View style={{ width: 74, borderRightWidth: 1, borderRightColor: C.hair10 }}>
+          <Sparkline points={sparkPoints(marks)} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {LEVELS_BPS.map((bps, i) => {
+            const rowOn = selected?.levelBps === bps;
+            const markRule = bps > 0 && LEVELS_BPS[i + 1] < 0; // la regla bajo el último nivel positivo es el mark (P4)
             return (
-              <Touch key={h} onPress={() => onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
-                style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: p.bd, backgroundColor: p.bg, alignItems: "center" }}>
-                <T w={500} s={9.5} lh={1} mono color={p.fg}>{formatPrice(targetFor(market.mark, bps), market.priceDecimals)}</T>
-              </Touch>
+              <View key={bps} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: markRule ? GRID_MARK_RULE : C.hair08 }}>
+                <View style={{ width: 58, justifyContent: "center", paddingLeft: 7, borderRightWidth: 1, borderRightColor: C.hair08 }}>
+                  <T w={500} s={9.5} lh={1} mono color={rowOn ? acc.fg : C.faint}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
+                </View>
+                {HORIZONS_MIN.map((h) => {
+                  const colOn = selected?.horizonMin === h;
+                  const on = rowOn && colOn;
+                  return (
+                    <Touch key={h} onPress={() => onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
+                      style={{ flex: 1, minWidth: 0, height: 44, borderLeftWidth: 1, borderLeftColor: C.hair08, backgroundColor: on ? acc.on : rowOn || colOn ? acc.soft : "transparent", alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: dots.has(dotKey({ levelBps: bps, horizonMin: h })) ? GRID_DOT : "transparent" }} />
+                    </Touch>
+                  );
+                })}
+              </View>
             );
           })}
+          <View style={{ flexDirection: "row" }}>
+            <View style={{ width: 58 }} />
+            {HORIZONS_MIN.map((h) => (
+              <View key={h} style={{ flex: 1, alignItems: "center", paddingVertical: 6 }}>
+                <T w={500} s={9.5} lh={1} mono color={selected?.horizonMin === h ? acc.fg : C.faint}>{horizonLabel(h)}</T>
+              </View>
+            ))}
+          </View>
         </View>
-      ))}
-    </Card>
+      </View>
+    </View>
   );
 }
 
-function AskSheet({ market, cell, reads, agentId, onAgent, onAsk }: { market: Market; cell: AskCell; reads: Reads; agentId: string | undefined; onAgent: (id: string) => void; onAsk: (agentId: string) => void }) {
+/** La hoja de la celda del prototipo (ConsultTab): chip del agente + Change, pregunta, distancia, steppers, Ask/Clear. */
+function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAsk }: {
+  market: Market; cell: AskCell; reads: Reads; agentId: string | undefined;
+  onAgent: (id: string) => void; onCell: (c: AskCell) => void; onClear: () => void; onAsk: (agentId: string) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const pd = market.priceDecimals;
   const target = targetFor(market.mark, cell.levelBps);
-  const question = questionFor(market.symbol, cell.levelBps, target, market.priceDecimals, expiresAtFor(new Date(), cell.horizonMin));
-  const agent = reads.agents?.find((a) => a.id === agentId) ?? reads.agents?.[0];
+  const question = questionFor(market.symbol, cell.levelBps, target, pd, expiresAtFor(new Date(), cell.horizonMin));
+  const agent = reads.agents?.find((a) => a.id === agentId) ?? reads.agents?.[0]; // el agente mostrado es el que se cobra (D14)
   const noCredits = reads.credits !== null && reads.credits <= 0;
+  const price = `${agent?.priceCredits ?? 1} credit`;
   return (
-    <Card bd={C.limeBd} bg={C.limeBg06} gap={9}>
-      <Tag color={C.lime}>{market.symbol} {cellLabel(cell)} · TARGET {formatPrice(target, market.priceDecimals)}</Tag>
-      <T w={700} s={16} lh={1.25} ls={-0.01} display>{question}</T>
-      {reads.agents === null ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError || "Loading agents…"}</T> : (
+    <Card bd={C.vioBd45} bg={C.vioBg07} gap={9}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Chip label={`Asking ${agent?.name ?? "…"} · ${price}`} fg={C.vio} bd={C.vioBd} bg={C.vioBg} s={10.5} py={5} px={9} />
+        <Touch onPress={() => setPicking((p) => !p)} style={{ paddingVertical: 5, paddingHorizontal: 8 }} accessibilityLabel="ask-change">
+          <T w={600} s={10.5} lh={1} color={C.faint}>{picking ? "Done" : "Change"}</T>
+        </Touch>
+      </View>
+      {picking ? (reads.agents === null ? <T w={400} s={11.5} color={C.faint}>{reads.agentsError || "Loading agents…"}</T> : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {reads.agents.map((a) => {
             const on = a.id === agent?.id;
-            const p = pill(on);
-            return <Chip key={a.id} label={`${a.name} · by ${a.owner} · ${a.priceCredits} credit`} onPress={() => onAgent(a.id)} fg={p.fg} bd={p.bd} bg={p.bg} s={10.5} accessibilityLabel={`agent-${a.id}`} />;
+            return (
+              <Chip key={a.id} label={`${a.name} · by ${a.owner} · ${a.priceCredits} credit`} onPress={() => { onAgent(a.id); setPicking(false); }}
+                fg={on ? C.vio : C.dim} bd={on ? C.vioBd : C.hair18} bg={on ? C.vioBg : "transparent"} s={10.5} accessibilityLabel={`agent-${a.id}`} />
+            );
           })}
         </View>
-      )}
-      <Btn label={noCredits ? "No credits left" : agent ? `Ask ${agent.name} · ${agent.priceCredits} credit` : "Ask"} onPress={() => { if (agent) onAsk(agent.id); }} variant="lime" py={14} disabled={noCredits || !agent} accessibilityLabel="ask" />
-      {noCredits ? <T w={400} s={11} lh={1.4} color={C.faint}>Credits are simulated for the testnet.</T> : null}
+      )) : null}
+      <Tag color={C.vio}>YOUR QUESTION · NOTHING SENT</Tag>
+      <T w={700} s={14} lh={1.3} ls={-0.01}>{question}</T>
+      <T w={500} s={10} lh={1.4} mono color={C.faint}>RESOLVES ON PERPL MARK · {distanceLabel(cell.levelBps)}</T>
+      <View style={{ flexDirection: "row", gap: 6 }}>
+        <Stepper value={formatPrice(target, pd)} accessibilityLabel="step-level"
+          onDown={() => onCell({ levelBps: stepLevel(cell.levelBps, -1), horizonMin: cell.horizonMin })}
+          onUp={() => onCell({ levelBps: stepLevel(cell.levelBps, 1), horizonMin: cell.horizonMin })} />
+        <Stepper value={horizonLabel(cell.horizonMin)} width={118} accessibilityLabel="step-horizon"
+          onDown={() => onCell({ levelBps: cell.levelBps, horizonMin: stepHorizon(cell.horizonMin, -1) })}
+          onUp={() => onCell({ levelBps: cell.levelBps, horizonMin: stepHorizon(cell.horizonMin, 1) })} />
+      </View>
+      <View style={{ flexDirection: "row", gap: 7 }}>
+        <Btn label={noCredits ? "No credits left" : `Ask ${agent?.name ?? "agent"} · ${price}`} onPress={() => { if (agent) onAsk(agent.id); }}
+          arrow flex={1} py={12} disabled={noCredits || !agent} accessibilityLabel="ask" />
+        <Btn label="Clear" onPress={onClear} variant="ghost" py={12} accessibilityLabel="ask-clear" />
+      </View>
+      <T w={400} s={10.5} lh={1.4} color={C.faint}>{noCredits ? "Credits are simulated for the testnet." : "Nothing charged yet."}</T>
     </Card>
   );
 }
@@ -194,14 +243,25 @@ export function AskTab(ctx: AppCtx) {
           footer={<Btn label="Ask another" onPress={() => { reads.resetRequest(); set({ askCell: undefined }); }} variant="ghost" accessibilityLabel="ask-another" />} />
       );
     }
+    const dots = readDots(reads.reads);
     return (
       <View style={{ gap: 11 }}>
         <CreditsRow credits={reads.credits} />
-        <MatrixGrid market={market} selected={S.askCell} onSelect={(c) => set({ askCell: c })} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+          <Tag s={10}>HISTORY · MARK</Tag>
+          <T w={700} s={15} lh={1} mono>{formatPrice(market.mark, market.priceDecimals)}</T>
+        </View>
+        <MatrixGrid market={market} marks={perpl.marks[market.id] ?? []} dots={dots} selected={S.askCell} onSelect={(c) => set({ askCell: c })} />
+        <T w={400} s={11.5} lh={1.45} color={C.faint}>{S.askCell ? "Use the steppers to move it." : "Tap a cell: a level and a horizon."}</T>
         {S.askCell ? (
-          <AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId} onAgent={(id) => set({ askAgentId: id })}
+          <AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId}
+            onAgent={(id) => set({ askAgentId: id })} onCell={(c) => set({ askCell: c })} onClear={() => set({ askCell: undefined })}
             onAsk={(id) => { void reads.ask(S.askCell!, id); }} />
-        ) : <T w={400} s={11} lh={1.4} color={C.faint}>Tap a cell: level above or below the mark × horizon.</T>}
+        ) : null}
+        <Card gap={7}>
+          <Tag>MARK PRICE · PERPL ON MONAD</Tag>
+          <T w={400} s={11.5} lh={1.45} color={C.dim}>Reads resolve on mark, not on your fill.</T>
+        </Card>
         {reads.listError ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
       </View>
     );
