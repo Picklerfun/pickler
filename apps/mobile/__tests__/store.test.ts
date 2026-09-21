@@ -1,6 +1,6 @@
 import {
   afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  isComingSoonTab, marketEntryTab, navState, refreshOk, requireAccountState, resetState, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, updatedLabel,
+  isComingSoonTab, marketEntryTab, navState, refreshOk, requireAccountState, resetState, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
 } from "../src/store";
 
 test("nav pushes the current screen and applies the patch", () => {
@@ -177,6 +177,23 @@ test("refreshOk needs at least one source of the screen to succeed", () => {
   expect(refreshOk("market", { ...ok, contextError: "x" })).toBe(true); // reads still refreshed
   expect(refreshOk("market", { ...ok, contextError: "x", listError: "y" })).toBe(false);
   expect(refreshOk("signin", ok)).toBe(false); // not refreshable
+});
+
+test("refreshOk ignores a source that was not requested (listError null: no reads session)", () => {
+  const noReads = { rpcError: "", movementsError: "", contextError: "", listError: null };
+  expect(refreshOk("market", { ...noReads, contextError: "x" })).toBe(false); // Perpl failed and reads were never asked
+  expect(refreshOk("market", noReads)).toBe(true); // Perpl ok
+});
+
+test("tradingLineState: live, last seen, skeleton only while the socket is active, unknown otherwise", () => {
+  const acc = { account: { b: 1n } };
+  expect(tradingLineState(acc, null, true)).toBe("live");
+  expect(tradingLineState(acc, 5n, false)).toBe("live");
+  expect(tradingLineState({ account: null }, 5n, true)).toBe("lastSeen");
+  expect(tradingLineState(null, 5n, false)).toBe("lastSeen");
+  expect(tradingLineState(null, null, true)).toBe("skeleton"); // Markets connecting
+  expect(tradingLineState({ account: null }, null, true)).toBe("skeleton"); // socket open, no account frame yet
+  expect(tradingLineState(null, null, false)).toBe("unknown"); // Wallet: no socket, nothing seen
 });
 
 test("screenHasData follows the null contract of the hooks", () => {

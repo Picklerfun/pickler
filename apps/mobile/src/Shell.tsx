@@ -3,6 +3,7 @@ import { Image, PanResponder, RefreshControl, ScrollView, StyleSheet, View } fro
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { accountAddress } from "./account";
 import type { AppCtx } from "./ctx";
 import { DevControls } from "./DevControls";
 import { ComingSoonScreen } from "./screens/comingSoon";
@@ -76,7 +77,8 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
     }
   }, [S.screen, treasury, perpl, reads]);
 
-  const errors = { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.listError };
+  // Sin sesión de reads `reads.refresh()` no toca listError: se pasa null (fuente no pedida) para que no selle por ella (I2, revisión final F1).
+  const errors = { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null };
   // Evalúa el jalón que acaba de terminar con los errores de ESTE render (tras el await el estado puede no estar aplicado).
   useEffect(() => {
     if (refreshDone === 0) return;
@@ -85,6 +87,9 @@ export function Shell({ ctx }: { ctx: AppCtx }) {
     const t = setTimeout(() => setRefreshFailed(null), 3000);
     return () => clearTimeout(t);
   }, [refreshDone]);
+  // El Shell no se remonta al cambiar de cuenta: sin esto, tras sign out → sign in el sello viejo quedaría sobre los skeletons (I1, revisión final F1).
+  const address = accountAddress(ctx.account);
+  useEffect(() => { setUpdatedAt({}); setRefreshFailed(null); }, [address]);
   // Sello inicial: la primera vez que la pantalla tiene su dato principal.
   const hasData = screenHasData(S.screen, { balances: treasury.balances, context: perpl.context });
   useEffect(() => {

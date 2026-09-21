@@ -127,16 +127,27 @@ export function updatedLabel(ts: number): string {
   return `UPDATED ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-export type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string };
+/** `listError: null` = la fuente no se pidió (sin sesión de reads, `reads.refresh()` no toca el error): no cuenta como éxito. */
+export type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string | null };
 
-/** Un jalón «hizo algo» si al menos una de las fuentes de la pantalla quedó sin error (los hooks tragan errores: `allSettled` no basta). */
+/** Un jalón «hizo algo» si al menos una de las fuentes pedidas por la pantalla quedó sin error (los hooks tragan errores: `allSettled` no basta). */
 export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
   switch (screen) {
     case "wallet": return !e.rpcError || !e.movementsError;
     case "markets": return !e.contextError;
-    case "market": return !e.contextError || !e.listError;
+    case "market": return !e.contextError || (e.listError !== null && !e.listError);
     default: return false;
   }
+}
+
+export type TradingLineState = "live" | "lastSeen" | "skeleton" | "unknown";
+
+/** Qué pinta la línea/card «AUSD in trading»: `socketActive` = la pantalla tiene el socket de Perpl (PERPL_SCREENS);
+ *  en Wallet no, así que `live === null` es «desconocido», no «cargando» (D2: skeleton sólo mientras algo se carga). */
+export function tradingLineState(live: { account: unknown } | null, lastBalance: bigint | null, socketActive: boolean): TradingLineState {
+  if (live?.account) return "live";
+  if (lastBalance !== null) return "lastSeen";
+  return socketActive ? "skeleton" : "unknown";
 }
 
 /** La pantalla ya tiene su dato principal (contrato `null` = sin dato de los hooks): fija el sello inicial. */

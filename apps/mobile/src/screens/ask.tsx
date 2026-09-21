@@ -93,11 +93,14 @@ function SessionGate({ reads }: { reads: Reads }) {
   );
 }
 
-function CreditsRow({ credits }: { credits: number | null }) {
+/** D2 sin excepciones: skeleton sólo sin dato Y sin error; con error, «—» (I3, revisión final F1). */
+function CreditsRow({ credits, error }: { credits: number | null; error: string }) {
   return (
     <Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Tag>CREDITS</Tag>
-      {credits === null ? <Skeleton h={16} w={28} r={4} /> : <Reveal><T w={700} s={16} lh={1} mono>{String(credits)}</T></Reveal>}
+      {credits === null && !error ? <Skeleton h={16} w={28} r={4} />
+        : credits === null ? <T w={700} s={16} lh={1} mono>—</T>
+        : <Reveal><T w={700} s={16} lh={1} mono>{String(credits)}</T></Reveal>}
       <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>1 credit per read · simulated for the testnet</T>
     </Card>
   );
@@ -250,7 +253,7 @@ export function AskTab(ctx: AppCtx) {
     const dots = readDots(reads.reads ?? []);
     return (
       <View style={{ gap: 11 }}>
-        <CreditsRow credits={reads.credits} />
+        <CreditsRow credits={reads.credits} error={reads.listError} />
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
           <Tag s={10}>HISTORY · MARK</Tag>
           <T w={700} s={15} lh={1} mono>{formatPrice(market.mark, market.priceDecimals)}</T>

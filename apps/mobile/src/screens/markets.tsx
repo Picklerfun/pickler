@@ -9,7 +9,7 @@ import type { Market } from "../perpl/context";
 import { ENABLE_STEPS } from "../perpl/enable";
 import { change24h, formatPnl, formatPrice, formatSize, liquidationPrice, lockedCollateral, positionPnl, unrealisedPnl } from "../perpl/orders";
 import type { Position } from "../perpl/ws";
-import { marketEntryTab } from "../store";
+import { marketEntryTab, tradingLineState } from "../store";
 import { Btn, Card, Chip, EmptyPanel, KV, Page, Reveal, Skeleton, T, Tag, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import { describeError } from "../wallet/wallet";
@@ -162,6 +162,8 @@ export function MarketsScreen(ctx: AppCtx) {
   const locked = lockedCollateral(positions);
   const upnl = unrealisedPnl(positions, markets);
   const conn = CONNECTION[live?.status ?? "closed"];
+  // Markets sí está en PERPL_SCREENS: mientras el socket conecta y no hay saldo visto, skeleton (C1, revisión final F1).
+  const trading = tradingLineState(live, perpl.lastBalance, true);
   const skew = describeClockSkew(perpl.clockSkewMs);
 
   const doClose = async (c: Closing) => {
@@ -204,9 +206,9 @@ export function MarketsScreen(ctx: AppCtx) {
           <Tag>TRADING · AUSD</Tag>
           <Chip label={conn.label} mono s={9.5} py={4} px={8} fg={conn.fg} bd={conn.bd} />
         </View>
-        {live === null && perpl.lastBalance === null
+        {trading === "skeleton"
           ? <Skeleton h={30} w="45%" style={{ marginTop: 6 }} />
-          : <Reveal><T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{formatAusd(b)}</T></Reveal>}
+          : <Reveal><T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{trading === "unknown" ? "—" : formatAusd(b)}</T></Reveal>}
         <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? "" : " · last seen"}</T>
         {upnl !== null ? <T w={500} s={10.5} lh={1.4} mono color={upnl <= -10_000n ? C.down : C.up} style={{ marginTop: 3 }}>{formatPnl(upnl)} unrealised PnL</T> : null}
       </Card>

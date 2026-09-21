@@ -5,6 +5,7 @@ import { formatUnits, type Address, type Hex } from "viem";
 import { accountAddress } from "../account";
 import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
+import { tradingLineState } from "../store";
 import { Btn, Card, Chip, KV, Page, Reveal, Skeleton, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import type { Movement } from "../wallet/explorer";
@@ -47,6 +48,8 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
   const rows = [...treasury.pending, ...(treasury.movements ?? []).filter((m) => !seen.has(m.hash))];
   const txHash = treasury.notice.split(": ")[1];
   const unlocked = account.status === "unlocked";
+  // Wallet no está en PERPL_SCREENS: el socket nunca corre aquí, así que sin dato la línea es «—», no skeleton (C1, revisión final F1).
+  const trading = tradingLineState(perpl.live, perpl.lastBalance, false);
 
   return (
     <Page gap={11}>
@@ -58,13 +61,13 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
         <T w={500} s={10} lh={1} mono color={C.faint} style={{ marginTop: 6 }}>{address ? shortHash(address) : "—"} · CONNECTED</T>
         <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{pending}</T>
         {perpl.state.status === "ready" ? (
-          perpl.live === null && perpl.lastBalance === null
+          trading === "skeleton"
             ? <Skeleton h={12} w="62%" style={{ marginTop: 4 }} />
             : (
               <Reveal>
                 <Touch onPress={() => nav("markets")} accessibilityLabel="in-trading">
                   <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}>
-                    {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? "" : perpl.lastBalance !== null ? " · last seen" : ""} · Markets
+                    {trading === "unknown" ? "—" : formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{trading === "lastSeen" ? " · last seen" : ""} · Markets
                   </T>
                 </Touch>
               </Reveal>
