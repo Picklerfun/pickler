@@ -1,6 +1,6 @@
 import {
-  callOf, cellLabel, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, isHorizon, isLevel, LEVELS_BPS,
-  levelLabel, outcomeOf, questionFor, recordLabel, targetFor,
+  callOf, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, isHorizon, isLevel, LEVELS_BPS,
+  levelLabel, outcomeOf, questionFor, readDots, recordLabel, stepHorizon, stepLevel, targetFor,
 } from "../src/reads/matrix";
 
 test("the matrix is 5 levels × 4 horizons, in the spec order (D2)", () => {
@@ -66,4 +66,35 @@ test("probability and record labels", () => {
   expect(formatProbability(0.075)).toBe("8 %");
   expect(recordLabel({ reads: 0, resolved: 0, right: 0, brierAvg: null })).toBe("No resolved reads yet");
   expect(recordLabel({ reads: 12, resolved: 10, right: 7, brierAvg: 0.2144 })).toBe("7/10 right · Brier 0.21");
+});
+
+test("steppers walk the matrix in spec order and stop at the edges (P6)", () => {
+  expect(stepLevel(50, 1)).toBe(100);
+  expect(stepLevel(50, -1)).toBe(-50);
+  expect(stepLevel(250, 1)).toBe(250);
+  expect(stepLevel(-100, -1)).toBe(-100);
+  expect(stepLevel(75, 1)).toBe(250); // fuera de la matriz: cae al primero
+  expect(stepHorizon(240, 1)).toBe(720);
+  expect(stepHorizon(240, -1)).toBe(60);
+  expect(stepHorizon(60, -1)).toBe(60);
+  expect(stepHorizon(1440, 1)).toBe(1440);
+  expect(stepHorizon(30, 1)).toBe(60);
+});
+
+test("distanceLabel is the sheet's mono line", () => {
+  expect(distanceLabel(100)).toBe("+1.0% FROM MARK");
+  expect(distanceLabel(-50)).toBe("−0.5% FROM MARK");
+});
+
+test("readDots marks only cells with open/right/wrong reads, once per cell (P5)", () => {
+  const dots = readDots([
+    { levelBps: 100, horizonMin: 240, status: "right" },
+    { levelBps: 100, horizonMin: 240, status: "open" },
+    { levelBps: -50, horizonMin: 60, status: "failed" },
+    { levelBps: 250, horizonMin: 1440, status: "void" },
+    { levelBps: 50, horizonMin: 720, status: "pending" },
+  ]);
+  expect([...dots]).toEqual(["100|240"]);
+  expect(dots.has(dotKey({ levelBps: 100, horizonMin: 240 }))).toBe(true);
+  expect(readDots([]).size).toBe(0);
 });

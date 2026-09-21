@@ -107,3 +107,13 @@ export type Pill = { bd: string; bg: string; fg: string };
 export function pill(on: boolean): Pill {
   return on ? { bd: C.limeBd, bg: C.limeBg14, fg: C.lime } : { bd: C.hair18, bg: "transparent", fg: C.dim };
 }
+
+/** Acento de la matriz nivel × horizonte (el `Grid` del prototipo, store.js): violeta en Ask, lima en Trade (F3). */
+export type GridAccent = { fg: string; on: string; soft: string };
+export const GRID_ACCENT: Record<"ask" | "trade", GridAccent> = {
+  ask: { fg: C.vio, on: "rgba(155,123,255,0.45)", soft: "rgba(155,123,255,0.09)" },
+  trade: { fg: C.lime, on: "rgba(200,240,58,0.45)", soft: "rgba(200,240,58,0.09)" },
+};
+/** Punto de una celda con reads previas y regla de la fila del mark (lima en ambas pestañas, como el prototipo). */
+export const GRID_DOT = "rgba(245,246,255,0.35)";
+export const GRID_MARK_RULE = "rgba(200,240,58,0.35)";

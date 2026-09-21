@@ -51,3 +51,31 @@ export function recordLabel(r: { reads: number; resolved: number; right: number;
   if (r.resolved === 0 || r.brierAvg === null) return "No resolved reads yet";
   return `${r.right}/${r.resolved} right · Brier ${r.brierAvg.toFixed(2)}`;
 }
+
+// Hoja de la matriz (F2-matrix): steppers, distancia y puntos de reads previas. Puro.
+
+/** «+» sube un nivel (hacia +2.5 %), «−» baja; tope en los extremos. La lista va de +2.5 % a −1.0 %, por eso i − dir. */
+export function stepLevel(levelBps: number, dir: 1 | -1): LevelBps {
+  const i = (LEVELS_BPS as readonly number[]).indexOf(levelBps);
+  if (i < 0) return LEVELS_BPS[0];
+  return LEVELS_BPS[Math.min(LEVELS_BPS.length - 1, Math.max(0, i - dir))];
+}
+
+/** «+» alarga el horizonte, «−» lo acorta; tope en los extremos. */
+export function stepHorizon(horizonMin: number, dir: 1 | -1): HorizonMin {
+  const i = (HORIZONS_MIN as readonly number[]).indexOf(horizonMin);
+  if (i < 0) return HORIZONS_MIN[0];
+  return HORIZONS_MIN[Math.min(HORIZONS_MIN.length - 1, Math.max(0, i + dir))];
+}
+
+/** «+1.0% FROM MARK»: la línea mono de la hoja (selDistance del prototipo). */
+export const distanceLabel = (levelBps: number): string => `${levelLabel(levelBps)} FROM MARK`;
+
+export const dotKey = (c: { levelBps: number; horizonMin: number }): string => `${c.levelBps}|${c.horizonMin}`;
+
+/** Celdas con reads que cuentan (open/right/wrong) para el punto de la matriz. */
+export function readDots(reads: readonly { levelBps: number; horizonMin: number; status: string }[]): Set<string> {
+  const out = new Set<string>();
+  for (const r of reads) if (r.status === "open" || r.status === "right" || r.status === "wrong") out.add(dotKey(r));
+  return out;
+}
