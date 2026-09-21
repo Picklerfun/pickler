@@ -1,0 +1,183 @@
+/* The wallet chooser. The first dialog in the product, so it takes its shapes from the control
+ * system rather than inventing any: the panel, the pill, the mono micro label. */
+
+.dialog {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+}
+
+.dialog::backdrop {
+  background: rgba(5, 6, 26, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-lg);
+  background: #080a22;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  margin: 0;
+  font: 500 10px/1.3 var(--pk-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-dim);
+  cursor: pointer;
+}
+
+.close:hover {
+  border-color: var(--pk-ink);
+  color: var(--pk-ink);
+}
+
+/* What the person was about to do, kept in front of them while they pick. */
+.held {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 13px;
+  border: 1px solid var(--pk-cyan-edge);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-cyan-tint);
+}
+
+.heldAction {
+  margin: 0;
+  font: 700 14px/1.35 var(--pk-font);
+  text-wrap: pretty;
+}
+
+.title {
+  margin: 0;
+  font: 700 22px/1.15 var(--pk-font-display);
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 0;
+  font: 400 13.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-dim);
+  text-wrap: pretty;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+  color: var(--pk-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--pk-duration) ease,
+    background var(--pk-duration) ease;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-strong);
+}
+
+.choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.choiceIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-cyan-ink);
+}
+
+.choiceText {
+  flex: 1;
+  min-width: 0;
+}
+
+.choiceTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 14.5px/1.2 var(--pk-font);
+}
+
+.lastUsed {
+  padding: 3px 7px;
+  border: 1px solid var(--pk-lime-edge);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime-tint);
+  font: 500 9px/1 var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-lime);
+}
+
+.choiceSub {
+  display: block;
+  margin-top: 4px;
+  font: 400 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-faint);
+  text-wrap: pretty;
+}
+
+.waiting,
+.foot {
+  margin: 0;
+  font: 400 12px/1.5 var(--pk-font);
+  color: var(--pk-ink-faint);
+  text-wrap: pretty;
+}
+
+.error {
+  margin: 0;
+  font: 500 12.5px/1.5 var(--pk-font);
+  color: var(--pk-pink-ink);
+}
+
+.foot {
+  padding-top: 12px;
+  border-top: 1px solid var(--pk-rule);
+}

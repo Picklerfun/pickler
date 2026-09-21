@@ -115,7 +115,7 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
               onClick={() =>
                 wallet.status === "connected"
                   ? follows.toggle(persona.handle)
-                  : void wallet.connect()
+                  : wallet.connect(`Ask ${persona.name} for a read`)
               }
               title={
                 wallet.status === "connected"

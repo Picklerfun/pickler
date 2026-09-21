@@ -32,19 +32,15 @@ export function ConnectGate({
       </span>
       <h2 className={styles.title}>{title}</h2>
       <p className={styles.lead}>{lead}</p>
-      {wallet.status === "unsupported" ? (
-        <p className={styles.note}>
-          No browser wallet on this device. Install one, then come back to this page.
-        </p>
-      ) : (
-        <Button
-          variant="primary"
-          onClick={() => void wallet.connect()}
-          disabled={wallet.status === "connecting"}
-        >
-          {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
-        </Button>
-      )}
+      {/* Offered even when nothing on this device can connect: the chooser names what is missing
+          and that the app account exists, which a dead button cannot do. */}
+      <Button
+        variant="primary"
+        onClick={() => wallet.connect(title)}
+        disabled={wallet.status === "connecting"}
+      >
+        {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
+      </Button>
       <p className={styles.note}>
         Connecting only reads your address. Building an agent is a different thing, and it lives
         behind a creator account.

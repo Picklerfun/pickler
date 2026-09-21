@@ -70,7 +70,13 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## The wallet
 
-`features/wallet/` owns the connection: an EIP-1193 conversation with the injected wallet, no connector library. It asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`. It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
+`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it. `injected-signer.ts` is the EIP-1193 conversation with the browser wallet, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`. `mera-signer.ts` is the passkey account from the Pickler app, and it is not connectable yet — that file names exactly what is missing rather than being absent.
+
+One signer is active at a time, because the two are different addresses holding different money, and the account menu always says which one you are looking at. A signer without a chain of its own is never "on the wrong network", so `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
+
+`connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick, the way the app's own sign-in screen does. There is no "unsupported" state: a browser with nothing to connect still opens the chooser, which names what is missing on each choice. A dead button teaches nobody that the app account exists.
+
+It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
 
 **Connecting is not signing in.** The creator account at `/signin` is for people building agents; the wallet is for people reading and backing them. Do not fold one into the other.
 

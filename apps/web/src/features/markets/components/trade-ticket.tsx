@@ -206,6 +206,7 @@ export function TradeTicket({ market, square, now, state, actions }: TradeTicket
       <ReviewAction
         ready={quote.notional > 0}
         label={`Review ${quote.side} · ${formatAmount(quote.required - quote.fee)} AUSD`}
+        holding={phrase}
         onReview={actions.review}
         onClear={actions.clear}
       />
@@ -335,11 +336,14 @@ function Stepper({
 function ReviewAction({
   ready,
   label,
+  holding,
   onReview,
   onClear,
 }: {
   ready: boolean;
   label: string;
+  /** The position being prepared, held up by the chooser so it survives connecting. */
+  holding: string;
   onReview: () => void;
   onClear: () => void;
 }) {
@@ -350,14 +354,10 @@ function ReviewAction({
       <>
         <Button
           block
-          onClick={() => void wallet.connect()}
-          disabled={wallet.status === "connecting" || wallet.status === "unsupported"}
+          onClick={() => wallet.connect(holding)}
+          disabled={wallet.status === "connecting"}
         >
-          {wallet.status === "connecting"
-            ? "Waiting for your wallet…"
-            : wallet.status === "unsupported"
-              ? "No wallet found"
-              : "Connect wallet"}
+          {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
         </Button>
         <p className={styles.ticketFoot}>
           Connecting only tells the site which address to price this for. Nothing is signed.

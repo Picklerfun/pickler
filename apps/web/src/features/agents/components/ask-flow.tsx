@@ -184,7 +184,7 @@ export function AskFlow({ persona }: { persona: AgentPersonaDto }) {
               <Button
                 variant="secondary"
                 className={styles.askConnect}
-                onClick={() => void wallet.connect()}
+                onClick={() => wallet.connect(`Ask ${persona.name} about ${market}`)}
                 disabled={wallet.status === "connecting"}
               >
                 {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
