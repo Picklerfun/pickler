@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AccountState, accountAddress } from "../account";
-import { type RefreshErrors, refreshOk, type Screen, updatedLabel } from "../store";
+import { REFRESHABLE, type RefreshErrors, refreshOk, type Screen, updatedLabel } from "../store";
 
 export type RefreshSeal = {
   updatedAt: Partial<Record<Screen, number>>;
@@ -11,43 +11,49 @@ export type RefreshSeal = {
   failedOn: (screen: Screen) => boolean;
 };
 
-/** Sello UPDATED / COULDN'T REFRESH por pantalla (spec mobile-loading D5), fuera del Shell: lo consume cada Page. */
+/** Sello UPDATED / COULDN'T REFRESH por pantalla (spec mobile-loading D5), fuera del Shell: lo consume cada Page.
+ *  `onRefreshDone` sólo cuenta el jalón (contador + pantalla); el veredicto se decide en un efecto keyed en ese
+ *  contador, que corre después del render con los errores frescos de ese render — igual que el Shell original
+ *  evitaba leer `errorsRef` con datos viejos cuando el `finally` de un `await` corre antes de que React aplique
+ *  los `setXError` (P4 de mobile-loading). */
 export function useRefreshSeal({ account, errors, hasData }: { account: AccountState; errors: RefreshErrors; hasData: (screen: Screen) => boolean }): RefreshSeal {
   const [updatedAt, setUpdatedAt] = useState<Partial<Record<Screen, number>>>({});
   const [failed, setFailed] = useState<Screen | null>(null);
-  // Los errores del render actual, leídos al terminar el jalón sin depender de closures viejas.
-  const errorsRef = useRef(errors);
-  errorsRef.current = errors;
-  const hasDataRef = useRef(hasData);
-  hasDataRef.current = hasData;
+  const [done, setDone] = useState<{ n: number; screen: Screen | null }>({ n: 0, screen: null });
 
-  const onRefreshDone = useCallback((screen: Screen) => {
-    if (refreshOk(screen, errorsRef.current)) { setUpdatedAt((u) => ({ ...u, [screen]: Date.now() })); setFailed(null); return; }
-    setFailed(screen);
-  }, []);
+  // Page llama esto al terminar el jalón; sólo anota qué pantalla y cuenta. El veredicto vive en el efecto de abajo.
+  const onRefreshDone = useCallback((screen: Screen) => setDone((d) => ({ n: d.n + 1, screen })), []);
+
   useEffect(() => {
-    if (failed === null) return;
+    if (done.n === 0 || done.screen === null) return;
+    const screen = done.screen;
+    if (refreshOk(screen, errors)) { setUpdatedAt((u) => ({ ...u, [screen]: Date.now() })); setFailed(null); return; }
+    setFailed(screen);
     const t = setTimeout(() => setFailed(null), 3000);
     return () => clearTimeout(t);
-  }, [failed]);
+  }, [done]);
 
-  // Sello inicial: la primera vez que una pantalla tiene su dato principal (P5 de mobile-loading). Page lo pide por pantalla.
+  // Sello inicial: la primera vez que una pantalla tiene su dato principal (P5 de mobile-loading), calculado por
+  // el propio hook (no por Page vía `markInitial` en render, que actualizaba estado durante el render de Page).
   const seen = useRef(new Set<Screen>());
-  const markInitial = useCallback((screen: Screen) => {
-    if (seen.current.has(screen) || !hasDataRef.current(screen)) return;
-    seen.current.add(screen);
-    setUpdatedAt((u) => (u[screen] === undefined ? { ...u, [screen]: Date.now() } : u));
-  }, []);
+  const has = REFRESHABLE.map((s) => hasData(s));
+  useEffect(() => {
+    REFRESHABLE.forEach((s, i) => {
+      if (has[i] && !seen.current.has(s)) {
+        seen.current.add(s);
+        setUpdatedAt((u) => (u[s] === undefined ? { ...u, [s]: Date.now() } : u));
+      }
+    });
+  }, [has[0], has[1], has[2]]);
 
   // Otra cuenta = otro sello (I1 de la revisión final de mobile-loading).
   const address = accountAddress(account);
   useEffect(() => { setUpdatedAt({}); setFailed(null); seen.current.clear(); }, [address]);
 
   const labelFor = useCallback((screen: Screen) => {
-    markInitial(screen);
     const ts = updatedAt[screen];
     return ts === undefined ? null : updatedLabel(ts);
-  }, [updatedAt, markInitial]);
+  }, [updatedAt]);
   const failedOn = useCallback((screen: Screen) => failed === screen, [failed]);
 
   return { updatedAt, failed, onRefreshDone, labelFor, failedOn };

@@ -57,6 +57,8 @@ export function isComingSoonTab(screen: Screen): screen is ComingSoonTab {
 export const GATED: readonly Screen[] = ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw"];
 export const CAN_BACK: readonly Screen[] = ["market", "perpsFunds", "deposit", "withdraw", "signin"];
 export const SHOW_TABS: readonly Screen[] = ["markets", "launchpad", "activity", "portfolio", "wallet"];
+/** Pantallas con pull-to-refresh y sello (mobile-loading D5). */
+export const REFRESHABLE: readonly Screen[] = ["wallet", "markets", "market"];
 /** Qué tab se ilumina en cada pantalla (D4). */
 export const ROOT_OF: Record<Screen, Screen> = {
   markets: "markets", market: "markets", perpsFunds: "markets",
