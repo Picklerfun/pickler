@@ -96,7 +96,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 232/232 esperado (31 suites)
+npm test          # jest, 239/239 esperado (32 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 

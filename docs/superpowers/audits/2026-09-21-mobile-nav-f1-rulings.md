@@ -33,7 +33,7 @@ Por task; los comandos y salidas son los de los reportes de cada implementador
 
 | Task | Evidencia |
 |---|---|
-| **1** — Dependencias nativas (`react-native-screens`, `gesture-handler`, `reanimated`/`worklets`, `expo-haptics`, `@react-navigation/*`), `GestureHandlerRootView`, rebuild (`0931f78`) | Versiones (`grep` en `package.json`): `"@react-navigation/bottom-tabs": "^7.19.2"`, `"@react-navigation/native": "^7.4.1"`, `"@react-navigation/native-stack": "^7.19.2"`, `"expo-haptics": "~57.0.3"`, `"react-native-gesture-handler": "~2.32.0"`, `"react-native-reanimated": "4.5.1"`, `"react-native-screens": "~4.26.0"`, `"react-native-worklets": "0.10.1"` — todas coinciden con lo esperado. `grep -c "RNScreens\|RNGestureHandler\|RNReanimated\|RNWorklets" ios/Podfile.lock` → **33** ocurrencias, con `:path` a `node_modules` y checksum cada una. `run.log` tail: `› Build Succeeded`, `⚠️ ignoring duplicate libraries: '-lc++'`, `› 0 error(s), and 1 warning(s)`, `Installing on iPhone 17 Pro`, `Opening on iPhone 17 Pro (fun.pickler.app)` — sin ningún error de reanimated/worklets. `npx tsc --noEmit` → `TSC-OK`; `npm test` → `Test Suites: 31 passed, 31 total` / `Tests: 242 passed, 242 total` (antes y después de tocar `App.tsx`). Screenshot `t1-boot.png` mirado: app abrió directo en Wallet (AUSD 29.00, sello `UPDATED 14:08:38`, movimientos), mismo aspecto que build 7. `expo-doctor`: 2 fallos preexistentes (duplicado de `expo-constants`, drift de versión en `expo`/`expo-build-properties`/`@types/react`/`@types/jest`), ninguno relacionado con las 7 dependencias nuevas (confirmado con `git diff package.json`). |
+| **1** — Dependencias nativas (`react-native-screens`, `gesture-handler`, `reanimated`/`worklets`, `expo-haptics`, `@react-navigation/*`), `GestureHandlerRootView`, rebuild (`0931f78`) | Versiones (`grep` en `package.json`): `"@react-navigation/bottom-tabs": "^7.19.2"`, `"@react-navigation/native": "^7.4.1"`, `"@react-navigation/native-stack": "^7.19.2"`, `"expo-haptics": "~57.0.3"`, `"react-native-gesture-handler": "~2.32.0"`, `"react-native-reanimated": "4.5.1"`, `"react-native-screens": "~4.26.0"`, `"react-native-worklets": "0.10.1"` — todas coinciden con lo esperado. `grep -c "RNScreens\|RNGestureHandler\|RNReanimated\|RNWorklets" ios/Podfile.lock` → **33** ocurrencias, con `:path` a `node_modules` y checksum cada una. `run.log` tail: `› Build Succeeded`, `⚠️ ignoring duplicate libraries: '-lc++'`, `› 0 error(s), and 1 warning(s)`, `Installing on iPhone 17 Pro`, `Opening on iPhone 17 Pro (fun.pickler.app)` — sin ningún error de reanimated/worklets. `npx tsc --noEmit` → `TSC-OK`; `npm test` → `Test Suites: 31 passed, 31 total` / `Tests: 242 passed, 242 total` (antes y después de tocar `App.tsx`). Screenshot `t1-boot.png` mirado: app abrió directo en Wallet (AUSD 29.00, sello `UPDATED 14:08:38`, movimientos), mismo aspecto que build 7. `expo-doctor`: 2 fallos preexistentes (duplicado de `expo-constants`, drift de versión en `expo`/`expo-build-properties`/`@types/react`/`@types/jest`), ninguno relacionado con las 7 paquetes nuevos + `react-native-worklets` (peer de reanimated 4) = 8 entradas en `package.json` (confirmado con `git diff package.json`). |
 | **2** — Tabla de rutas y gate puros (`routes.ts`, `14a4777`) | RED: `npx jest __tests__/routes.test.ts` → `Cannot find module '../src/navigation/routes' from '__tests__/routes.test.ts'`. GREEN: `PASS __tests__/routes.test.ts` — 3/3 (`every screen except signin belongs to exactly one tab…(D1)`, `screenOfRoute maps route names back to screens…`, `gateTarget sends gated screens to signin…(D5)`). Suite completa: `Test Suites: 32 passed, 32 total` / `Tests: 245 passed, 245 total`; `TSC-OK`. +78 líneas (`routes.ts` +49, `routes.test.ts` +29). |
 | **3** — Adaptador sobre `navigationRef` (`ref.ts`, dentro de `f56d282`) | Implementado verbatim del brief; tipos de `routes.ts` (`RootParamList`, `TAB_OF`, `screenOfRoute`) verificados antes de escribir. **Cast de tipos: ninguno** — `navigationRef.navigate("Tabs", { screen: tab, params: { screen } } as never)` y `resetRoot({ index: 0, routes: [{ name: route }] })` compilaron a la primera. `npx tsc --noEmit` → sin salida (exit 0); `npm test` tail → `Test Suites: 32 passed, 32 total` / `Tests: 245 passed, 245 total`. |
 | **4** — `useRefreshSeal`/`useCurrentScreen` (dentro de `f56d282`, fixes `68fb17b`/`5cb9d32`) | Implementado verbatim; `accountAddress(AccountState)` (`src/account.ts:9`) acepta `status: "none"` sin adaptación; `navigationRef.addListener("state", read)` tipó limpio en `@react-navigation/native` 7.4.1. `npx tsc --noEmit` → sin salida; `npm test` tail → 32/245. **Fix round 1** (revisión): Finding 1 — `markInitial` hacía `setState` síncrono durante el render de `Page`; Finding 2 — `onRefreshDone` leía `errorsRef.current`, stale tras el `finally` de un `await`. Cambios: `REFRESHABLE` movido a `store.ts`; `onRefreshDone` sólo incrementa un contador; nuevo efecto sobre `[done]` decide `refreshOk` con los errores del render vigente; sello inicial movido a un efecto sobre `has = REFRESHABLE.map(hasData)`; `labelFor` puro. `npx tsc --noEmit` limpio; `npm test` → 32/245. Commit `68fb17b` (+30/−22, 2 archivos). **Fix round 2**: el sello inicial no reaparecía al cambiar entre dos cuentas con saldo ya cargado (`has[0]` no cambiaba). Efecto de reset por cuenta declarado **antes** del efecto de sello inicial (orden de declaración = orden de ejecución) y `address` agregado a las deps del sello inicial. `npx tsc --noEmit` limpio; `npm test` → 32/245. Commit `5cb9d32` (+11/−6, 1 archivo). |
@@ -184,6 +184,18 @@ las 5 presentes en este worktree.
 8. **Ruling R6** (Task 7) — un intento más con `xcrun simctl io <UDID> recordVideo` + swipe rápido
    (que sí hace pop con animación) y tap `market-BTC`, extrayendo frames con `ffmpeg`; si tampoco,
    quedan como residuales para el iPhone. **Coste si está mal:** ~10 min.
+9. **Ruling R7** (revisión final, una sola ola de fixes) — commit de test:
+   `__tests__/navigation.test.ts` nuevo, puro (StackRouter real de `@react-navigation/routers` —
+   semántica de `pop` en NAVIGATE — más la forma exacta de las órdenes de `ref.ts` contra un `ref`
+   simulado); `Navigator.tsx` gana `backBehavior="none"` en `Tabs.Navigator` (el default v7
+   `firstRoute` deja `canGoBack()` en `true` en la raíz de cualquier pestaña que no sea Markets, y
+   `goBackIfCan()` saltaría a MarketsTab); comentario de `TabBar.tsx` corregido — el `popToTop` al
+   tocar la pestaña enfocada lo hace el listener `tabPress` de native-stack, no bottom-tabs;
+   comentarios obsoletos en `ctx.ts` (`Shell` → `Page/Navigator`) y `comingSoonCopy.ts` (`Shell.TABS`
+   → `TabBar.TABS`); spec D1/D5 con la ruta `signin` en minúscula donde aparecía como nombre de ruta
+   y el detalle real de `finishSignin` (sin `popTo`, ver fila D5 arriba). `npm test` → 32 suites /
+   239 tests (232 + 7 nuevos); `tsc` limpio. **Coste si está mal:** una ronda más de fix; sin
+   alternativa de diseño (hallazgos de test/comentario/prop, no de comportamiento nuevo).
 
 ## 4. Correcciones a afirmaciones previas
 
@@ -191,6 +203,7 @@ las 5 presentes en este worktree.
 |---|---|---|---|
 | Spec, cabecera **Estado** | «diseño aprobado por Jesús…; sin plan todavía» | «F1 ejecutada…; rama `feat/mobile-nav` lista para merge local; F2 pendiente» | Esta task |
 | Spec D2 / Plan P3 | `navigate` a una ruta ya presente en la pila **vuelve** a ella (semántica v6 asumida) | **(F1)** react-navigation 7 apila salvo `{ pop: true }` explícito (`@react-navigation/routers` 7.6.4, `StackRouter.tsx:385-395`); el adaptador real usa `navigate("Tabs", { screen: tab, params: { screen, pop: true, initial?: false } }, { pop: true })` para pantallas de pestaña y un `switchTab(tab)` separado para la tab bar | Revisor de Task 6 (opus), verificado en el fuente por el fixer — Ruling R5 |
+| Spec D5 | Al terminar sign-in con `next`: `popTo("Tabs")` + `navigate(next, patch)` (semántica v6 asumida) | **(F1)** El código no usa `popTo`: `finishSignin` hace `resetRoot("Tabs")` sólo cuando `signin` es la raíz (arranque sin cuenta) y en todos los casos `nav(next ?? "wallet", patch)` → `navigate("Tabs", …, { pop: true })`, que saca `signin` si `Tabs` está debajo — misma corrección de semántica v7 que D2 (Ruling R5); sin `next` aterriza en `WalletTab/wallet` | Revisión final (F1), sobre el mismo hallazgo de Ruling R5 |
 | Spec D3 | `Screen`, `GATED`, `CAN_BACK`, `SHOW_TABS`, `ROOT_OF` se quedan en `store.ts` | **(F1)** Movidos a `src/navigation/screens.ts` (nuevo), re-exportados desde `store.ts`: el ciclo `store.ts ↔ navigation/routes.ts` generaba un `Require cycle` de Metro que tapaba la tab bar con un LogBox amarillo | Task 6 (log de Metro en el relanzamiento) |
 | Spec D7 | Sello con el mismo contrato simple que `mobile-loading` | **(F1)** Contador + efecto (no un booleano/timestamp directo); sello inicial en un efecto separado sobre `REFRESHABLE`, declarado **después** del efecto de reset por cuenta y con `address` en sus deps | Revisión de Task 3+4 — rulings R1–R3 |
 | Spec D8 | «Tocar la pestaña activa: `popToTop` de esa pila» sin matiz | **(F1)** Inalcanzable en la práctica bajo D9: la tab bar se oculta fuera de la raíz de cada pestaña, así que nunca hay un momento en que la pestaña activa esté visible y tocable estando en una pantalla no-raíz de esa misma pestaña. Comportamiento latente, no bug — el `navigation.emit("tabPress")` estándar sigue en `TabBar.tsx` | Task 6, fix round 1 (inquietud 1) |
@@ -227,10 +240,13 @@ Ordenados por peso:
 2. **`popToTop` por `tabPress` en la pestaña activa es inalcanzable con D9** (tab bar oculta fuera
    de raíz): decisión de producto para el checkpoint — dejarlo como está (código presente, sin
    efecto práctico) o quitar la mención de D8 del spec.
-3. **Rama `[Tabs, signin]` con `pop: true` del RootStack sacando `signin` sin `resetRoot`** no se
-   produce en ningún flujo actual (sign out siempre resetea; el arranque sin cuenta pone `signin`
-   de raíz); cubierta por código, no por humo. Un test de `StackRouter.getStateForAction` la
-   cubriría explícitamente (sugerencia de test unitario, no implementada en F1).
+3. **Rama `[Tabs, signin]` con `pop: true` del RootStack sacando `signin` sin `resetRoot`**: en
+   producto sólo se alcanza vía DevControls en dev (`GROUPS` → Wallet → «Wallet access», con
+   `Tabs` ya montado); sign out siempre resetea y el arranque sin cuenta pone `signin` de raíz, así
+   que un usuario real no la produce. **(F1, revisión final)** Ya no es sólo código sin cubrir: la
+   rama tiene test unitario explícito en `__tests__/navigation.test.ts`
+   (`navigate with pop returns to the existing route (v7)`, sobre el `StackRouter` real de
+   `@react-navigation/routers`).
 4. **`gateTarget` no lleva el `patch` del gate**: `requireAccount` lo enhebra por separado en
    `App.tsx`/`store.ts`; funciona, pero el tipo de `gateTarget` no lo documenta (nota del revisor
    de Task 2, prevista por el plan).
@@ -242,7 +258,8 @@ Ordenados por peso:
    gesto.
 7. **`expo-doctor` con 2 fallos preexistentes**: duplicado de `expo-constants` y drift de versión
    en `expo`/`expo-build-properties`/`expo-constants`/`@types/react`/`@types/jest` — ninguno
-   relacionado con las 7 dependencias de Task 1; deuda técnica preexistente a esta fase.
+   relacionado con las dependencias de Task 1 (7 paquetes + `react-native-worklets`, peer de
+   reanimated 4, = 8 entradas en `package.json`); deuda técnica preexistente a esta fase.
 8. **`signinIsRoot()` devuelve `false` antes de `isReady()`**: sólo se usa en `finishSignin`
    (post-mount), así que no afecta ningún flujo real; anotado por si algún día se llama antes.
 9. **Comentario de `TabBar` atribuye `popToTop` a `bottom-tabs`**, siendo en realidad
@@ -257,6 +274,22 @@ Ordenados por peso:
     volvió a ocurrir tras cambiar a un patrón de captura secuencial (sin `&` dentro del loop).
 12. **Android sin verificar**: el spec excluye Android explícitamente de F1 (sin build); todo lo de
     este audit es iOS/simulador únicamente.
+
+**Parked en la revisión final (F1), sin implementar — a F2 o más adelante:**
+
+13. **Tab bar sin animación al hacer push/pop** (distinto del ítem 6, que es al *reaparecer* tras
+    volver a una raíz): tampoco anima al ocultarse/mostrarse durante el push/pop de la pila de una
+    pestaña (D9, `tabBarStyle` calculado por ruta enfocada). Queda para F2 junto con la pastilla
+    arrastrable (D11).
+14. **Perf con varias pilas montadas a la vez** (una por pestaña, D1): revisar si conviene
+    `freezeOnBlur`/`enableFreeze` (react-native-screens) cuando aparezcan síntomas reales; no hay
+    evidencia de que haga falta en F1.
+15. **`key={S.perpsMarketId}` en `TradeTab`** (`src/screens/market.tsx:70`): sugerido para forzar
+    remount al cambiar de mercado sin salir de la pantalla; fuera de alcance de F1 (no hay flujo que
+    cambie `perpsMarketId` sin navegar).
+16. **Latch `useRef` en `App.tsx`** (`initial = useRef<"Tabs" | "signin" | null>(null)`, línea 84):
+    decide la ruta inicial una sola vez; revisar si hace falta invalidarlo en algún flujo futuro de
+    cuentas múltiples.
 
 **Rollback**: F1 no tocó `services/reads`, migraciones, funciones ni cuentas de producto (sólo
 lecturas y una firma de sign-in contra testnet durante las pruebas); no hay nada que revertir en
