@@ -34,6 +34,25 @@ library PicklerCurveMath {
         return newX >= x ? 0 : x - newX;
     }
 
+    /// @notice Gross quote returned for tokens sold back, before the sell fee is deducted.
+    function quoteOutForTokensIn(CurveConfig memory config, uint256 netSold, uint256 tokensIn)
+        internal
+        pure
+        returns (uint256 quoteGrossOut)
+    {
+        if (tokensIn == 0) {
+            return 0;
+        }
+
+        uint256 k = _invariant(config);
+        uint256 x = config.virtualTokenReserve - netSold;
+        uint256 q = k / x;
+
+        uint256 newQ = _ceilDiv(k, x + tokensIn);
+
+        return newQ >= q ? 0 : q - newQ;
+    }
+
     function _invariant(CurveConfig memory config) private pure returns (uint256) {
         return config.virtualTokenReserve * config.virtualQuoteReserve;
     }
