@@ -19,7 +19,19 @@ export async function apiFetch(request: Request): Promise<Response> {
     const source = new URL(request.url);
     target.pathname = source.pathname;
     target.search = source.search;
-    return fetch(new Request(target, request), { cache: "no-store" });
+    const response = await fetch(new Request(target, request), { cache: "no-store" });
+    /* fetch negotiates compression with the local worker and hands back a decoded body, but the
+       headers still describe the encoded one. Passing those on verbatim tells the browser to
+       gunzip plain JSON, which fails the request before any handler sees it. The body we are
+       returning is the decoded one, so the headers that measured the encoded one have to go. */
+    const headers = new Headers(response.headers);
+    headers.delete("content-encoding");
+    headers.delete("content-length");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   }
   const { env } = await getCloudflareContext({ async: true });
   const binding = (env as unknown as { API?: ApiBinding }).API;
