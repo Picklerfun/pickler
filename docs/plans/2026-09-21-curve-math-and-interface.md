@@ -16,17 +16,17 @@
 
 ## File Structure
 
-| File                                              | Responsibility                                                     |
-| ------------------------------------------------- | ------------------------------------------------------------------ |
-| `contracts/src/libraries/PicklerCurveMath.sol`    | All curve arithmetic. Pure, no storage, no external calls.         |
-| `contracts/test/PicklerCurveMath.t.sol`           | Unit and fuzz tests for each direction and the derivation.         |
-| `contracts/test/PicklerCurveMathInvariant.t.sol`  | Invariants over random operation sequences.                        |
-| `contracts/test/CurveVectors.t.sol`               | Writes the shared parity fixture.                                  |
-| `contracts/script/DerivePreset.s.sol`             | Emits a preset descriptor from chosen inputs; proves continuity.   |
-| `packages/core/src/features/launch/curve-math.ts` | TypeScript port used only for UI preview.                          |
-| `packages/core/test/curve-math.test.ts`           | Parity against the Solidity fixture.                               |
-| `packages/core/test/fixtures/curve-vectors.json`  | Generated fixture, committed.                                      |
-| `scripts/generate-abi.mjs`                        | Foundry artifacts → `packages/chain/src/abi/`.                     |
+| File                                              | Responsibility                                                   |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| `contracts/src/libraries/PicklerCurveMath.sol`    | All curve arithmetic. Pure, no storage, no external calls.       |
+| `contracts/test/PicklerCurveMath.t.sol`           | Unit and fuzz tests for each direction and the derivation.       |
+| `contracts/test/PicklerCurveMathInvariant.t.sol`  | Invariants over random operation sequences.                      |
+| `contracts/test/CurveVectors.t.sol`               | Writes the shared parity fixture.                                |
+| `contracts/script/DerivePreset.s.sol`             | Emits a preset descriptor from chosen inputs; proves continuity. |
+| `packages/core/src/features/launch/curve-math.ts` | TypeScript port used only for UI preview.                        |
+| `packages/core/test/curve-math.test.ts`           | Parity against the Solidity fixture.                             |
+| `packages/core/test/fixtures/curve-vectors.json`  | Generated fixture, committed.                                    |
+| `scripts/generate-abi.mjs`                        | Foundry artifacts → `packages/chain/src/abi/`.                   |
 
 ## The math
 

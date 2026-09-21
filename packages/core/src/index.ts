@@ -5,6 +5,12 @@ export type { Clock } from "./ports/clock.js";
 export { createGetHealth } from "./application/get-health.js";
 export { DataSourceUnavailableError } from "./shared/errors.js";
 
+export {
+  remainingTokens,
+  tokensOutForQuoteIn,
+  type CurveConfig,
+} from "./features/launch/domain/curve-math.js";
+
 export * from "./features/landing/domain/landing.js";
 export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
 export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";

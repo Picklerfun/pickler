@@ -47,6 +47,10 @@ library PicklerCurveMath {
     }
 
     /// @notice Tokens delivered for a net quote amount, after fees have already been deducted.
+    /// @dev The result is NOT capped to the remaining inventory; near the end of the curve it
+    ///      can exceed it. The caller must compare against `remainingTokens` and revert, then
+    ///      offer `quoteInForTokensOut` for the remainder. Clamping here instead would silently
+    ///      sell the last tokens at a price the curve never quoted.
     function tokensOutForQuoteIn(CurveConfig memory config, uint256 netSold, uint256 quoteNetIn)
         internal
         pure
