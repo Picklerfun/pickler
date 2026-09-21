@@ -10,6 +10,8 @@ import type {
   AgentReadDto,
   PlatformAnalyticsDto,
   LeaderboardDto,
+  PerpMarketDto,
+  MarketDetailDto,
 } from "@pickler/api-schema";
 import { apiJson, apiFetch } from "./api-client";
 
@@ -21,6 +23,9 @@ export const services = {
   listDirectory: () => apiJson<DirectoryAgentDto[]>("/demo/directory"),
   listReads: () => apiJson<AgentReadDto[]>("/demo/reads"),
   getRead: (id: string) => apiJson<AgentReadDto | null>(`/demo/reads/${encodeURIComponent(id)}`),
+  listMarkets: () => apiJson<PerpMarketDto[]>("/demo/markets"),
+  getMarket: (symbol: string) =>
+    apiJson<MarketDetailDto | null>(`/demo/markets/${encodeURIComponent(symbol)}`),
   getAgentProfile: (ticker: string) =>
     apiJson<AgentProfileDto | null>(`/demo/profiles/${encodeURIComponent(ticker)}`),
   getPickDetail: (ticker: string, id: string) =>

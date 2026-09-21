@@ -141,6 +141,14 @@
   color: var(--pk-ink-faint);
 }
 
+/* The same badge, lit: a section that exists and has just arrived. */
+.badge {
+  composes: soon;
+  border-color: var(--pk-lime-edge);
+  background: var(--pk-lime-tint);
+  color: var(--pk-lime);
+}
+
 /* Connect sits beside Join, quieter: one of them is the page's action and the other is a utility. */
 .connect {
   display: flex;
