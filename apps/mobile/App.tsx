@@ -2,8 +2,9 @@ import { ChakraPetch_600SemiBold, ChakraPetch_700Bold } from "@expo-google-fonts
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { ActivityIndicator, StatusBar, View } from "react-native";
+import { StatusBar, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { AppCtx } from "./src/ctx";
 import { useAccount } from "./src/hooks/useAccount";
@@ -19,6 +20,10 @@ import { C } from "./src/ui/theme";
 
 const NONE = { status: "none" } as const;
 const PERPL_SCREENS: readonly Screen[] = ["markets", "market", "perpsFunds"];
+
+// Splash nativo (spec mobile-loading D7): se queda hasta que la cuenta local se resolvió; 2 s de tope por si el almacenamiento no responde.
+void SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ fade: true, duration: 200 });
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -60,6 +65,12 @@ export default function App() {
     booted.current = true;
     boot(hasAccount);
   }, [account, hasAccount, boot]);
+  const ready = fontsLoaded && account !== null;
+  useEffect(() => {
+    if (ready) { void SplashScreen.hideAsync(); return; }
+    const t = setTimeout(() => { void SplashScreen.hideAsync(); }, 2000);
+    return () => clearTimeout(t);
+  }, [ready]);
   const perpsActive = PERPL_SCREENS.includes(store.S.screen);
   const readsActive = store.S.screen === "market" && store.S.marketTab !== "trade";
   const { setActive } = perpl;
@@ -67,13 +78,7 @@ export default function App() {
   useEffect(() => { setActive(perpsActive); }, [perpsActive, setActive]);
   useEffect(() => { setReadsActive(readsActive); }, [readsActive, setReadsActive]);
 
-  if (!fontsLoaded || account === null) {
-    return (
-      <View style={{ flex: 1, backgroundColor: C.bgBottom, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={C.lime} />
-      </View>
-    );
-  }
+  if (!ready) return null; // el splash nativo sigue en pantalla (P9)
 
   const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };
 

@@ -40,6 +40,7 @@ const config: ExpoConfig = {
     ],
     ["expo-build-properties", { ios: { deploymentTarget: "18.0" } }],
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
+    ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#05061A" }],
   ],
   extra: { rpId, monadscanKey, perplRest, perplWs, readsUrl },
 };
