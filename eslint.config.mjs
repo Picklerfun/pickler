@@ -22,6 +22,8 @@ export default defineConfig([
     "**/next-env.d.ts",
     "contracts/out/**",
     "contracts/cache/**",
+    // Vendored Solidity dependencies; they carry their own JavaScript tooling.
+    "contracts/lib/**",
   ]),
   {
     files: [

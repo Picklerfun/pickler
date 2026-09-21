@@ -7,5 +7,7 @@ export interface ContractDeployment {
 
 export * from "./networks";
 
+export * from "./deployments.js";
+
 /** Generated from Foundry artifacts by scripts/generate-abi.mjs. Never hand-edited. */
 export * from "./abi/index.js";

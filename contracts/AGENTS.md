@@ -10,7 +10,9 @@ Implemented: `src/libraries/PicklerCurveMath.sol`, a pure library holding all cu
 
 Not implemented: the token, factory, bonding curve, graduation adapter, liquidity locker and fee escrow; networks and deployment scripts. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
 
-Dependencies are git submodules pinned by commit in `foundry.lock`: forge-std `v1.11.0`. A fresh clone needs `git submodule update --init --recursive` before `forge build`.
+Also implemented: `test/fork/`, the Uniswap V4 spike (LP-02). These tests fork Monad testnet at a pinned block and run only when `MONAD_TESTNET_RPC_URL` is set, so `npm run contracts:test` stays offline; run them with `npm run contracts:test:fork`. Read [the spike findings](../docs/market/uniswap-v4-spike.md) before touching graduation: there is no official Uniswap V4 on Monad testnet, and the Monad-maintained one is a different build from mainnet's.
+
+Dependencies are git submodules pinned by commit in `foundry.lock`: forge-std `v1.11.0`, and v4-periphery `3231810e` with v4-core, permit2 and solmate nested under it, at the commits the Monad testnet deployment was built from. Remappings live in `remappings.txt`. A fresh clone needs `git submodule update --init --recursive` before `forge build`.
 
 Contracts currently carry `SPDX-License-Identifier: UNLICENSED` as an explicit placeholder. Choose a real license before anything is deployed.
 
@@ -32,8 +34,11 @@ From the repository root, with Foundry installed:
 
 ```sh
 npm run contracts:build
-npm run contracts:test
-npm run contracts:abi # Regenerate public ABIs into packages/chain
+npm run contracts:test      # Offline: unit, fuzz and invariant suites
+npm run contracts:test:fork # Requires MONAD_TESTNET_RPC_URL; forks a real chain
+npm run contracts:abi       # Regenerate public ABIs into packages/chain
 ```
+
+If a test suite disappears from a run rather than failing, suspect a stale build cache and re-run with `forge build --root contracts --force`. A vanished suite reports as a pass, so check the suite count, not just the colour.
 
 For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
