@@ -10,7 +10,7 @@ import { ENABLE_STEPS } from "../perpl/enable";
 import { change24h, formatPnl, formatPrice, formatSize, liquidationPrice, lockedCollateral, positionPnl, unrealisedPnl } from "../perpl/orders";
 import type { Position } from "../perpl/ws";
 import { marketEntryTab } from "../store";
-import { Btn, Card, Chip, EmptyPanel, KV, Page, T, Tag, Touch, TouchCard, Warn } from "../ui/primitives";
+import { Btn, Card, Chip, EmptyPanel, KV, Page, Reveal, Skeleton, T, Tag, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import { describeError } from "../wallet/wallet";
 import { OrderResultCard, type OrderResult } from "./market";
@@ -32,26 +32,30 @@ function MarketsList({ perpl, nav, hasKey }: Pick<AppCtx, "perpl" | "nav"> & { h
           <Chip label="Retry" onPress={() => { void perpl.refreshContext(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: "flex-start" }} accessibilityLabel="retry-markets" />
         </Warn>
       ) : null}
-      {perpl.context === null && !perpl.contextError ? <T w={400} s={12} lh={1.4} color={C.faint}>Loading markets…</T> : null}
-      {(perpl.context?.markets ?? []).map((m) => {
-        const chg = change24h(m.mark, m.prev);
-        return (
-          <TouchCard
-            key={m.id} pad={13} accessibilityLabel={`market-${m.symbol}`}
-            onPress={() => nav("market", { perpsMarketId: m.id, perpsSide: "long", marketTab: marketEntryTab(hasKey) })}
-            style={{ flexDirection: "row", alignItems: "center", gap: 11 }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <T w={700} s={14} lh={1.2}>{m.symbol}</T>
-              <T w={400} s={11} lh={1.2} color={C.faint} style={{ marginTop: 3 }}>{m.name} · up to {m.maxLeverage}x</T>
-            </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <T w={700} s={13} lh={1} mono>{formatPrice(m.mark, m.priceDecimals)}</T>
-              <T w={500} s={10.5} lh={1} mono color={chg >= 0 ? C.up : C.down} style={{ marginTop: 4 }}>{chg >= 0 ? "+" : ""}{(chg * 100).toFixed(2)}%</T>
-            </View>
-          </TouchCard>
-        );
-      })}
+      {perpl.context === null && !perpl.contextError ? <>{Array.from({ length: 6 }, (_, i) => <Skeleton.Row key={i} />)}</> : null}
+      {perpl.context !== null ? (
+        <Reveal style={{ gap: 7 }}>
+          {(perpl.context.markets).map((m) => {
+            const chg = change24h(m.mark, m.prev);
+            return (
+              <TouchCard
+                key={m.id} pad={13} accessibilityLabel={`market-${m.symbol}`}
+                onPress={() => nav("market", { perpsMarketId: m.id, perpsSide: "long", marketTab: marketEntryTab(hasKey) })}
+                style={{ flexDirection: "row", alignItems: "center", gap: 11 }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <T w={700} s={14} lh={1.2}>{m.symbol}</T>
+                  <T w={400} s={11} lh={1.2} color={C.faint} style={{ marginTop: 3 }}>{m.name} · up to {m.maxLeverage}x</T>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <T w={700} s={13} lh={1} mono>{formatPrice(m.mark, m.priceDecimals)}</T>
+                  <T w={500} s={10.5} lh={1} mono color={chg >= 0 ? C.up : C.down} style={{ marginTop: 4 }}>{chg >= 0 ? "+" : ""}{(chg * 100).toFixed(2)}%</T>
+                </View>
+              </TouchCard>
+            );
+          })}
+        </Reveal>
+      ) : null}
     </View>
   );
 }
@@ -200,7 +204,9 @@ export function MarketsScreen(ctx: AppCtx) {
           <Tag>TRADING · AUSD</Tag>
           <Chip label={conn.label} mono s={9.5} py={4} px={8} fg={conn.fg} bd={conn.bd} />
         </View>
-        <T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{formatAusd(b)}</T>
+        {live === null && perpl.lastBalance === null
+          ? <Skeleton h={30} w="45%" style={{ marginTop: 6 }} />
+          : <Reveal><T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{formatAusd(b)}</T></Reveal>}
         <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? "" : " · last seen"}</T>
         {upnl !== null ? <T w={500} s={10.5} lh={1.4} mono color={upnl <= -10_000n ? C.down : C.up} style={{ marginTop: 3 }}>{formatPnl(upnl)} unrealised PnL</T> : null}
       </Card>
@@ -231,12 +237,18 @@ export function MarketsScreen(ctx: AppCtx) {
 
       <View style={{ gap: 7 }}>
         <Tag s={10}>POSITIONS</Tag>
-        {positions.length === 0 ? (
-          <EmptyPanel><T w={400} s={12.5} lh={1.45} color={C.dim} style={{ textAlign: "center" }}>No open positions. Pick a market above.</T></EmptyPanel>
-        ) : positions.map((p) => {
-          const market = markets.find((m) => m.id === p.mkt);
-          return market ? <PositionRow key={p.pid} p={p} market={market} onClose={() => setClosing({ p, market, result: null })} /> : null;
-        })}
+        {live === null ? (
+          <Skeleton.Card lines={3} />
+        ) : positions.length === 0 ? (
+          <Reveal><EmptyPanel><T w={400} s={12.5} lh={1.45} color={C.dim} style={{ textAlign: "center" }}>No open positions. Pick a market above.</T></EmptyPanel></Reveal>
+        ) : (
+          <Reveal style={{ gap: 7 }}>
+            {positions.map((p) => {
+              const market = markets.find((m) => m.id === p.mkt);
+              return market ? <PositionRow key={p.pid} p={p} market={market} onClose={() => setClosing({ p, market, result: null })} /> : null;
+            })}
+          </Reveal>
+        )}
       </View>
     </Page>
   );

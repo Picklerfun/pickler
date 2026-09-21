@@ -5,7 +5,7 @@ import { formatUnits, type Address, type Hex } from "viem";
 import { accountAddress } from "../account";
 import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
-import { Btn, Card, Chip, KV, Page, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
+import { Btn, Card, Chip, KV, Page, Reveal, Skeleton, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import type { Movement } from "../wallet/explorer";
 import { describeError } from "../wallet/wallet";
@@ -52,15 +52,23 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
     <Page gap={11}>
       <Card pad={15}>
         <Tag>AVAILABLE · AUSD</Tag>
-        <T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{available}</T>
+        {treasury.balances === null && !treasury.rpcError
+          ? <Skeleton h={30} w="45%" style={{ marginTop: 6 }} />
+          : <Reveal><T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{available}</T></Reveal>}
         <T w={500} s={10} lh={1} mono color={C.faint} style={{ marginTop: 6 }}>{address ? shortHash(address) : "—"} · CONNECTED</T>
         <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{pending}</T>
         {perpl.state.status === "ready" ? (
-          <Touch onPress={() => nav("markets")} accessibilityLabel="in-trading">
-            <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}>
-              {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? "" : perpl.lastBalance !== null ? " · last seen" : ""} · Markets
-            </T>
-          </Touch>
+          perpl.live === null && perpl.lastBalance === null
+            ? <Skeleton h={12} w="62%" style={{ marginTop: 4 }} />
+            : (
+              <Reveal>
+                <Touch onPress={() => nav("markets")} accessibilityLabel="in-trading">
+                  <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}>
+                    {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? "" : perpl.lastBalance !== null ? " · last seen" : ""} · Markets
+                  </T>
+                </Touch>
+              </Reveal>
+            )
         ) : null}
       </Card>
 
@@ -75,9 +83,10 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
           <Chip label="Retry" onPress={() => { void treasury.refreshMovements(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: "flex-start" }} />
         </Warn>
       ) : null}
-      {treasury.movements === null && !treasury.movementsError ? <T w={400} s={12} lh={1.4} color={C.faint}>Loading movements…</T> : null}
+      {treasury.movements === null ? treasury.pending.map((m) => <MovementRow key={m.hash} m={m} />) : null}
+      {treasury.movements === null && !treasury.movementsError ? <><Skeleton.Row /><Skeleton.Row /><Skeleton.Row /></> : null}
       {treasury.movements !== null && rows.length === 0 ? <T w={400} s={12} lh={1.4} color={C.faint}>Nothing has ever arrived in this wallet.</T> : null}
-      {rows.map((m) => <MovementRow key={m.hash} m={m} />)}
+      {treasury.movements !== null && rows.length > 0 ? <Reveal style={{ gap: 11 }}>{rows.map((m) => <MovementRow key={m.hash} m={m} />)}</Reveal> : null}
 
       <Tag s={10} style={{ marginTop: 6 }}>TESTNET</Tag>
       <Card gap={7} bg="transparent">

@@ -4,7 +4,7 @@ import { formatUnits } from "viem";
 import { AUSD_DECIMALS, formatAusd, parseAusd } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import { formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
-import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, StatusCard, T, Tag, type Tone } from "../ui/primitives";
+import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleton, StatusCard, T, Tag, type Tone } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
 import { AgentsTab } from "./agents";
 import { AskTab } from "./ask";
@@ -165,14 +165,30 @@ function TradeTab({ S, set, perpl, nav }: AppCtx) {
   );
 }
 
+/** Market sin contexto de Perpl todavía (arranque en frío por push): pills + créditos + escalera en skeleton (spec D3, P2 del plan F1). */
+function MarketSkeleton() {
+  return (
+    <View>
+      <View style={{ flexDirection: "row", gap: 8, paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}>
+        <Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} /><Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} /><Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} />
+      </View>
+      <Page top={13} gap={11}>
+        <Skeleton.Card lines={1} />
+        {Array.from({ length: 5 }, (_, i) => <Skeleton.Row key={i} />)}
+      </Page>
+    </View>
+  );
+}
+
 export function MarketScreen(ctx: AppCtx) {
   const { S, set, perpl, nav } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId);
 
   if (!market) {
+    if (perpl.context === null && !perpl.contextError) return <MarketSkeleton />;
     return (
       <Page gap={11}>
-        <T w={400} s={13} color={C.faint}>{perpl.contextError ? `Couldn't load markets. ${perpl.contextError}` : "Loading market…"}</T>
+        <T w={400} s={13} color={C.faint}>{perpl.contextError ? `Couldn't load markets. ${perpl.contextError}` : "This market isn't listed on Perpl anymore."}</T>
         <Btn label="Back to Markets" onPress={() => nav("markets")} variant="lime" accessibilityLabel="back-to-markets" />
       </Page>
     );
