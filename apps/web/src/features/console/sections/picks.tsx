@@ -7,7 +7,11 @@ import styles from "../studio.module.css";
 
 /**
  * The market as the run saw it. The decision stores an id, not a question, so the human name is
- * recovered from the trace when a tool reported one and falls back to the id when it did not.
+ * recovered from the trace when a tool reported one.
+ *
+ * The name is only used when the object carrying it also carries this market's id. A run may touch
+ * several markets while it discovers one, and a heading that confidently names the wrong game is
+ * worse than the id it replaced.
  */
 function marketTitle(events: RunEvent[], marketId: string): string {
   let found = "";
@@ -20,10 +24,13 @@ function marketTitle(events: RunEvent[], marketId: string): string {
       return;
     }
     const record = value as Record<string, unknown>;
-    for (const key of ["question", "title", "name"]) {
-      if (typeof record[key] === "string" && (record[key] as string).length > 6) {
-        found = record[key] as string;
-        return;
+    const belongs = String(record.marketId ?? record.id ?? "") === marketId;
+    if (belongs) {
+      for (const key of ["question", "title", "name"]) {
+        if (typeof record[key] === "string" && (record[key] as string).length > 6) {
+          found = record[key] as string;
+          return;
+        }
       }
     }
     Object.values(record).forEach(visit);
