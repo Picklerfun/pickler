@@ -3,7 +3,7 @@ import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bol
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { StatusBar, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -11,12 +11,13 @@ import type { AppCtx } from "./src/ctx";
 import { useAccount } from "./src/hooks/useAccount";
 import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
+import { useRefreshSeal } from "./src/hooks/useRefreshSeal";
 import { useReads } from "./src/hooks/useReads";
 import { useTreasury } from "./src/hooks/useTreasury";
 import type { PushTarget } from "./src/reads/push";
 import { patchForPush } from "./src/reads/push";
 import { Shell } from "./src/Shell";
-import { type Screen, useAppStore } from "./src/store";
+import { type Screen, screenHasData, useAppStore } from "./src/store";
 import { C } from "./src/ui/theme";
 
 const NONE = { status: "none" } as const;
@@ -57,6 +58,13 @@ export default function App() {
   }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
+  const [controls, setControls] = useState(false); // Task 6 monta DevControls aquí; hasta entonces el Shell tiene el suyo
+  void controls;
+  const seal = useRefreshSeal({
+    account: account ?? NONE,
+    errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null },
+    hasData: (s) => screenHasData(s, { balances: treasury.balances, context: perpl.context }),
+  });
   const booted = useRef(false);
   const { boot } = store;
   // Una sola vez, cuando la cuenta deja de ser null: sin cuenta pasa por Sign in (D3).
@@ -81,7 +89,7 @@ export default function App() {
 
   if (!ready) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut, seal, setControls };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
