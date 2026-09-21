@@ -1,6 +1,6 @@
 import {
   afterSigninState, backState, bootState, CAN_BACK, canBackFor, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  isComingSoonTab, marketEntryTab, navState, requireAccountState, resetState, ROOT_OF, SHOW_TABS, signedOutState,
+  isComingSoonTab, marketEntryTab, navState, refreshOk, requireAccountState, resetState, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, updatedLabel,
 } from "../src/store";
 
 test("nav pushes the current screen and applies the patch", () => {
@@ -159,4 +159,30 @@ test("sign out lands on Sign in and clears the Ask state", () => {
 test("a market opens on Trade with a trading key and on Ask without one (gate)", () => {
   expect(marketEntryTab(true)).toBe("trade");
   expect(marketEntryTab(false)).toBe("ask");
+});
+
+test("updatedLabel formats a local 24h timestamp", () => {
+  const ts = new Date(2026, 8, 21, 8, 5, 9).getTime(); // local time on purpose: the label is what the user sees
+  expect(updatedLabel(ts)).toBe("UPDATED 08:05:09");
+  expect(updatedLabel(new Date(2026, 8, 21, 23, 59, 0).getTime())).toBe("UPDATED 23:59:00");
+});
+
+test("refreshOk needs at least one source of the screen to succeed", () => {
+  const ok = { rpcError: "", movementsError: "", contextError: "", listError: "" };
+  expect(refreshOk("wallet", ok)).toBe(true);
+  expect(refreshOk("wallet", { ...ok, rpcError: "x" })).toBe(true); // movements still refreshed
+  expect(refreshOk("wallet", { ...ok, rpcError: "x", movementsError: "y" })).toBe(false);
+  expect(refreshOk("markets", ok)).toBe(true);
+  expect(refreshOk("markets", { ...ok, contextError: "x" })).toBe(false);
+  expect(refreshOk("market", { ...ok, contextError: "x" })).toBe(true); // reads still refreshed
+  expect(refreshOk("market", { ...ok, contextError: "x", listError: "y" })).toBe(false);
+  expect(refreshOk("signin", ok)).toBe(false); // not refreshable
+});
+
+test("screenHasData follows the null contract of the hooks", () => {
+  expect(screenHasData("wallet", { balances: null, context: null })).toBe(false);
+  expect(screenHasData("wallet", { balances: {}, context: null })).toBe(true);
+  expect(screenHasData("markets", { balances: {}, context: null })).toBe(false);
+  expect(screenHasData("market", { balances: null, context: {} })).toBe(true);
+  expect(screenHasData("signin", { balances: {}, context: {} })).toBe(false);
 });

@@ -117,6 +117,38 @@ export function heldActionFor(next: Screen | undefined): string | null {
 /** Pill con el que se abre un mercado desde Markets: Trade con trading key, Ask sin ella (Ask y Agents no la necesitan; fix gate). */
 export const marketEntryTab = (hasKey: boolean): MarketTab => (hasKey ? "trade" : "ask");
 
+// ---------------------------------------------------------------------------
+// Sello del pull-to-refresh (spec mobile-loading D5). Puros: el Shell los evalúa en un efecto.
+
+/** `UPDATED HH:MM:SS` en hora local, 24 h. */
+export function updatedLabel(ts: number): string {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `UPDATED ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+export type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string };
+
+/** Un jalón «hizo algo» si al menos una de las fuentes de la pantalla quedó sin error (los hooks tragan errores: `allSettled` no basta). */
+export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
+  switch (screen) {
+    case "wallet": return !e.rpcError || !e.movementsError;
+    case "markets": return !e.contextError;
+    case "market": return !e.contextError || !e.listError;
+    default: return false;
+  }
+}
+
+/** La pantalla ya tiene su dato principal (contrato `null` = sin dato de los hooks): fija el sello inicial. */
+export function screenHasData(screen: Screen, d: { balances: unknown; context: unknown }): boolean {
+  switch (screen) {
+    case "wallet": return d.balances !== null;
+    case "markets":
+    case "market": return d.context !== null;
+    default: return false;
+  }
+}
+
 const MARKET_SUBTITLES: Record<MarketTab, string> = {
   trade: "Perpl · isolated margin · market order",
   ask: "Ask an agent · simulated credits",
