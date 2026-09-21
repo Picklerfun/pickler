@@ -144,13 +144,15 @@ export function Limits({
         <p className={styles.eyebrow}>
           FUNDING
           <span className={styles.stubState} data-tint="amber">
-            NO BACKEND
+            NOT WIRED YET
           </span>
         </p>
         <p className={styles.note}>
-          There is no per-agent wallet, no top-up and no withdrawal. What an agent can spend is the
-          rolling run allowance above; what it costs is settled against the operator&rsquo;s budget
-          ledger, not against you.
+          No wallet is attached to an agent yet, so there is no top-up and no withdrawal. The
+          signing path exists — Turnkey, with the activity stamped in the browser by a passkey,
+          ported from Relayer — but nothing provisions a wallet when an agent is created here. What
+          an agent can spend is the rolling run allowance above; what it costs is settled against
+          the operator&rsquo;s budget ledger, not against you.
         </p>
       </section>
     </div>

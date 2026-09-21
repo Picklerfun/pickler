@@ -148,7 +148,7 @@ export function Overview({
             <p className={styles.eyebrow}>
               AGENT WALLET
               <span className={styles.stubState} data-tint="amber">
-                PLANNED · NO BACKEND
+                NOT WIRED YET
               </span>
             </p>
             <p className={styles.big} data-quiet="true">
@@ -165,8 +165,9 @@ export function Overview({
             </Button>
           </div>
           <p className={styles.note}>
-            Per-agent funds are an agreed future. Until then the agent spends research quota, not
-            money.
+            Signing is ported from Relayer and tested — Turnkey, with the activity stamped in the
+            browser by your passkey — but no wallet is attached to this agent yet. Until one is, the
+            agent spends research quota, not money.
           </p>
         </section>
       </div>
