@@ -1,0 +1,1538 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-19-mobile-ask-f3.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask — F3: Trade con order book L2, «Trade this level» y recordatorios — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-19-mobile-ask-f3">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-19-mobile-ask-f3.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Ask — F3: Trade con order book L2, «Trade this level» y recordatorios — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-19-mobile-ask-f3.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-srcreadslevelts-del-nivel-de-ask-al-tradelevel-de-trade">Task 1: `src/reads/level.ts` — del nivel de Ask al `TradeLevel` de Trade</a></li><li><a href="#task-2-cliente-de-reminder-set-parser-y-contenido-local-del-fallback">Task 2: cliente de `reminder-set`, parser y contenido local del fallback</a></li><li><a href="#task-3-usenotificationsschedulelocalreminders-y-usereadssetreminders">Task 3: `useNotifications.scheduleLocalReminders` y `useReads.setReminders`</a></li><li><a href="#task-4-trade-this-level-en-ask-levelcard-y-nota-de-recordatorios-en-trade">Task 4: «Trade this level» en Ask, `LevelCard` y nota de recordatorios en Trade</a></li><li><a href="#task-5-script-de-captura-y-fixture-market-data-framesjson">Task 5: script de captura y fixture `market-data-frames.json`</a></li><li><a href="#task-6-srcperplmarketdatats-parser-libro-y-marketdatasocket">Task 6: `src/perpl/marketData.ts` — parser, libro y `MarketDataSocket`</a></li><li><a href="#task-7-usemarketdata-bookcard-y-montaje-en-trade">Task 7: `useMarketData`, `BookCard` y montaje en Trade</a></li><li><a href="#task-8-recorrido-en-el-simulador-nivel-orden-de-200-ausd-recordatorios-y-cron">Task 8: Recorrido en el simulador — nivel, orden de 2.00 AUSD, recordatorios y cron</a></li><li><a href="#task-9-docs-de-cierre-f4-retitulada-audit-f3-y-revision-independiente">Task 9: Docs de cierre, F4 retitulada, audit F3 y revisión independiente</a></li><li><a href="#self-review">Self-review</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-19-mobile-ask-f3.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="ask-f3-trade-con-order-book-l2-trade-this-level-y-recordatorios-implementation-plan">Ask — F3: Trade con order book L2, «Trade this level» y recordatorios — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que el pill <strong>Trade</strong> de <code>Market</code> cierre el puente con Ask: desde la hoja de una celda o desde la card de una read <code>open</code>, «Trade this level» pone el nivel en el store, sugiere el lado y abre Trade con una <code>LevelCard</code>; cuando la orden queda <code>filled</code> u <code>open</code>, la app llama <code>reminder-set</code> y el servidor programa dos recordatorios (15 min antes y al vencer). Además Trade muestra el <strong>order book L2 vivo</strong> de Perpl (5 niveles por lado, spread en bps) por el WebSocket público de market-data, con los frames reales grabados a fixture. En el simulador (cuenta #620): una sola orden de prueba de 2.00 AUSD a 1x y su cierre a mano desde Markets.</p>
+<p><strong>Architecture:</strong> Igual que Perpl F2 y Ask F2: módulos puros con test y hooks delgados que los orquestan. <strong>D12</strong> vive en <code>src/reads/level.ts</code> (celda/read → <code>TradeLevel</code>, lado sugerido, copy), <code>reads/api.ts</code> + <code>reads/types.ts</code> (cliente y parser de <code>reminder-set</code>), <code>useReads.setReminders</code> y la UI en <code>ask.tsx</code> (dos botones) y <code>market.tsx</code> (<code>LevelCard</code>, nota en el resultado de la orden). <strong>D11</strong> vive en <code>src/perpl/marketData.ts</code> (<code>parseBookFrame</code>, <code>applyBookFrame</code>, <code>topLevels</code>, <code>spreadBps</code>, <code>targetPosition</code>, clase <code>MarketDataSocket</code> calcada de <code>TradingSocket</code> pero sin firma ni pings), el hook <code>useMarketData(marketId, active)</code> montado en <code>App.tsx</code>, y <code>BookCard</code> en <code>src/screens/book.tsx</code>. El servidor no cambia: <code>reminder-set</code> y el envío de recordatorios por <code>resolve-reads</code> ya existen desde F1.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / React Native 0.86 (<code>WebSocket</code> global de RN, sin paquete nuevo), <code>expo-notifications</code> (ya instalado; fallback local D10), jest-expo 57, TypeScript 6. Script de captura en Node 22 (<code>WebSocket</code> global, sin <code>ws</code>). Servidor: <code>https://yvdipvcrpbqvofayteqf.supabase.co/functions/v1/reminder-set</code> (F1). Perpl: <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (doc <code>PerplFoundation/api-docs</code> <code>websocket.md</code> + <code>README.md#rate-limits</code>, último commit 2026-09-02, verificada y sondeada en vivo el 2026-09-21).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> — <strong>D11</strong> (order book) y <strong>D12</strong> («Trade this level», recordatorios) son el contrato; D13 ya declaró <code>TradeLevel</code>/<code>tradeLevel</code> y <code>signedOutState</code> lo limpia; D14 dejó los dos botones sin renderizar (P9 de F2). Léelo antes de empezar, junto con <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code> §4–§6 (estado de cuentas, residuales 12 y 13) y la sección «Navegación» de <code>apps/mobile/README.md</code> (la navegación cambió con <code>mobile-nav</code>: Market es una ruta de react-navigation; <code>ctx.nav</code>/<code>switchTab</code>, nunca <code>navigate</code> a pelo).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-ask-f3</code>, rama <code>feat/mobile-ask-f3</code> desde <code>main</code> (<code>b3378de</code>). Primer comando dentro: <code>cd apps/mobile &amp;&amp; npm ci</code>. Todo lo de la app se corre desde <code>apps/mobile</code> <strong>del worktree</strong>; los checks de docs desde la raíz del worktree; <code>node scripts/query.mjs</code> desde <code>services/reads</code> del worktree (<code>env.mjs</code> encuentra <code>.env.pickler</code> del checkout principal vía <code>git-common-dir</code>). Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>chore(mobile): …</code> / <code>test(mobile): …</code> / <code>docs(mobile-ask): …</code> con trailer <code>Co-Authored-By: &lt;modelo que escribe&gt; &lt;noreply@anthropic.com&gt;</code> y <code>Claude-Session: &lt;URL de la sesión que ejecuta&gt;</code>. <strong>Sin push, merge ni TestFlight</strong> en la sesión de ejecución salvo autorización explícita de Jesús en esa sesión.</li>
+<li><strong>Metro desde el worktree nuevo</strong> (<code>npx expo start --port 8081</code> en <code>apps/mobile</code> del worktree). El simulador <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code> ya tiene el dev build de <code>mobile-nav</code> con sesión iniciada; F3 <strong>no añade módulos nativos</strong>, así que no hace falta <code>run:ios</code> (que borraría la cuenta local). Sólo si se quisiera probar el override <code>PICKLER_PERPL_MARKET_DATA_WS</code> haría falta <code>run:ios</code> (el dev client ignora el env de Metro; lección de <code>mobile-loading</code>); este plan no lo necesita: el default es testnet.</li>
+<li>Simulador <strong>siempre por UDID</strong>, nunca <code>booted</code>. Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot &lt;scratch&gt;/f3-shots/NN-nombre.png</code> y <strong>mirar cada captura</strong> antes de afirmar nada. <code>simctl recordVideo</code> es ~4 fps: sirve para ver que el book cambia entre frames, no para medir animaciones.</li>
+<li><strong>Cuenta #620 del simulador (<code>0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1</code>): una sola orden de prueba</strong> — <code>Long</code> o <code>Short</code> según el lado sugerido del nivel, <strong>2.00 AUSD a 1x en BTC (<code>market_id 16</code>)</strong> — y <strong>su cierre a mano desde Markets</strong> (Task 8). Nada más: ninguna otra orden, ningún Enable/Reconnect/Reset, ningún depósito ni retiro. Saldos AUSD/MON re-medidos por RPC antes y después (receta en Task 8 Step 0) y en el audit.</li>
+<li><strong>Prerequisito de Jesús (residual 12 del audit F2, riesgo §4 del spec)</strong>: revocar las dos trading keys sobrantes de #620 en <code>testnet.perpl.xyz/apikeys</code>. El ejecutor lo <strong>pregunta</strong> al arrancar Task 8 y anota la respuesta en el audit; no bloquea F3 (la key del simulador sigue enrolada y funciona) y ninguna task toca <code>apikeys</code>.</li>
+<li><strong>Backend F1, prohibiciones vigentes</strong> (README de <code>services/reads</code>): nunca <code>supabase db push/reset</code>, nunca Drizzle, nunca DDL fuera de <code>mobile</code>, nunca el MCP de Supabase de la sesión, nunca imprimir secretos ni tokens APNs. Esta fase <strong>no despliega ni migra nada</strong>; sólo <code>select</code> sobre <code>mobile.reminders</code>/<code>mobile.devices</code> y un <code>update … set fire_at = now() where id = &#39;&lt;id&gt;&#39;</code> para forzar el envío (Task 8), siempre en dos pasos (capturar <code>id</code>, luego <code>update … where id = …</code>).</li>
+<li><strong>Secretos <code>APNS_*</code> siguen ausentes</strong> (pendiente 1 del audit F2). <code>resolve-reads</code> marca el recordatorio <code>sent</code> sólo si APNs responde 200; sin secretos <code>providerJwt()</code> lanza «APNS secrets missing» y la fila queda <strong><code>failed</code></strong> (<code>resolve-reads/index.ts:100-103</code>). La verificación de F3 es: dos filas <code>scheduled</code> creadas por la app, y tras forzar <code>fire_at</code> el cron las <strong>procesa</strong> (<code>sent_at</code> puesto, <code>status</code> ∈ {sent, failed}, <code>remindersSent</code> en <code>net._http_response</code>). Ver llegar el push real depende de la key y queda como residual heredado, no de F3.</li>
+<li><code>npm test</code> y <code>npx tsc --noEmit</code> en <code>apps/mobile</code> en verde al cierre de cada task a partir de la que los toca. Ninguna prueba unitaria abre sockets ni llama al servicio: <code>WebSocket</code> se sustituye por <code>FakeSocket</code> (como <code>perpl-socket.test.ts</code>) y <code>fetch</code> por un doble (como <code>reads-api.test.ts</code>). El único acceso real a Perpl fuera del simulador es el script de captura (Task 5), público y sin cuenta.</li>
+<li>Copy de la app en inglés; código y comentarios en español donde el archivo vecino los tenga en español; tests en inglés (<code>test(&quot;…&quot;)</code>).</li>
+<li>Límites de market-data (README de Perpl, verificado): <strong>10 requests/min y 16 suscripciones por conexión</strong>; <code>1008</code> cierra el socket al pasarse de requests. Este plan gasta <strong>1 request por conexión</strong> (el <code>mt: 5</code>) y reconecta con <code>RECONNECT_DELAYS_MS</code> (1 s → 30 s): en el peor caso 6 conexiones en el primer minuto. <strong>Nada de <code>mt: 1</code></strong> en market-data (la doc lo dice explícitamente: 20 % del presupuesto para nada).</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><strong>Orden de ejecución: D12 antes que D11.</strong> Tasks 1–4 dejan «Trade this level» + <code>LevelCard</code> + recordatorios completos y probables; Tasks 5–7 añaden captura, socket y <code>BookCard</code>. Si en el checkpoint tras Task 4 el tiempo aprieta, F3 se cierra ahí (versión reducida del riesgo §4) sin rehacer nada.</td><td>Fijado en el brainstorm del 2026-09-21: el puente Ask → Trade es lo que ve el jurado; el book es lo «vivo» de Trade pero es cortable.</td></tr>
+<tr><td>P2</td><td>El target del nivel <strong>no se resalta por fila</strong> en el book: <code>BookCard</code> muestra una línea mono «Target 85,600.0 · above / inside / below the book» calculada por <code>targetPosition(book, target)</code> contra los mejores precios.</td><td>El target de la matriz casi nunca coincide con un nivel exacto del L2 (fijado en el brainstorm).</td></tr>
+<tr><td>P3</td><td>La captura de frames es un <strong>script commiteado</strong> <code>apps/mobile/scripts/perpl-market-data-capture.mjs</code> (Node 22, <code>WebSocket</code> global, sin <code>ws</code>), que graba <strong>todos los frames crudos</strong> de <code>order-book@16</code> durante N segundos en <code>__tests__/fixtures/perpl/market-data-frames.json</code> (<code>{ _source, url, stream, capturedAt, frames: [...] }</code>, un frame por línea). El fixture de trading (<code>ws-frames.json</code>) se capturó a mano en Perpl F1 sin dejar script; aquí sí queda.</td><td>Reproducible y sin cuenta ni gas (stream público). Los tests del parser prueban lo que Perpl manda de verdad, no lo que creemos que manda.</td></tr>
+<tr><td>P4</td><td><strong><code>mt: 16</code> es un delta por nivel de precio</strong>: cada <code>{ p, s, o }</code> reemplaza el nivel con ese <code>p</code>; <code>o: 0</code> (y <code>s: 0</code>) lo borra; <code>mt: 15</code> reemplaza el libro entero. Tras aplicar, los mejores niveles se obtienen ordenando (<code>bids</code> desc, <code>asks</code> asc); el libro se guarda en <code>Map&lt;number, BookLevel&gt;</code> por lado. Un frame <code>mt: 15/16</code> con <code>sid</code> distinto al de la suscripción se ignora.</td><td>Doc (<code>websocket.md</code>: «Update (mt: 16): Same structure. Price levels with <code>o: 0</code> should be removed») <strong>y sonda en vivo del 2026-09-21</strong>: el snapshot trae cientos de niveles (mejor primero, incluidos restos lejanos como <code>p 600000</code>) y los updates traen sólo los niveles cambiados, con <code>s: 0, o: 0</code> para borrar, uno por bloque (~1 s).</td></tr>
+<tr><td>P5</td><td><strong>Ciclo de vida del socket</strong>: <code>useMarketData(marketId, active)</code> con <code>active = scr === &quot;market&quot; &amp;&amp; S.marketTab === &quot;trade&quot; &amp;&amp; perpl.state.status === &quot;ready&quot;</code> (calculado en <code>App.tsx</code> como <code>perpsActive</code>/<code>readsActive</code>). Cambiar de pill, salir de Market o cambiar de mercado cierra el socket; volver lo reabre (nueva conexión = 1 request). Sin gracia de 2 s (a diferencia de <code>usePerpl.setActive</code>): el socket público no tiene sign-in que amortizar. Sin key (gate de Trade) no hay socket: el book viviría detrás de un gate que no lo muestra.</td><td>D11 literal («se abre al montar TradeTab, se cierra al desmontar o al cambiar de pill»).</td></tr>
+<tr><td>P6</td><td>El socket <strong>no reconecta</strong> cuando <code>mt: 6</code> responde <code>code ≠ 0</code> para nuestro stream (404 <code>unknown stream</code>, 429 <code>too many subscriptions</code>): pasa a <code>closed</code>, emite <code>{ type: &quot;rejected&quot; }</code> y <code>BookCard</code> muestra <code>OFFLINE</code>. Cierre <code>1001</code> (servidor se va) reconecta sin espera la primera vez; el resto con <code>RECONNECT_DELAYS_MS</code>.</td><td>Reintentar un stream rechazado sólo gasta el presupuesto de 10/min. <code>1001</code> sin espera es lo que pide la doc.</td></tr>
+<tr><td>P7</td><td><strong>Los recordatorios se programan sólo si hay nivel vivo para ese mercado</strong> (<code>S.tradeLevel.marketId === market.id</code> y <code>expiresAt &gt; now</code>) <strong>y la orden termina <code>filled</code> u <code>open</code></strong>. <code>TradeTab</code> muestra primero el resultado de la orden y después añade una nota (<code>note</code>) a la card <code>filled</code>: «Reminders set: 15 min before and at expiry.» / «Reminder set at expiry.» / «Couldn&#39;t set reminders — {motivo}». Si se programaron, el nivel se <strong>consume</strong> (<code>set({ tradeLevel: undefined })</code>): ya vive en el servidor. <code>failed</code>/<code>unknown</code> no programan nada.</td><td>D12: «El recordatorio se programa sólo si hubo orden». Mostrar la orden primero evita que <code>reminder-set</code> (hasta 15 s) retrase el «Filled».</td></tr>
+<tr><td>P8</td><td><code>reminder-set</code> es firmado: <code>useReads.setReminders</code> llama <code>ensureSession()</code> (reutiliza la sesión de Ask; con la wallet abierta firma en silencio; si la wallet está bloqueada abriría Face ID) y, con <code>PUSH_MODE === &quot;apns&quot;</code>, <code>ensurePermission()</code> para mandar <code>pushToken</code>/<code>pushEnv</code> (misma política de P6 de F2: el permiso se pide la primera vez que algo lo necesita). Si la sesión no queda lista → <code>{ ok: false, text: &quot;Unlock Ask to set reminders.&quot; }</code>. Con <code>PUSH_MODE === &quot;local&quot;</code> (fallback D10) se programan además dos notificaciones locales (<code>reminder-pre-…</code>, <code>reminder-expiry-…</code>) con copy sin mark.</td><td>En la práctica el nivel viene de Ask, que ya exigió sesión (<code>SessionGate</code>), así que no habrá prompt; el camino sin sesión existe por si cayó por 401.</td></tr>
+<tr><td>P9</td><td><code>patchForPush</code> para <code>kind = &quot;reminder&quot;</code> <strong>no cambia</strong>: <code>{ perpsMarketId, marketTab: &quot;trade&quot; }</code>. El push de recordatorio (<code>copy.ts</code> de F1) sólo trae <code>reminderId</code>, <code>marketId</code>, <code>readId</code>; no trae target ni vencimiento, así que no se puede reconstruir un <code>TradeLevel</code>. Se corrige el comentario <code>// F3 añadirá tradeLevel</code> de <code>push.ts:34</code>.</td><td>No inventar un nivel a partir de un push que no lo lleva.</td></tr>
+<tr><td>P10</td><td><code>TradeLevel</code> conserva <code>levelBps: number</code> (D13) y <code>AskCell</code> también; <code>levelFromCell</code> usa <code>targetFor(market.mark, bps)</code> y <code>expiresAtFor(new Date(), horizonMin)</code> (vista previa con el mark de la app, como la hoja); <code>levelFromRead</code> usa <code>read.target</code>/<code>read.expiresAt</code> del servidor (D2). El lado sugerido es <code>sideFor(bps) = bps &gt; 0 ? &quot;long&quot; : &quot;short&quot;</code>.</td><td>D12 literal.</td></tr>
+<tr><td>P11</td><td><code>useNow</code> sale de <code>ask.tsx</code> a <code>src/hooks/useNow.ts</code> (mismo código) para que <code>TradeTab</code> lo use en «Resolves 14:05 · in 3 h 58 m» y en <code>levelIsLive</code>.</td><td>Un tick de 30 s por pantalla; no duplicar el hook.</td></tr>
+<tr><td>P12</td><td><code>BookCard</code> va en <code>src/screens/book.tsx</code> y <code>LevelCard</code> en <code>market.tsx</code>; <code>OrderResult</code> gana <code>note?: string</code> en la variante <code>filled</code> (compatible con <code>markets.tsx</code>, que también usa <code>OrderResultCard</code>). Sin <code>@testing-library/react-native</code> (P12 de F2): las pantallas se verifican con <code>tsc</code> y en el simulador.</td><td><code>market.tsx</code> tiene 205 líneas; el book es un componente con lógica de presentación propia.</td></tr>
+<tr><td>P13</td><td>Orden en <code>TradeTab</code> (paso <code>edit</code>): <code>LevelCard</code> (si hay nivel vivo) → <code>Segmented</code> Long/Short → <code>BookCard</code> → margen → apalancamiento → resumen → botón. En <code>review</code> se añade la fila <code>LEVEL</code> al <code>KVList</code> si hay nivel.</td><td>El book informa el lado y el precio antes de escribir el margen.</td></tr>
+<tr><td>P14</td><td>La orden de prueba se hace <strong>con el nivel puesto desde Ask</strong> (para que dispare <code>reminder-set</code>) y <strong>con un nivel <code>open</code> real</strong> — la read pedida en Task 8 (cuesta 1 crédito simulado) o una celda sin read: <code>readId</code> es opcional en <code>reminder-set</code>. Se prefiere la celda (sin gastar crédito) salvo que Jesús quiera ver la ruta desde la card.</td><td>Verifica D12 completo sin depender del modelo.</td></tr>
+<tr><td>P15</td><td><strong>F4 del manifest</strong> («TestFlight build 0.1.0 (6)», ya superado por los builds 6–9): se <strong>retitula</strong> a «TestFlight con F3 (siguiente build tras el merge)» y sigue <code>pending</code>, con el mismo entregable (build con Ask + Trade completos, probado en el iPhone de Jesús: una lectura hasta el push y un nivel con recordatorio) y prerequisitos «F3; autorización explícita de Jesús». Se hace en la rama de F3 (Task 9), no en <code>main</code>.</td><td>Fijado en el brainstorm: el trabajo sigue pendiente; <code>cancelled</code> sería falso y dejarla dice «build 6» en cada retomar.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/reads/level.ts</code>, <code>src/hooks/useNow.ts</code>, <code>src/screens/ask.tsx</code> (sólo mover <code>useNow</code>), <code>__tests__/reads-level.test.ts</code></td><td>1</td><td>Celda/read → <code>TradeLevel</code>, lado sugerido, vigencia, copy de recordatorios (D12, P10, P11)</td></tr>
+<tr><td><code>apps/mobile/src/reads/types.ts</code>, <code>src/reads/api.ts</code>, <code>src/reads/push.ts</code>, <code>__tests__/reads-types.test.ts</code>, <code>__tests__/reads-api.test.ts</code>, <code>__tests__/reads-push.test.ts</code></td><td>2</td><td>Parser y cliente de <code>reminder-set</code>, copy de errores, contenido local del fallback (P8, P9)</td></tr>
+<tr><td><code>apps/mobile/src/hooks/useNotifications.ts</code>, <code>src/hooks/useReads.ts</code></td><td>3</td><td><code>scheduleLocalReminders</code>, <code>setReminders</code> (P7, P8)</td></tr>
+<tr><td><code>apps/mobile/src/screens/ask.tsx</code>, <code>src/screens/market.tsx</code></td><td>4</td><td>Botones «Trade this level» (hoja y card), <code>LevelCard</code>, nota de recordatorios en el resultado (D12, D14, P7, P13)</td></tr>
+<tr><td><code>apps/mobile/scripts/perpl-market-data-capture.mjs</code>, <code>__tests__/fixtures/perpl/market-data-frames.json</code></td><td>5</td><td>Captura reproducible de frames reales (P3)</td></tr>
+<tr><td><code>apps/mobile/src/perpl/config.ts</code>, <code>src/config/perpl.ts</code>, <code>app.config.ts</code>, <code>src/perpl/marketData.ts</code>, <code>__tests__/perpl-config.test.ts</code>, <code>__tests__/perpl-market-data.test.ts</code></td><td>6</td><td>URL de market-data con override, parser/aplicación del book, <code>MarketDataSocket</code> (D11, P4, P6)</td></tr>
+<tr><td><code>apps/mobile/src/hooks/useMarketData.ts</code>, <code>src/screens/book.tsx</code>, <code>src/ctx.ts</code>, <code>App.tsx</code>, <code>src/screens/market.tsx</code></td><td>7</td><td>Hook del socket, <code>BookCard</code>, montaje y línea del target (D11, P2, P5, P13)</td></tr>
+<tr><td>— (simulador, SQL de lectura, una orden)</td><td>8</td><td>Recorrido completo con capturas, orden de 2.00 AUSD, recordatorios en <code>mobile.reminders</code>, cron forzado</td></tr>
+<tr><td><code>apps/mobile/README.md</code>, <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f3-rulings.md</code>, HTML generados</td><td>9</td><td>Docs de cierre, F4 retitulada, audit F3, revisión independiente</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-srcreadslevelts-del-nivel-de-ask-al-tradelevel-de-trade">Task 1: <code>src/reads/level.ts</code> — del nivel de Ask al <code>TradeLevel</code> de Trade</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/level.ts</code>, <code>apps/mobile/src/hooks/useNow.ts</code>, <code>apps/mobile/__tests__/reads-level.test.ts</code></li>
+<li>Modify: <code>apps/mobile/src/screens/ask.tsx:17-23</code> (borrar <code>useNow</code> local e importarlo)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>TradeLevel</code>, <code>AskCell</code> (<code>src/store.ts:11-13</code>); <code>targetFor</code>, <code>expiresAtFor</code>, <code>cellLabel</code>, <code>formatRemaining</code> (<code>src/reads/matrix.ts</code>); <code>Read</code> (<code>src/reads/types.ts</code>); <code>Side</code> (<code>src/perpl/orders.ts:5</code>).</li>
+<li>Produces: <code>REMINDER_PRE_MS</code>, <code>levelFromCell(market, cell, now)</code>, <code>levelFromRead(read)</code>, <code>sideFor(levelBps)</code>, <code>levelIsLive(level, nowMs)</code>, <code>resolvesLabel(level, nowMs)</code>, <code>levelTitle(symbol, level)</code>, <code>reminderKinds(level, nowMs)</code>, <code>remindersCopy(kinds)</code>; <code>useNow(everyMs)</code> en <code>src/hooks/useNow.ts</code>. Los usan Tasks 3, 4 y 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base en el worktree</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f3/apps/mobile
+git status --short
+git log --oneline -1
+npm test 2&gt;&amp;1 | tail -4
+npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio; HEAD = <code>b3378de</code>; <code>Tests: 244 passed</code> en 33 suites (el README lo dice; anotar el número real); <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Mover <code>useNow</code> a <code>src/hooks/useNow.ts</code></strong></label></li>
+</ul>
+<p>Crear <code>apps/mobile/src/hooks/useNow.ts</code>:</p>
+<pre><code class="language-ts">import { useEffect, useState } from &quot;react&quot;;
+
+/** Tick de `everyMs` para las cuentas regresivas de toda una pantalla (P14 de Ask F2; lo usan Ask y Trade). */
+export function useNow(everyMs: number): number {
+  const [now, setNow] = useState(() =&gt; Date.now());
+  useEffect(() =&gt; { const t = setInterval(() =&gt; setNow(Date.now()), everyMs); return () =&gt; clearInterval(t); }, [everyMs]);
+  return now;
+}</code></pre>
+<p>En <code>src/screens/ask.tsx</code> borrar las líneas 17–23 (el comentario <code>/** Tick de 30 s … */</code> y la función <code>useNow</code>), añadir <code>import { useNow } from &quot;../hooks/useNow&quot;;</code> junto a los otros imports de hooks, y quitar <code>useEffect</code> del import de <code>react</code> si ya no se usa en el archivo (<code>grep -n useEffect src/screens/ask.tsx</code>).</p>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; echo TSC-OK</code> → <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Escribir el test que falla</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/reads-level.test.ts</code>:</p>
+<pre><code class="language-ts">import readJson from &quot;./fixtures/reads/read.json&quot;;
+import { levelFromCell, levelFromRead, levelIsLive, levelTitle, REMINDER_PRE_MS, reminderKinds, remindersCopy, resolvesLabel, sideFor } from &quot;../src/reads/level&quot;;
+import { parseRead } from &quot;../src/reads/types&quot;;
+
+const NOW = Date.parse(&quot;2026-09-22T18:00:00.000Z&quot;);
+const BTC = { id: 16, mark: 762555 }; // pd 1 (fixture context.json); mismos números que P10 de F2
+
+test(&quot;levelFromCell previews target and expiry from the app mark (D2, P10)&quot;, () =&gt; {
+  const l = levelFromCell(BTC, { levelBps: 50, horizonMin: 240 }, new Date(NOW));
+  expect(l).toEqual({ marketId: 16, levelBps: 50, horizonMin: 240, target: 766368, expiresAt: &quot;2026-09-22T22:00:00.000Z&quot; });
+  expect(l.readId).toBeUndefined();
+});
+
+test(&quot;levelFromRead takes the server values and the read id&quot;, () =&gt; {
+  const read = parseRead(readJson);
+  const l = levelFromRead(read);
+  expect(l).toEqual({ marketId: read.marketId, levelBps: read.levelBps, horizonMin: read.horizonMin, target: read.target, expiresAt: read.expiresAt, readId: read.id });
+});
+
+test(&quot;sideFor suggests long above the mark and short below (D12)&quot;, () =&gt; {
+  expect(sideFor(250)).toBe(&quot;long&quot;);
+  expect(sideFor(50)).toBe(&quot;long&quot;);
+  expect(sideFor(-50)).toBe(&quot;short&quot;);
+  expect(sideFor(-100)).toBe(&quot;short&quot;);
+});
+
+test(&quot;levelIsLive is strict on expiry&quot;, () =&gt; {
+  const l = levelFromCell(BTC, { levelBps: 50, horizonMin: 60 }, new Date(NOW));
+  expect(levelIsLive(l, NOW)).toBe(true);
+  expect(levelIsLive(l, NOW + 60 * 60_000 - 1)).toBe(true);
+  expect(levelIsLive(l, NOW + 60 * 60_000)).toBe(false);
+});
+
+test(&quot;resolvesLabel shows local time and the remaining time&quot;, () =&gt; {
+  const l = levelFromCell(BTC, { levelBps: 50, horizonMin: 240 }, new Date(NOW));
+  const d = new Date(l.expiresAt);
+  const hh = String(d.getHours()).padStart(2, &quot;0&quot;), mm = String(d.getMinutes()).padStart(2, &quot;0&quot;);
+  expect(resolvesLabel(l, NOW + 2 * 60_000)).toBe(`Resolves ${hh}:${mm} · in 3 h 58 m`);
+  expect(resolvesLabel(l, NOW + 240 * 60_000)).toBe(`Resolves ${hh}:${mm} · now`);
+});
+
+test(&quot;levelTitle is symbol + cell label&quot;, () =&gt; {
+  expect(levelTitle(&quot;BTC&quot;, levelFromCell(BTC, { levelBps: 100, horizonMin: 240 }, new Date(NOW)))).toBe(&quot;BTC +1.0% · 4H&quot;);
+});
+
+test(&quot;reminderKinds mirrors reminder-set: pre only if more than 15 min remain&quot;, () =&gt; {
+  const l = levelFromCell(BTC, { levelBps: 50, horizonMin: 60 }, new Date(NOW));
+  expect(REMINDER_PRE_MS).toBe(15 * 60_000);
+  expect(reminderKinds(l, NOW)).toEqual([&quot;pre&quot;, &quot;expiry&quot;]);
+  expect(reminderKinds(l, NOW + 45 * 60_000 - 1)).toEqual([&quot;pre&quot;, &quot;expiry&quot;]);
+  expect(reminderKinds(l, NOW + 45 * 60_000)).toEqual([&quot;expiry&quot;]);
+  expect(remindersCopy([&quot;pre&quot;, &quot;expiry&quot;])).toBe(&quot;Reminders set: 15 min before and at expiry.&quot;);
+  expect(remindersCopy([&quot;expiry&quot;])).toBe(&quot;Reminder set at expiry.&quot;);
+});</code></pre>
+<p>(<code>reminder-set/index.ts:52</code>: <code>if (expiresAt.getTime() - PRE_MS &gt; now) kinds.push({ kind: &quot;pre&quot; … })</code> — estricto, igual que aquí.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr el test para verlo fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/reads-level.test.ts 2&gt;&amp;1 | tail -8</code> Expected: FAIL — <code>Cannot find module &#39;../src/reads/level&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Implementar <code>src/reads/level.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// «Trade this level» (D12): del nivel de Ask (celda o read) al TradeLevel del store, y lo que Trade muestra de él. Puro.
+import type { Side } from &quot;../perpl/orders&quot;;
+import type { AskCell, TradeLevel } from &quot;../store&quot;;
+import { cellLabel, expiresAtFor, formatRemaining, targetFor } from &quot;./matrix&quot;;
+import type { Read } from &quot;./types&quot;;
+
+/** Igual que PRE_MS de reminder-set: el recordatorio `pre` sólo existe si faltan más de 15 min. */
+export const REMINDER_PRE_MS = 15 * 60_000;
+
+/** Desde la hoja: vista previa con el mark de la app y vencimiento desde `now` (sin read no hay valores del servidor). */
+export function levelFromCell(market: { id: number; mark: number }, cell: AskCell, now: Date): TradeLevel {
+  return {
+    marketId: market.id, levelBps: cell.levelBps, horizonMin: cell.horizonMin,
+    target: targetFor(market.mark, cell.levelBps), expiresAt: expiresAtFor(now, cell.horizonMin).toISOString(),
+  };
+}
+
+/** Desde una read: los valores que decidió el servidor (D2) y el id para ligar los recordatorios. */
+export function levelFromRead(read: Read): TradeLevel {
+  return { marketId: read.marketId, levelBps: read.levelBps, horizonMin: read.horizonMin, target: read.target, expiresAt: read.expiresAt, readId: read.id };
+}
+
+/** Lado sugerido (D12): nivel por encima del mark → long; por debajo → short. */
+export const sideFor = (levelBps: number): Side =&gt; (levelBps &gt; 0 ? &quot;long&quot; : &quot;short&quot;);
+
+export const levelIsLive = (level: TradeLevel, nowMs: number): boolean =&gt; Date.parse(level.expiresAt) &gt; nowMs;
+
+/** «Resolves 14:05 · in 3 h 58 m» (hora local, 24 h); vencido: «Resolves 14:05 · now». */
+export function resolvesLabel(level: TradeLevel, nowMs: number): string {
+  const d = new Date(level.expiresAt);
+  const p = (n: number) =&gt; String(n).padStart(2, &quot;0&quot;);
+  const left = d.getTime() - nowMs;
+  return `Resolves ${p(d.getHours())}:${p(d.getMinutes())} · ${left &lt;= 0 ? &quot;now&quot; : `in ${formatRemaining(left)}`}`;
+}
+
+export const levelTitle = (symbol: string, level: TradeLevel): string =&gt; `${symbol} ${cellLabel(level)}`;
+
+export type ReminderKind = &quot;pre&quot; | &quot;expiry&quot;;
+
+/** Qué programará reminder-set para este nivel (misma regla que el servidor). */
+export const reminderKinds = (level: TradeLevel, nowMs: number): ReminderKind[] =&gt;
+  Date.parse(level.expiresAt) - REMINDER_PRE_MS &gt; nowMs ? [&quot;pre&quot;, &quot;expiry&quot;] : [&quot;expiry&quot;];
+
+export const remindersCopy = (kinds: readonly ReminderKind[]): string =&gt;
+  kinds.length === 2 ? &quot;Reminders set: 15 min before and at expiry.&quot; : &quot;Reminder set at expiry.&quot;;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Correr el test y la suite completa</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/reads-level.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code> Expected: 7 tests PASS; suite completa en verde (+1 suite); <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/reads/level.ts src/hooks/useNow.ts src/screens/ask.tsx __tests__/reads-level.test.ts
+git commit -m &quot;feat(mobile): nivel de Ask → TradeLevel (level.ts puro) y useNow compartido&quot;</code></pre>
+<hr>
+<h3 id="task-2-cliente-de-reminder-set-parser-y-contenido-local-del-fallback">Task 2: cliente de <code>reminder-set</code>, parser y contenido local del fallback</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/reads/types.ts</code> (final), <code>apps/mobile/src/reads/api.ts</code> (<code>COPY</code> y una función nueva), <code>apps/mobile/src/reads/push.ts:31-35</code> y final</li>
+<li>Test: <code>apps/mobile/__tests__/reads-types.test.ts</code>, <code>__tests__/reads-api.test.ts</code>, <code>__tests__/reads-push.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>call</code>, <code>signedHeaders</code>, <code>READS_TIMEOUT_MS</code> (<code>api.ts</code>); <code>rec</code>, <code>str</code>, <code>iso</code>, <code>fail</code> (<code>types.ts</code>); <code>TradeLevel</code>, <code>cellLabel</code>; <code>ReminderKind</code> (Task 1).</li>
+<li>Produces: <code>Reminder = { id: string; kind: ReminderKind; fireAt: string }</code>, <code>parseRemindersResponse(body): Reminder[]</code>; <code>ReminderRequest</code>, <code>postReminders(base, session, body, doFetch?): Promise&lt;Reminder[]&gt;</code>; <code>localReminderContent(symbol, level, kind)</code>. Los usa Task 3.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests que fallan</strong></label></li>
+</ul>
+<p>Añadir al final de <code>__tests__/reads-types.test.ts</code>:</p>
+<pre><code class="language-ts">import { parseRemindersResponse } from &quot;../src/reads/types&quot;;
+
+test(&quot;parseRemindersResponse accepts the reminder-set shape and rejects unknown kinds&quot;, () =&gt; {
+  const body = { reminders: [
+    { id: &quot;0b4b6d1e-4b6d-4c1e-9f2a-6f1c2d3e4f5a&quot;, kind: &quot;pre&quot;, fireAt: &quot;2026-09-22T21:45:00.000Z&quot; },
+    { id: &quot;1c5c7e2f-5c7e-4d2f-8a3b-7a2d3e4f5a6b&quot;, kind: &quot;expiry&quot;, fireAt: &quot;2026-09-22T22:00:00.000Z&quot; },
+  ] };
+  expect(parseRemindersResponse(body)).toEqual(body.reminders);
+  expect(() =&gt; parseRemindersResponse({ reminders: [{ id: &quot;x&quot;, kind: &quot;later&quot;, fireAt: &quot;2026-09-22T22:00:00.000Z&quot; }] })).toThrow(&quot;reminder.kind later is unknown&quot;);
+  expect(() =&gt; parseRemindersResponse({ reminders: [{ id: &quot;x&quot;, kind: &quot;pre&quot;, fireAt: &quot;yesterday&quot; }] })).toThrow(&quot;reminder.fireAt is not a date&quot;);
+  expect(() =&gt; parseRemindersResponse({})).toThrow(&quot;response.reminders is not an array&quot;);
+});</code></pre>
+<p>(Si el archivo ya importa de <code>../src/reads/types</code>, añadir <code>parseRemindersResponse</code> a ese import en vez de duplicarlo.)</p>
+<p>Añadir al final de <code>__tests__/reads-api.test.ts</code> (reutiliza <code>BASE</code>, <code>SESSION</code>, <code>fetchOnce</code>, <code>ok</code>, <code>fail</code> del archivo):</p>
+<pre><code class="language-ts">import { postReminders } from &quot;../src/reads/api&quot;;
+
+const LEVEL_BODY = { marketId: 16, levelBps: 100, horizonMin: 240, target: 766368, expiresAt: &quot;2026-09-22T22:00:00.000Z&quot;, side: &quot;long&quot; as const, readId: &quot;1fde46c6-97da-4435-8184-59b5218a771d&quot; };
+
+test(&quot;postReminders is a signed POST to reminder-set with the level body (D12)&quot;, async () =&gt; {
+  const rows = [{ id: &quot;0b4b6d1e-4b6d-4c1e-9f2a-6f1c2d3e4f5a&quot;, kind: &quot;pre&quot;, fireAt: &quot;2026-09-22T21:45:00.000Z&quot; }];
+  const { f, calls } = fetchOnce(ok({ reminders: rows }));
+  expect(await postReminders(BASE, SESSION, { ...LEVEL_BODY, pushToken: &quot;ab&quot;.repeat(32), pushEnv: &quot;sandbox&quot; }, f)).toEqual(rows);
+  expect(calls[0].url).toBe(`${BASE}/reminder-set`);
+  expect(calls[0].init?.method).toBe(&quot;POST&quot;);
+  const headers = calls[0].init?.headers as Record&lt;string, string&gt;;
+  expect(headers[&quot;x-pickler-address&quot;]).toBe(SESSION.address);
+  expect(headers[&quot;content-type&quot;]).toBe(&quot;application/json&quot;);
+  expect(JSON.parse(calls[0].init?.body as string)).toEqual({ ...LEVEL_BODY, pushToken: &quot;ab&quot;.repeat(32), pushEnv: &quot;sandbox&quot; });
+});
+
+test(&quot;reminder-set errors have copy&quot;, async () =&gt; {
+  const { f } = fetchOnce(fail(422, &quot;expired&quot;));
+  await expect(postReminders(BASE, SESSION, LEVEL_BODY, f)).rejects.toMatchObject({ status: 422, code: &quot;expired&quot; });
+  expect(describeReadsError(new ReadsError(422, &quot;expired&quot;))).toBe(&quot;That level already expired.&quot;);
+  expect(describeReadsError(new ReadsError(404, &quot;read_not_found&quot;))).toBe(&quot;That read isn&#39;t yours anymore.&quot;);
+});</code></pre>
+<p>(<code>signedHeaders</code> manda <code>x-pickler-address</code>, <code>x-pickler-ts</code>, <code>x-pickler-sig</code> — <code>src/reads/session.ts:29-31</code>.)</p>
+<p>Añadir al final de <code>__tests__/reads-push.test.ts</code>:</p>
+<pre><code class="language-ts">import { localReminderContent } from &quot;../src/reads/push&quot;;
+
+test(&quot;localReminderContent (fallback D10) names the level and never claims a mark&quot;, () =&gt; {
+  const level = { marketId: 16, levelBps: 100, horizonMin: 240, target: 766368, expiresAt: &quot;2026-09-22T22:00:00.000Z&quot;, readId: &quot;1fde46c6-97da-4435-8184-59b5218a771d&quot; };
+  const pre = localReminderContent(&quot;BTC&quot;, level, &quot;pre&quot;);
+  expect(pre.title).toBe(&quot;BTC +1.0% · 4H&quot;);
+  expect(pre.body).toBe(&quot;Your level resolves in 15 min — check your position on Perpl.&quot;);
+  expect(pre.data).toEqual({ pickler: { kind: &quot;reminder&quot;, reminderId: &quot;local-pre-2026-09-22T22:00:00.000Z&quot;, marketId: 16, readId: level.readId } });
+  const expiry = localReminderContent(&quot;BTC&quot;, { ...level, readId: undefined }, &quot;expiry&quot;);
+  expect(expiry.body).toBe(&quot;Your level resolves now — check your position on Perpl.&quot;);
+  expect(expiry.data).toEqual({ pickler: { kind: &quot;reminder&quot;, reminderId: &quot;local-expiry-2026-09-22T22:00:00.000Z&quot;, marketId: 16, readId: null } });
+  expect(pushTargetOf(pre.data)).toEqual({ kind: &quot;reminder&quot;, reminderId: &quot;local-pre-2026-09-22T22:00:00.000Z&quot;, marketId: 16, readId: level.readId });
+});
+
+test(&quot;a reminder push still opens Trade without a level (P9 of F3: the push carries no target)&quot;, () =&gt; {
+  expect(patchForPush({ kind: &quot;reminder&quot;, reminderId: &quot;m1&quot;, marketId: 16, readId: null })).toEqual({ perpsMarketId: 16, marketTab: &quot;trade&quot; });
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verlos fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/reads-types.test.ts __tests__/reads-api.test.ts __tests__/reads-push.test.ts 2&gt;&amp;1 | grep -E &quot;✕|✓|Tests:&quot; | tail -12</code> Expected: los nuevos fallan por símbolo inexistente (<code>parseRemindersResponse</code>, <code>postReminders</code>, <code>localReminderContent</code>); los viejos pasan.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>types.ts</code> — <code>Reminder</code> y <code>parseRemindersResponse</code></strong></label></li>
+</ul>
+<p>Añadir al final de <code>src/reads/types.ts</code>:</p>
+<pre><code class="language-ts">export type Reminder = { id: string; kind: &quot;pre&quot; | &quot;expiry&quot;; fireAt: string };
+
+/** `{ reminders: [{ id, kind, fireAt }] }` de reminder-set (F1 dto.ts `toReminderDto`). */
+export function parseRemindersResponse(body: unknown): Reminder[] {
+  const b = rec(body, &quot;response&quot;);
+  if (!Array.isArray(b.reminders)) fail(&quot;response.reminders is not an array&quot;);
+  return (b.reminders as unknown[]).map((v) =&gt; {
+    const r = rec(v, &quot;reminder&quot;);
+    const kind = str(r, &quot;kind&quot;, &quot;reminder&quot;);
+    if (kind !== &quot;pre&quot; &amp;&amp; kind !== &quot;expiry&quot;) fail(`reminder.kind ${kind} is unknown`);
+    return { id: str(r, &quot;id&quot;, &quot;reminder&quot;), kind: kind as &quot;pre&quot; | &quot;expiry&quot;, fireAt: iso(r, &quot;fireAt&quot;, &quot;reminder&quot;) };
+  });
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>api.ts</code> — <code>postReminders</code> y copy</strong></label></li>
+</ul>
+<p>En <code>COPY</code> de <code>src/reads/api.ts</code> añadir dos entradas (antes de <code>timeout</code>):</p>
+<pre><code class="language-ts">  expired: &quot;That level already expired.&quot;,
+  read_not_found: &quot;That read isn&#39;t yours anymore.&quot;,</code></pre>
+<p>Cambiar el import de tipos: <code>import { type Agent, parseAgentsList, parseRead, parseReadResponse, parseReadsList, parseRemindersResponse, type Read, type Reminder } from &quot;./types&quot;;</code> y añadir <code>import type { Side } from &quot;../perpl/orders&quot;;</code>. Al final del archivo:</p>
+<pre><code class="language-ts">export type ReminderRequest = {
+  marketId: number; levelBps: number; horizonMin: number; target: number; expiresAt: string; side: Side;
+  readId?: string; pushToken?: string; pushEnv?: &quot;sandbox&quot; | &quot;production&quot;;
+};
+
+/** POST reminder-set (D12): el servidor crea `pre` (si faltan &gt; 15 min) y `expiry` en mobile.reminders. */
+export function postReminders(base: string, session: ReadsSession, body: ReminderRequest, doFetch: DoFetch = fetch): Promise&lt;Reminder[]&gt; {
+  return call(`${base}/reminder-set`, {
+    method: &quot;POST&quot;, headers: { ...signedHeaders(session), &quot;content-type&quot;: &quot;application/json&quot; }, body: JSON.stringify(body),
+  }, READS_TIMEOUT_MS, doFetch).then(parseRemindersResponse);
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>push.ts</code> — comentario de P9 y <code>localReminderContent</code></strong></label></li>
+</ul>
+<p>En <code>src/reads/push.ts</code> cambiar la línea 34:</p>
+<pre><code class="language-ts">    : { perpsMarketId: t.marketId, marketTab: &quot;trade&quot; }; // el push de recordatorio no trae target ni vencimiento: Trade se abre sin LevelCard (F3, P9)</code></pre>
+<p>Añadir <code>import type { Patch, TradeLevel } from &quot;../store&quot;;</code> (sustituyendo el import de <code>Patch</code>) y al final:</p>
+<pre><code class="language-ts">/** Fallback D10 para recordatorios (PUSH_MODE === &quot;local&quot;): sin mark (la app no lo sabe al programarla). */
+export function localReminderContent(symbol: string, level: TradeLevel, kind: &quot;pre&quot; | &quot;expiry&quot;): { title: string; body: string; data: Record&lt;string, unknown&gt; } {
+  return {
+    title: `${symbol} ${cellLabel(level)}`,
+    body: kind === &quot;pre&quot; ? &quot;Your level resolves in 15 min — check your position on Perpl.&quot; : &quot;Your level resolves now — check your position on Perpl.&quot;,
+    data: { pickler: { kind: &quot;reminder&quot;, reminderId: `local-${kind}-${level.expiresAt}`, marketId: level.marketId, readId: level.readId ?? null } },
+  };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Verde</strong></label></li>
+</ul>
+<p>Run: <code>npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code> Expected: todo en verde; <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/reads/types.ts src/reads/api.ts src/reads/push.ts __tests__/reads-types.test.ts __tests__/reads-api.test.ts __tests__/reads-push.test.ts
+git commit -m &quot;feat(mobile): cliente de reminder-set, parser de recordatorios y contenido local del fallback&quot;</code></pre>
+<hr>
+<h3 id="task-3-usenotificationsschedulelocalreminders-y-usereadssetreminders">Task 3: <code>useNotifications.scheduleLocalReminders</code> y <code>useReads.setReminders</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/hooks/useNotifications.ts</code> (tipo <code>Notifications</code>, una función), <code>apps/mobile/src/hooks/useReads.ts</code> (tipo <code>Reads</code>, una función)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>postReminders</code>, <code>Reminder</code> (Task 2); <code>reminderKinds</code>, <code>REMINDER_PRE_MS</code>, <code>ReminderKind</code> (Task 1); <code>localReminderContent</code> (Task 2); <code>PUSH_MODE</code>, <code>ensureSession</code>, <code>ensurePermission</code>, <code>dropSession</code>, <code>isSessionError</code>, <code>describeReadsError</code> (ya en <code>useReads</code>).</li>
+<li>Produces: <code>Notifications.scheduleLocalReminders(symbol, level)</code>; <code>Reads.setReminders(symbol, level, side): Promise&lt;RemindersOutcome&gt;</code> con <code>RemindersOutcome = { ok: true; kinds: ReminderKind[] } | { ok: false; text: string }</code>. Lo usa Task 4.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>useNotifications.ts</code></strong></label></li>
+</ul>
+<p>En el tipo <code>Notifications</code> añadir tras <code>scheduleLocal</code>:</p>
+<pre><code class="language-ts">  /** Fallback D10 para «Trade this level» (PUSH_MODE === &quot;local&quot;): `pre` (si faltan &gt; 15 min) y `expiry`, sin mark. */
+  scheduleLocalReminders: (symbol: string, level: TradeLevel) =&gt; Promise&lt;void&gt;;</code></pre>
+<p>Imports: <code>import type { TradeLevel } from &quot;../store&quot;;</code>, <code>import { REMINDER_PRE_MS, reminderKinds } from &quot;../reads/level&quot;;</code> y <code>localReminderContent</code> junto a <code>localResolutionContent</code> en el import de <code>../reads/push</code>. Debajo de <code>scheduleLocal</code>:</p>
+<pre><code class="language-ts">  const scheduleLocalReminders = useCallback(async (symbol: string, level: TradeLevel) =&gt; {
+    const now = Date.now();
+    const expiry = Date.parse(level.expiresAt);
+    for (const kind of reminderKinds(level, now)) {
+      const date = new Date(kind === &quot;pre&quot; ? expiry - REMINDER_PRE_MS : expiry);
+      if (date.getTime() &lt;= now) continue;
+      await Notif.scheduleNotificationAsync({
+        identifier: `reminder-${kind}-${level.marketId}-${level.expiresAt}`,
+        content: localReminderContent(symbol, level, kind),
+        trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date },
+      });
+    }
+  }, []);</code></pre>
+<p>y devolverla: <code>return { device, permission, ensurePermission, scheduleLocal, scheduleLocalReminders };</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>useReads.ts</code></strong></label></li>
+</ul>
+<p>Imports nuevos: <code>import { postReminders } from &quot;../reads/api&quot;;</code> (añadir a la línea existente de <code>../reads/api</code>), <code>import type { ReminderKind } from &quot;../reads/level&quot;;</code>, <code>import type { Side } from &quot;../perpl/orders&quot;;</code>, <code>import type { AskCell, TradeLevel } from &quot;../store&quot;;</code>.</p>
+<p>Tipo, después de <code>RequestState</code>:</p>
+<pre><code class="language-ts">export type RemindersOutcome = { ok: true; kinds: ReminderKind[] } | { ok: false; text: string };</code></pre>
+<p>En <code>Reads</code>, tras <code>resetRequest</code>:</p>
+<pre><code class="language-ts">  /** «Trade this level» tras una orden filled/open (D12, P7–P8): reminder-set con el nivel y el lado; local además con PUSH_MODE local. */
+  setReminders: (symbol: string, level: TradeLevel, side: Side) =&gt; Promise&lt;RemindersOutcome&gt;;</code></pre>
+<p>Destructurar también <code>scheduleLocalReminders</code> de <code>notifications</code> (línea <code>const { ensurePermission, scheduleLocal } = notifications;</code>). Después de <code>resetRequest</code>:</p>
+<pre><code class="language-ts">  const setReminders = useCallback(async (symbol: string, level: TradeLevel, side: Side): Promise&lt;RemindersOutcome&gt; =&gt; {
+    if (!(await ensureSession())) return { ok: false, text: &quot;Unlock Ask to set reminders.&quot; };
+    const s = sessionRef.current!;
+    const device = PUSH_MODE === &quot;apns&quot; ? await ensurePermission() : null; // misma política que ask(): el permiso se pide cuando algo lo necesita (P6 de F2)
+    try {
+      const rows = await postReminders(READS_URL, s, {
+        marketId: level.marketId, levelBps: level.levelBps, horizonMin: level.horizonMin, target: level.target, expiresAt: level.expiresAt, side,
+        ...(level.readId ? { readId: level.readId } : {}),
+        ...(device ? { pushToken: device.token, pushEnv: device.env } : {}),
+      });
+      if (PUSH_MODE === &quot;local&quot;) void scheduleLocalReminders(symbol, level);
+      return { ok: true, kinds: rows.map((r) =&gt; r.kind) };
+    } catch (e) {
+      if (isSessionError(e)) await dropSession();
+      return { ok: false, text: describeReadsError(e) };
+    }
+  }, [ensureSession, ensurePermission, scheduleLocalReminders, dropSession]);</code></pre>
+<p>Añadir <code>setReminders</code> al objeto devuelto.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verde</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: <code>TSC-OK</code>; tests sin cambios (los hooks no tienen test; su lógica con reglas está en <code>level.ts</code>/<code>api.ts</code>, P12 de F2).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/hooks/useNotifications.ts src/hooks/useReads.ts
+git commit -m &quot;feat(mobile): useReads.setReminders (reminder-set) y recordatorios locales del fallback&quot;</code></pre>
+<hr>
+<h3 id="task-4-trade-this-level-en-ask-levelcard-y-nota-de-recordatorios-en-trade">Task 4: «Trade this level» en Ask, <code>LevelCard</code> y nota de recordatorios en Trade</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/ask.tsx</code> (<code>AskSheet</code> props y botón; footers de las dos <code>ReadCard</code>; <code>AskTab</code>), <code>apps/mobile/src/screens/market.tsx</code> (<code>OrderResult</code>, <code>OrderResultCard</code>, <code>LevelCard</code>, <code>TradeTab</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>levelFromCell</code>, <code>levelFromRead</code>, <code>sideFor</code>, <code>levelIsLive</code>, <code>resolvesLabel</code>, <code>levelTitle</code>, <code>reminderKinds</code>, <code>remindersCopy</code> (Task 1); <code>useNow</code> (Task 1); <code>reads.setReminders</code> (Task 3); <code>TradeLevel</code>, <code>set</code>, <code>S.tradeLevel</code>, <code>S.askCell</code> (store).</li>
+<li>Produces: en <code>market.tsx</code>, <code>OrderResult</code> filled con <code>note?: string</code>; <code>LevelCard({ symbol, level, pd, now, onRemove })</code> (privado). Task 7 vuelve a tocar <code>TradeTab</code> para insertar <code>BookCard</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>ask.tsx</code> — hoja y cards</strong></label></li>
+</ul>
+<p>Imports: <code>import { levelFromCell, levelFromRead, sideFor } from &quot;../reads/level&quot;;</code> y <code>import type { AskCell, TradeLevel } from &quot;../store&quot;;</code> (ampliando el existente).</p>
+<p><code>AskSheet</code>: añadir la prop <code>onTrade: () =&gt; void</code> a la firma y al tipo; debajo del <code>View</code> con «Ask … · 1 credit» / «Clear» (antes del texto «Nothing charged yet.») insertar:</p>
+<pre><code class="language-tsx">      &lt;Btn label=&quot;Trade this level&quot; onPress={onTrade} variant=&quot;outline&quot; fg={C.lime} bd={C.limeBd} py={11} accessibilityLabel=&quot;trade-level&quot; /&gt;</code></pre>
+<p><code>AskTab</code>: después de <code>const focused = …</code> añadir</p>
+<pre><code class="language-tsx">  // D12: el nivel al store, lado sugerido y pill Trade. El resultado/lista de Ask se conservan (volver atrás no pierde nada).
+  const tradeLevel = (level: TradeLevel) =&gt; set({ tradeLevel: level, perpsSide: sideFor(level.levelBps), marketTab: &quot;trade&quot; });</code></pre>
+<p>y un helper para el footer de las cards (sólo con la read <code>open</code>: una read resuelta no tiene futuro que operar):</p>
+<pre><code class="language-tsx">  const cardFooter = (read: Read, ghost: ReactNode) =&gt; (
+    &lt;View style={{ flexDirection: &quot;row&quot;, gap: 7 }}&gt;
+      {read.status === &quot;open&quot; ? &lt;Btn label=&quot;Trade this level&quot; onPress={() =&gt; tradeLevel(levelFromRead(read))} variant=&quot;outline&quot; fg={C.lime} bd={C.limeBd} flex={1} py={11} accessibilityLabel=&quot;trade-level&quot; /&gt; : null}
+      {ghost}
+    &lt;/View&gt;
+  );</code></pre>
+<p>Usar <code>cardFooter</code> en las dos <code>ReadCard</code>:</p>
+<ul>
+<li><code>request.step === &quot;done&quot;</code>: <code>footer={cardFooter(request.read, &lt;Btn label=&quot;Ask another&quot; onPress={() =&gt; { reads.resetRequest(); set({ askCell: undefined }); }} variant=&quot;ghost&quot; py={11} accessibilityLabel=&quot;ask-another&quot; /&gt;)}</code></li>
+<li><code>focused</code> en My reads: <code>footer={cardFooter(focused, &lt;Btn label=&quot;Back to list&quot; onPress={() =&gt; set({ askFocusReadId: undefined })} variant=&quot;ghost&quot; py={11} accessibilityLabel=&quot;read-back&quot; /&gt;)}</code></li>
+</ul>
+<p>Y en el <code>&lt;AskSheet …&gt;</code> añadir <code>onTrade={() =&gt; tradeLevel(levelFromCell(market, S.askCell!, new Date()))}</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>market.tsx</code> — <code>OrderResult.note</code>, <code>LevelCard</code>, <code>TradeTab</code></strong></label></li>
+</ul>
+<p><code>OrderResult</code>: <code>| { step: &quot;filled&quot;; title: string; detail: string; note?: string }</code>. En <code>OrderResultCard</code>, dentro del <code>StatusCard</code>, tras el spinner:</p>
+<pre><code class="language-tsx">        {result.step === &quot;filled&quot; &amp;&amp; result.note ? &lt;T w={400} s={11.5} lh={1.4} color={C.dim} accessibilityLabel=&quot;order-note&quot;&gt;{result.note}&lt;/T&gt; : null}</code></pre>
+<p>Imports nuevos: <code>import { useNow } from &quot;../hooks/useNow&quot;;</code>, <code>import { levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from &quot;../reads/level&quot;;</code>, <code>import { cellLabel } from &quot;../reads/matrix&quot;;</code>, <code>import type { TradeLevel } from &quot;../store&quot;;</code>.</p>
+<p><code>LevelCard</code>, antes de <code>TradeTab</code>:</p>
+<pre><code class="language-tsx">const LEVEL: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+
+/** Nivel elegido en Ask (D12): target, vencimiento, lado sugerido y qué pasará tras la orden. Nada cierra la posición. */
+function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level: TradeLevel; pd: number; now: number; onRemove: () =&gt; void }) {
+  const side = sideFor(level.levelBps);
+  const two = reminderKinds(level, now).length === 2;
+  return (
+    &lt;Card bd={LEVEL.bd} bg={LEVEL.bg} gap={8}&gt;
+      &lt;Tag color={LEVEL.fg}&gt;TRADE THIS LEVEL · FROM ASK&lt;/Tag&gt;
+      &lt;T w={700} s={16} lh={1.2} ls={-0.01} display accessibilityLabel=&quot;level-title&quot;&gt;{levelTitle(symbol, level)} → {formatPrice(level.target, pd)}&lt;/T&gt;
+      &lt;KVList rows={[
+        { label: &quot;TARGET&quot;, value: formatPrice(level.target, pd) },
+        { label: &quot;RESOLVES&quot;, value: resolvesLabel(level, now) },
+        { label: &quot;SUGGESTED&quot;, value: side.toUpperCase(), fg: side === &quot;long&quot; ? C.lime : C.down },
+      ]} top /&gt;
+      &lt;T w={400} s={11} lh={1.45} color={C.dim}&gt;{`Once your order fills: a reminder ${two ? &quot;15 min before and one at expiry&quot; : &quot;at expiry&quot;}. Nothing closes the position for you — close it from Markets.`}&lt;/T&gt;
+      &lt;Btn label=&quot;Remove level&quot; onPress={onRemove} variant=&quot;ghost&quot; py={8} accessibilityLabel=&quot;level-remove&quot; /&gt;
+    &lt;/Card&gt;
+  );
+}</code></pre>
+<p><code>TradeTab</code>: firma <code>function TradeTab({ S, set, perpl, reads, nav }: AppCtx)</code>. Tras <code>const [st, setSt] = …</code>:</p>
+<pre><code class="language-tsx">  const now = useNow(30_000);
+  // Sólo el nivel de este mercado y todavía vivo; uno de otro mercado se conserva en el store pero no se pinta ni programa nada.
+  const level = S.tradeLevel &amp;&amp; S.tradeLevel.marketId === market.id &amp;&amp; levelIsLive(S.tradeLevel, now) ? S.tradeLevel : undefined;</code></pre>
+<p>(Los hooks van antes del <code>if (perpl.state.status !== &quot;ready&quot;) return &lt;TradeGate …/&gt;</code> — <code>useNow</code> debe ir junto a los <code>useState</code>, no después del <code>return</code> condicional.)</p>
+<p><code>confirm</code> pasa a:</p>
+<pre><code class="language-tsx">  const confirm = async () =&gt; {
+    setSt({ step: &quot;result&quot;, result: { step: &quot;sent&quot; } });
+    const outcome = await perpl.open(market, side, units ?? 0n, lvUsed);
+    const result: OrderResult =
+      outcome.kind === &quot;filled&quot; ? { step: &quot;filled&quot;, title: `Filled ${formatSize(outcome.order.fs, market.sizeDecimals)} ${sym} at ${formatPrice(outcome.order.fp, market.priceDecimals)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · ${side.toUpperCase()} ${lvUsed}x` }
+      : outcome.kind === &quot;open&quot; ? { step: &quot;filled&quot;, title: &quot;Placed — waiting in the book&quot;, detail: `${formatSize(outcome.order.os, market.sizeDecimals)} ${sym}` }
+      : outcome.kind === &quot;failed&quot; ? { step: &quot;failed&quot;, text: outcome.text }
+      : { step: &quot;unknown&quot; };
+    setSt({ step: &quot;result&quot;, result });
+    // D12 / P7: con nivel vivo y orden filled u open, recordatorios; primero se muestra la orden, la nota llega después.
+    if (result.step === &quot;filled&quot; &amp;&amp; level) {
+      const r = await reads.setReminders(sym, level, side);
+      setSt({ step: &quot;result&quot;, result: { ...result, note: r.ok ? remindersCopy(r.kinds) : `Couldn&#39;t set reminders — ${r.text}` } });
+      if (r.ok) set({ tradeLevel: undefined }); // el nivel se consumió: vive en mobile.reminders
+    }
+  };</code></pre>
+<p>En <code>review</code>, la fila del nivel: <code>const rows: KVRow[] = [ …existentes…, ...(level ? [{ label: &quot;LEVEL&quot;, value: </code>${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}<code>, fg: C.lime }] : []) ];</code> (añadir al array <code>rows</code> existente, que también usa el paso <code>edit</code>).</p>
+<p>En el <code>return</code> del paso <code>edit</code>, antes del <code>&lt;Segmented …&gt;</code>:</p>
+<pre><code class="language-tsx">      {level ? &lt;LevelCard symbol={sym} level={level} pd={market.priceDecimals} now={now} onRemove={() =&gt; set({ tradeLevel: undefined })} /&gt; : null}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verde y humo rápido en el simulador</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: <code>TSC-OK</code>; tests en verde.</p>
+<p>Metro desde el worktree (<code>npx expo start --port 8081</code>, en segundo plano, log a <code>&lt;scratch&gt;/metro.log</code>); <code>xcrun simctl launch 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 fun.pickler.app</code>. Markets → BTC → Ask → tocar una celda → «Trade this level» (<code>trade-level</code>): Trade se abre con la <code>LevelCard</code> y el <code>Segmented</code> en el lado sugerido. Captura <code>&lt;scratch&gt;/f3-shots/04-levelcard.png</code> y mirarla. «Remove level» la quita. <strong>No confirmar ninguna orden en esta task.</strong></p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/ask.tsx src/screens/market.tsx
+git commit -m &quot;feat(mobile): «Trade this level» desde la hoja y la card, LevelCard en Trade y recordatorios tras la orden (D12)&quot;</code></pre>
+<p><strong>Checkpoint D12</strong> (P1): aquí F3 ya es entregable en su versión reducida. El ejecutor lo anota en el handoff y <strong>continúa con Task 5</strong> salvo que Jesús haya dicho otra cosa en la sesión.</p>
+<hr>
+<h3 id="task-5-script-de-captura-y-fixture-market-data-framesjson">Task 5: script de captura y fixture <code>market-data-frames.json</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/scripts/perpl-market-data-capture.mjs</code>, <code>apps/mobile/__tests__/fixtures/perpl/market-data-frames.json</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: fixture <code>{ _source: string; url: string; stream: string; capturedAt: string; frames: unknown[] }</code> con al menos un <code>mt: 6</code>, un <code>mt: 15</code> y varios <code>mt: 16</code>. Lo consume Task 6.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el script</strong></label></li>
+</ul>
+<p><code>apps/mobile/scripts/perpl-market-data-capture.mjs</code>:</p>
+<pre><code class="language-js">#!/usr/bin/env node
+// Graba frames crudos de `order-book@&lt;market&gt;` del WebSocket público de market-data de Perpl (spec D11, plan F3 P3).
+// Uso: node scripts/perpl-market-data-capture.mjs [--market 16] [--seconds 20] [--url wss://testnet.perpl.xyz/ws/v1/market-data] [--out __tests__/fixtures/perpl/market-data-frames.json]
+// Node ≥ 22 (WebSocket global). Sin cuenta, sin firma, sin gas: datos públicos. Gasta 1 de los 10 requests/min de la conexión.
+import { writeFileSync } from &quot;node:fs&quot;;
+
+const arg = (name, def) =&gt; { const i = process.argv.indexOf(`--${name}`); return i === -1 ? def : process.argv[i + 1]; };
+const market = Number(arg(&quot;market&quot;, &quot;16&quot;));
+const seconds = Number(arg(&quot;seconds&quot;, &quot;20&quot;));
+const url = arg(&quot;url&quot;, &quot;wss://testnet.perpl.xyz/ws/v1/market-data&quot;);
+const out = arg(&quot;out&quot;, &quot;__tests__/fixtures/perpl/market-data-frames.json&quot;);
+const stream = `order-book@${market}`;
+if (typeof WebSocket === &quot;undefined&quot;) { console.error(&quot;Node 22+ required (global WebSocket)&quot;); process.exit(1); }
+
+const frames = [];
+const ws = new WebSocket(url);
+ws.onopen = () =&gt; ws.send(JSON.stringify({ mt: 5, subs: [{ stream, subscribe: true }] }));
+ws.onmessage = (ev) =&gt; { try { frames.push(JSON.parse(String(ev.data))); } catch { console.error(&quot;non-JSON frame ignored&quot;); } };
+ws.onclose = (ev) =&gt; { if (ev.code !== 1000 &amp;&amp; ev.code !== 1005) console.error(`closed ${ev.code} ${ev.reason}`); };
+ws.onerror = () =&gt; {};
+
+setTimeout(() =&gt; {
+  ws.close();
+  const counts = {};
+  for (const f of frames) counts[f.mt] = (counts[f.mt] ?? 0) + 1;
+  const capturedAt = new Date().toISOString();
+  const head = { _source: `Capturado contra ${url} (${stream}) el ${capturedAt} durante ${seconds} s con scripts/perpl-market-data-capture.mjs. Datos públicos, sin cuenta.`, url, stream, capturedAt };
+  const body = frames.map((f) =&gt; &quot;    &quot; + JSON.stringify(f)).join(&quot;,\n&quot;);
+  writeFileSync(out, JSON.stringify(head, null, 2).replace(/\n}$/, &quot;,\n  \&quot;frames\&quot;: [\n&quot; + body + &quot;\n  ]\n}\n&quot;));
+  console.log(`${frames.length} frames → ${out}`, counts);
+  if (!counts[15] || !counts[16]) { console.error(&quot;missing snapshot (mt 15) or update (mt 16): run longer (--seconds 60)&quot;); process.exit(2); }
+}, seconds * 1000);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f3/apps/mobile
+node --version   # v22.x
+node scripts/perpl-market-data-capture.mjs --market 16 --seconds 20
+node -e &quot;const f=require(&#39;./__tests__/fixtures/perpl/market-data-frames.json&#39;);const c={};for(const x of f.frames)c[x.mt]=(c[x.mt]??0)+1;console.log(c, f.frames.find(x=&gt;x.mt===6));const s=f.frames.find(x=&gt;x.mt===15);console.log(&#39;snapshot&#39;, s.sid, s.bid.length, s.ask.length, s.bid[0], s.ask[0]);const u=f.frames.filter(x=&gt;x.mt===16);console.log(&#39;updates&#39;, u.length, &#39;deletes&#39;, u.flatMap(x=&gt;[...(x.bid||[]),...(x.ask||[])]).filter(l=&gt;l.o===0).length)&quot;
+ls -la __tests__/fixtures/perpl/market-data-frames.json</code></pre>
+<p>Expected: <code>{ &#39;6&#39;: 1, &#39;15&#39;: 1, &#39;16&#39;: N }</code> con N ≥ 3 (la sonda del 2026-09-21 dio 2 updates en 15 s en horario tranquilo; si sale <code>exit 2</code>, repetir con <code>--seconds 60</code>); <code>mt: 6</code> con <code>status.code 0</code> y <code>sid</code> (fue <code>1000016</code>); snapshot con <code>bid[0].p &gt; bid[1].p</code> y <code>ask[0].p &lt; ask[1].p</code>; <strong>al menos un nivel con <code>o: 0</code> en los updates</strong> (si en 60 s no aparece ninguno, repetir una vez más; anotar en el audit si no se consiguió — el test de borrado tiene además un caso sintético). Tamaño razonable (&lt; 200 KB); si el snapshot trae miles de niveles y pasa de eso, se acepta igual: es la verdad del testnet.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add scripts/perpl-market-data-capture.mjs __tests__/fixtures/perpl/market-data-frames.json
+git commit -m &quot;test(mobile): script de captura y frames reales de order-book@16 (market-data, Perpl testnet)&quot;</code></pre>
+<hr>
+<h3 id="task-6-srcperplmarketdatats-parser-libro-y-marketdatasocket">Task 6: <code>src/perpl/marketData.ts</code> — parser, libro y <code>MarketDataSocket</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/perpl/config.ts:6</code> (tras <code>PERPL_WS</code>), <code>apps/mobile/src/config/perpl.ts</code>, <code>apps/mobile/app.config.ts:8</code> y <code>extra</code></li>
+<li>Create: <code>apps/mobile/src/perpl/marketData.ts</code>, <code>apps/mobile/__tests__/perpl-market-data.test.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/perpl-config.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>RECONNECT_DELAYS_MS</code> (<code>config.ts</code>), <code>SocketStatus</code>, <code>WebSocketLike</code> (<code>ws.ts</code>), fixture de Task 5.</li>
+<li>Produces: <code>PERPL_MARKET_DATA_WS</code>, <code>BOOK_DEPTH = 5</code>; <code>PERPL_URLS.marketData</code>; <code>BookLevel</code>, <code>Book</code>, <code>EMPTY_BOOK</code>, <code>BookFrame</code>, <code>parseBookFrame(data)</code>, <code>applyBookFrame(book, frame)</code>, <code>topLevels(book, side, n?)</code>, <code>bestPrices(book)</code>, <code>spreadBps(book)</code>, <code>TargetPosition</code>, <code>targetPosition(book, target)</code>, <code>subscribeFrame(marketId)</code>, <code>MarketDataEvent</code>, <code>MarketDataOptions</code>, clase <code>MarketDataSocket</code> (<code>connect()</code>, <code>close()</code>, <code>status</code>, <code>book</code>). Los usa Task 7.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Config y test de config</strong></label></li>
+</ul>
+<p><code>src/perpl/config.ts</code>, después de <code>PERPL_WS</code>:</p>
+<pre><code class="language-ts">export const PERPL_MARKET_DATA_WS = &quot;wss://testnet.perpl.xyz/ws/v1/market-data&quot;; // público, sin firma ni pings (D11)</code></pre>
+<p>y junto a <code>LEVERAGES</code>:</p>
+<pre><code class="language-ts">/** Niveles por lado que muestra BookCard (D11). */
+export const BOOK_DEPTH = 5;</code></pre>
+<p><code>src/config/perpl.ts</code>:</p>
+<pre><code class="language-ts">import Constants from &quot;expo-constants&quot;;
+import { PERPL_MARKET_DATA_WS, PERPL_REST, PERPL_WS } from &quot;../perpl/config&quot;;
+
+const extra = Constants.expoConfig?.extra ?? {};
+const rest = typeof extra.perplRest === &quot;string&quot; &amp;&amp; extra.perplRest !== &quot;&quot; ? extra.perplRest : PERPL_REST;
+const ws = typeof extra.perplWs === &quot;string&quot; &amp;&amp; extra.perplWs !== &quot;&quot; ? extra.perplWs : PERPL_WS;
+const marketData = typeof extra.perplMarketDataWs === &quot;string&quot; &amp;&amp; extra.perplMarketDataWs !== &quot;&quot; ? extra.perplMarketDataWs : PERPL_MARKET_DATA_WS;
+
+/** URLs de Perpl con override desde app.config.ts (mainnet después). */
+export const PERPL_URLS = { rest, ws, marketData } as const;</code></pre>
+<p><code>app.config.ts</code>: tras <code>const perplWs = …</code> añadir <code>const perplMarketDataWs = process.env.PICKLER_PERPL_MARKET_DATA_WS ?? &quot;&quot;;</code> y en <code>extra</code>: <code>{ rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl }</code>.</p>
+<p>En <code>__tests__/perpl-config.test.ts</code> añadir <code>PERPL_MARKET_DATA_WS</code> y <code>BOOK_DEPTH</code> al import y:</p>
+<pre><code class="language-ts">test(&quot;market-data is the public socket next to trading, five levels per side&quot;, () =&gt; {
+  expect(PERPL_MARKET_DATA_WS).toBe(&quot;wss://testnet.perpl.xyz/ws/v1/market-data&quot;);
+  expect(BOOK_DEPTH).toBe(5);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/perpl-config.test.ts 2&gt;&amp;1 | tail -4</code> → PASS tras el cambio (antes: <code>undefined</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Escribir el test del módulo (falla)</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/perpl-market-data.test.ts</code>:</p>
+<pre><code class="language-ts">import fixture from &quot;./fixtures/perpl/market-data-frames.json&quot;;
+import { RECONNECT_DELAYS_MS } from &quot;../src/perpl/config&quot;;
+import {
+  applyBookFrame, bestPrices, type Book, type BookFrame, EMPTY_BOOK, MarketDataSocket, type MarketDataEvent, parseBookFrame, spreadBps, subscribeFrame, targetPosition, topLevels,
+} from &quot;../src/perpl/marketData&quot;;
+import type { WebSocketLike } from &quot;../src/perpl/ws&quot;;
+
+const raw = fixture.frames as Record&lt;string, unknown&gt;[];
+const json = (f: unknown) =&gt; JSON.stringify(f);
+const SUB = raw.find((f) =&gt; f.mt === 6)!;
+const SNAP = raw.find((f) =&gt; f.mt === 15)!;
+const UPDATES = raw.filter((f) =&gt; f.mt === 16);
+const SID = (SUB.subs as { sid: number }[])[0].sid;
+
+class FakeSocket implements WebSocketLike {
+  readyState = 0;
+  sent: string[] = [];
+  closed = false;
+  onopen: ((ev: unknown) =&gt; void) | null = null;
+  onmessage: ((ev: { data: unknown }) =&gt; void) | null = null;
+  onclose: ((ev: { code: number; reason: string }) =&gt; void) | null = null;
+  onerror: ((ev: unknown) =&gt; void) | null = null;
+  send(d: string) { this.sent.push(d); }
+  close() { this.closed = true; this.readyState = 3; }
+  open() { this.readyState = 1; this.onopen?.({}); }
+  receive(f: unknown) { this.onmessage?.({ data: json(f) }); }
+  drop(code = 1006) { this.readyState = 3; this.onclose?.({ code, reason: &quot;&quot; }); }
+}
+
+function boot(marketId = 16) {
+  const fakes: FakeSocket[] = [];
+  const events: MarketDataEvent[] = [];
+  const socket = new MarketDataSocket({ url: &quot;wss://x.test/md&quot;, marketId, onEvent: (e) =&gt; events.push(e), createSocket: () =&gt; { const f = new FakeSocket(); fakes.push(f); return f; } });
+  socket.connect();
+  fakes[0].open();
+  return { socket, fakes, events, fake: fakes[0] };
+}
+
+beforeEach(() =&gt; jest.useFakeTimers());
+afterEach(() =&gt; jest.useRealTimers());
+
+// --- parser -----------------------------------------------------------------
+
+test(&quot;the fixture has the three shapes D11 relies on&quot;, () =&gt; {
+  expect(fixture.stream).toBe(&quot;order-book@16&quot;);
+  expect(UPDATES.length).toBeGreaterThanOrEqual(1);
+  expect((SUB.subs as { status: { code: number } }[])[0].status.code).toBe(0);
+});
+
+test(&quot;parseBookFrame reads mt 6, 15 and 16 from the real frames and ignores the rest&quot;, () =&gt; {
+  const sub = parseBookFrame(json(SUB));
+  expect(sub).toEqual({ mt: 6, subs: [{ stream: &quot;order-book@16&quot;, sid: SID, code: 0 }] });
+  const snap = parseBookFrame(json(SNAP)) as Extract&lt;BookFrame, { mt: 15 }&gt;;
+  expect(snap.mt).toBe(15);
+  expect(snap.sid).toBe(SID);
+  expect(snap.at).toBe((SNAP.at as { t: number }).t);
+  expect(snap.bid.length).toBe((SNAP.bid as unknown[]).length);
+  expect(snap.ask[0]).toEqual((SNAP.ask as unknown[])[0]);
+  const upd = parseBookFrame(json(UPDATES[0])) as Extract&lt;BookFrame, { mt: 16 }&gt;;
+  expect(upd.mt).toBe(16);
+  expect(upd.sid).toBe(SID);
+  expect(parseBookFrame(json({ mt: 2 }))).toBeNull();
+  expect(parseBookFrame(json({ mt: 15, sid: 1, bid: [{ p: &quot;x&quot; }], ask: [] }))).toBeNull();
+  expect(parseBookFrame(json({ mt: 16, sid: 1, bid: [{ p: 1, s: 2, o: 1 }] }))).toEqual({ mt: 16, sid: 1, at: null, bid: [{ p: 1, s: 2, o: 1 }], ask: [] });
+  expect(parseBookFrame(&quot;nope&quot;)).toBeNull();
+  expect(parseBookFrame(42)).toBeNull();
+});
+
+test(&quot;parseBookFrame keeps per-subscription failures (404/429) with their error&quot;, () =&gt; {
+  expect(parseBookFrame(json({ mt: 6, subs: [{ stream: &quot;order-book@999&quot;, status: { code: 404, error: &quot;unknown stream&quot; } }] })))
+    .toEqual({ mt: 6, subs: [{ stream: &quot;order-book@999&quot;, code: 404, error: &quot;unknown stream&quot; }] });
+});
+
+// --- libro ------------------------------------------------------------------
+
+const snapFrame = parseBookFrame(json(SNAP))!;
+
+test(&quot;a snapshot replaces the book and keeps best prices first after sorting&quot;, () =&gt; {
+  const book = applyBookFrame(EMPTY_BOOK, snapFrame);
+  expect(book).not.toBe(EMPTY_BOOK);
+  expect(EMPTY_BOOK.bids.size).toBe(0);
+  expect(book.bids.size).toBe(new Set((SNAP.bid as { p: number }[]).map((l) =&gt; l.p)).size);
+  expect(topLevels(book, &quot;bid&quot;, 1)[0].p).toBe((SNAP.bid as { p: number }[])[0].p);
+  expect(topLevels(book, &quot;ask&quot;, 1)[0].p).toBe((SNAP.ask as { p: number }[])[0].p);
+  const bids = topLevels(book, &quot;bid&quot;);
+  expect(bids.length).toBeLessThanOrEqual(5);
+  for (let i = 1; i &lt; bids.length; i++) expect(bids[i].p).toBeLessThan(bids[i - 1].p);
+  const asks = topLevels(book, &quot;ask&quot;);
+  for (let i = 1; i &lt; asks.length; i++) expect(asks[i].p).toBeGreaterThan(asks[i - 1].p);
+});
+
+test(&quot;updates are deltas per price level: o 0 removes, anything else upserts (P4, real frames)&quot;, () =&gt; {
+  let book = applyBookFrame(EMPTY_BOOK, snapFrame);
+  for (const u of UPDATES) book = applyBookFrame(book, parseBookFrame(json(u))!);
+  const last = parseBookFrame(json(UPDATES[UPDATES.length - 1])) as Extract&lt;BookFrame, { mt: 16 }&gt;;
+  for (const l of last.bid) expect(book.bids.get(l.p)).toEqual(l.o === 0 ? undefined : l);
+  for (const l of last.ask) expect(book.asks.get(l.p)).toEqual(l.o === 0 ? undefined : l);
+  expect(book.at).toBe(last.at ?? book.at);
+});
+
+test(&quot;updates are deltas per price level (synthetic: remove, replace, add, unchanged side)&quot;, () =&gt; {
+  const base = applyBookFrame(EMPTY_BOOK, { mt: 15, sid: 1, at: 100, bid: [{ p: 1000, s: 5, o: 1 }, { p: 990, s: 7, o: 2 }], ask: [{ p: 1010, s: 3, o: 1 }] });
+  const next = applyBookFrame(base, { mt: 16, sid: 1, at: 101, bid: [{ p: 1000, s: 0, o: 0 }, { p: 995, s: 4, o: 1 }], ask: [{ p: 1010, s: 9, o: 3 }] });
+  expect([...next.bids.keys()].sort()).toEqual([990, 995]);
+  expect(next.asks.get(1010)).toEqual({ p: 1010, s: 9, o: 3 });
+  expect(next.at).toBe(101);
+  expect(base.bids.get(1000)).toEqual({ p: 1000, s: 5, o: 1 }); // el anterior no se muta
+  expect(applyBookFrame(next, { mt: 6, subs: [] })).toBe(next);
+});
+
+test(&quot;bestPrices, spreadBps and targetPosition&quot;, () =&gt; {
+  const book: Book = applyBookFrame(EMPTY_BOOK, { mt: 15, sid: 1, at: null, bid: [{ p: 100_000, s: 1, o: 1 }, { p: 99_990, s: 1, o: 1 }], ask: [{ p: 100_010, s: 1, o: 1 }, { p: 100_020, s: 1, o: 1 }] });
+  expect(bestPrices(book)).toEqual({ bid: 100_000, ask: 100_010 });
+  expect(spreadBps(book)).toBeCloseTo(0.99995, 4);
+  expect(targetPosition(book, 100_500)).toBe(&quot;above&quot;);
+  expect(targetPosition(book, 99_000)).toBe(&quot;below&quot;);
+  expect(targetPosition(book, 100_005)).toBe(&quot;inside&quot;);
+  expect(targetPosition(book, 100_000)).toBe(&quot;inside&quot;);
+  expect(targetPosition(book, 100_010)).toBe(&quot;inside&quot;);
+  expect(bestPrices(EMPTY_BOOK)).toEqual({ bid: null, ask: null });
+  expect(spreadBps(EMPTY_BOOK)).toBeNull();
+  expect(targetPosition(EMPTY_BOOK, 1)).toBeNull();
+  const crossed = applyBookFrame(EMPTY_BOOK, { mt: 15, sid: 1, at: null, bid: [{ p: 101, s: 1, o: 1 }], ask: [{ p: 100, s: 1, o: 1 }] });
+  expect(spreadBps(crossed)).toBeLessThan(0); // testnet cruza a veces: se muestra tal cual
+});
+
+// --- socket -----------------------------------------------------------------
+
+test(&quot;the first (and only) frame is the subscription; the snapshot makes it live; no pings ever&quot;, () =&gt; {
+  const { socket, fake, events } = boot();
+  expect(fake.sent).toEqual([subscribeFrame(16)]);
+  expect(JSON.parse(subscribeFrame(16))).toEqual({ mt: 5, subs: [{ stream: &quot;order-book@16&quot;, subscribe: true }] });
+  fake.receive(SUB);
+  expect(socket.status).toBe(&quot;connecting&quot;);
+  fake.receive(SNAP);
+  expect(socket.status).toBe(&quot;live&quot;);
+  expect(topLevels(socket.book, &quot;bid&quot;, 1)[0].p).toBe((SNAP.bid as { p: number }[])[0].p);
+  jest.advanceTimersByTime(60_000);
+  expect(fake.sent.length).toBe(1);
+  expect(events.filter((e) =&gt; e.type === &quot;status&quot;).map((e) =&gt; (e as { status: string }).status)).toEqual([&quot;connecting&quot;, &quot;live&quot;]);
+  expect(events.filter((e) =&gt; e.type === &quot;book&quot;).length).toBe(1);
+});
+
+test(&quot;frames from another subscription id are ignored&quot;, () =&gt; {
+  const { socket, fake } = boot();
+  fake.receive(SUB);
+  fake.receive({ ...SNAP, sid: SID + 1 });
+  expect(socket.status).toBe(&quot;connecting&quot;);
+  expect(socket.book.bids.size).toBe(0);
+});
+
+test(&quot;a rejected stream closes without reconnecting (P6)&quot;, () =&gt; {
+  const { socket, fake, fakes, events } = boot(999);
+  fake.receive({ mt: 6, subs: [{ stream: &quot;order-book@999&quot;, status: { code: 404, error: &quot;unknown stream&quot; } }] });
+  expect(socket.status).toBe(&quot;closed&quot;);
+  expect(fake.closed).toBe(true);
+  expect(events).toContainEqual({ type: &quot;rejected&quot;, code: 404, error: &quot;unknown stream&quot; });
+  jest.advanceTimersByTime(120_000);
+  expect(fakes.length).toBe(1);
+});
+
+test(&quot;a dropped socket reconnects with backoff and resubscribes; the old book stays until the new snapshot&quot;, () =&gt; {
+  const { socket, fake, fakes } = boot();
+  fake.receive(SUB);
+  fake.receive(SNAP);
+  fake.drop();
+  expect(socket.status).toBe(&quot;reconnecting&quot;);
+  expect(socket.book.bids.size).toBeGreaterThan(0);
+  jest.advanceTimersByTime(RECONNECT_DELAYS_MS[0] - 1);
+  expect(fakes.length).toBe(1);
+  jest.advanceTimersByTime(1);
+  expect(fakes.length).toBe(2);
+  fakes[1].open();
+  expect(fakes[1].sent).toEqual([subscribeFrame(16)]);
+  fakes[1].drop();
+  jest.advanceTimersByTime(RECONNECT_DELAYS_MS[1]);
+  expect(fakes.length).toBe(3);
+  fakes[2].open();
+  fakes[2].receive(SUB);
+  fakes[2].receive(SNAP);
+  expect(socket.status).toBe(&quot;live&quot;);
+});
+
+test(&quot;1001 (server going away) reconnects immediately the first time&quot;, () =&gt; {
+  const { fake, fakes } = boot();
+  fake.drop(1001);
+  expect(fakes.length).toBe(1); // la reconexión sigue pasando por el timer (delay 0), nunca inline en onclose
+  jest.advanceTimersByTime(1);
+  expect(fakes.length).toBe(2);
+});
+
+test(&quot;close() by the user never reconnects&quot;, () =&gt; {
+  const { socket, fake, fakes } = boot();
+  socket.close();
+  expect(fake.closed).toBe(true);
+  expect(socket.status).toBe(&quot;closed&quot;);
+  jest.advanceTimersByTime(120_000);
+  expect(fakes.length).toBe(1);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/perpl-market-data.test.ts 2&gt;&amp;1 | tail -5</code> → FAIL <code>Cannot find module &#39;../src/perpl/marketData&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar <code>src/perpl/marketData.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">// Order book L2 del WebSocket público de market-data de Perpl (D11). Puro: sin react-native.
+// Formas verificadas contra la doc (PerplFoundation/api-docs websocket.md, commit 2026-09-02) y frames reales
+// (__tests__/fixtures/perpl/market-data-frames.json): mt 15 reemplaza el libro; mt 16 es un delta por nivel de
+// precio y `o: 0` borra el nivel (P4 del plan F3). Sin pings: el servidor mantiene vivo el socket por bloque.
+import { BOOK_DEPTH, RECONNECT_DELAYS_MS } from &quot;./config&quot;;
+import type { SocketStatus, WebSocketLike } from &quot;./ws&quot;;
+
+export type BookLevel = { p: number; s: number; o: number };
+/** Niveles por precio y lado; `at` = timestamp de bloque (ms) del último frame aplicado. */
+export type Book = { at: number | null; bids: Map&lt;number, BookLevel&gt;; asks: Map&lt;number, BookLevel&gt; };
+export const EMPTY_BOOK: Book = { at: null, bids: new Map(), asks: new Map() };
+
+export type BookFrame =
+  | { mt: 6; subs: { stream: string; sid?: number; code: number; error?: string }[] }
+  | { mt: 15; sid: number; at: number | null; bid: BookLevel[]; ask: BookLevel[] }
+  | { mt: 16; sid: number; at: number | null; bid: BookLevel[]; ask: BookLevel[] };
+
+type Rec = Record&lt;string, unknown&gt;;
+const isRec = (v: unknown): v is Rec =&gt; v !== null &amp;&amp; typeof v === &quot;object&quot;;
+const num = (v: unknown): number | undefined =&gt; (typeof v === &quot;number&quot; &amp;&amp; Number.isFinite(v) ? v : undefined);
+
+function level(v: unknown): BookLevel | undefined {
+  if (!isRec(v)) return undefined;
+  const p = num(v.p), s = num(v.s), o = num(v.o);
+  return p === undefined || s === undefined || o === undefined ? undefined : { p, s, o };
+}
+
+/** Lado ausente = sin cambios en ese lado. */
+function levels(v: unknown): BookLevel[] | undefined {
+  if (v === undefined) return [];
+  if (!Array.isArray(v)) return undefined;
+  const out: BookLevel[] = [];
+  for (const x of v) {
+    const l = level(x);
+    if (l === undefined) return undefined;
+    out.push(l);
+  }
+  return out;
+}
+
+/** `ev.data` del WebSocket. null para frames ajenos o malformados (se ignoran). */
+export function parseBookFrame(data: unknown): BookFrame | null {
+  if (typeof data !== &quot;string&quot;) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (!isRec(raw)) return null;
+  switch (raw.mt) {
+    case 6: {
+      if (!Array.isArray(raw.subs)) return null;
+      const subs: { stream: string; sid?: number; code: number; error?: string }[] = [];
+      for (const s of raw.subs) {
+        if (!isRec(s) || typeof s.stream !== &quot;string&quot;) return null;
+        const status = isRec(s.status) ? s.status : {};
+        const sid = num(s.sid);
+        subs.push({ stream: s.stream, code: num(status.code) ?? 0, ...(sid === undefined ? {} : { sid }), ...(typeof status.error === &quot;string&quot; ? { error: status.error } : {}) });
+      }
+      return { mt: 6, subs };
+    }
+    case 15: case 16: {
+      const sid = num(raw.sid);
+      const bid = levels(raw.bid), ask = levels(raw.ask);
+      if (sid === undefined || bid === undefined || ask === undefined) return null;
+      const at = isRec(raw.at) ? (num(raw.at.t) ?? null) : null;
+      return { mt: raw.mt, sid, at, bid, ask };
+    }
+    default: return null;
+  }
+}
+
+function merge(side: Map&lt;number, BookLevel&gt;, changes: BookLevel[], replace: boolean): Map&lt;number, BookLevel&gt; {
+  const next = replace ? new Map&lt;number, BookLevel&gt;() : new Map(side);
+  for (const l of changes) {
+    if (l.o === 0 || l.s === 0) next.delete(l.p);
+    else next.set(l.p, l);
+  }
+  return next;
+}
+
+/** Nuevo libro; nunca muta el anterior. 15 reemplaza; 16 mezcla por precio y borra con `o: 0`; 6 no lo toca. */
+export function applyBookFrame(book: Book, frame: BookFrame): Book {
+  if (frame.mt === 6) return book;
+  const replace = frame.mt === 15;
+  return { at: frame.at ?? book.at, bids: merge(book.bids, frame.bid, replace), asks: merge(book.asks, frame.ask, replace) };
+}
+
+/** Mejores `n` niveles: bids de mayor a menor precio, asks de menor a mayor. */
+export function topLevels(book: Book, side: &quot;bid&quot; | &quot;ask&quot;, n = BOOK_DEPTH): BookLevel[] {
+  const all = [...(side === &quot;bid&quot; ? book.bids : book.asks).values()];
+  all.sort((a, b) =&gt; (side === &quot;bid&quot; ? b.p - a.p : a.p - b.p));
+  return all.slice(0, n);
+}
+
+export function bestPrices(book: Book): { bid: number | null; ask: number | null } {
+  return { bid: topLevels(book, &quot;bid&quot;, 1)[0]?.p ?? null, ask: topLevels(book, &quot;ask&quot;, 1)[0]?.p ?? null };
+}
+
+/** Spread en bps sobre el mid; null sin uno de los lados. Negativo si el libro está cruzado (pasa en testnet: se muestra tal cual). */
+export function spreadBps(book: Book): number | null {
+  const { bid, ask } = bestPrices(book);
+  if (bid === null || ask === null) return null;
+  return ((ask - bid) / ((ask + bid) / 2)) * 10_000;
+}
+
+export type TargetPosition = &quot;above&quot; | &quot;inside&quot; | &quot;below&quot;;
+
+/** Dónde cae el target de «Trade this level» respecto a los mejores precios (P2: una línea de texto, no resaltado por nivel). */
+export function targetPosition(book: Book, target: number): TargetPosition | null {
+  const { bid, ask } = bestPrices(book);
+  if (bid === null || ask === null) return null;
+  return target &gt; ask ? &quot;above&quot; : target &lt; bid ? &quot;below&quot; : &quot;inside&quot;;
+}
+
+/** Un `mt: 5` con una sola suscripción: 1 request de los 10/min de la conexión. */
+export const subscribeFrame = (marketId: number): string =&gt; JSON.stringify({ mt: 5, subs: [{ stream: `order-book@${marketId}`, subscribe: true }] });
+
+export type MarketDataEvent =
+  | { type: &quot;status&quot;; status: SocketStatus }
+  | { type: &quot;book&quot;; book: Book }
+  | { type: &quot;rejected&quot;; code: number; error: string };
+export type MarketDataOptions = { url: string; marketId: number; onEvent: (e: MarketDataEvent) =&gt; void; createSocket?: (url: string) =&gt; WebSocketLike };
+
+const GOING_AWAY = 1001;
+
+/** Un socket por ticket visible con una sola suscripción (D11). Sin React: se prueba con un WebSocket falso y timers falsos. */
+export class MarketDataSocket {
+  private ws: WebSocketLike | null = null;
+  private _status: SocketStatus = &quot;closed&quot;;
+  private _book: Book = EMPTY_BOOK;
+  private sid: number | null = null;
+  private attempt = 0;
+  private closedByUser = false;
+  private retry: ReturnType&lt;typeof setTimeout&gt; | null = null;
+  private readonly createSocket: (url: string) =&gt; WebSocketLike;
+
+  constructor(private readonly opts: MarketDataOptions) {
+    this.createSocket = opts.createSocket ?? ((url) =&gt; new WebSocket(url) as unknown as WebSocketLike);
+  }
+
+  get status(): SocketStatus { return this._status; }
+  get book(): Book { return this._book; }
+
+  connect(): void {
+    this.closedByUser = false;
+    if (this.retry) { clearTimeout(this.retry); this.retry = null; }
+    if (this.ws) {
+      const old = this.ws;
+      this.ws = null; // primero: que su onclose no dispare otra reconexión
+      old.close();
+    }
+    this.sid = null;
+    this.setStatus(this.attempt === 0 ? &quot;connecting&quot; : &quot;reconnecting&quot;);
+    const ws = this.createSocket(this.opts.url);
+    this.ws = ws;
+    ws.onopen = () =&gt; { ws.send(subscribeFrame(this.opts.marketId)); };
+    ws.onmessage = (ev) =&gt; { if (this.ws === ws) this.handle(ev.data); };
+    ws.onerror = () =&gt; { /* onclose sigue */ };
+    ws.onclose = (ev) =&gt; { if (this.ws === ws) this.handleClose(ev.code); };
+  }
+
+  close(): void {
+    this.closedByUser = true;
+    if (this.retry) { clearTimeout(this.retry); this.retry = null; }
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+    this.setStatus(&quot;closed&quot;);
+  }
+
+  private handle(data: unknown): void {
+    const frame = parseBookFrame(data);
+    if (frame === null) return;
+    if (frame.mt === 6) {
+      const sub = frame.subs.find((s) =&gt; s.stream === `order-book@${this.opts.marketId}`);
+      if (!sub) return;
+      if (sub.code !== 0 || sub.sid === undefined) {
+        // 404 unknown stream / 429 too many subscriptions: reintentar sólo gastaría el presupuesto (P6).
+        this.closedByUser = true;
+        const ws = this.ws;
+        this.ws = null;
+        ws?.close();
+        this.setStatus(&quot;closed&quot;);
+        this.opts.onEvent({ type: &quot;rejected&quot;, code: sub.code, error: sub.error ?? &quot;&quot; });
+        return;
+      }
+      this.sid = sub.sid;
+      return;
+    }
+    if (this.sid !== null &amp;&amp; frame.sid !== this.sid) return; // otra suscripción: no debería haber, se ignora
+    this._book = applyBookFrame(this._book, frame);
+    if (frame.mt === 15) {
+      this.attempt = 0;
+      this.setStatus(&quot;live&quot;);
+    }
+    this.opts.onEvent({ type: &quot;book&quot;, book: this._book });
+  }
+
+  private handleClose(code: number): void {
+    this.ws = null;
+    if (this.closedByUser) return;
+    this.setStatus(&quot;reconnecting&quot;);
+    // 1001 = el servidor se va: la doc pide reconectar sin espera (sólo la primera vez, por si insiste).
+    const delay = code === GOING_AWAY &amp;&amp; this.attempt === 0 ? 0 : RECONNECT_DELAYS_MS[Math.min(this.attempt, RECONNECT_DELAYS_MS.length - 1)];
+    this.attempt += 1;
+    this.retry = setTimeout(() =&gt; { this.retry = null; this.connect(); }, delay);
+  }
+
+  private setStatus(status: SocketStatus): void {
+    if (this._status === status) return;
+    this._status = status;
+    this.opts.onEvent({ type: &quot;status&quot;, status });
+  }
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verde</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/perpl-market-data.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code> Expected: 13 tests PASS; suite completa en verde; <code>TSC-OK</code>. Si el test «updates are deltas … (real frames)» encuentra un <code>at</code> <code>null</code> en algún update real, es dato del testnet: el test ya lo cubre con <code>last.at ?? book.at</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/perpl/config.ts src/config/perpl.ts app.config.ts src/perpl/marketData.ts __tests__/perpl-config.test.ts __tests__/perpl-market-data.test.ts
+git commit -m &quot;feat(mobile): MarketDataSocket y libro L2 puro (parseBookFrame/applyBookFrame) contra frames reales (D11)&quot;</code></pre>
+<hr>
+<h3 id="task-7-usemarketdata-bookcard-y-montaje-en-trade">Task 7: <code>useMarketData</code>, <code>BookCard</code> y montaje en Trade</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hooks/useMarketData.ts</code>, <code>apps/mobile/src/screens/book.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/ctx.ts</code>, <code>apps/mobile/App.tsx:40-75</code>, <code>apps/mobile/src/screens/market.tsx</code> (<code>TradeTab</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>MarketDataSocket</code>, <code>Book</code>, <code>topLevels</code>, <code>spreadBps</code>, <code>targetPosition</code>, <code>BOOK_DEPTH</code> (Task 6); <code>PERPL_URLS.marketData</code>; <code>formatPrice</code>, <code>formatSize</code>; <code>Bar</code>, <code>Card</code>, <code>Skeleton</code>, <code>T</code>, <code>Tag</code>; <code>level</code> de <code>TradeTab</code> (Task 4).</li>
+<li>Produces: <code>MarketData = { status: SocketStatus | &quot;idle&quot;; book: Book | null; rejected: boolean }</code>, <code>useMarketData(marketId, active)</code>; <code>BookCard({ market, data, target? })</code>; <code>AppCtx.marketData</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Hook</strong></label></li>
+</ul>
+<p><code>src/hooks/useMarketData.ts</code>:</p>
+<pre><code class="language-ts">import { useEffect, useState } from &quot;react&quot;;
+import { PERPL_URLS } from &quot;../config/perpl&quot;;
+import { type Book, MarketDataSocket } from &quot;../perpl/marketData&quot;;
+import type { SocketStatus } from &quot;../perpl/ws&quot;;
+
+export type MarketData = {
+  /** `idle` = sin socket (Trade no visible o sin key); el resto es el estado del socket. */
+  status: SocketStatus | &quot;idle&quot;;
+  /** null hasta el primer snapshot; tras una caída conserva el último libro hasta el snapshot nuevo. */
+  book: Book | null;
+  /** El stream fue rechazado (404/429): no se reintenta (P6). */
+  rejected: boolean;
+};
+
+const IDLE: MarketData = { status: &quot;idle&quot;, book: null, rejected: false };
+
+/** Order book del mercado visible en Trade (D11, P5): un socket por ticket, abierto sólo con `active`; cambiar de mercado lo recrea. */
+export function useMarketData(marketId: number | undefined, active: boolean): MarketData {
+  const [data, setData] = useState&lt;MarketData&gt;(IDLE);
+  useEffect(() =&gt; {
+    if (!active || marketId === undefined) { setData(IDLE); return; }
+    const socket = new MarketDataSocket({
+      url: PERPL_URLS.marketData, marketId,
+      onEvent: (e) =&gt; setData((d) =&gt; e.type === &quot;status&quot; ? { ...d, status: e.status } : e.type === &quot;book&quot; ? { ...d, book: e.book } : { ...d, rejected: true }),
+    });
+    setData({ status: &quot;connecting&quot;, book: null, rejected: false });
+    socket.connect();
+    return () =&gt; { socket.close(); };
+  }, [marketId, active]);
+  return data;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>BookCard</code></strong></label></li>
+</ul>
+<p><code>src/screens/book.tsx</code>:</p>
+<pre><code class="language-tsx">import { View } from &quot;react-native&quot;;
+import type { MarketData } from &quot;../hooks/useMarketData&quot;;
+import { BOOK_DEPTH } from &quot;../perpl/config&quot;;
+import type { Market } from &quot;../perpl/context&quot;;
+import { type BookLevel, spreadBps, targetPosition, topLevels } from &quot;../perpl/marketData&quot;;
+import { formatPrice, formatSize } from &quot;../perpl/orders&quot;;
+import { Bar, Card, Skeleton, T, Tag } from &quot;../ui/primitives&quot;;
+import { C } from &quot;../ui/theme&quot;;
+
+const STATUS_LABEL: Record&lt;MarketData[&quot;status&quot;], string&gt; = { idle: &quot;&quot;, connecting: &quot;CONNECTING&quot;, live: &quot;LIVE&quot;, reconnecting: &quot;RECONNECTING&quot;, closed: &quot;OFFLINE&quot; };
+const POSITION_COPY = { above: &quot;above the book&quot;, inside: &quot;inside the book&quot;, below: &quot;below the book&quot; } as const;
+
+function Row({ level, max, side, pd, sd }: { level: BookLevel; max: number; side: &quot;bid&quot; | &quot;ask&quot;; pd: number; sd: number }) {
+  const fg = side === &quot;bid&quot; ? C.lime : C.down;
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }} accessibilityLabel={`${side}-${level.p}`}&gt;
+      &lt;T w={500} s={11} lh={1.2} mono color={fg} style={{ width: 84 }}&gt;{formatPrice(level.p, pd)}&lt;/T&gt;
+      &lt;Bar pct={max &gt; 0 ? level.s / max : 0} h={4} color={side === &quot;bid&quot; ? C.limeBd : C.downBd} /&gt;
+      &lt;T w={400} s={10.5} lh={1.2} mono color={C.dim} style={{ width: 76, textAlign: &quot;right&quot; }}&gt;{formatSize(level.s, sd)}&lt;/T&gt;
+    &lt;/View&gt;
+  );
+}
+
+/** Order book L2 (D11): 5 asks (el mejor pegado al spread), spread en bps, 5 bids; línea del target si hay nivel (P2). */
+export function BookCard({ market, data, target }: { market: Market; data: MarketData; target?: number }) {
+  const { book } = data;
+  const pd = market.priceDecimals, sd = market.sizeDecimals;
+  const asks = book ? topLevels(book, &quot;ask&quot;).reverse() : [];
+  const bids = book ? topLevels(book, &quot;bid&quot;) : [];
+  const max = Math.max(0, ...asks.map((l) =&gt; l.s), ...bids.map((l) =&gt; l.s));
+  const spread = book ? spreadBps(book) : null;
+  const pos = book &amp;&amp; target !== undefined ? targetPosition(book, target) : null;
+  const live = data.status === &quot;live&quot;;
+  return (
+    &lt;Card bd={C.hair14} bg={C.card} gap={7}&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, alignItems: &quot;baseline&quot; }}&gt;
+        &lt;Tag&gt;ORDER BOOK · L2 · {BOOK_DEPTH} PER SIDE&lt;/Tag&gt;
+        &lt;Tag color={live ? C.lime : data.rejected || data.status === &quot;closed&quot; ? C.faint : C.warn}&gt;{STATUS_LABEL[data.status]}&lt;/Tag&gt;
+      &lt;/View&gt;
+      {book === null ? (
+        &lt;View style={{ gap: 6 }}&gt;{Array.from({ length: 4 }, (_, i) =&gt; &lt;Skeleton.Line key={i} s={11} w=&quot;100%&quot; /&gt;)}&lt;/View&gt;
+      ) : (
+        &lt;View style={{ gap: 4 }} accessibilityLabel=&quot;book&quot;&gt;
+          {asks.map((l) =&gt; &lt;Row key={`a${l.p}`} level={l} max={max} side=&quot;ask&quot; pd={pd} sd={sd} /&gt;)}
+          &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, paddingVertical: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.hair12 }}&gt;
+            &lt;T w={500} s={10} lh={1.2} mono color={C.faint}&gt;SPREAD&lt;/T&gt;
+            &lt;T w={500} s={10} lh={1.2} mono color={C.dim} accessibilityLabel=&quot;spread&quot;&gt;{spread === null ? &quot;—&quot; : `${spread.toFixed(1)} bps`}&lt;/T&gt;
+          &lt;/View&gt;
+          {bids.map((l) =&gt; &lt;Row key={`b${l.p}`} level={l} max={max} side=&quot;bid&quot; pd={pd} sd={sd} /&gt;)}
+        &lt;/View&gt;
+      )}
+      {target !== undefined ? (
+        &lt;T w={500} s={10.5} lh={1.4} mono color={C.faint} accessibilityLabel=&quot;book-target&quot;&gt;Target {formatPrice(target, pd)} · {pos === null ? &quot;book not loaded&quot; : POSITION_COPY[pos]}&lt;/T&gt;
+      ) : null}
+      {data.rejected ? &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;Perpl doesn&#39;t publish a book for this market right now.&lt;/T&gt; : null}
+    &lt;/Card&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>ctx.ts</code> y <code>App.tsx</code></strong></label></li>
+</ul>
+<p><code>src/ctx.ts</code>: importar <code>import type { MarketData } from &quot;./hooks/useMarketData&quot;;</code> y añadir <code>marketData: MarketData;</code> al tipo <code>AppCtx</code> (tras <code>perpl</code>).</p>
+<p><code>App.tsx</code>: <code>import { useMarketData } from &quot;./src/hooks/useMarketData&quot;;</code>. Tras <code>const readsActive = …</code> (línea 72):</p>
+<pre><code class="language-ts">  // Order book (D11, P5): sólo con Trade visible y trading key (sin key, el gate no muestra el book).
+  const bookActive = scr === &quot;market&quot; &amp;&amp; store.S.marketTab === &quot;trade&quot; &amp;&amp; perpl.state.status === &quot;ready&quot;;
+  const marketData = useMarketData(store.S.perpsMarketId, bookActive);</code></pre>
+<p>y en <code>ctx</code>: <code>{ ...store, account, treasury, perpl, marketData, reads, notifications, onWallet, lock, signOut, seal, setControls }</code>.</p>
+<p>(<code>useMarketData</code> es un hook: debe llamarse <strong>antes</strong> del <code>if (!ready …) return null;</code>, como los demás.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>TradeTab</code> monta <code>BookCard</code></strong></label></li>
+</ul>
+<p><code>market.tsx</code>: <code>import { BookCard } from &quot;./book&quot;;</code>; firma <code>function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx)</code>. En el paso <code>edit</code>, justo después del <code>&lt;Segmented …/&gt;</code> de Long/Short:</p>
+<pre><code class="language-tsx">      &lt;BookCard market={market} data={marketData} target={level?.target} /&gt;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verde y simulador</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: <code>TSC-OK</code>; tests en verde.</p>
+<p>Simulador (Metro del worktree vivo): Markets → BTC → Trade. Capturas y comprobaciones, mirando cada una:</p>
+<ol>
+<li><code>07-book-live.png</code>: <code>BookCard</code> con <code>LIVE</code>, 5 asks arriba (rojo/rosa, precio menor abajo), <code>SPREAD n.n bps</code>, 5 bids abajo (lima, precio mayor arriba). Anotar el spread y el mejor bid/ask.</li>
+<li>Esperar 10 s, <code>07b-book-later.png</code>: al menos un tamaño o precio cambió (frames por bloque). Si nada cambió en 30 s, anotar (testnet tranquilo) y comprobar en el log de Metro que llegan eventos (añadir temporalmente <code>console.log</code> no: usar <code>recordVideo</code> de 20 s y comparar dos frames).</li>
+<li>Pill Ask → Trade: en <code>metro.log</code> no debe haber errores; en la app el book vuelve a <code>CONNECTING</code> → <code>LIVE</code> (nuevo socket). Captura <code>07c-book-reopened.png</code>.</li>
+<li>Con un nivel puesto desde Ask (<code>trade-level</code>): línea <code>Target … · above the book</code> (nivel +) o <code>below the book</code> (nivel −). Captura <code>07d-book-target.png</code>.</li>
+<li>Sin key no se puede probar el gate aquí (la key está); se verifica por código que <code>bookActive</code> exige <code>ready</code>.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/hooks/useMarketData.ts src/screens/book.tsx src/ctx.ts App.tsx src/screens/market.tsx
+git commit -m &quot;feat(mobile): BookCard con el order book L2 vivo en Trade (useMarketData, un socket por ticket)&quot;</code></pre>
+<hr>
+<h3 id="task-8-recorrido-en-el-simulador-nivel-orden-de-200-ausd-recordatorios-y-cron">Task 8: Recorrido en el simulador — nivel, orden de 2.00 AUSD, recordatorios y cron</h3>
+<p><strong>Files:</strong> ninguno del repo (capturas en <code>&lt;scratch&gt;/f3-shots/</code>, notas para el audit). SQL sólo con <code>node scripts/query.mjs</code> desde <code>services/reads</code> del worktree.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo anterior; cuenta #620; <code>mobile.reminders</code>, <code>mobile.devices</code>, <code>net._http_response</code>.</li>
+<li>Produces: evidencia para el audit (Task 9): ids de recordatorios, tick del cron, saldos antes/después, capturas.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Preguntar por las keys, medir saldos, estado inicial</strong></label></li>
+</ul>
+<p>Preguntar a Jesús: «¿Revocaste las dos trading keys sobrantes de #620 en <code>testnet.perpl.xyz/apikeys</code>?» y anotar la respuesta literal (no bloquea).</p>
+<p>Saldos por RPC (viem ya instalado en <code>apps/mobile</code>):</p>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f3/apps/mobile
+node -e &#39;
+const { createPublicClient, http, parseAbi, formatUnits } = require(&quot;viem&quot;);
+const c = createPublicClient({ transport: http(&quot;https://testnet-rpc.monad.xyz&quot;) });
+const A = &quot;0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1&quot;;
+(async () =&gt; {
+  const ausd = await c.readContract({ address: &quot;0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC&quot;, abi: parseAbi([&quot;function balanceOf(address) view returns (uint256)&quot;]), functionName: &quot;balanceOf&quot;, args: [A] });
+  const mon = await c.getBalance({ address: A });
+  console.log(&quot;RPC&quot;, new Date().toISOString(), &quot;AUSD&quot;, formatUnits(ausd, 6), &quot;MON&quot;, formatUnits(mon, 18));
+})();&#39;</code></pre>
+<p>Expected: ~<code>AUSD 29.00</code> (audit nav F2) y <code>MON 0.0551</code>; anotar los reales. Además en la app, Wallet → «AUSD in trading» (saldo de la cuenta Perpl) → captura <code>08a-wallet-before.png</code>.</p>
+<p>Recordatorios existentes:</p>
+<pre><code class="language-bash">cd ../../services/reads
+node scripts/query.mjs &quot;select count(*) as reminders, count(*) filter (where status = &#39;scheduled&#39;) as scheduled from mobile.reminders where address = &#39;0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1&#39;&quot;
+node scripts/query.mjs &quot;select length(token) as token_len, env, updated_at from mobile.devices where address = &#39;0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1&#39;&quot;</code></pre>
+<p>Expected: <code>0 · 0</code> (F2 no creó recordatorios); un device <code>sandbox</code> con <code>token_len 160</code>. <strong>No imprimir el token.</strong></p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Nivel desde Ask (celda, sin gastar crédito) y lado sugerido</strong></label></li>
+</ul>
+<p>Markets → BTC → Ask → tocar la celda <strong>+0.5 % · 1H</strong> (<code>levelBps 50</code>, <code>horizonMin 60</code>: vence en 1 h, así el recordatorio <code>pre</code> cae a 45 min y el <code>expiry</code> a 60 — los dos se fuerzan por SQL, no se esperan). Captura <code>08b-sheet.png</code> (hoja con «Trade this level»). Tocar <code>trade-level</code> → Trade con <code>LevelCard</code> («BTC +0.5% · 1H → &lt;target&gt;», «Resolves HH:MM · in 59 m», «SUGGESTED LONG»), <code>Segmented</code> en <strong>Long</strong>, <code>BookCard</code> con «Target … · above the book». Captura <code>08c-trade-level.png</code>.</p>
+<p>(Si Jesús prefiere la ruta desde una read real, pedir una lectura en esa celda —1 crédito— y usar «Trade this level» de la <code>ReadCard</code>: el <code>readId</code> viajará a <code>reminder-set</code>. Anotar cuál se usó.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: La orden (única autorizada)</strong></label></li>
+</ul>
+<p>Margen <code>2.00</code> AUSD, apalancamiento <code>1x</code> (chip <code>lv-1</code>), <code>Review</code> → captura <code>08d-review.png</code> (fila <code>LEVEL</code> visible, <code>YOU OPEN · LONG BTC · 1X · MARKET</code>, fee estimada). <strong><code>Confirm long</code></strong> una sola vez. Esperar el resultado:</p>
+<ul>
+<li><code>Filled … BTC at …</code> + <code>Fee … AUSD · LONG 1x</code> → y a los pocos segundos la nota <code>order-note</code>: <strong>«Reminders set: 15 min before and at expiry.»</strong> Captura <code>08e-filled-note.png</code>.</li>
+<li>Si la nota dice «Couldn&#39;t set reminders — …», anotar el texto y seguir (la orden ya existe; el diagnóstico va al audit).</li>
+<li>Si el resultado es <code>failed</code>/<code>unknown</code>, <strong>no reintentar</strong>: anotar y pasar a Step 4.</li>
+</ul>
+<p>Volver a Trade (pill Trade): la <code>LevelCard</code> <strong>ya no está</strong> (nivel consumido). Captura <code>08f-level-consumed.png</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Recordatorios en la base y cron forzado</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f3/services/reads
+node scripts/query.mjs &quot;select id, kind, side, level_bps, horizon_min, target, fire_at, status, read_id from mobile.reminders where address = &#39;0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1&#39; order by fire_at&quot;</code></pre>
+<p>Expected: <strong>dos filas</strong> <code>scheduled</code>, <code>kind pre</code> con <code>fire_at = expiry − 15 min</code> y <code>kind expiry</code>, <code>side long</code>, <code>level_bps 50</code>, <code>horizon_min 60</code>, <code>market_id 16</code>, <code>read_id null</code> (o el id de la read si se usó la card). Anotar los dos <code>id</code>.</p>
+<p>Forzar <strong>sólo el <code>pre</code></strong> primero, en dos pasos (id ya capturado):</p>
+<pre><code class="language-bash">node scripts/query.mjs &quot;update mobile.reminders set fire_at = now() where id = &#39;&lt;id-pre&gt;&#39; and status = &#39;scheduled&#39;&quot;
+sleep 75
+node scripts/query.mjs &quot;select id, kind, status, sent_at from mobile.reminders where id in (&#39;&lt;id-pre&gt;&#39;, &#39;&lt;id-expiry&gt;&#39;)&quot;
+node scripts/query.mjs &quot;select id, status_code, content::text from net._http_response order by id desc limit 3&quot;</code></pre>
+<p>Expected: el <code>pre</code> con <code>sent_at</code> puesto y <code>status</code> <strong><code>failed</code></strong> (sin secretos APNs: <code>providerJwt()</code> lanza) o <strong><code>sent</code></strong> (si Jesús ya cargó la key); el <code>expiry</code> sigue <code>scheduled</code>; el tick más reciente del cron con <code>{&quot;refunded&quot;:0,&quot;resolved&quot;:0,&quot;voided&quot;:0,&quot;remindersSent&quot;:N,&quot;pushSent&quot;:0}</code> donde <code>N = 1</code> sólo si hubo <code>sent</code>. Si <code>sent</code>: mirar el simulador — debe llegar el push «BTC +0.5% · 1H … mark …» y tocarlo abre Market → Trade (<code>patchForPush</code>, P9); captura <code>08g-push.png</code>. Repetir con <code>&lt;id-expiry&gt;</code> y anotar. <strong>No dejar filas <code>scheduled</code> con <code>fire_at</code> forzado sin procesar.</strong></p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Cerrar la posición desde Markets y re-medir</strong></label></li>
+</ul>
+<p>Markets → fila de BTC → posición → <strong>Close</strong> → <code>Closed</code>. Captura <code>08h-closed.png</code>. Wallet: «AUSD in trading» después. Repetir el <code>node -e</code> de saldos por RPC del Step 0 y la consulta de <code>mobile.reminders</code> (estado final de las dos filas). Anotar: AUSD/MON antes y después, fee pagada, <code>fp</code> del fill.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Regresión rápida de lo que F3 tocó</strong></label></li>
+</ul>
+<ul>
+<li>Sign out → Sign in (passkey «pickler» de Apple Passwords): Ask abre en New read sin nivel ni celda (<code>signedOutState</code>), Trade sin <code>LevelCard</code>.</li>
+<li>Push de recordatorio sintético (sin APNs): archivo <code>&lt;scratch&gt;/reminder.apns</code> = <code>{ &quot;aps&quot;: { &quot;alert&quot;: { &quot;title&quot;: &quot;BTC +0.5% · 1H&quot;, &quot;body&quot;: &quot;resolves in 15 min&quot; } }, &quot;pickler&quot;: { &quot;kind&quot;: &quot;reminder&quot;, &quot;reminderId&quot;: &quot;&lt;id-pre&gt;&quot;, &quot;marketId&quot;: 16, &quot;readId&quot;: null } }</code>; <code>xcrun simctl push 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 fun.pickler.app &lt;scratch&gt;/reminder.apns</code> con la app en Wallet → tocar el banner abre BTC Perp en <strong>Trade</strong> (con el book). Captura <code>08i-reminder-tap.png</code>.</li>
+<li><code>metro.log</code>: <code>grep -c -E &quot;ERROR|Require cycle&quot; &lt;scratch&gt;/metro.log</code> → 0 nuevos respecto al arranque (anotar los 3 <code>WARN</code> preexistentes de <code>@noble/hashes</code>).</li>
+</ul>
+<hr>
+<h3 id="task-9-docs-de-cierre-f4-retitulada-audit-f3-y-revision-independiente">Task 9: Docs de cierre, F4 retitulada, audit F3 y revisión independiente</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code> (secciones «Perpl (tab MARKETS)», «Ask y Agents (pills de Market)», «Tests»), <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> (D11, D12, D14, §3 F3, §4), <code>docs/overview/2026-09-19-mobile-ask.html</code> (phase-cards F3 y F4, status board, progreso), <code>docs/overview/data/manifest.js</code> (F3 <code>completed</code>; F4 sigue <code>pending</code>)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-19-mobile-ask-f3-rulings.md</code></li>
+<li>Generate: <code>docs/superpowers/plans/2026-09-19-mobile-ask-f3.html</code>, <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.html</code> (con <code>node scripts/docs-md-to-html.mjs</code>)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: README de la app</strong></label></li>
+</ul>
+<p>En «Perpl (tab MARKETS)» añadir un bullet:</p>
+<pre><code class="language-md">- Order book L2 en Trade: `wss://testnet.perpl.xyz/ws/v1/market-data` (override `PICKLER_PERPL_MARKET_DATA_WS`,
+  mismas reglas de `run:ios` que las otras URLs), un socket por ticket visible con una sola suscripción
+  `order-book@&lt;id&gt;`, sin pings (10 requests/min por conexión; el `mt: 5` es el único). `mt: 15` reemplaza el
+  libro, `mt: 16` es un delta por nivel (`o: 0` borra). `src/perpl/marketData.ts` es puro; los frames reales se
+  graban con `node scripts/perpl-market-data-capture.mjs --market 16 --seconds 20` (Node 22, sin cuenta) en
+  `__tests__/fixtures/perpl/market-data-frames.json`.</code></pre>
+<p>En «Ask y Agents (pills de Market)» añadir al final:</p>
+<pre><code class="language-md">«Trade this level» (hoja de la celda y card de una read `open`) pone `S.tradeLevel`, sugiere el lado (nivel + → long)
+y abre Trade con la `LevelCard`; cuando la orden queda `filled` u `open` la app llama `reminder-set` (firmado, misma
+sesión de Ask) y el servidor programa `pre` (15 min antes, si faltan más de 15) y `expiry`; `resolve-reads` los manda
+con el mark del momento. Nada cierra la posición. `src/reads/level.ts` es puro y tiene test.</code></pre>
+<p>En «Tests» actualizar el número esperado (<code>npm test</code> de Task 7) y el de suites.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Spec — anotaciones (F3)</strong></label></li>
+</ul>
+<p>En <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, sin reescribir las decisiones, añadir al final de cada celda «Valor»:</p>
+<ul>
+<li><strong>D11</strong>: <code>**(F3)** \</code>mt: 16\<code> es delta por nivel de precio (\</code>o: 0\<code> borra), verificado contra frames reales grabados con \</code>scripts/perpl-market-data-capture.mjs\<code> (P3–P4 del plan F3). Archivos reales: \</code>src/perpl/marketData.ts\<code>, \</code>src/hooks/useMarketData.ts\<code>, \</code>src/screens/book.tsx\<code>; \</code>PERPL<em>MARKET</em>DATA<em>WS\<code> en \</code>perpl/config.ts\<code>, \</code>PERPL</em>URLS.marketData\<code>, override \</code>perplMarketDataWs\<code>. El socket sólo vive con Trade visible **y** trading key (P5). El target del nivel se indica con una línea «above / inside / below the book», no resaltando una fila (P2). Un stream rechazado (404/429) no se reintenta (P6).</code></li>
+<li><strong>D12</strong>: <code>**(F3)** Archivos reales: \</code>src/reads/level.ts\<code> (puro), \</code>postReminders\<code> en \</code>reads/api.ts\<code>, \</code>parseRemindersResponse\<code> en \</code>reads/types.ts\<code>, \</code>useReads.setReminders\<code>, \</code>LevelCard\<code> en \</code>market.tsx\<code>. Los recordatorios se programan tras mostrar el resultado de la orden y el nivel se consume si se programaron (P7); \</code>reminder-set\<code> reutiliza la sesión firmada de Ask y pide el permiso de push si aún no se pidió (P8). El push de recordatorio abre Trade sin \</code>LevelCard\<code> (P9). Con \</code>PUSH_MODE = &quot;local&quot;\<code> se programan además dos notificaciones locales.</code></li>
+<li><strong>D14</strong>: <code>**(F3)** «Trade this level» se renderiza en la hoja (outline lima, bajo Ask/Clear) y en la card sólo con la read \</code>open\<code>.</code></li>
+<li>§3 «F3»: sustituir el párrafo por lo verificado (con referencia al audit) y anotar que el push real sigue dependiendo de la key APNs.</li>
+<li>§4: en la fila «Cuenta #620 con dos keys…» anotar la respuesta de Jesús.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Overview, manifest y HTML</strong></label></li>
+</ul>
+<p><code>docs/overview/2026-09-19-mobile-ask.html</code>: phase-card F3 → <code>data-status=&quot;completed&quot;</code> con tasks marcadas y evidencia (capturas clave, ids de recordatorios, saldos); phase-card F4 → título «TestFlight con F3 (siguiente build tras el merge)», descripción sin «build 6» ni «buildNumber 6» (dejar «buildNumber siguiente»), entregable y prerequisitos como en P15; status board y progreso coherentes (<code>grep -c &#39;^ *&lt;article class=&quot;phase-card&quot;&#39;</code> → 4). <code>manifest.js</code>: fase 3 <code>completed</code>; fase 4 <code>pending</code>; <code>status</code> global sigue <code>active</code>.</p>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f3
+node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-19-mobile-ask-f3.md
+node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-19-mobile-ask-design.md
+npm run docs:check &amp;&amp; npm run agents:check</code></pre>
+<p>Expected: ambos checks en verde. Abrir <code>docs/overview/2026-09-19-mobile-ask.html</code> y <code>docs/overview/index.html</code> en el navegador (Playwright o <code>open</code>) y <strong>mirar</strong> F3/F4 renderizadas, también a 390 px de ancho.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Audit <code>2026-09-19-mobile-ask-f3-rulings.md</code></strong></label></li>
+</ul>
+<p>Mismo formato que el de F2: §1 qué quedó hecho y verificado (tabla por task con evidencia), §2 rulings de la ejecución (con los P del plan que se ajustaron), §3 correcciones a afirmaciones previas (incluida la del spec D11 sobre la semántica de <code>mt: 16</code>, ahora fijada), §4 <strong>Estado de las cuentas y del servicio al cierre</strong> (saldos RPC antes/después, fee, ids de recordatorios y su <code>status</code> final, <code>mobile.devices</code> sin token, cuenta #620: la orden y su cierre, respuesta sobre las keys; secretos APNs presentes/ausentes por nombre), §5 pendientes/residuales (heredados: APNs key, capability Push, persona del agente; nuevos), §6 siguiente punto de decisión (merge/push de F3, F4 retitulada, key APNs). Sin tokens, sin secretos, sin direcciones completas fuera de <code>$SIM_ADDR</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Revisión independiente de la rama</strong></label></li>
+</ul>
+<p>Subagente revisor con: este plan, el spec (D11–D14), el diff completo <code>git diff b3378de..HEAD</code> y el audit. Debe cotejar línea a línea <code>marketData.ts</code> contra la doc y el fixture, <code>level.ts</code> contra <code>reminder-set/index.ts</code>, <code>useReads.setReminders</code> contra <code>auth.ts</code>/<code>reminder-set</code>, y buscar: fugas del socket (efectos sin cleanup, <code>active</code> que no cierra), presupuesto de requests, <code>tradeLevel</code> que sobreviva a Sign out o a un cambio de mercado, doble llamada a <code>reminder-set</code>, copy en español en la app, secretos en docs. Los hallazgos se resuelven (fix + test) o se rechazan con razón en el audit §2; ninguno queda «para después» sin figurar en §5.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commits de docs</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/README.md docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-19-mobile-ask-f3.md docs/superpowers/plans/2026-09-19-mobile-ask-f3.html docs/overview/2026-09-19-mobile-ask.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-19-mobile-ask-f3-rulings.md
+git commit -m &quot;docs(mobile-ask): F3 completed (book L2, Trade this level, recordatorios), F4 retitulada, audit F3&quot;</code></pre>
+<p><strong>Cierre de sesión</strong>: handoff con qué quedó hecho, qué falta (merge/push a decisión de Jesús; F4; key APNs) y evidencia. Sin merge ni push.</p>
+<hr>
+<h2 id="self-review">Self-review</h2>
+<p><strong>Cobertura del spec.</strong> D11: URL con override (T6), suscripción <code>mt: 5</code> y <code>mt: 6</code> (T6), <code>mt: 15/16</code> escalados por <code>priceDecimals</code>/<code>sizeDecimals</code> en la UI (<code>formatPrice</code>/<code>formatSize</code>, T7), sin pings (T6 test «no pings ever»), un socket por ticket visible abierto/cerrado con el pill (T7 P5), <code>RECONNECT_DELAYS_MS</code> (T6), clase pura con <code>parseBookFrame</code>/<code>applyBookFrame</code> probada con frames grabados (T5–T6), <code>BookCard</code> con 5 niveles por lado y spread en bps (T7), target «above/below book» como texto (P2). D12: botón en hoja y card (T4), <code>S.tradeLevel</code> + <code>perpsSide</code> + <code>marketTab: &quot;trade&quot;</code> (T4), <code>LevelCard</code> con target/horizonte/resolves at/lado sugerido/Remove level (T4), <code>reminder-set</code> tras <code>filled</code>/<code>open</code> con las dos filas <code>pre</code>/<code>expiry</code> (T3, T8), nada cierra la posición (copy de <code>LevelCard</code>). §3 F3: book vivo que cambia, cambio de pill cierra/reabre, nivel desde celda, orden de 2.00 AUSD a 1x, recordatorios por SQL, cron con <code>fire_at</code> forzado, cierre desde Markets, frames a fixture, saldos por RPC (T8). Residuales 12 (keys) y 13 (minors diferidos) del audit F2: el 12 como prerequisito preguntado; el 13 no se toca (sin efecto observable), queda heredado en §5 del audit.</p>
+<p><strong>Placeholders.</strong> Ninguna task dice «similar a», «TBD» o «añadir validación» sin código; los pasos de simulador nombran capturas y valores esperados.</p>
+<p><strong>Consistencia de nombres.</strong> <code>postReminders</code> (api) ≠ <code>setReminders</code> (hook) ≠ <code>scheduleLocalReminders</code> (notifications); <code>ReminderKind</code> viene de <code>level.ts</code> y <code>Reminder.kind</code> de <code>types.ts</code> usa el mismo literal; <code>levelFromCell(market, cell, now: Date)</code> y <code>levelIsLive(level, nowMs: number)</code> — la fecha entra como <code>Date</code> sólo donde se construye el vencimiento; <code>MarketData.status</code> incluye <code>&quot;idle&quot;</code> y <code>STATUS_LABEL</code> lo cubre; <code>BookCard</code> recibe <code>target?: number</code> y <code>TradeTab</code> pasa <code>level?.target</code>; <code>OrderResult</code> filled con <code>note?</code> es la única variante con nota y <code>OrderResultCard</code> sólo la lee ahí.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-19-mobile-ask-f3.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-19-mobile-ask-f3';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

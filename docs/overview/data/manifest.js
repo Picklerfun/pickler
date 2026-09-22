@@ -117,7 +117,7 @@ window.DOCS = [
     phases: [
       { num: 1, status: 'completed' },
       { num: 2, status: 'completed' },
-      { num: 3, status: 'pending' },
+      { num: 3, status: 'plan_ready' },
       { num: 4, status: 'pending' },
     ],
   },

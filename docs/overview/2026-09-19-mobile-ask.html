@@ -230,7 +230,7 @@
       </article>
 
       <!-- Phase 3 ====================================================== -->
-      <article class="phase-card" data-phase="3" data-status="pending">
+      <article class="phase-card" data-phase="3" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F3</span>
@@ -239,7 +239,7 @@
           <div class="phase-status-control">
             <select aria-label="Phase 3 status">
               <option value="pending">pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
@@ -248,9 +248,26 @@
         <div class="phase-body">
           <p><code>MarketDataSocket</code> sobre <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>order-book@&lt;id&gt;</code>, mt 15/16, un socket por ticket visible, sin pings), <code>BookCard</code> con 5 niveles por lado y spread, <code>LevelCard</code> con lado sugerido y <code>reminder-set</code> tras el fill (15 min antes y al vencer, con el mark en el push). Sin cierre automático ni take-profit.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Book vivo en el simulador, frames grabados a fixture, una orden de 2 AUSD con sus dos recordatorios enviados por el cron</div></div>
-            <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620</div></div>
+            <div><div class="k">Entregable</div><div class="v">Book vivo en el simulador, frames grabados a fixture (script commiteado), una orden de 2.00 AUSD a 1x en BTC con sus dos recordatorios en <code>mobile.reminders</code> procesados por el cron (el push real sigue dependiendo de la key APNs)</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620 (Jesús; se pregunta al arrancar Task 8, no bloquea)</div></div>
           </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> Task 1: src/reads/level.ts — celda/read → TradeLevel, lado sugerido, copy; useNow compartido</label></li>
+              <li><label><input type="checkbox"> Task 2: cliente de reminder-set, parser y contenido local del fallback</label></li>
+              <li><label><input type="checkbox"> Task 3: useNotifications.scheduleLocalReminders y useReads.setReminders</label></li>
+              <li><label><input type="checkbox"> Task 4: «Trade this level» en Ask, LevelCard y nota de recordatorios en Trade (checkpoint D12)</label></li>
+              <li><label><input type="checkbox"> Task 5: script de captura y fixture market-data-frames.json</label></li>
+              <li><label><input type="checkbox"> Task 6: src/perpl/marketData.ts — parser, libro y MarketDataSocket</label></li>
+              <li><label><input type="checkbox"> Task 7: useMarketData, BookCard y montaje en Trade</label></li>
+              <li><label><input type="checkbox"> Task 8: recorrido en el simulador — nivel, orden de 2.00 AUSD, recordatorios y cron</label></li>
+              <li><label><input type="checkbox"> Task 9: README, spec, overview (F4 retitulada), manifest, audit F3 y revisión independiente</label></li>
+            </ol>
+          </details>
         </div>
       </article>
 
@@ -438,7 +455,7 @@ create index on mobile.reads (expires_at) where status = 'open';
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
-       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1 y F2 escritos) ·
+       planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1, F2 y F3 escritos) ·
        audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1 y F2)</p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
