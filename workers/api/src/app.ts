@@ -10,6 +10,9 @@ import { authRoutes } from "./routes/auth";
 import { corsFromEnv } from "./middleware/cors";
 import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes/profiles";
 
+import type { PostgresLaunchReadModel } from "@pickler/infrastructure";
+
+import { launchRoutes } from "./launches/routes";
 import { demoRoutes } from "./routes/demo";
 import { growthRoutes } from "./routes/growth";
 import type { createGrowthServices } from "./growth/services";
@@ -19,6 +22,8 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
   console?: ConsoleServices;
   growth?: ReturnType<typeof createGrowthServices>;
+  /** Absent until a database binding exists; the routes are not mounted without one. */
+  launches?: PostgresLaunchReadModel;
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -38,6 +43,9 @@ export function createApp(services: Services) {
 
   if (services.console) {
     app.route("/v1/console", consoleRoutes(services.console));
+  }
+  if (services.launches) {
+    app.route("/v1/launches", launchRoutes(services.launches));
   }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));

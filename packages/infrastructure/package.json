@@ -42,7 +42,8 @@
     "pg": "8.20.0",
     "viem": "2.56.8",
     "zod": "4.6.5",
-    "@pickler/chain": "*"
+    "@pickler/chain": "*",
+    "@pickler/api-schema": "*"
   },
   "files": [
     "dist",

@@ -99,3 +99,11 @@ export {
   type MetadataReader,
   type ProjectionResult,
 } from "./persistence/product/launch-projector.js";
+
+export {
+  PostgresLaunchReadModel,
+  type LaunchListQuery,
+} from "./persistence/product/launch-read-model.js";
+
+/** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */
+export { migrateDatabase, migrationsFolder } from "./persistence/migrate-database.js";
