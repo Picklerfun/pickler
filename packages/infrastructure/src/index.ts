@@ -74,3 +74,11 @@ export { PostgresTradingStore } from "./persistence/trading-store.js";
 export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
 
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
+
+export {
+  PostgresLaunchIndexStore,
+  type ApplyBatchInput,
+  type IndexBlockInput,
+  type IndexEventInput,
+  type OutboxInput,
+} from "./persistence/product/launch-index-store.js";
