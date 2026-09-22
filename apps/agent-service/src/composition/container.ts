@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRuntime } from "@pickler/agent-runtime";
+import { composeTrading } from "./trading";
 import { readEnv } from "../config/env";
 
 export async function createContainer(env = readEnv()) {
@@ -15,6 +16,7 @@ export async function createContainer(env = readEnv()) {
     );
     return {
       ...runtime,
+      trading: composeTrading(env, runtime.repository),
       env,
       async checkConnections() {
         await runtime.repository.setConnectionsChecked(false);

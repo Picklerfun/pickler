@@ -1,6 +1,6 @@
 # Pickler research pilot
 
-Local Mastra Studio and a tenant-scoped HTTP API for research-only decisions. Polymarket supplies markets, resolution rules and order books; Exa supplies web search and page content. The configured OpenAI-compatible model chooses one candidate and returns a validated `TRADE` proposal or `ABSTAIN`. There is no order submission, position size, wallet, signing tool or simulated portfolio.
+Local Mastra Studio and a tenant-scoped HTTP API for research-only decisions. Polymarket supplies markets, resolution rules and order books; Exa supplies web search and page content. The configured OpenAI-compatible model chooses one candidate and returns a validated `TRADE` proposal or `ABSTAIN`. Research itself does not submit orders or expose signing tools. Optional manual simulation and the separately disabled Node trading integration are documented below.
 
 ## First local run
 
@@ -216,7 +216,7 @@ npm run build
 npm run start --workspace=@pickler/agent-service
 ```
 
-The production build command still starts a local laboratory host, not a hardened deployment. Do not expose Studio through a public tunnel. Public login, external scheduling/queues, trading execution and on-chain contracts remain separate work.
+The production build command still starts a local laboratory host, not a hardened deployment. Do not expose Studio through a public tunnel. Public login, production scheduling/queues and on-chain contracts remain separate work. The optional local trading integration is not a hardened production deployment.
 
 Tests use controlled clocks, isolated PostgreSQL databases and explicitly injected test transports. They do not call paid providers or manufacture production results. Run the real `check` and a manual research job after supplying credentials; automated offline tests do not establish compatibility of an untested remote model.
 
@@ -263,3 +263,7 @@ See [Manual paper trading](PAPER-TRADING.md) for the optional paper plugin, endp
 ## Sports categories
 
 See [MARKET-CATEGORIES.md](MARKET-CATEGORIES.md) for category/subcategory configuration, automatic NFL/general research protocols, decision v4, compatibility and local validation.
+
+## Optional local trading integration
+
+See [LIVE-TRADING.md](LIVE-TRADING.md) for the separately disabled Node pilot, explicit operator wallet/setup commands, API/CLI contracts and controlled-test status. This does not enable trading for existing agents or establish live-provider acceptance.

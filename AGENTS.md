@@ -117,3 +117,7 @@ origin uses the Supabase CA, verify-full, session port 5432 and disabled query c
 No direct-secret fallback is allowed for hosted research. See the deployment record for the
 remote large-payload regression and remaining paid acceptance. No new provider calls are
 required to run the explicit rollback-only database probe.
+
+## Local trading integration
+
+The opt-in Polymarket pilot remains disabled by default. Read `apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

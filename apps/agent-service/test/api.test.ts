@@ -147,3 +147,84 @@ test("new configuration DTOs reject ambiguous scope while preserving legacy read
     );
   }
 });
+
+test("live order routes authenticate requests and reject tenant or signing material before the service", async (t) => {
+  const repository = await createTestStore(t);
+  const unavailable = async () => {
+    throw new Error("Unexpected provider call");
+  };
+  let calls = 0;
+  const app = createApi({
+    repository,
+    markets: { categories: async () => [], list: unavailable, get: unavailable, book: unavailable },
+    tokens: { alpha: "a".repeat(32) },
+    checkConnections: unavailable,
+    trading: {
+      account: unavailable,
+      list: unavailable,
+      get: unavailable,
+      prepare: unavailable,
+      fromRun: unavailable,
+      tick: unavailable,
+      check: unavailable,
+      submit: async (tenant, id, key) => {
+        calls++;
+        assert.equal(tenant, "alpha");
+        assert.equal(key, "controlled-key");
+        return {
+          id,
+          tenantId: tenant,
+          agentId: "pickle-alpha",
+          runId: null,
+          origin: "manual",
+          status: "queued",
+          configVersion: 1,
+          createdAt: 1,
+          expiresAt: 60001,
+          orderHash: null,
+          reason: null,
+          fill: null,
+          preview: {
+            marketId: "1",
+            outcomeId: "2",
+            limitPrice: "0.5",
+            budget: "5",
+            estimatedFee: "0",
+            estimatedShares: "10",
+            observedAt: 1,
+            market: {
+              id: "1",
+              question: "Fixture",
+              rules: "",
+              categoryIds: [],
+              active: true,
+              liquidity: 0,
+              closesAt: null,
+              outcomes: [],
+            },
+          },
+        };
+      },
+    },
+  });
+  const request = (body: unknown) =>
+    app.request("/trading/orders/fixture/submit", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${"a".repeat(32)}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "controlled-key",
+      },
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (await app.request("/trading/orders/fixture/submit", { method: "POST" })).status,
+    401,
+  );
+  assert.equal((await request({ tenantId: "beta" })).status, 400);
+  assert.equal((await request({ privateKey: "forbidden" })).status, 400);
+  assert.equal((await request({ budget: "100" })).status, 400);
+  assert.equal(calls, 0);
+  assert.equal((await request({})).status, 202);
+  assert.equal(calls, 1);
+});

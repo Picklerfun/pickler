@@ -193,3 +193,72 @@ export const paperOrders = pickler
     ],
   )
   .enableRLS();
+
+export const tradingAccounts = pickler
+  .table(
+    "trading_accounts",
+    {
+      tenantId: text("tenant_id").notNull(),
+      agentId: text("agent_id").notNull(),
+      wallet: text("wallet").notNull(),
+      signer: text("signer").notNull(),
+      createdAt: milliseconds("created_at").notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.tenantId, t.agentId] }),
+      uniqueIndex("one_trading_wallet").on(t.wallet),
+      foreignKey({
+        columns: [t.tenantId, t.agentId],
+        foreignColumns: [agents.tenantId, agents.id],
+      }),
+    ],
+  )
+  .enableRLS();
+
+export const liveOrders = pickler
+  .table(
+    "live_orders",
+    {
+      id: text("id").primaryKey(),
+      tenantId: text("tenant_id").notNull(),
+      agentId: text("agent_id").notNull(),
+      runId: text("run_id").references(() => runs.id),
+      requestKey: text("request_key").notNull(),
+      submitKey: text("submit_key"),
+      origin: text("origin").notNull(),
+      status: text("status").notNull(),
+      marketId: text("market_id").notNull(),
+      configVersion: integer("config_version").notNull(),
+      preview: jsonb("preview").$type<import("@pickler/core").LivePreview>().notNull(),
+      budgetMicros: integer("budget_micros").notNull(),
+      createdAt: milliseconds("created_at").notNull(),
+      expiresAt: milliseconds("expires_at").notNull(),
+      orderHash: text("order_hash"),
+      reason: text("reason"),
+      fill: jsonb("fill").$type<import("@pickler/core").LiveFill>(),
+      leaseOwner: text("lease_owner"),
+      leaseExpiresAt: milliseconds("lease_expires_at"),
+    },
+    (t) => [
+      foreignKey({
+        columns: [t.tenantId, t.agentId],
+        foreignColumns: [tradingAccounts.tenantId, tradingAccounts.agentId],
+      }),
+      uniqueIndex("live_request_identity").on(t.tenantId, t.requestKey),
+      uniqueIndex("live_run_identity").on(t.runId),
+      uniqueIndex("live_hash_identity").on(t.orderHash),
+      uniqueIndex("one_live_origin")
+        .on(t.tenantId, t.agentId, t.origin)
+        .where(sql`${t.status} in ('queued','submitting','unknown','settled')`),
+      uniqueIndex("one_live_position")
+        .on(t.tenantId, t.agentId, t.marketId)
+        .where(sql`${t.status} in ('queued','submitting','unknown','settled')`),
+      check("live_budget_bound", sql`${t.budgetMicros} > 0 AND ${t.budgetMicros} <= 5000000`),
+      check("live_origin", sql`${t.origin} in ('manual','agent')`),
+      check(
+        "live_status",
+        sql`${t.status} in ('prepared','queued','submitting','unknown','settled','not_filled','failed','expired')`,
+      ),
+    ],
+  )
+  .enableRLS();
