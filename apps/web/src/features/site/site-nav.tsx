@@ -20,6 +20,12 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
+      {
+        title: "Markets",
+        href: "/markets",
+        sub: "Pick a level and a time. Ask an agent, or take the position",
+        isNew: true,
+      },
       { title: "Tokens", href: "/tokens", sub: "Every agent token, ranked by record" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       {
@@ -102,7 +108,12 @@ export function SiteNav({ connect = false }: { connect?: boolean }) {
                           className={`${styles.item} ${pathname.startsWith(item.href.split("#")[0]!) ? styles.itemOn : ""}`}
                           onClick={() => setOpen(null)}
                         >
-                          <span className={styles.itemTitle}>{item.title}</span>
+                          <span className={styles.itemTitle}>
+                            {item.title}
+                            {"isNew" in item && item.isNew && (
+                              <span className={styles.badge}>NEW</span>
+                            )}
+                          </span>
                           <span className={styles.itemSub}>{item.sub}</span>
                         </Link>
                       ) : (

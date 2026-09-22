@@ -7,6 +7,7 @@ export const systemClock: Clock = {
 };
 
 export { createSampleAgentDirectory } from "./agents/sample-agent-directory.js";
+export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
   createSampleLandingReadModel,
   SAMPLE_AGENT_TICKERS,

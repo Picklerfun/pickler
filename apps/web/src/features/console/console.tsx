@@ -16,7 +16,7 @@ import {
   type Run,
   type RunEvent,
 } from "./api";
-import { useNow } from "./lib/now";
+import { useNow } from "@/lib/now";
 import { startPolling } from "./lib/polling";
 import { AgentForm } from "./agent-form";
 import { Overview } from "./sections/overview";

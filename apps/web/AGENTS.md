@@ -17,7 +17,9 @@ src/app/
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
+  markets/                  # The perpetuals board and one market's level × time surface
 src/features/console/      # Agent form, history, research result and API client
+src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
   container.ts             # Typed presentation facade over HTTP DTOs
@@ -81,6 +83,35 @@ What is real today: the address, the chain and the native balance. What is not: 
 `features/site/site-nav.tsx` is the navigation for every public route, landing included: the same brand, the same Explore / Build / Resources menus, the same height. Only two things change. The landing hangs the price tape above it, and nowhere else does. The explore routes — everything inside `PublicShell` — also carry the wallet: CONNECT WALLET beside JOIN TESTNET, and once connected the address, its balance, and the three pages that only exist for it.
 
 The apply flow and the auth screens keep their own bar on purpose — a flow that is asking for something should not offer six ways out of it — but the bar is the same height as the navigation and carries the same brand, so only the right-hand side differs. The brand mark is lit in cyan on every surface, the flows included. Lime stays for what the product does — a filled action, a win, a graduated token — not for who made it.
+
+## Markets
+
+`/markets` lists every perpetual market on Perpl and `/markets/[symbol]` is one of them: a grid of
+price levels crossed with how long you give a position. One square, two meanings. Under **Trade**
+it is a position of your own money — above the mark a long, below a short — and under **Ask** the
+same square is a paid read. The tab is the only thing that changes; the surface is shared, which is
+the point of the page.
+
+Ask moves the level and never the clock. Every read still resolves `READ_HORIZON_DTO` after
+delivery, so the shorter columns are dimmed under Ask and the banner says why: two answers are only
+comparable when they were asked over the same distance in time. The question itself comes from the
+DTO (`readQuestion`, written by core) with the level filled in — a page never phrases a read.
+
+The ticket is built in full and then stops. Connecting a wallet is live, switching to Monad testnet
+is live, Review costs nothing and is ours — and **Sign and send** is disabled with the reason on
+it, because Perpl's contracts are not deployed and this site's wallet never signs. What a sent
+order would look like afterwards (no Perpl account, sent, filled, not filled) lives behind an
+explicit **design preview**, and every one of those panels carries `DESIGN PREVIEW · NO ORDER
+EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
+
+`features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
+— against the mirrored limits in `@pickler/api-schema`. It moves to core when an order is really
+sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
+same way in both.
+
+The phone gets the same two screens, not a reduced pair: the grid keeps its nine levels and four
+columns and gives up the trail column instead, and the ticket moves under the surface. A market is
+the one page where a smaller screen must not mean fewer squares.
 
 ## Paid reads
 
