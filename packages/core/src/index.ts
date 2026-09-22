@@ -11,6 +11,15 @@ export {
   type CurveConfig,
 } from "./features/launch/domain/curve-math.js";
 
+export {
+  ChainMismatchError,
+  ChainUnavailableError,
+  type BlockRef,
+  type ChainLog,
+  type ChainReader,
+  type LogQuery,
+} from "./features/launch/ports/chain-reader.js";
+
 export * from "./features/landing/domain/landing.js";
 export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
 export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
