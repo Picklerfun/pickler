@@ -218,3 +218,6 @@ por peso:
 lecturas y arrastres de UI contra testnet durante las pruebas); no hay nada que revertir en el
 proyecto compartido. En la app, `git revert` por commit si hiciera falta deshacer algo antes del
 merge de `feat/mobile-nav-f2`.
+
+**Nota de cierre (controlador, tras la re-revisión de la ola de fixes):** el `ERROR [Worklets] … "pillX"` que apareció una vez tras un Fast Refresh no tiene camino en arranque frío ni en release (análisis en la re-revisión: el plugin de worklets registra `pillX` en la evaluación del módulo y el gesto memoizado lo captura por valor). Medido después: arranque frío (`terminate` + `launch`) y 6 arrastres reales seguidos con `tabbar-drag.yaml`/`tabbar-drag-back.yaml` → 0 líneas de `[Worklets]`/`[Reanimated]`/`GestureHandler` en `metro.log`; la pestaña cambió al soltar (`shots/final-drag-cold.png`). Se mantiene el `useMemo` del gesto.
+
