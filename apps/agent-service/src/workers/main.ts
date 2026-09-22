@@ -6,6 +6,16 @@ const container = await createContainer();
 const controller = new AbortController();
 process.once("SIGINT", () => controller.abort());
 process.once("SIGTERM", () => controller.abort());
+const tradingLoop = (async () => {
+  while (!controller.signal.aborted && container.trading) {
+    try {
+      await container.trading.tick();
+    } catch {
+      console.error("Trading reconciliation deferred; no orders resent");
+    }
+    await setTimeout(5000, undefined, { signal: controller.signal }).catch(() => {});
+  }
+})();
 try {
   console.log("Pickler worker ready with per-run leases.");
   while (!controller.signal.aborted) {
@@ -23,5 +33,7 @@ try {
     }
   }
 } finally {
+  controller.abort();
+  await tradingLoop;
   await container.repository.close();
 }
