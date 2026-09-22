@@ -82,3 +82,13 @@ export {
   type IndexEventInput,
   type OutboxInput,
 } from "./persistence/product/launch-index-store.js";
+
+export {
+  runIndexerPass,
+  type IndexerPassOptions,
+  type IndexerSource,
+  type LogDecoder,
+  type OutboxPlanner,
+  type PassOutcome,
+} from "./chain/launch-indexer.js";
+export { decodeLaunchLog } from "./chain/launch-log-decoder.js";

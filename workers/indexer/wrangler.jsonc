@@ -1,0 +1,21 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "pickler-indexer-staging",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "limits": { "cpu_ms": 300000 },
+  "observability": { "enabled": true },
+  // No Hyperdrive id and no contract address yet: nothing is deployed, so the worker refuses
+  // to run rather than indexing a guessed address. Both are set when the contracts land.
+  "vars": {
+    "APP_ENV": "staging",
+    "CHAIN_ID": "10143",
+    "RPC_URLS": "https://testnet-rpc.monad.xyz",
+    "CONFIRMATIONS": "5",
+    "MAX_BLOCKS_PER_PASS": "100",
+  },
+}
