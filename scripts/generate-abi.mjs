@@ -63,7 +63,9 @@ export const ${name}AbiHash = "${abiHash}";
 `;
 
   writeFileSync(join(outputDirectory, `${name}.ts`), contents);
-  exports.push(`export * from "./${name}.js";`);
+  // packages/chain is consumed as TypeScript source and imports without extensions.
+  // A ".js" specifier here resolves under Node but not under the web app's bundler.
+  exports.push(`export * from "./${name}";`);
 }
 
 writeFileSync(

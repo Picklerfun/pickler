@@ -1,4 +1,4 @@
-import type { ContractDeployment } from "./index.js";
+import type { ContractDeployment } from "./index";
 
 /**
  * Verified external deployments Pickler depends on.

@@ -12,6 +12,8 @@ import type {
   LeaderboardDto,
   PerpMarketDto,
   MarketDetailDto,
+  LaunchSummaryDto,
+  ReadDto,
 } from "@pickler/api-schema";
 import { apiJson, apiFetch } from "./api-client";
 
@@ -20,6 +22,27 @@ export const services = {
   clock: { now: () => new Date() },
   getLanding: () => apiJson<LandingResponse>("/landing"),
   listAgents: () => apiJson<AgentSummaryDto[]>("/demo/agents"),
+  /**
+   * The real launch catalogue.
+   *
+   * Returns null when the API has no launch surface mounted, which is what happens without a
+   * database binding. Null and an empty list mean different things — "we cannot ask" against
+   * "we asked and there is nothing" — and the page says which one it is rather than showing
+   * the same emptiness for both.
+   */
+  listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
+    const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Pickler API request failed (${response.status})`);
+    }
+
+    return response.json() as Promise<ReadDto<LaunchSummaryDto[]>>;
+  },
   listDirectory: () => apiJson<DirectoryAgentDto[]>("/demo/directory"),
   listReads: () => apiJson<AgentReadDto[]>("/demo/reads"),
   getRead: (id: string) => apiJson<AgentReadDto | null>(`/demo/reads/${encodeURIComponent(id)}`),

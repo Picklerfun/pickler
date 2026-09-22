@@ -59,7 +59,6 @@ export function planAdvance(
   }
 
   const ordered = [...blocks].sort((left, right) => (left.number < right.number ? -1 : 1));
-  const first = ordered[0]!;
 
   if (cursor === null) {
     // Bootstrapping: there is nothing to disagree with, so the range is taken as given.
