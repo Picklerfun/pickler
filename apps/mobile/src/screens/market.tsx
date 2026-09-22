@@ -85,7 +85,7 @@ function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level
       <T w={700} s={16} lh={1.2} ls={-0.01} display accessibilityLabel="level-title">{levelTitle(symbol, level)} → {formatPrice(level.target, pd)}</T>
       <KVList rows={[
         { label: "TARGET", value: formatPrice(level.target, pd) },
-        { label: "RESOLVES", value: resolvesLabel(level, now) },
+        { label: "RESOLVES", value: resolvesLabel(level, now).replace("Resolves ", "") },
         { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.lime : C.down },
       ]} top />
       <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Markets.`}</T>

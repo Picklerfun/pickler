@@ -25,9 +25,9 @@ function level(v: unknown): BookLevel | undefined {
   return p === undefined || s === undefined || o === undefined ? undefined : { p, s, o };
 }
 
-/** Lado ausente = sin cambios en ese lado. */
+/** Lado ausente o null = sin cambios en ese lado. */
 function levels(v: unknown): BookLevel[] | undefined {
-  if (v === undefined) return [];
+  if (v === undefined || v === null) return [];
   if (!Array.isArray(v)) return undefined;
   const out: BookLevel[] = [];
   for (const x of v) {

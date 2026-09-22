@@ -11,7 +11,7 @@ pill, línea de target «above/inside/below the book», sign-out que limpia `tra
 por una orden fallida), push sintético de recordatorio que abre Trade, `metro.log` limpio.
 
 **No verificado end to end**: la única orden autorizada (2.00 AUSD, 1x, LONG BTC, nivel +0.5%·1H) quedó
-**`unknown`** — Perpl no confirmó en ~20 s — y nunca llenó. Posiciones en 0.00 antes y después, saldo
+**`unknown`** — Perpl no confirmó dentro del timeout de 30 s (`ORDER_TIMEOUT_MS`) — y nunca llenó. Posiciones en 0.00 antes y después, saldo
 `104.86 AUSD free in trading` sin cambio, `LevelCard` no consumido. Por guardrail no se reintentó más de
 una vez en el primer intento; un reintento autorizado por Jesús se abortó **dos veces** antes de `Confirm`
 por una colisión del simulador compartido con otra sesión (Proflores). **Consecuencia directa: `reminder-set`
@@ -69,7 +69,7 @@ level» de la **`ReadCard`** (no de la hoja) → `08c-trade-level.png`: `LevelCa
 
 **Step 2 — la orden (única autorizada)**: margen 2.00 AUSD, 1x → `08d-review.png` (`YOU OPEN · LONG BTC ·
 1X`, notional ≈1.70 AUSD, LEVEL `+0.5% · 1H → 85691.5`) → **un solo tap de `Confirm`** →
-`08e-confirming.png` (`SENT`) → tras ~20 s, **`08e-filled-note2.png`: `unknown` («No confirmation yet —
+`08e-confirming.png` (`SENT`) → tras los 30 s del timeout, **`08e-filled-note2.png`: `unknown` («No confirmation yet —
 Check your positions — the order may still have gone through.»)**. Verificado por tres señales
 independientes que no hubo fill silencioso: Markets sin cambio (`0.00 in positions · 104.86 free`,
 `08f-markets-check.png`/`08f2-markets-recheck.png` 20 s después con el mark ya distinto), `mobile.reminders`
@@ -246,7 +246,7 @@ Del **plan** (no se edita el plan; queda anotado aquí):
   free` antes, durante y después del intento de orden y de los dos reintentos abortados. Ninguna orden se
   ejecutó realmente pese al `Confirm long` (resultado UI `unknown`).
 - **Orden**: intento único autorizado, margen 2.00 AUSD, 1x, LONG BTC, nivel `+0.5% · 1H → 85691.5` (desde
-  una read `open` pedida vía Ask). Resultado: **`unknown`** (no confirmation) tras ~20 s de espera.
+  una read `open` pedida vía Ask). Resultado: **`unknown`** (no confirmation) — Perpl nunca confirmó dentro del timeout de 30 s.
   Verificado por tres señales independientes (0 en posiciones, `mobile.reminders` vacío, `LevelCard` no
   consumido) que no hubo fill silencioso. **No se reintentó una segunda vez con `Confirm`** — los dos
   reintentos autorizados se abortaron antes de llegar a esa pantalla, por colisión de simulador.
@@ -286,7 +286,7 @@ Ordenados por peso — primero lo nuevo de esta fase, después lo heredado:
    simulador, una orden real que dispare dos filas `scheduled` en `mobile.reminders` y un cron que las
    procese con `fire_at` forzado.** Requiere una ventana exclusiva del simulador (sin colisión con
    Proflores u otra sesión) para reintentar el `Confirm`; vale también preguntar a alguien con más
-   contexto de Perpl por qué el order forwarder no confirmó en ~20 s en testnet.
+   contexto de Perpl por qué el order forwarder no confirmó dentro de los 30 s del timeout en testnet.
 2. **Simulador `2B2A0BAD-…` compartido con otras sesiones (Proflores) sin coordinación**: el UDID que el
    plan reservó para Pickler cambió de foreground dos veces durante los reintentos de Task 8 sin ningún
    tap propio de por medio. Cualquier recorrido futuro en este simulador corre el riesgo de interferencia;

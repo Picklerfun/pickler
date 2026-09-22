@@ -71,6 +71,11 @@ test("parseBookFrame keeps per-subscription failures (404/429) with their error"
     .toEqual({ mt: 6, subs: [{ stream: "order-book@999", code: 404, error: "unknown stream" }] });
 });
 
+test("parseBookFrame treats a null side as unchanged instead of dropping the whole frame", () => {
+  expect(parseBookFrame(json({ mt: 16, sid: 1, bid: null, ask: [{ p: 1, s: 2, o: 1 }] })))
+    .toEqual({ mt: 16, sid: 1, at: null, bid: [], ask: [{ p: 1, s: 2, o: 1 }] });
+});
+
 // --- libro ------------------------------------------------------------------
 
 const snapFrame = parseBookFrame(json(SNAP))!;
@@ -98,10 +103,10 @@ test("updates are deltas per price level: o 0 removes, anything else upserts (P4
   expect(book.at).toBe(last.at ?? book.at);
 });
 
-test("updates are deltas per price level (synthetic: remove, replace, add, unchanged side)", () => {
+test("updates are deltas per price level (synthetic: remove, replace, add)", () => {
   const base = applyBookFrame(EMPTY_BOOK, { mt: 15, sid: 1, at: 100, bid: [{ p: 1000, s: 5, o: 1 }, { p: 990, s: 7, o: 2 }], ask: [{ p: 1010, s: 3, o: 1 }] });
   const next = applyBookFrame(base, { mt: 16, sid: 1, at: 101, bid: [{ p: 1000, s: 0, o: 0 }, { p: 995, s: 4, o: 1 }], ask: [{ p: 1010, s: 9, o: 3 }] });
-  expect([...next.bids.keys()].sort()).toEqual([990, 995]);
+  expect([...next.bids.keys()].sort((a, b) => a - b)).toEqual([990, 995]);
   expect(next.asks.get(1010)).toEqual({ p: 1010, s: 9, o: 3 });
   expect(next.at).toBe(101);
   expect(base.bids.get(1000)).toEqual({ p: 1000, s: 5, o: 1 }); // el anterior no se muta
