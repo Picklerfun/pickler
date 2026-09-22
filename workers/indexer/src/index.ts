@@ -1,12 +1,15 @@
 import {
   PostgresLaunchIndexStore,
+  PostgresLaunchProjector,
   ViemChainReader,
   decodeLaunchLog,
   runIndexerPass,
   type DatabaseConnectionOptions,
 } from "@pickler/infrastructure";
 
-import { IndexerNotConfiguredError, readIndexerConfig } from "./config.js";
+import type { ChainReader } from "@pickler/core";
+import type { LaunchMetadata } from "@pickler/infrastructure";
+import { IndexerNotConfiguredError, readIndexerConfig, type IndexerConfig } from "./config.js";
 
 export interface Env {
   APP_ENV: string;
@@ -65,28 +68,45 @@ const worker = {
     try {
       const reader = new ViemChainReader({ chainId: config.chainId, rpcUrls: config.rpcUrls });
 
-      const outcome = await runIndexerPass({
-        reader,
-        store,
-        source: {
-          chain: config.chain,
-          contract: config.factory,
-          stream: "launches",
-          deploymentBlock: config.deploymentBlock,
-        },
-        decode: decodeLaunchLog,
-        maxBlocks: config.maxBlocks,
-        confirmations: config.confirmations,
-      });
+      const { outcome, projection } = await runConfiguredPass(config, store, reader);
 
       // A gap and a reorg are both worth seeing in logs: one means a range was refused, the
       // other that a branch was unwound. Neither is a failure of this worker.
-      console.log(JSON.stringify({ indexer: outcome }, replaceBigints));
+      console.log(JSON.stringify({ indexer: outcome, projection }, replaceBigints));
     } finally {
       await store.close();
     }
   },
 };
+
+export async function runConfiguredPass(
+  config: IndexerConfig,
+  store: PostgresLaunchIndexStore,
+  reader: ChainReader & {
+    readLaunchMetadata(token: string, block: bigint): Promise<LaunchMetadata>;
+  },
+) {
+  const outcome = await runIndexerPass({
+    reader,
+    store,
+    source: {
+      chain: config.chain,
+      contract: config.factory,
+      stream: "launches",
+      deploymentBlock: config.deploymentBlock,
+    },
+    decode: decodeLaunchLog,
+    maxBlocks: config.maxBlocks,
+    confirmations: config.confirmations,
+  });
+
+  const projector = new PostgresLaunchProjector(store.pool);
+  const projection = await projector.project(config.chain, (token, block) =>
+    reader.readLaunchMetadata(token, block),
+  );
+
+  return { outcome, projection };
+}
 
 export default worker;
 
