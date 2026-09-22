@@ -1,7 +1,9 @@
 import * as Notif from "expo-notifications";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { localResolutionContent, pushEnvFor, type PushTarget, pushTargetOf } from "../reads/push";
+import { REMINDER_PRE_MS, reminderKinds } from "../reads/level";
+import { localReminderContent, localResolutionContent, pushEnvFor, type PushTarget, pushTargetOf } from "../reads/push";
 import type { Read } from "../reads/types";
+import type { TradeLevel } from "../store";
 
 export type PushDevice = { token: string; env: "sandbox" | "production" };
 export type PushPermission = "unknown" | "granted" | "denied" | "unavailable";
@@ -14,6 +16,8 @@ export type Notifications = {
   ensurePermission: () => Promise<PushDevice | null>;
   /** Fallback D10 (PUSH_MODE === "local"): notificación local al vencer la read. */
   scheduleLocal: (read: Read) => Promise<void>;
+  /** Fallback D10 para «Trade this level» (PUSH_MODE === "local"): `pre` (si faltan > 15 min) y `expiry`, sin mark. */
+  scheduleLocalReminders: (symbol: string, level: TradeLevel) => Promise<void>;
 };
 
 // Con la app en primer plano el push se muestra igual (banner + lista): así se ve llegar en el simulador.
@@ -87,5 +91,19 @@ export function useNotifications(onTarget: (t: PushTarget) => void): Notificatio
     await Notif.scheduleNotificationAsync({ identifier: `read-${read.id}`, content: localResolutionContent(read), trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date } });
   }, []);
 
-  return { device, permission, ensurePermission, scheduleLocal };
+  const scheduleLocalReminders = useCallback(async (symbol: string, level: TradeLevel) => {
+    const now = Date.now();
+    const expiry = Date.parse(level.expiresAt);
+    for (const kind of reminderKinds(level, now)) {
+      const date = new Date(kind === "pre" ? expiry - REMINDER_PRE_MS : expiry);
+      if (date.getTime() <= now) continue;
+      await Notif.scheduleNotificationAsync({
+        identifier: `reminder-${kind}-${level.marketId}-${level.expiresAt}`,
+        content: localReminderContent(symbol, level, kind),
+        trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date },
+      });
+    }
+  }, []);
+
+  return { device, permission, ensurePermission, scheduleLocal, scheduleLocalReminders };
 }
