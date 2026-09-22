@@ -184,3 +184,9 @@ the selected trace every three seconds; stop when terminal unless scheduling nee
 Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
+
+## Passkey acceptance boundary
+
+PRF account derivation is experimental until a real authenticator confirms address parity with
+the iOS implementation. Never present a derived address as authenticated server identity. Clear
+the PRF buffer and end the signing session before querying balances; keep provider failures visible.
