@@ -4,7 +4,8 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
 import { type LayoutChangeEvent, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { useAppCtx } from "../navigation/context";
 import { type TabName, TAB_ROOT } from "../navigation/routes";
 import { ROOT_OF, type Screen, SHOW_TABS } from "../store";
@@ -29,6 +30,8 @@ const HIDE_MS = 220;
  * Tab bar custom de bottom-tabs (spec mobile-nav D11/D13). Siempre montada y absoluta: se esconde deslizando
  * hacia abajo cuando la pantalla enfocada no es raíz (D13). La pastilla lima sigue a `state.index` con resorte y
  * se puede arrastrar sin despegar el dedo; la pestaña cambia sólo al soltar (D11). El tap sigue siendo tap.
+ * Fondo opaco (`C.bgBottom`, el mismo del final del gradiente): al ser absoluta el contenido pasa por debajo y sin
+ * blur nativo un fondo translúcido dejaba leer el texto entre los iconos (F2-R2).
  */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { switchTab } = useAppCtx();
@@ -75,11 +78,11 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
       if (i !== drag.value) {
         drag.value = i;
         pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
-        runOnJS(tick)();
+        scheduleOnRN(tick);
       }
     })
     // `onEnd` también corre al cancelar (success=false) si el Pan estaba activo: sólo se selecciona al soltar de verdad.
-    .onEnd((_e, success) => { if (success) runOnJS(select)(drag.value); })
+    .onEnd((_e, success) => { if (success) scheduleOnRN(select, drag.value); })
     .onFinalize((_e, success) => {
       if (!success) pill.value = withSpring(pillX(state.index, rowW.value, TAB_COUNT), SPRING); // cancelado: vuelve al activo
       drag.value = -1;
@@ -91,7 +94,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   return (
     <Animated.View
       pointerEvents={visible ? "auto" : "none"}
-      style={[{ position: "absolute", left: 0, right: 0, bottom: 0, height, paddingTop: ROW_TOP, paddingBottom: insets.bottom + ROW_BOTTOM, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.deep50 }, barStyle]}
+      style={[{ position: "absolute", left: 0, right: 0, bottom: 0, height, paddingTop: ROW_TOP, paddingBottom: insets.bottom + ROW_BOTTOM, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.bgBottom }, barStyle]}
     >
       <GestureDetector gesture={pan}>
         <View onLayout={onLayout} style={{ flexDirection: "row", height: ROW_H, paddingHorizontal: ROW_PAD_X }}>
