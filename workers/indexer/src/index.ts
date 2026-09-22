@@ -45,8 +45,8 @@ function indexerDatabase(env: Env): { url: string; options: DatabaseConnectionOp
  * because an index that looks populated and is not costs more than one that plainly never
  * started.
  */
-export default {
-  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext) {
+const worker = {
+  async scheduled(_controller: ScheduledController, env: Env) {
     let config;
     try {
       config = readIndexerConfig(env);
@@ -87,6 +87,8 @@ export default {
     }
   },
 };
+
+export default worker;
 
 function replaceBigints(_key: string, value: unknown): unknown {
   return typeof value === "bigint" ? value.toString() : value;
