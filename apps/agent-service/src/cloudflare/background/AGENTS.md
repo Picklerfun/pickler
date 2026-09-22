@@ -7,3 +7,5 @@ Reuse the tenant API and research runner. PostgreSQL queued records are the dura
 No paid calls at startup. Do not deploy this configuration or upload database/tenant secrets. Tests may inject execution fixtures, but runtime must use real providers. Always close request-scoped database pools, even if releasing ownership fails.
 
 The local Queue emulator serializes consumer callbacks in the observed validation. Use the `worker` client command to start the updated Node executor against this same isolated database for a reproducible cross-host overlap test. This does not prove remote Cloudflare consumer concurrency. Never alter the normal pilot database for this experiment.
+
+Force `POLYMARKET_TRADING_RUNTIME` to `off` when composing the shared container. This experiment has no signing executor, trading wakeup or wallet secrets. Only the local Node host can opt into the separate trading pilot.
