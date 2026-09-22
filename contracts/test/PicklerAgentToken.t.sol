@@ -2,8 +2,6 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
-
 import {PicklerAgentToken} from "../src/PicklerAgentToken.sol";
 
 contract PicklerAgentTokenTest is Test {
@@ -25,7 +23,7 @@ contract PicklerAgentTokenTest is Test {
 
     function test_itIsAnOrdinaryTransferableErc20() public {
         vm.prank(curve);
-        token.transfer(creator, 100e18);
+        assertTrue(token.transfer(creator, 100e18), "transfer returned false");
 
         assertEq(token.balanceOf(creator), 100e18);
         assertEq(token.balanceOf(curve), TOTAL_SUPPLY - 100e18);
@@ -35,13 +33,13 @@ contract PicklerAgentTokenTest is Test {
     /// be tested is that the supply is fixed for good, whoever asks.
     function test_thereIsNoWayToChangeTheSupply() public {
         vm.prank(curve);
-        token.transfer(creator, 1e18);
+        assertTrue(token.transfer(creator, 1e18), "transfer returned false");
 
         assertEq(token.totalSupply(), TOTAL_SUPPLY, "a transfer changed the supply");
 
         // An ERC-20 with no burn keeps supply constant even when tokens are sent nowhere.
         vm.prank(creator);
-        token.transfer(address(0xdead), 1e18);
+        assertTrue(token.transfer(address(0xdead), 1e18), "transfer returned false");
 
         assertEq(token.totalSupply(), TOTAL_SUPPLY, "supply moved after a burn-like transfer");
     }
@@ -68,7 +66,7 @@ contract PicklerAgentTokenTest is Test {
         uint256 amount = 123_456_789;
 
         vm.prank(curve);
-        token.transfer(creator, amount);
+        assertTrue(token.transfer(creator, amount), "transfer returned false");
 
         // The curve's accounting assumes what it sends is what arrives. Fee-on-transfer and
         // rebasing tokens break that, and this asserts our own token never does.

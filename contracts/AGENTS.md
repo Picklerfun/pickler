@@ -8,7 +8,9 @@ This is an independent Foundry project, not an npm workspace. `foundry.toml` pin
 
 Implemented: `src/libraries/PicklerCurveMath.sol`, a pure library holding all curve arithmetic — exact-input buy, exact-input sell, exact-output buy, remaining inventory, marginal price, and the derivation of virtual reserves from a sale allocation, an LP allocation and a target reserve. Rounding is directional: the quote reserve is floored and anything subtracted from a reserve is ceilinged, so rounding always favours the curve. Tests cover hand-computed values, the derivation's price-continuity property under fuzzing, and invariants over random buy/sell sequences.
 
-Not implemented: the token, factory, bonding curve, graduation adapter, liquidity locker and fee escrow; networks and deployment scripts. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
+Also implemented: `src/PicklerAgentToken.sol`, a fixed-supply ERC-20 with no mint, owner, pause or transfer tax; `src/libraries/PicklerPreset.sol`, the economic configuration a launch is fixed to plus the validation that refuses an incoherent one; and `src/PicklerLaunchFactory.sol`, which enforces creator authorization (EIP-712, replay-protected, ERC-1271 aware), one canonical token per agent key, and immutable published presets. The factory obtains a curve through `ICurveDeployer` and knows nothing else about it.
+
+Not implemented: the bonding curve, graduation adapter, liquidity locker and fee escrow; networks and deployment scripts. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
 
 Also implemented: `test/fork/`, the Uniswap V4 spike (LP-02). These tests fork Monad testnet at a pinned block and run only when `MONAD_TESTNET_RPC_URL` is set, so `npm run contracts:test` stays offline; run them with `npm run contracts:test:fork`. Read [the spike findings](../docs/market/uniswap-v4-spike.md) before touching graduation: there is no official Uniswap V4 on Monad testnet, and the Monad-maintained one is a different build from mainnet's.
 
