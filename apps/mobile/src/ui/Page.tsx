@@ -3,11 +3,12 @@ import { type ReactElement, type ReactNode, useCallback, useState } from "react"
 import { Image, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppCtx } from "../ctx";
 import { useAppCtx } from "../navigation/context";
 import { CAN_BACK, headerFor, REFRESHABLE, ROOT_OF, type Screen, SHOW_TABS } from "../store";
 import { Icon, T, Tag, Touch } from "./primitives";
+import { tabBarHeight } from "./tabBarLayout";
 import { C } from "./theme";
 
 /** Fondo del teléfono: gradiente + campo de puntos (D10 del hi-fi). Va dentro de cada Page: opaco, tapa la página de abajo durante el gesto (spec mobile-nav D6). */
@@ -31,6 +32,7 @@ export function Backdrop() {
 export function Page({ screen, children }: { screen: Screen; children: ReactNode }) {
   const ctx = useAppCtx();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { S, perpl, treasury, reads, seal, back, setControls } = ctx;
   const perpsSymbol = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId)?.symbol;
   const [title, sub] = headerFor(screen, perpsSymbol, S.marketTab);
@@ -81,7 +83,8 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
         </View>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1 }}
+          // Las raíces reservan el hueco de la tab bar absoluta (D13); las no-raíz no lo necesitan.
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
