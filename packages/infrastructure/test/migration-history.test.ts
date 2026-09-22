@@ -9,7 +9,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { migrateDatabase, migrationsFolder } from "../src/persistence/migrate-database.js";
 
-for (const history of ["fresh", "research", "product"] as const) {
+for (const history of ["fresh", "research", "product", "main"] as const) {
   test(`merged migration history upgrades ${history} without losing data`, async (t) => {
     const url = new URL(
       process.env.TEST_DATABASE_URL ??
@@ -32,7 +32,11 @@ for (const history of ["fresh", "research", "product"] as const) {
         await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"),
       );
       journal.entries = journal.entries.filter((entry: { idx: number }) =>
-        history === "research" ? entry.idx <= 4 : [0, 5, 6].includes(entry.idx),
+        history === "main"
+          ? entry.idx <= 9
+          : history === "research"
+            ? entry.idx <= 4
+            : [0, 5, 6].includes(entry.idx),
       );
       await mkdir(join(folder, "meta"));
       await writeFile(join(folder, "meta/_journal.json"), JSON.stringify(journal));
@@ -56,6 +60,9 @@ for (const history of ["fresh", "research", "product"] as const) {
       "pickler.paper_orders",
       "identity.profiles",
       "growth.waitlist",
+      "pickler.trading_accounts",
+      "launch.drafts",
+      "market.chain_events",
     ]) {
       const result = await pool.query("SELECT to_regclass($1) AS name", [table]);
       assert.ok(result.rows[0].name, table);
