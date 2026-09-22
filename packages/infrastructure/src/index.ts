@@ -72,3 +72,5 @@ export { PostgresBudgetLedger } from "./console/budget.js";
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";
 export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
+
+export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";

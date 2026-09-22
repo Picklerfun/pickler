@@ -83,3 +83,5 @@ market stay comparable. `readQuestionAtLevel` in `features/agents` writes that s
 The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
 today, so it lives in the web feature that draws it against the mirrored limits in
 `@pickler/api-schema`. It belongs here the day an order is placed, because then it decides money.
+
+`src/features/launch` holds the launchpad domain: `domain/curve-math.ts` previews curve pricing and is held to the Solidity library by a generated fixture, and `ports/chain-reader.ts` describes what the domain needs from a chain without naming one. No blockchain SDK is imported here.
