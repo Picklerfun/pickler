@@ -32,7 +32,7 @@ Server-side reads use infrastructure adapters implementing business ports. Walle
 
 A submitted transaction is not a finalized operation. When implementing writes, model pending, confirmed, and failed states; account for network-specific confirmations, replacements, and reorganizations. Deduplicate events by network, transaction hash, and log index. Off-chain storage and blockchain writes are not atomic: introduce persistent state, idempotency, and reconciliation when these operations are added.
 
-Monad remains the launcher direction; on-chain contracts, wallets and trading execution are outside the research pilot.
+Monad remains the launcher direction; its on-chain contracts are outside the research pilot. The optional local Polymarket execution adapter is a separate Node capability, not a research tool.
 
 ## Independent agent service
 
@@ -42,7 +42,7 @@ Core owns profiles, capability ports, config validation, schedule/quota policy a
 
 PostgreSQL stores each tenant's configuration and history, including config snapshots and partial evidence. A short policy-row transaction enforces global/per-tenant capacity, renewable per-run leases fence execution and writes, a partial unique index prevents simultaneous work per agent, and persistent occurrence keys deduplicate schedules. Recovery only interrupts expired leases. The operator supplies separate local tenant tokens; Studio is privileged loopback tooling, not production authentication. External content and model outputs cannot choose tenant scope or enable tools.
 
-See [the pilot guide](../apps/agent-service/README.md) for current endpoints, limits, readiness and restart semantics. [Runtime V1](specs/agent-runtime-v1.md) remains the broader direction; paper/live trading, wallets, public login and adaptive scheduling are not implemented.
+See [the pilot guide](../apps/agent-service/README.md) for current endpoints, limits, readiness and restart semantics. [Runtime V1](specs/agent-runtime-v1.md) remains the broader direction; public login and adaptive scheduling are not implemented. Manual paper trading is available; the disabled local trading pilot adds explicit operator wallet setup and a dedicated execution adapter. See [the trading guide](../apps/agent-service/LIVE-TRADING.md) for custody, permissions, persistence and pending live acceptance.
 
 The network, contracts, authorization rules, and confirmation policy remain undefined. No blockchain SDK or RPC provider has been provisioned.
 
