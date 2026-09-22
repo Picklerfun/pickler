@@ -23,6 +23,7 @@ export {
   ChainMismatchError,
   ChainUnavailableError,
   type BlockRef,
+  type CallRequest,
   type ChainLog,
   type ChainReader,
   type LogQuery,

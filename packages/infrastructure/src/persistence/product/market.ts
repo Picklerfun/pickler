@@ -42,9 +42,15 @@ export const tokens = market
     "tokens",
     {
       id: uuid("id").primaryKey().defaultRandom(),
-      agentId: uuid("agent_id")
-        .notNull()
-        .references(() => agents.id, { onDelete: "restrict" }),
+      /**
+       * Null until the product links this launch to an agent.
+       *
+       * The chain is the source of truth for a launch existing: the factory knows an
+       * `agentKey`, a hash nothing can reverse into our agent's identifier. Requiring the
+       * link here would mean the indexer either invents one or drops the launch, and a
+       * launch the chain has and we do not is worse than one whose agent is still unknown.
+       */
+      agentId: uuid("agent_id").references(() => agents.id, { onDelete: "restrict" }),
       /** Reserved when an application is approved, before any contract exists. */
       ticker: text("ticker").notNull(),
       name: text("name").notNull(),
