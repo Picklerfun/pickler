@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type LayoutChangeEvent, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
@@ -39,15 +39,22 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const focusedScreen = (getFocusedRouteNameFromRoute(focusedTab) ?? TAB_ROOT[focusedTab.name as TabName]) as Screen;
   const visible = SHOW_TABS.includes(focusedScreen);
   const height = tabBarHeight(insets.bottom);
+  const activeIndex = state.index;
 
   // Ancho real de la fila (depende del dispositivo, P2): estado para React y sharedValue para los worklets.
   const [width, setWidth] = useState(0);
   const rowW = useSharedValue(0);
-  const onLayout = useCallback((e: LayoutChangeEvent) => { const w = e.nativeEvent.layout.width; setWidth(w); rowW.value = w; }, [rowW]);
 
   // Pastilla: x animada; `drag` = índice bajo el dedo durante el arrastre (−1 = sin arrastre).
   const pill = useSharedValue(0);
   const drag = useSharedValue(-1);
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    // Primer layout: coloca la pastilla sin resorte; el efecto de abajo sólo anima cambios de índice.
+    if (rowW.value === 0) pill.value = pillX(activeIndex, w);
+    rowW.value = w;
+    setWidth(w);
+  }, [rowW, pill, activeIndex]);
   useEffect(() => { if (width > 0) pill.value = withSpring(pillX(state.index, width), SPRING); }, [state.index, width, pill]);
 
   // Esconder/mostrar (D13): translateY = alto de la barra.
@@ -55,38 +62,43 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   useEffect(() => { ty.value = withTiming(visible ? 0 : height, { duration: HIDE_MS }); }, [visible, height, ty]);
 
   const select = useCallback((i: number) => {
-    if (i === state.index) return;
     const route = state.routes[i];
     // El listener `tabPress` de native-stack es quien hace popToTop en la pila anidada al tocar la pestaña ya
-    // enfocada; aquí sólo se emite y, si nadie lo previene, se cambia de pestaña (paridad con el tap, P4).
+    // enfocada; aquí siempre se emite (D11) y, si nadie lo previene y es otra pestaña, se cambia (paridad con el tap).
     const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-    if (!e.defaultPrevented) switchTab(route.name as TabName);
+    if (i !== state.index && !e.defaultPrevented) switchTab(route.name as TabName);
   }, [state.index, state.routes, navigation, switchTab]);
   const tick = useCallback(() => { void Haptics.selectionAsync(); }, []);
 
-  const pan = Gesture.Pan()
-    .enabled(visible && width > 0)
-    .activeOffsetX([-6, 6]) // el tap no se roba: el Pan sólo activa con 6 pt horizontales
-    .failOffsetY([-12, 12])
-    .onStart((e) => {
-      const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
-      drag.value = i;
-      pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
-    })
-    .onUpdate((e) => {
-      const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
-      if (i !== drag.value) {
-        drag.value = i;
-        pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
-        scheduleOnRN(tick);
-      }
-    })
-    // `onEnd` también corre al cancelar (success=false) si el Pan estaba activo: sólo se selecciona al soltar de verdad.
-    .onEnd((_e, success) => { if (success) scheduleOnRN(select, drag.value); })
-    .onFinalize((_e, success) => {
-      if (!success) pill.value = withSpring(pillX(state.index, rowW.value, TAB_COUNT), SPRING); // cancelado: vuelve al activo
-      drag.value = -1;
-    });
+  // Gesto memoizado: gesture-handler no necesita recrearlo en cada render (residual #3 del audit F2).
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(visible && width > 0)
+        .activeOffsetX([-6, 6]) // el tap no se roba: el Pan sólo activa con 6 pt horizontales
+        .failOffsetY([-12, 12])
+        .onStart((e) => {
+          const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
+          drag.value = i;
+          pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
+        })
+        .onUpdate((e) => {
+          const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
+          if (i !== drag.value) {
+            drag.value = i;
+            pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
+            scheduleOnRN(tick);
+          }
+        })
+        // `onEnd` también corre al cancelar (success=false) si el Pan estaba activo: sólo se selecciona al soltar de verdad.
+        .onEnd((_e, success) => { if (success) scheduleOnRN(select, drag.value); })
+        .onFinalize((_e, success) => {
+          // Un Pan que nunca activó (tap) no movió la pastilla y no debe tocarla (evita bamboleo en doble tap).
+          if (!success && drag.value !== -1) pill.value = withSpring(pillX(activeIndex, rowW.value, TAB_COUNT), SPRING);
+          drag.value = -1;
+        }),
+    [visible, width, activeIndex, select, tick, rowW, pill, drag]
+  );
 
   const barStyle = useAnimatedStyle(() => ({ transform: [{ translateY: ty.value }] }));
   const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: pill.value }] }));

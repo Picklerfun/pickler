@@ -1,4 +1,4 @@
-import { itemWidth, pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_TOP, tabBarHeight, tabIndexAt } from "../src/ui/tabBarLayout";
+import { itemWidth, pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_PAD_X, ROW_TOP, tabBarHeight, tabIndexAt } from "../src/ui/tabBarLayout";
 
 // iPhone 17 Pro: 402 pt de ancho; fila con 6 pt de padding a cada lado → 5 ítems de 78 pt.
 const W = 402;
@@ -28,4 +28,8 @@ test("pillX and pillWidth sit the pill inside its item with a 2 pt inset", () =>
 test("tabBarHeight is the row plus the bottom inset (deterministic, no measuring)", () => {
   expect(tabBarHeight(0)).toBe(ROW_TOP + ROW_H + ROW_BOTTOM);
   expect(tabBarHeight(34)).toBe(8 + 45 + 34 + 12);
+});
+
+test("the pill is centered in its item", () => {
+  for (const i of [0, 2, 4]) expect(pillX(i, W) + pillWidth(W) / 2).toBeCloseTo(ROW_PAD_X + (i + 0.5) * itemWidth(W));
 });
