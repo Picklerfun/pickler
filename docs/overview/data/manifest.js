@@ -30,10 +30,10 @@ window.DOCS = [
   {
     date: '2026-09-21',
     title: 'TestFlight build 9',
-    summary: 'Build 0.1.0 (9): navegación nativa F2 — tab bar con pastilla lima arrastrable (cambia al soltar, háptica) y barra que se esconde deslizando al entrar/salir de no-raíz; cierra el proyecto mobile-nav. Subida pendiente de verificar.',
+    summary: 'Build 0.1.0 (9): navegación nativa F2 — tab bar con pastilla lima arrastrable (cambia al soltar, háptica) y barra que se esconde deslizando al entrar/salir de no-raíz; cierra el proyecto mobile-nav. VALID en App Store Connect y en el grupo «Equipo».',
     file: 'dev/2026-09-21-testflight-build9.html',
     types: ['feature'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'testflight', 'ios', 'navigation'],
   },
   {
