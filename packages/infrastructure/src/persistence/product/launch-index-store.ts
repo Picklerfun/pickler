@@ -68,6 +68,26 @@ export class PostgresLaunchIndexStore {
     await this.pool.end();
   }
 
+  async readCurveAddresses(chain: string, factory: string): Promise<`0x${string}`[]> {
+    const rows = await this.database
+      .select({ decoded: chainEvents.decoded })
+      .from(chainEvents)
+      .where(
+        and(
+          eq(chainEvents.chain, chain),
+          eq(chainEvents.emitter, factory),
+          eq(chainEvents.eventName, "LaunchCreated"),
+          eq(chainEvents.orphaned, false),
+        ),
+      );
+    return rows.flatMap((row) => {
+      const curve = (row.decoded as { curve?: unknown } | null)?.curve;
+      return typeof curve === "string" && /^0x[0-9a-fA-F]{40}$/.test(curve)
+        ? [curve.toLowerCase() as `0x${string}`]
+        : [];
+    });
+  }
+
   async readCursor(chain: string, contract: string, stream: string): Promise<IndexerCursor | null> {
     const [row] = await this.database
       .select()
