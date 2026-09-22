@@ -1,4 +1,11 @@
-import { createPublicClient, fallback, http, type PublicClient, type Transport } from "viem";
+import {
+  erc20Abi,
+  createPublicClient,
+  fallback,
+  http,
+  type PublicClient,
+  type Transport,
+} from "viem";
 
 import {
   ChainMismatchError,
@@ -61,6 +68,25 @@ export class ViemChainReader implements ChainReader {
       );
 
     this.client = createPublicClient({ transport });
+  }
+
+  async readLaunchMetadata(token: string, blockNumber: bigint) {
+    await this.verifyChain();
+    const address = token as `0x${string}`;
+    return this.call_("readLaunchMetadata", async () => {
+      const [name, symbol, decimals, totalSupply] = await Promise.all([
+        this.client.readContract({ address, abi: erc20Abi, functionName: "name", blockNumber }),
+        this.client.readContract({ address, abi: erc20Abi, functionName: "symbol", blockNumber }),
+        this.client.readContract({ address, abi: erc20Abi, functionName: "decimals", blockNumber }),
+        this.client.readContract({
+          address,
+          abi: erc20Abi,
+          functionName: "totalSupply",
+          blockNumber,
+        }),
+      ]);
+      return { name, symbol, decimals, totalSupply };
+    });
   }
 
   async getLatestBlock(): Promise<BlockRef> {
