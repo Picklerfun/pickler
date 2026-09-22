@@ -23,7 +23,14 @@ const outputDirectory = join(root, "packages/chain/src/abi");
  * Contracts whose ABI is part of the public interface. Add a contract here when external
  * consumers — the indexer, the API, a third-party integrator — need to decode or call it.
  */
-const CONTRACTS = ["PicklerCurveMath"];
+const CONTRACTS = [
+  "PicklerCurveMath",
+  "PicklerPreset",
+  "PicklerAgentToken",
+  "PicklerLaunchFactory",
+  "PicklerBondingCurve",
+  "PicklerCurveDeployer",
+];
 
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
