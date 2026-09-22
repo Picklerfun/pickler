@@ -1,6 +1,6 @@
 # Launchpad on Monad — development specification
 
-Status: proposed, not implemented. Written 2026-09-21 against commit `397863a` on `codex/public-data-audit`.
+Status: written 2026-09-21 against commit `397863a`. D0, A1, A2, A3 and A4 are implemented on `codex/launchpad-development-spec`; A5, A6 and all of track B are not. Each section notes its own state.
 
 This document translates the product specification "Pickler — Launchpad en Monad" into engineering deliverables against this repository. The product specification owns _what_ the launchpad is and which economic rules govern it. This document owns _what we build, in what order, and how we know a piece is finished_. Where the two disagree about the current state of the code, this document is authoritative about the code and the product specification is authoritative about the rules.
 
@@ -83,9 +83,13 @@ Exit criteria: unit tests for each direction; fuzz across the full range of deci
 
 Exit criteria: supply and allocation sums hold; no caller and no admin can mint or withdraw protected funds; authorization replay, `agentKey` impersonation, wrong `chainId`, smart-wallet signatures and a recipient different from the payer are all covered; factory bytecode size and launch gas measured against the block limit.
 
+**Done, 2026-09-22.** `PicklerAgentToken`, `PicklerPreset` and `PicklerLaunchFactory`, with `ICurveDeployer` separating the factory from what a curve is. A launch costs ~830k gas; the factory sits under the size limit; both are asserted rather than measured once. The preset gate refuses a configuration below the precision floor A1 found.
+
 **A3 — `PicklerBondingCurve`.** `buyExactInput`, `buyExactOutput`, `sellExactInput`, `quoteBuy`, `quoteSell`, `getCurveState`. Exact-input that exceeds remaining inventory reverts with `ExceedsRemainingSupply`; the quote returns `remainingTokens` and an exact-output alternative with `maxQuoteIn`, charging only what is required and returning any excess in the same transaction. The purchase that exhausts the sale allocation sets `READY_TO_GRADUATE`; it does not create the pool.
 
 Exit criteria: the four reserve compartments never mix — no amount counted as both reserve and fee; fee-on-transfer and rebasing quote assets rejected rather than mishandled; reentrancy covered; `minOut`, `maxIn` and `deadline` enforced; the last-purchase and concurrent-purchase paths tested including the revert that a competing buy causes.
+
+**Done, 2026-09-22.** `PicklerBondingCurve` and `PicklerCurveDeployer`, with 20 unit tests, 4 invariants over 8192 calls each, and an integration suite running factory → curve → trading → handoff with no stubs. The curve exposes `releaseForGraduation` for A5 and `remitFees` for A6, so both can land without changing it.
 
 **A4 — Uniswap V4 spike.** Starts at D0. On a fork of the target environment, with the real deployed V4 contracts rather than mocks: create a pool, mint a full-range position, lock it, collect fees without reducing liquidity, and swap. Resolve asset ordering, decimals, `sqrtPriceX96`, tick spacing and valid full-range bounds, fee tier, mint slippage bounds, and the unlock/callback and approval flow for the actual PositionManager version. Produce a working answer to pool pre-initialization by an attacker; a salt is not assumed to be sufficient. Verify bytecode against the environment manifest before using any address — the official deployment list covers Monad mainnet 143 and those addresses do not transfer to testnet.
 
