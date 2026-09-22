@@ -5,3 +5,5 @@ export * from "./PicklerAgentToken.js";
 export * from "./PicklerLaunchFactory.js";
 export * from "./PicklerBondingCurve.js";
 export * from "./PicklerCurveDeployer.js";
+export * from "./PicklerGraduationAdapterV4.js";
+export * from "./PicklerLiquidityLocker.js";

@@ -30,6 +30,8 @@ const CONTRACTS = [
   "PicklerLaunchFactory",
   "PicklerBondingCurve",
   "PicklerCurveDeployer",
+  "PicklerGraduationAdapterV4",
+  "PicklerLiquidityLocker",
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });
