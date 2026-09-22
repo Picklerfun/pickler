@@ -57,7 +57,7 @@ export const agentConfigSchema = z
     limits: z
       .object({
         searches: z.number().int().min(2).max(3),
-        pageReads: z.number().int().min(1).max(5),
+        pageReads: z.number().int().min(1).max(6),
         steps: z.number().int().min(3).max(12),
         durationMs: z.number().int().min(1).max(300000),
         outputTokens: z.number().int().min(1).max(32768),
@@ -65,6 +65,10 @@ export const agentConfigSchema = z
       })
       .strict(),
     profile: z.string().trim().min(1).max(4000),
+    trading: z
+      .object({ version: z.literal(1), mode: z.enum(["off", "manual", "automatic"]) })
+      .strict()
+      .optional(),
     marketScope: marketScopeSchema.optional(),
     categoryIds: z.array(z.string().regex(/^\d+$/)).max(10).optional(),
     tools: z.array(toolNameSchema).max(6),
@@ -72,8 +76,17 @@ export const agentConfigSchema = z
       .object({
         version: z.literal(1),
         enabled: z
-          .array(z.enum(["polymarket", "exa", "balldontlie", "the-odds-api", "paper-trading"]))
-          .max(5),
+          .array(
+            z.enum([
+              "polymarket",
+              "exa",
+              "balldontlie",
+              "the-odds-api",
+              "paper-trading",
+              "polymarket-trading",
+            ]),
+          )
+          .max(6),
       })
       .strict()
       .optional(),
