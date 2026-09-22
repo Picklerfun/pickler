@@ -87,6 +87,11 @@ class ScriptedChain implements ChainReader {
     return block;
   }
 
+  /** No pass reads contract state, so answering is enough to satisfy the port. */
+  async call(): Promise<`0x${string}`> {
+    return "0x";
+  }
+
   async getLogs(query: LogQuery): Promise<ChainLog[]> {
     return this.logs.filter(
       (log) => log.blockNumber >= query.fromBlock && log.blockNumber <= query.toBlock,

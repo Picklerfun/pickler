@@ -90,3 +90,10 @@ export {
   type PassOutcome,
 } from "./chain/launch-indexer.js";
 export { decodeLaunchLog } from "./chain/launch-log-decoder.js";
+
+export {
+  PostgresLaunchProjector,
+  type LaunchMetadata,
+  type MetadataReader,
+  type ProjectionResult,
+} from "./persistence/product/launch-projector.js";

@@ -66,7 +66,7 @@ export class ViemChainReader implements ChainReader {
   async getLatestBlock(): Promise<BlockRef> {
     await this.verifyChain();
 
-    return this.call("getLatestBlock", async () => {
+    return this.call_("getLatestBlock", async () => {
       const block = await this.client.getBlock({ blockTag: "latest" });
 
       return toBlockRef(block);
@@ -76,7 +76,7 @@ export class ViemChainReader implements ChainReader {
   async getBlock(blockNumber: bigint): Promise<BlockRef> {
     await this.verifyChain();
 
-    return this.call("getBlock", async () => {
+    return this.call_("getBlock", async () => {
       const block = await this.client.getBlock({ blockNumber });
 
       return toBlockRef(block);
@@ -92,7 +92,7 @@ export class ViemChainReader implements ChainReader {
       );
     }
 
-    return this.call("getLogs", async () => {
+    return this.call_("getLogs", async () => {
       const logs = await this.client.request({
         method: "eth_getLogs",
         params: [
@@ -109,6 +109,20 @@ export class ViemChainReader implements ChainReader {
     });
   }
 
+  async call(request: { to: `0x${string}`; data: `0x${string}`; blockNumber?: bigint }) {
+    await this.verifyChain();
+
+    return this.call_("call", async () => {
+      const result = await this.client.call({
+        to: request.to,
+        data: request.data,
+        ...(request.blockNumber === undefined ? {} : { blockNumber: request.blockNumber }),
+      });
+
+      return (result.data ?? "0x") as `0x${string}`;
+    });
+  }
+
   /**
    * Asks the node which chain it is, once. Every read goes through this, so a misconfigured
    * or swapped endpoint is caught on first use rather than after a day of indexing.
@@ -118,7 +132,7 @@ export class ViemChainReader implements ChainReader {
       return;
     }
 
-    const reported = await this.call("getChainId", () => this.client.getChainId());
+    const reported = await this.call_("getChainId", () => this.client.getChainId());
 
     if (reported !== this.chainId) {
       throw new ChainMismatchError(this.chainId, reported);
@@ -127,7 +141,7 @@ export class ViemChainReader implements ChainReader {
     this.verified = true;
   }
 
-  private async call<T>(operation: string, run: () => Promise<T>): Promise<T> {
+  private async call_<T>(operation: string, run: () => Promise<T>): Promise<T> {
     try {
       return await run();
     } catch (cause) {

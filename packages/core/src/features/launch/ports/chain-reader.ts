@@ -49,6 +49,13 @@ export interface LogQuery {
   topics?: readonly (`0x${string}` | readonly `0x${string}`[] | null)[];
 }
 
+/** An `eth_call`, pinned to a block so a multi-read view stays internally consistent. */
+export interface CallRequest {
+  to: `0x${string}`;
+  data: `0x${string}`;
+  blockNumber?: bigint;
+}
+
 export interface ChainReader {
   /** The chain this reader is bound to. Verified against the node, never assumed. */
   readonly chainId: number;
@@ -58,6 +65,12 @@ export interface ChainReader {
   getBlock(blockNumber: bigint): Promise<BlockRef>;
 
   getLogs(query: LogQuery): Promise<ChainLog[]>;
+
+  /**
+   * Reads contract state. Returns raw bytes: decoding belongs to whoever knows the ABI, and
+   * keeping it out of the port is what keeps the domain free of a chain SDK.
+   */
+  call(request: CallRequest): Promise<`0x${string}`>;
 }
 
 /** Raised when a node answers for a chain other than the one the reader was configured for. */
