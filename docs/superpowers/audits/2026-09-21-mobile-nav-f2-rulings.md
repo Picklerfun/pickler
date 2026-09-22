@@ -119,6 +119,28 @@ worktree (`git status --short` las muestra `??` hasta este commit).
    evidencia); el frame original de Task 3 (sin el ajuste) queda sin commitear en
    `shots/bar-hiding-task3-original.png`. **Coste si está mal:** ninguno — el mecanismo `translateY` +
    `withTiming` es el mismo a 220 ms; sólo cambia la ventana de observación usada para probarlo.
+4. **Ruling F2-R4** (revisión de docs, hallazgo desestimado) — el hallazgo «`bar-hiding.png` no muestra
+   la barra a medio deslizar» se verificó como falso: el controlador midió el recorte de la franja
+   inferior de la imagen commiteada contra los frames descartados `push-2`/`push-3` del mismo probe de
+   15 s y encontró **36 píxeles claros** (hairline + iconos + pastilla cortados) frente a **0** en los
+   otros dos — la imagen sí es un frame a medio camino de la transición observada con la ventana
+   ampliada de F2-R3. **Coste si está mal:** ninguno — es una verificación de una evidencia ya
+   commiteada, no cambia código ni afecta D13.
+5. **Ruling F2-F1** (ola final de fixes, revisión completa de la rama + revisión de docs, commit de
+   código de esta sección) — cuatro correcciones sobre `TabBar.tsx` resueltas en una sola ronda:
+   colocar la pastilla en `pillX(activeIndex, w)` sin resorte en el primer `onLayout` en vez de
+   dejarla sin pintar hasta el primer cambio de índice (resolvía el residual #1 del §6 original);
+   `onFinalize` usa `activeIndex` (número, capturado por el `useMemo` del gesto) en vez de `state.index`
+   para no cerrar sobre el objeto `state` entero, y sólo mueve la pastilla si el `Pan` llegó a activarse
+   (`drag.value !== -1`), evitando un bamboleo visible en un doble tap rápido entre dos pestañas
+   (resolvía el residual #2); `Gesture.Pan()` pasa a construirse dentro de un `useMemo` en vez de en
+   cada render (resolvía el residual #3); `select` vuelve a emitir `tabPress` siempre y sólo llama
+   `switchTab` si el índice es otro, con lo que el comentario sobre el listener de native-stack
+   resolviendo `popToTop` en la pestaña activa vuelve a ser cierto (resolvía el residual #4). Test
+   nuevo: la pastilla queda centrada dentro de su ítem. `npx jest __tests__/tabBarLayout.test.ts` →
+   5/5; `npm test` → 33 suites/244; `tsc` limpio; humo en el simulador (arranque, tap, doble tap
+   rápido sin bamboleo, arrastre en ambas direcciones) sin warnings nuevos de Metro. **Coste si está
+   mal:** una ronda de fix más sobre estos cuatro puntos.
 
 ## 4. Correcciones a afirmaciones previas
 
@@ -129,6 +151,9 @@ worktree (`git status --short` las muestra `??` hasta este commit).
 | Plan Global Constraints / Task 2 código de ejemplo | Haptic y selección vía `runOnJS` de `react-native-reanimated` | **(F2)** `scheduleOnRN` de `react-native-worklets`: `runOnJS` está marcado `@deprecated` en `react-native-reanimated 4.5.1` (`workletFunctions.d.ts:30-38`) | Task 2, revisión de fix round 1, ruling F2-R2 |
 | Plan Task 2, `.onEnd` del brief | `.onEnd(() => runOnJS(select)(drag.value))` sin condición | **(F2)** `.onEnd((_e, success) => { if (success) scheduleOnRN(select, drag.value); })` — en gesture-handler 2.32 un `Pan` activo que se cancela también dispara `onEnd(..., false)`; sin el guard, un gesto cancelado cambiaría de pestaña y luego `onFinalize` desincronizaría la pastilla | Task 2, adaptación de runtime del implementador (verificada en `useAnimatedGesture.ts` de `node_modules`) |
 | Task 3, primer reporte del implementador | «La barra pasa de 100% a 0% visible entre dos frames consecutivos» (posible defecto de animación) | **Falso positivo**: el método de captura (`recordVideo` VFR ~4 fps + latencia de Maestro >4 s) no muestrea con suficiente densidad una transición de 220 ms; remedido con `HIDE_MS=15000` temporal — ruling F2-R3 | Controlador, Task 4 |
+| Spec, línea **Rama** | «`feat/mobile-nav`, base `main` (`6e9326c`, build 7 en TestFlight), worktree `.claude/worktrees/mobile-nav`» | «`feat/mobile-nav` (F1, mergeada en `165accf`) y `feat/mobile-nav-f2` (F2), base `main`; worktree `.claude/worktrees/mobile-nav`» — F1 ya mergeó a `main` desde que se escribió esa línea | Revisión de docs, ola final de fixes (ruling F2-F1) |
+| Spec, D11 | Describía la selección como «`switchTab`… o emite `tabPress` si la pestaña ya está activa» (dos ramas excluyentes) | `select` emite `tabPress` **siempre** y sólo llama `switchTab` si el índice es otro — paridad real con el código de `TabBar.tsx` | Revisión de docs, ola final de fixes (ruling F2-F1) |
+| README, bullet `TabBar.tsx` | «tab bar custom…; devuelve `null` en pantallas no-raíz de su pestaña (`SHOW_TABS`)» | «siempre montada, absoluta; se esconde deslizando fuera de `SHOW_TABS` (D13)» — el `null` describía el diseño de F1, D13 (F2) la reemplazó por `translateY` | Revisión de docs, ola final de fixes (ruling F2-F1) |
 
 ## 5. Estado de las cuentas y del servicio al cierre
 
@@ -147,44 +172,47 @@ worktree (`git status --short` las muestra `??` hasta este commit).
 
 ## 6. Pendientes / residuales
 
-Ordenados por peso:
+Los 4 residuales de Task 2 sobre `onLayout`/`onFinalize`/`Gesture.Pan`/el comentario de `select`
+quedaron **resueltos por la ola final de fixes** (ruling F2-F1, §3) y salen de esta lista. Ordenados
+por peso:
 
-1. **Pastilla resorta desde `x=0` en el arranque en frío** (Task 2, minor deferred): hasta el primer
-   `onLayout` con `width > 0` la pastilla no se pinta; en el primer frame tras montar no hay pastilla
-   visible. Fijar sin animación en ese primer render evitaría el salto inicial visible en cold start.
-2. **`onFinalize` captura `state` entero por closure** (Task 2, minor deferred): correcto hoy porque
-   `TabBar` re-renderiza en cada cambio de `state.index` (el `Gesture.Pan` se recrea con el render
-   vigente), pero sería más explícito capturar un `sharedValue` de índice activo en vez de depender de
-   la identidad de closure.
-3. **`Gesture.Pan` recreado en cada render** (Task 2, minor deferred): funciona porque gesture-handler
-   tolera recrear el gesto, pero un `useMemo` evitaría el trabajo repetido; no se midió impacto de
-   performance.
-4. **Comentario de `select` desactualizado** (Task 2, minor deferred): el comentario sobre `tabPress`
-   asume que bottom-tabs no emite el evento para la pestaña ya enfocada; en la práctica el listener de
-   native-stack (heredado de F1) es quien resuelve el `popToTop`, no bottom-tabs — mismo matiz que el
-   ruling R7 del audit F1, no se repropagó al comentario nuevo de F2.
-5. **1 pt de `borderTop` incluido dentro de `height`** (Task 2, minor deferred): la hairline superior
+1. **1 pt de `borderTop` incluido dentro de `height`** (Task 2, minor deferred): la hairline superior
    de la barra (`borderTopWidth: 1`) se pinta dentro del alto calculado por `tabBarHeight`, sin
    restarlo; el hueco reservado por `Page` es 1 pt más alto de lo estrictamente necesario — sin efecto
    visible detectado en las capturas.
-6. **`bar-hiding.png` no es un frame de la animación de producción** (D13, F2-R3): se obtuvo con
+2. **`bar-hiding.png` no es un frame de la animación de producción** (D13, F2-R3): se obtuvo con
    `HIDE_MS=15000` temporal para poder muestrear un frame a medio camino con las herramientas de
    captura disponibles; el mecanismo (`translateY` + `withTiming`) es idéntico a 220 ms, pero no hay
    una captura que muestre la transición real de 220 ms a medio camino — limitación de la herramienta,
-   documentada en vez de inventar un frame de producción.
-7. **La barra sólo reaparece cuando el pop ya aterrizó** (inherente a D13, no un defecto): como la
+   documentada en vez de inventar un frame de producción. La revisión de docs cuestionó si la imagen
+   commiteada de verdad muestra la barra a medio deslizar; desestimado como hallazgo — ruling F2-R4
+   (§3): 36 píxeles claros en la franja inferior de la imagen commiteada contra 0 en los frames
+   descartados del mismo probe.
+3. **La barra sólo reaparece cuando el pop ya aterrizó** (inherente a D13, no un defecto): como la
    pantalla enfocada determina `visible` vía `getFocusedRouteNameFromRoute`, la animación de aparición
    arranca cuando react-navigation actualiza el foco al terminar la transición de `native-stack`, no
    en sincronía con el gesto de swipe-back — puede sentirse un beat después del gesto interactivo de
    iOS. Aceptado como comportamiento del diseño (D13 anima solamente su propia entrada/salida, no está
    acoplada al progreso del gesto de pantalla).
-8. **Háptica no verificable en el simulador**: no hay motor háptico en `xcrun simctl`; queda pendiente
+4. **Háptica no verificable en el simulador**: no hay motor háptico en `xcrun simctl`; queda pendiente
    de confirmar `Haptics.selectionAsync()` en el iPhone de Jesús.
-9. **Android sin verificar**: el spec excluye Android explícitamente (sin build); todo este audit es
+5. **Android sin verificar**: el spec excluye Android explícitamente (sin build); todo este audit es
    iOS/simulador únicamente.
-10. **Incidente operativo de Task 2** (nota, no defecto de la app): SpringBoard del simulador
-    segfaulteó (`EXC_BAD_ACCESS`) durante el primer tap de la sesión de humo; la app (proceso
-    separado) siguió viva y volvió al frente con `simctl launch`; no volvió a ocurrir.
+6. **Pastilla varada si `select` no cambia de índice** (revisión final, parked — inalcanzable hoy):
+   cuando `i === state.index` (un tap o un arrastre que termina sobre la pestaña ya activa), `select`
+   sólo emite `tabPress` y no llama a `switchTab`, así que nada dispara el efecto que sincroniza la
+   pastilla con `state.index`. Hoy es inofensivo porque el propio gesto (`onStart`/`onUpdate` del
+   `Pan`, o el tap directo sobre el ítem) ya deja la pastilla en `pillX(i, …)` antes de soltar, así que
+   coincide con el índice activo sin necesitar el efecto. Si en el futuro algo llamara a `select` (o
+   moviera `state.index`) sin pasar por el gesto que ya sincroniza la pastilla, quedaría desalineada
+   hasta el siguiente cambio de pestaña; no se implementa una corrección preventiva sin un caso real
+   que la dispare.
+7. **Nits de la revisión final** (parked, sin acción en esta ola): observaciones de estilo de bajo
+   impacto sobre la rama completa (nomenclatura, comentarios menores) que el controlador dejó fuera del
+   alcance de esta ola de fixes por no afectar comportamiento ni legibilidad relevante.
+8. **Incidente operativo de Task 2** (nota, no defecto de la app): SpringBoard del simulador
+   segfaulteó (`EXC_BAD_ACCESS`) durante el primer tap de la sesión de humo; la app (proceso
+   separado) siguió viva y volvió al frente con `simctl launch`; no volvió a ocurrir.
 
 **Rollback**: F2 no tocó `services/reads`, migraciones, funciones ni cuentas de producto (sólo
 lecturas y arrastres de UI contra testnet durante las pruebas); no hay nada que revertir en el

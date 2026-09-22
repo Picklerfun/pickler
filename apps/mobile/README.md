@@ -60,8 +60,8 @@ signin  (RootStack, encima de Tabs cuando hace falta cuenta; raíz si no hay nin
 - `src/ui/Page.tsx` — cabecera propia por ruta (los stacks van con `headerShown: false`, así
   la cabecera viaja con la página durante el gesto), `ScrollView` con pull-to-refresh y el
   sello `UPDATED`/`COULDN'T REFRESH` (`useRefreshSeal`), fondo opaco (`Backdrop`).
-- `src/ui/TabBar.tsx` — tab bar custom (prop `tabBar` de bottom-tabs); devuelve `null` en
-  pantallas no-raíz de su pestaña (`SHOW_TABS`).
+- `src/ui/TabBar.tsx` — tab bar custom (prop `tabBar` de bottom-tabs); siempre montada,
+  absoluta; se esconde deslizando fuera de `SHOW_TABS` (D13).
 
 ### Tab bar
 
@@ -114,7 +114,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 243/243 esperado (33 suites)
+npm test          # jest, 244/244 esperado (33 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
