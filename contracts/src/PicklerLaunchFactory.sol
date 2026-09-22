@@ -64,9 +64,13 @@ contract PicklerLaunchFactory is EIP712 {
     error AuthorizationAlreadyUsed();
     error InvalidAgentKey();
     error SupplyTransferFailed();
+    error NotFeeRecipient();
+    error NotPendingFeeRecipient();
 
     event PresetPublished(uint32 indexed presetId, uint32 indexed version, bytes32 configHash);
     event LaunchesEnabledChanged(bool enabled);
+    event CreatorFeeRecipientTransferStarted(address indexed token, address indexed from, address indexed to);
+    event CreatorFeeRecipientChanged(address indexed token, address indexed from, address indexed to);
     event LaunchCreated(
         address indexed token,
         address indexed curve,
@@ -96,6 +100,7 @@ contract PicklerLaunchFactory is EIP712 {
     mapping(address token => LaunchRecord) private _launches;
     mapping(bytes32 agentKey => address token) public tokenForAgent;
     mapping(address creator => mapping(uint256 nonce => bool)) public authorizationUsed;
+    mapping(address token => address) public pendingFeeRecipient;
 
     constructor(address operator_, ICurveDeployer curveDeployer_) EIP712("Pickler", "1") {
         operator = operator_;
@@ -189,6 +194,36 @@ contract PicklerLaunchFactory is EIP712 {
         emit LaunchCreated(
             token, curve, params.agentKey, params.creator, preset.quoteToken, presetHash, params.metadataHash
         );
+    }
+
+    /// @notice Proposes a new recipient for a launch's future fees.
+    /// @dev Two steps, because a fee stream sent to an address that cannot claim is a fee
+    ///      stream lost. Nothing already accrued moves: the escrow credits a beneficiary at
+    ///      the moment fees arrive, so a change only ever affects what arrives afterwards.
+    function transferCreatorFeeRecipient(address token, address newRecipient) external {
+        LaunchRecord storage record = _launches[token];
+        if (msg.sender != record.creatorFeeRecipient) {
+            revert NotFeeRecipient();
+        }
+
+        pendingFeeRecipient[token] = newRecipient;
+
+        emit CreatorFeeRecipientTransferStarted(token, record.creatorFeeRecipient, newRecipient);
+    }
+
+    /// @notice Accepts a proposed fee recipient transfer, proving the new address can act.
+    function acceptCreatorFeeRecipient(address token) external {
+        if (msg.sender != pendingFeeRecipient[token]) {
+            revert NotPendingFeeRecipient();
+        }
+
+        LaunchRecord storage record = _launches[token];
+        address previous = record.creatorFeeRecipient;
+
+        record.creatorFeeRecipient = msg.sender;
+        pendingFeeRecipient[token] = address(0);
+
+        emit CreatorFeeRecipientChanged(token, previous, msg.sender);
     }
 
     function getLaunch(address token) external view returns (LaunchRecord memory) {

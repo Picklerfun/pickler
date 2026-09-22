@@ -18,6 +18,19 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "acceptCreatorFeeRecipient",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "authorizationDigest",
     "inputs": [
       {
@@ -463,6 +476,25 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "pendingFeeRecipient",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "presetPublished",
     "inputs": [
       {
@@ -611,6 +643,74 @@ export const PicklerLaunchFactoryAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferCreatorFeeRecipient",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "newRecipient",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CreatorFeeRecipientChanged",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CreatorFeeRecipientTransferStarted",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -772,7 +872,17 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "NotFeeRecipient",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotOperator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPendingFeeRecipient",
     "inputs": []
   },
   {
@@ -808,4 +918,4 @@ export const PicklerLaunchFactoryAbi = [
   }
 ] as const;
 
-export const PicklerLaunchFactoryAbiHash = "da0353e84f6ca2e634149401947533a4e125fe94bda9f55e9b69436bb492a5a9";
+export const PicklerLaunchFactoryAbiHash = "b9db6d2d027caa256fa2fa7b06d87e0c0b49b6787f3201589b5f8c9dc1018c3c";
