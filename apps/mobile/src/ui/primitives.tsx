@@ -10,12 +10,12 @@ import { C, textStyle } from "./theme";
 // Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains) | display (Chakra Petch).
 export type TProps = {
   w?: number; s?: number; lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string;
-  style?: StyleProp<TextStyle>; numberOfLines?: number; children?: ReactNode;
+  style?: StyleProp<TextStyle>; numberOfLines?: number; children?: ReactNode; accessibilityLabel?: string;
 };
 
-export function T({ w = 400, s = 13, lh, ls, mono, display, color, style, numberOfLines, children }: TProps) {
+export function T({ w = 400, s = 13, lh, ls, mono, display, color, style, numberOfLines, accessibilityLabel, children }: TProps) {
   return (
-    <Text numberOfLines={numberOfLines} style={[textStyle(w, s, { lh, ls, mono, display, color }), style]}>
+    <Text numberOfLines={numberOfLines} accessibilityLabel={accessibilityLabel} style={[textStyle(w, s, { lh, ls, mono, display, color }), style]}>
       {children}
     </Text>
   );

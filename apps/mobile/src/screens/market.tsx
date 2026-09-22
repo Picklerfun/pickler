@@ -3,7 +3,11 @@ import { ActivityIndicator, TextInput, View } from "react-native";
 import { formatUnits } from "viem";
 import { AUSD_DECIMALS, formatAusd, parseAusd } from "../config/chain";
 import type { AppCtx } from "../ctx";
+import { useNow } from "../hooks/useNow";
 import { formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
+import { levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from "../reads/level";
+import { cellLabel } from "../reads/matrix";
+import type { TradeLevel } from "../store";
 import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleton, StatusCard, T, Tag, type Tone } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
 import { AgentsTab } from "./agents";
@@ -11,7 +15,7 @@ import { AskTab } from "./ask";
 
 export type OrderResult =
   | { step: "sent" }
-  | { step: "filled"; title: string; detail: string }
+  | { step: "filled"; title: string; detail: string; note?: string }
   | { step: "failed"; text: string }
   | { step: "unknown" };
 
@@ -34,6 +38,7 @@ export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResul
     <View style={{ gap: 11 }}>
       <StatusCard tag={t.tag} title={result.step === "filled" ? result.title : t.title} body={body} tone={t.tone}>
         {result.step === "sent" ? <ActivityIndicator color={C.dim} style={{ alignSelf: "flex-start" }} /> : null}
+        {result.step === "filled" && result.note ? <T w={400} s={11.5} lh={1.4} color={C.dim} accessibilityLabel="order-note">{result.note}</T> : null}
       </StatusCard>
       {result.step !== "sent" ? (
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -67,13 +72,37 @@ function TradeGate({ perpl, nav }: Pick<AppCtx, "perpl" | "nav">) {
   );
 }
 
-function TradeTab({ S, set, perpl, nav }: AppCtx) {
+const LEVEL: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+
+/** Nivel elegido en Ask (D12): target, vencimiento, lado sugerido y qué pasará tras la orden. Nada cierra la posición. */
+function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level: TradeLevel; pd: number; now: number; onRemove: () => void }) {
+  const side = sideFor(level.levelBps);
+  const two = reminderKinds(level, now).length === 2;
+  return (
+    <Card bd={LEVEL.bd} bg={LEVEL.bg} gap={8}>
+      <Tag color={LEVEL.fg}>TRADE THIS LEVEL · FROM ASK</Tag>
+      <T w={700} s={16} lh={1.2} ls={-0.01} display accessibilityLabel="level-title">{levelTitle(symbol, level)} → {formatPrice(level.target, pd)}</T>
+      <KVList rows={[
+        { label: "TARGET", value: formatPrice(level.target, pd) },
+        { label: "RESOLVES", value: resolvesLabel(level, now) },
+        { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.lime : C.down },
+      ]} top />
+      <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Markets.`}</T>
+      <Btn label="Remove level" onPress={onRemove} variant="ghost" py={8} accessibilityLabel="level-remove" />
+    </Card>
+  );
+}
+
+function TradeTab({ S, set, perpl, reads, nav }: AppCtx) {
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const side: Side = S.perpsSide ?? "long";
   const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
   const [amount, setAmount] = useState("");
   const [lv, setLv] = useState(1);
   const [st, setSt] = useState<Step>({ step: "edit" });
+  const now = useNow(30_000);
+  // Sólo el nivel de este mercado y todavía vivo; uno de otro mercado se conserva en el store pero no se pinta ni programa nada.
+  const level = S.tradeLevel && S.tradeLevel.marketId === market.id && levelIsLive(S.tradeLevel, now) ? S.tradeLevel : undefined;
 
   if (perpl.state.status !== "ready") return <TradeGate perpl={perpl} nav={nav} />;
 
@@ -96,11 +125,18 @@ function TradeTab({ S, set, perpl, nav }: AppCtx) {
   const confirm = async () => {
     setSt({ step: "result", result: { step: "sent" } });
     const outcome = await perpl.open(market, side, units ?? 0n, lvUsed);
-    setSt({ step: "result", result:
+    const result: OrderResult =
       outcome.kind === "filled" ? { step: "filled", title: `Filled ${formatSize(outcome.order.fs, market.sizeDecimals)} ${sym} at ${formatPrice(outcome.order.fp, market.priceDecimals)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · ${side.toUpperCase()} ${lvUsed}x` }
       : outcome.kind === "open" ? { step: "filled", title: "Placed — waiting in the book", detail: `${formatSize(outcome.order.os, market.sizeDecimals)} ${sym}` }
       : outcome.kind === "failed" ? { step: "failed", text: outcome.text }
-      : { step: "unknown" } });
+      : { step: "unknown" };
+    setSt({ step: "result", result });
+    // D12 / P7: con nivel vivo y orden filled u open, recordatorios; primero se muestra la orden, la nota llega después.
+    if (result.step === "filled" && level) {
+      const r = await reads.setReminders(sym, level, side);
+      setSt({ step: "result", result: { ...result, note: r.ok ? remindersCopy(r.kinds) : `Couldn't set reminders — ${r.text}` } });
+      if (r.ok) set({ tradeLevel: undefined }); // el nivel se consumió: vive en mobile.reminders
+    }
   };
 
   const rows: KVRow[] = [
@@ -108,6 +144,7 @@ function TradeTab({ S, set, perpl, nav }: AppCtx) {
     { label: "EST. PRICE", value: formatPrice(market.mark, market.priceDecimals) },
     { label: "FEE · TAKER", value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
     { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: lvUsed > 1 ? C.down : C.dim },
+    ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.lime }] : []),
   ];
 
   if (st.step === "result") {
@@ -132,6 +169,7 @@ function TradeTab({ S, set, perpl, nav }: AppCtx) {
 
   return (
     <Page top={13} gap={11}>
+      {level ? <LevelCard symbol={sym} level={level} pd={market.priceDecimals} now={now} onRemove={() => set({ tradeLevel: undefined })} /> : null}
       <Segmented
         options={[["long", "Long"], ["short", "Short"]] as const}
         value={side}

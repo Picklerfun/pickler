@@ -10,8 +10,9 @@ import {
   callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
   questionFor, readDots, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
+import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
 import type { Agent, Read, ReadStatus } from "../reads/types";
-import type { AskCell } from "../store";
+import type { AskCell, TradeLevel } from "../store";
 import { Btn, Card, Chip, Reveal, Segmented, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
 
@@ -147,9 +148,9 @@ function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Marke
 }
 
 /** La hoja de la celda del prototipo (ConsultTab): chip del agente + Change, pregunta, distancia, steppers, Ask/Clear. */
-function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAsk }: {
+function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAsk, onTrade }: {
   market: Market; cell: AskCell; reads: Reads; agentId: string | undefined;
-  onAgent: (id: string) => void; onCell: (c: AskCell) => void; onClear: () => void; onAsk: (agentId: string) => void;
+  onAgent: (id: string) => void; onCell: (c: AskCell) => void; onClear: () => void; onAsk: (agentId: string) => void; onTrade: () => void;
 }) {
   const [picking, setPicking] = useState(false);
   const pd = market.priceDecimals;
@@ -197,6 +198,7 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
           arrow flex={1} py={12} disabled={noCredits || !agent} accessibilityLabel="ask" />
         <Btn label="Clear" onPress={onClear} variant="ghost" py={12} accessibilityLabel="ask-clear" />
       </View>
+      <Btn label="Trade this level" onPress={onTrade} variant="outline" fg={C.lime} bd={C.limeBd} py={11} accessibilityLabel="trade-level" />
       <T w={400} s={10.5} lh={1.4} color={C.faint}>{noCredits ? "Credits are simulated for the testnet." : "Nothing charged yet."}</T>
     </Card>
   );
@@ -224,6 +226,16 @@ export function AskTab(ctx: AppCtx) {
   const pushOff = notifications.permission === "denied" || notifications.permission === "unavailable";
   const focused = useMemo(() => (S.askFocusReadId ? (reads.reads ?? []).find((r) => r.id === S.askFocusReadId) : undefined), [S.askFocusReadId, reads.reads]);
 
+  // D12: el nivel al store, lado sugerido y pill Trade. El resultado/lista de Ask se conservan (volver atrás no pierde nada).
+  const tradeLevel = (level: TradeLevel) => set({ tradeLevel: level, perpsSide: sideFor(level.levelBps), marketTab: "trade" });
+
+  const cardFooter = (read: Read, ghost: ReactNode) => (
+    <View style={{ flexDirection: "row", gap: 7 }}>
+      {read.status === "open" ? <Btn label="Trade this level" onPress={() => tradeLevel(levelFromRead(read))} variant="outline" fg={C.lime} bd={C.limeBd} flex={1} py={11} accessibilityLabel="trade-level" /> : null}
+      {ghost}
+    </View>
+  );
+
   const newRead = () => {
     if (reads.session !== "ready") return <SessionGate reads={reads} />;
     const { request } = reads;
@@ -241,7 +253,7 @@ export function AskTab(ctx: AppCtx) {
     if (request.step === "done") {
       return (
         <ReadCard read={request.read} agentName={agentName(reads.agents, request.read.agentId)} now={now} pushOff={pushOff}
-          footer={<Btn label="Ask another" onPress={() => { reads.resetRequest(); set({ askCell: undefined }); }} variant="ghost" accessibilityLabel="ask-another" />} />
+          footer={cardFooter(request.read, <Btn label="Ask another" onPress={() => { reads.resetRequest(); set({ askCell: undefined }); }} variant="ghost" py={11} accessibilityLabel="ask-another" />)} />
       );
     }
     const dots = readDots(reads.reads ?? []);
@@ -257,7 +269,7 @@ export function AskTab(ctx: AppCtx) {
         {S.askCell ? (
           <AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId}
             onAgent={(id) => set({ askAgentId: id })} onCell={(c) => set({ askCell: c })} onClear={() => set({ askCell: undefined })}
-            onAsk={(id) => { void reads.ask(S.askCell!, id); }} />
+            onAsk={(id) => { void reads.ask(S.askCell!, id); }} onTrade={() => tradeLevel(levelFromCell(market, S.askCell!, new Date()))} />
         ) : null}
         <Card gap={7}>
           <Tag>MARK PRICE · PERPL ON MONAD</Tag>
@@ -273,7 +285,7 @@ export function AskTab(ctx: AppCtx) {
     if (focused) {
       return (
         <ReadCard read={focused} agentName={agentName(reads.agents, focused.agentId)} now={now} pushOff={pushOff}
-          footer={<Btn label="Back to list" onPress={() => set({ askFocusReadId: undefined })} variant="ghost" accessibilityLabel="read-back" />} />
+          footer={cardFooter(focused, <Btn label="Back to list" onPress={() => set({ askFocusReadId: undefined })} variant="ghost" py={11} accessibilityLabel="read-back" />)} />
       );
     }
     return (
