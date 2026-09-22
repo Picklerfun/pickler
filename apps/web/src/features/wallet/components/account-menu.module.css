@@ -78,6 +78,13 @@
   color: var(--pk-ink-faint);
 }
 
+/* Which of the two signers this address came from. */
+.kind {
+  composes: balanceLabel;
+  margin: 0 0 6px;
+  color: var(--pk-cyan-ink);
+}
+
 .balance {
   margin: 0 0 12px;
   font: 700 24px/1 var(--pk-font-mono);

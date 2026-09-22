@@ -88,15 +88,15 @@ export function TradePanel({ agent }: { agent: AgentProfileDto }) {
         <Button
           className={styles.ctaButton}
           block
-          onClick={() => void wallet.connect()}
-          disabled={wallet.status === "connecting" || wallet.status === "unsupported"}
+          onClick={() =>
+            wallet.connect(
+              `${side === "buy" ? (graduated ? "Buy" : "Back") : "Sell"} ${agent.ticker}`,
+            )
+          }
+          disabled={wallet.status === "connecting"}
           aria-describedby="trade-status"
         >
-          {wallet.status === "connecting"
-            ? "Waiting for your wallet…"
-            : wallet.status === "unsupported"
-              ? "No wallet found"
-              : "Connect wallet"}
+          {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
         </Button>
       )}
 

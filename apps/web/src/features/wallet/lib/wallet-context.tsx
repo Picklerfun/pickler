@@ -10,153 +10,230 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { ReactNode } from "react";
-import {
-  getProvider,
-  readAccounts,
-  readBalance,
-  readChainId,
-  requestAccounts,
-  revokeAccess,
-  switchToTarget,
-  TARGET_CHAIN,
-} from "./provider";
+import { ConnectModal } from "../components/connect-modal";
+import { injectedSigner } from "./injected-signer";
+import { meraSigner } from "./mera-signer";
+import { TARGET_CHAIN } from "./provider";
+import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
 /**
- * Who is connected, on which chain, and what they hold. One connection for the whole public site:
- * the nav shows it, the portfolio reads it, and the reads list is only meaningful with it.
+ * Who is connected, with what, on which chain, and what they hold. One connection for the whole
+ * public site: the nav shows it, the portfolio reads it, and the reads list is only meaningful
+ * with it.
  *
- * The site reconnects silently on load — `eth_accounts` never prompts — so someone who connected
- * yesterday does not have to do it again, and someone who never did is left alone.
+ * Two kinds of signer can be that connection and only one is active at a time, because the two
+ * are different addresses holding different money. Which one it is stays visible — the page never
+ * shows an empty portfolio without saying whose it is.
+ *
+ * Asking to connect opens the chooser rather than prompting a wallet directly. A page that wanted
+ * something first says so, and the chooser holds it up while the person picks, the way the app
+ * does.
  */
 
-export type WalletStatus = "unsupported" | "disconnected" | "connecting" | "connected";
+/**
+ * There is no "unsupported" any more. A browser with nothing to connect still opens the chooser,
+ * which names what is missing on each choice — more use than a dead button, and the only way
+ * someone learns the app account exists.
+ */
+export type WalletStatus = "disconnected" | "connecting" | "connected";
+
+const SIGNERS: SignerAdapter[] = [injectedSigner, meraSigner];
+
+const REMEMBERED = "pk.wallet.kind";
+
+/** The last signer this browser used, so the chooser opens on it. Absent in a private window. */
+function remember(kind: SignerKind | null) {
+  try {
+    if (kind) {
+      window.localStorage.setItem(REMEMBERED, kind);
+    } else {
+      window.localStorage.removeItem(REMEMBERED);
+    }
+  } catch {
+    // A browser that refuses storage just forgets between visits.
+  }
+}
+
+function remembered(): SignerKind | null {
+  try {
+    const value = window.localStorage.getItem(REMEMBERED);
+    return value === "injected" || value === "mera" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+const subscribeToBrowser = () => () => {};
+const inBrowser = () => true;
+const onServer = () => false;
+
+export interface WalletChoice {
+  kind: SignerKind;
+  /** Why it cannot be picked here, or null when it can. */
+  unavailable: string | null;
+  /** A caveat worth reading before picking it. Does not stop it being picked. */
+  note: string | null;
+  /** The one this browser used last. */
+  last: boolean;
+}
 
 interface WalletState {
   status: WalletStatus;
+  /** What is connected, or null when nothing is. */
+  kind: SignerKind | null;
   address: string | null;
   chainId: number | null;
   /** Native balance in wei. Null while unknown. */
   balance: bigint | null;
+  /** True when nothing about the chain is in the way — always true for a signer without one. */
   onTargetChain: boolean;
+  /** Whether this signer can be moved to another chain at all. */
+  canSwitchChain: boolean;
   error: string | null;
-  connect: () => Promise<void>;
+  /**
+   * Opens the chooser. `holding` is what the person was about to do, shown while they pick so the
+   * action they came for is not lost behind the wallet.
+   */
+  connect: (holding?: string) => void;
   disconnect: () => Promise<void>;
   switchChain: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
 
-/**
- * Whether this browser injects a wallet at all. Read through an external store rather than in an
- * effect: the server renders "no" and the browser answers for itself on the first paint.
- */
-const subscribeToProvider = () => () => {};
-
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const hasProvider = useSyncExternalStore(
-    subscribeToProvider,
-    () => getProvider() !== null,
-    () => false,
-  );
-  const [status, setStatus] = useState<WalletStatus>("disconnected");
-  const [address, setAddress] = useState<string | null>(null);
-  const [chainId, setChainId] = useState<number | null>(null);
-  const [balance, setBalance] = useState<bigint | null>(null);
+  const [kind, setKind] = useState<SignerKind | null>(null);
+  const [account, setAccount] = useState<SignerAccount | null>(null);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [holding, setHolding] = useState<string | null>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  // Which signers exist is a question only the browser can answer. Read through an external store
+  // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
+  const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
 
-  // Read the wallet without prompting, then follow it: an account or chain change is the wallet
-  // telling us the answer to "who is this" changed.
+  const adapter = useMemo(() => SIGNERS.find((signer) => signer.kind === kind) ?? null, [kind]);
+
+  // Pick up a connection that is already there, without prompting anyone.
   useEffect(() => {
-    const provider = getProvider();
-    if (!provider) {
+    let live = true;
+    const wanted = remembered() ?? "injected";
+    const signer = SIGNERS.find((candidate) => candidate.kind === wanted);
+    if (!signer) {
       return;
     }
-    let live = true;
-    const settle = async (accounts: string[]) => {
-      if (!live) {
-        return;
+    void signer.resume().then((resumed) => {
+      if (live && resumed) {
+        setKind(signer.kind);
+        setAccount(resumed);
       }
-      const next = accounts[0] ?? null;
-      setAddress(next);
-      setStatus(next ? "connected" : "disconnected");
-      setChainId(await readChainId(provider));
-      setBalance(next ? await readBalance(provider, next) : null);
-    };
-    void readAccounts(provider).then(settle);
-
-    const onAccounts = (...args: never[]) => void settle((args[0] ?? []) as string[]);
-    const onChain = () => void readAccounts(provider).then(settle);
-    provider.on?.("accountsChanged", onAccounts);
-    provider.on?.("chainChanged", onChain);
+    });
     return () => {
       live = false;
-      provider.removeListener?.("accountsChanged", onAccounts);
-      provider.removeListener?.("chainChanged", onChain);
     };
   }, []);
 
-  const connect = useCallback(async () => {
-    const provider = getProvider();
-    if (!provider) {
-      setStatus("unsupported");
+  // Follow the active signer when it changes underneath the page.
+  useEffect(() => {
+    if (!adapter?.subscribe) {
       return;
     }
-    setStatus("connecting");
+    return adapter.subscribe((next) => {
+      setAccount(next);
+      if (!next) {
+        setKind(null);
+      }
+    });
+  }, [adapter]);
+
+  const connectWith = useCallback(async (picked: SignerKind) => {
+    const signer = SIGNERS.find((candidate) => candidate.kind === picked);
+    if (!signer) {
+      return;
+    }
+    setConnecting(true);
     setError(null);
     try {
-      const accounts = await requestAccounts(provider);
-      const next = accounts[0] ?? null;
-      setAddress(next);
-      setStatus(next ? "connected" : "disconnected");
-      setChainId(await readChainId(provider));
-      setBalance(next ? await readBalance(provider, next) : null);
+      const connected = await signer.connect();
+      if (connected) {
+        setKind(picked);
+        setAccount(connected);
+        remember(picked);
+        setChooserOpen(false);
+        setHolding(null);
+      }
     } catch (caught) {
       // 4001 is the person closing the prompt, which is an answer rather than a failure.
       const code = (caught as { code?: number }).code;
-      setStatus("disconnected");
       setError(code === 4001 ? null : "That wallet could not connect. Try again.");
+    } finally {
+      setConnecting(false);
     }
+  }, []);
+
+  const connect = useCallback((held?: string) => {
+    setHolding(held ?? null);
+    setError(null);
+    setChooserOpen(true);
   }, []);
 
   const disconnect = useCallback(async () => {
-    const provider = getProvider();
-    if (provider) {
-      await revokeAccess(provider);
-    }
-    setAddress(null);
-    setBalance(null);
-    setStatus(provider ? "disconnected" : "unsupported");
-  }, []);
+    await adapter?.disconnect();
+    setAccount(null);
+    setKind(null);
+    remember(null);
+  }, [adapter]);
 
   const switchChain = useCallback(async () => {
-    const provider = getProvider();
-    if (!provider) {
-      return;
+    const switched = await adapter?.switchChain?.();
+    if (switched) {
+      setAccount(switched);
     }
-    if (await switchToTarget(provider)) {
-      setChainId(await readChainId(provider));
-      if (address) {
-        setBalance(await readBalance(provider, address));
-      }
-    }
-  }, [address]);
+  }, [adapter]);
 
-  const value = useMemo<WalletState>(
-    () => ({
-      status: hasProvider ? status : "unsupported",
-      address,
-      chainId,
-      balance,
-      onTargetChain: chainId === TARGET_CHAIN.chainId,
+  const choices = useMemo<WalletChoice[]>(() => {
+    const last = mounted ? remembered() : null;
+    return SIGNERS.map((signer) => ({
+      kind: signer.kind,
+      unavailable: mounted ? signer.unavailableReason() : "Checking this browser…",
+      note: mounted ? (signer.note?.() ?? null) : null,
+      last: signer.kind === last,
+    }));
+  }, [mounted]);
+
+  const value = useMemo<WalletState>(() => {
+    const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
+
+    return {
+      status,
+      kind,
+      address: account?.address ?? null,
+      chainId: account?.chainId ?? null,
+      balance: account?.balance ?? null,
+      // A signer without a chain of its own is never on the wrong one.
+      onTargetChain: account?.chainId == null || account.chainId === TARGET_CHAIN.chainId,
+      canSwitchChain: adapter?.switchChain !== undefined,
       error,
       connect,
       disconnect,
       switchChain,
-    }),
-    [hasProvider, status, address, chainId, balance, error, connect, disconnect, switchChain],
-  );
+    };
+  }, [account, adapter, connect, connecting, disconnect, error, kind, switchChain]);
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletContext.Provider value={value}>
+      {children}
+      <ConnectModal
+        open={chooserOpen}
+        choices={choices}
+        holding={holding}
+        connecting={connecting}
+        error={error}
+        onPick={(picked) => void connectWith(picked)}
+        onClose={() => setChooserOpen(false)}
+      />
+    </WalletContext.Provider>
+  );
 }
 
 export function useWallet(): WalletState {

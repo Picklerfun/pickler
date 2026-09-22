@@ -21,25 +21,14 @@ export function AccountMenu() {
   const [copied, setCopied] = useState(false);
 
   if (wallet.status !== "connected" || !wallet.address) {
-    const label =
-      wallet.status === "connecting"
-        ? "Waiting for your wallet…"
-        : wallet.status === "unsupported"
-          ? "No wallet found"
-          : "Connect wallet";
     return (
       <span className={styles.slot}>
         <Button
           className={styles.connect}
-          onClick={() => void wallet.connect()}
-          disabled={wallet.status === "connecting" || wallet.status === "unsupported"}
-          title={
-            wallet.status === "unsupported"
-              ? "No browser wallet is installed on this device."
-              : undefined
-          }
+          onClick={() => wallet.connect()}
+          disabled={wallet.status === "connecting"}
         >
-          {label}
+          {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
         </Button>
         {wallet.error && <span className={styles.error}>{wallet.error}</span>}
       </span>
@@ -99,6 +88,12 @@ export function AccountMenu() {
                 Switch to {TARGET_CHAIN.name}
               </button>
             )}
+
+            {/* Two different accounts can be connected here, so the menu never leaves you
+                guessing which one the portfolio below belongs to. */}
+            <p className={styles.kind}>
+              {wallet.kind === "mera" ? "PICKLER APP ACCOUNT" : "BROWSER WALLET"}
+            </p>
 
             <button type="button" className={styles.address} onClick={() => void copy()}>
               {copied ? "COPIED" : shortAddress(address)}
