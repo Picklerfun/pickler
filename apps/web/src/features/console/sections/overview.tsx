@@ -136,7 +136,7 @@ export function Overview({
           </div>
           <p className={styles.note}>
             {denied
-              ? "Nothing runs until an operator enables research on this workspace. The brief, the skills and the limits can all be set in the meantime."
+              ? "An operator must enable research before you can create agents, change settings or start runs. Existing results remain readable."
               : scheduleLocked
                 ? "The schedule stays locked until one manual run with this exact config succeeds. Run it now to unlock."
                 : `Runs on its own every ${agent.config.intervalHours} hours (1–168). A manual run counts against the same allowance of ${quotaMax} a day.`}

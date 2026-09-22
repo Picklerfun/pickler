@@ -26,6 +26,6 @@
   "observability": { "enabled": true },
   "vars": {
     "APP_ENV": "staging",
-    "ADMISSIONS_ENABLED": "false",
+    "ADMISSIONS_ENABLED": "true",
   },
 }

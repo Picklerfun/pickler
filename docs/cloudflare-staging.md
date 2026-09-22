@@ -133,7 +133,7 @@ establish remote TLS compatibility: test the actual hosted path before opening a
 | Operator only     | Direct/session database migration URL and deployment authentication                                 |
 
 Use secret input through stdin or the provider's secret UI; do not put secrets in command
-arguments, PRs, logs or shell history. Keep `ADMISSIONS_ENABLED=false` for initial deployment.
+arguments, PRs, logs or shell history. For a new environment, override both hosts with `--var ADMISSIONS_ENABLED:false` during initial deployment. The existing staging configs now retain enabled admissions for operator-approved Studio users.
 Set ALLOWED_ORIGINS to the exact web URL. Configure Supabase site URL and allowed callback
 `https://<web-workers-dev-host>/auth/callback`. Enable the product Data API schemas `identity`,
 `agents`, `budget`, `audit`, `growth`, `market` with the migration's RLS/grants. Never expose
@@ -153,7 +153,7 @@ Set ALLOWED_ORIGINS to the exact web URL. Configure Supabase site URL and allowe
    private no-store responses and cookie flags. Check fresh reads and transaction behavior through
    the actual selected pooler connection before opening admissions.
 6. Enable staging admissions explicitly for the acceptance window, recording the override and
-   resulting Worker versions. A subsequent default deployment closes admissions again.
+   resulting Worker versions. The committed staging flags preserve the approved operating state on subsequent deployments; coordinate API and consumer flags.
 
 Do not switch legacy budgets from Durable Objects using a stale projection. Existing data stays
 intact; export and verified reconciliation are required before enabling PostgreSQL authority
@@ -231,3 +231,15 @@ Run `npm run build:shared`, then `npx wrangler dev --remote --config .data/datab
 `preserved`, `removed`, and `cleared` to all be true. Stop the preview afterward. Never deploy
 this diagnostic as a public endpoint. It verifies persistence transport, not full research or
 provider acceptance. The committed normal CI suite never calls this remote diagnostic.
+
+## Studio manual-access operating state
+
+After Studio acceptance, admissions remain enabled in both staging configs. Operator approval
+in `pickler.research_access` still controls who may create, configure or run agents. Registration
+does not grant provider access. Keep acceptance-agent schedules disabled; enabling admissions
+also permits any existing due schedules, so check pending jobs and schedules before reopening.
+
+Deploy the consumer and then API using their explicit configs. Until this operating-state PR is
+merged, deploying older main configs requires `--var ADMISSIONS_ENABLED:true` to preserve manual
+access. Emergency closure uses `--var ADMISSIONS_ENABLED:false` on both hosts and must be recorded
+so an ordinary deployment does not accidentally reopen admissions. No migration is required.

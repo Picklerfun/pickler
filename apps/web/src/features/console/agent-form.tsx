@@ -1,7 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { Button, Chip, Field, Icon, Input, Textarea } from "@pickler/ui";
-import { consoleApi, type Catalog, type Config, type Options } from "./api";
+import { consoleApi, type Agent, type Catalog, type Config, type Options } from "./api";
 import styles from "./studio.module.css";
 
 /**
@@ -17,7 +17,7 @@ export function AgentForm({
 }: {
   catalog: Catalog;
   options: Options;
-  onSaved(): void;
+  onSaved(id: string): void;
   onCancel(): void;
 }) {
   const [name, setName] = useState("");
@@ -46,12 +46,12 @@ export function AgentForm({
       if (!selected.length) {
         throw new Error("Choose at least one sport — the agent needs somewhere to look.");
       }
-      await consoleApi("/agents", {
+      const created = await consoleApi<Agent>("/agents", {
         method: "POST",
         headers: { "Idempotency-Key": key },
         body: JSON.stringify({ name, handle, config }),
       });
-      onSaved();
+      onSaved(created.productId ?? created.id);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not create the agent.");
     } finally {
@@ -65,8 +65,8 @@ export function AgentForm({
         <h2>Create an agent</h2>
       </div>
       <p className={styles.stubBody}>
-        It will not run until an operator enables research on the workspace, and the schedule stays
-        locked until one manual run succeeds. You can write all of this now.
+        The schedule starts disabled. Enabling it requires a connection check and a successful
+        manual run with the saved configuration.
       </p>
 
       <div className={styles.form}>
