@@ -1,5 +1,5 @@
 import readJson from "./fixtures/reads/read.json";
-import { describeReadsError, type DoFetch, fetchAgents, fetchRead, fetchReads, ReadsError, requestRead } from "../src/reads/api";
+import { describeReadsError, type DoFetch, fetchAgents, fetchRead, fetchReads, postReminders, ReadsError, requestRead } from "../src/reads/api";
 import { READ_REQUEST_TIMEOUT_MS, READS_TIMEOUT_MS } from "../src/reads/constants";
 
 const BASE = "https://reads.test/functions/v1";
@@ -82,4 +82,25 @@ test("network failures become network and the copy is human", async () => {
   expect(describeReadsError(new ReadsError(0, "timeout"))).toMatch(/took too long/);
   expect(describeReadsError(new ReadsError(500, "weird"))).toBe("The reads service responded 500.");
   expect(describeReadsError(new Error("Reads API: read.id is not a string"))).toBe("Reads API: read.id is not a string");
+});
+
+const LEVEL_BODY = { marketId: 16, levelBps: 100, horizonMin: 240, target: 766368, expiresAt: "2026-09-22T22:00:00.000Z", side: "long" as const, readId: "1fde46c6-97da-4435-8184-59b5218a771d" };
+
+test("postReminders is a signed POST to reminder-set with the level body (D12)", async () => {
+  const rows = [{ id: "0b4b6d1e-4b6d-4c1e-9f2a-6f1c2d3e4f5a", kind: "pre", fireAt: "2026-09-22T21:45:00.000Z" }];
+  const { f, calls } = fetchOnce(ok({ reminders: rows }));
+  expect(await postReminders(BASE, SESSION, { ...LEVEL_BODY, pushToken: "ab".repeat(32), pushEnv: "sandbox" }, f)).toEqual(rows);
+  expect(calls[0].url).toBe(`${BASE}/reminder-set`);
+  expect(calls[0].init?.method).toBe("POST");
+  const headers = calls[0].init?.headers as Record<string, string>;
+  expect(headers["x-pickler-address"]).toBe(SESSION.address);
+  expect(headers["content-type"]).toBe("application/json");
+  expect(JSON.parse(calls[0].init?.body as string)).toEqual({ ...LEVEL_BODY, pushToken: "ab".repeat(32), pushEnv: "sandbox" });
+});
+
+test("reminder-set errors have copy", async () => {
+  const { f } = fetchOnce(fail(422, "expired"));
+  await expect(postReminders(BASE, SESSION, LEVEL_BODY, f)).rejects.toMatchObject({ status: 422, code: "expired" });
+  expect(describeReadsError(new ReadsError(422, "expired"))).toBe("That level already expired.");
+  expect(describeReadsError(new ReadsError(404, "read_not_found"))).toBe("That read isn't yours anymore.");
 });
