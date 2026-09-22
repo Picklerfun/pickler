@@ -9,7 +9,7 @@ export default defineConfig({
   ],
   out: "./drizzle",
   // `auth` belongs to Supabase and `mastra` to Mastra: referenced, never migrated from here.
-  schemaFilter: ["pickler", "identity", "agents", "budget", "audit", "growth", "market"],
+  schemaFilter: ["pickler", "identity", "agents", "budget", "audit", "growth", "market", "launch"],
   dbCredentials: { url: process.env.DATABASE_MIGRATION_URL ?? "" },
   strict: true,
 });
