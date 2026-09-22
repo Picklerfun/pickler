@@ -16,6 +16,8 @@
     "@pickler/typescript-config": "*",
     "@types/pg": "8.23.1",
     "pg": "8.20.0",
-    "wrangler": "4.133.0"
+    "wrangler": "4.133.0",
+    "@pickler/chain": "*",
+    "viem": "2.56.8"
   }
 }
