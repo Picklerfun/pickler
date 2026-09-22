@@ -38,14 +38,21 @@ export interface ProjectionResult {
 export class PostgresLaunchProjector {
   readonly pool: Pool;
   private readonly database: NodePgDatabase;
+  private readonly ownsPool: boolean;
 
-  constructor(connectionString: string, options?: DatabaseConnectionOptions) {
-    this.pool = new Pool(databasePoolConfig(connectionString, options));
+  constructor(connection: string | Pool, options?: DatabaseConnectionOptions) {
+    this.ownsPool = typeof connection === "string";
+    this.pool =
+      typeof connection === "string"
+        ? new Pool(databasePoolConfig(connection, options))
+        : connection;
     this.database = drizzle(this.pool);
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    if (this.ownsPool) {
+      await this.pool.end();
+    }
   }
 
   /**
@@ -74,51 +81,118 @@ export class PostgresLaunchProjector {
       .where(and(eq(chainEvents.chain, chain), eq(chainEvents.orphaned, false)))
       .orderBy(chainEvents.blockNumber, chainEvents.logIndex);
 
-    const result: ProjectionResult = { launches: 0, trades: 0, graduations: 0, skipped: 0 };
-
-    for (const raw of rows) {
-      // The driver hands a raw subquery column back as a string; every write below stores a
-      // timestamp, so it is normalised once here rather than at each call site.
-      const row = { ...raw, blockTime: new Date(raw.blockTime) };
-      const args = row.decoded as Record<string, string> | null;
-
-      if (args === null) {
-        result.skipped++;
-        continue;
-      }
-
-      switch (row.eventName) {
-        case "LaunchCreated":
-          await this.projectLaunch(chain, args, row, readMetadata);
-          result.launches++;
-          break;
-
-        case "CurveBought":
-        case "CurveSold":
-          if (await this.projectTrade(chain, row.eventName, args, row)) {
-            result.trades++;
-          } else {
-            result.skipped++;
-          }
-          break;
-
-        case "LaunchGraduated":
-          if (await this.projectGraduation(chain, args, row)) {
-            result.graduations++;
-          } else {
-            result.skipped++;
-          }
-          break;
-
-        default:
-          result.skipped++;
+    // RPC reads happen before locks; failures leave the previous projection intact.
+    const metadata = new Map<string, LaunchMetadata>();
+    const existing = await this.database.select().from(tokens).where(eq(tokens.chain, chain));
+    for (const row of rows) {
+      if (row.eventName === "LaunchCreated" && row.decoded) {
+        const args = row.decoded as Record<string, string>;
+        const cached = existing.find(
+          (token) =>
+            token.address === args.token?.toLowerCase() && token.launchTxHash === row.txHash,
+        );
+        metadata.set(
+          args.token!,
+          cached && cached.totalSupply !== null
+            ? {
+                name: cached.name,
+                symbol: cached.ticker.replace(/^\$/, ""),
+                decimals: cached.decimals,
+                totalSupply: BigInt(cached.totalSupply),
+              }
+            : await readMetadata(args.token!, BigInt(row.blockNumber)),
+        );
       }
     }
+    return this.database.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${"launch-projection:" + chain}, 0))`,
+      );
+      await tx.execute(sql`lock table "market"."chain_events" in share mode`);
+      const current = await tx
+        .select()
+        .from(chainEvents)
+        .where(and(eq(chainEvents.chain, chain), eq(chainEvents.orphaned, false)))
+        .orderBy(chainEvents.blockNumber, chainEvents.logIndex);
+      const identity = (events: { blockHash: string; txHash: string; logIndex: number }[]) =>
+        JSON.stringify(events.map((row) => [row.blockHash, row.txHash, row.logIndex]));
+      if (identity(current) !== identity(rows)) {
+        throw new Error(
+          "Launch events changed during metadata reads; retry projection on the next pass",
+        );
+      }
+      await tx.execute(sql`
+        delete from "market"."trades" t using "market"."pools" p, "market"."tokens" token
+        where t.pool_id = p.id and p.token_id = token.id and token.chain = ${chain}
+          and p.venue = 'pickler_curve'
+          and not exists (select 1 from "market"."chain_events" e where e.chain = ${chain}
+            and e.block_hash = t.block_hash and e.tx_hash = t.tx_hash and e.log_index = t.log_index and not e.orphaned)
+      `);
+      await tx.execute(sql`
+        delete from "market"."pools" p using "market"."tokens" t
+        where p.token_id = t.id and t.chain = ${chain} and p.phase = 'post_graduation'
+          and exists (select 1 from "market"."chain_events" e where e.chain = ${chain}
+            and e.tx_hash = p.opened_tx_hash and e.event_name = 'LaunchGraduated')
+          and not exists (select 1 from "market"."chain_events" e where e.chain = ${chain}
+            and e.tx_hash = p.opened_tx_hash and e.event_name = 'LaunchGraduated' and not e.orphaned)
+      `);
+      await tx.execute(sql`
+        update "market"."tokens" t set status = 'pre_graduation', graduated_at = null
+        where t.chain = ${chain} and exists (select 1 from "market"."chain_events" e
+          where e.chain = ${chain} and e.tx_hash = t.launch_tx_hash and e.event_name = 'LaunchCreated')
+      `);
+      await tx.execute(sql`
+        update "market"."pools" p set closed_at = null, closed_tx_hash = null
+        from "market"."tokens" t where p.token_id = t.id and t.chain = ${chain}
+          and p.venue = 'pickler_curve'
+      `);
+      const result: ProjectionResult = { launches: 0, trades: 0, graduations: 0, skipped: 0 };
 
-    return result;
+      for (const raw of rows) {
+        // The driver hands a raw subquery column back as a string; every write below stores a
+        // timestamp, so it is normalised once here rather than at each call site.
+        const row = { ...raw, blockTime: new Date(raw.blockTime) };
+        const args = row.decoded as Record<string, string> | null;
+
+        if (args === null) {
+          result.skipped++;
+          continue;
+        }
+
+        switch (row.eventName) {
+          case "LaunchCreated":
+            await this.projectLaunch(tx, chain, args, row, async (token) => metadata.get(token)!);
+            result.launches++;
+            break;
+
+          case "CurveBought":
+          case "CurveSold":
+            if (await this.projectTrade(tx, chain, row.eventName, args, row)) {
+              result.trades++;
+            } else {
+              result.skipped++;
+            }
+            break;
+
+          case "LaunchGraduated":
+            if (await this.projectGraduation(tx, chain, args, row)) {
+              result.graduations++;
+            } else {
+              result.skipped++;
+            }
+            break;
+
+          default:
+            result.skipped++;
+        }
+      }
+
+      return result;
+    });
   }
 
   private async projectLaunch(
+    database: NodePgDatabase,
     chain: string,
     args: Record<string, string>,
     row: { txHash: string; blockNumber: number; blockTime: Date },
@@ -128,7 +202,7 @@ export class PostgresLaunchProjector {
     const curve = args.curve!.toLowerCase();
     const metadata = await readMetadata(address, BigInt(row.blockNumber));
 
-    const [token] = await this.database
+    const [token] = await database
       .insert(tokens)
       .values({
         // Left null on purpose: the chain knows an agentKey, which nothing reverses into our
@@ -155,7 +229,7 @@ export class PostgresLaunchProjector {
       })
       .returning({ id: tokens.id });
 
-    await this.database
+    await database
       .insert(pools)
       .values({
         tokenId: token!.id,
@@ -165,10 +239,17 @@ export class PostgresLaunchProjector {
         openedTxHash: row.txHash,
         openedAt: row.blockTime,
       })
-      .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+      .onConflictDoUpdate({
+        target: [pools.tokenId, pools.phase],
+        set: {
+          openedTxHash: row.txHash,
+          openedAt: row.blockTime,
+        },
+      });
   }
 
   private async projectTrade(
+    database: NodePgDatabase,
     chain: string,
     eventName: "CurveBought" | "CurveSold",
     args: Record<string, string>,
@@ -183,7 +264,7 @@ export class PostgresLaunchProjector {
   ): Promise<boolean> {
     // The curve emitted the log, so its address is the emitter. No trade event carries it as
     // an argument, and inferring it from anything else would be guessing.
-    const curve = await this.findCurvePool(chain, row.emitter);
+    const curve = await this.findCurvePool(database, chain, row.emitter);
     if (curve === null) {
       // A trade whose curve we never saw would have to invent the launch it belongs to.
       return false;
@@ -191,7 +272,7 @@ export class PostgresLaunchProjector {
 
     const buying = eventName === "CurveBought";
 
-    await this.database
+    await database
       .insert(trades)
       .values({
         poolId: curve,
@@ -213,6 +294,7 @@ export class PostgresLaunchProjector {
   }
 
   private async projectGraduation(
+    database: NodePgDatabase,
     chain: string,
     args: Record<string, string>,
     row: { txHash: string; blockTime: Date },
@@ -222,7 +304,7 @@ export class PostgresLaunchProjector {
       return false;
     }
 
-    const [token] = await this.database
+    const [token] = await database
       .select({ id: tokens.id })
       .from(tokens)
       .where(and(eq(tokens.chain, chain), eq(tokens.address, address)))
@@ -232,17 +314,17 @@ export class PostgresLaunchProjector {
       return false;
     }
 
-    await this.database
+    await database
       .update(tokens)
       .set({ status: "graduated", graduatedAt: row.blockTime, updatedAt: sql`now()` })
       .where(eq(tokens.id, token.id));
 
-    await this.database
+    await database
       .update(pools)
       .set({ closedTxHash: row.txHash, closedAt: row.blockTime })
       .where(and(eq(pools.tokenId, token.id), eq(pools.phase, "pre_graduation")));
 
-    await this.database
+    await database
       .insert(pools)
       .values({
         tokenId: token.id,
@@ -253,16 +335,26 @@ export class PostgresLaunchProjector {
         openedTxHash: row.txHash,
         openedAt: row.blockTime,
       })
-      .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+      .onConflictDoUpdate({
+        target: [pools.tokenId, pools.phase],
+        set: {
+          openedTxHash: row.txHash,
+          openedAt: row.blockTime,
+        },
+      });
 
     return true;
   }
 
   /** The curve pool a trade belongs to, found by the address that emitted the log. */
-  private async findCurvePool(chain: string, emitter: string): Promise<string | null> {
+  private async findCurvePool(
+    database: NodePgDatabase,
+    chain: string,
+    emitter: string,
+  ): Promise<string | null> {
     const curve = emitter.toLowerCase();
 
-    const [row] = await this.database
+    const [row] = await database
       .select({ id: pools.id })
       .from(pools)
       .innerJoin(tokens, eq(pools.tokenId, tokens.id))
