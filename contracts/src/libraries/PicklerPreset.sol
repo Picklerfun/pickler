@@ -88,6 +88,7 @@ library PicklerPreset {
     /// @dev Hashing the encoded struct rather than a field list means adding a field cannot
     ///      silently leave it uncommitted.
     function configHash(LaunchPreset memory preset) internal pure returns (bytes32) {
+        // forge-lint: disable-next-line(asm-keccak256)
         return keccak256(abi.encode(preset));
     }
 
