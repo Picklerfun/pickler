@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import type { AppCtx } from "../ctx";
+import { useNow } from "../hooks/useNow";
 import type { Reads } from "../hooks/useReads";
 import type { Market } from "../perpl/context";
 import { sparkPoints } from "../perpl/marks";
@@ -13,13 +14,6 @@ import type { Agent, Read, ReadStatus } from "../reads/types";
 import type { AskCell } from "../store";
 import { Btn, Card, Chip, Reveal, Segmented, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
 import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
-
-/** Tick de 30 s para las cuentas regresivas de toda la pantalla (P14). */
-function useNow(everyMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), everyMs); return () => clearInterval(t); }, [everyMs]);
-  return now;
-}
 
 /** Tonos de D14: OPEN warn · RIGHT up · WRONG down · VOID/FAILED/PENDING faint. */
 const STATUS: Record<ReadStatus, { label: string; fg: string; bd: string }> = {
