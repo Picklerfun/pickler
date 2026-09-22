@@ -109,3 +109,5 @@ user authorization: PostgreSQL research access and workspace ownership remain ma
 the API and consumer flags aligned. New agents still start with scheduling disabled. For an
 emergency stop deploy both hosts with `--var ADMISSIONS_ENABLED:false`; restore only after checking
 queued jobs, active schedules and enabled users. Never enqueue a paid run as a deployment check.
+
+The public launch catalogue is composed in `createServices` with the existing invocation pool. `/v1/launches` returns an empty, stale catalogue before indexing begins. It requires launch migrations, but no LLM credentials or separate database pool.
