@@ -20,6 +20,7 @@ import {
   PolymarketData,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
+  PostgresLaunchReadModel,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
@@ -88,6 +89,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   });
   return {
     authenticate,
+    launches: new PostgresLaunchReadModel(repository.pool),
     growth: createGrowthServices(env),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),

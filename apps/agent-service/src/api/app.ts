@@ -4,11 +4,15 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
   MARKET_CATALOG,
+  type createTradingService,
   PilotError,
   type ResearchRepository,
   type MarketData,
 } from "@pickler/core";
 import {
+  liveBuySchema,
+  liveOrderSchema,
+  tradingAccountSchema,
   marketCatalogSchema,
   agentResponseSchema,
   runResponseSchema,
@@ -36,6 +40,7 @@ function errorStatus(code: string): 400 | 404 | 409 | 429 | 502 {
 }
 
 export function createApi(deps: {
+  trading?: ReturnType<typeof createTradingService> | undefined;
   repository: ResearchRepository;
   markets: MarketData;
   tokens: Record<string, string>;
@@ -145,6 +150,84 @@ export function createApi(deps: {
       throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper service unavailable");
     }
     return c.json(paperOrderSchema.parse(await deps.paper.get(c.get("tenant"), c.req.param("id"))));
+  });
+  const trading = () => {
+    if (!deps.trading) {
+      throw new PilotError("TRADING_DISABLED", "Trading runtime is not enabled");
+    }
+    return deps.trading;
+  };
+  api.get("/agents/:id/trading/account", async (c) =>
+    c.json(
+      tradingAccountSchema.parse(
+        await trading().account({ tenantId: c.get("tenant"), agentId: c.req.param("id") }),
+      ),
+    ),
+  );
+  api.get("/agents/:id/trading/orders", async (c) =>
+    c.json({
+      orders: liveOrderSchema
+        .array()
+        .parse(await trading().list({ tenantId: c.get("tenant"), agentId: c.req.param("id") })),
+    }),
+  );
+  api.get("/agents/:id/trading/positions", async (c) =>
+    c.json({
+      positions: liveOrderSchema
+        .array()
+        .parse(
+          (await trading().list({ tenantId: c.get("tenant"), agentId: c.req.param("id") })).filter(
+            (o) => o.status === "settled",
+          ),
+        ),
+    }),
+  );
+  api.post("/agents/:id/trading/prepare", async (c) =>
+    c.json(
+      liveOrderSchema.parse(
+        await trading().prepare(
+          { tenantId: c.get("tenant"), agentId: c.req.param("id") },
+          liveBuySchema.parse(await c.req.json()),
+          c.req.header("Idempotency-Key") ?? "",
+        ),
+      ),
+      201,
+    ),
+  );
+  api.get("/trading/orders/:id", async (c) =>
+    c.json(liveOrderSchema.parse(await trading().get(c.get("tenant"), c.req.param("id")))),
+  );
+  api.post("/trading/orders/:id/submit", async (c) => {
+    const text = await c.req.text();
+    if (text) {
+      z.object({}).strict().parse(JSON.parse(text));
+    }
+    return c.json(
+      liveOrderSchema.parse(
+        await trading().submit(
+          c.get("tenant"),
+          c.req.param("id"),
+          c.req.header("Idempotency-Key") ?? "",
+        ),
+      ),
+      202,
+    );
+  });
+  api.post("/runs/:id/live-order", async (c) => {
+    const text = await c.req.text();
+    if (text) {
+      z.object({}).strict().parse(JSON.parse(text));
+    }
+    return c.json(
+      liveOrderSchema.parse(
+        await trading().fromRun(
+          c.get("tenant"),
+          c.req.param("id"),
+          c.req.header("Idempotency-Key") ?? "",
+        ),
+      ),
+      202,
+    );
   });
   api.get("/runs/:id/events", async (c) =>
     c.json({

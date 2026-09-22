@@ -23,7 +23,7 @@ async function container(bindings: Bindings) {
   ) {
     throw new Error("Background experiment requires an isolated local queue database");
   }
-  return createContainer(env);
+  return createContainer({ ...env, POLYMARKET_TRADING_RUNTIME: "off" });
 }
 
 const worker = {

@@ -105,3 +105,5 @@ export {
 
 /** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */
 export { migrateDatabase, migrationsFolder } from "./persistence/migrate-database.js";
+export { PostgresTradingStore } from "./persistence/trading-store.js";
+export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";

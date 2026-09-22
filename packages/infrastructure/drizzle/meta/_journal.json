@@ -68,22 +68,29 @@
     {
       "idx": 9,
       "version": "7",
-      "when": 1790095539583,
-      "tag": "0009_productive_gideon",
+      "when": 1790110708781,
+      "tag": "0009_polymarket_trading",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "7",
-      "when": 1790095540583,
-      "tag": "0010_launch_grants",
+      "when": 1790110708782,
+      "tag": "0010_launch_schema",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "7",
-      "when": 1790099115231,
-      "tag": "0011_fantastic_metal_master",
+      "when": 1790110708783,
+      "tag": "0011_launch_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790110708784,
+      "tag": "0012_launch_unlinked_tokens",
       "breakpoints": true
     }
   ]

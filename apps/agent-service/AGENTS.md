@@ -56,3 +56,7 @@ compatibility. Change the shared implementation, not the forwarding files. Local
 retains laboratory initialization; deployed composition never calls it. `validate:agent` is an
 explicit paid operator command for a managed tenant/agent and validates readiness for that
 configuration version. It does not initialize alpha/beta or change their global validation.
+
+## Local trading integration
+
+The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

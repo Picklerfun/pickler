@@ -88,3 +88,7 @@ parameter are accepted in that mode. This is the private binding hop; the Hyperd
 requires verify-full and the Supabase CA with query caching disabled. Other direct URL guards
 remain unchanged. Event write failures are normalized by `event-failure.ts` without retaining
 raw SQL, parameters, error messages or causes; ownership/configuration errors pass through.
+
+## Local trading integration
+
+The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

@@ -37,6 +37,33 @@ if (command === "init") {
   let method = "GET";
   let body: unknown;
   switch (command) {
+    case "trading-account":
+      path = `/agents/${agent}/trading/account`;
+      break;
+    case "trading-orders":
+      path = `/agents/${agent}/trading/orders`;
+      break;
+    case "trading-positions":
+      path = `/agents/${agent}/trading/positions`;
+      break;
+    case "trading-prepare":
+      path = `/agents/${agent}/trading/prepare`;
+      method = "POST";
+      body = JSON.parse(await readFile(args[1] ?? "buy.json", "utf8"));
+      break;
+    case "trading-submit":
+      path = `/trading/orders/${encodeURIComponent(args[1] ?? "")}/submit`;
+      method = "POST";
+      body = {};
+      break;
+    case "trading-result":
+      path = `/trading/orders/${encodeURIComponent(args[1] ?? "")}`;
+      break;
+    case "trading-run":
+      path = `/runs/${encodeURIComponent(args[1] ?? "")}/live-order`;
+      method = "POST";
+      body = {};
+      break;
     case "agents":
       path = "/agents";
       break;
@@ -90,7 +117,7 @@ if (command === "init") {
       break;
     default:
       throw new Error(
-        "Commands: init, agents, categories, market-categories, check, configure, run, result, events, paper-buy, paper-result, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
+        "Commands: init, agents, categories, market-categories, check, configure, run, result, events, paper-buy, paper-result, trading-account, trading-orders, trading-positions, trading-prepare, trading-submit, trading-result, trading-run, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
       );
   }
   const response = await fetch(`http://127.0.0.1:4111/pilot${path}`, {
@@ -98,8 +125,11 @@ if (command === "init") {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "Idempotency-Key":
-        command === "paper-buy" ? (args[2] ?? `paper:${args[1] ?? ""}`) : randomUUID(),
+      "Idempotency-Key": ["trading-prepare", "trading-submit", "trading-run"].includes(command)
+        ? (args[2] ?? `live:${args[1] ?? ""}`)
+        : command === "paper-buy"
+          ? (args[2] ?? `paper:${args[1] ?? ""}`)
+          : randomUUID(),
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(240_000),

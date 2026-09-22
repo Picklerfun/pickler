@@ -4,33 +4,12 @@ import {
   createSecp256k1SigningSession,
   getEvmAddress,
   getPasskeyPrfOutput,
-  isMeraError,
 } from "@category-labs/mera";
 import { readBalanceOverRpc } from "./rpc";
 import type { SignerAccount, SignerAdapter } from "./signer";
 
-/**
- * The account from the Pickler app: one passkey, no extension, nothing to install.
- *
- * The key is the passkey's PRF output, not a random secret kept somewhere. Mera documents that
- * output as a deterministic function of the credential, the host and a fixed salt, so the same
- * passkey yields the same private key — and therefore the same address — on a phone, a laptop, or
- * a borrowed browser, with nothing to sync between them. That is the whole reason this can exist
- * on the web at all.
- *
- * Two consequences the rest of the code depends on:
- *
- * - **The host is part of the key.** A passkey is scoped to its relying party, so the account only
- *   exists on the canonical domain. Anywhere else the same passkey derives a different key holding
- *   different money, which is why the host is checked before anything is asked of the person.
- * - **The session dies immediately.** Connecting only needs the address, so the private key is
- *   used to derive it and then zeroed. Nothing can be signed without asking the person again,
- *   which is what keeps a key out of memory for a whole tab.
- *
- * Mera also offers a vault — a random key encrypted under the passkey — and that model is not this
- * one: it would need the app's vault shipped here before the web could open anything. If an
- * address derived below does not match the app's, that is the difference, and it will show on the
- * first connection rather than hiding.
+/** Experimental PRF account derivation. App address parity requires real-device validation.
+ * Connecting is not server authentication and does not enable trading.
  */
 
 /** The host the app's passkeys are registered against. */
@@ -66,18 +45,19 @@ async function derive(): Promise<SignerAccount | null> {
 
   const { prfOutput } = await getPasskeyPrfOutput({ rpId });
 
-  const session = createSecp256k1SigningSession({ privateKey: prfOutput });
+  const address = addressFromPrf(prfOutput);
+  return { address, chainId: null, balance: await readBalanceOverRpc(address) };
+}
+
+/** Clear caller-owned key material even when the SDK rejects it. No RPC or signing is performed. */
+export function addressFromPrf(prfOutput: Uint8Array): string {
+  let session: ReturnType<typeof createSecp256k1SigningSession> | undefined;
   try {
-    const address = getEvmAddress(session.publicKey);
-    return {
-      address,
-      // A passkey account is not pointed at a chain: the same key signs on any of them, and the
-      // page decides which one a transaction goes to.
-      chainId: null,
-      balance: await readBalanceOverRpc(address),
-    };
+    session = createSecp256k1SigningSession({ privateKey: prfOutput });
+    return getEvmAddress(session.publicKey);
   } finally {
-    session.end();
+    session?.end();
+    prfOutput.fill(0);
   }
 }
 
@@ -95,7 +75,7 @@ export const meraSigner: SignerAdapter = {
     const host = passkeyHost();
     return host && host !== PASSKEY_HOST
       ? "Development host — this derives a different account from the app's."
-      : null;
+      : "Experimental: verify this address matches your app before using it.";
   },
 
   resume: async () =>
@@ -103,17 +83,8 @@ export const meraSigner: SignerAdapter = {
     // not possible and pretending otherwise would show an address nothing can sign for.
     null,
 
-  connect: async () => {
-    try {
-      return await derive();
-    } catch (caught) {
-      // Cancelling the platform's prompt is an answer, not a failure.
-      if (isMeraError(caught) && caught.code === "PASSKEY_OPERATION_FAILED") {
-        return null;
-      }
-      throw caught;
-    }
-  },
+  // Provider/PRF failures must remain visible; a generic operation failure is not proof of cancellation.
+  connect: derive,
 
   disconnect: async () => {
     // Nothing is held between connections: the session ended when the address was derived, and

@@ -3,6 +3,16 @@ import { config } from "dotenv";
 import { z } from "zod";
 config({ path: resolve(process.cwd(), ".env"), quiet: true });
 const schema = z.object({
+  POLYMARKET_SIGNER_ADDRESS: z.string().optional(),
+  POLYMARKET_SIGNER_PRIVATE_KEY: z.string().optional(),
+  POLYMARKET_WALLET_ADDRESS: z.string().optional(),
+  POLYMARKET_CLOB_API_KEY: z.string().optional(),
+  POLYMARKET_CLOB_API_SECRET: z.string().optional(),
+  POLYMARKET_CLOB_API_PASSPHRASE: z.string().optional(),
+  POLYMARKET_BUILDER_API_KEY: z.string().optional(),
+  POLYMARKET_BUILDER_SECRET: z.string().optional(),
+  POLYMARKET_BUILDER_PASSPHRASE: z.string().optional(),
+  POLYMARKET_TRADING_RUNTIME: z.enum(["off", "node"]).optional(),
   DATABASE_URL: z
     .string()
     .url()

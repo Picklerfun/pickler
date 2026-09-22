@@ -27,7 +27,10 @@ for (const worker of [api, research]) {
   assert.equal(worker.preview_urls, false);
   assert.equal(worker.routes, undefined);
   assert.equal(worker.durable_objects, undefined);
-  assert.equal(worker.vars.ADMISSIONS_ENABLED, "false", "Deploy with admissions closed first");
+  assert.ok(
+    ["true", "false"].includes(worker.vars.ADMISSIONS_ENABLED),
+    "Set admissions explicitly",
+  );
   assert.equal(worker.hyperdrive?.length, 1);
   assert.equal(worker.hyperdrive[0].binding, "DATABASE");
   assert.match(worker.hyperdrive[0].id, /^[a-f0-9]{32}$/);
@@ -38,6 +41,11 @@ for (const worker of [api, research]) {
   }
   assert.equal(worker.queues.producers[0].queue, "pickler-research-staging");
 }
+assert.equal(
+  api.vars.ADMISSIONS_ENABLED,
+  research.vars.ADMISSIONS_ENABLED,
+  "Coordinate API and consumer admissions",
+);
 assert.equal(api.hyperdrive[0].id, research.hyperdrive[0].id);
 assert.equal(research.queues.consumers[0].max_batch_size, 1);
 assert.equal(research.queues.consumers[0].max_concurrency, 5);

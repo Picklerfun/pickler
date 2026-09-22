@@ -16,3 +16,4 @@ export * from "./research.js";
 export * from "./paper.js";
 export * from "./console.js";
 export * from "./launches.js";
+export * from "./trading.js";

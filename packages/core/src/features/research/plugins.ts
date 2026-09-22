@@ -6,6 +6,7 @@ export const PLUGIN_IDS = [
   "balldontlie",
   "the-odds-api",
   "paper-trading",
+  "polymarket-trading",
 ] as const;
 export type PluginId = (typeof PLUGIN_IDS)[number];
 export type PluginConfig = { version: 1; enabled: PluginId[] };

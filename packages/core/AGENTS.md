@@ -63,6 +63,10 @@ not `provider_failure`. The discovery report callback obeys the same distinction
 and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a
 terminal result; the existing lease recovery path remains authoritative.
 
+## Local trading integration
+
+The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
 ## Markets
 
 `features/markets` owns the perpetuals surface: a market is a grid of price levels away from the mark

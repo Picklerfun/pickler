@@ -1,12 +1,32 @@
 # What the public product invents, and what it would take to stop
 
-Status: audit of 2026-09-21, against `codex/markets-perps`. It inventories the data the public
+Status: original audit by Juve on 2026-09-21 against `codex/markets-perps`; reviewed for standalone inclusion on 2026-09-22 against main `9303a79`. It inventories the data the public
 surface makes up, says what each piece needs behind it — an endpoint, a schema, a chain read, an
 indexer — and what is already modelled and only needs wiring.
 
 It makes concrete one sentence from [the integration guide](frontend-integration.md): _"Token
 purchases, paid reads, rankings and settlement remain separate incomplete capabilities; existing
 sample data must stay visibly labelled."_
+
+## Scope and priority after review
+
+This document preserves the inventory from PR #34 without importing PR #32 or #33.
+References to `MarketBoard`, `/markets`, `readQuestionAtLevel`, and the Mera chooser describe
+those unmerged branches, not current main. Counts and line numbers below are historical
+inspection references, not assertions about the deployed commit.
+
+The current delivery priority is private Polymarket research and its explicit execution path.
+Perpl is a separate product capability; this audit does not authorize prioritizing it over
+Polymarket, enabling trading, publishing private research, or removing demo pages.
+
+Connecting a wallet client-side is not server authentication. Private wallet-linked data needs
+verified proof of ownership and tenant authorization. A derived address alone cannot grant access.
+Research forecasts are not executed trades: stake, realized PnL and settlement must come from
+actual execution and resolution records, never be inferred from a proposed decision.
+
+Claims below about external deployments, public endpoints, chain addresses or implementation
+cost are historical claims requiring fresh verification before their integrations are implemented.
+In particular, live venue quotes do not supply agent calls, performance or position history.
 
 ## The shape of the problem
 
@@ -19,8 +39,8 @@ implementation, and that implementation is a fixture:
 | `MarketBoard` (`core/features/markets/ports`)      | `createSampleMarketBoard`      | 2       | `/markets`, `/markets/[symbol]`                                                         |
 | `LandingReadModel` (`core/features/landing/ports`) | `createSampleLandingReadModel` | 1       | `/`                                                                                     |
 
-Every other port in core — access tokens, API keys, workspaces, the agent registry, applicants,
-budget, profiles, signing, the waitlist — already has a real Supabase or PostgreSQL adapter. The
+The existing product has persistent adapters for profiles, workspaces, registry, applicants,
+budget and waitlist. This inventory does not establish live acceptance for every adapter or signing capability. The
 boundary is clean, which is the good news: replacing a fixture is writing a second implementation
 of an interface that already exists, not rewriting the pages.
 
@@ -122,9 +142,9 @@ cannot answer — which agent has a call on which square, and a person's own pos
 `ConnectGate` but render from the same sample endpoints as everyone else: the wallet decides what
 is _shown_, never what is _fetched_. The server does not know who is asking.
 
-This is less urgent than it looks. With the passkey account derived in the browser, identity works
-client-side without a backend; what the server owes is the history a chain cannot give — which
-reads this address paid for, and which agents it follows.
+The browser can display a derived address, but the server must verify ownership before linking
+it to a user or returning private payment and activity history. PR #33 does not establish this
+server-side authentication or its compatibility with the iOS account derivation.
 
 ### 5. Sample data is labelled in one place out of seven
 
@@ -172,9 +192,9 @@ The fix is the same in every row and it already has a precedent in this repo:
 core's market rules for exactly this reason, the way `CATEGORY_OPTIONS` mirrors `CATEGORIES`. Every
 row above wants that treatment. None of them needs a table.
 
-## The decision: only the landing stays sample
+## Product proposal: only the landing stays sample
 
-Decided 2026-09-21. `pickler.fun` itself may keep a sample snapshot — it is the marketing page and
+Proposed in the original audit; not adopted by this documentation change. `pickler.fun` itself may keep a sample snapshot — it is the marketing page and
 it already labels itself. **Every other route must stop inventing.** That is a stricter rule than
 "label it", and it changes what the work is, so it is worth being plain about what it costs.
 
@@ -238,7 +258,7 @@ need something to _write_ the tables that are already defined.
 | Agent calls on a square               | part of `/v1/markets/:symbol`                                                  | **yes** — small: agent, market, level, horizon, state         | picks first, since a call is one                                                        | picks                                                               |
 | A person's positions and history      | `/v1/positions`, `/v1/reads?address=`                                          | **yes** for history; positions can be read from the venue     | writing `identity.wallet_links`, which exists and nothing writes                        | wallet identity, which the passkey account now supplies client-side |
 
-### The order this implies
+### Original proposed order for the public product (not the current delivery queue)
 
 1. **`/markets` against the real venue.** A Perpl client behind `MarketBoard`, replacing
    `createSampleMarketBoard`. No schema, no migration, no contracts — the port and the two
