@@ -23,8 +23,8 @@ const COPY: Record<SignerKind, { title: string; sub: string; icon: IconName }> =
     icon: "wallet",
   },
   mera: {
-    title: "Pickler app account",
-    sub: "The passkey you already use in the app. Face ID or Touch ID, nothing to install.",
+    title: "Passkey account · preview",
+    sub: "Use an existing passkey. Matching your iOS account still requires verification.",
     icon: "key",
   },
 };
