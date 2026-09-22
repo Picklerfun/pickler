@@ -42,7 +42,10 @@ export class PostgresLaunchReadModel {
 
   constructor(connection: string | Pool, options?: DatabaseConnectionOptions) {
     this.ownsPool = typeof connection === "string";
-    this.pool = typeof connection === "string" ? new Pool(databasePoolConfig(connection, options)) : connection;
+    this.pool =
+      typeof connection === "string"
+        ? new Pool(databasePoolConfig(connection, options))
+        : connection;
     this.database = drizzle(this.pool);
   }
 
@@ -56,15 +59,13 @@ export class PostgresLaunchReadModel {
     const limit = Math.min(Math.max(query.limit ?? 25, 1), 100);
 
     const conditions = [
+      canonicalLaunch(),
       query.chain ? eq(tokens.chain, query.chain) : undefined,
       query.phase ? eq(tokens.status, query.phase as never) : undefined,
       // Keyset rather than offset: a catalogue that grows while a client pages must not
       // repeat or skip a row.
       query.cursor
-        ? lt(
-            tokens.createdAt,
-            sql`(select "created_at" from "market"."tokens" where "id" = ${query.cursor})`,
-          )
+        ? sql`(${tokens.createdAt}, ${tokens.id}) < (select "created_at", "id" from "market"."tokens" where "id" = ${query.cursor})`
         : undefined,
     ].filter(Boolean);
 
@@ -72,7 +73,7 @@ export class PostgresLaunchReadModel {
       .select()
       .from(tokens)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(tokens.createdAt))
+      .orderBy(desc(tokens.createdAt), desc(tokens.id))
       .limit(limit + 1);
 
     const page = rows.slice(0, limit);
@@ -86,7 +87,11 @@ export class PostgresLaunchReadModel {
   }
 
   async getLaunch(id: string): Promise<ReadDto<LaunchDetailDto> | null> {
-    const [token] = await this.database.select().from(tokens).where(eq(tokens.id, id)).limit(1);
+    const [token] = await this.database
+      .select()
+      .from(tokens)
+      .where(and(eq(tokens.id, id), canonicalLaunch()))
+      .limit(1);
 
     if (!token) {
       return null;
@@ -115,7 +120,7 @@ export class PostgresLaunchReadModel {
     const [token] = await this.database
       .select({ id: tokens.id, chain: tokens.chain })
       .from(tokens)
-      .where(eq(tokens.id, launchId))
+      .where(and(eq(tokens.id, launchId), canonicalLaunch()))
       .limit(1);
 
     if (!token) {
@@ -250,4 +255,10 @@ function toCurve(pool: typeof pools.$inferSelect, graduationTarget: string | nul
     openedAt: pool.openedAt.toISOString(),
     closedAt: pool.closedAt?.toISOString() ?? null,
   };
+}
+
+function canonicalLaunch() {
+  return sql`exists (select 1 from "market"."chain_events" e
+    where e.chain = ${tokens.chain} and e.tx_hash = ${tokens.launchTxHash}
+      and e.event_name = 'LaunchCreated' and not e.orphaned)`;
 }
