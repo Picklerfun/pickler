@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) and [infrastructure instructions](
 
 `@pickler/indexer-worker` runs the launch indexer on a cron trigger. It holds no logic of its own: a pass is `runIndexerPass` from `@pickler/infrastructure`, which is tested against a real PostgreSQL with a scripted chain. What lives here is the schedule, the bindings and the configuration check.
 
-`src/config.ts` defaults nothing. Without a factory address, a deployment block, a chain id and at least one RPC endpoint, the pass does not run and the worker says so. An address or a start block guessed wrong produces an index that looks populated and is not, which is harder to notice than an indexer that plainly never started. No Pickler contract is deployed, so today it refuses on every trigger — that is the intended behaviour, not a gap.
+`src/config.ts` requires deployment identity and RPC endpoints; confirmations default to zero and the pass limit to 100 blocks. Without a factory address, a deployment block, a chain id and at least one RPC endpoint, the pass does not run and the worker says so. An address or a start block guessed wrong produces an index that looks populated and is not, which is harder to notice than an indexer that plainly never started. No Pickler contract is deployed, so today it refuses on every trigger — that is the intended behaviour, not a gap.
 
 `wrangler.jsonc` carries no Hyperdrive id for the same reason. Add the binding and the two `LAUNCH_FACTORY_*` vars together, when the contracts land.
 
@@ -26,3 +26,7 @@ npm test                 # includes workers/indexer/test
 npm run typecheck
 npm run build:workers    # dry-run build, no deploy
 ```
+
+## Projection delivery
+
+`runConfiguredPass` is the common scheduled pipeline tested with controlled chain data. It indexes factory, discovered curve and graduation events, then updates the catalogue, including when the cursor is caught up. Projection failures retry on a later cron pass. Store and projector share the invocation pool and only its owner closes it. No contracts or indexer are deployed by the integration fixes.
