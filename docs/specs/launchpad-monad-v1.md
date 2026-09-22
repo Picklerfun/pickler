@@ -1,6 +1,6 @@
 # Launchpad on Monad — development specification
 
-Status: written 2026-09-21 against commit `397863a`. D0, A1, A2, A3 and A4 are implemented on `codex/launchpad-development-spec`; A5, A6 and all of track B are not. Each section notes its own state.
+Status: written 2026-09-21 against commit `397863a`. All of track A (A1 to A6) and D0 are implemented on `codex/launchpad-development-spec`; track B is not. Each section notes its own state.
 
 This document translates the product specification "Pickler — Launchpad en Monad" into engineering deliverables against this repository. The product specification owns _what_ the launchpad is and which economic rules govern it. This document owns _what we build, in what order, and how we know a piece is finished_. Where the two disagree about the current state of the code, this document is authoritative about the code and the product specification is authoritative about the rules.
 
@@ -101,7 +101,11 @@ Exit criteria: a passing fork test for every step above, the anti-pre-initializa
 
 Exit criteria: finalization succeeds exactly once; a DEX failure reverts with no loss and the retry remains permissionless; a maliciously pre-initialized pool is rejected; initial pool price, ticks and decimals are coherent; the locker demonstrably collects fees without reducing liquidity or releasing principal.
 
+**Done, 2026-09-22.** `PicklerGraduationAdapterV4` and `PicklerLiquidityLocker`, exercised by five fork tests against the real deployment. Which venue a testnet launch graduates into is still the open decision below; the contracts take their addresses as constructor arguments, so that choice is configuration rather than code.
+
 **A6 — `PicklerFeeEscrow`.** Credits and claims per asset, checks-effects-interactions, reentrancy protected, and `claim` debits only the caller's balance so a wallet that rejects transfers cannot block anyone else. Changing a fee recipient affects future accruals only; already accrued balances are never reassigned.
+
+**Done, 2026-09-22.** `PicklerFeeEscrow`, plus a two-step creator fee recipient transfer on the factory. Attribution is atomic with the transfer that funds it, so two launches sharing a quote asset cannot have their fees confused.
 
 There is no administrative pause on existing trading and no `ownerWithdraw`. A permanently ungraduatable launch is a known residual risk the product specification accepts in exchange for having no administrative power to drain reserves; the plan does not quietly add one.
 

@@ -7,3 +7,4 @@ export * from "./PicklerBondingCurve.js";
 export * from "./PicklerCurveDeployer.js";
 export * from "./PicklerGraduationAdapterV4.js";
 export * from "./PicklerLiquidityLocker.js";
+export * from "./PicklerFeeEscrow.js";

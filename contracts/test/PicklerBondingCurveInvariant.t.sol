@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+
+import {RecordingFeeEscrow} from "./mocks/RecordingFeeEscrow.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {PicklerBondingCurve} from "../src/PicklerBondingCurve.sol";
@@ -90,9 +92,11 @@ contract PicklerBondingCurveInvariantTest is Test {
     MockERC20 internal quote;
     CurveTrader internal trader;
 
-    address internal feeEscrow = makeAddr("feeEscrow");
+    address internal feeEscrow;
 
     function setUp() public {
+        feeEscrow = address(new RecordingFeeEscrow());
+
         quote = new MockERC20("Quote", "QUOTE", 6);
 
         (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(SALE_ALLOCATION, LP_ALLOCATION, 1_000e6);

@@ -20,6 +20,7 @@ import {PicklerGraduationAdapterV4} from "../../src/PicklerGraduationAdapterV4.s
 import {PicklerLiquidityLocker} from "../../src/PicklerLiquidityLocker.sol";
 import {PicklerLaunchFactory} from "../../src/PicklerLaunchFactory.sol";
 import {PicklerCurveDeployer} from "../../src/PicklerCurveDeployer.sol";
+import {PicklerFeeEscrow} from "../../src/PicklerFeeEscrow.sol";
 import {PicklerBondingCurve} from "../../src/PicklerBondingCurve.sol";
 import {PicklerPreset} from "../../src/libraries/PicklerPreset.sol";
 import {PicklerCurveMath} from "../../src/libraries/PicklerCurveMath.sol";
@@ -60,7 +61,8 @@ contract PicklerGraduationForkTest is Test {
 
     address internal operator = makeAddr("operator");
     address internal creator = makeAddr("creator");
-    address internal feeEscrow = makeAddr("feeEscrow");
+    PicklerFeeEscrow internal escrow;
+    address internal treasury = makeAddr("treasury");
     address internal alice = makeAddr("alice");
 
     function setUp() public {
@@ -75,13 +77,18 @@ contract PicklerGraduationForkTest is Test {
         quote = new MockERC20("Quote", "QUOTE", 6);
         swapRouter = new PoolSwapTest(POOL_MANAGER);
 
-        adapter = new PicklerGraduationAdapterV4(POOL_MANAGER, POSITION_MANAGER, STATE_VIEW, PERMIT2, feeEscrow);
+        // The real deployment order: each contract needs the address of one deployed before
+        // it, and the escrow's one-time binding closes the loop.
+        escrow = new PicklerFeeEscrow(treasury);
+        adapter = new PicklerGraduationAdapterV4(POOL_MANAGER, POSITION_MANAGER, STATE_VIEW, PERMIT2, address(escrow));
         locker = adapter.locker();
 
-        curveDeployer = new PicklerCurveDeployer(address(adapter), feeEscrow);
+        curveDeployer = new PicklerCurveDeployer(address(adapter), address(escrow));
 
         vm.prank(operator);
         factory = new PicklerLaunchFactory(operator, curveDeployer);
+
+        escrow.initialize(factory, address(locker));
 
         vm.prank(operator);
         factory.publishPreset(_preset());
@@ -216,9 +223,16 @@ contract PicklerGraduationForkTest is Test {
 
         assertEq(liquidityAfter, liquidityBefore, "collecting fees moved the principal");
         assertTrue(
-            quote.balanceOf(feeEscrow) > 0 || token.balanceOf(feeEscrow) > 0,
+            quote.balanceOf(address(escrow)) > 0 || token.balanceOf(address(escrow)) > 0,
             "no fees reached the escrow despite trading"
         );
+
+        // And they are attributed, not merely sitting there: the creator's share of pool fees
+        // is claimable by the creator and by nobody else.
+        uint256 creatorShare = escrow.claimable(creator, address(quote)) + escrow.claimable(creator, address(token));
+        uint256 protocolShare = escrow.claimable(treasury, address(quote)) + escrow.claimable(treasury, address(token));
+
+        assertGt(creatorShare + protocolShare, 0, "pool fees arrived but were never attributed");
     }
 
     /// An attacker opens the pool first at a price of their choosing. Graduation must refuse

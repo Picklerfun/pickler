@@ -3,6 +3,8 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
+import {RecordingFeeEscrow} from "./mocks/RecordingFeeEscrow.sol";
+
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
@@ -29,13 +31,15 @@ contract PicklerLiquidityLockerTest is Test {
     PicklerLiquidityLocker internal locker;
 
     address internal adapter = makeAddr("adapter");
-    address internal feeEscrow = makeAddr("feeEscrow");
+    address internal feeEscrow;
     address internal token = makeAddr("token");
     address internal stranger = makeAddr("stranger");
 
     uint256 internal constant TOKEN_ID = 42;
 
     function setUp() public {
+        feeEscrow = address(new RecordingFeeEscrow());
+
         positionManager = new RecordingPositionManager();
         locker = new PicklerLiquidityLocker(IPositionManager(payable(address(positionManager))), feeEscrow, adapter);
 

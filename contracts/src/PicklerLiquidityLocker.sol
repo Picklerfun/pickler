@@ -6,6 +6,9 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+
+import {IPicklerFeeEscrow} from "./interfaces/IPicklerFeeEscrow.sol";
 
 /// @title Pickler liquidity locker
 /// @notice Holds a launch's initial liquidity position forever, and lets only its fees out.
@@ -89,6 +92,11 @@ contract PicklerLiquidityLocker is IERC721Receiver {
         params[1] = abi.encode(position.poolKey.currency0, position.poolKey.currency1, feeRecipient);
 
         positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp);
+
+        // Both currencies, in the same call as the collection, so the escrow attributes what
+        // arrived to this launch rather than to whichever one happens to sync next.
+        IPicklerFeeEscrow(feeRecipient).syncPoolFees(token, Currency.unwrap(position.poolKey.currency0));
+        IPicklerFeeEscrow(feeRecipient).syncPoolFees(token, Currency.unwrap(position.poolKey.currency1));
 
         emit FeesCollected(token, position.tokenId, feeRecipient);
     }

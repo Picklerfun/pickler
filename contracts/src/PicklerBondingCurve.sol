@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 import {PicklerCurveMath} from "./libraries/PicklerCurveMath.sol";
 import {PicklerPreset} from "./libraries/PicklerPreset.sol";
+import {IPicklerFeeEscrow} from "./interfaces/IPicklerFeeEscrow.sol";
 
 /// @title Pickler bonding curve
 /// @notice Sells and buys back a launch's inventory before it graduates to a pool.
@@ -325,6 +326,11 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
         accruedFees = 0;
         quoteToken.safeTransfer(feeEscrow, amount);
+
+        // Attributing in the same call is what keeps the escrow's accounting unambiguous:
+        // another launch sharing this quote asset cannot remit in between and have its fees
+        // counted as this launch's.
+        IPicklerFeeEscrow(feeEscrow).syncCurveFees(address(token), address(quoteToken));
 
         emit FeesRemitted(feeEscrow, amount);
     }
