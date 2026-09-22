@@ -72,3 +72,11 @@ export { PostgresBudgetLedger } from "./console/budget.js";
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
+
+export {
+  PostgresLaunchIndexStore,
+  type ApplyBatchInput,
+  type IndexBlockInput,
+  type IndexEventInput,
+  type OutboxInput,
+} from "./persistence/product/launch-index-store.js";

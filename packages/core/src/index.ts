@@ -12,6 +12,14 @@ export {
 } from "./features/launch/domain/curve-math.js";
 
 export {
+  nextRange,
+  planAdvance,
+  type AdvancePlan,
+  type IndexedBlock,
+  type IndexerCursor,
+} from "./features/launch/domain/indexing.js";
+
+export {
   ChainMismatchError,
   ChainUnavailableError,
   type BlockRef,
