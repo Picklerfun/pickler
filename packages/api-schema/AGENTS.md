@@ -34,3 +34,7 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 ## Console contracts
 
 `src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
+
+## Local trading integration
+
+The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
