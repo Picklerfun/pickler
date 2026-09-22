@@ -7,7 +7,7 @@ import { MarketsScreen } from "../screens/markets";
 import { PerpsFundsScreen } from "../screens/perpsFunds";
 import { SigninScreen } from "../screens/signin";
 import { DepositScreen, WalletScreen, WithdrawScreen } from "../screens/wallet";
-import { TabBar } from "../ui/TabBar";
+import { TabBar } from "../ui/TabBar.component";
 import { withPage } from "../ui/Page";
 import { C } from "../ui/theme";
 import { flushPending, navigationRef } from "./ref";
