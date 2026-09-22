@@ -26,7 +26,7 @@ agente da una lectura pagada sobre una celda de la matriz nivel × horizonte y s
 real de Perpl) y **Agents** (lista con récord verificable). **Trade sigue manual** y gana el order book y
 un botón "Trade this level" con recordatorios push. Todo lo nuevo del lado servidor vive en un backend
 **propio** en el Supabase `pickler` de Sherry Labs. Quedan **24 días** para el bounty (13 oct 2026,
-21:59 CST); el spec cierra en el build 6 de TestFlight.
+21:59 CST); el spec cierra en el build de TestFlight siguiente tras el merge.
 
 ---
 
@@ -49,7 +49,7 @@ un botón "Trade this level" con recordatorios push. Todo lo nuevo del lado serv
    ticket visible) y **"Trade this level"** desde la celda: sugiere lado y programa push 15 min antes y al
    vencer. **Sin cierre automático y sin take-profit trigger.**
 7. **Cuatro fases** con checkpoint: F1 backend · F2 app Ask + Agents + créditos + firma · F3 Trade (book,
-   botón, push) · F4 TestFlight build 6.
+   botón, push) · F4 TestFlight con el build siguiente tras el merge.
 
 ---
 
