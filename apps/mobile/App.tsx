@@ -11,6 +11,7 @@ import type { AppCtx } from "./src/ctx";
 import { DevControls } from "./src/DevControls";
 import { useAccount } from "./src/hooks/useAccount";
 import { useCurrentScreen } from "./src/hooks/useCurrentScreen";
+import { useMarketData } from "./src/hooks/useMarketData";
 import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
 import { useReads } from "./src/hooks/useReads";
@@ -70,6 +71,9 @@ export default function App() {
   }, [ready]);
   const perpsActive = PERPL_SCREENS.includes(scr);
   const readsActive = scr === "market" && store.S.marketTab !== "trade";
+  // Order book (D11, P5): sólo con Trade visible y trading key (sin key, el gate no muestra el book).
+  const bookActive = scr === "market" && store.S.marketTab === "trade" && perpl.state.status === "ready";
+  const marketData = useMarketData(store.S.perpsMarketId, bookActive);
   const { setActive } = perpl;
   const { setActive: setReadsActive } = reads;
   useEffect(() => { setActive(perpsActive); }, [perpsActive, setActive]);
@@ -86,7 +90,7 @@ export default function App() {
 
   if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut, seal, setControls };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, notifications, onWallet, lock, signOut, seal, setControls };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

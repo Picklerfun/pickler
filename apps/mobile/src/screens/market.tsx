@@ -12,6 +12,7 @@ import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleto
 import { C, pill, textStyle } from "../ui/theme";
 import { AgentsTab } from "./agents";
 import { AskTab } from "./ask";
+import { BookCard } from "./book";
 
 export type OrderResult =
   | { step: "sent" }
@@ -93,7 +94,7 @@ function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level
   );
 }
 
-function TradeTab({ S, set, perpl, reads, nav }: AppCtx) {
+function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const side: Side = S.perpsSide ?? "long";
   const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
@@ -176,6 +177,7 @@ function TradeTab({ S, set, perpl, reads, nav }: AppCtx) {
         onChange={(k) => set({ perpsSide: k })}
         tone={(k) => ({ bg: k === "long" ? C.lime : C.down, fg: C.onLime })}
       />
+      <BookCard market={market} data={marketData} target={level?.target} />
       <Card bd={C.hair2} bg={C.deep} gap={6}>
         <Tag>MARGIN · AUSD</Tag>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
