@@ -3,6 +3,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { Pool } from "pg";
 
+import { PostgresLaunchReadModel } from "../src/persistence/product/launch-read-model.js";
 import { migrateDatabase } from "../src/persistence/migrate-database.js";
 import { PostgresLaunchIndexStore } from "../src/persistence/product/launch-index-store.js";
 import {
@@ -240,8 +241,6 @@ test("an orphaned trade stops counting", async (t) => {
 
   await store.rollbackFrom(CHAIN, FACTORY, "launches", 10n);
 
-  // Rebuild from scratch, which is what an operator does after an incident.
-  await projector.pool.query(`delete from "market"."trades"`);
   const rebuilt = await projector.project(CHAIN, readMetadata);
 
   assert.equal(rebuilt.trades, 0, "a trade from a discarded branch was projected again");
@@ -290,6 +289,22 @@ test("graduation closes the curve and opens the pool", async (t) => {
   assert.equal(post.venue, "uniswap_v4");
   assert.equal(post.pool_key, hash("pool"));
   assert.notEqual(pre.closed_at, null, "the curve was left open after graduation");
+
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 10n);
+  await projector.project(CHAIN, readMetadata);
+  const model = new PostgresLaunchReadModel(store.pool);
+  const list = await model.listLaunches({});
+  const detail = await model.getLaunch(list.data[0]!.id);
+  assert.equal(detail!.data.phase, "pre_graduation");
+  assert.equal(detail!.data.graduatedAt, null);
+  assert.equal(detail!.data.pool, null);
+  assert.equal(detail!.data.curve!.closedAt, null);
+
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 9n);
+  await projector.project(CHAIN, readMetadata);
+  assert.deepEqual((await model.listLaunches({})).data, []);
+  assert.equal(await model.getLaunch(list.data[0]!.id), null);
+  assert.equal(await model.listTrades(list.data[0]!.id), null);
 });
 
 test("an event we do not recognise is counted as skipped, never as projected", async (t) => {
