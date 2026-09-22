@@ -113,7 +113,7 @@
       <h2><span class="sec-num">01</span>TL;DR</h2>
       <div class="tldr">
         <h3>Resumen ejecutivo</h3>
-        <p>Que navegar en Pickler se sienta como en iOS: el gesto de «atrás» desliza la pantalla siguiendo el dedo y descubre la anterior, entrar a una pantalla anima desde la derecha, cada pestaña guarda su propia pila y la tab bar tiene una pastilla lima que se arrastra sin despegar el dedo y selecciona al soltar. Se logra migrando la navegación a react-navigation nativa (native-stack + bottom-tabs) sin cambiar la API de las pantallas. Dos fases: F1 migra la navegación (árbol, adaptador <code>Screen → ruta</code>, <code>Page</code> con cabecera/refresh/sello, store sólo con datos, gate de cuenta, push); F2 pone la pastilla arrastrable en la tab bar. Decisiones D1–D12 en el spec.</p>
+        <p>Que navegar en Pickler se sienta como en iOS: el gesto de «atrás» desliza la pantalla siguiendo el dedo y descubre la anterior, entrar a una pantalla anima desde la derecha, cada pestaña guarda su propia pila y la tab bar tiene una pastilla lima que se arrastra sin despegar el dedo y selecciona al soltar. Se logra migrando la navegación a react-navigation nativa (native-stack + bottom-tabs) sin cambiar la API de las pantallas. Dos fases: F1 migra la navegación (árbol, adaptador <code>Screen → ruta</code>, <code>Page</code> con cabecera/refresh/sello, store sólo con datos, gate de cuenta, push); F2 pone la pastilla arrastrable en la tab bar. Decisiones D1–D13 en el spec.</p>
       </div>
     </section>
 
@@ -168,7 +168,7 @@
         </div>
       </article>
 
-      <article class="phase-card" data-phase="2" data-status="plan_ready">
+      <article class="phase-card" data-phase="2" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -177,16 +177,16 @@
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
           <p>D11 del spec + <b>D13</b> (nueva en F2: la barra queda montada y se esconde/aparece deslizando al entrar y salir de una pantalla no raíz; las raíces reservan su hueco): <code>TabBar.tsx</code> como <code>tabBar</code> de bottom-tabs; pastilla lima translúcida detrás del ítem activo (<code>sharedValue</code> + <code>withSpring</code>); <code>Pan</code> sobre la fila mueve la pastilla al ítem bajo el dedo con haptic al cruzar y selecciona <b>al soltar</b>; el tap sigue siendo tap; el índice activo viene de <code>state.index</code>. Puros con test: <code>tabIndexAt</code>, <code>pillX</code>.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Tab bar arrastrable con capturas a medio arrastre y tras soltar; audit F2</div></div>
+            <div><div class="k">Entregable</div><div class="v">Rama <code>feat/mobile-nav-f2</code> con la pastilla arrastrable y la barra animada verificadas en el simulador (drag a medio camino, tras soltar, barra ocultándose/reapareciendo); audit F2</div></div>
             <div><div class="k">Prerequisitos</div><div class="v">F1 completed (gesture-handler y reanimated ya instalados)</div></div>
           </div>
           <details class="tasks">
@@ -195,10 +195,10 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 1: Geometría pura de la tab bar (<code>ui/tabbar.ts</code>) con tests</label></li>
-              <li><label><input type="checkbox"> Task 2: <code>TabBar</code> con pastilla arrastrable y barra que se esconde deslizando; <code>Page</code> reserva el hueco</label></li>
-              <li><label><input type="checkbox"> Task 3: Recorrido en el simulador (capturas por video)</label></li>
-              <li><label><input type="checkbox"> Task 4: Docs — D11 (F2), D13, F2 completed, audit, README, checks</label></li>
+              <li><label><input type="checkbox" checked> Task 1: Geometría pura de la tab bar (<code>ui/tabBarLayout.ts</code>, renombrada por colisión de casing con <code>TabBar.tsx</code> en macOS) con tests (<code>de9b2e1</code>, fix <code>5c79a86</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>TabBar</code> con pastilla arrastrable y barra que se esconde deslizando; <code>Page</code> reserva el hueco (<code>508c269</code>, fix <code>cb16f88</code>)</label></li>
+              <li><label><input type="checkbox" checked> Task 3: Recorrido en el simulador — 4/4 capturas por video; D13 medida con <code>HIDE_MS</code> temporal</label></li>
+              <li><label><input type="checkbox" checked> Task 4: Docs — D11 (F2), D13, F2 completed, audit, README, checks</label></li>
             </ol>
           </details>
         </div>
@@ -224,6 +224,7 @@
           <tr><td>D8 · Sólo el gesto nativo (<code>PanResponder</code> y <code>ui/gestures.ts</code> se eliminan); cambiar de pestaña no anima; tocar la activa hace <code>popToTop</code></td><td>Es el comportamiento estándar de iOS; menos código propio que mantener.</td></tr>
           <tr><td>D10 · Un push o «Market desde Wallet» apila Market <b>sobre Markets</b> (salta de pestaña)</td><td>Con pilas por pestaña, Market pertenece a Markets; sustituye el «Wallet debajo» del fix gate (aprobado en el brainstorm).</td></tr>
           <tr><td>D11 · Pastilla que sigue el dedo y selecciona <b>al soltar</b> (no en vivo)</td><td>Como la tab bar de iOS 26; cambiar en vivo montaría y desmontaría Markets/Wallet varias veces en un solo gesto.</td></tr>
+          <tr><td>D13 · Tab bar siempre montada y absoluta; se esconde/aparece con <code>translateY</code> (<code>withTiming</code>, 220 ms) al entrar/salir de una pantalla no raíz; fondo opaco <code>C.bgBottom</code></td><td>Antes (F1) la barra desmontaba de golpe (<code>return null</code>) al salir de la raíz; animarla se siente como iOS. Sin <code>expo-blur</code>, un fondo translúcido dejaba leer el contenido entre los iconos (F2-R2) — opaco lo evita.</td></tr>
         </tbody>
       </table>
 
@@ -238,6 +239,9 @@
         <li><b>R5</b> (Task 6, corrige P3 del plan) — en <code>ref.ts</code>, <code>navigateTo(screen)</code> para pantallas de pestaña usa <code>navigationRef.navigate("Tabs", { screen: tab, params: nested }, { pop: true })</code> con <code>nested = { screen, pop: true }</code> para raíces y <code>{ screen, initial: false, pop: true }</code> para no-raíces (así Market se apila sobre Markets aunque la pestaña se monte por primera vez — D10 — y volver a una ruta existente hace pop). Nuevo <code>switchTab(tab)</code> en <code>ref.ts</code> = <code>navigate("Tabs", { screen: tab })</code> sin params anidados (sólo enfoca, conserva la pila); <code>AppStore</code> gana <code>switchTab(tab)</code> con gate; <code>TabBar</code> llama <code>switchTab</code>, no <code>requireAccount</code>. <b>Coste si está mal:</b> media ronda más; sin alternativa (la semántica v7 está verificada en el fuente).</li>
         <li><b>R6</b> (Task 7) — un intento más con <code>xcrun simctl io &lt;UDID&gt; recordVideo</code> + swipe rápido (que sí hace pop con animación) y tap <code>market-BTC</code>, extrayendo frames con <code>ffmpeg</code>; si tampoco, quedan como residuales para el iPhone. <b>Coste si está mal:</b> ~10 min.</li>
         <li><b>R7</b> (revisión final, una sola ola de fixes) — <code>__tests__/navigation.test.ts</code> nuevo (StackRouter real de <code>@react-navigation/routers</code> + forma exacta de las órdenes de <code>ref.ts</code> con un <code>ref</code> simulado); <code>Navigator.tsx</code> gana <code>backBehavior="none"</code> (evita que <code>goBackIfCan()</code> salte a MarketsTab desde la raíz de otra pestaña); comentarios corregidos en <code>TabBar.tsx</code> (native-stack, no bottom-tabs), <code>ctx.ts</code> y <code>comingSoonCopy.ts</code>; spec D1/D5 con la ruta <code>signin</code> en minúscula y el detalle real de <code>finishSignin</code> (sin <code>popTo</code>). <code>npm test</code> → 32 suites / 239 tests (+7); <code>tsc</code> limpio. <b>Coste si está mal:</b> una ronda más de fix.</li>
+        <li><b>F2-R1</b> (Task 1, defecto del plan P1) — el módulo puro de geometría se llama <code>src/ui/tabBarLayout.ts</code>, no <code>tabbar.ts</code>: en macOS (case-insensitive) colisionaba con <code>TabBar.tsx</code> y <code>./TabBar</code> resolvía al módulo puro. <code>TabBar.tsx</code> conserva su nombre PascalCase; Tasks 2–4 usan <code>tabBarLayout</code>. <b>Coste si está mal:</b> un rename más.</li>
+        <li><b>F2-R2</b> (Task 2, fix round 1) — fondo de la barra opaco <code>C.bgBottom</code> (en vez del <code>C.deep50</code> translúcido del plan) con la hairline superior, absoluta y animada igual; y <code>scheduleOnRN</code> de <code>react-native-worklets</code> en vez de <code>runOnJS</code> (deprecado en reanimated 4). <b>Coste si está mal:</b> perder el efecto translúcido — no lo teníamos de todos modos sin blur nativo.</li>
+        <li><b>F2-R3</b> (Task 3, medición del controlador) — el implementador reportó que la barra pasaba «de 100% a 0% entre dos frames» durante el push/pop; verificado como falso positivo: <code>simctl io recordVideo</code> muestrea a ~4 fps VFR y Maestro tarda &gt;4 s en devolver el control, así que ningún frame cae a mitad de los 220 ms de la animación real. El controlador remidió D13 con un <code>HIDE_MS</code> temporal de 15 s (sin commit, revertido con <code>git checkout -- TabBar.tsx</code>): a +1.5 s y +4.5 s del push la barra se ve a medio deslizar y casi fuera, confirmando que sí anima. <code>bar-hiding.png</code> es ese frame de la prueba de 15 s (anotado en el audit F2); el frame original de Task 3 queda en <code>shots/bar-hiding-task3-original.png</code> (no versionado). <b>Coste si está mal:</b> ninguno — el mecanismo es el mismo a 220 ms, sólo cambia la ventana de observación.</li>
       </ol>
     </section>
 

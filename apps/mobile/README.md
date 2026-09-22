@@ -63,6 +63,24 @@ signin  (RootStack, encima de Tabs cuando hace falta cuenta; raíz si no hay nin
 - `src/ui/TabBar.tsx` — tab bar custom (prop `tabBar` de bottom-tabs); devuelve `null` en
   pantallas no-raíz de su pestaña (`SHOW_TABS`).
 
+### Tab bar
+
+La geometría pura vive en `src/ui/tabBarLayout.ts` — no `tabbar.ts`: ese nombre choca en
+mayúsculas/minúsculas con `TabBar.tsx` en macOS y rompía la resolución de módulos de
+`./TabBar` (`itemWidth`, `tabIndexAt`, `pillX`, `pillWidth`, `tabBarHeight`, con tests en
+`__tests__/tabBarLayout.test.ts`). `itemWidth`/`tabIndexAt`/`pillX` llevan la directiva
+`"worklet"` porque el `Pan` de gesture-handler las llama desde el hilo de UI de reanimated,
+no desde JS; sin ella, worklets lanza `Tried to synchronously call a Remote Function`.
+
+`TabBar.tsx` pinta una pastilla lima (`C.limeBg14`) detrás de la pestaña activa
+(`state.index`) que se puede arrastrar sin despegar el dedo: mientras el `Pan` está activo
+la pastilla sigue al dedo (`tabIndexAt`) con haptic al cruzar de ítem, y **sólo al soltar**
+cambia de pestaña llamando a `switchTab` (nunca gatea: `requireAccount` sigue siendo el
+camino para el resto de la app). La barra queda siempre montada y absoluta; en pantallas
+no-raíz se esconde deslizando hacia abajo (`translateY` con `withTiming`, 220 ms) en vez de
+desmontarse, y las páginas raíz reservan su hueco con `paddingBottom` (`tabBarHeight` en
+`Page.tsx`).
+
 **Para añadir una pantalla**: el `Screen` en `screens.ts`, su entrada en `TAB_OF`
 (`routes.ts`), el `Screen` en la pila de su pestaña dentro de `Navigator.tsx`, y
 registrarla con `withPage`.
@@ -96,7 +114,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 239/239 esperado (32 suites)
+npm test          # jest, 243/243 esperado (33 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
