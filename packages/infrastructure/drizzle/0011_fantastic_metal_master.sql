@@ -1,1 +1,0 @@
-ALTER TABLE "market"."tokens" ALTER COLUMN "agent_id" DROP NOT NULL;

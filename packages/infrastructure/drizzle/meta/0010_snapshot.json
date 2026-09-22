@@ -1,10 +1,6 @@
 {
-<<<<<<< HEAD
-  "id": "3406a2cc-6d43-466a-a9c6-2af754eea99b",
-=======
-  "id": "a9db31c9-ffd2-4390-9fc1-19f06e2266fd",
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
-  "prevId": "7bece35f-39f7-455e-bc42-3c60c3d79a1a",
+  "id": "840aeac5-77cb-4378-8861-ff645580751a",
+  "prevId": "3406a2cc-6d43-466a-a9c6-2af754eea99b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -195,7 +191,6 @@
       },
       "isRLSEnabled": true
     },
-<<<<<<< HEAD
     "pickler.live_orders": {
       "name": "live_orders",
       "schema": "pickler",
@@ -465,8 +460,6 @@
       },
       "isRLSEnabled": true
     },
-=======
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "pickler.metadata": {
       "name": "metadata",
       "schema": "pickler",
@@ -1017,7 +1010,6 @@
       },
       "isRLSEnabled": true
     },
-<<<<<<< HEAD
     "pickler.trading_accounts": {
       "name": "trading_accounts",
       "schema": "pickler",
@@ -1093,8 +1085,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-=======
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "pickler.budget_processed": {
       "name": "budget_processed",
       "schema": "pickler",
@@ -3628,8 +3618,6 @@
       },
       "isRLSEnabled": true
     },
-<<<<<<< HEAD
-=======
     "launch.drafts": {
       "name": "drafts",
       "schema": "launch",
@@ -4386,7 +4374,6 @@
       },
       "isRLSEnabled": true
     },
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "market.candles": {
       "name": "candles",
       "schema": "market",
@@ -4498,8 +4485,6 @@
       },
       "isRLSEnabled": true
     },
-<<<<<<< HEAD
-=======
     "market.chain_blocks": {
       "name": "chain_blocks",
       "schema": "market",
@@ -4794,7 +4779,6 @@
       },
       "isRLSEnabled": true
     },
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "market.fee_payouts": {
       "name": "fee_payouts",
       "schema": "market",
@@ -5371,7 +5355,7 @@
           "name": "agent_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "ticker": {
           "name": "ticker",
@@ -5862,8 +5846,6 @@
       "schema": "identity",
       "values": ["admin", "manager", "developer", "auditor", "viewer"]
     },
-<<<<<<< HEAD
-=======
     "launch.draft_status": {
       "name": "draft_status",
       "schema": "launch",
@@ -5879,7 +5861,6 @@
       "schema": "launch",
       "values": ["prepared", "submitted", "included", "finalized", "reverted", "replaced"]
     },
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "market.candle_interval": {
       "name": "candle_interval",
       "schema": "market",
@@ -5913,10 +5894,7 @@
     "budget": "budget",
     "growth": "growth",
     "identity": "identity",
-<<<<<<< HEAD
-=======
     "launch": "launch",
->>>>>>> f9ddc5e (Give the launchpad somewhere to put what the chain does not hold)
     "market": "market"
   },
   "sequences": {},

@@ -142,6 +142,7 @@ CREATE TABLE "market"."chain_events" (
 );
 --> statement-breakpoint
 ALTER TABLE "market"."chain_events" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "market"."tokens" ALTER COLUMN "agent_id" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "launch"."drafts" ADD CONSTRAINT "drafts_owner_id_profiles_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "identity"."profiles"("user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "launch"."drafts" ADD CONSTRAINT "drafts_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "agents"."agents"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "launch"."metadata_versions" ADD CONSTRAINT "metadata_versions_author_id_profiles_user_id_fk" FOREIGN KEY ("author_id") REFERENCES "identity"."profiles"("user_id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint

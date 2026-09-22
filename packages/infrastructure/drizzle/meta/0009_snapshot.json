@@ -1,6 +1,6 @@
 {
-  "id": "a9a39c5d-5772-41d8-896f-3d1eb01e628b",
-  "prevId": "a9db31c9-ffd2-4390-9fc1-19f06e2266fd",
+  "id": "3406a2cc-6d43-466a-a9c6-2af754eea99b",
+  "prevId": "7bece35f-39f7-455e-bc42-3c60c3d79a1a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -187,6 +187,275 @@
         "valid_execution_limits": {
           "name": "valid_execution_limits",
           "value": "\"pickler\".\"execution_policy\".\"global_limit\" BETWEEN 1 AND 250 AND \"pickler\".\"execution_policy\".\"tenant_limit\" BETWEEN 1 AND \"pickler\".\"execution_policy\".\"global_limit\""
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "pickler.live_orders": {
+      "name": "live_orders",
+      "schema": "pickler",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_key": {
+          "name": "request_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submit_key": {
+          "name": "submit_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_id": {
+          "name": "market_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config_version": {
+          "name": "config_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "preview": {
+          "name": "preview",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "budget_micros": {
+          "name": "budget_micros",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_hash": {
+          "name": "order_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fill": {
+          "name": "fill",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_owner": {
+          "name": "lease_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "live_request_identity": {
+          "name": "live_request_identity",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "request_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "live_run_identity": {
+          "name": "live_run_identity",
+          "columns": [
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "live_hash_identity": {
+          "name": "live_hash_identity",
+          "columns": [
+            {
+              "expression": "order_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "one_live_origin": {
+          "name": "one_live_origin",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "origin",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pickler\".\"live_orders\".\"status\" in ('queued','submitting','unknown','settled')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "one_live_position": {
+          "name": "one_live_position",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "market_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pickler\".\"live_orders\".\"status\" in ('queued','submitting','unknown','settled')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "live_orders_run_id_runs_id_fk": {
+          "name": "live_orders_run_id_runs_id_fk",
+          "tableFrom": "live_orders",
+          "tableTo": "runs",
+          "schemaTo": "pickler",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "live_orders_tenant_id_agent_id_trading_accounts_tenant_id_agent_id_fk": {
+          "name": "live_orders_tenant_id_agent_id_trading_accounts_tenant_id_agent_id_fk",
+          "tableFrom": "live_orders",
+          "tableTo": "trading_accounts",
+          "schemaTo": "pickler",
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "agent_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "live_budget_bound": {
+          "name": "live_budget_bound",
+          "value": "\"pickler\".\"live_orders\".\"budget_micros\" > 0 AND \"pickler\".\"live_orders\".\"budget_micros\" <= 5000000"
+        },
+        "live_origin": {
+          "name": "live_origin",
+          "value": "\"pickler\".\"live_orders\".\"origin\" in ('manual','agent')"
+        },
+        "live_status": {
+          "name": "live_status",
+          "value": "\"pickler\".\"live_orders\".\"status\" in ('prepared','queued','submitting','unknown','settled','not_filled','failed','expired')"
         }
       },
       "isRLSEnabled": true
@@ -739,6 +1008,81 @@
           "value": "\"pickler\".\"runs\".\"trigger\" in ('manual','schedule')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "pickler.trading_accounts": {
+      "name": "trading_accounts",
+      "schema": "pickler",
+      "columns": {
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet": {
+          "name": "wallet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signer": {
+          "name": "signer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "one_trading_wallet": {
+          "name": "one_trading_wallet",
+          "columns": [
+            {
+              "expression": "wallet",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "trading_accounts_tenant_id_agent_id_agents_tenant_id_id_fk": {
+          "name": "trading_accounts_tenant_id_agent_id_agents_tenant_id_id_fk",
+          "tableFrom": "trading_accounts",
+          "tableTo": "agents",
+          "schemaTo": "pickler",
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "trading_accounts_tenant_id_agent_id_pk": {
+          "name": "trading_accounts_tenant_id_agent_id_pk",
+          "columns": ["tenant_id", "agent_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "pickler.budget_processed": {
@@ -3274,762 +3618,6 @@
       },
       "isRLSEnabled": true
     },
-    "launch.drafts": {
-      "name": "drafts",
-      "schema": "launch",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "agent_id": {
-          "name": "agent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "preset_id": {
-          "name": "preset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "preset_version": {
-          "name": "preset_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "params": {
-          "name": "params",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "draft_status",
-          "typeSchema": "launch",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "launched_token": {
-          "name": "launched_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "drafts_owner_idx": {
-          "name": "drafts_owner_idx",
-          "columns": [
-            {
-              "expression": "owner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "drafts_owner_id_profiles_user_id_fk": {
-          "name": "drafts_owner_id_profiles_user_id_fk",
-          "tableFrom": "drafts",
-          "tableTo": "profiles",
-          "schemaTo": "identity",
-          "columnsFrom": ["owner_id"],
-          "columnsTo": ["user_id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "drafts_agent_id_agents_id_fk": {
-          "name": "drafts_agent_id_agents_id_fk",
-          "tableFrom": "drafts",
-          "tableTo": "agents",
-          "schemaTo": "agents",
-          "columnsFrom": ["agent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "drafts_chain_format": {
-          "name": "drafts_chain_format",
-          "value": "\"launch\".\"drafts\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "drafts_version_positive": {
-          "name": "drafts_version_positive",
-          "value": "\"launch\".\"drafts\".\"version\" >= 1"
-        },
-        "drafts_launched_token_format": {
-          "name": "drafts_launched_token_format",
-          "value": "\"launch\".\"drafts\".\"launched_token\" is null or \"launch\".\"drafts\".\"launched_token\" ~ '^0x[0-9a-f]{40}$'"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "launch.metadata_versions": {
-      "name": "metadata_versions",
-      "schema": "launch",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uri": {
-          "name": "uri",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content_hash": {
-          "name": "content_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "author_id": {
-          "name": "author_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "metadata_versions_hash_idx": {
-          "name": "metadata_versions_hash_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "token",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "content_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "metadata_versions_token_idx": {
-          "name": "metadata_versions_token_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "token",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "metadata_versions_author_id_profiles_user_id_fk": {
-          "name": "metadata_versions_author_id_profiles_user_id_fk",
-          "tableFrom": "metadata_versions",
-          "tableTo": "profiles",
-          "schemaTo": "identity",
-          "columnsFrom": ["author_id"],
-          "columnsTo": ["user_id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "metadata_versions_chain_format": {
-          "name": "metadata_versions_chain_format",
-          "value": "\"launch\".\"metadata_versions\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "metadata_versions_token_format": {
-          "name": "metadata_versions_token_format",
-          "value": "\"launch\".\"metadata_versions\".\"token\" ~ '^0x[0-9a-f]{40}$'"
-        },
-        "metadata_versions_hash_format": {
-          "name": "metadata_versions_hash_format",
-          "value": "\"launch\".\"metadata_versions\".\"content_hash\" ~ '^0x[0-9a-f]{64}$'"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "launch.outbox": {
-      "name": "outbox",
-      "schema": "launch",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "event_chain": {
-          "name": "event_chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_block_hash": {
-          "name": "event_block_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_tx_hash": {
-          "name": "event_tx_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_log_index": {
-          "name": "event_log_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "topic": {
-          "name": "topic",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "payload": {
-          "name": "payload",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "outbox_status",
-          "typeSchema": "launch",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "available_at": {
-          "name": "available_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "outbox_pending_idx": {
-          "name": "outbox_pending_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "available_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "outbox_event_topic_idx": {
-          "name": "outbox_event_topic_idx",
-          "columns": [
-            {
-              "expression": "event_chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_block_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_tx_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_log_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "topic",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"launch\".\"outbox\".\"event_chain\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "outbox_attempts_positive": {
-          "name": "outbox_attempts_positive",
-          "value": "\"launch\".\"outbox\".\"attempts\" >= 0"
-        },
-        "outbox_topic_length": {
-          "name": "outbox_topic_length",
-          "value": "char_length(\"launch\".\"outbox\".\"topic\") between 1 and 80"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "launch.presets": {
-      "name": "presets",
-      "schema": "launch",
-      "columns": {
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "preset_id": {
-          "name": "preset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "config_hash": {
-          "name": "config_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "params": {
-          "name": "params",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "quote_address": {
-          "name": "quote_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total_supply": {
-          "name": "total_supply",
-          "type": "numeric(78, 0)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sale_allocation": {
-          "name": "sale_allocation",
-          "type": "numeric(78, 0)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lp_allocation": {
-          "name": "lp_allocation",
-          "type": "numeric(78, 0)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "published_block": {
-          "name": "published_block",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "presets_config_hash_idx": {
-          "name": "presets_config_hash_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "config_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "presets_chain_preset_id_version_pk": {
-          "name": "presets_chain_preset_id_version_pk",
-          "columns": ["chain", "preset_id", "version"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "presets_chain_format": {
-          "name": "presets_chain_format",
-          "value": "\"launch\".\"presets\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "presets_config_hash_format": {
-          "name": "presets_config_hash_format",
-          "value": "\"launch\".\"presets\".\"config_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "presets_quote_format": {
-          "name": "presets_quote_format",
-          "value": "\"launch\".\"presets\".\"quote_address\" ~ '^0x[0-9a-f]{40}$'"
-        },
-        "presets_allocations_sum": {
-          "name": "presets_allocations_sum",
-          "value": "\"launch\".\"presets\".\"total_supply\" = \"launch\".\"presets\".\"sale_allocation\" + \"launch\".\"presets\".\"lp_allocation\""
-        },
-        "presets_lp_below_sale": {
-          "name": "presets_lp_below_sale",
-          "value": "\"launch\".\"presets\".\"lp_allocation\" < \"launch\".\"presets\".\"sale_allocation\""
-        },
-        "presets_published_block_positive": {
-          "name": "presets_published_block_positive",
-          "value": "\"launch\".\"presets\".\"published_block\" >= 0"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "launch.transaction_requests": {
-      "name": "transaction_requests",
-      "schema": "launch",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sender": {
-          "name": "sender",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "destination": {
-          "name": "destination",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "params_hash": {
-          "name": "params_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "transaction_status",
-          "typeSchema": "launch",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'prepared'"
-        },
-        "tx_hash": {
-          "name": "tx_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "block_hash": {
-          "name": "block_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "failure_reason": {
-          "name": "failure_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "transaction_requests_idempotency_idx": {
-          "name": "transaction_requests_idempotency_idx",
-          "columns": [
-            {
-              "expression": "owner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"launch\".\"transaction_requests\".\"idempotency_key\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transaction_requests_tx_idx": {
-          "name": "transaction_requests_tx_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tx_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "transaction_requests_owner_id_profiles_user_id_fk": {
-          "name": "transaction_requests_owner_id_profiles_user_id_fk",
-          "tableFrom": "transaction_requests",
-          "tableTo": "profiles",
-          "schemaTo": "identity",
-          "columnsFrom": ["owner_id"],
-          "columnsTo": ["user_id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "transaction_requests_chain_format": {
-          "name": "transaction_requests_chain_format",
-          "value": "\"launch\".\"transaction_requests\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "transaction_requests_sender_format": {
-          "name": "transaction_requests_sender_format",
-          "value": "\"launch\".\"transaction_requests\".\"sender\" ~ '^0x[0-9a-f]{40}$'"
-        },
-        "transaction_requests_destination_format": {
-          "name": "transaction_requests_destination_format",
-          "value": "\"launch\".\"transaction_requests\".\"destination\" ~ '^0x[0-9a-f]{40}$'"
-        },
-        "transaction_requests_tx_hash_format": {
-          "name": "transaction_requests_tx_hash_format",
-          "value": "\"launch\".\"transaction_requests\".\"tx_hash\" is null or \"launch\".\"transaction_requests\".\"tx_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "transaction_requests_included_has_hash": {
-          "name": "transaction_requests_included_has_hash",
-          "value": "\"launch\".\"transaction_requests\".\"status\" not in ('included', 'finalized') or \"launch\".\"transaction_requests\".\"tx_hash\" is not null"
-        }
-      },
-      "isRLSEnabled": true
-    },
     "market.candles": {
       "name": "candles",
       "schema": "market",
@@ -4137,300 +3725,6 @@
         "candles_range": {
           "name": "candles_range",
           "value": "\"market\".\"candles\".\"low\" <= least(\"market\".\"candles\".\"open\", \"market\".\"candles\".\"close\") and \"market\".\"candles\".\"high\" >= greatest(\"market\".\"candles\".\"open\", \"market\".\"candles\".\"close\")"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "market.chain_blocks": {
-      "name": "chain_blocks",
-      "schema": "market",
-      "columns": {
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hash": {
-          "name": "hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "number": {
-          "name": "number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_hash": {
-          "name": "parent_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "block_time": {
-          "name": "block_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "orphaned": {
-          "name": "orphaned",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "finality": {
-          "name": "finality",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'observed'"
-        },
-        "seen_at": {
-          "name": "seen_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chain_blocks_height_idx": {
-          "name": "chain_blocks_height_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "chain_blocks_chain_hash_pk": {
-          "name": "chain_blocks_chain_hash_pk",
-          "columns": ["chain", "hash"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chain_blocks_chain_format": {
-          "name": "chain_blocks_chain_format",
-          "value": "\"market\".\"chain_blocks\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "chain_blocks_hash_format": {
-          "name": "chain_blocks_hash_format",
-          "value": "\"market\".\"chain_blocks\".\"hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "chain_blocks_parent_hash_format": {
-          "name": "chain_blocks_parent_hash_format",
-          "value": "\"market\".\"chain_blocks\".\"parent_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "chain_blocks_number_positive": {
-          "name": "chain_blocks_number_positive",
-          "value": "\"market\".\"chain_blocks\".\"number\" >= 0"
-        },
-        "chain_blocks_finality": {
-          "name": "chain_blocks_finality",
-          "value": "\"market\".\"chain_blocks\".\"finality\" in ('observed', 'confirmed', 'finalized')"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "market.chain_events": {
-      "name": "chain_events",
-      "schema": "market",
-      "columns": {
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "block_hash": {
-          "name": "block_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tx_hash": {
-          "name": "tx_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "log_index": {
-          "name": "log_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "block_number": {
-          "name": "block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "emitter": {
-          "name": "emitter",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_name": {
-          "name": "event_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "abi_hash": {
-          "name": "abi_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "topics": {
-          "name": "topics",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "data": {
-          "name": "data",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "decoded": {
-          "name": "decoded",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "orphaned": {
-          "name": "orphaned",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "indexed_at": {
-          "name": "indexed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chain_events_emitter_idx": {
-          "name": "chain_events_emitter_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "emitter",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "block_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chain_events_name_idx": {
-          "name": "chain_events_name_idx",
-          "columns": [
-            {
-              "expression": "chain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "block_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "chain_events_chain_block_hash_tx_hash_log_index_pk": {
-          "name": "chain_events_chain_block_hash_tx_hash_log_index_pk",
-          "columns": ["chain", "block_hash", "tx_hash", "log_index"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chain_events_chain_format": {
-          "name": "chain_events_chain_format",
-          "value": "\"market\".\"chain_events\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
-        },
-        "chain_events_block_hash_format": {
-          "name": "chain_events_block_hash_format",
-          "value": "\"market\".\"chain_events\".\"block_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "chain_events_tx_hash_format": {
-          "name": "chain_events_tx_hash_format",
-          "value": "\"market\".\"chain_events\".\"tx_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "chain_events_emitter_format": {
-          "name": "chain_events_emitter_format",
-          "value": "\"market\".\"chain_events\".\"emitter\" ~ '^0x[0-9a-f]{40}$'"
-        },
-        "chain_events_log_index_positive": {
-          "name": "chain_events_log_index_positive",
-          "value": "\"market\".\"chain_events\".\"log_index\" >= 0"
-        },
-        "chain_events_block_number_positive": {
-          "name": "chain_events_block_number_positive",
-          "value": "\"market\".\"chain_events\".\"block_number\" >= 0"
-        },
-        "chain_events_abi_hash_format": {
-          "name": "chain_events_abi_hash_format",
-          "value": "\"market\".\"chain_events\".\"abi_hash\" ~ '^[0-9a-f]{64}$'"
         }
       },
       "isRLSEnabled": true
@@ -5011,7 +4305,7 @@
           "name": "agent_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "ticker": {
           "name": "ticker",
@@ -5502,21 +4796,6 @@
       "schema": "identity",
       "values": ["admin", "manager", "developer", "auditor", "viewer"]
     },
-    "launch.draft_status": {
-      "name": "draft_status",
-      "schema": "launch",
-      "values": ["draft", "validated", "prepared", "submitted", "launched", "abandoned"]
-    },
-    "launch.outbox_status": {
-      "name": "outbox_status",
-      "schema": "launch",
-      "values": ["pending", "delivered", "failed"]
-    },
-    "launch.transaction_status": {
-      "name": "transaction_status",
-      "schema": "launch",
-      "values": ["prepared", "submitted", "included", "finalized", "reverted", "replaced"]
-    },
     "market.candle_interval": {
       "name": "candle_interval",
       "schema": "market",
@@ -5550,7 +4829,6 @@
     "budget": "budget",
     "growth": "growth",
     "identity": "identity",
-    "launch": "launch",
     "market": "market"
   },
   "sequences": {},
