@@ -1,9 +1,11 @@
 import { toFunctionSelector } from "viem";
 import {
+  BOOK_DEPTH,
   EXCHANGE_ABI,
   EXCHANGE_ADDRESS,
   LEVERAGES,
   PERPL_CHAIN_ID,
+  PERPL_MARKET_DATA_WS,
   PERPL_REST,
   PERPL_WS,
   PING_MS,
@@ -21,6 +23,11 @@ test("Perpl testnet constants match the verified context", () => {
 });
 
 // Selectores confirmados en la implementación 0xbcbd37…adbb (docs/investigacion/perpl.md).
+test("market-data is the public socket next to trading, five levels per side", () => {
+  expect(PERPL_MARKET_DATA_WS).toBe("wss://testnet.perpl.xyz/ws/v1/market-data");
+  expect(BOOK_DEPTH).toBe(5);
+});
+
 test.each([
   ["createAccount", "0xcab13915"],
   ["allowOrderForwarding", "0x7962f910"],

@@ -6,6 +6,7 @@ const monadscanKey = process.env.PICKLER_MONADSCAN_KEY ?? "AHQMBTI74BYK33SZS47XF
 // Perpl: vacío = testnet (src/perpl/config.ts). Para mainnet se fijan ambas.
 const perplRest = process.env.PICKLER_PERPL_REST ?? "";
 const perplWs = process.env.PICKLER_PERPL_WS ?? "";
+const perplMarketDataWs = process.env.PICKLER_PERPL_MARKET_DATA_WS ?? "";
 // Servicio de reads (services/reads, Supabase pickler). Vacío = el de producción (src/config/reads.ts).
 const readsUrl = process.env.PICKLER_READS_URL ?? "";
 const bundleIdentifier = "fun.pickler.app";
@@ -42,7 +43,7 @@ const config: ExpoConfig = {
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
     ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#05061A" }],
   ],
-  extra: { rpId, monadscanKey, perplRest, perplWs, readsUrl },
+  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl },
 };
 
 export default config;
