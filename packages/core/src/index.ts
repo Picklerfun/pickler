@@ -138,3 +138,6 @@ export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
 export * from "./features/paper/orders.js";
 export * from "./features/console/access.js";
+
+export * from "./features/trading/types.js";
+export * from "./features/trading/service.js";
