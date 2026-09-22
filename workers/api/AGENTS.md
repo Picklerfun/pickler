@@ -101,3 +101,11 @@ There is no hosted direct-secret fallback or plaintext staging exception. Keep p
 to each invocation, limited to two connections, and close them on every outcome. Local development
 uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
 operator connection. Admission controls remain independent of transport.
+
+## Operator-enabled Studio access
+
+The staging configuration keeps admissions enabled for operator-approved users. This flag is not
+user authorization: PostgreSQL research access and workspace ownership remain mandatory. Keep
+the API and consumer flags aligned. New agents still start with scheduling disabled. For an
+emergency stop deploy both hosts with `--var ADMISSIONS_ENABLED:false`; restore only after checking
+queued jobs, active schedules and enabled users. Never enqueue a paid run as a deployment check.

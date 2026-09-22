@@ -69,6 +69,7 @@
   --pk-ink-placeholder: #6c7398;
   --pk-panel: rgba(245, 246, 255, 0.05);
   --pk-field: rgba(5, 6, 26, 0.65);
+  --pk-field-autofill: #05061a;
   --pk-surface: rgba(245, 246, 255, 0.05);
   --pk-surface-strong: rgba(245, 246, 255, 0.09);
   --pk-border: rgba(245, 246, 255, 0.18);
@@ -91,6 +92,7 @@
   --pk-ink-placeholder: #6f6f6a;
   --pk-panel: #0d0d10;
   --pk-field: #121216;
+  --pk-field-autofill: #121216;
   --pk-surface: rgba(243, 241, 236, 0.04);
   --pk-surface-strong: rgba(243, 241, 236, 0.09);
   --pk-border: rgba(243, 241, 236, 0.14);
@@ -473,6 +475,18 @@
 
 .pk-input-inner[data-mono="true"] {
   font-family: var(--pk-font-mono);
+}
+
+/* Autofill paints the editable input only. Match its opaque fill to the entire frame. */
+.pk-input:is(:autofill, :-webkit-autofill),
+.pk-input-inner:is(:autofill, :-webkit-autofill) {
+  box-shadow: inset 0 0 0 1000px var(--pk-field-autofill);
+  -webkit-text-fill-color: var(--pk-ink);
+  caret-color: var(--pk-ink);
+}
+
+.pk-input-group:has(.pk-input-inner:is(:autofill, :-webkit-autofill)) {
+  background: var(--pk-field-autofill);
 }
 
 .pk-input-group[data-size="lg"] .pk-input-inner {
