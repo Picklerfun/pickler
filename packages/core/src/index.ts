@@ -67,6 +67,15 @@ export {
   createListReads,
 } from "./features/agents/application/agents.js";
 
+export * from "./features/markets/domain/markets.js";
+export type { MarketBoard } from "./features/markets/ports/market-board.js";
+export {
+  byCoverage,
+  createGetMarket,
+  createListMarkets,
+  normalizeSymbol,
+} from "./features/markets/application/markets.js";
+
 export * from "./features/access/domain/modules.js";
 export * from "./features/access/domain/api-scopes.js";
 export * from "./features/access/domain/abilities.js";

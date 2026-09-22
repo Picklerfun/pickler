@@ -21,6 +21,8 @@ src/
   middleware/agent-auth.ts  # agentOnly() (HMAC) and agentScoped() (HMAC or JWT/API key, optional self-access)
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
+  routes/demo.ts            # Public sample content, marked X-Pickler-Data-Source: sample
+  growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
   budget/sql-ledger-store.ts# LedgerStore over Durable Object SQLite (amounts as decimal TEXT)
   budget/budget-gateway.ts  # What routes use from the ledger
@@ -37,6 +39,7 @@ Routes:
 | `GET /v1/profile`, `POST /v1/profile`                                                    | signed-in user (JWT); API keys refused                                  |
 | `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                       | JWT or API key + `agent` module + `read Agent`                          |
 | `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget` | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent` |
+| `GET /v1/demo/markets`, `GET /v1/demo/markets/:symbol`                                   | none (sample content)                                                   |
 
 Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`, `x-request-timestamp`; payload `METHOD + /v1/path + timestamp + sha256(JSON.stringify(body) or "")`, ±60 s. Agent secrets (`agents.agent_credentials`) are decrypted with `ENCRYPTION_KEY`; the format is byte-compatible with Relayer's, so the key only has to equal Relayer's when importing Relayer data. Agent write endpoints are not ported yet.
 
@@ -49,6 +52,14 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 - The ledger does not write to Postgres yet. A write-behind projection to `budget.budgets` and `budget.ledger_entries` comes next.
 - The legacy `POST /v1/agents/:id/budget` (API key can raise limits) is intentionally not ported; limit changes arrive with the passkey prepare/confirm flow (Turnkey wave).
 - Verified in local workerd: 50 concurrent reserves of 70 against a limit of 1000 accept exactly 14; retries with the same ids add nothing; the alarm releases expired holds.
+
+## Public markets
+
+`/v1/demo/markets` and `/v1/demo/markets/:symbol` serve the perpetuals board the web draws its
+surface from. Like every other demo route they answer from `createSampleMarketBoard` and carry
+`X-Pickler-Data-Source: sample`; no venue is polled and private research never feeds them. The
+detail response includes `readQuestion` — core's `readQuestionAtLevel` with `{level}` left for the
+client — so the sentence a paid read answers is written once, here, and not in a page.
 
 ## Rules
 

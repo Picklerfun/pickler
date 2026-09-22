@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) first. Read the local instructions
 
 `@pickler/core` owns the business layer: domain entities and invariants, application use cases, authorization rules, and ports for external capabilities. It must remain usable without Next.js or any specific provider.
 
-Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
+Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,markets,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
 
 The runner owns permission rechecks, evidence attribution, bounded capability use and final quote verification. It accepts trusted scope from persisted jobs. API, Studio and scheduling share the same queue/runner. Core never accepts a model-supplied tenant or grants permissions from external content. Research failures and valid abstentions remain separate states.
 
@@ -66,3 +66,20 @@ terminal result; the existing lease recovery path remains authoritative.
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Markets
+
+`features/markets` owns the perpetuals surface: a market is a grid of price levels away from the mark
+crossed with how long a position is given. `LEVEL_STEPS` and `HORIZONS` are the rows and columns,
+`levelPrice` and `levelSide` read a square, and `squareProblem` refuses one the market has never
+reached inside its column — `hourlyReach` is per cent, on the same scale as a level. `MarketBoard`
+is the port; `createListMarkets` orders by coverage before size and `createGetMarket` normalizes the
+symbol and drops calls on squares the surface cannot take.
+
+`READ_HORIZON` is why the feature exists in two places at once: a square can be a position or a paid
+read, and a read always resolves a day after delivery whatever column drew it, so two answers on one
+market stay comparable. `readQuestionAtLevel` in `features/agents` writes that sentence.
+
+The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
+today, so it lives in the web feature that draws it against the mirrored limits in
+`@pickler/api-schema`. It belongs here the day an order is placed, because then it decides money.

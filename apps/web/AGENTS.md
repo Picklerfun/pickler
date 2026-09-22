@@ -17,7 +17,9 @@ src/app/
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
+  markets/                  # The perpetuals board and one market's level × time surface
 src/features/console/      # Agent form, history, research result and API client
+src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
   container.ts             # Typed presentation facade over HTTP DTOs
@@ -68,7 +70,19 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## The wallet
 
-`features/wallet/` owns the connection: an EIP-1193 conversation with the injected wallet, no connector library. It asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`. It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
+`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it. `injected-signer.ts` is the EIP-1193 conversation with the browser wallet, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`. `mera-signer.ts` is the passkey account from the Pickler app, over `@category-labs/mera`.
+
+The key is the passkey's PRF output, not a random secret held anywhere. Mera documents that output as a deterministic function of the credential, the host and a fixed salt (`sha256("mera.prf.salt.v1")`, which it promises not to change), so the same passkey derives the same private key and therefore the same address on a phone, a laptop or a borrowed browser, with nothing to sync. That is the only reason the app's account can be reached from the web at all, and it is why PR #31 — the Apple App Site Association that binds `fun.pickler.app` to `pickler.fun` — decides whether this works: the host is part of the key, so both surfaces must be the same relying party. Off `pickler.fun` the same passkey derives a different account holding different money; loopback is allowed while developing and the chooser says so in amber.
+
+Mera's other model is a vault — a random key encrypted under the passkey — and it is not this one: it would need the app's vault shipped here before the web could open anything. If the app turns out to use it, the address derived on the web will not match the app's, which is why the address is shown rather than assumed.
+
+The session is ended as soon as the address is derived. Connecting needs no signature, so a private key never waits in memory for a tab's lifetime, and anything that signs later asks the person again.
+
+One signer is active at a time, because the two are different addresses holding different money, and the account menu always says which one you are looking at. A signer without a chain of its own is never "on the wrong network", so `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
+
+`connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick, the way the app's own sign-in screen does. There is no "unsupported" state: a browser with nothing to connect still opens the chooser, which names what is missing on each choice. A dead button teaches nobody that the app account exists.
+
+It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
 
 **Connecting is not signing in.** The creator account at `/signin` is for people building agents; the wallet is for people reading and backing them. Do not fold one into the other.
 
@@ -81,6 +95,35 @@ What is real today: the address, the chain and the native balance. What is not: 
 `features/site/site-nav.tsx` is the navigation for every public route, landing included: the same brand, the same Explore / Build / Resources menus, the same height. Only two things change. The landing hangs the price tape above it, and nowhere else does. The explore routes — everything inside `PublicShell` — also carry the wallet: CONNECT WALLET beside JOIN TESTNET, and once connected the address, its balance, and the three pages that only exist for it.
 
 The apply flow and the auth screens keep their own bar on purpose — a flow that is asking for something should not offer six ways out of it — but the bar is the same height as the navigation and carries the same brand, so only the right-hand side differs. The brand mark is lit in cyan on every surface, the flows included. Lime stays for what the product does — a filled action, a win, a graduated token — not for who made it.
+
+## Markets
+
+`/markets` lists every perpetual market on Perpl and `/markets/[symbol]` is one of them: a grid of
+price levels crossed with how long you give a position. One square, two meanings. Under **Trade**
+it is a position of your own money — above the mark a long, below a short — and under **Ask** the
+same square is a paid read. The tab is the only thing that changes; the surface is shared, which is
+the point of the page.
+
+Ask moves the level and never the clock. Every read still resolves `READ_HORIZON_DTO` after
+delivery, so the shorter columns are dimmed under Ask and the banner says why: two answers are only
+comparable when they were asked over the same distance in time. The question itself comes from the
+DTO (`readQuestion`, written by core) with the level filled in — a page never phrases a read.
+
+The ticket is built in full and then stops. Connecting a wallet is live, switching to Monad testnet
+is live, Review costs nothing and is ours — and **Sign and send** is disabled with the reason on
+it, because Perpl's contracts are not deployed and this site's wallet never signs. What a sent
+order would look like afterwards (no Perpl account, sent, filled, not filled) lives behind an
+explicit **design preview**, and every one of those panels carries `DESIGN PREVIEW · NO ORDER
+EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
+
+`features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
+— against the mirrored limits in `@pickler/api-schema`. It moves to core when an order is really
+sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
+same way in both.
+
+The phone gets the same two screens, not a reduced pair: the grid keeps its nine levels and four
+columns and gives up the trail column instead, and the ticket moves under the surface. A market is
+the one page where a smaller screen must not mean fewer squares.
 
 ## Paid reads
 
@@ -141,3 +184,9 @@ the selected trace every three seconds; stop when terminal unless scheduling nee
 Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
+
+## Passkey acceptance boundary
+
+PRF account derivation is experimental until a real authenticator confirms address parity with
+the iOS implementation. Never present a derived address as authenticated server identity. Clear
+the PRF buffer and end the signing session before querying balances; keep provider failures visible.

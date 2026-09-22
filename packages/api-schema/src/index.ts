@@ -8,6 +8,7 @@ export type * from "./landing.js";
 export type * from "./waitlist.js";
 export * from "./applications.js";
 export type * from "./agents.js";
+export * from "./markets.js";
 export type * from "./errors.js";
 
 export * from "./research.js";
