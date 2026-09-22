@@ -121,6 +121,80 @@ export async function runIndexerPass(options: IndexerPassOptions): Promise<PassO
     addresses: [source.contract],
   });
 
+  const curves = new Set(await store.readCurveAddresses(source.chain, source.contract));
+  for (const log of logs) {
+    if (
+      log.removed ||
+      !applying.has(log.blockHash) ||
+      log.address.toLowerCase() !== source.contract.toLowerCase()
+    ) {
+      continue;
+    }
+    const decoded = options.decode(log);
+    const curve = (decoded?.decoded as { curve?: unknown } | null)?.curve;
+    if (
+      decoded?.eventName === "LaunchCreated" &&
+      typeof curve === "string" &&
+      /^0x[0-9a-fA-F]{40}$/.test(curve)
+    ) {
+      curves.add(curve.toLowerCase() as `0x${string}`);
+    }
+  }
+  // Include curves created in this very range, including an initial buy in the launch transaction.
+  const addresses = [...curves];
+  for (let offset = 0; offset < addresses.length; offset += 100) {
+    const batch = addresses.slice(offset, offset + 100);
+    const curveLogs = await reader.getLogs({
+      fromBlock: advance.blocks[0]!.number,
+      toBlock: advance.blocks[advance.blocks.length - 1]!.number,
+      addresses: batch,
+    });
+    logs.push(
+      ...curveLogs.filter((log) => batch.includes(log.address.toLowerCase() as `0x${string}`)),
+    );
+  }
+  const adapters = new Set<`0x${string}`>();
+  for (const log of logs) {
+    if (
+      log.removed ||
+      !applying.has(log.blockHash) ||
+      !curves.has(log.address.toLowerCase() as `0x${string}`)
+    ) {
+      continue;
+    }
+    const decoded = options.decode(log);
+    const adapter = (decoded?.decoded as { adapter?: unknown } | null)?.adapter;
+    if (
+      decoded?.eventName === "CurveGraduated" &&
+      typeof adapter === "string" &&
+      /^0x[0-9a-fA-F]{40}$/.test(adapter)
+    ) {
+      adapters.add(adapter.toLowerCase() as `0x${string}`);
+    }
+  }
+  if (adapters.size > 0) {
+    const adapterLogs = await reader.getLogs({
+      fromBlock: advance.blocks[0]!.number,
+      toBlock: advance.blocks[advance.blocks.length - 1]!.number,
+      addresses: [...adapters],
+    });
+    logs.push(
+      ...adapterLogs.filter((log) => {
+        const decoded = options.decode(log);
+        const curve = (decoded?.decoded as { curve?: string } | null)?.curve;
+        return (
+          adapters.has(log.address.toLowerCase() as `0x${string}`) &&
+          decoded?.eventName === "LaunchGraduated" &&
+          !!curve &&
+          curves.has(curve.toLowerCase() as `0x${string}`)
+        );
+      }),
+    );
+  }
+  logs.sort(
+    (left, right) => Number(left.blockNumber - right.blockNumber) || left.logIndex - right.logIndex,
+  );
+
   const events: IndexEventInput[] = [];
   const outbox: OutboxInput[] = [];
 
