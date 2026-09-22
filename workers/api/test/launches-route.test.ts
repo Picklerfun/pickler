@@ -5,6 +5,8 @@ import { Pool } from "pg";
 
 import { migrateDatabase, PostgresLaunchReadModel } from "@pickler/infrastructure";
 
+import { createServices } from "../src/container";
+import type { Env } from "../src/env";
 import { createApp } from "../src/app";
 
 const CHAIN = "eip155:10143";
@@ -35,10 +37,17 @@ async function createApi(t: TestContext) {
 
   const url = new URL(connectionString);
   url.pathname = `/${database}`;
-  const readModel = new PostgresLaunchReadModel(url.toString());
+  const services = createServices({
+    APP_ENV: "local",
+    DATABASE_URL: url.toString(),
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SECRET_KEY: "test-only",
+    JWT_ISSUER: "https://example.supabase.co/auth/v1",
+  } as Env);
+  const readModel = services.launches!;
 
   t.after(async () => {
-    await readModel.close();
+    await services.close();
     try {
       await admin.query(`DROP DATABASE "${database}"`);
     } finally {
@@ -48,17 +57,16 @@ async function createApi(t: TestContext) {
 
   await migrateDatabase(readModel.pool);
 
-  const app = createApp({
-    authenticate: (async () => {
-      throw new Error("not used");
-    }) as never,
-    launches: readModel,
-  } as never);
+  const app = createApp(services);
 
   return { app, readModel };
 }
 
 async function seedLaunch(readModel: PostgresLaunchReadModel): Promise<string> {
+  await readModel.pool.query(
+    `insert into "market"."chain_events" (chain, block_hash, tx_hash, log_index, block_number, emitter, event_name, abi_hash, topics, data) values ($1, $2, $3, 0, 10, $4, 'LaunchCreated', $5, '[]', '0x')`,
+    [CHAIN, hash("block"), hash("launch"), CURVE, "a".repeat(64)],
+  );
   const token = await readModel.pool.query(
     `insert into "market"."tokens"
        ("ticker", "name", "chain", "address", "decimals", "total_supply",
@@ -180,9 +188,19 @@ test("paging does not repeat or skip a launch", async (t) => {
   for (let index = 0; index < 3; index++) {
     await readModel.pool.query(
       `insert into "market"."tokens"
-         ("ticker", "name", "chain", "address", "decimals", "status")
-       values ($1, $2, $3, $4, 18, 'reserved')`,
-      [`$AG${index}`, `Agent ${index}`, CHAIN, `0x${String(index).repeat(40)}`],
+         ("ticker", "name", "chain", "address", "decimals", "status", "launch_tx_hash", "created_at", "launched_at", "total_supply", "quote_decimals")
+       values ($1, $2, $3, $4, 18, 'pre_graduation', $5, '2026-01-01T00:00:00Z', now(), '1000', 6)`,
+      [
+        `$AG${index}`,
+        `Agent ${index}`,
+        CHAIN,
+        `0x${String(index).repeat(40)}`,
+        hash(`launch-${index}`),
+      ],
+    );
+    await readModel.pool.query(
+      `insert into "market"."chain_events" (chain, block_hash, tx_hash, log_index, block_number, emitter, event_name, abi_hash, topics, data) values ($1, $2, $3, 0, 10, $4, 'LaunchCreated', $5, '[]', '0x')`,
+      [CHAIN, hash("block"), hash(`launch-${index}`), CURVE, "a".repeat(64)],
     );
   }
 
@@ -200,5 +218,6 @@ test("paging does not repeat or skip a launch", async (t) => {
 
   const seen = new Set([...first.data, ...second.data].map((row) => row.id));
 
+  assert.equal(seen.size, 3, "pagination lost a launch with the same creation timestamp");
   assert.equal(seen.size, first.data.length + second.data.length, "a launch appeared twice");
 });
