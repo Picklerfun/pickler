@@ -1,4 +1,4 @@
-import { itemWidth, pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_TOP, tabBarHeight, tabIndexAt } from "../src/ui/tabbar";
+import { itemWidth, pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_TOP, tabBarHeight, tabIndexAt } from "../src/ui/tabBarLayout";
 
 // iPhone 17 Pro: 402 pt de ancho; fila con 6 pt de padding a cada lado → 5 ítems de 78 pt.
 const W = 402;
