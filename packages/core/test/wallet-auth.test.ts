@@ -1,11 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  normalizeAddress,
-  caip2,
-  InvalidAddressError,
-  InvalidChainError,
-} from "../src/index.js";
+import { normalizeAddress, caip2, InvalidAddressError, InvalidChainError } from "../src/index.js";
 
 test("an EVM address is stored lower-case, so two spellings are one link", () => {
   assert.equal(

@@ -186,3 +186,14 @@ export type {
   WalletLink,
   WalletLinkRepository,
 } from "./features/identity/ports/wallet-identity.js";
+export {
+  AddressTakenError,
+  BadSignatureError,
+  createWalletSignIn,
+  ExpiredNonceError,
+  NONCE_TTL_MS,
+  UnknownNonceError,
+  WrongDomainError,
+  type Presented,
+  type SignedMessage,
+} from "./features/identity/application/wallet-sign-in.js";
