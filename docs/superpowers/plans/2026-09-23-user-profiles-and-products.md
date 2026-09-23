@@ -2112,7 +2112,159 @@ git commit -m "Sign the string the server sent, and build none of our own" -- ap
 
 ---
 
-## Task 14: Claiming a handle after connecting
+## Task 14: The two connectors, and the passkey that cannot be used
+
+**Files:**
+
+- Create: `apps/web/src/features/wallet/lib/signers.ts`
+- Test: `apps/web/test/signers.test.ts`
+
+Task 13 consumes a `Signer`; nothing yet produces one. This task does, for both wallets, and
+handles the failure the Task 1 spike found.
+
+**What the spike established**, so this is built on fact rather than on the plan's earlier guess:
+
+- Mera exposes **no EIP-1193 provider**. Searching `category-labs/mera` for `1193`,
+  `window.ethereum`, `wagmi` and `eip6963` returns nothing. It is an SDK whose adapter is
+  `toViemAccount(session)`, returning a viem `LocalAccount<"mera">`.
+- Its `signMessage({ message })` is `serializeSignature(await signHash(hashMessage(message)))` —
+  viem's own `hashMessage`, so the string is signed unchanged with no wrapping — and the address is
+  an ordinary EOA. **Server-side verification is plain `ecrecover`; there is no ERC-1271 path to
+  add.** Task 10 needs no change.
+- It works in desktop browsers, but **only where WebAuthn PRF is available.**
+
+**Mera stays outside wagmi.** Writing a custom connector that synthesises a provider around the
+`LocalAccount` is possible and is far more work than this needs: the ceremony wants exactly one
+signature. Call the SDK directly for Mera, and leave wagmi to EOAs.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// apps/web/test/signers.test.ts
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  fromViemAccount,
+  PasskeyUnusableError,
+  describeSignerFailure,
+} from "../src/features/wallet/lib/signers";
+
+test("a viem account becomes a Signer that signs the string it is given", async () => {
+  const signed: string[] = [];
+  const signer = fromViemAccount(
+    {
+      address: "0xAbC0000000000000000000000000000000000001",
+      signMessage: async ({ message }: { message: string }) => {
+        signed.push(message);
+        return "0xsig";
+      },
+    },
+    10143,
+  );
+  assert.equal(await signer.signMessage("hello"), "0xsig");
+  // Signed unchanged: the server built this string and verifies that exact one.
+  assert.deepEqual(signed, ["hello"]);
+  assert.equal(signer.chainId, 10143);
+});
+
+test("a passkey with no PRF output is its own failure, not a generic error", () => {
+  const caught = describeSignerFailure(
+    new Error("createPasskeyWithPrfOutput failed: no prf results"),
+  );
+  assert.ok(caught instanceof PasskeyUnusableError);
+});
+
+test("an ordinary refusal stays an ordinary refusal", () => {
+  const caught = describeSignerFailure(new Error("User rejected the request"));
+  assert.ok(!(caught instanceof PasskeyUnusableError));
+});
+```
+
+- [ ] **Step 2: Run it and watch it fail**
+
+Run: `node --import tsx --test apps/web/test/signers.test.ts`
+Expected: FAIL, cannot find the module.
+
+- [ ] **Step 3: Write it**
+
+```ts
+// apps/web/src/features/wallet/lib/signers.ts
+import type { Signer } from "./connect";
+
+/**
+ * A passkey that exists and works for everything else, but produces no PRF output — so Mera
+ * cannot derive a key from it.
+ *
+ * This is not an edge case to fold into a generic failure. Chrome creates a local-profile passkey
+ * silently when "Offer to save passwords and passkeys" is off or an extension intercepts WebAuthn,
+ * and local-profile passkeys, Bitwarden on desktop Chrome and Dashlane on desktop Chrome all had
+ * no PRF support as of 2026-06-01. The person did nothing wrong, their passkey is fine everywhere
+ * else, and "something went wrong" would send them to look for a problem that is not theirs.
+ * iCloud Keychain, Google Password Manager, Windows Password Manager and hardware keys all work.
+ */
+export class PasskeyUnusableError extends Error {
+  constructor() {
+    super(
+      "This passkey can't be used to hold a wallet. Your browser saved it somewhere that doesn't " +
+        "support the feature Mera needs. Try again with iCloud Keychain, Google Password Manager, " +
+        "Windows Hello or a security key — or connect an existing wallet instead.",
+    );
+    this.name = "PasskeyUnusableError";
+  }
+}
+
+const PRF_FAILURE = /prf|createPasskeyWithPrfOutput/i;
+
+/** Turns whatever a wallet threw into something a screen can say. */
+export function describeSignerFailure(caught: unknown): Error {
+  const error = caught instanceof Error ? caught : new Error(String(caught));
+  return PRF_FAILURE.test(error.message) ? new PasskeyUnusableError() : error;
+}
+
+/** Anything viem-shaped — Mera's `toViemAccount(session)`, or a wagmi EOA account. */
+export interface ViemAccountLike {
+  address: string;
+  signMessage(input: { message: string }): Promise<string>;
+}
+
+export function fromViemAccount(account: ViemAccountLike, chainId: number): Signer {
+  return {
+    address: account.address,
+    chainId,
+    signMessage: (message) => account.signMessage({ message }),
+  };
+}
+```
+
+- [ ] **Step 4: Run it and watch it pass**
+
+Run: `node --import tsx --test apps/web/test/signers.test.ts`
+Expected: PASS, 3 tests.
+
+- [ ] **Step 5: Prove the PRF branch can fail**
+
+Make `describeSignerFailure` return `error` unconditionally. Re-run.
+Expected: exactly one test red — "a passkey with no PRF output is its own failure". Revert.
+
+- [ ] **Step 6: Wire both wallets**
+
+Mera: `toViemAccount(session)` from `@category-labs/mera`, wrapped by `fromViemAccount`, with every
+call to the SDK's passkey creation passed through `describeSignerFailure`. EOA: the account from
+whatever wallet connection the marketplace already uses, wrapped the same way.
+
+**Do not add `@category-labs/mera` to `package.json` until this task is the one being worked**, and
+say in the commit which version you pinned. It is at `0.2.0`; a zero-major dependency in a sign-in
+path is worth pinning exactly rather than by range.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git commit -m "Produce a signer from either wallet, and name the passkey that cannot hold one" -- apps/web/src/features/wallet/lib/signers.ts apps/web/test/signers.test.ts
+```
+
+---
+
+## Task 15: Claiming a handle after connecting
 
 **Files:**
 
@@ -2234,7 +2386,7 @@ git commit -m "Ask for a handle once there is an account to hang it on" -- apps/
 
 ---
 
-## Task 15: Move the passkey to where an agent needs it
+## Task 16: Move the passkey to where an agent needs it
 
 **Files:**
 
@@ -2306,7 +2458,7 @@ git commit -m "Ask for a passkey when an agent needs one, not at the door" -- ap
 
 ---
 
-## Task 16: What else has to know there are two hosts
+## Task 17: What else has to know there are two hosts
 
 **Files:**
 
@@ -2376,7 +2528,7 @@ git commit -m "Tell the checks and the deployment that there are two hosts" -- s
 
 ---
 
-## Task 17: The whole thing, at once
+## Task 18: The whole thing, at once
 
 **Files:** none changed unless a check fails.
 
