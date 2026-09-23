@@ -65,6 +65,10 @@ export function ConnectModal({
     <dialog
       ref={dialog}
       className={styles.dialog}
+      // A dialog sits at the top of the body, outside whatever subtree opened it, so it inherits
+      // no surface and would fall through to the default. It carries its own, and it is dark
+      // because that is what this card has always been.
+      data-surface="dark"
       aria-labelledby="connect-title"
       onCancel={(event) => {
         event.preventDefault();

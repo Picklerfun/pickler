@@ -1390,7 +1390,7 @@
   overflow-y: auto;
   border-bottom: none;
   border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) 0 0;
-  background: #101014;
+  background: var(--pk-popover);
   color: var(--ink);
   font-family: var(--body);
   animation: fadeIn 160ms ease-out;

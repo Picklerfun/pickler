@@ -17,7 +17,10 @@ import { WaitlistForm } from "./waitlist-form";
 export function LandingPage({ initial }: { initial: LandingResponse }) {
   return (
     <LandingDataProvider initial={initial}>
-      <div className={styles.page} data-surface="light">
+      {/* Pinned dark until the landing is rebuilt from its canvas: SpaceBackground paints an
+          opaque gradient and a starfield across the whole page, which is the ground this
+          composition really has. */}
+      <div className={styles.page} data-surface="dark">
         <SpaceBackground />
         <Tape />
         <SiteNav />
