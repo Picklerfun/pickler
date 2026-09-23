@@ -14,6 +14,7 @@
   --cyan-ink: var(--pk-cyan-ink);
   --amber: var(--pk-amber);
   --magenta: var(--pk-magenta);
+  --violet: var(--pk-violet);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
   --mono: var(--pk-font-mono);
@@ -1297,4 +1298,131 @@
   font: 400 13.5px/1.7 var(--mono);
   color: var(--muted);
   white-space: pre-line;
+}
+
+/* ---------- Custody points ---------- */
+
+/* The canvas gives each point a colour of its own — #C8F03A, #9B7BFF, #FFC93F — and all three are
+   the system's tokens to the digit, so they are named rather than written out. The colour is not
+   the information: the tag beside it is, and the rule reads the same in monochrome. */
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.point {
+  --accent: var(--lime);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--pk-radius-md);
+  background: var(--panel);
+}
+
+.point[data-accent="violet"] {
+  --accent: var(--violet);
+}
+
+.point[data-accent="amber"] {
+  --accent: var(--amber);
+}
+
+.pointTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 600 14px/1.35 var(--body);
+  letter-spacing: -0.015em;
+}
+
+.pointTag {
+  flex: none;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+/* ---------- The ceremony sheet ---------- */
+
+/* It sits over the flow because the operating system is about to sit over everything: the sheet is
+   the last thing that is ours, and it names the ceremony the prompt belongs to so the prompt is
+   not the first explanation the person gets. */
+.sheetScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(6, 6, 9, 0.72);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 160ms ease-out;
+}
+
+.sheet {
+  composes: pk-panel from global;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 460px;
+  padding: 24px 22px 26px;
+  border-bottom: none;
+  border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
+  background: #101014;
+}
+
+@media (min-width: 640px) {
+  .sheetScrim {
+    align-items: center;
+    padding: 22px;
+  }
+
+  .sheet {
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--pk-radius-xl);
+  }
+}
+
+.sheetTitle {
+  margin: 0;
+  font: 700 21px/1.2 var(--display);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.sheetNote {
+  margin: 0;
+  font: 500 10.5px/1.4 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.sheetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sheetActions > * {
+  flex: 1 1 140px;
+}
+
+.sheetSaved {
+  color: var(--lime);
+}
+
+.sheet .alert {
+  margin: 0;
 }
