@@ -99,7 +99,15 @@ index; bare `git commit` commits whatever is staged, including someone else's wo
    mutate the thing the task exists to prevent and check that **this** test is what goes red — if
    a different one catches it, the one you wrote is describing something else, and both may be
    worth keeping for different reasons.
-6. **A test whose name has quietly become false is a defect even while it passes.** One here was
+6. **A red test in a shared worktree may be someone's mutation, not a defect.** Every agent on
+   this plan is told to prove its tests can fail, and a mutation has to stay live long enough to
+   run the suite against it. Those windows are invisible from outside, and the failure they
+   produce is indistinguishable from a real one — the lead diagnosed a schema mismatch from a
+   failure that was a colleague's `ON CONFLICT` removal, caught inside a window of about a second
+   and a half. Before reporting a red from the shared tree: re-run it, and check whether the file
+   at `HEAD` differs from the working tree. `git show HEAD:<path>` answers in one command what an
+   investigation cannot.
+7. **A test whose name has quietly become false is a defect even while it passes.** One here was
    called "the sign-in rail has two phases, not the sign-up rail's four" after the sign-up rail had
    three. The assertion held; the sentence did not. Rename it rather than leaving a reader to
    trust it.
