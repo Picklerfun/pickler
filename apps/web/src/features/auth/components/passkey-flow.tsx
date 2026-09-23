@@ -9,16 +9,16 @@ import { AuthHeader } from "./auth-header";
 import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
 import { CodeStep } from "./steps/code-step";
+import { HandleStep } from "./steps/handle-step";
 
 /**
  * The form column and the board, with the flow machine driving which screen is in the column.
  *
- * Only the first two screens exist so far. The rest say so rather than standing in for
+ * Only the first three screens exist so far. The rest say so rather than standing in for
  * something: a screen that pretends a passkey was made, or a wallet exists, is worse than an
  * empty one, because the next person to look cannot tell which of the two it is.
  */
 const NOT_BUILT: Partial<Record<Step, string>> = {
-  handle: "Picking a handle",
   passkey: "Creating a passkey",
   wallet: "The wallet and its backup passkey",
   welcome: "The signed-in wallet",
@@ -70,6 +70,12 @@ export function PasskeyFlow({ board, mode }: { board: AuthBoardData; mode: Mode 
               onCode={(code) => dispatch({ type: "code_changed", code })}
               onVerified={() => dispatch({ type: "code_verified" })}
               onChangeEmail={() => dispatch({ type: "change_email" })}
+            />
+          )}
+          {state.step === "handle" && (
+            <HandleStep
+              handle={state.handle}
+              onClaimed={(handle) => dispatch({ type: "handle_claimed", handle })}
             />
           )}
           {pending && (

@@ -1264,3 +1264,27 @@
 .resend:disabled {
   color: var(--muted);
 }
+
+/* ---------- Handle ---------- */
+
+.handleField :global(.pk-input) {
+  padding: 8px 18px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--panel);
+}
+
+.handleField :global(.pk-input-prefix),
+.handleField :global(.pk-input-inner) {
+  font: 600 22px/1.1 var(--body);
+  letter-spacing: -0.03em;
+}
+
+.handleField :global(.pk-input-inner) {
+  padding: 10px 0;
+}
+
+.handleField :global(.pk-field-note) {
+  padding: 0 4px;
+  font: 600 11px/1.4 var(--mono);
+  letter-spacing: 0.06em;
+}
