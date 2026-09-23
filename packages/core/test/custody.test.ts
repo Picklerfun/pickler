@@ -35,7 +35,9 @@ export function fakes() {
     },
   };
   const rows: { account: unknown } = { account: null };
-  const credentials: { credentialId: string; transports: string[] }[] = [];
+  // Recorded whole, for the same reason as `builds` and `forwards` below: a fake that keeps only
+  // the credential id cannot tell a row landing on this person from one landing on a stranger.
+  const credentials: Parameters<CustodyRepository["addPasskey"]>[0][] = [];
   const repository: CustodyRepository = {
     async findByUserId() {
       return (rows.account as CustodyAccount | null) ?? null;
@@ -57,7 +59,7 @@ export function fakes() {
       return { created: true };
     },
     async addPasskey(input) {
-      credentials.push({ credentialId: input.credentialId, transports: input.transports });
+      credentials.push(input);
     },
   };
   let created = 0;
@@ -138,7 +140,13 @@ test("a challenge is stored against the caller and offered with the right algori
 
 test("existing credentials are excluded so the browser refuses a second enrolment", async () => {
   const f = fakes();
-  f.credentials.push({ credentialId: "cred-1", transports: ["internal"] });
+  f.credentials.push({
+    userId: USER,
+    credentialId: "cred-1",
+    label: "Touch ID",
+    transports: ["internal"],
+    deviceType: "platform",
+  });
 
   const options = await service(f).issueChallenge(USER, "ana@pickler.fun");
 
@@ -412,7 +420,18 @@ test("confirming forwards the stamped activity and mirrors the credential", asyn
   });
 
   assert.equal(result.status, "ACTIVITY_STATUS_COMPLETED");
-  assert.ok(f.credentials.some((c) => c.credentialId === "cred-2"));
+  // Every field, not just membership. `userId` is the one that matters most: it is the confirm
+  // half of the same binding as `rootUserId` on the prepare side, and a literal in its place
+  // puts the new device's credential on a stranger's account.
+  assert.deepEqual(f.credentials, [
+    {
+      userId: USER,
+      credentialId: "cred-2",
+      label: "Phone",
+      transports: ["hybrid"],
+      deviceType: "cross_device",
+    },
+  ]);
   // The forwarder is what stops a stamped body being aimed at another sub-organization or at
   // some other activity type, so pin what it was told to expect.
   assert.deepEqual(f.forwards[0]?.expectations, {
@@ -443,11 +462,7 @@ test("a credential is not mirrored until Turnkey says the activity completed", a
   });
 
   assert.equal(result.status, "ACTIVITY_STATUS_CONSENSUS_NEEDED");
-  assert.equal(
-    f.credentials.some((c) => c.credentialId === "cred-2"),
-    false,
-    "a row here would claim a device that Turnkey has not accepted",
-  );
+  assert.deepEqual(f.credentials, [], "a row here would claim a device Turnkey has not accepted");
 });
 
 test("confirming a device needs an existing account", async () => {
@@ -561,4 +576,19 @@ test("the three ways a challenge can fail reject identically, so none of them is
     assert.deepEqual({ ...other }, { ...missing }, "no extra property distinguishes the cause");
   }
   assert.equal(absent.builds.length + stranger.builds.length + aged.builds.length, 0);
+});
+
+test("the account is read straight through, and is null before there is one", async () => {
+  const f = fakes();
+  assert.equal(await service(f).getAccount(USER), null);
+
+  const s = await registered(f);
+
+  assert.deepEqual(await s.getAccount(USER), {
+    userId: USER,
+    subOrganizationId: "sub-1",
+    masterWalletId: "wal-1",
+    rootUserId: "usr-1",
+    address: "0x1111111111111111111111111111111111111111",
+  });
 });
