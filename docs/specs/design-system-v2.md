@@ -176,8 +176,16 @@ The landing is shorter than the one it replaces: a ticker tape, a nav, a one-wor
 hero row, a "runs on" strip, four steps, the waitlist form and a footer. Sections present in the
 current landing and absent from the canvas are removed rather than restyled.
 
-Studio Empty is the same chrome as Studio v4 with no agents, so they share every component and
-differ only in what the main column renders.
+Studio Empty is **not** Studio v4 with the agents removed. It shares the top bar, rail and main
+frame, and then its main column is a different thing: a stepped flow that carries a `PIECE` section,
+a `DRAFT OVERVIEW · GO PUBLIC` panel and a passkey sheet, under the screen labels
+`Studio · Empty · <step>` and `Studio · Draft overview`. It is the journey from no agents to a first
+one, not an empty state.
+
+That passkey sheet reaches into custody: authorising an agent's sub-wallet is specification two of
+the Turnkey work, which does not exist yet. This change builds the screen and its ceremony
+presentation; the sheet's confirm action has nothing real to call until that specification lands, so
+it must not pretend otherwise.
 
 ## 6. What the other pages get
 
