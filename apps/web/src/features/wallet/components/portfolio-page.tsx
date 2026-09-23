@@ -101,8 +101,12 @@ export function PortfolioPage({
     <>
       <div className={styles.top}>
         {/* The dark block in a light page. It is not a dark-coloured panel: it is the studio's own
-            surface appearing inline, so every token inside it resolves to the dark ramp. */}
-        <section className={styles.total} data-surface="dark">
+            surface appearing inline, so every token inside it resolves to the dark ramp.
+
+            The id is not decoration: surfaces.mjs names this block in MUST_NEST, and a selector
+            that had to find it by [data-surface] could not tell "the panel is gone" from "the panel
+            lost its surface" — the two failures it most needs to tell apart. */}
+        <section id="portfolio-balance" className={styles.total} data-surface="dark">
           <p className={styles.totalLabel}>
             {wallet.onTargetChain
               ? `BALANCE · ${TARGET_CHAIN.name.toUpperCase()}`
