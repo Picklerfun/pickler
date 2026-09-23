@@ -5,6 +5,7 @@ import {
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
+  createWalletSignIn,
   parseEmailAllowlist,
 } from "@pickler/core";
 import {
@@ -27,10 +28,16 @@ import {
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
+  createWalletAccounts,
+  createSignatureVerifier,
+  buildSiweMessage,
+  parseSiweMessage,
+  PostgresWalletIdentityStore,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
 import type { SigningRouteServices } from "./routes/signing";
+import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
 
 import { createGrowthServices } from "./growth/services";
@@ -121,6 +128,68 @@ function custodyServices(
   };
 }
 
+function walletAuthServices(
+  env: Env,
+  pool: PostgresResearchStore["pool"],
+  authenticate: Services["authenticate"],
+): WalletAuthServices | undefined {
+  const domain = env.SIWE_DOMAIN;
+  const emailDomain = env.WALLET_EMAIL_DOMAIN;
+  if (!domain || !emailDomain) {
+    return undefined;
+  }
+
+  const store = new PostgresWalletIdentityStore(pool);
+  const supabase = {
+    url: required(env, "SUPABASE_URL"),
+    secretKey: required(env, "SUPABASE_SECRET_KEY"),
+  };
+
+  return {
+    authenticate,
+    signIn: createWalletSignIn({
+      clock: { now: () => new Date() },
+      domain,
+      nonces: store,
+      links: store,
+      verifier: createSignatureVerifier(),
+      accounts: createWalletAccounts({
+        admin: createSupabaseAdmin(supabase),
+        emailDomain,
+        // The admin API has no lookup by email — `listUsers` is paged with no filter — so the
+        // recovery path reads the uniquely indexed column directly.
+        findUserIdByEmail: async (email) => {
+          const { rows } = await pool.query<{ id: string }>(
+            `SELECT id FROM auth.users WHERE email = $1 LIMIT 1`,
+            [email],
+          );
+          return rows[0]?.id ?? null;
+        },
+        // A throwaway per exchange: `verifyOtp` leaves the session on whichever client performs
+        // it, and this isolate's admin client is shared across requests.
+        sessionClient: () => createSupabaseAdmin(supabase),
+      }),
+      // The hyphens must go. viem's builder enforces /^[a-zA-Z0-9]{8,}$/ on the nonce, but its
+      // parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)` — so a hyphenated nonce does not fail on the
+      // way back, it silently truncates at the first hyphen and stops matching what was issued.
+      randomNonce: () => crypto.randomUUID().replace(/-/g, ""),
+      // Core's MessageFields and viem's SiweFields do not match, and core deliberately knows
+      // nothing about `uri` or viem's naming. The adapter belongs on this side of the port.
+      buildMessage: (fields) =>
+        buildSiweMessage({
+          domain: fields.domain,
+          address: fields.address as `0x${string}`,
+          statement: "Sign in to Pickler",
+          uri: `https://${fields.domain}`,
+          chainId: fields.chainReference,
+          nonce: fields.nonce,
+          issuedAt: fields.issuedAt,
+        }),
+      parseMessage: parseSiweMessage,
+    }),
+  };
+}
+
 /** Request-scoped composition; no model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
   const database = apiDatabase(env);
@@ -152,9 +221,11 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
   const custody = custodyServices(env, repository.pool, authenticate);
+  const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
     ...(custody ? { custody } : {}),
+    ...(walletAuth ? { walletAuth } : {}),
     growth: createGrowthServices(env),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),

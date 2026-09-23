@@ -15,6 +15,7 @@ import { growthRoutes } from "./routes/growth";
 import type { createGrowthServices } from "./growth/services";
 import { consoleRoutes, type ConsoleServices } from "./routes/console";
 import { signingRoutes, type SigningRouteServices } from "./routes/signing";
+import { walletAuthRoutes, type WalletAuthServices } from "./routes/wallet-auth";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
@@ -22,6 +23,8 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
   growth?: ReturnType<typeof createGrowthServices>;
   /** Absent when the deployment has no Turnkey bindings; the rest of the API still serves. */
   custody?: SigningRouteServices;
+  /** Absent when SIWE_DOMAIN or WALLET_EMAIL_DOMAIN is missing; the rest of the API still serves. */
+  walletAuth?: WalletAuthServices;
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -44,6 +47,9 @@ export function createApp(services: Services) {
   }
   if (services.custody) {
     app.route("/v1/signing", signingRoutes(services.custody));
+  }
+  if (services.walletAuth) {
+    app.route("/v1/auth/wallet", walletAuthRoutes(services.walletAuth));
   }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));

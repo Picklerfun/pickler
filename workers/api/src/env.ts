@@ -36,6 +36,13 @@ export interface Env {
   CHAIN_ID?: string;
   /** Provider endpoint for balance reads; absent falls back to the public, rate-limited one. */
   MONAD_RPC_URL?: string;
+  /**
+   * The domain a sign-in message must name. Absent leaves the wallet routes unmounted rather than
+   * mounted and unable to reject a signature harvested for another site.
+   */
+  SIWE_DOMAIN?: string;
+  /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
+  WALLET_EMAIL_DOMAIN?: string;
 }
 
 export interface Variables {
