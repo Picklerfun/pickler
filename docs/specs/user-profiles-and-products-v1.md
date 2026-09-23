@@ -660,6 +660,11 @@ up with a credential permanently labelled with their wallet address. The passkey
 from the profile, and the local part of the synthetic address is a digest rather than the address,
 which makes the first two harmless as well.
 
+A fourth channel was missed in that pass and closed afterwards: `user_metadata`, written at account
+creation, is carried in the access token and exposed on `session.user` — which this repository
+already reads in the browser. Two consecutive commits closed two channels and left the third open
+twelve lines below one of them. It now carries the namespace and not the address.
+
 **`syntheticEmail` lower-cased the address a second time.** On EVM that is a no-op because
 `normalizeAddress` already had. On Solana it is destructive: base58 is case-significant, so two
 distinct addresses collapsed to one synthetic email and therefore **one account shared by two
@@ -702,6 +707,34 @@ at its edges.
 means "no matching lines" and "no output at all" indistinguishably. Both an agent and the lead
 reported clean gates from filtered output while those gates were failing. Exit status is the
 verification; the filter is a convenience.
+
+### What is built but not reachable
+
+**Nothing in the product can sign in with a wallet yet.** `signIn` in
+`apps/web/src/features/wallet/lib/connect.ts` has no caller, and nothing calls
+`supabase.auth.setSession` with the tokens it returns, so even if it were called the session would
+be discarded. `POST /v1/auth/wallet/link` has no browser caller at all, and `custody_started` is
+dispatched by nothing — so §6's "the passkey is created when a person builds their first agent" is
+modelled in the state machine and unreachable in the product.
+
+The ceremony is complete and tested end to end from the API's side down; the three buttons that
+would start it are not written. No task in the plan wired them, which is a gap in the plan rather
+than an incomplete task, and it is recorded here so that "the sign-in works" is not read as "a
+person can sign in".
+
+**Solana cannot happen.** `namespace` is hardcoded `"eip155"` in both places that could produce
+one, and the store writes `method` as the literal `'siwe'`. §3 explains why `(namespace, address)`,
+`method in ('siwe','siws')` and `kind in ('external','mera')` make `wallet_links` better than what
+this specification would have invented — three of those four capabilities are reachable only by
+future work.
+
+**`kind: 'mera'` is never written.** Both link paths hardcode `'external'`. The server cannot tell
+which connector signed, and nothing in the request carries it, so this was not implementable as
+designed: the client would have to say, and no field exists for it.
+
+**Expired nonces are never deleted.** Rows leave `identity.siwe_nonces` only through `consume`, so
+an issued-and-abandoned nonce stays forever. The index on `expires_at` is there for a sweeper that
+does not exist.
 
 ### What was left
 
