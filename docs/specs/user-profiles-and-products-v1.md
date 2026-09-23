@@ -123,17 +123,31 @@ says subdomains are production infrastructure.
 ### Linking a second wallet
 
 A person who connects Mera on their phone and MetaMask on their laptop is one person with two
-addresses. `wallets.linked_addresses` holds the pairs:
+addresses. **The table for this already exists and has never been used.** `identity.wallet_links`
+is declared in `packages/infrastructure/src/persistence/product/identity.ts`, is in the migrations,
+and no source file in the repository reads or writes it:
 
 ```
-linked_addresses(user_id, address, chain_id, proved_at)
-  unique (address)          -- an address belongs to at most one account
+wallet_links(id, user_id, namespace, verified_chain, address, method, kind, verified_at)
+  unique (namespace, address)
   index  (user_id)
+  namespace in ('eip155', 'solana')          method in ('siwe', 'siws')
+  kind      in ('external', 'mera')
+  address format checked per namespace
+  foreign key user_id → auth.users(id) on delete cascade
 ```
 
-The unique index on `address` is the important one: it is what makes "this address is already
-linked to another account" a database answer rather than a race. When someone signs in with an
-address that is already linked, they get that account — which is the whole point.
+It is better than what this specification would have invented. The unique key is
+`(namespace, address)` rather than `address` alone, so the same string on two chain families is two
+links rather than a collision. `verified_chain` is CAIP-2 with a check that its family matches the
+namespace. `method` already distinguishes `siwe` from Solana's `siws`, and **`kind` already carries
+`'mera'`** — somebody designed this table for exactly this work.
+
+Use it. Do not add a second table beside it.
+
+The unique index is what makes "this address is already linked to another account" a database
+answer rather than a race. When someone signs in with an address that is already linked, they get
+that account — which is the whole point.
 
 Linking while signed in is the same ceremony as signing in, with the session already present. There
 is no separate flow to design.
@@ -258,9 +272,15 @@ Someone buys a read and comes back a day later to learn what happened. **An addr
 told.** A refund the buyer never hears about is a bad product, and that — not architecture — is why
 a read is attributed to a `user_id`.
 
-The paid-read domain currently has no buyer field at all, because reads are sample content today.
-That is undesigned rather than decided, and this specification decides it: reads attach to the
-account.
+**Paid reads have no persistence at all today.** There is no reads table in any schema; they are
+sample content served by `createSampleAgentDirectory` through `/v1/demo/reads`. So this
+specification cannot attach anything to anything — there is no record to carry a `user_id`.
+
+What it does instead is fix the rule, so that whoever builds paid reads is not free to key them by
+address: **a paid read belongs to a `user_id`, and the email that hears about its outcome is a
+field on the profile.** Keying a read by address would make the refund unannounceable and would
+split a person's history the moment they link a second wallet. That work is out of scope here and
+is named as such in §13.
 
 ### Progressive, not a gate
 
@@ -270,7 +290,7 @@ account.
 | Connect a wallet     | account created, address linked | nothing           |
 | Trade, back an agent | read from chain                 | nothing           |
 | Claim a handle       | profile created                 | a handle          |
-| **Buy a paid read**  | Pickler now owes an outcome     | an email          |
+| **Buy a paid read**  | Pickler now owes an outcome     | an email _(§13)_  |
 | Build an agent       | passkey → Turnkey sub-org       | the ceremony      |
 
 The account appears when it earns its place rather than at the door. Because it exists from the
@@ -310,29 +330,31 @@ origins.
 
 ## 10. Data model
 
-New, in the `wallets` schema beside what custody already owns:
+**One new table.** `identity.wallet_links` already exists (§3) and needs no change. What is missing
+is somewhere to keep a nonce between issuing it and verifying the signature:
 
 ```sql
-linked_addresses(
-  user_id     uuid not null,
-  address     text not null,
-  chain_id    integer not null,
-  proved_at   timestamptz not null default now(),
-  unique (address),
-  index on (user_id)
-)
-
-siwe_nonces(
+identity.siwe_nonces(
   nonce       text primary key,
-  address     text,          -- null until the message is built
   expires_at  timestamptz not null
 )
+  index on (expires_at)
 ```
 
-`siwe_nonces` mirrors `webauthn_challenges` in shape, lifetime and consumption. Both are single-use
-and both are consumed with `DELETE … RETURNING`.
+It lives in `identity` rather than `wallets` because `wallets` is Turnkey custody, and an address
+someone proved they control is not a wallet Pickler holds. Putting it there would suggest custody
+that does not exist.
 
-Changed: the paid-read record gains a `user_id`. Unchanged: `profiles`, and every custody table.
+`siwe_nonces` mirrors `wallets.webauthn_challenges` in shape, lifetime and consumption: single-use,
+five minutes, taken with `DELETE … RETURNING`. It carries no address, because the nonce is issued
+before anyone knows which wallet will answer, and binding it to an address the client claims would
+be binding it to something unverified.
+
+`identity` is already in the `schemaFilter` allowlist in
+`packages/infrastructure/drizzle.config.ts`, so no configuration change is needed — worth stating
+because the custody work nearly shipped an empty migration by forgetting the equivalent.
+
+Unchanged: `profiles`, `handles`, and every custody table.
 
 ---
 
@@ -376,6 +398,11 @@ Mera's own integration surface is unknown: there is no published wagmi connector
 documentation, because the library is new. **The first task of implementation is a spike** — connect
 Mera and sign one transaction — before any screen is built on top of it. If it turns out to need a
 deep integration, that is worth knowing early rather than halfway through.
+
+**Paid reads themselves.** There is no reads persistence in this repository — no table, no buyer,
+no lifecycle — so neither the purchase, the delivery window, the refund nor the email that
+announces the outcome can be built here. §8 fixes the rule those will have to follow and stops
+there.
 
 Agent sub-wallets, spend caps and the two-of-two policies remain specification two of the custody
 work. Merging two accounts that already exist is not designed, because under this specification two
