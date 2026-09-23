@@ -49,6 +49,16 @@ export function fakes() {
       if (rows.account) {
         return { created: false };
       }
+      // The port describes one transaction across turnkey_orgs, wallets, wallet_accounts AND
+      // passkeys, so registering mirrors the first credential here. Leaving it out made the
+      // second-device exclusion untestable without planting the row by hand.
+      credentials.push({
+        userId: input.userId,
+        credentialId: input.credentialId,
+        label: input.label,
+        transports: input.transports,
+        deviceType: input.deviceType,
+      });
       rows.account = {
         userId: input.userId,
         subOrganizationId: input.subOrganizationId,
@@ -136,23 +146,6 @@ test("a challenge is stored against the caller and offered with the right algori
     userId: USER,
     expiresAt: new Date(NOW.getTime() + 300_000),
   });
-});
-
-test("existing credentials are excluded so the browser refuses a second enrolment", async () => {
-  const f = fakes();
-  f.credentials.push({
-    userId: USER,
-    credentialId: "cred-1",
-    label: "Touch ID",
-    transports: ["internal"],
-    deviceType: "platform",
-  });
-
-  const options = await service(f).issueChallenge(USER, "ana@pickler.fun");
-
-  assert.deepEqual(options.excludeCredentials, [
-    { id: "cred-1", type: "public-key", transports: ["internal"] },
-  ]);
 });
 
 test("a failed credential lookup never blocks the challenge", async () => {
@@ -334,6 +327,15 @@ test("a conflict with no readable winner fails loudly rather than returning noth
   );
 });
 
+/** The passkey row that registering the first device mirrors locally. */
+const FIRST_DEVICE_ROW = {
+  userId: USER,
+  credentialId: "cred-1",
+  label: "Touch ID",
+  transports: ["internal"],
+  deviceType: "platform",
+};
+
 /** Registers the first device so there is a sub-organization to add a second one to. */
 async function registered(f: ReturnType<typeof fakes>) {
   const s = service(f);
@@ -424,6 +426,7 @@ test("confirming forwards the stamped activity and mirrors the credential", asyn
   // half of the same binding as `rootUserId` on the prepare side, and a literal in its place
   // puts the new device's credential on a stranger's account.
   assert.deepEqual(f.credentials, [
+    FIRST_DEVICE_ROW,
     {
       userId: USER,
       credentialId: "cred-2",
@@ -462,7 +465,11 @@ test("a credential is not mirrored until Turnkey says the activity completed", a
   });
 
   assert.equal(result.status, "ACTIVITY_STATUS_CONSENSUS_NEEDED");
-  assert.deepEqual(f.credentials, [], "a row here would claim a device Turnkey has not accepted");
+  assert.deepEqual(
+    f.credentials,
+    [FIRST_DEVICE_ROW],
+    "a second row here would claim a device Turnkey has not accepted",
+  );
 });
 
 test("confirming a device needs an existing account", async () => {
@@ -591,4 +598,18 @@ test("the account is read straight through, and is null before there is one", as
     rootUserId: "usr-1",
     address: "0x1111111111111111111111111111111111111111",
   });
+});
+
+test("a second device is offered the first one's credential to exclude", async () => {
+  const f = fakes();
+  const s = await registered(f);
+
+  // Nobody placed this row: registering the first device wrote it, and the challenge for the
+  // second device picks it up. This is the defence against enrolling one authenticator twice,
+  // and it only means anything if the two halves meet without a hand in between.
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  assert.deepEqual(options.excludeCredentials, [
+    { id: "cred-1", type: "public-key", transports: ["internal"] },
+  ]);
 });
