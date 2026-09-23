@@ -143,6 +143,42 @@ export function surfaces(mustNest) {
     }
   }
 
+  /* Every nested pair, not the first. The loop used to break on the first inverting pair it found,
+   * so a page with three inverted blocks proved one — and which one depended on DOM order. The
+   * landing's green named its ticker tape purely because the tape is the first [data-surface] under
+   * .page; the mascot card and FOUR MOVES were never that check's subject, and had the nav come
+   * first the identical green would have said nothing about any of the three. */
+  const shell = (el) => Boolean(el.closest("nav, header, footer"));
+  const nests = [...document.querySelectorAll("[data-surface] [data-surface]")]
+    .filter((inner) => inner.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+    .map((inner) => {
+      const outer = inner.parentElement?.closest("[data-surface]");
+      const ink = (el) => {
+        const probe = document.createElement("div");
+        probe.style.color = "var(--pk-ink)";
+        el.append(probe);
+        const colour = getComputedStyle(probe).color;
+        probe.remove();
+        return colour;
+      };
+      return {
+        inner: {
+          selector: name(inner),
+          surface: inner.dataset.surface,
+          bg: bg(inner),
+          paints: painted(inner),
+          ink: ink(inner),
+          shell: shell(inner),
+        },
+        outer: outer && {
+          selector: name(outer),
+          surface: outer.dataset.surface,
+          bg: bg(outer),
+          ink: ink(outer),
+        },
+      };
+    });
+
   let nest = null;
   if (mustNest) {
     const inner = document.querySelector(mustNest);
@@ -150,6 +186,10 @@ export function surfaces(mustNest) {
       nest = { found: false };
     } else if (!inner.dataset.surface) {
       nest = { found: true, selector: name(inner), surfaced: false };
+    } else if (shell(inner)) {
+      // The shared nav's inverted action satisfies a loose selector on every light route, which is
+      // the same accident one level up: the assertion must land on the route's own content.
+      nest = { found: true, selector: name(inner), surfaced: true, inShell: true };
     } else {
       const outer = inner.parentElement?.closest("[data-surface]");
       nest = {
@@ -162,5 +202,5 @@ export function surfaces(mustNest) {
       };
     }
   }
-  return { where: name(ground), ground: painted(ground), root: bg(ground), nest };
+  return { where: name(ground), ground: painted(ground), root: bg(ground), nest, nests };
 }

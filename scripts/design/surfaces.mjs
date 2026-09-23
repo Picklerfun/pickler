@@ -45,6 +45,30 @@ for (const { route, value } of results) {
     });
   }
 
+  /* Every nested pair on the page, so a screen proves all its inversions or names which one
+   * failed. A pair declaring the opposite surface to its parent must invert; a pair declaring the
+   * same surface is redundant rather than wrong, and says so. */
+  for (const pair of value.nests) {
+    if (!pair.outer) {
+      continue;
+    }
+    const where = `${pair.inner.selector} [${pair.inner.surface}] inside ${pair.outer.selector} [${pair.outer.surface}]`;
+    if (pair.inner.surface === pair.outer.surface) {
+      notes.push(`${route.name}: ${where} — same surface nested in itself, which changes nothing`);
+      continue;
+    }
+    if (pair.inner.bg === pair.outer.bg) {
+      problems.push({
+        route,
+        text: `${route.name}: ${where} computes the same --pk-bg (${pair.inner.bg}) as its parent, so declaring the opposite surface inverted nothing.`,
+      });
+      continue;
+    }
+    notes.push(
+      `${route.name}: ${where} inverts — bg ${pair.inner.bg} on ${pair.outer.bg}, ink ${pair.inner.ink} on ${pair.outer.ink}, painting ${pair.inner.paints}${pair.inner.shell ? " (shared shell)" : ""}`,
+    );
+  }
+
   const wanted = MUST_NEST[route.name];
   if (!wanted) {
     notes.push(`${route.name}: no block on this screen is required to invert`);
@@ -62,6 +86,13 @@ for (const { route, value } of results) {
     problems.push({
       route,
       text: `${route.name}: ${nest.selector} matches ${wanted} but carries no data-surface, so whatever makes it look inverted is a literal rather than the system.`,
+    });
+    continue;
+  }
+  if (nest.inShell) {
+    problems.push({
+      route,
+      text: `${route.name}: ${wanted} matched ${nest.selector}, which sits inside the shared nav, header or footer rather than in this screen's own content. The shell's inverted action satisfies a loose selector on every light route, so this assertion is being answered by something that is not the screen's block.`,
     });
     continue;
   }

@@ -200,6 +200,21 @@ in the list because nothing in the apparatus could have caught it.
     carries a `font:` shorthand that does not name the display face — rather than looking for it on
     screen, where it reads as a slightly different weight and nothing more.
 
+16. **A probe that fires before the paint settles reports a state that is true and gone.** Reading
+    computed style immediately after toggling a control returned the _old_ ground, which looks
+    exactly like a cascade failure — a more specific rule, later in the file, apparently losing. It
+    was 0ms into a 140ms transition, and the value was real for that instant. Anything that reads
+    computed values after a state change has to settle first, or it reports a frame rather than a
+    screen.
+17. **Opacity is not part of a colour, and a check that composites alpha will not see it.** White
+    ink on the night-blue panel at `opacity: 0.55` measures 21:1 by colour alone, and it compounds —
+    0.55 inside 0.8 is 0.44, which is where it drops under AA. Nothing in the source looks wrong
+    either, which is what separates this from a bad token. The general form is the one worth
+    keeping: a page can be entirely token-driven and still paint values the system never defined,
+    through an alpha inside a colour or through opacity on an element, and a check that handles the
+    first is not thereby handling the second. `contrast.mjs` now multiplies opacity down the
+    ancestor chain and composites the ink at that effective alpha over its ground.
+
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
