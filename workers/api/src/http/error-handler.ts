@@ -9,8 +9,13 @@ import {
   ProfileAlreadyExistsError,
   ProfileHandleTakenError,
   AuthenticationRequiredError,
+  ChallengeNotUsableError,
   DataSourceUnavailableError,
   InactiveWorkspaceError,
+  InvalidSignedActivityError,
+  NoCustodyAccountError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
 } from "@pickler/core";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -67,6 +72,31 @@ function classify(
       status: 409,
       message: error.message,
       extras: { error: "profile_exists", detail: error.profile.handle },
+    };
+  }
+  if (error instanceof ChallengeNotUsableError) {
+    return { status: 400, message: error.message, extras: { error: "challenge_expired" } };
+  }
+  if (error instanceof NoCustodyAccountError) {
+    return { status: 409, message: error.message, extras: { error: "no_custody_account" } };
+  }
+  if (error instanceof InvalidSignedActivityError) {
+    // Our own check on what the browser stamped; the message says which rule it broke.
+    return { status: 400, message: error.message, extras: { error: "invalid_signed_activity" } };
+  }
+  if (error instanceof SignedActivityRejectedError) {
+    // Turnkey's own words for why it refused, as in Relayer. The forwarder has already made
+    // sure the request targeted the caller's own sub-organization, so a message that quotes an
+    // organisation quotes theirs.
+    return { status: 400, message: error.message, extras: { error: "activity_rejected" } };
+  }
+  if (error instanceof SigningServiceUnavailableError) {
+    // Fixed text, unlike the branch above: this error's message interpolates whatever a 5xx
+    // body said, which is the upstream's internal business and not the browser's.
+    return {
+      status: 502,
+      message: "Signing service unavailable",
+      extras: { error: "signing_unavailable" },
     };
   }
   if (error instanceof DataSourceUnavailableError) {

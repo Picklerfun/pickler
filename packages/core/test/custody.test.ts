@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCustodyService } from "../src/features/wallets/application/custody.js";
+import {
+  createCustodyService,
+  type CustodyServiceDeps,
+} from "../src/features/wallets/application/custody.js";
 import {
   ADD_PASSKEY_ACTIVITY_TYPE,
   ChallengeNotUsableError,
@@ -116,7 +119,7 @@ export function fakes() {
   };
 }
 
-export function service(f: ReturnType<typeof fakes>) {
+export function service(f: ReturnType<typeof fakes>, extra: Partial<CustodyServiceDeps> = {}) {
   let seed = 0;
   return createCustodyService({
     challenges: f.challenges,
@@ -128,6 +131,7 @@ export function service(f: ReturnType<typeof fakes>) {
     appName: "Pickler",
     now: () => NOW,
     randomId: () => `r${(seed += 1)}`,
+    ...extra,
   });
 }
 
@@ -326,6 +330,80 @@ test("a conflict with no readable winner fails loudly rather than returning noth
       }),
     /orphan sub-org sub-1/,
   );
+});
+
+/** Drives a registration that loses the race, with `winner` deciding whether one is readable. */
+async function lostRace(reportOrphan: CustodyServiceDeps["reportOrphan"], winner: unknown) {
+  const f = fakes();
+  const s = service(f, { reportOrphan });
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  f.repository.saveRegistration = async () => ({ created: false });
+  let lookups = 0;
+  f.repository.findByUserId = async () => {
+    lookups += 1;
+    return lookups === 1 ? null : (winner as CustodyAccount | null);
+  };
+  return s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: options.challenge,
+    attestation,
+  });
+}
+
+const WINNER = {
+  userId: USER,
+  subOrganizationId: "sub-winner",
+  masterWalletId: "wal-winner",
+  rootUserId: "usr-winner",
+  address: "0x2222222222222222222222222222222222222222",
+};
+
+test("the sub-organization the loser minted is reported, not discarded", async () => {
+  const orphans: { userId: string; subOrganizationId: string }[] = [];
+
+  const account = await lostRace((orphan) => orphans.push(orphan), WINNER);
+
+  assert.equal(account.subOrganizationId, "sub-winner");
+  // The whole record, not just the id: an orphan reported against the wrong person sends the
+  // reconciliation to the wrong sub-organization, which is worse than no report at all.
+  assert.deepEqual(orphans, [{ userId: USER, subOrganizationId: "sub-1" }]);
+});
+
+test("the orphan is reported even when the conflict has no readable winner", async () => {
+  const orphans: { userId: string; subOrganizationId: string }[] = [];
+
+  await assert.rejects(
+    () => lostRace((orphan) => orphans.push(orphan), null),
+    /orphan sub-org sub-1/,
+  );
+  // That message is replaced by "Internal server error" outside local development, so this is
+  // the only place the id survives on this path.
+  assert.deepEqual(orphans, [{ userId: USER, subOrganizationId: "sub-1" }]);
+});
+
+test("a registration that recovers is not undone by a log sink that throws", async () => {
+  const account = await lostRace(() => {
+    throw new Error("logging is down");
+  }, WINNER);
+
+  assert.equal(account.subOrganizationId, "sub-winner");
+});
+
+test("a registration that does not conflict reports no orphan", async () => {
+  const f = fakes();
+  const orphans: unknown[] = [];
+  const s = service(f, { reportOrphan: (orphan) => orphans.push(orphan) });
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: options.challenge,
+    attestation,
+  });
+
+  assert.deepEqual(orphans, []);
 });
 
 /** The passkey row that registering the first device mirrors locally. */

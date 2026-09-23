@@ -22,6 +22,7 @@ src/
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
   routes/demo.ts            # Public sample content, marked X-Pickler-Data-Source: sample
+  routes/signing.ts         # Passkey custody: challenge, register, add device, wallet read
   growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
   budget/sql-ledger-store.ts# LedgerStore over Durable Object SQLite (amounts as decimal TEXT)
@@ -40,8 +41,32 @@ Routes:
 | `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                       | JWT or API key + `agent` module + `read Agent`                          |
 | `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget` | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent` |
 | `GET /v1/demo/markets`, `GET /v1/demo/markets/:symbol`                                   | none (sample content)                                                   |
+| `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                 | signed-in user; API keys refused                                        |
+| `GET /v1/signing/wallets/me`                                                             | signed-in user; API keys refused                                        |
 
 Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`, `x-request-timestamp`; payload `METHOD + /v1/path + timestamp + sha256(JSON.stringify(body) or "")`, ±60 s. Agent secrets (`agents.agent_credentials`) are decrypted with `ENCRYPTION_KEY`; the format is byte-compatible with Relayer's, so the key only has to equal Relayer's when importing Relayer data. Agent write endpoints are not ported yet.
+
+## Passkey custody
+
+`/v1/signing` is mounted only when `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`,
+`TURNKEY_PARENT_ORG_ID`, `TURNKEY_RPID` and `TURNKEY_APP_NAME` are all bound; without them the
+rest of the API serves unchanged. The decisions are `createCustodyService` in `@pickler/core`;
+the routes validate and map. The email that names the Turnkey sub-organization and identifies
+the user to the authenticator comes from the verified token, never from the body, and an
+attestation is refused at the door unless it is three base64url strings and transports Turnkey
+has a name for (`SUPPORTED_TRANSPORTS`).
+
+Responses deliberately withhold what the browser has no use for: register answers with
+`sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and
+add/confirm answers with the activity's id and status rather than the activity. All three
+reasons a challenge can be refused — unknown, someone else's, expired — are one 400 with one
+body; mapping them apart would tell a caller that a challenge they guessed exists.
+
+The custody service is built per request so the orphaned-sub-organization warning a lost
+registration race produces carries the request id. `wallets.webauthn_challenges` has no sweeper
+yet: rows are deleted when consumed, expiry is judged on read, and an authenticated caller can
+leave one row per challenge request behind. The `webauthn_challenges_expiry_idx` index is there
+for the cleanup that has not been written.
 
 ## Budget ledger
 

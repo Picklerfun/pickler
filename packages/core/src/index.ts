@@ -155,6 +155,7 @@ export {
   ADD_PASSKEY_ACTIVITY_TYPE,
   ChallengeNotUsableError,
   NoCustodyAccountError,
+  SUPPORTED_TRANSPORTS,
   deviceTypeFromTransports,
   toTurnkeyTransports,
   type ChallengeOptions,

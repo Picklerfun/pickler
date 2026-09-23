@@ -20,6 +20,22 @@ export interface Env {
   ENCRYPTION_KEY?: string;
   /** Retained legacy binding only; new API budget authority is PostgreSQL. */
   AGENT_LEDGER?: DurableObjectNamespace<AgentLedger>;
+  /** Turnkey parent organisation credentials. Never placed inside a sub-organisation. */
+  TURNKEY_API_PUBLIC_KEY?: string;
+  TURNKEY_API_PRIVATE_KEY?: string;
+  TURNKEY_PARENT_ORG_ID?: string;
+  /** WebAuthn relying party: "localhost" in development, the site domain in production. */
+  TURNKEY_RPID?: string;
+  /** Shown in the operating system's passkey prompt. */
+  TURNKEY_APP_NAME?: string;
+  /**
+   * The chain wallet balances are read from. Absent means Monad testnet, the same default the
+   * web carries in NEXT_PUBLIC_SIWE_CHAIN_ID; an unsupported id fails composition rather than
+   * quietly reading the wrong network's balances.
+   */
+  CHAIN_ID?: string;
+  /** Provider endpoint for balance reads; absent falls back to the public, rate-limited one. */
+  MONAD_RPC_URL?: string;
 }
 
 export interface Variables {

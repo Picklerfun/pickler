@@ -8,4 +8,15 @@ ALLOWED_ORIGINS=http://localhost:3000
 ENCRYPTION_KEY=
 ADMISSIONS_ENABLED=true
 
+# Turnkey. The API keys are the parent organisation's and are secrets; the rest is configuration.
+# Without all five, /v1/signing is not mounted and the rest of the API serves as before.
+TURNKEY_API_PUBLIC_KEY=
+TURNKEY_API_PRIVATE_KEY=
+TURNKEY_PARENT_ORG_ID=
+TURNKEY_RPID=localhost
+TURNKEY_APP_NAME=Pickler
+# Balance reads. Absent CHAIN_ID means Monad testnet (10143).
+CHAIN_ID=10143
+MONAD_RPC_URL=
+
 # DATABASE_URL is local-only. Hosted API uses the DATABASE Hyperdrive binding.

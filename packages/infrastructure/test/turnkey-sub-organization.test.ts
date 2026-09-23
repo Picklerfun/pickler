@@ -4,6 +4,8 @@ import {
   ADD_PASSKEY_ACTIVITY_TYPE,
   COMPLETED_ACTIVITY_STATUS,
   SigningServiceUnavailableError,
+  SUPPORTED_TRANSPORTS,
+  toTurnkeyTransports,
   type TurnkeyReader,
 } from "@pickler/core";
 import type { TurnkeyApiTypes } from "@turnkey/http";
@@ -48,6 +50,29 @@ void _completedIsAnSdkStatus;
 // @ts-expect-error a status Turnkey does not define must not be assignable
 const _notAStatus: TurnkeyApiTypes["v1ActivityStatus"] = "ACTIVITY_STATUS_INVENTED";
 void _notAStatus;
+
+// The same again for core's SUPPORTED_TRANSPORTS, which the signing routes validate a browser's
+// `transports` array against before it travels. The type below applies `toTurnkeyTransports`'s
+// own transformation to the list and demands the result be the SDK's union exactly, in both
+// directions: a transport WebAuthn defines but Turnkey does not (`smart-card`, `cable`) would be
+// accepted at the door and rejected by Turnkey only after the person had finished the biometric
+// ceremony, and a transport Turnkey adds later would be refused here for no reason.
+type MappedTransport =
+  `AUTHENTICATOR_TRANSPORT_${Uppercase<(typeof SUPPORTED_TRANSPORTS)[number]>}`;
+const _transportsPinnedToSdk: Exact<MappedTransport, TurnkeyApiTypes["v1AuthenticatorTransport"]> =
+  true;
+void _transportsPinnedToSdk;
+
+test("every supported transport survives the mapping the type above only models", () => {
+  // The guard is a template literal type; this is the function it claims to describe.
+  assert.deepEqual(toTurnkeyTransports([...SUPPORTED_TRANSPORTS]), [
+    "AUTHENTICATOR_TRANSPORT_BLE",
+    "AUTHENTICATOR_TRANSPORT_HYBRID",
+    "AUTHENTICATOR_TRANSPORT_INTERNAL",
+    "AUTHENTICATOR_TRANSPORT_NFC",
+    "AUTHENTICATOR_TRANSPORT_USB",
+  ]);
+});
 
 // A throwaway P-256 pair, generated for this test only. It grants nothing: no Turnkey
 // organisation has ever seen it.

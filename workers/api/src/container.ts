@@ -1,5 +1,6 @@
 import {
   createAgentQueries,
+  createCustodyService,
   createPaperService,
   createAuthenticateAgent,
   createAuthenticateRequest,
@@ -20,9 +21,16 @@ import {
   PolymarketData,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
+  PostgresCustodyStore,
+  createAddPasskeyActivityBuilder,
+  createBalanceReader,
+  createSubOrganizationCreator,
+  createTurnkeyActivityForwarder,
+  createTurnkeyReader,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
+import type { SigningRouteServices } from "./routes/signing";
 import { apiDatabase } from "./database";
 
 import { createGrowthServices } from "./growth/services";
@@ -56,6 +64,63 @@ function required<
   return value;
 }
 
+/** Monad testnet, the same default the web carries in NEXT_PUBLIC_SIWE_CHAIN_ID. */
+const DEFAULT_CHAIN_ID = 10143;
+
+/**
+ * Composed only when every Turnkey binding is present, so a deployment without them serves the
+ * rest of the API rather than failing to start. The parent API key lives here and nowhere near a
+ * sub-organization: it creates them and reads activities back, and cannot sign inside one.
+ */
+function custodyServices(
+  env: Env,
+  pool: PostgresResearchStore["pool"],
+  authenticate: Services["authenticate"],
+): SigningRouteServices | undefined {
+  const apiPublicKey = env.TURNKEY_API_PUBLIC_KEY;
+  const apiPrivateKey = env.TURNKEY_API_PRIVATE_KEY;
+  const parentOrganizationId = env.TURNKEY_PARENT_ORG_ID;
+  const rpId = env.TURNKEY_RPID;
+  const appName = env.TURNKEY_APP_NAME;
+  if (!apiPublicKey || !apiPrivateKey || !parentOrganizationId || !rpId || !appName) {
+    return undefined;
+  }
+
+  const parentKey = { apiPublicKey, apiPrivateKey };
+  const store = new PostgresCustodyStore(pool);
+  const turnkey = createSubOrganizationCreator({ ...parentKey, parentOrganizationId });
+  const activities = createAddPasskeyActivityBuilder();
+  const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
+
+  return {
+    authenticate,
+    balances: createBalanceReader({
+      chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
+      ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
+    }),
+    // Only the service itself is per-request: it is a closure over the adapters above, and this
+    // is what lets the orphan report name the request that produced it.
+    custody: (requestId: string) =>
+      createCustodyService({
+        challenges: store,
+        repository: store,
+        turnkey,
+        activities,
+        forwarder,
+        rpId,
+        appName,
+        now: () => new Date(),
+        randomId: () => crypto.randomUUID(),
+        // A sub-organization that exists in Turnkey and belongs to nobody. Nothing automatic
+        // cleans it up; this line is the only record that it is there.
+        reportOrphan: ({ userId, subOrganizationId }) =>
+          console.warn(
+            `[${requestId}] orphaned Turnkey sub-organization ${subOrganizationId} from a lost registration race for user ${userId}; reconcile out of band`,
+          ),
+      }),
+  };
+}
+
 /** Request-scoped composition; no model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
   const database = apiDatabase(env);
@@ -86,8 +151,10 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     now,
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
+  const custody = custodyServices(env, repository.pool, authenticate);
   return {
     authenticate,
+    ...(custody ? { custody } : {}),
     growth: createGrowthServices(env),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),

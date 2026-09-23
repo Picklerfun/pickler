@@ -33,9 +33,28 @@ export interface CustodyServiceDeps {
   appName: string;
   now: () => Date;
   randomId: () => string;
+  /**
+   * Called when a registration mints a sub-organization that ends up belonging to nobody, so the
+   * caller can log it for out-of-band reconciliation. This package has no side channels, which is
+   * why the id has to leave through a dependency rather than a log line here; without it the only
+   * record of a real Turnkey organisation Pickler owns and cannot reach was a comment promising
+   * that somebody else would deal with it. Synchronous and `void`: a rejected promise from a log
+   * sink would surface as an unhandled rejection, and no failure here may change the outcome of
+   * the registration it is reporting on.
+   */
+  reportOrphan?(orphan: { userId: string; subOrganizationId: string }): void;
 }
 
 export function createCustodyService(deps: CustodyServiceDeps) {
+  /** Reporting an orphan must never turn a recovered registration into a failed one. */
+  function reportOrphan(userId: string, subOrganizationId: string) {
+    try {
+      deps.reportOrphan?.({ userId, subOrganizationId });
+    } catch {
+      // A broken log sink is not worth a 500 to the person who just registered.
+    }
+  }
+
   /**
    * Best-effort. A lookup failure must never stop a person registering, so it degrades to
    * no exclusions rather than propagating. Relayer learned this the same way.
@@ -142,7 +161,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       }
 
       // Lost the race. The winner's sub-organization is the real one; ours is an orphan in
-      // Turnkey and is logged by the caller for out-of-band reconciliation.
+      // Turnkey, reported here for out-of-band reconciliation. Both exits report it: the throw
+      // below carries the id in its message, but that message is replaced with "Internal server
+      // error" outside local development, so on the rarer path it would otherwise be lost.
+      reportOrphan(userId, created.subOrganizationId);
       const winner = await deps.repository.findByUserId(userId);
       if (!winner) {
         throw new Error(

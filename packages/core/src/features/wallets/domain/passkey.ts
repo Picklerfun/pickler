@@ -40,6 +40,19 @@ export interface ChallengeOptions {
   excludeCredentials?: { id: string; type: "public-key"; transports?: string[] }[];
 }
 
+/**
+ * The transports a browser may report, in the WebAuthn spelling `AuthenticatorTransport` uses.
+ *
+ * It is the whole of what `toTurnkeyTransports` below can produce a valid Turnkey value from:
+ * Turnkey's `v1AuthenticatorTransport` has exactly five members, and anything else — the
+ * "smart-card" and "cable" the spec also defines, or a word an attacker invents — becomes an
+ * `AUTHENTICATOR_TRANSPORT_SMART-CARD` that Turnkey rejects after the person has already
+ * completed the biometric ceremony. Callers validate against this before the value travels.
+ * The correspondence with the vendor enum is asserted against @turnkey/http's types in
+ * @pickler/infrastructure, which is the only package allowed to see them.
+ */
+export const SUPPORTED_TRANSPORTS = ["ble", "hybrid", "internal", "nfc", "usb"] as const;
+
 export function toTurnkeyTransports(transports: string[] | undefined): string[] {
   if (!transports?.length) {
     return ["AUTHENTICATOR_TRANSPORT_INTERNAL"];

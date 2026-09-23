@@ -9,8 +9,9 @@
     "bindings": [{ "name": "AGENT_LEDGER", "class_name": "AgentLedger" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentLedger"] }],
-  // Non-secret configuration. Secrets (SUPABASE_SECRET_KEY, ENCRYPTION_KEY) are set with
-  // `wrangler secret put` or .dev.vars locally; never commit them.
+  // Non-secret configuration. Secrets (SUPABASE_SECRET_KEY, ENCRYPTION_KEY,
+  // TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY) are set with `wrangler secret put` or
+  // .dev.vars locally; never commit them.
   "vars": {
     "APP_ENV": "development",
     "SUPABASE_URL": "",
@@ -18,5 +19,10 @@
     "JWT_AUDIENCE": "authenticated",
     "SUPER_ADMIN_EMAILS": "",
     "ALLOWED_ORIGINS": "http://localhost:3000",
+    // /v1/signing is mounted only when the Turnkey bindings above and below are all present.
+    "TURNKEY_PARENT_ORG_ID": "",
+    "TURNKEY_RPID": "localhost",
+    "TURNKEY_APP_NAME": "Pickler",
+    "CHAIN_ID": "10143",
   },
 }

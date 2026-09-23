@@ -14,11 +14,14 @@ import { demoRoutes } from "./routes/demo";
 import { growthRoutes } from "./routes/growth";
 import type { createGrowthServices } from "./growth/services";
 import { consoleRoutes, type ConsoleServices } from "./routes/console";
+import { signingRoutes, type SigningRouteServices } from "./routes/signing";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
   console?: ConsoleServices;
   growth?: ReturnType<typeof createGrowthServices>;
+  /** Absent when the deployment has no Turnkey bindings; the rest of the API still serves. */
+  custody?: SigningRouteServices;
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -38,6 +41,9 @@ export function createApp(services: Services) {
 
   if (services.console) {
     app.route("/v1/console", consoleRoutes(services.console));
+  }
+  if (services.custody) {
+    app.route("/v1/signing", signingRoutes(services.custody));
   }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
