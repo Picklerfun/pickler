@@ -150,6 +150,13 @@ after the phone approves, but the new credential must exist before the phone can
 that adds it. Relayer's modal already numbers it *step 1 create, step 2 verify*. The three screens
 stay; both steps happen inside "Use my phone", so `recovered` arrives with the passkey saved.
 
+**The PRF signer is retired.** `apps/web/src/features/wallet/lib/mera-signer.ts` derives a private
+key from a passkey's PRF output, on the same relying party this specification registers passkeys
+against, and it asks for *whichever* passkey the person has for that host. Left in place it would
+be a second wallet for the same person, able to take the Turnkey credential — which exists only to
+authorise activities — and turn it into key material. Turnkey becomes the only custody path;
+`connect` keeps only the injected browser wallet, for a wallet the person already had.
+
 **The board keeps real data.** The design's right-hand column is a self-playing tetris with
 invented agent names. `SpawnBoard` already renders from `toAuthBoardData`. It keeps its real data
 and takes the design's visual treatment: the same effect without inventing activity that did not
