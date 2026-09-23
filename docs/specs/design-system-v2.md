@@ -380,3 +380,112 @@ other ink on every other ground has room.
 Everything in this section is measured by `scripts/design/`, which runs against the rendered page
 rather than against this table — because the failure that matters is a component reading the wrong
 token, and a table cannot see that.
+
+---
+
+## Validation
+
+Measured on 2026-09-23 against the rendered application, over sixty-two commits. Everything below is
+output, not intention.
+
+**Repository gates.** Typecheck 10 of 10 packages, lint clean with no warnings, Prettier clean,
+`npm test` 559 tests with 558 passing and 1 skipped and no failures, and `@pickler/web` builds.
+
+**The five rendered checks**, over all 15 routes, none blocked and none failing: `surfaces`,
+`tokens`, `contrast`, `type` and `shots` — 30 screenshots at 1400 and 390. The harness's own suite
+is 13 tests.
+
+Fifteen routes is the number worth noting, because the plan started from five. The studio went from
+one measurable route to seven and from 87 text elements to 382; the account contributed three; the
+portfolio three. Most of what the checks found, they found on routes that did not exist when the
+checks were written.
+
+### What came close
+
+`--pk-ink-faint` on `--pk-panel-3` on dark measures **4.61:1**, clearing AA by eleven hundredths and
+the narrowest margin in the ink ramp. `--pk-ink-muted` on `--pk-panel-3` on light is **4.99:1**. Both
+are recorded so that darkening either panel is a considered decision rather than an accident. The
+narrowest figure in the whole system remains `--pk-cyan-ink` on `--pk-panel-3` at 4.54:1, already
+recorded above.
+
+The ink ramp had to be recomputed twice during implementation, both times because it was measured
+against page grounds rather than panel grounds. The first correction, `#757B97`, was itself wrong at
+3.44:1 on `--pk-panel-3`. A ramp has to be measured against every ground it can land on.
+
+### What behaved differently from the plan
+
+**Three defects were invisible to every check by construction, and all three were real.**
+
+The studio's Tech & Science beat read `--pk-violet-ink`, which is `#B9A6FF` on dark, where the canvas
+draws `#5B3CE0`. It had been the wrong colour since the screen was built. `tokens` passed it because
+it _is_ a token; nothing else looked because it is a 13px square. Seven of the eight beats resolved
+correctly by coincidence.
+
+Five `span.mark` elements carried `data-surface="dark"` to reach a violet no light token held —
+inversion used as a colour lookup. `contrast` walks text nodes and those spans have none; `tokens`
+was satisfied because the value genuinely is a token on that subtree. Both checks were working and
+both were silent.
+
+`?section=picks` typechecked clean and answered 500: `SECTIONS` lived in a `"use client"` module, so
+a server component received a client reference rather than an array.
+
+**The agent palette was missing a member.** It held a tint and an ink per hue and no fill, which is
+why a mark carrying no text had nothing to read and why the seventh hue was unreachable on light at
+all. It is now seven surface-independent `--pk-agent-<hue>-fill` tokens: a mark is not text, so an
+agent is one colour wherever it sits. Weather is an eighth beat with no palette member and takes
+`--pk-ink-soft`; the palette is not exhaustive over the beats.
+
+**Alpha over a hex is not a colour, and the proof is ground-dependence.** `#C8F03A` at 0.07
+composites to `#181D1C` over the dark page — a visible lift — and to `#FBFEF1` over white, four
+values from white in one channel. The same declaration was a tint on one surface and nothing at all
+on the other. Where a converted value now renders more strongly on light than a literal port would,
+that is deliberate: 0.07 on light was never a tint.
+
+**A disabled control states its state in colour.** `.pk-button:disabled` dimmed with `opacity: 0.4`
+and measured 3.80:1 on a panel and 2.79:1 as a ghost. Three screens hit it independently and each
+repaired it locally before it was fixed at the source. The WCAG exemption for incidental controls
+does not apply here: on the studio, Top up and Withdraw are disabled _permanently_, because what
+they do is not built, so their labels describe what the product does not yet do and a person has
+reason to read them.
+
+### What the checks could not see, and what was done about it
+
+Three times an instrument was broken in a way that looked exactly like a finding: a transition read
+at t=0, a PNG decoder assuming RGBA where Chromium emits three bytes per pixel, and a fixture whose
+two-class element matched no selector. Each was caught by constructing the failing case on purpose,
+never by inspection.
+
+Two checks were themselves wrong while green. `surfaces` proved whichever nested pair came first in
+document order, so a page with three inverted blocks had one of them measured; it now enumerates
+every pair and asserts each by name. `contrast` modelled element opacity by dimming the ink and
+painting it over an already-dimmed ground, landing the opacity twice — 2.53:1 where the browser
+paints 4.38:1 — because `opacity` creates a stacking context and the group composites once. The test
+that certified the old model used a dimmed element with no background of its own, the one case where
+both models agree. **A test that passes under both the right and the wrong implementation is not a
+test of that implementation.**
+
+`DESIGN_BASE_URL` now has no default and the checks refuse to run without it. The old default,
+`localhost:3000`, is another checkout of this repository on this machine, serving the same
+application under the same title on a different branch — so a run without the variable did not fail,
+it swept another branch's design system and printed `clean over all 14 route(s)`. The checks now
+also read three token values off this tree and off the page before measuring anything, and refuse a
+server that disagrees. Exit 2 means "refused to measure" throughout and is distinct from exit 1,
+"measured and found something".
+
+Every assertion that a block must invert now names its element by id. Locating a block by
+`[data-surface]` meant that removing the attribute stopped the element matching, so the failure
+arrived as "the block is gone" and the sharper branch — "this matches, but whatever makes it look
+inverted is a literal rather than the system" — was unreachable code.
+
+### What was left
+
+`auth` (23 accent-alpha literals) and `apply` (16) are deferred with their reason: both are
+dark-pinned and awaiting canvases that do not exist, so converting them now means choosing token
+pairs against a composition that is about to change. The order that works when those canvases land
+is to convert first and design against what the pairs actually paint. The 5 remaining literals in
+`styles.css` are the `--pk-*-edge` definitions and belong there.
+
+Every colour in both products that any route or interaction can reach resolves to a token.
+
+The studio's rail truncates "Public profile" to "Public pro…" at 1400px. Left as drawn; it is a
+layout question for the next pass rather than a token one.
