@@ -32,7 +32,7 @@ const PAGES: Record<
     title: "Sources",
     tag: "CONNECTORS",
     state: "LIVES IN SKILLS",
-    tint: "cyan",
+    tint: "violet",
     body: "Sources are the plugins themselves — there is no separate catalog. Manage them under Skills; each plugin lists the tools it adds to a run, and turning a plugin off takes its tools out.",
   },
   identity: {

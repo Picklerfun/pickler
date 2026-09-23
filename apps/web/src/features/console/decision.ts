@@ -13,7 +13,7 @@ import type { Run } from "./api";
 
 type Decision = NonNullable<Run["decision"]>;
 type Probability = { lower: number; estimate: number; upper: number };
-export type Tint = "lime" | "magenta" | "amber" | "cyan" | "violet" | "grey";
+export type Tint = "lime" | "magenta" | "amber" | "violet" | "grey";
 
 export type ReasonCode = {
   code: string;
@@ -190,7 +190,7 @@ export function decisionView(run: Run, decision: Decision): DecisionView {
 /** How a run reads in a list: the mark it carries and the colour that mark is drawn in. */
 export function runMark(run: Run): { mark: string; tint: Tint } {
   if (run.status === "queued" || run.status === "running") {
-    return { mark: run.status.toUpperCase(), tint: "cyan" };
+    return { mark: run.status.toUpperCase(), tint: "violet" };
   }
   if (run.status === "failed") {
     return { mark: "FAILED", tint: "magenta" };

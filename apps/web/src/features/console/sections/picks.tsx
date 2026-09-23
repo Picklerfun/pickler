@@ -104,11 +104,11 @@ function Forecast({ view }: { view: DecisionView }) {
             </span>
           </div>
           <div className={styles.row}>
-            <span className={styles.key} data-tint="cyan" data-fill="true">
+            <span className={styles.key} data-tint="violet" data-fill="true">
               <span className={styles.keyBand} />
               {two(band.lower)} – {two(band.upper)}
             </span>
-            <span className={styles.key} data-tint="cyan">
+            <span className={styles.key} data-tint="violet">
               <span className={styles.keyTick} />
               estimate {two(band.estimate)}
             </span>

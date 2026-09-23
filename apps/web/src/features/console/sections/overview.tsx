@@ -120,8 +120,9 @@ export function Overview({
               aria-label="Market ID"
               className={styles.fieldGrow}
             />
+            {/* Not `glow`: that is the marketing call to action, and it paints a half-white edge
+                no token holds. The canvas draws Run now as a flat lime fill with no shadow. */}
             <Button
-              glow
               disabled={runsLocked || !canManage || busy || agent.paused}
               title={
                 runsLocked

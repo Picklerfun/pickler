@@ -12,14 +12,18 @@ function eventTint(type: string): Tint {
   if (/complete|paper/i.test(type)) {
     return "lime";
   }
-  if (/model|policy|assess/i.test(type)) {
-    return "cyan";
-  }
-  if (/tool|search|page|odds|evidence|source/i.test(type)) {
+  if (/model|policy|assess|tool|search|page|odds|evidence|source/i.test(type)) {
     return "violet";
   }
   return "grey";
 }
+
+/**
+ * The canvas steps its two violets apart on the trace: what the model and the policy decided is the
+ * accent itself, what a tool went and fetched is the accent's ink. Both are the same tint — the dot
+ * takes the deeper of the two, which is why this is a mark on the dot and not a tint of its own.
+ */
+const reasoned = (type: string) => /model|policy|assess/i.test(type);
 
 /**
  * An event's payload in one line. The trace is for reading, not for parsing, so a long object is
@@ -172,7 +176,7 @@ export function Activity({
                   events.map((event) => (
                     <div key={event.id} className={styles.event} data-tint={eventTint(event.type)}>
                       <span className={styles.eventRail}>
-                        <span className={styles.eventDot} />
+                        <span className={styles.eventDot} data-deep={reasoned(event.type)} />
                         <i />
                       </span>
                       <span className={styles.eventBody}>

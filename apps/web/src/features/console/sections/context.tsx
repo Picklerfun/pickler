@@ -95,7 +95,7 @@ export function Context({ agent, go }: { agent: Agent; go(section: SectionKey): 
               fired, by code.
             </p>
           </div>
-          <span className={styles.badge} data-tint="cyan">
+          <span className={styles.badge} data-tint="violet">
             {scope}
           </span>
         </div>
