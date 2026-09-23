@@ -108,8 +108,15 @@ on another is the failure this prevents, and it costs one field.
 
 Supabase Auth wants an email or a phone number, and a wallet has neither. The user is therefore
 created through the admin API with a **synthetic, non-deliverable address** derived from the wallet
-— `<lowercase-address>@wallet.pickler.fun` — marked confirmed, with no password. The session is
+— `<namespace>-<digest>@wallet.pickler.fun` — marked confirmed, with no password. The session is
 minted server-side; the service key never reaches the browser.
+
+The local part is a digest of the namespace and address rather than the address itself. The auth
+email travels in every access token's `email` claim, so it reaches the browser on every request and
+lands in any log or screen that reads a user's email; spelling the address into it would make all
+of those a disclosure of which wallet an account belongs to. The namespace stays visible so an
+operator can tell the chain families apart, and is hashed in as well so one address on two families
+remains two accounts.
 
 The synthetic address is an internal key and never a contact. It is not shown on any screen, it is
 never sent to, and **the real email collected before a paid read is a separate field on the
@@ -561,7 +568,7 @@ arrive.
 
 **`SIWE_DOMAIN` and `WALLET_EMAIL_DOMAIN`, on the API worker.** Without both, `walletAuthServices`
 returns `undefined` and **the wallet routes are not mounted at all** — the rest of the API serves
-normally, so the symptom is a 404 on `/v1/wallet/*` and nothing in the logs saying why. This is the
+normally, so the symptom is a 404 on `/v1/auth/wallet/*` and nothing in the logs saying why. This is the
 same gate `/v1/signing` sits behind, and it fails the same quiet way.
 
 `SIWE_DOMAIN` must equal the origin's host as the browser sees it. A signature is bound to the
@@ -571,6 +578,17 @@ it were replayed from somewhere else — the failure reads as an attack, not as 
 **`ALLOWED_ORIGINS` carrying both.** `https://pickler.fun,https://app.pickler.fun`. A missing
 origin fails **only in a browser**: the tests pass, `curl` passes, and the preflight is refused in
 front of a user. It is the one item here with no local symptom whatever.
+
+**The API's database role able to read `auth.users`.** `findUserIdByEmail` runs
+`SELECT id FROM auth.users WHERE email = $1 LIMIT 1` on the API's own pool, because the Supabase
+admin API has no lookup by email. `auth.users` is Supabase's schema rather than ours, so the grant
+is not something any migration in this repository makes.
+
+Its absence has the same shape as a missing origin — invisible to every gate — but a worse
+signature. It does not fail at boot and it does not fail in any test. It fails at run time, for a
+returning person, on the recovery path that only runs when two requests race to create the same
+account. So it presents as an intermittent sign-in failure affecting some people some of the time,
+which is close to the worst possible way for a permission to be missing.
 
 **Supabase's allowed redirect URLs carrying both callback origins.** `https://pickler.fun/auth/callback`
 and `https://app.pickler.fun/auth/callback`. An origin that is not listed does not error at
@@ -584,9 +602,10 @@ nowhere else. Changing the value later does not migrate anything — it **orphan
 already enrolled**, and every person has to enrol again. It must therefore be right before the
 first registration, not after. §7 has the consequence this buys and the cost it carries.
 
-**`wallet.pickler.fun` must never be made to accept mail.** Wallet accounts are given a synthetic
-address at that domain — `eip155-0x…@wallet.pickler.fun` — as an internal key, because Supabase
-requires an email and a wallet does not have one. It is an identifier, and it is not deliverable by
-design. Pointing MX records at that subdomain turns every one of those identifiers into a live
-mailbox, which makes an internal key into an address that can receive a password reset. Nothing in
-the code can detect that this has happened.
+**`wallet.pickler.fun` must never be made to accept mail.** Every wallet account is given an
+opaque key at that domain, because Supabase requires an email and a wallet does not have one. It is
+an identifier and it is not deliverable by design; only `identity.wallet_links` can resolve one
+back to a wallet. Pointing MX records at that subdomain turns every one of those identifiers into a
+live mailbox — which makes an internal key into an address that can receive a password reset.
+Nothing in the code can detect that this has happened, and the rule holds whatever shape the key
+itself takes.
