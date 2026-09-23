@@ -540,13 +540,20 @@ something else.
 does the wrong thing on any others — a preview deployment, a staging domain, a custom hostname.
 The fallback is a convenience for development, not a configuration.
 
-**These two are read at build time, not at run time**, and that distinction is the whole of the
-trap. Next inlines every `process.env.NEXT_PUBLIC_*` into the bundle when it compiles, and the
-middleware reads them at module scope, so a value added to `vars` in `apps/web/wrangler.jsonc` is
-a runtime binding that the built worker never consults. The build succeeds, the worker starts, the
-fallbacks stay in place, and nothing anywhere reports that the setting was ignored. They belong in
-the build environment — the CI or `wrangler deploy` step that runs `next build` — and setting them
-as worker vars instead is indistinguishable from not setting them at all.
+**Set these in the build environment, not only as worker `vars`** — the step that runs
+`next build`. `NEXT_PUBLIC_*` is Next's prefix for values inlined into the bundle at compile time,
+and the middleware reads both at module scope, so a value supplied only as a runtime binding in
+`apps/web/wrangler.jsonc` may never be consulted: the build succeeds, the worker starts, the
+fallbacks stay in place, and nothing reports that the setting was ignored. Setting them at build
+time is correct whichever way the bundler resolves them, which is why it is the instruction here.
+
+**This one is not yet confirmed against a production build.** Inlining is documented for the
+browser bundle; whether the edge bundle keeps a runtime `process.env` read is a property of the
+build and was not established. The dev server's output keeps the read — `.next/server/edge`
+contains `process.env.NEXT_PUBLIC_MARKETPLACE_HOST ?? "pickler.fun"` literally — but a dev artifact
+says nothing about `next build`, and the production build could not be run here for an unrelated
+reason. Someone should grep the built edge chunk for the literal before trusting worker `vars`
+alone. Until then the build-time setting is the one that is safe either way.
 
 **Both hostnames pointed at the web worker.** `pickler.fun` and `app.pickler.fun` must both route
 to it. The middleware decides what a host may serve; it never gets the chance if the host does not
