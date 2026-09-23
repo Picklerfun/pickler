@@ -65,6 +65,19 @@ method, kind, verified_at`; it is unique on `(namespace, address)`; `namespace` 
 | Lint and format      | `npm run lint` · `npx prettier --check .`                         |
 | Generate a migration | `cd packages/infrastructure && npx drizzle-kit generate`          |
 
+**The dev server is already running on port 3001 and it serves this worktree.** Do not start your
+own with `npm run dev`: ports 3000 and 3002 have both been taken by other checkouts or other
+agents during this work, so a second server lands on whichever port is free and comes up without
+whatever the running one has behind it. An agent on this plan started one, got four 500s, and had
+to prove the failures were not theirs. Use `http://localhost:3001`, and if it is not answering,
+say so rather than starting a replacement — a server that looks like ours and is not is the same
+hazard as the design checks measuring another branch.
+
+The API worker is **not** running, so routes that call it may answer 500 with
+`Pickler API request failed (503)`. That is the environment, not your change. The way to tell them
+apart is what that agent did: move your file aside, re-request, and compare — byte-identical
+output proves the failure was already there.
+
 **Commit by path, always:** `git commit -m "..." -- <paths>`. Several agents share this worktree's
 index; bare `git commit` commits whatever is staged, including someone else's work. Never
 `git clean`, `git checkout .` or `git reset --hard`.
@@ -438,11 +451,16 @@ export function decide(host: string | null, pathname: string, hosts: ProductHost
   if (product === "either") {
     return { kind: "serve" };
   }
+  // Hoisted above the ownership check on purpose. `ownerOf("/")` is `marketplace` — correctly, the
+  // landing lives there — so on the studio host the root fails `owner === product` and would fall
+  // through to notFound. That would 404 the studio's homepage for every visitor, and the rewrite
+  // below would be unreachable for the one path it exists to serve.
+  if (product === "studio" && pathname === "/") {
+    return { kind: "rewrite", to: "/console" };
+  }
   const owner = ownerOf(pathname);
   if (owner === "either" || owner === product) {
-    return product === "studio" && pathname === "/"
-      ? { kind: "rewrite", to: "/console" }
-      : { kind: "serve" };
+    return { kind: "serve" };
   }
   return owner === "studio"
     ? { kind: "redirect", to: `https://${hosts.studio}${pathname}` }
