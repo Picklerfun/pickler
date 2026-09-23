@@ -15,12 +15,12 @@ import { GROUND, ROUTES } from "./routes.mjs";
  *
  * Where the block carries an authored hook the selector names it and the check asserts the
  * data-surface separately, which tells "the block is gone" apart from "the block lost its surface".
- * The portfolio's total panel has neither id nor aria-label, so its selector has to lean on
- * [data-surface] to find it at all and the two failures collapse into one message. An id there
- * would separate them. */
+ * A selector that leans on [data-surface] to find the block at all cannot reach the second of
+ * those: a block that lost its surface stops matching, so it reports as missing and the sharper
+ * message never fires. Every entry here names a hook the screen authored for it. */
 const MUST_NEST = {
   landing: "#how",
-  "portfolio-connected": 'main section[data-surface="dark"]',
+  "portfolio-connected": "#portfolio-balance",
   account: 'section[aria-label="Wallet"] [data-surface="light"]',
 };
 
