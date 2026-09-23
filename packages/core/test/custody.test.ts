@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
 import type {
   ChallengeStore,
+  CustodyAccount,
   CustodyRepository,
   StoredChallenge,
   SubOrganizationCreator,
@@ -27,7 +28,7 @@ export function fakes() {
   const credentials: { credentialId: string; transports: string[] }[] = [];
   const repository: CustodyRepository = {
     async findByUserId() {
-      return rows.account as never;
+      return (rows.account as CustodyAccount | null) ?? null;
     },
     async listCredentials() {
       return credentials;
@@ -118,4 +119,145 @@ test("a failed credential lookup never blocks the challenge", async () => {
 
   assert.equal(options.challenge, "r1");
   assert.equal(options.excludeCredentials, undefined);
+});
+
+const attestation = {
+  credentialId: "cred-1",
+  clientDataJson: "Y2xpZW50",
+  attestationObject: "YXR0",
+  transports: ["internal"],
+};
+
+test("registering creates the sub-organization and returns the account", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  const account = await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID on This Mac",
+    challenge: options.challenge,
+    attestation,
+  });
+
+  assert.equal(account.subOrganizationId, "sub-1");
+  assert.equal(account.address, "0x1111111111111111111111111111111111111111");
+  assert.equal(f.calls(), 1);
+});
+
+test("a replay returns the existing account and never mints a second sub-organization", async () => {
+  const f = fakes();
+  const s = service(f);
+  const first = await s.issueChallenge(USER, "ana@pickler.fun");
+  await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: first.challenge,
+    attestation,
+  });
+
+  const second = await s.issueChallenge(USER, "ana@pickler.fun");
+  const account = await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: second.challenge,
+    attestation,
+  });
+
+  assert.equal(account.subOrganizationId, "sub-1");
+  assert.equal(f.calls(), 1, "Turnkey must not be called again");
+});
+
+test("a challenge cannot be spent twice", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: options.challenge,
+    attestation,
+  });
+  f.rows.account = null; // force past the idempotency pre-check
+
+  await assert.rejects(
+    () =>
+      s.register(USER, {
+        email: "ana@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    /expired/i,
+  );
+});
+
+test("a challenge belonging to someone else is refused", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  await assert.rejects(
+    () =>
+      s.register("22222222-2222-4222-8222-222222222222", {
+        email: "otra@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    /expired/i,
+  );
+});
+
+test("the loser of a concurrent submit gets the winner's account, not a 500", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  // The pre-check passes, then the unique index rejects the insert: saveRegistration reports
+  // created:false and findByUserId now answers with the winner's row. The lookup must answer
+  // null the first time, or the pre-check returns early and the backstop is never exercised.
+  f.repository.saveRegistration = async () => ({ created: false });
+  let lookups = 0;
+  f.repository.findByUserId = async () => {
+    lookups += 1;
+    return lookups === 1
+      ? null
+      : {
+          userId: USER,
+          subOrganizationId: "sub-winner",
+          masterWalletId: "wal-winner",
+          rootUserId: "usr-winner",
+          address: "0x2222222222222222222222222222222222222222",
+        };
+  };
+
+  const account = await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: options.challenge,
+    attestation,
+  });
+
+  assert.equal(account.subOrganizationId, "sub-winner");
+  assert.equal(f.calls(), 1, "the pre-check must have been passed, not short-circuited");
+  assert.equal(lookups, 2, "the winner must be re-read after the conflict");
+});
+
+test("a conflict with no readable winner fails loudly rather than returning nothing", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  f.repository.saveRegistration = async () => ({ created: false });
+  f.repository.findByUserId = async () => null;
+
+  await assert.rejects(
+    () =>
+      s.register(USER, {
+        email: "ana@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    /orphan sub-org sub-1/,
+  );
 });
