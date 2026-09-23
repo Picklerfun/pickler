@@ -78,3 +78,5 @@ export {
   MONAD_ACCOUNT,
   type SubOrganizationCreatorConfig,
 } from "./turnkey/turnkey-sub-organization.js";
+
+export { PostgresCustodyStore } from "./persistence/custody-store.js";
