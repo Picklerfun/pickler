@@ -79,7 +79,7 @@ anyone prefers.
 | `--pk-ink`            | `#0B0D1A`                                                          | `#FFFFFF`                    |
 | `--pk-ink-soft`       | _falls back to `--pk-ink`_                                         | `#C7CAD8`                    |
 | `--pk-ink-muted`      | `#5A5F78`                                                          | `#9AA0B8`                    |
-| `--pk-ink-faint`      | `#6B7186`                                                          | `#5A5F78`                    |
+| `--pk-ink-faint`      | `#6B7186`                                                          | `#757B97` (see Validation)   |
 | `--pk-panel`          | `#F5F6FA`                                                          | `#15182A`                    |
 | `--pk-panel-2`        | `#F1F2F7`                                                          | `#1C2036`                    |
 | `--pk-panel-3`        | `#E2E5EE`                                                          | `#25293D`                    |
@@ -89,9 +89,10 @@ anyone prefers.
 | `--pk-popover`        | `#FFFFFF`                                                          | `#15182A`                    |
 | `--pk-popover-shadow` | `0 1px 0 rgba(11,13,26,.08), 0 24px 60px -20px rgba(11,13,26,.35)` | `0 30px 80px rgba(0,0,0,.5)` |
 
-`--pk-ink-muted` and `--pk-ink-faint` swap roles between surfaces rather than inverting: `#5A5F78`
-is the muted tone on light and the faint tone on dark. That is what the canvases do, and it works
-because that grey sits near the middle of both ranges.
+`--pk-ink-muted` and `--pk-ink-faint` were drawn to swap roles between surfaces rather than
+inverting: `#5A5F78` is the muted tone on light, and the canvases use that same grey as the faint
+tone on dark. The swap is no longer exact — on dark that grey measures 3.08:1 and cannot carry body
+text, so the faint level there is lightened to `#757B97`. See **Validation**.
 
 **Light has three ink levels; dark has four.** No light canvas uses a softened ink — body copy
 inside a white card is full-strength `#0B0D1A`, and the next step down is already the muted grey.
@@ -142,10 +143,10 @@ state, never as a control, so it never borrows a button's fill.
 | info    | `#F1EEFF` / `#5B3CE0` | `#231B3E` / `#B9A6FF` |
 | cool    | `#EAF0FF` / `#2F55C8` | `#141C33` / `#5B8CFF` |
 
-The dark tints for `info` and `cool` are the only values in this document not read directly from a
-canvas: the canvases show those two pairs on light only. They are derived by the same method the
-observed dark pairs use — the accent at roughly 18% over the ground — and must be checked against a
-canvas that uses them before being relied on.
+The dark tints for `info` and `cool` are not read from a canvas: the canvases show those two pairs
+on light only. They are derived by the same method the observed dark pairs use — the accent at
+roughly 18% over the ground — and must be checked against a canvas that uses them before being
+relied on. They are not the only departures any more; **Validation** lists them all.
 
 ### Shape
 
@@ -260,3 +261,27 @@ screens, the landing variants — are not in this change. Neither is the agent-t
 
 Specification two of the custody work (agent sub-wallets and their policies) is unaffected: it adds
 no screens in this set.
+
+## Validation
+
+Every other value in this document was read from a canvas. These were not, and each is recorded
+here so that nobody restores one from the canvas in six months and undoes it silently.
+
+**`--pk-ink-faint` on dark, `#5A5F78` → `#757B97`.** The canvas value measures **3.08:1** on
+`#0B0D1A`. That fails AA for body text, and it was already in use at 12px on the landing and the
+portfolio. `#757B97` is the least lightening that reaches **4.6:1** with the hue and saturation
+held, so it is the same grey moved only as far as it had to move: hue 230.0° → 229.4°, saturation
+14.3% → 14.1%, lightness 41.2% → 52.6%. It stays well below `--pk-ink-muted`, so the four dark ink
+levels still step apart rather than collapsing into three — 4.63, 7.45, 11.84, 19.32.
+
+The canvas is not wrong here and the transcription was not careless. The design was drawn by eye,
+and eyes do not compute contrast ratios; this is the class of defect that only a measurement finds.
+It was found by `scripts/design/contrast.mjs` on its first run against a rendered page.
+
+**The dark `info` and `cool` state tints.** Derived rather than observed, for the reason given under
+**State pairs**: no canvas in this set shows those two pairs on dark. They still want checking
+against a canvas that uses them.
+
+Everything in this section is measured by `scripts/design/`, which runs against the rendered page
+rather than against this table — because the failure that matters is a component reading the wrong
+token, and a table cannot see that.

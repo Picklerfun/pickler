@@ -9,23 +9,57 @@ const WHITE = [255, 255, 255, 1];
 const BLACK = [0, 0, 0, 1];
 const round = (n) => Number(n.toFixed(2));
 
+/** Checks every case and reports all of them, because an assert placed after a failing assert in
+ *  the same test never runs. That is not hypothetical here: a wrong expectation in this file rode
+ *  along unexecuted behind an earlier failure, and the file was red the whole time without ever
+ *  showing it. */
+const all = (cases) => {
+  const wrong = cases.filter(([actual, expected]) => actual !== expected);
+  assert.deepEqual(
+    wrong.map(([actual, expected, what]) => `${what}: got ${actual}, expected ${expected}`),
+    [],
+  );
+};
+
 test("black on white is 21.00, the top of the scale", () => {
-  assert.equal(round(ratio(BLACK, WHITE)), 21);
-  assert.equal(round(ratio(WHITE, BLACK)), 21, "the ratio does not care which is the ink");
+  all([
+    [round(ratio(BLACK, WHITE)), 21, "black on white"],
+    [round(ratio(WHITE, BLACK)), 21, "white on black — the ratio does not care which is the ink"],
+  ]);
 });
 
 test("anything on itself is 1.00", () => {
-  for (const colour of [WHITE, BLACK, [11, 13, 26, 1], [200, 240, 58, 1]]) {
-    assert.equal(round(ratio(colour, colour)), 1);
-  }
+  all(
+    [WHITE, BLACK, [11, 13, 26, 1], [200, 240, 58, 1]].map((colour) => [
+      round(ratio(colour, colour)),
+      1,
+      `${hex(colour)} on itself`,
+    ]),
+  );
 });
 
 test("published pairs land on their published ratios", () => {
   // WebAIM's checker gives these to two decimals; they exercise the mid-range the two thresholds
   // actually live in, which 21.00 and 1.00 do not.
-  assert.equal(round(ratio([119, 119, 119, 1], WHITE)), 4.48, "#777777 on white is just under 4.5");
-  assert.equal(round(ratio([117, 117, 117, 1], WHITE)), 4.61, "#757575 on white clears it");
-  assert.equal(round(ratio(WHITE, [11, 13, 26, 1])), 19.32, "white on Pickler's night blue");
+  all([
+    [round(ratio([119, 119, 119, 1], WHITE)), 4.48, "#777777 on white is just under 4.5"],
+    [round(ratio([117, 117, 117, 1], WHITE)), 4.61, "#757575 on white clears it"],
+    [round(ratio(WHITE, [11, 13, 26, 1])), 19.32, "white on Pickler's night blue"],
+  ]);
+});
+
+test("the dark ink levels step apart rather than collapsing", () => {
+  // The four levels of §4, on the night-blue ground, after --pk-ink-faint was lightened to clear
+  // body text. If two of these ever meet, the surface has three levels wearing four names.
+  const NIGHT = [11, 13, 26, 1];
+  all([
+    [round(ratio([117, 123, 151, 1], NIGHT)), 4.63, "--pk-ink-faint #757B97 clears 4.5 for body"],
+    [round(ratio([154, 160, 184, 1], NIGHT)), 7.45, "--pk-ink-muted #9AA0B8"],
+    [round(ratio([199, 202, 216, 1], NIGHT)), 11.84, "--pk-ink-soft #C7CAD8"],
+    [round(ratio(WHITE, NIGHT)), 19.32, "--pk-ink #FFFFFF"],
+    // The canvas value this replaced, kept so the reason survives the change.
+    [round(ratio([90, 95, 120, 1], NIGHT)), 3.08, "the old #5A5F78, which failed body text"],
+  ]);
 });
 
 test("parse reads rgb and rgba, and rejects what is not a colour", () => {

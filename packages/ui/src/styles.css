@@ -148,7 +148,11 @@
   --pk-ink: #ffffff;
   --pk-ink-soft: #c7cad8;
   --pk-ink-muted: #9aa0b8;
-  --pk-ink-faint: #5a5f78;
+  /* Lightened from the canvas. #5A5F78 measures 3.08:1 on this ground, which fails AA for body
+   * text, and it was in use at 12px. This is the least lightening that reaches 4.6:1 with the hue
+   * and saturation held, so it is the same grey and has moved only as far as it had to. Do not
+   * restore it from the canvas: the canvas was drawn by eye and eyes do not compute ratios. */
+  --pk-ink-faint: #757b97;
   --pk-panel: #15182a;
   --pk-panel-2: #1c2036;
   --pk-panel-3: #25293d;
