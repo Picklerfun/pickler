@@ -17,9 +17,10 @@ import { WaitlistForm } from "./waitlist-form";
 export function LandingPage({ initial }: { initial: LandingResponse }) {
   return (
     <LandingDataProvider initial={initial}>
-      {/* Pinned dark until the landing is rebuilt from its canvas: SpaceBackground paints an
-          opaque gradient and a starfield across the whole page, which is the ground this
-          composition really has. */}
+      {/* Pinned dark because SpaceBackground paints an opaque gradient and a starfield over the
+          whole page, which is the ground this composition really has. The new canvas is a white
+          page with no starfield, so the pin and SpaceBackground are one piece of the old design
+          and the task that rebuilds this page deletes both together. */}
       <div className={styles.page} data-surface="dark">
         <SpaceBackground />
         <Tape />
