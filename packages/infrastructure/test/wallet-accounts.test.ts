@@ -35,6 +35,24 @@ test("a Solana address keeps its case in the key, because base58 is case-signifi
   );
 });
 
+/**
+ * The collision itself, with two addresses that are both valid base58 and differ only in case.
+ * A second `toLowerCase()` in the derivation maps them onto one synthetic address and therefore
+ * one Supabase account — two people sharing an identity, which is the failure this whole
+ * specification exists to prevent. It is invisible on EVM, where `normalizeAddress` has already
+ * lower-cased, so every test one would naturally write there passes either way.
+ */
+test("two Solana addresses differing only in case are two accounts, never one", () => {
+  const one = normalizeAddress("solana", "7EqQdEULxWcraVx3mXKFjc84LhCkMGZCkRuDpvcMwJeK");
+  const other = normalizeAddress("solana", "7eQqDeuLXwCRAvX3MxkfJC84LHcKmgzcKrUdPVCmWjEk");
+  assert.notEqual(one, other);
+  assert.equal(one.toLowerCase(), other.toLowerCase(), "they collide under a second lower-casing");
+  assert.notEqual(
+    syntheticEmail("solana", one, "wallet.pickler.fun"),
+    syntheticEmail("solana", other, "wallet.pickler.fun"),
+  );
+});
+
 test("the same address on two chain families gives two accounts", () => {
   assert.notEqual(syntheticEmail("eip155", EVM, "d"), syntheticEmail("solana", SOLANA, "d"));
   assert.ok(syntheticEmail("eip155", EVM, "d").startsWith("eip155-"));
