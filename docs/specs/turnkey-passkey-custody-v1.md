@@ -204,7 +204,39 @@ Written test-first.
 Agent sub-wallets and their policies (specification two); email recovery, which the design
 deliberately leaves off; Solana; the agent-facing parts of `wallet_accounts.chain` beyond Monad.
 
-## 10. Open decisions
+## 10. Before any of this works in a deployment
+
+Two settings decide whether the flow functions at all, and neither lives in this repository's code.
+
+**The relying party.** `TURNKEY_RPID` is the WebAuthn relying party. A passkey registered against one
+domain does not work on another and cannot be migrated — the person must enrol again. It must be the
+registrable domain or a suffix of the origin serving the app: serving `app.example.com` with
+`TURNKEY_RPID=example.com` works and covers the whole domain; the reverse does not. A wrong value is
+the most common cause of `SecurityError`, and nothing in the code can detect it. The design canvas
+and the retired PRF signer name different domains, so this must be settled before the first
+registration rather than after.
+
+**The email template.** `signInWithOtp` sends whichever the template contains: with
+`{{ .ConfirmationURL }}` it sends a magic link, with `{{ .Token }}` it sends a code. **A fresh
+Supabase project defaults to the link**, so the six-digit screen has nothing to type and email
+sign-in cannot complete. This is the default, not a misconfiguration, and the client cannot detect
+or work around it.
+
+Put `{{ .Token }}` in **both** the Magic Link and the Confirm signup templates. `shouldCreateUser:
+true` on an address nobody has used is a signup, so the confirmation template may be the one that
+fires; editing only Magic Link would leave sign-in working and sign-up broken, which is the worse
+failure because it looks fixed. Editing both is correct whichever fires.
+
+Hosted: Dashboard → Authentication → Emails → each template. Local: a `[auth.email.template.*]`
+block in `supabase/config.toml` pointing at a file under `supabase/templates/`, then
+`supabase stop && supabase start`, because the settings are read when the containers start.
+`config.toml` does not reach a hosted project, so both need doing.
+
+This repository already has `otp_length = 6` and `otp_expiry = 3600`. Every
+`[auth.email.template.*]` block is commented out and `supabase/templates/` does not exist, so the
+local stack currently sends a link.
+
+## 11. Open decisions
 
 - The `welcome` screen shows an AUSD and MON balance. `packages/chain` has the constants but no
   reader, so one viem client is needed. If that slips, the screen ships with the address and the
@@ -212,7 +244,7 @@ deliberately leaves off; Solana; the agent-facing parts of `wallet_accounts.chai
 - Whether X (Twitter) OAuth credentials exist for the Supabase project. If not, that button is
   hidden rather than shown dead.
 
-## 11. What specification two inherits
+## 12. What specification two inherits
 
 Each agent is **not** its own sub-organization. Inside the person's single sub-organization an
 agent is a wallet (`type='agent'`, never the master), a Turnkey user holding its own API key
