@@ -276,6 +276,12 @@ Playwright 1.63 is available globally with Chromium cached, and is deliberately 
 repository dependency: these are verification scripts run against a dev server, not a test suite the
 build depends on. They live in `scripts/design/`.
 
+Every check requires `DESIGN_BASE_URL` and refuses to run without it. This machine carries more than
+one checkout of this repository, each serving the same application under the same title on a
+different port, so a default port is not a convenience but a way to measure another branch and
+report the result as this one's. Nothing in the output would look wrong. Naming the port is what
+makes a number attributable to a tree.
+
 **Contrast, measured on the DOM.** Walk every text node in each route, read its computed colour and
 its nearest painted background, and compute the WCAG ratio from those two values. Body text must
 reach 4.5:1 and large text 3:1. This is stronger than checking §4's table in the way that matters:

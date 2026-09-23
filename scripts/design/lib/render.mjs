@@ -5,7 +5,21 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOLDS } from "../routes.mjs";
 
-const BASE = process.env.DESIGN_BASE_URL ?? "http://localhost:3000";
+/* No default, deliberately. This machine runs more than one checkout of this repository at once,
+ * and they serve the same application under the same <title> on different ports — so a wrong guess
+ * does not fail, it measures a different branch's design system and reports plausible numbers for
+ * work that is not here. A default cannot tell the two apart, and neither can a reader looking at
+ * the output. Naming the port is the only thing that makes a measurement attributable. */
+const BASE = process.env.DESIGN_BASE_URL;
+if (!BASE) {
+  process.stderr.write(
+    "DESIGN_BASE_URL is not set, and there is no safe default: another checkout of this same\n" +
+      "repository may be serving its own branch on the port a default would pick, which would be\n" +
+      "measured and reported as if it were this tree.\n\n" +
+      "  DESIGN_BASE_URL=http://localhost:3001 node scripts/design/<check>.mjs\n",
+  );
+  process.exit(2);
+}
 
 /* Playwright is installed globally and deliberately not a repository dependency, so `playwright`
  * does not resolve from here. Node ignores NODE_PATH for ESM, so the global install has to be

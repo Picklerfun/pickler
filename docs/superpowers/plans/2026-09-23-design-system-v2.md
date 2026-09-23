@@ -50,16 +50,16 @@ the dialect; the bindings show what is data and what is static.
 
 **Commands:**
 
-| Purpose               | Command                                                 |
-| --------------------- | ------------------------------------------------------- |
-| Dev server            | `npm run dev` (serves `http://localhost:3000`)          |
-| Dev server with data  | see below — **not** `npm run dev`                       |
-| The API fixture       | `node --import tsx scripts/design/fixture-api.mjs 8787` |
-| A verification script | `node scripts/design/<name>.mjs`                        |
-| Types                 | `npm run typecheck`                                     |
-| Lint and format       | `npm run lint` · `npx prettier --check .`               |
-| Everything            | `npm test`                                              |
-| Web build             | `npx turbo build --filter=@pickler/web`                 |
+| Purpose               | Command                                                                |
+| --------------------- | ---------------------------------------------------------------------- |
+| Dev server            | `npm run dev` (serves `http://localhost:3000`)                         |
+| Dev server with data  | see below — **not** `npm run dev`                                      |
+| The API fixture       | `node --import tsx scripts/design/fixture-api.mjs 8787`                |
+| A verification script | `DESIGN_BASE_URL=http://localhost:3001 node scripts/design/<name>.mjs` |
+| Types                 | `npm run typecheck`                                                    |
+| Lint and format       | `npm run lint` · `npx prettier --check .`                              |
+| Everything            | `npm test`                                                             |
+| Web build             | `npx turbo build --filter=@pickler/web`                                |
 
 Every marketplace and auth route renders on the server and asks the API for its data, so with no API
 they answer 500 and a check reads a stack trace rather than a page. `scripts/design/fixture-api.mjs`
@@ -1328,6 +1328,7 @@ npm run typecheck && npm run lint && npx prettier --check . && npm test && npx t
 With `npm run dev` running:
 
 ```bash
+export DESIGN_BASE_URL=http://localhost:3001   # required; the checks refuse to guess
 for check in surfaces tokens contrast type; do
   echo "=== $check ==="
   node scripts/design/$check.mjs || echo "FAILED"
