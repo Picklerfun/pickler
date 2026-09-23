@@ -36,7 +36,6 @@ export function PasskeySheet({ kind, onClose }: { kind: SheetKind; onClose(): vo
       role="dialog"
       aria-modal="true"
       aria-labelledby="passkey-sheet-title"
-      data-surface="dark"
       onClick={onClose}
     >
       <span className={styles.veil} aria-hidden="true" />

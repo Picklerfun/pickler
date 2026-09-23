@@ -299,35 +299,40 @@
 
 /* The agent palette. A beat is an identity, so these are the accents themselves rather than the
    state scale — which has six entries and no orange, and would have put two of the eight in grey.
+   These are the seven shared `--pk-agent-*-fill` hues and not the per-surface accents: a swatch
+   does not change identity when the page around it does, and --pk-violet is #5B3CE0 on light, which
+   is right for ink and wrong for a dot. Weather is the eighth and the palette has seven, so it
+   takes the soft ink — see the report.
+
    Anchored on a local class because a CSS module refuses a selector that is only an attribute: the
    flow and the piece are inside .main, and the top bar's mark carries the attribute itself. */
 .main [data-swatch="lime"],
 .agentMark[data-swatch="lime"] {
-  --swatch: var(--pk-lime);
+  --swatch: var(--pk-agent-lime-fill);
 }
 .main [data-swatch="blue"],
 .agentMark[data-swatch="blue"] {
-  --swatch: var(--pk-blue);
+  --swatch: var(--pk-agent-blue-fill);
 }
 .main [data-swatch="violet"],
 .agentMark[data-swatch="violet"] {
-  --swatch: var(--pk-violet);
+  --swatch: var(--pk-agent-violet-fill);
 }
 .main [data-swatch="amber"],
 .agentMark[data-swatch="amber"] {
-  --swatch: var(--pk-amber);
+  --swatch: var(--pk-agent-amber-fill);
 }
 .main [data-swatch="orange"],
 .agentMark[data-swatch="orange"] {
-  --swatch: var(--pk-orange);
+  --swatch: var(--pk-agent-orange-fill);
 }
 .main [data-swatch="indigo"],
 .agentMark[data-swatch="indigo"] {
-  --swatch: var(--pk-violet-ink);
+  --swatch: var(--pk-agent-indigo-fill);
 }
 .main [data-swatch="magenta"],
 .agentMark[data-swatch="magenta"] {
-  --swatch: var(--pk-magenta);
+  --swatch: var(--pk-agent-magenta-fill);
 }
 .main [data-swatch="soft"],
 .agentMark[data-swatch="soft"] {
