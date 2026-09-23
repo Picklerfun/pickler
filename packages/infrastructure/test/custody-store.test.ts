@@ -74,13 +74,50 @@ test("a registration lands in every table, credential included", async (t) => {
     accounts: 1,
     passkeys: 1,
   });
-  // The wallet row carries the registration's wallet, marked as the master.
-  const { rows } = await store.pool.query<{ kind: string; subOrganizationId: string }>(
-    `SELECT kind, sub_organization_id AS "subOrganizationId"
+  // Every column the store writes, read back under its real name rather than the store's
+  // alias: a misspelled alias must fail here rather than quietly yield undefined.
+  const wallet = await store.pool.query(
+    `SELECT user_id, wallet_id, sub_organization_id, kind, name
        FROM wallets.wallets WHERE wallet_id = $1`,
     [input.walletId],
   );
-  assert.deepEqual(rows, [{ kind: "master", subOrganizationId: input.subOrganizationId }]);
+  assert.deepEqual(wallet.rows, [
+    {
+      user_id: input.userId,
+      wallet_id: input.walletId,
+      sub_organization_id: input.subOrganizationId,
+      kind: "master",
+      name: "Master Wallet",
+    },
+  ]);
+  const account = await store.pool.query(
+    `SELECT wallet_id, chain, address, address_format, path
+       FROM wallets.wallet_accounts WHERE wallet_id = $1`,
+    [input.walletId],
+  );
+  assert.deepEqual(account.rows, [
+    {
+      wallet_id: input.walletId,
+      chain: "monad",
+      address: input.address,
+      address_format: "ADDRESS_FORMAT_ETHEREUM",
+      path: "m/44'/60'/0'/0/0",
+    },
+  ]);
+  const passkey = await store.pool.query(
+    `SELECT user_id, credential_id, label, transports, device_type
+       FROM wallets.passkeys WHERE user_id = $1`,
+    [input.userId],
+  );
+  assert.deepEqual(passkey.rows, [
+    {
+      user_id: input.userId,
+      credential_id: input.credentialId,
+      label: input.label,
+      transports: input.transports,
+      device_type: input.deviceType,
+    },
+  ]);
 });
 
 test("a second registration for the same person is refused, not applied", async (t) => {
@@ -173,8 +210,8 @@ test("a challenge can be spent once and never again", async (t) => {
 
   const first = await custody.consume(challenge);
 
-  assert.equal(first?.userId, userId);
-  assert.equal(first?.expiresAt.getTime(), expiresAt.getTime());
+  // The whole record, so a misspelled alias cannot pass as an unchecked field.
+  assert.deepEqual(first, { userId, expiresAt });
   assert.equal(await custody.consume(challenge), null);
 });
 
