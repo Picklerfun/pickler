@@ -46,6 +46,26 @@ So: give fakes an array they push their inputs onto, assert `deepEqual` against 
 assert the negative too — that the collaborator was *not* reached when a guard should have stopped
 it, so the guard cannot drift below the call it protects.
 
+**A concurrency test over a cold connection pool does not race.** `Promise.all` across a fresh `pg`
+pool opens its connections one at a time, so the first query finishes before the second is
+dispatched and the test proves nothing. This plan's `consume` race test passed while `consume` was
+replaced by the sequential `SELECT`-then-`DELETE` it exists to rule out. Warm the connections first,
+then fire; under the same sabotage it then fails every run. Treat any test that races through a pool
+it has not warmed as untrustworthy.
+
+**Pin a vendor's response keys, not only its request literals.** A wrong request literal fails the
+build when typed against the SDK. A wrong response key read with `?.` becomes `undefined`, then a
+plausible error message that blames the vendor — while the thing the vendor actually created sits
+orphaned. That is how the V7/V8 defect in this plan would have presented: "Sub-organization was
+created without an id", on every single registration, pointing at Turnkey.
+
+**One barrel, one writer.** `packages/infrastructure/src/index.ts` is append-shaped, so two agents
+adding exports do not conflict and nothing warns them. Staging "only your own paths by name" is
+file-level granularity and does not protect it: one commit here swept in another agent's export line
+while its module was still untracked, leaving the branch exporting from a file git did not have — a
+break that surfaces in CI and nowhere local. Do not run two implementers concurrently when both may
+touch it.
+
 **Prove each test can fail before believing it.** Delete the line the test claims to cover and run
 it. If the suite stays green, the test is decoration. This found every defect listed above, and none
 of them were visible by reading.
