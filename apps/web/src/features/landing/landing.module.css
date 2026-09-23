@@ -55,11 +55,15 @@
 
 /* ---------- Mark: the coloured square the whole page is built from ---------- */
 
-/* The seven agent accents are six hues plus a second violet, and the second violet is the *dark
-   surface's* violet — #9B7BFF exists nowhere on the light ramp. So that one mark carries
-   data-surface="dark" and reads --pk-violet there. That is not a trick to dodge the token check; it
-   is the check's whole point: the value has a name, and the only way to reach the name is to be on
-   the surface that holds it. */
+/* The seven agent accents, each read from the palette's own hue token.
+ *
+ * These are hues rather than surface variants because a mark is not text: a 12px square exists to be
+ * told from the six beside it, so an agent is one colour wherever it sits. The seventh, violet, is
+ * the reason the tokens exist — #9B7BFF is the violet the dark surface holds, and until it had a
+ * name of its own the only way to reach it was to nest data-surface="dark" on the square and read
+ * --pk-violet there. That inverted a whole surface to fetch one colour, on a one-element subtree
+ * with nothing in it to invert, and it put five false positives in front of anything asserting on
+ * nesting. */
 .mark {
   display: block;
   flex: none;
