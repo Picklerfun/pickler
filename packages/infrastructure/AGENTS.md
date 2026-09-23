@@ -84,3 +84,15 @@ raw SQL, parameters, error messages or causes; ownership/configuration errors pa
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Chain balance reads
+
+`src/chain/balances.ts` exports `createBalanceReader`, the server-side reader behind the sign-in
+welcome screen, so `apps/web` needs no chain dependency. It takes network, token address and
+decimals from `@pickler/chain` — never literals — and refuses unsupported chain ids through
+`requireSupportedChain` rather than falling back to another network. It issues two plain JSON-RPC
+calls through an injectable `fetch` with `redirect: "manual"`, rejects non-success responses, and
+requires a hex-shaped `result`; `BigInt("")` is `0n`, so a looser check would publish an unread
+value as a zero balance. Each balance settles independently: a failed token read never erases a
+successful native read. A balance that could not be read is `null`, never `"0"`. Preserve that
+distinction — the interface says "unavailable" rather than showing an empty wallet.

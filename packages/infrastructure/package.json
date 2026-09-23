@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",
+    "@pickler/chain": "*",
     "@pickler/core": "*",
     "@supabase/supabase-js": "^2.116.0",
     "@turnkey/api-key-stamper": "^0.6.15",
