@@ -54,6 +54,15 @@ was nearly written up as a finding. Assert the target text is present before rep
 print the changed line, every time. An unverified green sabotage is worth less than no sabotage,
 because it is mistaken for proof.
 
+This has now happened twice, by two different mechanisms, and the second is worse: a whole harness
+reported every row as "green, not covered" — eleven fabricated findings — because `git diff` is
+empty for an untracked file and its failure regex was TAP syntax while the runner emits
+`ℹ fail 1`. Neither signal came from the tests. So a harness must prove itself before it is
+believed: diff the mutated file against pristine text held in memory rather than against git,
+assert the target string occurs exactly once, assert the name filter selects exactly one test, and
+assert that test is **green before** the mutation. A harness that cannot fail is the same defect as
+a test that cannot fail, one level up, and it fabricates evidence instead of merely missing it.
+
 **A concurrency test over a cold connection pool does not race.** `Promise.all` across a fresh `pg`
 pool opens its connections one at a time, so the first query finishes before the second is
 dispatched and the test proves nothing. This plan's `consume` race test passed while `consume` was
