@@ -75,7 +75,10 @@ export const passkeys = wallets
       userId: uuid("user_id").notNull(),
       credentialId: text("credential_id").notNull(),
       label: text("label").notNull(),
-      transports: text("transports").array().notNull().default(sql`array[]::text[]`),
+      transports: text("transports")
+        .array()
+        .notNull()
+        .default(sql`array[]::text[]`),
       deviceType: text("device_type"),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       lastUsedAt: timestamp("last_used_at", { withTimezone: true }),

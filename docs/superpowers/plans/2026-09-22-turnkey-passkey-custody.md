@@ -14,7 +14,7 @@
 
 ## Orientation for someone new to this repository
 
-**Layering is enforced by taste, not by a linter.** `packages/core` must never import a database client, an SDK, Hono or React. It declares interfaces (called *ports*) and receives implementations. Follow `packages/core/src/features/profiles/` as the reference shape: `domain/` holds rules and errors, `ports/` holds interfaces, `application/` holds a `createXService(deps)` factory.
+**Layering is enforced by taste, not by a linter.** `packages/core` must never import a database client, an SDK, Hono or React. It declares interfaces (called _ports_) and receives implementations. Follow `packages/core/src/features/profiles/` as the reference shape: `domain/` holds rules and errors, `ports/` holds interfaces, `application/` holds a `createXService(deps)` factory.
 
 **Provenance is mandatory.** Every file ported from Relayer opens with `// Ported from Relayer <path> (commit bb6bb1226e92).` and states any deliberate change. Relayer lives at `/Users/Juvenal/Development/SherryLabs/relayer`.
 
@@ -22,16 +22,16 @@
 
 **Commands you will use:**
 
-| Purpose | Command |
-| --- | --- |
-| One core/infra test file | `node --import tsx --test packages/core/test/custody.test.ts` |
-| One API test file | `npm run build:shared && node --import tsx --test workers/api/test/signing.test.ts` |
-| Everything | `npm test` |
-| Tests needing PostgreSQL | `npm run db:up` then `npm run test:supabase` |
-| Generate a migration | `npm run db:generate` |
-| Apply migrations | `npm run db:migrate` |
-| Types | `npm run typecheck` |
-| Format | `npm run format` |
+| Purpose                  | Command                                                                             |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| One core/infra test file | `node --import tsx --test packages/core/test/custody.test.ts`                       |
+| One API test file        | `npm run build:shared && node --import tsx --test workers/api/test/signing.test.ts` |
+| Everything               | `npm test`                                                                          |
+| Tests needing PostgreSQL | `npm run db:up` then `npm run test:supabase`                                        |
+| Generate a migration     | `npm run db:generate`                                                               |
+| Apply migrations         | `npm run db:migrate`                                                                |
+| Types                    | `npm run typecheck`                                                                 |
+| Format                   | `npm run format`                                                                    |
 
 **Make every fake record what it was handed, and assert on the recording.** This plan's own tests
 got this wrong repeatedly, and the same mistake is available in every task that follows. A fake that
@@ -43,7 +43,7 @@ onto somebody else's wallet; and three separate guard clauses were free to delet
 staying green.
 
 So: give fakes an array they push their inputs onto, assert `deepEqual` against that array, and
-assert the negative too — that the collaborator was *not* reached when a guard should have stopped
+assert the negative too — that the collaborator was _not_ reached when a guard should have stopped
 it, so the guard cannot drift below the call it protects.
 
 **A sabotage that reports green is only evidence if the mutation landed.** A substitution that
@@ -97,56 +97,57 @@ of them were visible by reading.
 
 **Created**
 
-| File | Responsibility |
-| --- | --- |
-| `packages/infrastructure/src/persistence/product/wallets.ts` | the `wallets` Drizzle schema |
-| `packages/core/src/features/wallets/domain/passkey.ts` | attestation shape, transports, device type, errors |
-| `packages/core/src/features/wallets/ports/custody.ts` | `ChallengeStore`, `CustodyRepository`, `SubOrganizationCreator`, `AddPasskeyActivityBuilder` |
-| `packages/core/src/features/wallets/application/custody.ts` | `createCustodyService` — issue, register, prepare, confirm |
-| `packages/infrastructure/src/turnkey/turnkey-sub-organization.ts` | `createSubOrganization` and the add-passkey activity builder |
-| `packages/infrastructure/src/persistence/custody-store.ts` | `PostgresCustodyStore` — repository and challenge store |
-| `packages/infrastructure/src/chain/balances.ts` | AUSD and MON balances for one address |
-| `workers/api/src/routes/signing.ts` | `/v1/signing/passkeys` and `/v1/signing/wallets/me` |
-| `apps/web/src/features/auth/lib/webauthn.ts` | base64url ↔ ArrayBuffer, transports |
-| `apps/web/src/features/auth/lib/custody-api.ts` | typed client for the signing routes |
-| `apps/web/src/features/auth/lib/flow.ts` | the step machine, framework-free and testable |
-| `apps/web/src/features/auth/components/auth-flow.tsx` | shell that renders the current step |
-| `apps/web/src/features/auth/components/steps/*.tsx` | one file per screen |
-| `apps/web/src/features/auth/components/passkey-sheet.tsx` | the shared ceremony sheet |
+| File                                                              | Responsibility                                                                               |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `packages/infrastructure/src/persistence/product/wallets.ts`      | the `wallets` Drizzle schema                                                                 |
+| `packages/core/src/features/wallets/domain/passkey.ts`            | attestation shape, transports, device type, errors                                           |
+| `packages/core/src/features/wallets/ports/custody.ts`             | `ChallengeStore`, `CustodyRepository`, `SubOrganizationCreator`, `AddPasskeyActivityBuilder` |
+| `packages/core/src/features/wallets/application/custody.ts`       | `createCustodyService` — issue, register, prepare, confirm                                   |
+| `packages/infrastructure/src/turnkey/turnkey-sub-organization.ts` | `createSubOrganization` and the add-passkey activity builder                                 |
+| `packages/infrastructure/src/persistence/custody-store.ts`        | `PostgresCustodyStore` — repository and challenge store                                      |
+| `packages/infrastructure/src/chain/balances.ts`                   | AUSD and MON balances for one address                                                        |
+| `workers/api/src/routes/signing.ts`                               | `/v1/signing/passkeys` and `/v1/signing/wallets/me`                                          |
+| `apps/web/src/features/auth/lib/webauthn.ts`                      | base64url ↔ ArrayBuffer, transports                                                          |
+| `apps/web/src/features/auth/lib/custody-api.ts`                   | typed client for the signing routes                                                          |
+| `apps/web/src/features/auth/lib/flow.ts`                          | the step machine, framework-free and testable                                                |
+| `apps/web/src/features/auth/components/auth-flow.tsx`             | shell that renders the current step                                                          |
+| `apps/web/src/features/auth/components/steps/*.tsx`               | one file per screen                                                                          |
+| `apps/web/src/features/auth/components/passkey-sheet.tsx`         | the shared ceremony sheet                                                                    |
 
 **Modified**
 
-| File | Change |
-| --- | --- |
-| `packages/infrastructure/drizzle.config.ts` | add `wallets` to `schemaFilter` |
-| `packages/core/src/index.ts` | export the new feature |
-| `packages/infrastructure/src/index.ts` | export the new adapters |
-| `workers/api/src/env.ts` | five Turnkey bindings |
-| `workers/api/src/app.ts` | mount the signing routes |
-| `workers/api/src/container.ts` | compose the custody service |
-| `workers/api/src/http/error-handler.ts` | map the new core errors |
-| `apps/web/src/features/wallet/lib/signer.ts` | drop the `mera` signer kind |
-| `apps/web/src/features/wallet/lib/wallet-context.tsx` | drop `meraSigner` from `SIGNERS` |
-| `apps/web/src/features/wallet/components/connect-modal.tsx` | drop the `mera` entry |
-| `apps/web/src/features/wallet/components/account-menu.tsx` | drop the `mera` label branch |
-| `apps/web/src/app/(auth)/signup/page.tsx` | render `AuthFlow` |
-| `apps/web/src/app/(auth)/signin/page.tsx` | render `AuthFlow` |
+| File                                                        | Change                           |
+| ----------------------------------------------------------- | -------------------------------- |
+| `packages/infrastructure/drizzle.config.ts`                 | add `wallets` to `schemaFilter`  |
+| `packages/core/src/index.ts`                                | export the new feature           |
+| `packages/infrastructure/src/index.ts`                      | export the new adapters          |
+| `workers/api/src/env.ts`                                    | five Turnkey bindings            |
+| `workers/api/src/app.ts`                                    | mount the signing routes         |
+| `workers/api/src/container.ts`                              | compose the custody service      |
+| `workers/api/src/http/error-handler.ts`                     | map the new core errors          |
+| `apps/web/src/features/wallet/lib/signer.ts`                | drop the `mera` signer kind      |
+| `apps/web/src/features/wallet/lib/wallet-context.tsx`       | drop `meraSigner` from `SIGNERS` |
+| `apps/web/src/features/wallet/components/connect-modal.tsx` | drop the `mera` entry            |
+| `apps/web/src/features/wallet/components/account-menu.tsx`  | drop the `mera` label branch     |
+| `apps/web/src/app/(auth)/signup/page.tsx`                   | render `AuthFlow`                |
+| `apps/web/src/app/(auth)/signin/page.tsx`                   | render `AuthFlow`                |
 
 **Deleted**
 
-| File | Why |
-| --- | --- |
-| `apps/web/src/features/wallet/lib/mera-signer.ts` | Turnkey replaces PRF custody (Task 11) |
-| `apps/web/test/passkey-address.test.ts` | tests only the deleted signer |
+| File                                                     | Why                                    |
+| -------------------------------------------------------- | -------------------------------------- |
+| `apps/web/src/features/wallet/lib/mera-signer.ts`        | Turnkey replaces PRF custody (Task 11) |
+| `apps/web/test/passkey-address.test.ts`                  | tests only the deleted signer          |
 | `apps/web/src/features/auth/components/sign-up-flow.tsx` | replaced by the step machine (Task 21) |
 | `apps/web/src/features/auth/components/sign-in-card.tsx` | replaced by the step machine (Task 21) |
-| `apps/web/src/features/auth/lib/password.ts` | passwords are gone (Task 21) |
+| `apps/web/src/features/auth/lib/password.ts`             | passwords are gone (Task 21)           |
 
 ---
 
 ## Task 1: The `wallets` schema
 
 **Files:**
+
 - Create: `packages/infrastructure/src/persistence/product/wallets.ts`
 - Modify: `packages/infrastructure/drizzle.config.ts`
 
@@ -232,7 +233,10 @@ export const passkeys = wallets
       userId: uuid("user_id").notNull(),
       credentialId: text("credential_id").notNull(),
       label: text("label").notNull(),
-      transports: text("transports").array().notNull().default(sql`array[]::text[]`),
+      transports: text("transports")
+        .array()
+        .notNull()
+        .default(sql`array[]::text[]`),
       deviceType: text("device_type"),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
@@ -290,6 +294,7 @@ git commit -m "Give custody somewhere to live"
 ## Task 2: Core domain — attestation, transports, device type
 
 **Files:**
+
 - Create: `packages/core/src/features/wallets/domain/passkey.ts`
 - Test: `packages/core/test/custody-domain.test.ts`
 
@@ -298,7 +303,10 @@ git commit -m "Give custody somewhere to live"
 ```ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deviceTypeFromTransports, toTurnkeyTransports } from "../src/features/wallets/domain/passkey.js";
+import {
+  deviceTypeFromTransports,
+  toTurnkeyTransports,
+} from "../src/features/wallets/domain/passkey.js";
 
 test("an empty transport list means the authenticator is built into the device", () => {
   assert.deepEqual(toTurnkeyTransports([]), ["AUTHENTICATOR_TRANSPORT_INTERNAL"]);
@@ -405,6 +413,7 @@ git commit -m "Name what a passkey tells us about where it lives"
 ## Task 3: Core ports and `issueChallenge`
 
 **Files:**
+
 - Create: `packages/core/src/features/wallets/ports/custody.ts`
 - Create: `packages/core/src/features/wallets/application/custody.ts`
 - Test: `packages/core/test/custody.test.ts`
@@ -575,7 +584,9 @@ export function service(f: ReturnType<typeof fakes>) {
     repository: f.repository,
     turnkey: f.turnkey,
     activities: { build: () => ({ url: "u", body: "b", timestampMs: "1", organizationId: "o" }) },
-    forwarder: { forward: async () => ({ id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED" }) },
+    forwarder: {
+      forward: async () => ({ id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED" }),
+    },
     rpId: "pickler.fun",
     appName: "Pickler",
     now: () => NOW,
@@ -733,6 +744,7 @@ git commit -m "Issue a challenge the browser cannot spend twice"
 ## Task 4: Core — register, idempotent and race-safe
 
 **Files:**
+
 - Modify: `packages/core/src/features/wallets/application/custody.ts`
 - Test: `packages/core/test/custody.test.ts` (append)
 
@@ -1031,6 +1043,7 @@ git commit -m "Make registering twice cost nothing"
 ## Task 5: Core — prepare and confirm a new device
 
 **Files:**
+
 - Modify: `packages/core/src/features/wallets/application/custody.ts`
 - Test: `packages/core/test/custody.test.ts` (append)
 
@@ -1215,6 +1228,7 @@ git commit -m "Let a phone vouch for a device it has never met"
 ## Task 6: Turnkey adapter — create the sub-organization
 
 **Files:**
+
 - Create: `packages/infrastructure/src/turnkey/turnkey-sub-organization.ts`
 - Modify: `packages/infrastructure/src/index.ts`
 - Test: `packages/infrastructure/test/turnkey-sub-organization.test.ts`
@@ -1282,7 +1296,10 @@ test("it asks Turnkey for a sub-organization whose only root user is the passkey
 
   const body = sent!.body as {
     rootQuorumThreshold: number;
-    rootUsers: { apiKeys: unknown[]; authenticators: { attestation: { transports: string[] } }[] }[];
+    rootUsers: {
+      apiKeys: unknown[];
+      authenticators: { attestation: { transports: string[] } }[];
+    }[];
     wallet: { accounts: { path: string; addressFormat: string }[] };
   };
   assert.equal(body.rootQuorumThreshold, 1);
@@ -1356,7 +1373,11 @@ import {
   type SubOrganizationCreator,
   type UnsignedActivity,
 } from "@pickler/core";
-import { createTurnkeyStampingClient, sendStampedRequest, TURNKEY_API_BASE_URL } from "./turnkey-transport.js";
+import {
+  createTurnkeyStampingClient,
+  sendStampedRequest,
+  TURNKEY_API_BASE_URL,
+} from "./turnkey-transport.js";
 
 /** The single account every Master Wallet gets. Monad is EVM, so the Ethereum format applies. */
 export const MONAD_ACCOUNT = {
@@ -1516,6 +1537,7 @@ git commit -m "Create an organisation we cannot enter"
 ## Task 7: Postgres custody store
 
 **Files:**
+
 - Create: `packages/infrastructure/src/persistence/custody-store.ts`
 - Modify: `packages/infrastructure/src/index.ts`
 - Test: `packages/infrastructure/test/custody-store.test.ts`
@@ -1559,7 +1581,12 @@ test("a registration is written whole, and a second one is refused", async (t) =
   ]);
 
   assert.deepEqual(
-    await custody.saveRegistration({ ...registration, subOrganizationId: "sub-2", walletId: "wal-2", credentialId: "cred-9" }),
+    await custody.saveRegistration({
+      ...registration,
+      subOrganizationId: "sub-2",
+      walletId: "wal-2",
+      credentialId: "cred-9",
+    }),
     { created: false },
     "the unique index on user_id is the backstop for a concurrent submit",
   );
@@ -1743,6 +1770,7 @@ git commit -m "Write four rows or none"
 ## Task 8: Balances for the welcome screen
 
 **Files:**
+
 - Create: `packages/infrastructure/src/chain/balances.ts`
 - Modify: `packages/infrastructure/src/index.ts`
 - Test: `packages/infrastructure/test/balances.test.ts`
@@ -1913,6 +1941,7 @@ git commit -m "Say the balance or say nothing"
 ## Task 9: The signing routes
 
 **Files:**
+
 - Create: `workers/api/src/routes/signing.ts`
 - Modify: `workers/api/src/app.ts`, `workers/api/src/env.ts`, `workers/api/src/container.ts`, `workers/api/src/http/error-handler.ts`
 - Test: `workers/api/test/signing.test.ts`
@@ -1929,12 +1958,12 @@ In `workers/api/src/http/error-handler.ts`, add to the imports from `@pickler/co
 and inside `classify`, before the `DataSourceUnavailableError` branch:
 
 ```ts
-  if (error instanceof ChallengeNotUsableError) {
-    return { status: 400, message: error.message, extras: { error: "challenge_expired" } };
-  }
-  if (error instanceof NoCustodyAccountError) {
-    return { status: 409, message: error.message, extras: { error: "no_custody_account" } };
-  }
+if (error instanceof ChallengeNotUsableError) {
+  return { status: 400, message: error.message, extras: { error: "challenge_expired" } };
+}
+if (error instanceof NoCustodyAccountError) {
+  return { status: 409, message: error.message, extras: { error: "no_custody_account" } };
+}
 ```
 
 - [ ] **Step 2: Add the bindings**
@@ -1980,8 +2009,17 @@ function app(overrides: Record<string, unknown> = {}) {
   const custody = {
     issueChallenge: async () => ({ challenge: "chal", rp: { id: "pickler.fun", name: "Pickler" } }),
     register: async () => account,
-    prepareAddPasskey: async () => ({ url: "u", body: "b", timestampMs: "1", organizationId: "sub-1" }),
-    confirmAddPasskey: async () => ({ id: "act", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED" }),
+    prepareAddPasskey: async () => ({
+      url: "u",
+      body: "b",
+      timestampMs: "1",
+      organizationId: "sub-1",
+    }),
+    confirmAddPasskey: async () => ({
+      id: "act",
+      fingerprint: "f",
+      status: "ACTIVITY_STATUS_COMPLETED",
+    }),
     getAccount: async () => account,
     ...overrides,
   };
@@ -2053,7 +2091,11 @@ test("a malformed attestation is refused before Turnkey is called", async () => 
   }).request("/v1/signing/passkeys/register", {
     method: "POST",
     headers: { ...auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ label: "Touch ID", challenge: "chal", attestation: { credentialId: 5 } }),
+    body: JSON.stringify({
+      label: "Touch ID",
+      challenge: "chal",
+      attestation: { credentialId: 5 },
+    }),
   });
   assert.equal(response.status, 400);
   assert.equal(called, false);
@@ -2145,7 +2187,11 @@ async function readBody(c: { req: { json(): Promise<unknown> } }) {
   return body;
 }
 
-const accountDto = (account: { subOrganizationId: string; masterWalletId: string; address: string }) => ({
+const accountDto = (account: {
+  subOrganizationId: string;
+  masterWalletId: string;
+  address: string;
+}) => ({
   sub_organization_id: account.subOrganizationId,
   master_wallet_id: account.masterWalletId,
   address: account.address,
@@ -2186,7 +2232,10 @@ export function signingRoutes(services: SigningRouteServices) {
     .post("/passkeys/add/confirm", signedIn, async (c) => {
       const body = await readBody(c);
       const signed = body.signed as { url?: unknown; body?: unknown; stamp?: unknown } | undefined;
-      const stamp = (signed?.stamp ?? {}) as { stampHeaderName?: unknown; stampHeaderValue?: unknown };
+      const stamp = (signed?.stamp ?? {}) as {
+        stampHeaderName?: unknown;
+        stampHeaderValue?: unknown;
+      };
       if (
         typeof signed?.url !== "string" ||
         typeof signed.body !== "string" ||
@@ -2245,9 +2294,12 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
 ```
 
 ```ts
-  if (services.custody) {
-    app.route("/v1/signing", signingRoutes({ authenticate: services.authenticate, custody: services.custody }));
-  }
+if (services.custody) {
+  app.route(
+    "/v1/signing",
+    signingRoutes({ authenticate: services.authenticate, custody: services.custody }),
+  );
+}
 ```
 
 - [ ] **Step 7: Run and watch it pass**
@@ -2274,37 +2326,37 @@ use that.
 Then, inside `createServices`, before the returned object:
 
 ```ts
-  // Mounted only when every Turnkey binding is present, so a deployment without them keeps
-  // serving the rest of the API instead of failing to compose.
-  const turnkeyConfigured =
-    env.TURNKEY_API_PUBLIC_KEY &&
-    env.TURNKEY_API_PRIVATE_KEY &&
-    env.TURNKEY_PARENT_ORG_ID &&
-    env.TURNKEY_RPID;
-  const custodyStore = new PostgresCustodyStore(repository.pool);
-  const custody = turnkeyConfigured
-    ? {
-        service: createCustodyService({
-          challenges: custodyStore,
-          repository: custodyStore,
-          turnkey: createSubOrganizationCreator({
-            apiPublicKey: env.TURNKEY_API_PUBLIC_KEY!,
-            apiPrivateKey: env.TURNKEY_API_PRIVATE_KEY!,
-            parentOrganizationId: env.TURNKEY_PARENT_ORG_ID!,
-          }),
-          activities: createAddPasskeyActivityBuilder(),
-          forwarder: createSignedActivityForwarder({
-            apiPublicKey: env.TURNKEY_API_PUBLIC_KEY!,
-            apiPrivateKey: env.TURNKEY_API_PRIVATE_KEY!,
-          }),
-          rpId: env.TURNKEY_RPID!,
-          appName: env.TURNKEY_APP_NAME ?? "Pickler",
-          now,
-          randomId: () => crypto.randomUUID().replaceAll("-", ""),
+// Mounted only when every Turnkey binding is present, so a deployment without them keeps
+// serving the rest of the API instead of failing to compose.
+const turnkeyConfigured =
+  env.TURNKEY_API_PUBLIC_KEY &&
+  env.TURNKEY_API_PRIVATE_KEY &&
+  env.TURNKEY_PARENT_ORG_ID &&
+  env.TURNKEY_RPID;
+const custodyStore = new PostgresCustodyStore(repository.pool);
+const custody = turnkeyConfigured
+  ? {
+      service: createCustodyService({
+        challenges: custodyStore,
+        repository: custodyStore,
+        turnkey: createSubOrganizationCreator({
+          apiPublicKey: env.TURNKEY_API_PUBLIC_KEY!,
+          apiPrivateKey: env.TURNKEY_API_PRIVATE_KEY!,
+          parentOrganizationId: env.TURNKEY_PARENT_ORG_ID!,
         }),
-        balances: createBalanceReader({ chainId: 10143 }),
-      }
-    : undefined;
+        activities: createAddPasskeyActivityBuilder(),
+        forwarder: createSignedActivityForwarder({
+          apiPublicKey: env.TURNKEY_API_PUBLIC_KEY!,
+          apiPrivateKey: env.TURNKEY_API_PRIVATE_KEY!,
+        }),
+        rpId: env.TURNKEY_RPID!,
+        appName: env.TURNKEY_APP_NAME ?? "Pickler",
+        now,
+        randomId: () => crypto.randomUUID().replaceAll("-", ""),
+      }),
+      balances: createBalanceReader({ chainId: 10143 }),
+    }
+  : undefined;
 ```
 
 and add `...(custody ? { custody } : {}),` to the returned object. Import `createCustodyService` from `@pickler/core`.
@@ -2324,6 +2376,7 @@ git commit -m "Open the four doors a passkey needs"
 ## Task 10: Document the new bindings
 
 **Files:**
+
 - Modify: `workers/api/AGENTS.md`
 - Modify: `workers/api/.dev.vars.example` (create if absent)
 
@@ -2369,9 +2422,10 @@ git commit -m "Say which secrets custody needs and what they cannot do"
 
 ## Task 11: Retire the PRF signer
 
-Turnkey now owns custody. The Mera PRF path derived a private key from the passkey's PRF output, and it asked for *any* passkey on `pickler.fun` — including, once this ships, the Turnkey one. Two wallets and one of them able to consume the other's credential is not a state to leave running.
+Turnkey now owns custody. The Mera PRF path derived a private key from the passkey's PRF output, and it asked for _any_ passkey on `pickler.fun` — including, once this ships, the Turnkey one. Two wallets and one of them able to consume the other's credential is not a state to leave running.
 
 **Files:**
+
 - Delete: `apps/web/src/features/wallet/lib/mera-signer.ts`, `apps/web/test/passkey-address.test.ts`
 - Modify: `apps/web/src/features/wallet/lib/signer.ts`, `apps/web/src/features/wallet/lib/wallet-context.tsx`, `apps/web/src/features/wallet/components/connect-modal.tsx`, `apps/web/src/features/wallet/components/account-menu.tsx`, `apps/web/package.json`
 
@@ -2433,6 +2487,7 @@ git commit -m "Stop deriving a second wallet from the same finger"
 ## Task 12: WebAuthn helpers in the browser
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/lib/webauthn.ts`
 - Test: `apps/web/test/webauthn.test.ts`
 
@@ -2525,6 +2580,7 @@ git commit -m "Translate between the browser's bytes and the wire"
 ## Task 13: The ceremony, as one testable function
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/lib/custody-api.ts`
 - Create: `apps/web/src/features/auth/lib/ceremony.ts`
 - Test: `apps/web/test/ceremony.test.ts`
@@ -2591,7 +2647,11 @@ export interface CustodyClient {
       label: string;
       credential_id: string;
       transports: string[];
-      signed: { url: string; body: string; stamp: { stampHeaderName: string; stampHeaderValue: string } };
+      signed: {
+        url: string;
+        body: string;
+        stamp: { stampHeaderName: string; stampHeaderValue: string };
+      };
     },
   ): Promise<{ status: string }>;
   wallet(token: string): Promise<WalletDto>;
@@ -2655,7 +2715,10 @@ test("it decodes the server's options and encodes what comes back", async () => 
   assert.deepEqual(attestation.transports, ["hybrid"]);
 
   const sent = calls[0].publicKey;
-  assert.deepEqual(new Uint8Array(sent.challenge as ArrayBuffer), new Uint8Array([99, 104, 97, 108]));
+  assert.deepEqual(
+    new Uint8Array(sent.challenge as ArrayBuffer),
+    new Uint8Array([99, 104, 97, 108]),
+  );
   assert.equal(sent.authenticatorSelection?.authenticatorAttachment, "platform");
   assert.equal(sent.excludeCredentials?.length, 1, "already-enrolled credentials are excluded");
 });
@@ -2665,11 +2728,18 @@ test("asking for a phone selects the cross-device attachment, which is what draw
 
   await createPasskey(credentials, options, "cross-platform");
 
-  assert.equal(calls[0].publicKey.authenticatorSelection?.authenticatorAttachment, "cross-platform");
+  assert.equal(
+    calls[0].publicKey.authenticatorSelection?.authenticatorAttachment,
+    "cross-platform",
+  );
 });
 
 test("a browser that returns nothing is an error, not a silent success", async () => {
-  const credentials = { async create() { return null; } } as unknown as CredentialsContainer;
+  const credentials = {
+    async create() {
+      return null;
+    },
+  } as unknown as CredentialsContainer;
 
   await assert.rejects(() => createPasskey(credentials, options, "platform"), /did not return/i);
 });
@@ -2677,7 +2747,10 @@ test("a browser that returns nothing is an error, not a silent success", async (
 test("each failure gets copy a person can act on", () => {
   const named = (name: string) => Object.assign(new Error("x"), { name });
   assert.equal(describeCeremonyFailure(named("NotAllowedError")), null);
-  assert.match(String(describeCeremonyFailure(named("InvalidStateError"))), /already has a passkey/i);
+  assert.match(
+    String(describeCeremonyFailure(named("InvalidStateError"))),
+    /already has a passkey/i,
+  );
   assert.match(String(describeCeremonyFailure(named("SecurityError"))), /this address/i);
   assert.match(String(describeCeremonyFailure(named("NotSupportedError"))), /does not support/i);
   assert.match(String(describeCeremonyFailure(new Error("boom"))), /could not/i);
@@ -2722,7 +2795,8 @@ export async function createPasskey(
     })),
     authenticatorSelection: {
       authenticatorAttachment: attachment,
-      residentKey: (options.authenticatorSelection?.residentKey ?? "preferred") as ResidentKeyRequirement,
+      residentKey: (options.authenticatorSelection?.residentKey ??
+        "preferred") as ResidentKeyRequirement,
       userVerification: (options.authenticatorSelection?.userVerification ??
         "preferred") as UserVerificationRequirement,
     },
@@ -2792,6 +2866,7 @@ git commit -m "Run the passkey ceremony somewhere a test can watch"
 ## Task 14: The step machine
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/lib/flow.ts`
 - Test: `apps/web/test/flow.test.ts`
 
@@ -2807,7 +2882,12 @@ import { INITIAL, next, rail, type FlowState } from "../src/features/auth/lib/fl
 test("sign-up walks account, code, handle, passkey, wallet", () => {
   let state: FlowState = { ...INITIAL, mode: "up" };
   const seen: string[] = [state.step];
-  for (const event of ["code_sent", "code_verified", "handle_claimed", "passkey_created"] as const) {
+  for (const event of [
+    "code_sent",
+    "code_verified",
+    "handle_claimed",
+    "passkey_created",
+  ] as const) {
     state = next(state, event);
     seen.push(state.step);
   }
@@ -2973,6 +3053,7 @@ git commit -m "Give the flow a shape that does not need a browser"
 ## Task 15: Account and code screens
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/components/steps/account-step.tsx`
 - Create: `apps/web/src/features/auth/components/steps/code-step.tsx`
 - Modify: `apps/web/src/features/auth/lib/account.ts`
@@ -3014,7 +3095,11 @@ export async function verifyEmailCode(
   email: string,
   code: string,
 ): Promise<boolean> {
-  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code, type: "email" });
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim(),
+    token: code,
+    type: "email",
+  });
   if (!error) {
     return true;
   }
@@ -3216,6 +3301,7 @@ git commit -m "Ask for an address and six digits, not a password"
 ## Task 16: Handle screen
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/components/steps/handle-step.tsx`
 
 - [ ] **Step 1: Write the screen**
@@ -3239,9 +3325,10 @@ const REASONS: Record<Exclude<HandleAvailability, { available: true }>["reason"]
 };
 
 function useHandleCheck(handle: string) {
-  const [result, setResult] = useState<{ handle: string; state: HandleAvailability | "error" } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    handle: string;
+    state: HandleAvailability | "error";
+  } | null>(null);
   useEffect(() => {
     if (handle.length < 3) {
       return;
@@ -3339,6 +3426,7 @@ git commit -m "Claim a name before a wallet exists to attach it to"
 ## Task 17: Passkey screen and the ceremony sheet
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/components/passkey-sheet.tsx`
 - Create: `apps/web/src/features/auth/components/steps/passkey-step.tsx`
 
@@ -3476,6 +3564,7 @@ git commit -m "Say plainly whose key it is"
 ## Task 18: Wallet, welcome and new-device screens
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/components/steps/wallet-step.tsx`
 - Create: `apps/web/src/features/auth/components/steps/welcome-step.tsx`
 - Create: `apps/web/src/features/auth/components/steps/new-device-step.tsx`
@@ -3686,6 +3775,7 @@ git commit -m "Show the wallet, the backup it wants, and the way back in"
 ## Task 19: The shell that drives them
 
 **Files:**
+
 - Create: `apps/web/src/features/auth/components/auth-flow.tsx`
 
 - [ ] **Step 1: Write the shell**
@@ -3983,6 +4073,7 @@ git commit -m "Drive every screen from one ceremony"
 ## Task 20: Wire the pages and delete what it replaces
 
 **Files:**
+
 - Modify: `apps/web/src/app/(auth)/signup/page.tsx`, `apps/web/src/app/(auth)/signin/page.tsx`
 - Delete: `apps/web/src/features/auth/components/sign-up-flow.tsx`, `apps/web/src/features/auth/components/sign-in-card.tsx`
 

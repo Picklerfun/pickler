@@ -28,8 +28,8 @@ second gives their agents bounded sub-wallets; see §11.
 
 1. **The passkey is the root user.** The sub-organization is created with
    `rootQuorumThreshold: 1`, the user's passkey as its only authenticator, and `apiKeys: []`.
-   Pickler holds no credential inside it. This is what makes the design's claim — *"YOUR KEY.
-   NOT OURS"* — true rather than decorative, and it is the reason the parent key cannot later
+   Pickler holds no credential inside it. This is what makes the design's claim — _"YOUR KEY.
+   NOT OURS"_ — true rather than decorative, and it is the reason the parent key cannot later
    mutate the sub-organization (`ORGANIZATION_MISMATCH`).
 
    The consequence must be stated plainly: **the sub-organization ships with root-quorum
@@ -38,6 +38,7 @@ second gives their agents bounded sub-wallets; see §11.
    its owner's own funds, which is all this specification delivers, but it is not yet a spending
    limit. Limits arrive with the passkey-signed policy round in specification two, and no interface
    copy in this one may imply a cap exists before then.
+
 2. **Supabase Auth owns identity; Turnkey owns custody.** One row joins them. The handle, the
    profile and every RLS policy stay on `auth.users`. Nothing about who a person is moves to
    Turnkey.
@@ -68,13 +69,13 @@ Postgres adapters. `workers/api` reads requests and maps results, following `rou
 
 New seventh product schema, `packages/infrastructure/src/persistence/product/wallets.ts`.
 
-| Table                 | Holds                                                          | Keys                                                  |
-| --------------------- | -------------------------------------------------------------- | ----------------------------------------------------- |
-| `turnkey_orgs`        | the identity ↔ custody join                                    | PK `user_id`; `sub_organization_id` unique            |
-| `wallets`             | the Master Wallet, later agent wallets                         | `wallet_id` unique; FK to `turnkey_orgs`              |
-| `wallet_accounts`     | the derived Monad address                                      | unique `(wallet_id, path)`                            |
-| `passkeys`            | local mirror: label, transports, device type, AAGUID           | `credential_id` unique                                |
-| `webauthn_challenges` | single-use challenges, five-minute TTL                         | PK `challenge`                                        |
+| Table                 | Holds                                                | Keys                                       |
+| --------------------- | ---------------------------------------------------- | ------------------------------------------ |
+| `turnkey_orgs`        | the identity ↔ custody join                          | PK `user_id`; `sub_organization_id` unique |
+| `wallets`             | the Master Wallet, later agent wallets               | `wallet_id` unique; FK to `turnkey_orgs`   |
+| `wallet_accounts`     | the derived Monad address                            | unique `(wallet_id, path)`                 |
+| `passkeys`            | local mirror: label, transports, device type, AAGUID | `credential_id` unique                     |
+| `webauthn_challenges` | single-use challenges, five-minute TTL               | PK `challenge`                             |
 
 Two deliberate departures from Relayer, both required by `docs/relayer-extraction/00-plan.md`:
 
@@ -103,19 +104,19 @@ following `PostgresBudgetLedger`.
 
 **`workers/api/src/routes/signing.ts`** mounted at `/v1/signing/passkeys`:
 
-| Route              | Purpose                                                            |
-| ------------------ | ------------------------------------------------------------------ |
-| `POST /challenge`  | issue a challenge, with `excludeCredentials` for existing passkeys |
-| `POST /register`   | create the sub-organization and Master Wallet; idempotent          |
-| `POST /add/prepare`| build the unsigned `CREATE_AUTHENTICATORS` for a new device        |
-| `POST /add/confirm`| forward the stamped activity                                       |
-| `GET /`            | list this person's devices                                         |
+| Route               | Purpose                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| `POST /challenge`   | issue a challenge, with `excludeCredentials` for existing passkeys |
+| `POST /register`    | create the sub-organization and Master Wallet; idempotent          |
+| `POST /add/prepare` | build the unsigned `CREATE_AUTHENTICATORS` for a new device        |
+| `POST /add/confirm` | forward the stamped activity                                       |
+| `GET /`             | list this person's devices                                         |
 
 New bindings: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_PARENT_ORG_ID`,
 `TURNKEY_RPID`, `TURNKEY_APP_NAME`.
 
 **A defect fixed while porting.** Relayer's `register` writes four tables in sequence without a
-transaction, and every intermediate failure path carries a comment reading *"orphan in Turnkey"*.
+transaction, and every intermediate failure path carries a comment reading _"orphan in Turnkey"_.
 Because we hold a pool, the four writes go in one transaction: four partial-failure windows become
 one. A sub-organization can still be orphaned if Postgres fails after Turnkey succeeds — that is
 inherent to writing to two systems — and it is logged with its identifiers for reconciliation.
@@ -124,11 +125,11 @@ inherent to writing to two systems — and it is logged with its identifiers for
 
 `src/features/auth/` becomes a step machine mirroring the design's `STEPS`.
 
-| Flow           | Steps                                              |
-| -------------- | -------------------------------------------------- |
-| **Sign up**    | `auth` → `code` → `handle` → `passkey` → `wallet`  |
-| **Sign in**    | `auth` → `code` → `welcome`                        |
-| **New device** | `recover` → `approve` → `recovered`                |
+| Flow           | Steps                                             |
+| -------------- | ------------------------------------------------- |
+| **Sign up**    | `auth` → `code` → `handle` → `passkey` → `wallet` |
+| **Sign in**    | `auth` → `code` → `welcome`                       |
+| **New device** | `recover` → `approve` → `recovered`               |
 
 The order in sign-up is load-bearing: the OTP creates the Supabase session, the handle creates the
 profile, and only then can `register` authenticate to create the sub-organization.
@@ -142,17 +143,17 @@ Supabase project.
 passkey, have the server build the unsigned `CREATE_AUTHENTICATORS`, let the phone stamp it, then
 forward it. The QR is drawn by the operating system via
 `authenticatorSelection.authenticatorAttachment: 'cross-platform'`, not by us. Relayer reached the
-same conclusion in its approved `add-passkey-device-chooser` design (decision D2: *"los prompts
-biométricos los dibuja el OS"*), and its decision D6 records that this needed no API change.
+same conclusion in its approved `add-passkey-device-chooser` design (decision D2: _"los prompts
+biométricos los dibuja el OS"_), and its decision D6 records that this needed no API change.
 
-This settles an ordering question the design leaves open. The design puts *"Save a passkey here"*
+This settles an ordering question the design leaves open. The design puts _"Save a passkey here"_
 after the phone approves, but the new credential must exist before the phone can stamp an activity
-that adds it. Relayer's modal already numbers it *step 1 create, step 2 verify*. The three screens
+that adds it. Relayer's modal already numbers it _step 1 create, step 2 verify_. The three screens
 stay; both steps happen inside "Use my phone", so `recovered` arrives with the passkey saved.
 
 **The PRF signer is retired.** `apps/web/src/features/wallet/lib/mera-signer.ts` derives a private
 key from a passkey's PRF output, on the same relying party this specification registers passkeys
-against, and it asks for *whichever* passkey the person has for that host. Left in place it would
+against, and it asks for _whichever_ passkey the person has for that host. Left in place it would
 be a second wallet for the same person, able to take the Turnkey credential — which exists only to
 authorise activities — and turn it into key material. Turnkey becomes the only custody path;
 `connect` keeps only the injected browser wallet, for a wallet the person already had.
@@ -189,12 +190,12 @@ the most common cause of `SecurityError`; Relayer left that diagnosis in a comme
 
 Run with `node --import tsx --test`, the repository's existing harness.
 
-| Layer          | Location                         | Covers                                                             |
-| -------------- | -------------------------------- | ------------------------------------------------------------------ |
-| Core           | `packages/core/test/`            | replay, expired challenge, wrong owner, double enrolment           |
-| Infrastructure | `packages/infrastructure/test/`  | repositories and the single-use delete, via `npm run test:supabase` |
-| API            | `workers/api/test/`              | routes with injected fakes, following `agents.test.ts`             |
-| Web            | `apps/web/test/`                 | the base64url helpers and the step machine's transitions           |
+| Layer          | Location                        | Covers                                                              |
+| -------------- | ------------------------------- | ------------------------------------------------------------------- |
+| Core           | `packages/core/test/`           | replay, expired challenge, wrong owner, double enrolment            |
+| Infrastructure | `packages/infrastructure/test/` | repositories and the single-use delete, via `npm run test:supabase` |
+| API            | `workers/api/test/`             | routes with injected fakes, following `agents.test.ts`              |
+| Web            | `apps/web/test/`                | the base64url helpers and the step machine's transitions            |
 
 Written test-first.
 
@@ -219,12 +220,12 @@ agent is a wallet (`type='agent'`, never the master), a Turnkey user holding its
 A sub-organization is a root quorum, and that quorum is the person's passkey; separate
 sub-organizations would require enrolling the passkey once per agent and would put the agent
 beyond the reach of any policy, because Turnkey policies do not cross organizations. The design
-draws it this way already: on the final screen *Master · PASSKEY ONLY* is the root and the agent
+draws it this way already: on the final screen _Master · PASSKEY ONLY_ is the root and the agent
 hangs beneath it.
 
 Relayer built the pieces and tested them — `buildAgentSigningPolicy`,
-`buildAgentSelfDeletePolicy`, `buildCreatePolicyActivity` (documented as *"the unsigned
-CREATE_POLICY activity for human-passkey stamping"*), `turnkey-policy.service.ts#buildAgentPolicies`
+`buildAgentSelfDeletePolicy`, `buildCreatePolicyActivity` (documented as _"the unsigned
+CREATE_POLICY activity for human-passkey stamping"_), `turnkey-policy.service.ts#buildAgentPolicies`
 with over twenty cases, `signoff-rules.service.ts`, and `AgentPolicyMetaRepository`. What is
 missing is the wiring: those three builders have no caller outside their tests, and
 `AgentPolicyMetaRepository.create()` has none either, while `rule-source.ts`,
