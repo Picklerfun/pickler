@@ -1,10 +1,18 @@
-/* The one navigation bar for every public route. The landing adds the price tape above it; nothing
- * else changes between surfaces, so the brand, the menus and the actions stay put as you move.
+/* The one navigation bar for every marketplace route, built from the Portfolio Light canvas: a
+ * translucent white bar over a scrolling page, three menus on white panels, the wallet and one
+ * action. The landing hangs the price tape above it and nothing else differs, so the brand, the
+ * menus and the actions stay put as you move.
+ *
+ * It holds no colour of its own. Every value here is a token, which is why the same bar is correct
+ * on a light page and on a dark one without a second rule.
  */
 
 .nav {
-  position: relative;
-  z-index: 30;
+  position: sticky;
+  top: 0;
+  /* Above the click-away scrim below, which has to sit under the bar or an open menu's own rows
+     would be covered by the thing that closes it. */
+  z-index: 20;
   border-bottom: 1px solid var(--pk-rule);
   background: var(--pk-nav-bg);
   backdrop-filter: blur(16px);
@@ -13,103 +21,107 @@
 .row {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
+  gap: 10px;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 13px 18px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 16px 22px;
-  border-right: 1px solid var(--pk-rule);
+  padding-right: 12px;
   color: var(--pk-ink);
   text-decoration: none;
 }
 
-/* The mark is lit in cyan on every surface: the brand reads the same on the landing, the board and
-   the console, and the lime stays for what the product does rather than for who made it. */
 .logo {
   display: block;
   width: 26px;
   height: auto;
-  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));
 }
 
 .name {
-  font: 700 20px/1 var(--pk-font-display);
+  font: 700 21px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .menus {
   display: flex;
-  flex: 1 1 260px;
+  flex: 1 1 240px;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 0 14px;
+  gap: 2px;
 }
 
 .menu {
   position: relative;
 }
 
+/* A trigger is quiet until it is either open or the owner of the page you are on, and those two
+   states look the same because they mean the same thing: this menu is the one you are in. */
 .menuButton {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 13px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  padding: 9px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: 0.04em;
   color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
 }
 
+.menuButton:hover,
 .menuButtonOn {
-  color: var(--pk-lime-ink);
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
 }
 
 .dropdown {
   position: absolute;
   left: 0;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   z-index: 40;
-  width: 290px;
-  padding: 12px;
+  width: 300px;
+  padding: 10px;
   background: var(--pk-popover);
-  border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-xl);
   box-shadow: var(--pk-popover-shadow);
 }
 
 .dropdownLabel {
   display: block;
   margin: 0;
-  padding: 4px 10px 10px;
-  font: 500 10px/1 var(--pk-font);
-  letter-spacing: 0.16em;
+  padding: 4px 12px 8px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.14em;
   color: var(--pk-ink-faint);
 }
 
 .item {
   display: block;
   padding: 11px 12px;
-  margin-bottom: 2px;
-  border: 1px solid transparent;
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-md);
   color: var(--pk-ink);
   text-decoration: none;
 }
 
-.item:hover {
-  background: var(--pk-panel-2);
-}
-
+.item:hover,
 .itemOn {
-  background: var(--pk-lime-tint);
-  border-color: var(--pk-lime-edge);
+  background: var(--pk-panel);
 }
 
+/* Announced rather than linked to nothing, and it reads as an announcement: the row goes quiet and
+   stops behaving like something you can press. */
 .itemSoon {
   cursor: default;
 }
@@ -122,69 +134,47 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 700 14.5px/1.2 var(--pk-font);
+  font: 600 15px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
 }
 
 .itemSub {
   display: block;
   margin-top: 4px;
-  font: 400 12.5px/1.4 var(--pk-font);
-  color: var(--pk-ink-faint);
+  font: 400 13px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
   text-wrap: pretty;
 }
 
 .soon {
   padding: 3px 7px;
-  border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1 var(--pk-font);
+  background: var(--pk-panel-2);
+  font: 600 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
 }
 
-/* The same badge, lit: a section that exists and has just arrived. */
-.badge {
-  composes: soon;
-  border-color: var(--pk-lime-edge);
-  background: var(--pk-lime-tint);
-  color: var(--pk-lime-ink);
-}
-
-/* Connect sits beside Join, quieter: one of them is the page's action and the other is a utility. */
-.connect {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-left: auto;
-  padding: 16px 20px;
-  border-left: 1px solid var(--pk-rule);
-  font: 500 12.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-dim);
-  text-decoration: none;
-}
-
-.connect:hover {
-  background: var(--pk-panel-2);
-  color: var(--pk-ink);
-}
-
+/* The page's one action, and the only dark thing on a white bar.
+ *
+ * It takes the surface opposite the bar's, so ground, ink and hover all come from the other ramp and
+ * follow it if that ramp moves. Swapping --pk-ink and --pk-bg would express the resting state just
+ * as well and would need no attribute at all; what it could not express is the hover, which wants a
+ * third value from the inverted ramp rather than a second. */
 .cta {
   display: flex;
   align-items: center;
   gap: 11px;
+  height: 45px;
   margin-left: auto;
-  padding: 16px 22px;
-  background: var(--pk-panel);
-  border-left: 1px solid var(--pk-rule);
-  font: 500 13px/1 var(--pk-font);
-  letter-spacing: 0.1em;
+  padding: 0 13px 0 19px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
   color: var(--pk-ink);
   text-decoration: none;
-}
-
-.connect + .cta {
-  margin-left: 0;
+  transition: background var(--pk-duration);
 }
 
 .cta:hover {
@@ -194,49 +184,37 @@
 .arrow {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  background: var(--pk-lime);
-  color: var(--pk-on-lime);
+  width: 21px;
+  height: 21px;
   border-radius: var(--pk-radius-pill);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.35);
+  background: var(--pk-lime);
+  /* Not the surrounding ink: this badge is a lime fill wherever it sits, so it carries the ink lime
+     was measured against rather than the one the subtree happens to be using. */
+  color: var(--pk-on-lime);
 }
 
-/* Every surface styles its own links, and those rules reach inside here: on the landing the brand
-   lit cyan on hover and everywhere else it lit lime. The bar answers for its own links, at a weight
-   that wins, so the brand behaves the same wherever you are. */
-.nav a.brand:hover .name {
-  color: var(--pk-cyan-ink);
-}
-
+/* Every surface styles its own links, and those rules reach inside here. The bar answers for its
+   own, at a weight that wins, so a menu row behaves the same wherever you are. */
 .nav a.cta,
 .nav a.cta:hover,
-.nav a.item {
-  color: var(--pk-ink);
-}
-
-/* A menu entry lights lime on the way in: that is the colour of going somewhere in this product. */
+.nav a.item,
 .nav a.item:hover .itemTitle {
-  color: var(--pk-lime-ink);
+  color: var(--pk-ink);
 }
 
 .nav a.item .itemSub {
-  color: var(--pk-ink-faint);
+  color: var(--pk-ink-muted);
 }
 
-.nav a.connect {
-  color: var(--pk-ink-dim);
-}
-
-.nav a.connect:hover {
+.nav a.brand:hover .name {
   color: var(--pk-ink);
 }
 
-/* Click-away closer: the dropdowns are the only thing it dismisses. */
+/* Click-away closer: the dropdowns are the only thing it dismisses, so it sits under the bar. */
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 15;
   padding: 0;
   background: transparent;
   border: none;

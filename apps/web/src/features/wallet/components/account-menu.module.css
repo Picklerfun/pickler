@@ -1,52 +1,66 @@
-/* The wallet's corner of the navigation bar. */
+/* The wallet's corner of the navigation bar, from the Portfolio Light canvas: one chip in two
+ * states, and the menu the connected one opens. Both are the bar's own shapes rather than the
+ * system's, because the bar sizes its row to them. */
 
 .slot {
   position: relative;
   display: flex;
   align-items: center;
-  margin-left: auto;
-  border-left: 1px solid var(--pk-rule);
 }
 
-/* The same action as the one on a token page, sitting inside the bar. */
-.connect {
-  margin: 0 14px;
-}
-
+/* Disconnected and connected are one chip, at one height, so the bar does not change shape the
+   moment a wallet arrives. */
+.connect,
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  height: 100%;
-  padding: 0 20px;
-  background: transparent;
+  height: 45px;
+  padding: 0 18px;
   border: none;
-  font: 500 12.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-dim);
-  cursor: pointer;
-  transition:
-    background var(--pk-duration),
-    color var(--pk-duration);
-}
-
-.chip:hover {
+  border-radius: var(--pk-radius-pill);
   background: var(--pk-panel-2);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
   color: var(--pk-ink);
+  cursor: pointer;
+  transition: background var(--pk-duration);
 }
 
-/* Lit while the wallet is on the network we read; amber while it is somewhere else. */
+.connect:hover:not(:disabled),
+.chip:hover {
+  background: var(--pk-panel-3);
+}
+
+.chipAddress {
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+}
+
+/* Lit while the wallet is on the network we read; amber while it is somewhere else. The blink is a
+   step rather than a fade: a heartbeat, not a glow. */
 .dot {
   width: 8px;
   height: 8px;
   border-radius: var(--pk-radius-pill);
   background: var(--pk-lime);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
+  animation: blink 1.4s step-end infinite;
 }
 
 .dotWrong {
   background: var(--pk-amber);
-  box-shadow: 0 0 10px rgba(255, 201, 63, 0.9);
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
 }
 
 .error {
@@ -55,26 +69,25 @@
   right: 12px;
   padding: 6px 10px;
   font: 500 11px/1.3 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-magenta);
+  color: var(--pk-loss);
 }
 
 .menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 1px);
+  top: calc(100% + 10px);
   z-index: 40;
-  width: 260px;
-  padding: 14px;
+  width: 280px;
+  padding: 10px;
   background: var(--pk-popover);
-  border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-xl);
   box-shadow: var(--pk-popover-shadow);
 }
 
 .balanceLabel {
   margin: 0 0 6px;
-  font: 500 10px/1 var(--pk-font);
+  padding: 4px 12px 0;
+  font: 600 10px/1 var(--pk-font);
   letter-spacing: 0.14em;
   color: var(--pk-ink-faint);
 }
@@ -83,32 +96,34 @@
 .kind {
   composes: balanceLabel;
   margin: 0 0 6px;
-  color: var(--pk-cyan-ink);
 }
 
 .balance {
   margin: 0 0 12px;
-  font: 700 24px/1 var(--pk-font);
+  padding: 0 12px;
+  font: 700 26px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--pk-ink);
 }
 
 .balance span {
-  font: 500 12px/1 var(--pk-font);
+  font: 600 12px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
+  color: var(--pk-ink-muted);
 }
 
 .switch {
   display: block;
-  width: 100%;
-  margin-bottom: 12px;
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
   padding: 10px 12px;
-  background: var(--pk-amber-tint);
-  border: 1px solid var(--pk-amber-edge);
+  background: var(--pk-state-caution-bg);
+  border: none;
   border-radius: var(--pk-radius-pill);
   font: 600 12px/1 var(--pk-font);
-  color: var(--pk-amber-ink);
+  color: var(--pk-state-caution-ink);
   cursor: pointer;
 }
 
@@ -116,20 +131,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 9px 12px;
-  background: transparent;
-  border: 1px solid var(--pk-border);
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  padding: 9px 14px;
+  background: var(--pk-panel);
+  border: none;
   border-radius: var(--pk-radius-pill);
-  font: 500 12px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-dim);
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-ink-muted);
   cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
 }
 
 .address:hover {
-  border-color: var(--pk-border-strong);
+  background: var(--pk-panel-2);
   color: var(--pk-ink);
 }
 
@@ -137,57 +155,51 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-top: 4px;
-  border-top: 1px solid var(--pk-rule);
 }
 
 .link {
   display: block;
-  padding: 10px 12px;
-  border-radius: var(--pk-radius-sm);
-  font: 700 13.5px/1.2 var(--pk-font);
+  padding: 11px 12px;
+  border-radius: var(--pk-radius-md);
+  font: 600 15px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
   color: var(--pk-ink);
   text-decoration: none;
 }
 
 .link:hover {
-  background: var(--pk-panel-2);
-  color: var(--pk-lime-ink);
+  background: var(--pk-panel);
 }
 
 .link span {
   display: block;
-  margin-top: 3px;
-  font: 400 11.5px/1.35 var(--pk-font);
-  color: var(--pk-ink-faint);
+  margin-top: 4px;
+  font: 400 13px/1.4 var(--pk-font);
+  letter-spacing: 0;
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
 }
 
-.link:hover span {
-  color: var(--pk-ink-faint);
-}
-
+/* Leaving is the one destructive thing in the menu, so it sits under a rule and reads as a loss. */
 .disconnect {
   display: block;
   width: 100%;
-  margin-top: 8px;
-  padding: 10px 12px;
+  margin-top: 6px;
+  padding: 12px;
   background: transparent;
   border: none;
   border-top: 1px solid var(--pk-rule);
-  font: 600 13px/1.2 var(--pk-font);
-  color: var(--pk-pink-ink);
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-loss);
   text-align: left;
   cursor: pointer;
-}
-
-.disconnect:hover {
-  color: var(--pk-magenta);
 }
 
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 15;
   padding: 0;
   background: transparent;
   border: none;

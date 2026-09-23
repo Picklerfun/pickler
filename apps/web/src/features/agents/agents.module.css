@@ -177,7 +177,7 @@
 
 .sortButton {
   padding: 10px 14px;
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-field);
   border-color: rgba(245, 246, 255, 0.2);
   font: 600 13px/1 var(--body);
 }
@@ -328,7 +328,7 @@
   border-radius: var(--pk-radius-pill);
   font: 700 9.5px/1 var(--label);
   letter-spacing: 0.06em;
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
   white-space: nowrap;
 }
 
@@ -1007,7 +1007,7 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  background: rgba(5, 6, 26, 0.55);
+  background: var(--pk-field);
   border: 1px solid rgba(245, 246, 255, 0.22);
   border-radius: var(--pk-radius-mark);
   overflow: hidden;
@@ -1050,10 +1050,10 @@
 }
 
 .toneCurve {
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 .toneQuiet {
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .avatarSmall {
@@ -1230,12 +1230,12 @@
 .kindPASS {
   background: rgba(255, 201, 63, 0.12);
   border-color: rgba(255, 201, 63, 0.4);
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 .kindANSWER {
   background: rgba(155, 123, 255, 0.14);
   border-color: rgba(155, 123, 255, 0.45);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 .kindPERP {
   background: rgba(255, 95, 162, 0.12);
@@ -1564,7 +1564,7 @@
 .sideToggle {
   display: flex;
   margin-bottom: 18px;
-  background: rgba(5, 6, 26, 0.55);
+  background: var(--pk-field);
 }
 
 .sideButton {
@@ -1599,7 +1599,7 @@
 .unitChip {
   flex: none;
   padding: 9px 12px;
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-field);
   border: 1px solid var(--rule);
   border-radius: var(--pk-radius-sm);
   font: 700 13px/1 var(--label);
@@ -1635,7 +1635,7 @@
   flex: 1 1 60px;
   justify-content: center;
   padding: 10px 6px;
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-field);
   border-color: var(--rule);
   border-radius: var(--pk-radius-sm);
   font-weight: 600;
@@ -1730,7 +1730,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  background: rgba(5, 6, 26, 0.55);
+  background: var(--pk-field);
   border-radius: var(--pk-radius-pill);
   overflow: hidden;
 }
@@ -1810,7 +1810,7 @@
 .availableChip[aria-pressed="true"] {
   background: rgba(155, 123, 255, 0.16);
   border-color: rgba(155, 123, 255, 0.5);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .directory {
@@ -2050,7 +2050,7 @@
 .evalTag[data-state="not_evaluable"] {
   background: rgba(255, 201, 63, 0.12);
   border-color: rgba(255, 201, 63, 0.4);
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 
 .chipCount {
@@ -2059,12 +2059,12 @@
 
 .page a.newReadButton {
   border: 1px solid rgba(155, 123, 255, 0.5);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .page a.newReadButton:hover {
   background: rgba(155, 123, 255, 0.16);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 /* The answers list on a profile: the number it stated, the question, the verdict. */
@@ -2088,7 +2088,7 @@
   flex: none;
   font: 700 22px/1 var(--label);
   font-variant-numeric: tabular-nums;
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .readQuestion {
@@ -2209,7 +2209,7 @@
   padding: 18px;
   margin-bottom: 20px;
   border: 1px solid rgba(245, 246, 255, 0.14);
-  background: rgba(5, 6, 26, 0.45);
+  background: var(--pk-field);
   border-radius: var(--pk-radius-sm);
 }
 
@@ -2217,7 +2217,7 @@
   display: block;
   font: 700 52px/1 var(--label);
   font-variant-numeric: tabular-nums;
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .readAnswerProb .label {
@@ -2369,7 +2369,7 @@
 }
 
 .readOutcome[data-tone="curve"] strong {
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 
 .readCardFoot {
@@ -2386,14 +2386,14 @@
 /* Connecting is the step before paying, so it wears the violet as an outline rather than a fill. */
 .page .askConnect {
   border-color: var(--pk-violet);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
   font-weight: 700;
 }
 
 .page .askConnect:hover:not(:disabled) {
   background: rgba(155, 123, 255, 0.16);
   border-color: var(--pk-violet);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 /* Going back a step is the same shape as the link that goes back a page. */
@@ -2427,7 +2427,7 @@
   border-radius: var(--pk-radius-pill);
   font: 600 10px/1 var(--label);
   letter-spacing: 0.08em;
-  color: #5c6484;
+  color: var(--pk-ink-faint);
 }
 
 .askStep[data-state="on"] {
@@ -2436,7 +2436,7 @@
 }
 
 .askStep[data-state="done"] {
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .askStepNumber {
@@ -2448,7 +2448,7 @@
   background: rgba(245, 246, 255, 0.1);
   font: 700 9px/1 var(--label);
   letter-spacing: 0.08em;
-  color: #5c6484;
+  color: var(--pk-ink-faint);
 }
 
 .askStep[data-state="on"] .askStepNumber,
@@ -2492,7 +2492,7 @@
 .askAgentPrice strong {
   font: 700 15px/1 var(--label);
   font-variant-numeric: tabular-nums;
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .askStack {
@@ -2516,7 +2516,7 @@
 .askChip[aria-pressed="true"] {
   background: rgba(155, 123, 255, 0.16);
   border-color: rgba(155, 123, 255, 0.55);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .askChip {
@@ -2529,7 +2529,7 @@
 .askChipOn {
   background: rgba(155, 123, 255, 0.16);
   border-color: rgba(155, 123, 255, 0.55);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
   padding: 10px 14px;
   font: 600 12px/1 var(--label);
   letter-spacing: 0;
@@ -2540,7 +2540,7 @@
   border-color: rgba(245, 246, 255, 0.1);
   font: 600 12px/1 var(--label);
   letter-spacing: 0;
-  color: #5c6484;
+  color: var(--pk-ink-faint);
 }
 
 /* The question is the agent's, not the asker's, so it gets the violet frame. */

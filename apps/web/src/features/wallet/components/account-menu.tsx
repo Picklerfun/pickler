@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Icon } from "@pickler/ui";
+import { Icon } from "@pickler/ui";
 import { useState } from "react";
 import styles from "./account-menu.module.css";
 import { useWallet } from "../lib/wallet-context";
@@ -23,13 +23,15 @@ export function AccountMenu() {
   if (wallet.status !== "connected" || !wallet.address) {
     return (
       <span className={styles.slot}>
-        <Button
+        <button
+          type="button"
           className={styles.connect}
           onClick={() => wallet.connect()}
           disabled={wallet.status === "connecting"}
         >
+          <Icon name="wallet" size={16} />
           {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
-        </Button>
+        </button>
         {wallet.error && <span className={styles.error}>{wallet.error}</span>}
       </span>
     );
@@ -58,7 +60,7 @@ export function AccountMenu() {
           className={`${styles.dot} ${wallet.onTargetChain ? "" : styles.dotWrong}`}
           aria-hidden="true"
         />
-        {shortAddress(address)}
+        <span className={styles.chipAddress}>{shortAddress(address)}</span>
         <Icon name={open ? "chevronUp" : "chevronDown"} size={13} />
       </button>
 

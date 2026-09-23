@@ -4,18 +4,30 @@ import { SiteNav } from "@/features/site/site-nav";
 import type { ReactNode } from "react";
 import styles from "../agents.module.css";
 
-export function PublicShell({ children }: { children: ReactNode }) {
+/**
+ * The shell every marketplace route shares: the bar, the page ground and the chart credit.
+ *
+ * It is light, which is what the marketplace is. `surface` exists for the routes whose *bodies*
+ * still compose against a dark ground — the agent pages — because one wrapper cannot hold two
+ * surfaces and those bodies are not this task's to redraw. A dark shell brings back the ground
+ * they compose against; a light one has none to bring. The prop goes when the last body is redrawn.
+ */
+export function PublicShell({
+  children,
+  surface = "light",
+}: {
+  children: ReactNode;
+  surface?: "light" | "dark";
+}) {
   return (
-    // Pinned dark: .space paints a full-bleed opaque gradient with a starfield over it, so the
-    // ground this page actually has is not the white one the token names. This shell carries every
-    // marketplace route — agents, markets, tokens, reads, leaderboard, portfolio, activity — so the
-    // pin covers all seven. It comes off route by route as their canvases land.
-    <div className={styles.page} data-surface="dark">
-      <div aria-hidden="true">
-        <div className={styles.space} />
-        <div className={styles.stars} />
-      </div>
-      <SiteNav connect />
+    <div className={styles.page} data-surface={surface}>
+      {surface === "dark" && (
+        <div aria-hidden="true">
+          <div className={styles.space} />
+          <div className={styles.stars} />
+        </div>
+      )}
+      <SiteNav connect surface={surface} />
       {children}
       {/* Our charts are drawn with TradingView's Lightweight Charts™. We hide the logo the library
           paints inside the panel, so its licence asks for the credit and the link to live on the

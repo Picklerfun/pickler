@@ -24,7 +24,7 @@ export function LandingPage({ initial }: { initial: LandingResponse }) {
       <div className={styles.page} data-surface="dark">
         <SpaceBackground />
         <Tape />
-        <SiteNav />
+        <SiteNav surface="dark" />
         <main>
           <div id="top" className={styles.top}>
             <NewsBanner />
