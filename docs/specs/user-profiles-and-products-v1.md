@@ -326,6 +326,10 @@ worse for anyone reading a link.
 will need each route to carry its host. Supabase's allowed redirect URLs must include both callback
 origins.
 
+Each route now carries a `product`, and `render.mjs` picks a base URL from it — a no-op in
+development, where both products answer on one origin. §14 is the full list of what has to be set
+outside the code before any of this works in a deployment.
+
 ---
 
 ## 10. Data model
@@ -521,3 +525,61 @@ Turning it on for core is one line and surfaces **56 errors**:
 
 Those fifteen are the scope. Doing it inside a feature branch would mean that branch's failures and
 this backlog's failures arriving in one test run with no way to tell them apart.
+
+---
+
+## 14. Before this works in a deployment
+
+Everything below lives outside this repository's code. None of it is covered by a test, a
+typecheck or a `curl`, which is why it is written down: each one fails in a way that looks like
+something else.
+
+**The two hostnames, on the web worker.** `NEXT_PUBLIC_MARKETPLACE_HOST` and
+`NEXT_PUBLIC_STUDIO_HOST`. `apps/web/src/middleware.ts` falls back to `pickler.fun` and
+`app.pickler.fun`, so a deployment that sets neither still works on those two names and silently
+does the wrong thing on any others — a preview deployment, a staging domain, a custom hostname.
+The fallback is a convenience for development, not a configuration.
+
+**These two are read at build time, not at run time**, and that distinction is the whole of the
+trap. Next inlines every `process.env.NEXT_PUBLIC_*` into the bundle when it compiles, and the
+middleware reads them at module scope, so a value added to `vars` in `apps/web/wrangler.jsonc` is
+a runtime binding that the built worker never consults. The build succeeds, the worker starts, the
+fallbacks stay in place, and nothing anywhere reports that the setting was ignored. They belong in
+the build environment — the CI or `wrangler deploy` step that runs `next build` — and setting them
+as worker vars instead is indistinguishable from not setting them at all.
+
+**Both hostnames pointed at the web worker.** `pickler.fun` and `app.pickler.fun` must both route
+to it. The middleware decides what a host may serve; it never gets the chance if the host does not
+arrive.
+
+**`SIWE_DOMAIN` and `WALLET_EMAIL_DOMAIN`, on the API worker.** Without both, `walletAuthServices`
+returns `undefined` and **the wallet routes are not mounted at all** — the rest of the API serves
+normally, so the symptom is a 404 on `/v1/wallet/*` and nothing in the logs saying why. This is the
+same gate `/v1/signing` sits behind, and it fails the same quiet way.
+
+`SIWE_DOMAIN` must equal the origin's host as the browser sees it. A signature is bound to the
+domain in the message it signed, so a value that does not match rejects every signature as though
+it were replayed from somewhere else — the failure reads as an attack, not as a typo.
+
+**`ALLOWED_ORIGINS` carrying both.** `https://pickler.fun,https://app.pickler.fun`. A missing
+origin fails **only in a browser**: the tests pass, `curl` passes, and the preflight is refused in
+front of a user. It is the one item here with no local symptom whatever.
+
+**Supabase's allowed redirect URLs carrying both callback origins.** `https://pickler.fun/auth/callback`
+and `https://app.pickler.fun/auth/callback`. An origin that is not listed does not error at
+sign-in; it completes and returns the person to the site root with no session, which reads as "it
+just did not work".
+
+**`TURNKEY_RPID=pickler.fun`, and it is a one-way door.** A passkey is scoped to its relying party
+and the scope reaches downward only: one registered against `pickler.fun` works on
+`app.pickler.fun` and every other subdomain, while one registered against `app.pickler.fun` works
+nowhere else. Changing the value later does not migrate anything — it **orphans every credential
+already enrolled**, and every person has to enrol again. It must therefore be right before the
+first registration, not after. §7 has the consequence this buys and the cost it carries.
+
+**`wallet.pickler.fun` must never be made to accept mail.** Wallet accounts are given a synthetic
+address at that domain — `eip155-0x…@wallet.pickler.fun` — as an internal key, because Supabase
+requires an email and a wallet does not have one. It is an identifier, and it is not deliverable by
+design. Pointing MX records at that subdomain turns every one of those identifiers into a live
+mailbox, which makes an internal key into an address that can receive a password reset. Nothing in
+the code can detect that this has happened.

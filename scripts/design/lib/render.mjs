@@ -22,6 +22,20 @@ if (!BASE) {
   process.exit(2);
 }
 
+/* Two products, and in a deployment two origins. One base URL still works and is what development
+ * uses, because the middleware is inert on localhost and both products answer on 3001 — so this is
+ * a no-op here and only has an effect once the two are split.
+ *
+ * DESIGN_BASE_URL stays required and still refuses to guess, for both of them. The reason is
+ * unchanged and gets worse rather than better with two hosts: another checkout of this repository
+ * serves the same application under the same title on a neighbouring port, so a default measures
+ * somebody else's branch and prints plausible numbers. Two defaults would be two chances at that. */
+const BASE_FOR = {
+  marketplace: process.env.DESIGN_MARKETPLACE_URL ?? BASE,
+  studio: process.env.DESIGN_STUDIO_URL ?? BASE,
+};
+const baseFor = (route) => BASE_FOR[route.product] ?? BASE;
+
 /* Playwright is installed globally and deliberately not a repository dependency, so `playwright`
  * does not resolve from here. Node ignores NODE_PATH for ESM, so the global install has to be
  * found and imported by absolute path. The in-repo import is tried first so that adding Playwright
@@ -118,7 +132,7 @@ const START_FIXTURE = "node --import tsx scripts/design/fixture-api.mjs 8799";
  * different currency. */
 const KINDS = {
   "server-down": {
-    line: (route, detail) => `${route.path} — nothing answered at ${BASE} (${detail})`,
+    line: (route, detail) => `${route.path} — nothing answered at ${baseFor(route)} (${detail})`,
     remedy:
       `The dev server is down, so nothing was measured and no design conclusion follows. Start it:\n` +
       `    ${START_APP}\n` +
@@ -151,6 +165,14 @@ const KINDS = {
     remedy:
       "Add one to routes.mjs. A route with no floor cannot be told from a stub, and a route nobody\n" +
       "  wrote a floor for is exactly the route the floor exists to catch, so it is not measured.",
+  },
+  "no-product": {
+    line: (route) => `${route.path} — declares no \`product\`, so no host owns it`,
+    remedy:
+      "Add one to routes.mjs: `marketplace` or `studio`. Falling back to DESIGN_BASE_URL would\n" +
+      "  measure the route against whichever host happened to be named, and once the two products\n" +
+      "  sit on different origins that is a number about the wrong server — which is the one\n" +
+      "  failure this whole file is built to refuse.",
   },
   "error-boundary": {
     line: (route) =>
@@ -260,14 +282,21 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
   const browser = await launch(chromium);
   const results = [];
   const blocked = [];
-  let checked = false;
+  // Which base URLs have been fingerprinted. A set rather than a flag because the two products can
+  // sit on two origins, and verifying one of them while measuring both is the same mistake in a
+  // smaller form. In development both resolve to DESIGN_BASE_URL, so this still runs exactly once.
+  const checked = new Set();
   try {
     for (const route of routes) {
+      if (!route.product) {
+        blocked.push({ route, kind: "no-product" });
+        continue;
+      }
       const page = await browser.newPage({ viewport: { width, height } });
       try {
         let response;
         try {
-          response = await page.goto(BASE + route.path, { waitUntil: "networkidle" });
+          response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
         } catch (error) {
           blocked.push({
             route,
@@ -291,15 +320,15 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           blocked.push({ route, kind: "error-boundary" });
           continue;
         }
-        if (!checked) {
-          checked = true;
+        if (!checked.has(baseFor(route))) {
+          checked.add(baseFor(route));
           const differs = await serving(page);
           if (differs.length) {
             // packages/ui/src being edited is the innocent explanation: the file on disk is ahead
             // of what the server last compiled. Anything else means the wrong server.
             const editing = held().has("ALWAYS");
             process.stderr.write(
-              `${editing ? "warning" : "refusing to measure"}: the server at ${BASE} is not painting this tree's tokens.\n` +
+              `${editing ? "warning" : "refusing to measure"}: the server at ${baseFor(route)} is not painting this tree's tokens.\n` +
                 differs.map((line) => `  ${line}\n`).join("") +
                 (editing
                   ? "  packages/ui/src has uncommitted changes, so the server may simply not have\n" +

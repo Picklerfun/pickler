@@ -14,10 +14,18 @@
 // drifts into passing as a stub grows. `floor` is only for screens with no authored hook to point
 // at yet. Every route must carry one or the other; render.mjs refuses a route with neither, since a
 // route nobody wrote a floor for is exactly the route this was built to catch.
+// `product` is which host owns the route, by the same first-segment rule
+// apps/web/src/server/hosts.ts applies: /console and /account are the studio, everything else here
+// is the marketplace. In development the middleware is inert and both answer on one origin, so this
+// field does nothing locally — it decides which base URL a check measures once the two products sit
+// on two. render.mjs refuses a route that has no `product` rather than falling back, for the same
+// reason it refuses a route with no floor: the fallback would be a number about the wrong server,
+// and a number about the wrong server is indistinguishable from a number about the right one.
 export const ROUTES = [
   {
     path: "/",
     name: "landing",
+    product: "marketplace",
     surface: "light",
     task: "Task 9",
     // The section the canvas is built around. Present only when the landing itself rendered.
@@ -26,6 +34,7 @@ export const ROUTES = [
   {
     path: "/portfolio",
     name: "portfolio",
+    product: "marketplace",
     surface: "light",
     task: "Task 10",
     // The gate now carries the hook this asked for. It was `floor: 15` against a gate that renders
@@ -39,6 +48,7 @@ export const ROUTES = [
   {
     path: "/portfolio?state=connected",
     name: "portfolio-connected",
+    product: "marketplace",
     surface: "light",
     task: "Task 10",
     proves: '[role="tablist"][aria-label="What this wallet holds"]',
@@ -49,6 +59,7 @@ export const ROUTES = [
   {
     path: "/portfolio?state=connected&tab=positions",
     name: "portfolio-no-positions",
+    product: "marketplace",
     surface: "light",
     task: "Task 10",
     // The panel, not the tablist: this proves the tab the query param asked for is the one on
@@ -62,6 +73,7 @@ export const ROUTES = [
   {
     path: "/leaderboard",
     name: "leaderboard",
+    product: "marketplace",
     surface: "light",
     task: "Inherited",
     // The weights panel. It is authored on this page and on no stub.
@@ -70,6 +82,7 @@ export const ROUTES = [
   {
     path: "/console",
     name: "studio",
+    product: "studio",
     surface: "dark",
     task: "Task 11",
     // The rail. A sign-in stub has no sections to navigate, which is exactly the screen that was
@@ -87,6 +100,7 @@ export const ROUTES = [
   {
     path: "/console?section=picks",
     name: "studio-picks",
+    product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-picks",
@@ -94,6 +108,7 @@ export const ROUTES = [
   {
     path: "/console?section=activity",
     name: "studio-activity",
+    product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-activity",
@@ -101,6 +116,7 @@ export const ROUTES = [
   {
     path: "/console?section=skills",
     name: "studio-skills",
+    product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-skills",
@@ -108,6 +124,7 @@ export const ROUTES = [
   {
     path: "/console?section=token",
     name: "studio-token",
+    product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-token",
@@ -120,6 +137,7 @@ export const ROUTES = [
   {
     path: "/console?state=empty",
     name: "studio-empty",
+    product: "studio",
     surface: "dark",
     task: "Task 12",
     proves: "#studio-panel-empty",
@@ -131,6 +149,7 @@ export const ROUTES = [
   {
     path: "/console?state=empty&phase=draft",
     name: "studio-draft",
+    product: "studio",
     surface: "dark",
     task: "Task 12",
     proves: "#go-public",
@@ -142,6 +161,7 @@ export const ROUTES = [
   {
     path: "/account",
     name: "account",
+    product: "studio",
     surface: "dark",
     task: "Task 13",
     proves: "#account-panel-wallet",
@@ -153,6 +173,7 @@ export const ROUTES = [
   {
     path: "/account?section=security",
     name: "account-security",
+    product: "studio",
     surface: "dark",
     task: "Task 13",
     proves: "#account-panel-security",
@@ -160,6 +181,7 @@ export const ROUTES = [
   {
     path: "/account?section=profile",
     name: "account-profile",
+    product: "studio",
     surface: "dark",
     task: "Task 13",
     proves: "#account-panel-profile",
