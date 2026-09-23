@@ -841,6 +841,51 @@ git commit -m "Catch a typeface wearing the wrong width"
 
 ---
 
+## Task 8b: The marketplace shell
+
+**Files:** Modify `apps/web/src/features/agents/components/public-shell.tsx` and its module CSS
+
+This task was missing from the plan and its absence showed up as a contradiction: the pins put
+`/portfolio` on the dark surface while `scripts/design/routes.mjs` expects it light.
+
+`PublicShell` is one wrapper shared by agents, markets, tokens, reads, leaderboard, activity and
+portfolio, and it is where `.space` paints its gradient and starfield. That is not portfolio's
+problem, it is the shell's — and the new Portfolio canvas's nav _is_ the marketplace nav: a
+translucent white bar, dropdown menus on white panels, a light wallet chip.
+
+- [ ] **Step 1: Read the nav out of the canvas**
+
+```
+DesignSync { method: "get_file", projectId: "c03aadb4-7bb2-429e-aa49-98ae4218bc1f", path: "Portfolio Light.dc.html" }
+```
+
+The nav is the first block. Three dropdown menus — EXPLORE, BUILD, RESOURCES — each opening a white
+panel of titled rows with a subtitle and an optional SOON chip; a wallet chip that is either
+"Connect wallet" or an address with a live dot; and a dark "Create agent" action with a lime arrow
+badge.
+
+- [ ] **Step 2: Lighten the shell**
+
+Move it to the light surface, delete `.space` and its gradients, and build the nav against the
+tokens. Only the shell — the page bodies belong to their own tasks.
+
+- [ ] **Step 3: Unpin what only inherited**
+
+Remove the dark pin from portfolio, markets, tokens, reads, leaderboard and activity: they inherited
+the shell's dark ground and had no dark composition of their own. `agents` and `apply` keep theirs —
+they paint their own opaque layers, which is a different thing.
+
+- [ ] **Step 4: Verify and commit**
+
+```bash
+node scripts/design/surfaces.mjs
+```
+
+```bash
+git add apps/web/src/features
+git commit -m "Let the marketplace share one white bar"
+```
+
 ## Task 9: The landing
 
 **Files:**
