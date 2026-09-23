@@ -82,9 +82,16 @@ export interface MessageFields {
 
 export function createWalletSignIn(deps: WalletSignInDependencies) {
   /**
-   * Everything that must hold before an address is believed, in the order that spends the least:
-   * the nonce is taken first because taking it is what makes a replay impossible, and the
-   * signature is checked last because it is the expensive one.
+   * Everything that must hold before an address is believed, in an order that is load-bearing.
+   *
+   * The nonce is spent first, before the signature is checked, so that a rejected attempt burns it
+   * too. Verify-first would leave the nonce sitting there on every rejection, and a harvested
+   * message could be retried against it until a signature landed. Consume-first gives an attacker
+   * exactly one attempt per nonce.
+   *
+   * Note that spending a nonce twice in sequence cannot detect this: both orderings behave
+   * identically, because the window the order closes is a concurrent one. What distinguishes them
+   * is a *failed* attempt, which is what `a bad signature still spends the nonce` pins.
    */
   async function proven(presented: Presented) {
     const parsed = deps.parseMessage(presented.raw);
