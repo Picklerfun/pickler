@@ -3439,6 +3439,32 @@ also carries `sign` and `send` entries; both belong to flows outside this specif
 subtitle names the live relying party and browser, so derive those rather than copying the canvas's
 literals.
 
+## Tasks 17 to 20 — read this before the code blocks below
+
+The code in the remaining tasks was written before Tasks 14 to 16 existed and no longer describes
+the tree. Four corrections, each found by an implementer reading the source rather than this
+document:
+
+**The step components are semi-controlled, not fully controlled.** They own their own `busy`,
+`error`, attempt count and countdown, and call Supabase themselves. The signatures are
+`AccountStep {mode, email, onMode, onSent}`, `CodeStep {email, code, onCode, onVerified,
+onChangeEmail}` and `HandleStep {handle, error?, busy?, onClaimed}`. The boundary is that a screen
+owns what only it does, and the shell owns what crosses screens — which is the custody ceremony
+and nothing else. The nine-prop `CodeStep` below is superseded.
+
+**`lib/custody-api` exports functions, not a `custodyClient` object.** They are `challenge`,
+`register`, `prepareAdd`, `confirmAdd` and `wallet`. There is no client object and never was.
+
+**The shell already exists as `components/passkey-flow.tsx`.** Task 19 replaces it. Do not create
+`auth-flow.tsx` beside it and leave two shells.
+
+**`backup_added` is a no-op because `FlowState` has nowhere to record a backup.** The rail's BACKUP
+phase depends on knowing, so add the flag to the machine rather than letting the wallet screen hold
+it privately.
+
+Also outstanding: `done-view.tsx`, `board-now.tsx` and `falling-pieces.tsx` are orphaned; and
+`AuthHeader` still offers a "Sign in" link that duplicates the in-form toggle.
+
 ## Task 17: Passkey screen and the ceremony sheet
 
 **Files:**
