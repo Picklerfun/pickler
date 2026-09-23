@@ -8,7 +8,8 @@
   margin: 40px auto;
   padding: 32px 24px;
   border: 1px dashed var(--pk-border);
-  border-radius: var(--pk-radius-lg);
+  /* A card, and §4 gives cards `xl`. It was on the tile step, which is a different role. */
+  border-radius: var(--pk-radius-xl);
   text-align: center;
 }
 

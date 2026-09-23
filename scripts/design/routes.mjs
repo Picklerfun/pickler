@@ -5,6 +5,24 @@
 export const ROUTES = [
   { path: "/", name: "landing", surface: "light", task: "Task 9" },
   { path: "/portfolio", name: "portfolio", surface: "light", task: "Task 10" },
+  // Everything on the portfolio below its heading is behind a connect gate, and nothing here has a
+  // wallet to pass it with — so a check on /portfolio alone measures the gate and calls the screen
+  // green. ?state=connected renders the connected state without one, outside production only.
+  {
+    path: "/portfolio?state=connected",
+    name: "portfolio-connected",
+    surface: "light",
+    task: "Task 10",
+  },
+  // The portfolio opens on the only tab with rows, so the two tabs with no source behind them —
+  // which are the ones carrying the copy that says so — are never on screen for a check to read.
+  // `?tab=` puts one there.
+  {
+    path: "/portfolio?state=connected&tab=positions",
+    name: "portfolio-no-positions",
+    surface: "light",
+    task: "Task 10",
+  },
   { path: "/console", name: "studio", surface: "dark", task: "Task 11" },
   // The empty studio is a state, not a route: the console renders it when the signed-in person has
   // no agents. A later task adds ?state=empty so it can be reached without emptying a database.

@@ -56,6 +56,24 @@ So a surface is not a page-level theme. It is a property any subtree can take, a
 opposite value inverts everything inside it. That single mechanism produces every inverted block in
 all five canvases with no special-case CSS.
 
+### An inverted block must re-declare its ink
+
+This is the mechanism's one real trap, and it produced an invisible heading on the front page before
+anything caught it: `FOUR MOVES.` rendered `#0B0D1A` on `#0B0D1A`, and the four card titles under it
+at 1.10:1.
+
+Setting `data-surface` on a subtree redefines every token inside it. It does **not** change `color`,
+because `color` was already resolved further up the tree and inherits as a _computed value_ rather
+than as a live reference to `--pk-ink`. So the block takes the dark ground and keeps the light ink,
+and the two are the same colour.
+
+Every inverted subtree therefore declares `color: var(--pk-ink)` — and `background: var(--pk-bg)` —
+at its own root. The attribute changes what the tokens mean; the declaration is what re-reads them.
+
+Nothing about this is visible in the source. The block looks correct, the attribute is present, the
+tokens are right, and the text is not there. It was found by measuring the rendered page, which is
+the argument for §7 in one sentence.
+
 ### An inverted block must be told what it inverts from
 
 Nesting the opposite surface is how a dark panel sits in a light page. It is not, by itself, how a
