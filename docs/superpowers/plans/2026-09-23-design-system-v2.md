@@ -277,6 +277,17 @@ in the list because nothing in the apparatus could have caught it.
     coincide. A test built on it certifies either implementation. An example agreeing is not
     evidence a model is right when it is the example that cannot tell the models apart.
 
+23. **A confirming observation is not a check unless it could have come out the other way.** An
+    agent reported that a route was missing, was told it had been built forty minutes earlier, and
+    reconstructed the gap as the lead having grepped the wrong checkout. They then found a fact that
+    confirmed it — the other checkout is on a different branch and genuinely lacks the method — and
+    stopped. The fact was true and causally irrelevant. The forty minutes were an artefact of
+    comparing a UTC message timestamp against a local `git log` time, and the real gap was ten
+    minutes in the opposite direction: the route did not exist when it was checked. **The step that
+    was never verified was the one the whole conclusion rested on**, and it was one `git log --date`
+    away. Corroboration that cannot fail is not corroboration; it only feels like it, and it feels
+    most like it when the conclusion is already believed.
+
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
