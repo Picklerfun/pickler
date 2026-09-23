@@ -6,22 +6,28 @@ import { surfaces } from "./lib/probe.mjs";
 import { eachRoute, finish } from "./lib/render.mjs";
 import { GROUND, ROUTES } from "./routes.mjs";
 
-/* The blocks that must invert, named one by one. A selector rather than a boolean, and rather than
- * "does anything on this page invert": on every light route the first inverting pair in document
- * order is the shell's inverted "Create agent" action, so a boolean is satisfied by the nav no
- * matter what the screen's own block does. The portfolio's dark total panel was rebuilt as a
- * literal with no data-surface at all and this check stayed green, reporting that the portfolio
- * inverts when what inverted was the nav.
+/* Every block that must invert, per route, named one by one.
  *
- * Where the block carries an authored hook the selector names it and the check asserts the
- * data-surface separately, which tells "the block is gone" apart from "the block lost its surface".
- * A selector that leans on [data-surface] to find the block at all cannot reach the second of
- * those: a block that lost its surface stops matching, so it reports as missing and the sharper
- * message never fires. Every entry here names a hook the screen authored for it. */
+ * An array rather than one selector, for the same reason it stopped being a boolean. The boolean
+ * proved whichever pair came first in document order; one selector proves one block on a page that
+ * has three. The landing has the ticker tape, the mascot card and the FOUR MOVES section — `#how`
+ * speaks for the third and says nothing about the other two, and the ink defect that produced
+ * 1.00:1 was a defect in exactly this class.
+ *
+ * Selectors must be scoped to the route's own content: the shared nav's inverted action satisfies a
+ * loose selector on every light route, and a match inside nav, header or footer is refused below
+ * rather than counted. Each selector asserts every element it matches, so a selector that is too
+ * loose reports loudly instead of quietly standing for whichever element came first.
+ *
+ * The tape and the mascot card are matched on the tail of their CSS-module class because neither
+ * carries a hook yet. That is the weak form: `[class*="tape"]` matches sixty elements on this page
+ * — every `tapeItem` — and the ends-with form matches exactly one only while each block keeps a
+ * single class. It fails by matching nothing, which is reported, rather than by matching the wrong
+ * thing, which would not be. Replace both the day they carry an id or a data attribute. */
 const MUST_NEST = {
-  landing: "#how",
-  "portfolio-connected": "#portfolio-balance",
-  account: 'section[aria-label="Wallet"] [data-surface="light"]',
+  landing: ["#how", '[class$="tape"]', '[class$="mascotCard"]'],
+  "portfolio-connected": ["#portfolio-balance"],
+  account: ['section[aria-label="Wallet"] [data-surface="light"]'],
 };
 
 const { results, blocked } = await eachRoute(ROUTES, (page, route) =>
@@ -74,45 +80,49 @@ for (const { route, value } of results) {
     notes.push(`${route.name}: no block on this screen is required to invert`);
     continue;
   }
-  const nest = value.nest;
-  if (!nest.found) {
-    problems.push({
-      route,
-      text: `${route.name}: nothing matches ${wanted}. That block is either gone or no longer carries data-surface, and either way the one mechanism everything else rests on is unexercised on this screen. It must not be rebuilt as a literal ground and a literal ink: that paints the same pixels and inverts nothing.`,
-    });
-    continue;
+  for (const target of value.targets) {
+    if (!target.matches.length) {
+      problems.push({
+        route,
+        text: `${route.name}: nothing matches ${target.selector}. That block is either gone or no longer carries data-surface, and either way the one mechanism everything else rests on is unexercised for it. It must not be rebuilt as a literal ground and a literal ink: that paints the same pixels and inverts nothing.`,
+      });
+      continue;
+    }
+    const many = target.matches.length > 1 ? ` (${target.matches.length} matches)` : "";
+    for (const match of target.matches) {
+      if (!match.surfaced) {
+        problems.push({
+          route,
+          text: `${route.name}: ${match.selector} matches ${target.selector}${many} but carries no data-surface, so whatever makes it look inverted is a literal rather than the system.`,
+        });
+        continue;
+      }
+      if (match.inShell) {
+        problems.push({
+          route,
+          text: `${route.name}: ${target.selector} matched ${match.selector}, which sits inside the shared nav, header or footer rather than this screen's own content. The shell's inverted action satisfies a loose selector on every light route, so this assertion is being answered by something that is not the screen's block.`,
+        });
+        continue;
+      }
+      if (!match.outer) {
+        problems.push({
+          route,
+          text: `${route.name}: ${match.inner.selector} takes data-surface="${match.inner.surface}" but sits inside no other data-surface, so nothing is being inverted against.`,
+        });
+        continue;
+      }
+      if (match.inner.bg === match.outer.bg) {
+        problems.push({
+          route,
+          text: `${route.name}: ${match.inner.selector} [data-surface="${match.inner.surface}"] inside ${match.outer.selector} [data-surface="${match.outer.surface}"] computes the same --pk-bg (${match.inner.bg}) as its parent. Nesting the opposite value did not invert anything.`,
+        });
+        continue;
+      }
+      notes.push(
+        `${route.name}: ${target.selector}${many} → ${match.inner.selector} (${match.inner.surface}, --pk-bg ${match.inner.bg}, painting ${match.inner.paints}) inverts inside ${match.outer.selector} (${match.outer.surface}, ${match.outer.bg})`,
+      );
+    }
   }
-  if (!nest.surfaced) {
-    problems.push({
-      route,
-      text: `${route.name}: ${nest.selector} matches ${wanted} but carries no data-surface, so whatever makes it look inverted is a literal rather than the system.`,
-    });
-    continue;
-  }
-  if (nest.inShell) {
-    problems.push({
-      route,
-      text: `${route.name}: ${wanted} matched ${nest.selector}, which sits inside the shared nav, header or footer rather than in this screen's own content. The shell's inverted action satisfies a loose selector on every light route, so this assertion is being answered by something that is not the screen's block.`,
-    });
-    continue;
-  }
-  if (!nest.outer) {
-    problems.push({
-      route,
-      text: `${route.name}: ${nest.inner.selector} takes data-surface="${nest.inner.surface}" but sits inside no other data-surface, so nothing is being inverted against.`,
-    });
-    continue;
-  }
-  if (nest.inner.bg === nest.outer.bg) {
-    problems.push({
-      route,
-      text: `${route.name}: ${nest.inner.selector} [data-surface="${nest.inner.surface}"] inside ${nest.outer.selector} [data-surface="${nest.outer.surface}"] computes the same --pk-bg (${nest.inner.bg}) as its parent. Nesting the opposite value did not invert anything.`,
-    });
-    continue;
-  }
-  notes.push(
-    `${route.name}: ${nest.inner.selector} (${nest.inner.surface}, ${nest.inner.bg}) inverts inside ${nest.outer.selector} (${nest.outer.surface}, ${nest.outer.bg})`,
-  );
 }
 
 for (const note of notes) {

@@ -179,28 +179,39 @@ export function surfaces(mustNest) {
       };
     });
 
-  let nest = null;
-  if (mustNest) {
-    const inner = document.querySelector(mustNest);
-    if (!inner) {
-      nest = { found: false };
-    } else if (!inner.dataset.surface) {
-      nest = { found: true, selector: name(inner), surfaced: false };
-    } else if (shell(inner)) {
-      // The shared nav's inverted action satisfies a loose selector on every light route, which is
-      // the same accident one level up: the assertion must land on the route's own content.
-      nest = { found: true, selector: name(inner), surfaced: true, inShell: true };
-    } else {
-      const outer = inner.parentElement?.closest("[data-surface]");
-      nest = {
-        found: true,
-        surfaced: true,
-        inner: { selector: name(inner), surface: inner.dataset.surface, bg: bg(inner) },
-        outer: outer
-          ? { selector: name(outer), surface: outer.dataset.surface, bg: bg(outer) }
-          : null,
-      };
-    }
-  }
-  return { where: name(ground), ground: painted(ground), root: bg(ground), nest, nests };
+  /* Every block the route says must invert, and every element each selector matches. One selector
+   * per route was insufficient for the same reason the boolean was: the landing has three inverted
+   * blocks, and `#how` speaks for one of them. A selector matching more than one element asserts
+   * all of them rather than the first, so a loose selector reports loudly instead of quietly
+   * picking whichever came first in DOM order. */
+  const targets = (mustNest ?? []).map((selector) => {
+    const found = [...document.querySelectorAll(selector)];
+    return {
+      selector,
+      matches: found.map((inner) => {
+        if (!inner.dataset.surface) {
+          return { selector: name(inner), surfaced: false };
+        }
+        if (shell(inner)) {
+          // The shared nav's inverted action satisfies a loose selector on every light route.
+          return { selector: name(inner), surfaced: true, inShell: true };
+        }
+        const outer = inner.parentElement?.closest("[data-surface]");
+        return {
+          surfaced: true,
+          inner: {
+            selector: name(inner),
+            surface: inner.dataset.surface,
+            bg: bg(inner),
+            paints: painted(inner),
+          },
+          outer: outer
+            ? { selector: name(outer), surface: outer.dataset.surface, bg: bg(outer) }
+            : null,
+        };
+      }),
+    };
+  });
+
+  return { where: name(ground), ground: painted(ground), root: bg(ground), targets, nests };
 }
