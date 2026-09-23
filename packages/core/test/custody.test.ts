@@ -1,14 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
-import { ChallengeNotUsableError } from "../src/features/wallets/domain/passkey.js";
+import {
+  ChallengeNotUsableError,
+  NoCustodyAccountError,
+} from "../src/features/wallets/domain/passkey.js";
 import type {
+  AddPasskeyActivityBuilder,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
   StoredChallenge,
   SubOrganizationCreator,
 } from "../src/features/wallets/ports/custody.js";
+import type { SignedActivityForwarder } from "../src/features/signing/ports/signing.js";
+import type {
+  ForwardExpectations,
+  SignedActivityRequest,
+} from "../src/features/signing/domain/turnkey-activity.js";
 
 const NOW = new Date("2026-09-22T12:00:00Z");
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -63,7 +72,35 @@ export function fakes() {
       };
     },
   };
-  return { challenges, repository, turnkey, stored, credentials, calls: () => created, rows };
+  // The builder and the forwarder are recorded, not just stubbed: a fake that answers the same
+  // constants whatever it is handed lets the caller pass the wrong sub-organization for ever.
+  const builds: Parameters<AddPasskeyActivityBuilder["build"]>[0][] = [];
+  const activities: AddPasskeyActivityBuilder = {
+    build(input) {
+      builds.push(input);
+      return { url: "u", body: "b", timestampMs: "1", organizationId: "o" };
+    },
+  };
+  const forwards: { request: SignedActivityRequest; expectations: ForwardExpectations }[] = [];
+  const forwarder: SignedActivityForwarder = {
+    async forward(request, expectations) {
+      forwards.push({ request, expectations });
+      return { id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED" };
+    },
+  };
+  return {
+    challenges,
+    repository,
+    turnkey,
+    activities,
+    forwarder,
+    stored,
+    credentials,
+    builds,
+    forwards,
+    calls: () => created,
+    rows,
+  };
 }
 
 export function service(f: ReturnType<typeof fakes>) {
@@ -72,8 +109,8 @@ export function service(f: ReturnType<typeof fakes>) {
     challenges: f.challenges,
     repository: f.repository,
     turnkey: f.turnkey,
-    activities: { build: () => ({ url: "u", body: "b", timestampMs: "1", organizationId: "o" }) },
-    forwarder: { forward: async () => ({ id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED" }) },
+    activities: f.activities,
+    forwarder: f.forwarder,
     rpId: "pickler.fun",
     appName: "Pickler",
     now: () => NOW,
@@ -287,4 +324,147 @@ test("a conflict with no readable winner fails loudly rather than returning noth
       }),
     /orphan sub-org sub-1/,
   );
+});
+
+/** Registers the first device so there is a sub-organization to add a second one to. */
+async function registered(f: ReturnType<typeof fakes>) {
+  const s = service(f);
+  const first = await s.issueChallenge(USER, "ana@pickler.fun");
+  await s.register(USER, {
+    email: "ana@pickler.fun",
+    label: "Touch ID",
+    challenge: first.challenge,
+    attestation,
+  });
+  return s;
+}
+
+test("preparing a new device needs an existing account", async () => {
+  const f = fakes();
+  await assert.rejects(
+    () =>
+      service(f).prepareAddPasskey(USER, {
+        label: "Phone",
+        challenge: "nope",
+        attestation,
+      }),
+    NoCustodyAccountError,
+  );
+});
+
+test("preparing refuses a challenge that was never issued", async () => {
+  const f = fakes();
+  const s = await registered(f);
+
+  await assert.rejects(
+    () =>
+      s.prepareAddPasskey(USER, {
+        label: "Phone",
+        challenge: "never-issued",
+        attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+      }),
+    ChallengeNotUsableError,
+  );
+  assert.equal(f.builds.length, 0, "an unusable challenge must never reach the activity builder");
+});
+
+test("preparing returns the unsigned activity for the phone to stamp", async () => {
+  const f = fakes();
+  const s = await registered(f);
+  const next = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  const prepared = await s.prepareAddPasskey(USER, {
+    label: "Phone",
+    challenge: next.challenge,
+    attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+  });
+
+  assert.equal(prepared.organizationId, "o");
+  assert.equal(prepared.body, "b");
+  // The two constants above are whatever the fake was told to say. What matters is what the
+  // service handed it: the activity has to name this person's sub-organization and root user,
+  // or the phone stamps an activity that adds its credential to somebody else's wallet.
+  assert.deepEqual(f.builds, [
+    {
+      subOrganizationId: "sub-1",
+      rootUserId: "usr-1",
+      label: "Phone",
+      challenge: next.challenge,
+      attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+    },
+  ]);
+  assert.equal(f.stored.has(next.challenge), false, "preparing spends the challenge");
+});
+
+test("confirming forwards the stamped activity and mirrors the credential", async () => {
+  const f = fakes();
+  const s = await registered(f);
+
+  const result = await s.confirmAddPasskey(USER, {
+    label: "Phone",
+    credentialId: "cred-2",
+    transports: ["hybrid"],
+    signed: {
+      url: "https://api.turnkey.com/public/v1/submit/create_authenticators",
+      body: "b",
+      stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "s" },
+    },
+  });
+
+  assert.equal(result.status, "ACTIVITY_STATUS_COMPLETED");
+  assert.ok(f.credentials.some((c) => c.credentialId === "cred-2"));
+  // The forwarder is what stops a stamped body being aimed at another sub-organization or at
+  // some other activity type, so pin what it was told to expect.
+  assert.deepEqual(f.forwards[0]?.expectations, {
+    organizationId: "sub-1",
+    allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_AUTHENTICATORS"],
+  });
+});
+
+test("a credential is not mirrored until Turnkey says the activity completed", async () => {
+  const f = fakes();
+  const s = await registered(f);
+  // Consensus is the realistic case: the activity is accepted but still needs another vote.
+  f.forwarder.forward = async () => ({
+    id: "a",
+    fingerprint: "f",
+    status: "ACTIVITY_STATUS_CONSENSUS_NEEDED",
+  });
+
+  const result = await s.confirmAddPasskey(USER, {
+    label: "Phone",
+    credentialId: "cred-2",
+    transports: ["hybrid"],
+    signed: {
+      url: "https://api.turnkey.com/public/v1/submit/create_authenticators",
+      body: "b",
+      stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "s" },
+    },
+  });
+
+  assert.equal(result.status, "ACTIVITY_STATUS_CONSENSUS_NEEDED");
+  assert.equal(
+    f.credentials.some((c) => c.credentialId === "cred-2"),
+    false,
+    "a row here would claim a device that Turnkey has not accepted",
+  );
+});
+
+test("confirming a device needs an existing account", async () => {
+  const f = fakes();
+  await assert.rejects(
+    () =>
+      service(f).confirmAddPasskey(USER, {
+        label: "Phone",
+        credentialId: "cred-2",
+        transports: ["hybrid"],
+        signed: {
+          url: "https://api.turnkey.com/public/v1/submit/create_authenticators",
+          body: "b",
+          stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "s" },
+        },
+      }),
+    NoCustodyAccountError,
+  );
+  assert.equal(f.forwards.length, 0, "nothing may be forwarded without an account to aim it at");
 });

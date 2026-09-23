@@ -150,3 +150,27 @@ export * from "./features/console/access.js";
 
 export * from "./features/trading/types.js";
 export * from "./features/trading/service.js";
+
+export {
+  ChallengeNotUsableError,
+  NoCustodyAccountError,
+  deviceTypeFromTransports,
+  toTurnkeyTransports,
+  type ChallengeOptions,
+  type DeviceType,
+  type PasskeyAttestation,
+} from "./features/wallets/domain/passkey.js";
+export type {
+  AddPasskeyActivityBuilder,
+  ChallengeStore,
+  CustodyAccount,
+  CustodyRepository,
+  RegistrationInput,
+  StoredChallenge,
+  SubOrganizationCreator,
+  UnsignedActivity,
+} from "./features/wallets/ports/custody.js";
+export {
+  createCustodyService,
+  type CustodyServiceDeps,
+} from "./features/wallets/application/custody.js";

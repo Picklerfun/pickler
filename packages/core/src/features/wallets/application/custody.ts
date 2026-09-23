@@ -2,7 +2,11 @@
 // Changed: the challenge store is a port over Postgres rather than Redis, and the caller is a
 // Supabase user rather than an integrator.
 
-import { ChallengeNotUsableError, deviceTypeFromTransports } from "../domain/passkey.js";
+import {
+  ChallengeNotUsableError,
+  NoCustodyAccountError,
+  deviceTypeFromTransports,
+} from "../domain/passkey.js";
 import type { ChallengeOptions, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
@@ -10,8 +14,10 @@ import type {
   CustodyAccount,
   CustodyRepository,
   SubOrganizationCreator,
+  UnsignedActivity,
 } from "../ports/custody.js";
 import type { SignedActivityForwarder } from "../../signing/ports/signing.js";
+import type { SignedActivityRequest } from "../../signing/domain/turnkey-activity.js";
 
 const CHALLENGE_TTL_MS = 300_000;
 
@@ -143,5 +149,62 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       }
       return winner;
     },
+
+    /**
+     * The new device creates its own credential first; this builds the CREATE_AUTHENTICATORS
+     * activity that adds it, which an existing passkey then stamps. Relayer numbers the same
+     * two steps "create" and "verify" in its add-passkey modal.
+     */
+    async prepareAddPasskey(
+      userId: string,
+      input: { label: string; challenge: string; attestation: PasskeyAttestation },
+    ): Promise<UnsignedActivity> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const claimed = await deps.challenges.consume(input.challenge);
+      if (!claimed || claimed.userId !== userId || claimed.expiresAt <= deps.now()) {
+        throw new ChallengeNotUsableError();
+      }
+      return deps.activities.build({
+        subOrganizationId: account.subOrganizationId,
+        rootUserId: account.rootUserId,
+        label: input.label,
+        challenge: input.challenge,
+        attestation: input.attestation,
+      });
+    },
+
+    async confirmAddPasskey(
+      userId: string,
+      input: {
+        label: string;
+        credentialId: string;
+        transports: string[];
+        signed: SignedActivityRequest;
+      },
+    ) {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const activity = await deps.forwarder.forward(input.signed, {
+        organizationId: account.subOrganizationId,
+        allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_AUTHENTICATORS"],
+      });
+      if (activity.status === "ACTIVITY_STATUS_COMPLETED") {
+        await deps.repository.addPasskey({
+          userId,
+          credentialId: input.credentialId,
+          label: input.label,
+          transports: input.transports,
+          deviceType: deviceTypeFromTransports(input.transports),
+        });
+      }
+      return activity;
+    },
+
+    getAccount: (userId: string) => deps.repository.findByUserId(userId),
   };
 }
