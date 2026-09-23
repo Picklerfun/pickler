@@ -54,8 +54,9 @@ export function HeroRow() {
       </section>
 
       {/* The studio's own ground, appearing inline in a white page. Nothing here is a rule of its
-          own: the card takes the opposite surface and everything inside it follows. */}
-      <div className={styles.mascotCard} data-surface="dark">
+          own: the card takes the opposite surface and everything inside it follows. The id is how
+          surfaces.mjs names this block to assert that it does. */}
+      <div id="mascot-card" className={styles.mascotCard} data-surface="dark">
         <p className={`${styles.label} ${styles.mascotLabel}`}>ALWAYS ON</p>
         <Mark hue="lime" className={styles.mascotCorner} />
         <div className={styles.mascotGlow} aria-hidden="true" />

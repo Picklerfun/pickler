@@ -34,7 +34,10 @@ export function Tape() {
   ));
 
   return (
-    <div className={styles.tape} data-surface="dark">
+    // `id` rather than a class hook: surfaces.mjs names this block to assert that it inverts, and
+    // an id is unique by definition where a class selector is only unique until someone adds a
+    // second class. See four-moves.tsx, which the same check reaches by `#how`.
+    <div id="tape" className={styles.tape} data-surface="dark">
       <div className={styles.tapeTrack}>
         <ul className={styles.tapeList} aria-label="Latest picks">
           {items}
