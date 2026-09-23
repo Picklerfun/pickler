@@ -83,3 +83,10 @@ export {
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
+export {
+  buildSiweMessage,
+  createSignatureVerifier,
+  MalformedMessageError,
+  parseSiweMessage,
+  type SiweFields,
+} from "./chain/siwe.js";
