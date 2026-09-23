@@ -33,6 +33,23 @@
 | Types | `npm run typecheck` |
 | Format | `npm run format` |
 
+**Make every fake record what it was handed, and assert on the recording.** This plan's own tests
+got this wrong repeatedly, and the same mistake is available in every task that follows. A fake that
+answers a constant lets a test assert that constant and prove only that the fake was called. Three
+real examples caught by sabotage while executing this plan: a concurrency test passed with the whole
+concurrency handling deleted; a test asserting `organizationId === "o"` passed when the caller's
+root user was replaced with a stranger's, which in production means a phone stamping a credential
+onto somebody else's wallet; and three separate guard clauses were free to delete with the suite
+staying green.
+
+So: give fakes an array they push their inputs onto, assert `deepEqual` against that array, and
+assert the negative too — that the collaborator was *not* reached when a guard should have stopped
+it, so the guard cannot drift below the call it protects.
+
+**Prove each test can fail before believing it.** Delete the line the test claims to cover and run
+it. If the suite stays green, the test is decoration. This found every defect listed above, and none
+of them were visible by reading.
+
 **Two Turnkey facts that are easy to get wrong.** `@turnkey/http`'s `TurnkeyClient` cannot send requests on Workers — its fetch uses `redirect: "error"`. Use its `stamp*` methods to build and sign, then send with `sendStampedRequest` from `packages/infrastructure/src/turnkey/turnkey-transport.ts`. And the stamper must be pinned with `runtimeOverride: "browser"` so it uses WebCrypto instead of detecting Node.
 
 **One security rule.** The sub-organization is created with `rootQuorumThreshold: 1`, the user's passkey as the only authenticator, and `apiKeys: []`. Never add a Pickler key to a sub-organization. This also means the parent key cannot install policies there afterwards, so no copy anywhere in this plan may claim a spending limit exists.
