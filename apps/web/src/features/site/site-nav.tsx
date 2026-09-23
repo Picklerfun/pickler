@@ -128,13 +128,13 @@ export function SiteNav({
           </div>
 
           {/* Two different people, side by side: connecting a wallet is for readers and backers,
-              and the action beside it is for someone who came to build an agent. */}
+              and the action beside it goes to the studio, which is where an agent is made. */}
           {connect && <AccountMenu />}
           {/* The one inverted thing in the bar. An inverted block has to be told what it inverts
               *from*: hard-coding dark here is right only while the bar is light, and on the dark
               bar it painted a dark action on a dark ground and disappeared. */}
           <Link
-            href="/signin"
+            href="/console"
             className={styles.cta}
             data-surface={surface === "dark" ? "light" : "dark"}
           >

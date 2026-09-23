@@ -50,14 +50,28 @@ the dialect; the bindings show what is data and what is static.
 
 **Commands:**
 
-| Purpose               | Command                                        |
-| --------------------- | ---------------------------------------------- |
-| Dev server            | `npm run dev` (serves `http://localhost:3000`) |
-| A verification script | `node scripts/design/<name>.mjs`               |
-| Types                 | `npm run typecheck`                            |
-| Lint and format       | `npm run lint` · `npx prettier --check .`      |
-| Everything            | `npm test`                                     |
-| Web build             | `npx turbo build --filter=@pickler/web`        |
+| Purpose               | Command                                                 |
+| --------------------- | ------------------------------------------------------- |
+| Dev server            | `npm run dev` (serves `http://localhost:3000`)          |
+| Dev server with data  | see below — **not** `npm run dev`                       |
+| The API fixture       | `node --import tsx scripts/design/fixture-api.mjs 8787` |
+| A verification script | `node scripts/design/<name>.mjs`                        |
+| Types                 | `npm run typecheck`                                     |
+| Lint and format       | `npm run lint` · `npx prettier --check .`               |
+| Everything            | `npm test`                                              |
+| Web build             | `npx turbo build --filter=@pickler/web`                 |
+
+Every marketplace and auth route renders on the server and asks the API for its data, so with no API
+they answer 500 and a check reads a stack trace rather than a page. `scripts/design/fixture-api.mjs`
+serves them from the product's own sample adapters. Point the app at it — and note the command:
+`npm run dev` goes through Turborepo, whose `dev` task declares no `env`, so it strips
+`PICKLER_API_LOCAL_URL` and every route answers 503 exactly as it does with no fixture running at
+all. Run Next directly.
+
+```bash
+node --import tsx scripts/design/fixture-api.mjs 8787
+cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:8787 npx next dev
+```
 
 **What this plan has learned, from the custody work that preceded it.** Twenty-one defects, all in
 the specification, none visible by reading:
@@ -75,6 +89,11 @@ the specification, none visible by reading:
    first assert is fixed the rest execute for the first time — which is how a wrong expectation rode
    along unexecuted in the harness that checks every colour in this product. One behaviour per test,
    or collect the failures and assert once at the end.
+5. **A token migration only moves the code that already used tokens.** It substitutes names, and a
+   hex has no name to substitute, so a page can pass a migration untouched and still be unreadable —
+   grep for literals as well as for names. Lightening six marketplace routes surfaced an amber and a
+   violet set as text at 1.5:1 and 2.1:1 on white, and seven control grounds made of the old dark
+   page's near-black, none of which any rename could have reached.
 
 ---
 
