@@ -5,9 +5,10 @@
 // each flow end to end.
 //
 // The names are the canvas's own — `STEPS` and `RAILS` below are the same words, in the same
-// order, as the constants in the canvas's logic half. The canvas also has an `agent` rail with
-// `agent` and `done` steps for creating an agent; that is a separate flow after this one and is
-// not modelled here.
+// order, as the constants in the canvas's logic half. The canvas also has an `agent` rail —
+// `{ LIMITS: ['agent'], LIVE: ['done'] }`, whose two steps are titled NEW AGENT and AGENT LIVE —
+// for creating an agent. That flow is not modelled here, and it is where the `custody` rail below
+// is entered from: the canvas drew custody hanging off agent creation before the code did.
 
 export type Step =
   | "auth"
@@ -20,8 +21,15 @@ export type Step =
   | "approve"
   | "recovered";
 
-/** Which rail is on screen: creating an account, returning to one, or adding a device to one. */
-export type Mode = "up" | "in" | "recover";
+/**
+ * Which rail is on screen: creating an account, returning to one, adding a device to one, or
+ * taking custody.
+ *
+ * Custody is its own rail because it no longer happens at sign-up. The Turnkey sub-organization is
+ * created when somebody builds their first agent, so a person who has only ever traded holds a
+ * session and no custody — which is the correct state for them, not a half-finished one.
+ */
+export type Mode = "up" | "in" | "recover" | "custody";
 
 export interface FlowState {
   mode: Mode;
@@ -54,6 +62,8 @@ export type FlowEvent =
   | { type: "code_changed"; code: string }
   | { type: "code_verified" }
   | { type: "handle_claimed"; handle: string }
+  /** Building a first agent, which is the thing that needs a sub-organization to exist. */
+  | { type: "custody_started" }
   | { type: "passkey_created"; address: string }
   | { type: "backup_added" }
   /** Signed in, but this browser holds no passkey for the account. */
@@ -87,6 +97,12 @@ const RAILS: Record<Mode, readonly Phase[]> = {
   up: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
     { label: "HANDLE", steps: ["handle"] },
+    // Sign-up ends where signing in ends, under the label the `in` rail already gives `welcome`.
+    { label: "IN", steps: ["welcome"] },
+  ],
+  // Entered from agent creation, never from sign-up. The two phases are the canvas's own, moved
+  // here whole: what they ask of a person has not changed, only when they are asked.
+  custody: [
     { label: "PASSKEY", steps: ["passkey"] },
     { label: "BACKUP", steps: ["wallet"] },
   ],
@@ -100,6 +116,15 @@ const RAILS: Record<Mode, readonly Phase[]> = {
     { label: "THIS DEVICE", steps: ["recovered"] },
   ],
 };
+
+/**
+ * Every step of a mode's rail, in order. The rail is what the form asks of a person, so this is
+ * the list to assert against when the question is what a flow demands — not `next`, which will
+ * happily walk into a step no rail mentions.
+ */
+export function stepsFor(mode: Mode): Step[] {
+  return RAILS[mode].flatMap((phase) => [...phase.steps]);
+}
 
 export const INITIAL: FlowState = {
   mode: "up",
@@ -125,7 +150,11 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       // The one place the two email rails part: a new account still has to pick a name.
       return { ...state, step: state.mode === "up" ? "handle" : "welcome" };
     case "handle_claimed":
-      return { ...state, step: "passkey", handle: event.handle };
+      // Sign-up is over here. It used to fall through to `passkey`, which is what made every new
+      // account create custody it had no use for yet.
+      return { ...state, step: "welcome", handle: event.handle };
+    case "custody_started":
+      return { ...state, mode: "custody", step: "passkey" };
     case "passkey_created":
       return { ...state, step: "wallet", address: event.address };
     case "backup_added":

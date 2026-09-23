@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { INITIAL, next, rail } from "../src/features/auth/lib/flow";
+import { INITIAL, next, rail, stepsFor } from "../src/features/auth/lib/flow";
 import type { FlowEvent, FlowState, RailPhase, Step } from "../src/features/auth/lib/flow";
 
 /** Feeds the machine a script and returns the step after each event, plus the final state. */
@@ -36,25 +36,44 @@ test("the flow starts on the account screen of the sign-up rail, with nothing kn
   });
 });
 
-test("signing up walks account, code, handle, passkey, backup", () => {
+test("signing up walks account, code, handle, welcome — and stops there", () => {
   const { steps, state } = walk(INITIAL, [
     { type: "code_sent", email: "ana@pickler.xyz" },
     { type: "code_changed", code: "482913" },
     { type: "code_verified" },
     { type: "handle_claimed", handle: "nightowl" },
-    { type: "passkey_created", address: "0xAbC0000000000000000000000000000000000001" },
-    { type: "backup_added" },
   ]);
-  assert.deepEqual(steps, ["code", "code", "handle", "passkey", "wallet", "wallet"]);
+  // The walk, not the rail. A rail that merely stopped listing PASSKEY would leave this green
+  // with `passkey` still in it, which is the whole reason this asserts the steps a person is put
+  // through rather than the labels drawn above them.
+  assert.deepEqual(steps, ["code", "code", "handle", "welcome"]);
   assert.deepEqual(state, {
     mode: "up",
-    step: "wallet",
+    step: "welcome",
     email: "ana@pickler.xyz",
     code: "482913",
     handle: "nightowl",
-    address: "0xAbC0000000000000000000000000000000000001",
-    hasBackup: true,
+    address: null,
+    hasBackup: false,
   });
+});
+
+test("custody is a rail of its own, entered by building an agent", () => {
+  const signedUp = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    { type: "code_verified" },
+    { type: "handle_claimed", handle: "nightowl" },
+  ]).state;
+
+  const { steps, state } = walk(signedUp, [
+    { type: "custody_started" },
+    { type: "passkey_created", address: "0xAbC0000000000000000000000000000000000001" },
+    { type: "backup_added" },
+  ]);
+  assert.deepEqual(steps, ["passkey", "wallet", "wallet"]);
+  assert.equal(state.mode, "custody", "the rail has to change with the step, not only the screen");
+  assert.equal(state.address, "0xAbC0000000000000000000000000000000000001");
+  assert.equal(state.hasBackup, true);
 });
 
 test("signing in walks account, code, welcome — the handle is never asked for", () => {
@@ -178,20 +197,14 @@ test("a backup lights the last phase rather than leaving it pending under you", 
     { type: "code_sent", email: "ana@pickler.xyz" },
     { type: "code_verified" },
     { type: "handle_claimed", handle: "nightowl" },
+    { type: "custody_started" },
     { type: "passkey_created", address: "0x01" },
   ]).state;
-  assert.deepEqual(rail(onWallet), [
-    phase("ACCOUNT", "done"),
-    phase("HANDLE", "done"),
-    phase("PASSKEY", "done"),
-    phase("BACKUP", "active"),
-  ]);
+  assert.deepEqual(rail(onWallet), [phase("PASSKEY", "done"), phase("BACKUP", "active")]);
 
   // BACKUP is the one phase that can finish while you are still standing on it, because a backup
   // is an addition rather than a place to go. Once it exists nothing on the rail is pending.
   assert.deepEqual(rail(next(onWallet, { type: "backup_added" })), [
-    phase("ACCOUNT", "done"),
-    phase("HANDLE", "done"),
     phase("PASSKEY", "done"),
     phase("BACKUP", "done"),
   ]);
@@ -209,24 +222,17 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
   assert.deepEqual(rail(INITIAL), [
     phase("ACCOUNT", "active"),
     phase("HANDLE", "todo"),
-    phase("PASSKEY", "todo"),
-    phase("BACKUP", "todo"),
+    phase("IN", "todo"),
   ]);
   // Both steps of ACCOUNT are the same phase: the bar must not move on the way to the code.
   assert.deepEqual(at([{ type: "code_sent", email: "ana@pickler.xyz" }]), [
     phase("ACCOUNT", "active"),
     phase("HANDLE", "todo"),
-    phase("PASSKEY", "todo"),
-    phase("BACKUP", "todo"),
+    phase("IN", "todo"),
   ]);
   assert.deepEqual(
     at([{ type: "code_sent", email: "ana@pickler.xyz" }, { type: "code_verified" }]),
-    [
-      phase("ACCOUNT", "done"),
-      phase("HANDLE", "active"),
-      phase("PASSKEY", "todo"),
-      phase("BACKUP", "todo"),
-    ],
+    [phase("ACCOUNT", "done"), phase("HANDLE", "active"), phase("IN", "todo")],
   );
   assert.deepEqual(
     at([
@@ -234,30 +240,21 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
       { type: "code_verified" },
       { type: "handle_claimed", handle: "nightowl" },
     ]),
-    [
-      phase("ACCOUNT", "done"),
-      phase("HANDLE", "done"),
-      phase("PASSKEY", "active"),
-      phase("BACKUP", "todo"),
-    ],
-  );
-  assert.deepEqual(
-    at([
-      { type: "code_sent", email: "ana@pickler.xyz" },
-      { type: "code_verified" },
-      { type: "handle_claimed", handle: "nightowl" },
-      { type: "passkey_created", address: "0x01" },
-    ]),
-    [
-      phase("ACCOUNT", "done"),
-      phase("HANDLE", "done"),
-      phase("PASSKEY", "done"),
-      phase("BACKUP", "active"),
-    ],
+    [phase("ACCOUNT", "done"), phase("HANDLE", "done"), phase("IN", "active")],
   );
 });
 
-test("the sign-in rail has two phases, not the sign-up rail's four", () => {
+test("the custody rail lights its two phases in turn", () => {
+  const signedUp = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    { type: "code_verified" },
+    { type: "handle_claimed", handle: "nightowl" },
+  ]).state;
+  const onPasskey = next(signedUp, { type: "custody_started" });
+  assert.deepEqual(rail(onPasskey), [phase("PASSKEY", "active"), phase("BACKUP", "todo")]);
+});
+
+test("the sign-in rail has two phases, not the sign-up rail's three", () => {
   const signIn = next(INITIAL, { type: "mode_chosen", mode: "in" });
   assert.deepEqual(rail(signIn), [phase("ACCOUNT", "active"), phase("IN", "todo")]);
   const welcome = walk(signIn, [
@@ -287,4 +284,18 @@ test("a step outside the current rail lights nothing rather than lighting everyt
   // findIndex miss returns -1 — which, compared with `<`, would mark every phase done.
   const stray: FlowState = { ...INITIAL, mode: "in", step: "passkey" };
   assert.deepEqual(rail(stray), [phase("ACCOUNT", "todo"), phase("IN", "todo")]);
+});
+
+test("signing up no longer asks for a passkey", () => {
+  const steps = stepsFor("up");
+  assert.ok(!steps.includes("passkey"));
+  assert.ok(!steps.includes("wallet"));
+});
+
+test("the custody steps still exist, for the flow that needs them", () => {
+  assert.deepEqual(stepsFor("custody"), ["passkey", "wallet"]);
+});
+
+test("signing in is unchanged", () => {
+  assert.deepEqual(stepsFor("in"), ["auth", "code", "welcome"]);
 });
