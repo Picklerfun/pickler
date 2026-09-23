@@ -609,3 +609,104 @@ back to a wallet. Pointing MX records at that subdomain turns every one of those
 live mailbox — which makes an internal key into an address that can receive a password reset.
 Nothing in the code can detect that this has happened, and the rule holds whatever shape the key
 itself takes.
+
+---
+
+## Validation
+
+Measured on 2026-09-23 against the rendered application, over 38 commits. Everything below is
+output, not intention.
+
+**Gates**, checked by exit status rather than by filtering output — see the note at the end of this
+section for why that distinction earned its own place. Typecheck, lint, Prettier and `npm test` all
+exit 0; 666 tests with 665 passing, 1 skipped and none failing; `@pickler/web` builds. The five
+rendered design checks are clean over all 15 routes, and the harness's own suite is 13 of 13.
+
+### What was built, against what was specified
+
+The host split, the wallet sign-in ceremony end to end, `identity.wallet_links` finally written to
+after existing unused since it was declared, profiles reachable from the marketplace, and the
+passkey ceremony moved from signup to first-agent creation. Eighteen planned tasks became twenty:
+two were added during the work, both because a spike found something the plan had assumed.
+
+### Four defects in the specification, found by building it
+
+**`identity.wallet_links` already existed and nothing had ever used it.** The specification
+proposed a `linked_addresses` table; the repository already had a better one, unique on
+`(namespace, address)` rather than on the address alone, with `method` distinguishing `siwe` from
+`siws` and `kind` already carrying `'mera'`. Someone designed it for exactly this work.
+
+**Paid reads have no persistence at all**, so the claim that reads attach to an account could not
+be implemented. §8 now fixes the rule for whoever builds them rather than describing a change to a
+table that does not exist.
+
+**`apps/web/src` cannot import `@pickler/core`,** by a lint rule that exists to keep the web app
+talking to the API over HTTP rather than to the domain. The handle rules are mirrored into
+`@pickler/api-schema` in the idiom `applications.ts` and `markets.ts` already use, held to core by
+a test in `workers/api`, which is the only package that can see both.
+
+**And §3 described the synthetic address in its pre-digest spelling** after the digest landed — a
+sentence that had quietly become false in the section that exists to explain what that address is.
+
+### Three defects in the design, found by reading the code
+
+**The synthetic auth email travelled further than the design assumed.** It is a claim in every
+access token, so it reaches the browser on every request; `GET /v1/auth/me` returned it verbatim;
+and — the severe one — `custody.ts` passed it as the WebAuthn `PublicKeyCredentialUserEntity`'s
+`name` and `displayName`. Those are what an operating system's passkey picker displays and what the
+authenticator stores, synced to iCloud Keychain or Google Password Manager and editable by nobody.
+A person who traded first and built an agent later — the journey §2 is built on — would have ended
+up with a credential permanently labelled with their wallet address. The passkey now takes its name
+from the profile, and the local part of the synthetic address is a digest rather than the address,
+which makes the first two harmless as well.
+
+**`syntheticEmail` lower-cased the address a second time.** On EVM that is a no-op because
+`normalizeAddress` already had. On Solana it is destructive: base58 is case-significant, so two
+distinct addresses collapsed to one synthetic email and therefore **one account shared by two
+people** — the exact failure this specification exists to prevent. The digest removes the shape as
+well as the instance, because a hex digest has no case to lose.
+
+**An unreadable nonce expiry made the nonce immortal.** `expiresAt <= now` answers false for
+`NaN`, so a fail-open on the control that bounds a sign-in's replay window. Written as "not still
+valid", `NaN` takes the reject path. It is the same shape as viem answering an unparseable
+`Issued At:` with `new Date(NaN)`: a field that is present but invalid survives a presence check,
+and so does any comparison, because `NaN` makes every answer false and half of those falses read as
+fine.
+
+### What came close
+
+Nothing in the contrast ramp moved, because no new tokens were introduced. The narrowest figures
+remain the ones recorded in `design-system-v2.md`: `--pk-ink-faint` on `--pk-panel-3` at 4.61:1 and
+`--pk-cyan-ink` on `--pk-panel-3` at 4.54:1.
+
+`ALLOWED_ORIGINS` named `localhost:3000` while this worktree's dev server runs on 3001, so browser
+calls from the working dev server were already being refused. Found incidentally; nothing in any
+test could see it.
+
+### On verification itself
+
+Six tests specified in the plan turned out not to catch the regression they were named for. The
+pattern is one thing: **asserting the description instead of the behaviour.** A rail's phase list
+went green while `next()` still routed to the passkey step; `decide()` asserted a structure while
+the routing lived in a branch above it; a nonce spent twice in sequence behaves identically under
+both orderings, because the window the order closes is concurrent and a sequential test has no
+concurrency to observe. Each was found by mutating the thing the task existed to prevent and
+checking which test went red.
+
+Two checks could not fail at all. A `@ts-expect-error` pin sat in `packages/core/test/`, which that
+package's `tsconfig.json` does not include, so nothing ever typechecked it; it now lives in `src`
+as a conditional type. And a `trim()` mutation was invisible because the fixture had no whitespace
+at its edges.
+
+**And a green can come from a command that never ran.** `tsc | grep -c "error TS"` returning `0`
+means "no matching lines" and "no output at all" indistinguishably. Both an agent and the lead
+reported clean gates from filtered output while those gates were failing. Exit status is the
+verification; the filter is a convenience.
+
+### What was left
+
+Paid reads, which have no persistence to attach an account to. `@category-labs/mera` is not yet a
+dependency, because no file imports it — the adapters are written and the SDK call site is not.
+Merging two accounts that already exist, which this design makes unreachable rather than solvable.
+Turning on `test/` typechecking for the five packages that omit it, which surfaces 56 errors of
+which 15 are genuine and is its own task.
