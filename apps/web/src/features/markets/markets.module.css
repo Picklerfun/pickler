@@ -794,9 +794,13 @@
   text-wrap: pretty;
 }
 
+/* A sentence, not a title: the family comes from `data-face="body"` on the element rather than from
+   a shorthand here, so the opt-out is load-bearing and removing it shows. */
 .ticketPhrase {
   margin: 0;
-  font: 700 17px/1.3 var(--body);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
   letter-spacing: -0.02em;
   text-wrap: pretty;
 }

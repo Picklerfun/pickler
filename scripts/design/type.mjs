@@ -6,19 +6,25 @@ import { eachRoute, finish } from "./lib/render.mjs";
 import { ROUTES } from "./routes.mjs";
 
 const headings = () =>
-  [...document.querySelectorAll("h1, h2")].map((el) => {
-    const style = getComputedStyle(el);
-    return {
-      tag: el.tagName.toLowerCase(),
-      selector: el.tagName.toLowerCase() + (el.classList.length ? `.${el.classList[0]}` : ""),
-      family: style.fontFamily,
-      variation: style.fontVariationSettings,
-      size: style.fontSize,
-      weight: style.fontWeight,
-      text: el.textContent.trim().slice(0, 40).replace(/\s+/g, " "),
-      rendered: el.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
-    };
-  });
+  // `[data-face="body"]` is the system's own way out, for a heading that means to be in the body
+  // face. Skipping it here is the half that makes the opt-out worth having: without it the escape
+  // has to be a `font:` shorthand, which this check would fail while the element was correct, and
+  // the way to quiet the check would be to hide the intent rather than to state it.
+  [...document.querySelectorAll('h1:not([data-face="body"]), h2:not([data-face="body"])')].map(
+    (el) => {
+      const style = getComputedStyle(el);
+      return {
+        tag: el.tagName.toLowerCase(),
+        selector: el.tagName.toLowerCase() + (el.classList.length ? `.${el.classList[0]}` : ""),
+        family: style.fontFamily,
+        variation: style.fontVariationSettings,
+        size: style.fontSize,
+        weight: style.fontWeight,
+        text: el.textContent.trim().slice(0, 40).replace(/\s+/g, " "),
+        rendered: el.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
+      };
+    },
+  );
 
 const { results, blocked } = await eachRoute(ROUTES, (page) => page.evaluate(headings));
 

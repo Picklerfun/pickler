@@ -303,6 +303,20 @@ h2 {
   font-variation-settings: var(--pk-display-wdth);
 }
 
+/* The way out, for a heading that means to be in the body face.
+ *
+ * A heading is a structural thing and the display face is a stylistic one, and the two do not
+ * always coincide: a ticket's phrase is a sentence you read, and it is an `h2` because it names its
+ * section, not because it wants to look like a title. Without this, such a heading can only escape
+ * by writing a `font:` shorthand, which resets `font-family` and beats the rule above from another
+ * file with nothing to notice — an exit that leaves no record that it was deliberate. A system whose
+ * only exit is accidental gets exited accidentally, so the intent goes on the element where the next
+ * reader finds it, and the type check skips what has said so rather than failing something correct. */
+[data-face="body"] {
+  font-family: var(--pk-font);
+  font-variation-settings: normal;
+}
+
 /* ---------- Button ---------- */
 
 .pk-button {
