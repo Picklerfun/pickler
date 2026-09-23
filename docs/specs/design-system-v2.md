@@ -95,7 +95,7 @@ anyone prefers.
 | `--pk-ink`            | `#0B0D1A`                                                          | `#FFFFFF`                    |
 | `--pk-ink-soft`       | _falls back to `--pk-ink`_                                         | `#C7CAD8`                    |
 | `--pk-ink-muted`      | `#5A5F78`                                                          | `#9AA0B8`                    |
-| `--pk-ink-faint`      | `#6B7186`                                                          | `#757B97` (see Validation)   |
+| `--pk-ink-faint`      | _falls back to `--pk-ink-muted`_                                   | `#8C91A9` (see Validation)   |
 | `--pk-panel`          | `#F5F6FA`                                                          | `#15182A`                    |
 | `--pk-panel-2`        | `#F1F2F7`                                                          | `#1C2036`                    |
 | `--pk-panel-3`        | `#E2E5EE`                                                          | `#25293D`                    |
@@ -107,14 +107,21 @@ anyone prefers.
 
 `--pk-ink-muted` and `--pk-ink-faint` were drawn to swap roles between surfaces rather than
 inverting: `#5A5F78` is the muted tone on light, and the canvases use that same grey as the faint
-tone on dark. The swap is no longer exact — on dark that grey measures 3.08:1 and cannot carry body
-text, so the faint level there is lightened to `#757B97`. See **Validation**.
+tone on dark. **Neither faint value survived measurement.** On dark that grey reads 3.08:1 on the
+ground, and on light the faint grey reads 3.85:1 on `--pk-panel-3`. The dark level moved; the light
+level turned out to have no room to move into and collapses onto muted. See **Validation**.
 
-**Light has three ink levels; dark has four.** No light canvas uses a softened ink — body copy
+**Light has two ink levels; dark has four.** No light canvas uses a softened ink — body copy
 inside a white card is full-strength `#0B0D1A`, and the next step down is already the muted grey.
 Dark needs the extra level because pure white body copy on navy is harsh, which is what `#C7CAD8`
 is for. So `--pk-ink-soft` resolves to `--pk-ink` on light: the slot exists for components that use
 it, and on light it simply does nothing.
+
+`--pk-ink-faint` does the same, and for a sharper reason: on light there is no room for a fourth
+level below muted. A faint grey light enough to read as a step down cannot clear 4.5:1 on
+`--pk-panel-3`, and one that can is five channel steps from muted — one level with a rounding error
+rather than two. So light keeps two ink levels that both work on every ground, and the two unused
+slots resolve upward. Dark has the room, and uses all four.
 
 **The dark nav bar is opaque.** The landing's nav is translucent over a scrolling white page; the
 studio's top bar sits on a fixed layout and is solid `#0B0D1A`. Giving dark a translucent nav would
@@ -283,16 +290,32 @@ no screens in this set.
 Every other value in this document was read from a canvas. These were not, and each is recorded
 here so that nobody restores one from the canvas in six months and undoes it silently.
 
-**`--pk-ink-faint` on dark, `#5A5F78` → `#757B97`.** The canvas value measures **3.08:1** on
-`#0B0D1A`. That fails AA for body text, and it was already in use at 12px on the landing and the
-portfolio. `#757B97` is the least lightening that reaches **4.6:1** with the hue and saturation
-held, so it is the same grey moved only as far as it had to move: hue 230.0° → 229.4°, saturation
-14.3% → 14.1%, lightness 41.2% → 52.6%. It stays well below `--pk-ink-muted`, so the four dark ink
-levels still step apart rather than collapsing into three — 4.63, 7.45, 11.84, 19.32.
+**Read this before adding a token.** Both faint ink levels were transcribed from the canvas and
+checked against the page ground, and both failed against the panels the text actually sits on. That
+is one mistake made twice, not two coincidences. A ground is not a page: `--pk-panel-3` is a ground,
+every tinted state is a ground, and an ink is only as legible as its worst one. Measure a new ink
+against every ground it can land on, never against `--pk-bg` alone — `scripts/design/levels.test.mjs`
+does exactly that and needs no browser to do it.
 
-The canvas is not wrong here and the transcription was not careless. The design was drawn by eye,
-and eyes do not compute contrast ratios; this is the class of defect that only a measurement finds.
-It was found by `scripts/design/contrast.mjs` on its first run against a rendered page.
+**`--pk-ink-faint` on dark, `#5A5F78` → `#8C91A9`.** The canvas value measures **3.08:1** on
+`#0B0D1A` and fails AA for body text; it was already in use at 12px. It was first moved to `#757B97`,
+which cleared 4.6:1 on the ground and still failed on every panel — 3.44:1 on `--pk-panel-3`, which
+is where small labels actually sit. That is the mistake above, made while fixing the mistake above.
+`#8C91A9` is the least lightening that reaches **4.6:1 on `--pk-panel-3`**, the worst ground it lands
+on, with hue and saturation held: hue 229.4°, saturation 14.4%, lightness 52.6% → 60.6%. Dark keeps
+four levels that step apart on every ground — 4.61, 5.53, 8.79, 14.35 at their worst.
+
+**`--pk-ink-faint` on light, `#6B7186` → `--pk-ink-muted`.** The canvas value measures 4.85:1 on
+white, which passes, and **3.85:1 on `--pk-panel-3`**, which does not. Unlike dark, there is nowhere
+for it to go: the least darkening that clears 4.6:1 on `--pk-panel-3` is `#5F6578`, which is five
+channel steps from `--pk-ink-muted` (`#5A5F78`) — one level with a rounding error rather than two.
+So the level collapses onto muted, deliberately and in writing, rather than shipping two greys that
+the spec calls different and the screen does not. Nothing is lost: the token is only ever used as
+text colour, never as a border or a fill, so its lightness carried no other job.
+
+The canvas is not wrong in either case and the transcriptions were not careless. The design was
+drawn by eye, and eyes do not compute contrast ratios; this is the class of defect only a
+measurement finds. `scripts/design/contrast.mjs` found both, on rendered pages.
 
 **The dark `info` and `cool` state tints.** Derived rather than observed, for the reason given under
 **State pairs**: no canvas in this set shows those two pairs on dark. They still want checking

@@ -48,20 +48,6 @@ test("published pairs land on their published ratios", () => {
   ]);
 });
 
-test("the dark ink levels step apart rather than collapsing", () => {
-  // The four levels of §4, on the night-blue ground, after --pk-ink-faint was lightened to clear
-  // body text. If two of these ever meet, the surface has three levels wearing four names.
-  const NIGHT = [11, 13, 26, 1];
-  all([
-    [round(ratio([117, 123, 151, 1], NIGHT)), 4.63, "--pk-ink-faint #757B97 clears 4.5 for body"],
-    [round(ratio([154, 160, 184, 1], NIGHT)), 7.45, "--pk-ink-muted #9AA0B8"],
-    [round(ratio([199, 202, 216, 1], NIGHT)), 11.84, "--pk-ink-soft #C7CAD8"],
-    [round(ratio(WHITE, NIGHT)), 19.32, "--pk-ink #FFFFFF"],
-    // The canvas value this replaced, kept so the reason survives the change.
-    [round(ratio([90, 95, 120, 1], NIGHT)), 3.08, "the old #5A5F78, which failed body text"],
-  ]);
-});
-
 test("parse reads rgb and rgba, and rejects what is not a colour", () => {
   assert.deepEqual(parse("rgb(11, 13, 26)"), [11, 13, 26, 1]);
   assert.deepEqual(parse("rgba(11, 13, 26, 0.5)"), [11, 13, 26, 0.5]);
