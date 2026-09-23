@@ -1,13 +1,53 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkAvailability, claimHandle } from "../src/features/wallet/lib/handles";
+import { checkAvailability, claimHandle, localProblem } from "../src/features/wallet/lib/handles";
 
-// `localProblem` and its test are not here. They need `HANDLE_RULES` and `RESERVED_HANDLES` from
-// @pickler/core at run time, and apps/web cannot load that package: core publishes only an
-// "import" condition and apps/web is CommonJS to node's resolver, so the import throws
-// ERR_PACKAGE_PATH_NOT_EXPORTED and takes this whole file with it. The two existing apps/web tests
-// that reference core say the same thing and use `import type` to stay clear of it. Restating the
-// rules here instead would be the second copy the rule must not have.
+// The rules are passed in rather than imported. `apps/web` is CommonJS to node's resolver and
+// @pickler/api-schema publishes only an "import" condition, so a module that reads its values at
+// load time cannot be required from here at all — which is why none of the five apps/web modules
+// that do import its values has a test. The fixtures below are deliberately NOT core's numbers:
+// whether this app's copy equals core's is asserted in workers/api/test/handle-rules.test.ts,
+// which is the only place that can see both packages. This file tests the branching.
+
+const RULES = { min: 3, max: 15, pattern: /^[a-z0-9_]+$/ };
+const RESERVED: ReadonlySet<string> = new Set(["admin", "pickler"]);
+
+test("a handle shorter than the minimum is too short", () => {
+  assert.equal(localProblem("ab", RULES, RESERVED), "too_short");
+});
+
+test("a handle longer than the maximum is too long", () => {
+  assert.equal(localProblem("a".repeat(16), RULES, RESERVED), "too_long");
+});
+
+test("a handle outside the character class says so", () => {
+  assert.equal(localProblem("has spaces", RULES, RESERVED), "invalid_characters");
+});
+
+test("a short handle is called short, not called malformed", () => {
+  // This is the one ordering that is observable: every reserved handle also satisfies the pattern,
+  // so those two checks are disjoint and swapping them changes nothing. Length against pattern is
+  // different — "a!" fails both, and the person is better served by being told the fixable thing.
+  assert.equal(localProblem("a!", RULES, RESERVED), "too_short");
+});
+
+test("a reserved handle is reserved whatever case it was typed in", () => {
+  assert.equal(localProblem("Admin", RULES, RESERVED), "reserved");
+});
+
+test("surrounding whitespace is not the person's mistake", () => {
+  assert.equal(localProblem("  nightowl  ", RULES, RESERVED), null);
+});
+
+test("an ordinary handle has nothing wrong with it", () => {
+  assert.equal(localProblem("nightowl", RULES, RESERVED), null);
+});
+
+test("the boundary lengths are allowed, not rejected", () => {
+  // `min` and `max` are inclusive; an off-by-one here refuses a name the API would accept.
+  assert.equal(localProblem("abc", RULES, RESERVED), null);
+  assert.equal(localProblem("a".repeat(15), RULES, RESERVED), null);
+});
 
 test("a failed availability lookup is unknown, never taken", async () => {
   const failing = (async () => new Response("", { status: 500 })) as unknown as typeof fetch;

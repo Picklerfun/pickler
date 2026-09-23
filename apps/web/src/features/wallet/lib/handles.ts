@@ -1,4 +1,40 @@
-export type HandleProblem = "too_short" | "too_long" | "bad_characters" | "reserved" | "taken";
+import type { HandleRules } from "@pickler/api-schema";
+
+export type HandleProblem = "too_short" | "too_long" | "invalid_characters" | "reserved" | "taken";
+
+/**
+ * What is wrong with a handle as somebody types it, or null when nothing is.
+ *
+ * The rules arrive as arguments rather than as an import, which is what makes this testable at
+ * all: `apps/web` is CommonJS to node's resolver and `@pickler/api-schema` publishes only an
+ * "import" condition, so a module that reads its values at load time cannot be required by a test
+ * here — not one of the five `apps/web/src` modules that import its values has a test. The type
+ * above is erased at compile time, so it costs nothing. Same shape as `productFor(host, hosts)`
+ * and `previewAllowed(nodeEnv, authConfigured)`, and for the same reason.
+ *
+ * This is guidance, not a gate. `POST /v1/profile` validates against core and refuses; the worst a
+ * stale copy here can do is show someone an unhelpful message, never let a bad handle through.
+ */
+export function localProblem(
+  raw: string,
+  rules: HandleRules,
+  reserved: ReadonlySet<string>,
+): HandleProblem | null {
+  const handle = raw.trim().toLowerCase();
+  if (handle.length < rules.min) {
+    return "too_short";
+  }
+  if (handle.length > rules.max) {
+    return "too_long";
+  }
+  if (!rules.pattern.test(handle)) {
+    return "invalid_characters";
+  }
+  if (reserved.has(handle)) {
+    return "reserved";
+  }
+  return null;
+}
 
 /**
  * Whether a handle is free, as three answers rather than a boolean.
