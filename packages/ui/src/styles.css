@@ -43,22 +43,26 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
-  /* The agent palette as hues, and they sit here rather than per surface because a mark is not text.
+  /* The palette's third member: the hue itself, for anything filled rather than written.
    *
-   * A 12px coloured square exists to be told from the six beside it, so it wants the accent itself —
-   * not the tint-and-ink pair, which is chosen for legibility, and not the surface-appropriate
-   * variant, which would make the same agent two colours. Six of these coincide with an accent above
-   * and the seventh, `violet`, is the light violet that no semantic token holds: `--pk-violet` is
-   * `#5B3CE0` on light, right for ink and wrong for a dot. Without this, a mark wanting it had to
-   * nest `data-surface="dark"` — inverting a whole surface to look up one colour, which leaves the
-   * next reader an attribute implying far more than was meant. */
-  --pk-agent-lime: #c8f03a;
-  --pk-agent-indigo: #5b3ce0;
-  --pk-agent-amber: #ffc93f;
-  --pk-agent-orange: #ff7a3d;
-  --pk-agent-magenta: #ff5fa2;
-  --pk-agent-blue: #5b8cff;
-  --pk-agent-violet: #9b7bff;
+   * Each agent colour has a `-bg` and an `-ink`, which are a tint and something legible on it, and
+   * neither is the colour. A 12px square exists to be told from the six beside it, so it wants the
+   * accent — not the tint, and not the ink, which is drawn dark enough to read on white and would
+   * put two swatches a rounding error apart. A fill's contrast against the page measures nothing:
+   * lime is 1.31 on white and is correct, which is the reason each accent splits in two at all.
+   *
+   * These sit here rather than per surface because a swatch does not change identity when the page
+   * around it changes. The seventh, `violet`, is the light violet that no semantic token holds —
+   * `--pk-violet` is `#5B3CE0` on light, right for ink and wrong for a dot — so before this a mark
+   * wanting it nested `data-surface="dark"`, which is a token lookup wearing the mechanism's
+   * clothes: a childless span has nothing in its subtree to invert. */
+  --pk-agent-lime-fill: #c8f03a;
+  --pk-agent-indigo-fill: #5b3ce0;
+  --pk-agent-amber-fill: #ffc93f;
+  --pk-agent-orange-fill: #ff7a3d;
+  --pk-agent-magenta-fill: #ff5fa2;
+  --pk-agent-blue-fill: #5b8cff;
+  --pk-agent-violet-fill: #9b7bff;
 
   --pk-font-display: var(--font-display), Archivo, sans-serif;
   --pk-font: var(--font-body), "Instrument Sans", sans-serif;
