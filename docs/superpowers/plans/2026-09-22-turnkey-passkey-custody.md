@@ -46,6 +46,14 @@ So: give fakes an array they push their inputs onto, assert `deepEqual` against 
 assert the negative too — that the collaborator was *not* reached when a guard should have stopped
 it, so the guard cannot drift below the call it protects.
 
+**A sabotage that reports green is only evidence if the mutation landed.** A substitution that
+silently matches nothing produces a green run indistinguishable from a real gap — a test passing
+while nothing was covered, one level up from the defect you were hunting. This happened here: a
+`perl` replacement failed to match because of apostrophes in a BIP32 derivation path, and the run
+was nearly written up as a finding. Assert the target text is present before replacing it, and
+print the changed line, every time. An unverified green sabotage is worth less than no sabotage,
+because it is mistaken for proof.
+
 **A concurrency test over a cold connection pool does not race.** `Promise.all` across a fresh `pg`
 pool opens its connections one at a time, so the first query finishes before the second is
 dispatched and the test proves nothing. This plan's `consume` race test passed while `consume` was
