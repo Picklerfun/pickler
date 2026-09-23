@@ -272,7 +272,7 @@
   height: 40px;
   background: rgba(var(--accent-rgb), 0.14);
   border: 1px solid rgba(var(--accent-rgb), 0.45);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font: 700 13px/1 var(--mono);
   color: var(--accent);
 }
@@ -984,7 +984,7 @@
   height: 26px;
   background: rgba(5, 6, 26, 0.55);
   border: 1px solid rgba(245, 246, 255, 0.22);
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-mark);
   overflow: hidden;
 }
 
@@ -1411,7 +1411,7 @@
   min-width: 0;
   height: 200px;
   border: 1px solid rgba(245, 246, 255, 0.18);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background-image:
     linear-gradient(rgba(245, 246, 255, 0.07) 1px, transparent 1px),
     linear-gradient(90deg, rgba(245, 246, 255, 0.07) 1px, transparent 1px);
@@ -1559,7 +1559,7 @@
   padding: 9px 12px;
   background: rgba(5, 6, 26, 0.5);
   border: 1px solid var(--rule);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font: 700 13px/1 var(--mono);
 }
 
@@ -1573,7 +1573,7 @@
    input radius rather than the pill every other action wears. */
 .page .ctaButton {
   padding: 16px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font-weight: 700;
 }
 
@@ -1593,7 +1593,7 @@
   padding: 10px 6px;
   background: rgba(5, 6, 26, 0.5);
   border-color: var(--rule);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font-weight: 600;
 }
 
@@ -2158,7 +2158,7 @@
   margin-bottom: 20px;
   border: 1px solid rgba(245, 246, 255, 0.14);
   background: rgba(5, 6, 26, 0.45);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readAnswerProb strong {
@@ -2235,7 +2235,7 @@
 .readBox {
   padding: 14px;
   border: 1px solid rgba(245, 246, 255, 0.12);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readSources {
@@ -2276,7 +2276,7 @@
   align-items: center;
   padding: 16px 18px;
   border: 1px solid rgba(245, 246, 255, 0.16);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readOutcome strong {

@@ -67,7 +67,7 @@
   padding: 14px;
   background: var(--pk-popover);
   border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   box-shadow: var(--pk-popover-shadow);
 }
 
@@ -140,7 +140,7 @@
 .link {
   display: block;
   padding: 10px 12px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font: 700 13.5px/1.2 var(--pk-font);
   color: var(--pk-ink);
   text-decoration: none;

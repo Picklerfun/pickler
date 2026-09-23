@@ -128,7 +128,7 @@
   z-index: 5;
   min-width: 240px;
   padding: 6px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-panel);
   border: 1px solid var(--pk-border-strong);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
@@ -271,7 +271,7 @@
   gap: 11px;
   width: 100%;
   padding: 8px 10px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--pk-ink-muted);
@@ -322,7 +322,7 @@
   align-items: center;
   gap: 11px;
   padding: 7px 10px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font: 500 12.5px/1.2 var(--pk-font);
   color: var(--pk-ink-muted);
   text-decoration: none;
@@ -488,7 +488,7 @@
 .empty {
   margin: 0;
   padding: 14px 16px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   border: 1px dashed var(--pk-rule-strong);
   font: 400 13px/1.5 var(--pk-font);
   color: var(--pk-ink-soft);
@@ -621,7 +621,7 @@
   flex: 1 1 140px;
   min-width: 0;
   padding: 12px 14px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-panel);
   border: 1px solid var(--pk-rule);
 }
@@ -1659,7 +1659,7 @@ a.source:hover {
   padding: 12px 14px;
   max-height: 420px;
   overflow: auto;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-field);
   border: 1px solid var(--pk-rule);
   font: 400 11.5px/1.6 var(--pk-font-mono);
