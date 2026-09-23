@@ -131,6 +131,35 @@
   --pk-state-warm-bg: #ffe6da;
   --pk-state-warm-ink: #a04010;
 
+  /* The agent palette, and a separate thing from the states above it.
+   *
+   * A state means something about an outcome. These mean "this agent, not that one", and nothing
+   * more — an avatar is magenta because the agent is, not because anything was lost. They were the
+   * same tokens for one commit and the collision showed immediately: two accents pointing at one
+   * state render alike, and an avatar's whole job is to not do that.
+   *
+   * Six carry the values the canvases gave the matching state, which is where those values came
+   * from. Orange and violet are derived — the accent at roughly 19% over the ground, with an ink
+   * landing inside the range the observed pairs occupy. Values may drift apart from the states'
+   * now, and that is the point of their being separate. */
+  --pk-agent-lime-bg: #edf7ce;
+  --pk-agent-lime-ink: #3f6b00;
+  --pk-agent-amber-bg: #fbf0d4;
+  --pk-agent-amber-ink: #8a6200;
+  --pk-agent-orange-bg: #ffe6da;
+  --pk-agent-orange-ink: #a04010;
+  --pk-agent-magenta-bg: #fbe4ec;
+  /* Darkened from the canvas's #C62C62, which reads 4.42:1 on its own tint. An ink that cannot be
+   * read on the tint it is paired with fails the one thing a pair exists to guarantee, and this one
+   * is carrying an agent's initials rather than a word you can guess. */
+  --pk-agent-magenta-ink: #bf2a5f;
+  --pk-agent-blue-bg: #eaf0ff;
+  --pk-agent-blue-ink: #2f55c8;
+  --pk-agent-indigo-bg: #f1eeff;
+  --pk-agent-indigo-ink: #5b3ce0;
+  --pk-agent-violet-bg: #ece6ff;
+  --pk-agent-violet-ink: #6b3fd4;
+
   --pk-focus: var(--pk-violet);
 
   /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
@@ -215,6 +244,22 @@
   --pk-state-cool-ink: #5b8cff;
   --pk-state-warm-bg: #372120;
   --pk-state-warm-ink: #ff7a3d;
+
+  /* The agent palette on this ground. Same separation, same derivation. */
+  --pk-agent-lime-bg: #2a3a0f;
+  --pk-agent-lime-ink: #c8f03a;
+  --pk-agent-amber-bg: #3a2e0b;
+  --pk-agent-amber-ink: #ffc93f;
+  --pk-agent-orange-bg: #372120;
+  --pk-agent-orange-ink: #ff7a3d;
+  --pk-agent-magenta-bg: #3a1626;
+  --pk-agent-magenta-ink: #ff9ec6;
+  --pk-agent-blue-bg: #141c33;
+  --pk-agent-blue-ink: #5b8cff;
+  --pk-agent-indigo-bg: #231b3e;
+  --pk-agent-indigo-ink: #b9a6ff;
+  --pk-agent-violet-bg: #252143;
+  --pk-agent-violet-ink: #9b7bff;
 
   --pk-focus: var(--pk-lime);
 

@@ -540,7 +540,7 @@
   padding: 0 12px;
   border-top: 1px solid var(--pk-border-strong);
   border-bottom: 1px solid var(--pk-border-strong);
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 .markPrice {
@@ -560,7 +560,7 @@
   justify-content: center;
   gap: 4px;
   padding-left: 12px;
-  border-right: 1px solid rgba(245, 246, 255, 0.08);
+  border-right: 1px solid var(--pk-rule);
   font: 500 9.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--placeholder);
@@ -589,7 +589,7 @@
   min-width: 0;
   height: 54px;
   border: 0;
-  border-left: 1px solid rgba(245, 246, 255, 0.08);
+  border-left: 1px solid var(--pk-rule);
   background: transparent;
   cursor: pointer;
   transition: background var(--pk-duration) ease;
@@ -608,7 +608,7 @@
 }
 
 .cell[data-blocked] {
-  background: rgba(245, 246, 255, 0.02);
+  background: var(--pk-panel);
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -637,7 +637,7 @@
 }
 
 .cellDot[data-call] {
-  background: rgba(245, 246, 255, 0.35);
+  background: var(--pk-panel-3);
 }
 
 .columns {
@@ -647,7 +647,7 @@
 .column {
   flex: 1;
   padding: 10px 0;
-  border-left: 1px solid rgba(245, 246, 255, 0.08);
+  border-left: 1px solid var(--pk-rule);
   text-align: center;
 }
 
@@ -708,7 +708,7 @@
   width: 6px;
   height: 6px;
   border-radius: var(--pk-radius-pill);
-  background: rgba(245, 246, 255, 0.35);
+  background: var(--pk-ink-faint);
 }
 
 .notice {
@@ -860,7 +860,7 @@
 }
 
 .legendTime {
-  background: rgba(245, 246, 255, 0.25);
+  background: var(--pk-ink-faint);
 }
 
 .steppers {
@@ -1096,7 +1096,7 @@
 .sideNote {
   composes: pk-panel from global;
   padding: 14px 16px;
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 .sideNote p:last-child {
