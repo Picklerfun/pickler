@@ -208,6 +208,11 @@ test("a challenge belonging to someone else is refused", async () => {
       }),
     ChallengeNotUsableError,
   );
+  assert.equal(
+    f.stored.has(options.challenge),
+    false,
+    "a rejected claim still spends the challenge; putting it back would let a stranger probe it",
+  );
 });
 
 test("a challenge that outlived its TTL is refused", async () => {

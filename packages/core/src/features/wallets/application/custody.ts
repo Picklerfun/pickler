@@ -93,7 +93,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         return existing;
       }
 
-      // Spent on read, so a rejection below still burns it and a leaked challenge cannot be retried.
+      // A challenge is spent by the act of looking at it: consume deletes as it reads, and
+      // ownership is judged on the record below. A claim that turns out to belong to someone else
+      // is deliberately NOT put back. Restoring it would leave a challenge that survives probing
+      // and open a window in which the same one is claimed twice.
       const claimed = await deps.challenges.consume(input.challenge);
       if (!claimed || claimed.userId !== userId || claimed.expiresAt <= deps.now()) {
         throw new ChallengeNotUsableError();

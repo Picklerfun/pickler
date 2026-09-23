@@ -13,6 +13,12 @@ export interface StoredChallenge {
   expiresAt: Date;
 }
 
+/**
+ * Offers no read-only lookup on purpose. Every caller that reads a challenge spends it, so one
+ * cannot survive a failed claim and be probed again. A `peek` would make check-then-consume
+ * expressible and would drop that guarantee for every caller at once, including the add-passkey
+ * flows — so the absence is the guarantee, and it belongs here rather than in each caller.
+ */
 export interface ChallengeStore {
   put(challenge: string, record: StoredChallenge): Promise<void>;
   /** Returns the record and deletes it in one statement, or null if it was not there. */
