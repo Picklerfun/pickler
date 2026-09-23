@@ -26,6 +26,7 @@
 .title {
   margin: 0;
   font: 700 22px/1.1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   color: var(--pk-ink);
 }

@@ -43,11 +43,11 @@ const readTheme = (element: HTMLElement) => {
   const style = getComputedStyle(element);
   const value = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
   return {
-    ink: value("--pk-ink-faint", "#8891b5"),
-    grid: value("--pk-border", "rgba(245, 246, 255, 0.08)"),
-    up: value("--pk-lime", "#c8f03a"),
-    down: value("--pk-magenta", "#ff5fa2"),
-    font: value("--pk-font-mono", "monospace"),
+    ink: value("--pk-ink-faint", "#6b7186"),
+    grid: value("--pk-border", "rgba(11, 13, 26, 0.12)"),
+    up: value("--pk-win", "#2e7d32"),
+    down: value("--pk-loss", "#c62c62"),
+    font: value("--pk-font", "sans-serif"),
   };
 };
 

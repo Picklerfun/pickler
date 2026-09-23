@@ -39,6 +39,7 @@
 
 .name {
   font: 700 20px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.01em;
 }
 
@@ -85,7 +86,7 @@
   display: block;
   margin: 0;
   padding: 4px 10px 10px;
-  font: 500 10px/1 var(--pk-font-mono);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.16em;
   color: var(--pk-ink-faint);
 }
@@ -136,7 +137,7 @@
   padding: 3px 7px;
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1 var(--pk-font-mono);
+  font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
 }
@@ -157,7 +158,7 @@
   margin-left: auto;
   padding: 16px 20px;
   border-left: 1px solid var(--pk-rule);
-  font: 500 12.5px/1 var(--pk-font-mono);
+  font: 500 12.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-dim);
   text-decoration: none;
@@ -176,7 +177,7 @@
   padding: 16px 22px;
   background: var(--pk-panel);
   border-left: 1px solid var(--pk-rule);
-  font: 500 13px/1 var(--pk-font-mono);
+  font: 500 13px/1 var(--pk-font);
   letter-spacing: 0.1em;
   color: var(--pk-ink);
   text-decoration: none;

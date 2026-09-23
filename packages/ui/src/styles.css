@@ -43,9 +43,11 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
-  --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
-  --pk-font: var(--font-body), Manrope, sans-serif;
-  --pk-font-mono: var(--font-mono), "JetBrains Mono", monospace;
+  --pk-font-display: var(--font-display), Archivo, sans-serif;
+  --pk-font: var(--font-body), "Instrument Sans", sans-serif;
+  /* The display face is only itself with its width axis set. Archivo at the right weight and the
+   * wrong width is a different typeface, and nothing on screen says so. */
+  --pk-display-wdth: "wdth" 112;
 
   --pk-duration: 140ms;
 }
@@ -199,6 +201,15 @@
   --pk-violet-edge: rgba(185, 166, 255, 0.4);
 }
 
+/* Anything set in the display face carries its width axis. Declaring the axis and forgetting to
+ * apply it is the failure this rule exists to make impossible. */
+.pk-display,
+h1,
+h2 {
+  font-family: var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+
 /* ---------- Button ---------- */
 
 .pk-button {
@@ -315,9 +326,11 @@
   transform: none;
 }
 
-/* Mono labels: the uppercase micro type used for navigation and utility actions. */
+/* The uppercase micro label used for navigation and utility actions. It was a monospace; the
+ * canvases have none, and what they use in its place is this face tracked wide. `data-mono` keeps
+ * its name because that is what it has always meant on screen. */
 .pk-button[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -349,7 +362,8 @@
   border-radius: var(--pk-radius-pill);
   background: transparent;
   color: var(--pk-ink-dim);
-  font: 500 12px/1 var(--pk-font-mono);
+  font: 500 12px/1 var(--pk-font);
+  letter-spacing: 0.08em;
   cursor: pointer;
   transition:
     background var(--pk-duration),
@@ -379,8 +393,8 @@
   padding: 4px 9px;
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-pill);
-  font: 700 9.5px/1 var(--pk-font-mono);
-  letter-spacing: 0.06em;
+  font: 700 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
   color: var(--pk-ink-dim);
 }
 
@@ -469,7 +483,7 @@
 .pk-field-label {
   display: block;
   margin-bottom: 7px;
-  font: 500 10.5px/1 var(--pk-font-mono);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.1em;
   color: var(--pk-ink-muted);
 }
@@ -477,7 +491,7 @@
 .pk-field-note {
   display: block;
   margin-top: 8px;
-  font: 500 11.5px/1.4 var(--pk-font-mono);
+  font: 500 11.5px/1.4 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 
@@ -520,8 +534,11 @@
   border-color: var(--pk-loss);
 }
 
+/* A field holding an address, a hash or an amount: the face is the same, and what the monospace was
+ * really doing here was keeping figures in a column. */
 .pk-input[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
+  font-variant-numeric: tabular-nums;
 }
 
 .pk-input[data-size="sm"] {
@@ -555,7 +572,7 @@
 .pk-input-prefix {
   flex: none;
   padding-left: 15px;
-  font: 500 14.5px/1.3 var(--pk-font-mono);
+  font: 500 14.5px/1.3 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 
@@ -571,7 +588,8 @@
 }
 
 .pk-input-inner[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Autofill paints the editable input only. Match its opaque fill to the entire frame. */

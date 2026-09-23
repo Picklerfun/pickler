@@ -1,5 +1,5 @@
 /* The wallet chooser. The first dialog in the product, so it takes its shapes from the control
- * system rather than inventing any: the panel, the pill, the mono micro label. */
+ * system rather than inventing any: the panel, the pill, the micro label. */
 
 .dialog {
   padding: 0;
@@ -34,7 +34,7 @@
 
 .label {
   margin: 0;
-  font: 500 10px/1.3 var(--pk-font-mono);
+  font: 500 10px/1.3 var(--pk-font);
   letter-spacing: 0.14em;
   color: var(--pk-ink-faint);
 }
@@ -76,6 +76,7 @@
 .title {
   margin: 0;
   font: 700 22px/1.15 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
@@ -150,7 +151,7 @@
   border: 1px solid var(--pk-lime-edge);
   border-radius: var(--pk-radius-pill);
   background: var(--pk-lime-tint);
-  font: 500 9px/1 var(--pk-font-mono);
+  font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-lime);
 }

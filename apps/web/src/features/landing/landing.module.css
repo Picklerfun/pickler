@@ -14,7 +14,9 @@
   --magenta: var(--pk-magenta);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   min-height: 100vh;
@@ -61,14 +63,14 @@
 
 .eyebrow {
   margin: 0;
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
 
 .label {
   margin: 0;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--muted);
 }
@@ -279,7 +281,8 @@
 }
 
 .tapeTicker {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -288,7 +291,8 @@
 }
 
 .tapeResult {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .toneWin {
@@ -313,7 +317,7 @@
 
 .page .navLink {
   padding: 10px 13px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -370,7 +374,7 @@
 
 .newsTag {
   flex: none;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--cyan-ink);
 }
@@ -401,7 +405,7 @@
   padding: 8px 9px 8px 14px;
   background: rgba(245, 246, 255, 0.1);
   border: 1px solid rgba(245, 246, 255, 0.3);
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
@@ -444,6 +448,7 @@
   padding: 0 22px;
   text-align: center;
   font: 700 clamp(44px, 11vw, 158px)/0.9 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   white-space: nowrap;
   text-shadow: 0 0 60px rgba(155, 123, 255, 0.45);
@@ -459,7 +464,7 @@
   margin: 14px auto 0;
   padding: 0 22px;
   text-align: center;
-  font: 500 16px/1.4 var(--mono);
+  font: 500 16px/1.4 var(--label);
   letter-spacing: 0.1em;
   color: var(--ink-soft);
   border-radius: var(--pk-radius-pill);
@@ -517,12 +522,12 @@
 
 .stat dd {
   margin: 0 0 5px;
-  font: 700 26px/1 var(--mono);
+  font: 700 26px/1 var(--label);
   letter-spacing: -0.03em;
 }
 
 .stat dt {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--muted);
 }
@@ -620,6 +625,7 @@
 .bigCount {
   margin: 0 0 4px;
   font: 700 clamp(48px, 6vw, 76px)/0.9 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   color: var(--lime);
   text-shadow: 0 0 36px rgba(200, 240, 58, 0.5);
@@ -679,7 +685,8 @@
 }
 
 .spawnNote {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -697,7 +704,7 @@
 }
 
 .funded {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--lime);
 }
@@ -730,6 +737,7 @@
   place-items: center;
   background: rgba(200, 240, 58, 0.22);
   font: 700 15px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: 0.06em;
   text-shadow: 0 0 20px rgba(200, 240, 58, 0.9);
   border-radius: var(--pk-radius-lg);
@@ -759,13 +767,14 @@
 
 .dropMeta {
   display: block;
-  font: 500 12px/1.35 var(--mono);
+  font: 500 12px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
 .nextLabel {
   margin: 10px 0 0;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -790,6 +799,7 @@
   padding: 16px 22px;
   border-right: 1px solid var(--rule);
   font: 700 18px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: 0.01em;
   color: var(--ink-soft);
 }
@@ -804,6 +814,7 @@
 .sectionTitle {
   margin: 8px 0 28px;
   font: 700 clamp(30px, 3.8vw, 48px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
@@ -834,6 +845,7 @@
   right: -14px;
   top: -26px;
   font: 700 110px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.05em;
   color: rgba(var(--accent-rgb), 0.1);
 }
@@ -866,7 +878,8 @@
 .howCost {
   position: relative;
   margin: 0;
-  font: 500 12.5px/1.4 var(--mono);
+  font: 500 12.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--accent);
 }
 
@@ -893,11 +906,12 @@
 .launchTitle {
   margin: 0;
   font: 700 clamp(28px, 3.4vw, 42px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
 .launchSub {
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--muted);
 }
@@ -924,7 +938,8 @@
 }
 
 .launchTicker {
-  font: 700 17px/1 var(--mono);
+  font: 700 17px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .stageBadge {
@@ -933,7 +948,7 @@
   padding: 5px 9px;
   background: rgba(var(--accent-rgb), 0.14);
   border: 1px solid rgba(var(--accent-rgb), 0.5);
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--stage-ink, var(--accent));
   border-radius: var(--pk-radius-pill);
@@ -959,12 +974,14 @@
   padding: 9px 0;
   border-top: 1px solid rgba(245, 246, 255, 0.14);
   border-bottom: 1px solid rgba(245, 246, 255, 0.14);
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
 .launchMcap strong {
-  font: 700 14px/1 var(--mono);
+  font: 700 14px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
@@ -985,7 +1002,8 @@
 
 .launchRaised {
   margin: 0;
-  font: 500 12px/1.35 var(--mono);
+  font: 500 12px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
 
@@ -1014,11 +1032,12 @@
 .boardTitle {
   margin: 0;
   font: 700 clamp(24px, 2.8vw, 34px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
 .boardSub {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--muted);
 }
@@ -1039,7 +1058,8 @@
 }
 
 .rank {
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -1056,7 +1076,8 @@
 
 .boardMeta {
   display: block;
-  font: 500 13px/1.35 var(--mono);
+  font: 500 13px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -1065,14 +1086,16 @@
   padding: 6px 10px;
   background: rgba(90, 216, 255, 0.14);
   border: 1px solid rgba(90, 216, 255, 0.45);
-  font: 700 14px/1 var(--mono);
+  font: 700 14px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--cyan-ink);
   border-radius: var(--pk-radius-pill);
 }
 
 .net {
   flex: none;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -1091,7 +1114,8 @@
 }
 
 .callsAgo {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1122,7 +1146,8 @@
 }
 
 .pickMeta {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -1130,7 +1155,8 @@
 .pickStatus {
   flex: none;
   margin-left: auto;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
@@ -1189,7 +1215,8 @@
 }
 
 .trailTime {
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1206,7 +1233,8 @@
   padding: 6px 10px;
   background: rgba(5, 6, 26, 0.55);
   border: 1px solid rgba(245, 246, 255, 0.22);
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
+  letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
 
@@ -1226,6 +1254,7 @@
 .waitlistTitle {
   margin: 16px 0 12px;
   font: 700 clamp(32px, 5.6vw, 70px)/0.98 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   text-shadow: 0 0 50px rgba(155, 123, 255, 0.5);
 }
@@ -1256,14 +1285,15 @@
 
 .lineLabel {
   margin: 20px 0 0;
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: #fff;
 }
 
 .formError {
   margin: 14px 0 0;
-  font: 500 13px/1.4 var(--mono);
+  font: 500 13px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--magenta);
 }
 
@@ -1300,13 +1330,13 @@
 }
 
 .page .footerLink {
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
 
 .footerNote {
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -1314,7 +1344,7 @@
 .sampleTag {
   padding: 4px 8px;
   border: 1px solid rgba(255, 201, 63, 0.5);
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--amber);
   border-radius: var(--pk-radius-pill);

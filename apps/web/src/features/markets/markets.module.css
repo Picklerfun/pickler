@@ -20,7 +20,9 @@
   --border: var(--pk-border);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   z-index: 1;
@@ -36,7 +38,7 @@
 
 .eyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -44,6 +46,7 @@
 .title {
   margin: 0 0 10px;
   font: 700 clamp(30px, 5vw, 52px) / 1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -57,7 +60,7 @@
 
 .microLabel {
   margin: 0;
-  font: 500 10px/1.3 var(--mono);
+  font: 500 10px/1.3 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
@@ -116,7 +119,7 @@
 
 .filterChip {
   gap: 7px;
-  font-family: var(--mono);
+  font-family: var(--label);
   font-size: 11.5px;
   letter-spacing: 0.04em;
 }
@@ -131,7 +134,7 @@
 }
 
 .sortLabel {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -180,7 +183,8 @@
   border: 1px solid rgba(var(--accent-rgb), 0.45);
   border-radius: var(--pk-radius-sm);
   background: rgba(var(--accent-rgb), 0.14);
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--accent);
 }
 
@@ -212,7 +216,7 @@
   padding: 3px 7px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -220,20 +224,23 @@
 .marketCoverage {
   display: block;
   margin-top: 4px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
 .marketPrice {
   flex: none;
   text-align: right;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .marketPriceValue {
   display: block;
   margin-bottom: 5px;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .marketStats {
@@ -244,7 +251,8 @@
   padding: 11px 0;
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
-  font: 500 10px/1.4 var(--mono);
+  font: 500 10px/1.4 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .marketStats dt {
@@ -310,7 +318,7 @@
   padding: 9px 13px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
@@ -345,18 +353,20 @@
 }
 
 .tile dt {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
 
 .tile dd {
   margin: 8px 0 0;
-  font: 700 22px/1 var(--mono);
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .tile dd span {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tileNote {
@@ -389,7 +399,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -467,7 +477,7 @@
   place-items: center;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--faint);
 }
@@ -510,7 +520,7 @@
   position: absolute;
   bottom: 10px;
   left: 10px;
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--placeholder);
 }
@@ -533,7 +543,8 @@
 }
 
 .markPrice {
-  font: 700 10.5px/1 var(--mono);
+  font: 700 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .row {
@@ -549,13 +560,14 @@
   gap: 4px;
   padding-left: 12px;
   border-right: 1px solid rgba(245, 246, 255, 0.08);
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--placeholder);
 }
 
 .rowPrice {
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -564,7 +576,8 @@
 }
 
 .rowPct {
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--placeholder);
 }
 
@@ -610,7 +623,7 @@
   border: 1px solid var(--accent-on);
   border-radius: var(--pk-radius-pill);
   background: var(--pk-bg);
-  font: 600 10px/1 var(--mono);
+  font: 600 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--accent-ink);
 }
@@ -639,7 +652,8 @@
 
 .columnLabel {
   display: block;
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -650,7 +664,8 @@
 .columnTime {
   display: block;
   margin-top: 4px;
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--placeholder);
 }
 
@@ -683,7 +698,7 @@
   align-items: center;
   gap: 7px;
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -765,7 +780,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
@@ -773,6 +788,7 @@
 .ticketTitle {
   margin: 0;
   font: 700 21px/1.15 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   text-wrap: pretty;
 }
@@ -786,7 +802,8 @@
 
 .ticketRule {
   margin: 0;
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -882,7 +899,8 @@
 
 .stepperValue strong {
   display: block;
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .stepperValue .microLabel {
@@ -905,14 +923,16 @@
   border: 0;
   background: transparent;
   color: var(--ink);
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   outline: 0;
 }
 
 .marginUnit {
   flex: none;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -924,7 +944,8 @@
 .quickChip {
   flex: 1;
   justify-content: center;
-  font-family: var(--mono);
+  font-family: var(--label);
+  letter-spacing: 0.08em;
   font-size: 10.5px;
 }
 
@@ -932,7 +953,7 @@
   display: flex;
   justify-content: space-between;
   margin: 0 0 6px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -970,13 +991,15 @@
   height: 22px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 700 10px/1 var(--mono);
+  font: 700 10px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .orderRule {
   display: block;
   margin-top: 3px;
-  font: 500 10px/1.4 var(--mono);
+  font: 500 10px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -987,7 +1010,8 @@
   margin: 0;
   padding-top: 10px;
   border-top: 1px solid var(--rule);
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .figures > div {
@@ -1049,7 +1073,7 @@
   padding: 4px 9px;
   border: 1px dashed var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1.2 var(--mono);
+  font: 500 9px/1.2 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }

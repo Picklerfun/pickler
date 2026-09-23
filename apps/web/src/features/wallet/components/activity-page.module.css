@@ -10,7 +10,7 @@
 
 .eyebrow {
   margin: 0 0 8px;
-  font: 500 11px/1 var(--pk-font-mono);
+  font: 500 11px/1 var(--pk-font);
   letter-spacing: 0.14em;
   color: var(--pk-cyan-ink);
 }
@@ -18,6 +18,7 @@
 .title {
   margin: 0 0 10px;
   font: 700 clamp(26px, 4vw, 40px) / 1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 

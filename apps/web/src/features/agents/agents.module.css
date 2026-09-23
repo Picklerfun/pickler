@@ -14,7 +14,9 @@
   --rule: var(--pk-rule);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   /* A column so a short page still puts its footer on the floor rather than mid-screen. */
@@ -66,7 +68,7 @@
 
 .label {
   margin: 0;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
@@ -102,7 +104,7 @@
   margin-bottom: 14px;
   padding: 9px 13px;
   border: 1px solid rgba(245, 246, 255, 0.2);
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
@@ -149,7 +151,7 @@
 
 .eyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -157,6 +159,7 @@
 .boardTitle {
   margin: 0 0 10px;
   font: 700 clamp(30px, 5vw, 52px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -211,7 +214,8 @@
 .resultCount {
   align-self: center;
   margin-left: auto;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -273,7 +277,8 @@
   background: rgba(var(--accent-rgb), 0.14);
   border: 1px solid rgba(var(--accent-rgb), 0.45);
   border-radius: var(--pk-radius-sm);
-  font: 700 13px/1 var(--mono);
+  font: 700 13px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--accent);
 }
 
@@ -289,6 +294,7 @@
   width: 62px;
   height: 62px;
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
 }
 
 .cardName {
@@ -308,7 +314,8 @@
 .cardName > span {
   display: block;
   margin-top: 2px;
-  font: 500 12px/1.3 var(--mono);
+  font: 500 12px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -318,7 +325,7 @@
   background: rgba(255, 201, 63, 0.12);
   border: 1px solid rgba(255, 201, 63, 0.45);
   border-radius: var(--pk-radius-pill);
-  font: 700 9.5px/1 var(--mono);
+  font: 700 9.5px/1 var(--label);
   letter-spacing: 0.06em;
   color: #ffc93f;
   white-space: nowrap;
@@ -367,14 +374,15 @@
 .cardStat dd {
   margin: 5px 0 0;
   overflow: hidden;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cardStat dt {
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -394,7 +402,8 @@
 .curveNote {
   display: block;
   margin-top: 6px;
-  font: 500 11.5px/1.4 var(--mono);
+  font: 500 11.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -435,6 +444,7 @@
 .heroTitle {
   margin: 0;
   font: 700 clamp(26px, 3.6vw, 36px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -472,7 +482,8 @@
 
 .change {
   margin: 0 0 6px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .record {
@@ -492,12 +503,12 @@
 
 .recordItem dd {
   margin: 0 0 5px;
-  font: 700 21px/1 var(--mono);
+  font: 700 21px/1 var(--label);
   letter-spacing: -0.03em;
 }
 
 .recordItem dt {
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -536,7 +547,8 @@
 }
 
 .panelHeadValue {
-  font: 700 14px/1 var(--mono);
+  font: 700 14px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .panelHeadNote {
@@ -561,7 +573,8 @@
   display: grid;
   place-items: center;
   height: 100%;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -588,7 +601,8 @@
 .callWhen {
   flex: none;
   min-width: 26px;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -605,7 +619,8 @@
 .callText span {
   display: block;
   margin-top: 3px;
-  font: 500 12px/1.35 var(--mono);
+  font: 500 12px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -613,7 +628,8 @@
   flex: none;
   padding: 6px 10px;
   border: 1px solid;
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
 
@@ -663,12 +679,14 @@
 }
 
 .quoteRow strong {
-  font: 700 14px/1.3 var(--mono);
+  font: 700 14px/1.3 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .quoteRow span:last-child:not(:first-child) {
-  font: 500 13.5px/1.3 var(--mono);
+  font: 500 13.5px/1.3 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--faint);
 }
 
@@ -704,14 +722,16 @@
 .keyValue dt {
   min-width: 0;
   overflow-wrap: anywhere;
-  font: 500 13px/1.3 var(--mono);
+  font: 500 13px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
 
 .keyValue dd {
   flex: none;
   margin: 0;
-  font: 500 13px/1.3 var(--mono);
+  font: 500 13px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -753,6 +773,7 @@
 .pickTitle {
   margin: 0 0 12px;
   font: 700 clamp(26px, 3.6vw, 38px)/1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -779,14 +800,15 @@
 
 .receiptItem dt {
   margin-bottom: 5px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
 
 .receiptItem dd {
   margin: 0;
-  font: 700 16px/1 var(--mono);
+  font: 700 16px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .trailCard {
@@ -855,7 +877,8 @@
 }
 
 .trailTime {
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -877,7 +900,8 @@
 
 .postMeta {
   margin: 0;
-  font: 500 12px/1.4 var(--mono);
+  font: 500 12px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -949,7 +973,7 @@
 }
 
 .filterLabel {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -963,7 +987,7 @@
 .viewButton {
   flex: none;
   padding: 7px 13px;
-  font: 600 11px/1 var(--mono);
+  font: 600 11px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--faint);
 }
@@ -1011,7 +1035,7 @@
 
 .curveLabel {
   display: block;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
   white-space: nowrap;
@@ -1020,7 +1044,8 @@
 .curve strong {
   display: block;
   margin: 6px 0 8px;
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .toneCurve {
@@ -1033,7 +1058,8 @@
 .avatarSmall {
   width: 26px;
   height: 26px;
-  font: 700 9.5px/1 var(--mono);
+  font: 700 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
 
@@ -1060,7 +1086,7 @@
 
 .tableHead {
   background: rgba(245, 246, 255, 0.06);
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -1093,7 +1119,8 @@
 .tableName > span:not(.avatar):not(.tableNameText) {
   display: block;
   margin-top: 3px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1105,7 +1132,8 @@
   flex: none;
   width: 74px;
   text-align: right;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 .tableCta {
   flex: none;
@@ -1120,7 +1148,8 @@
   height: 26px;
   border: 1px solid rgba(245, 246, 255, 0.2);
   border-radius: var(--pk-radius-pill);
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .rankFirst {
@@ -1137,7 +1166,8 @@
 .tableScore strong {
   display: block;
   margin-top: 5px;
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Activity feed ---------- */
@@ -1163,7 +1193,8 @@
 .activityWhen {
   flex: none;
   min-width: 34px;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1181,7 +1212,7 @@
   border: 1px solid rgba(245, 246, 255, 0.3);
   border-radius: var(--pk-radius-pill);
   background: rgba(245, 246, 255, 0.1);
-  font: 700 9px/1 var(--mono);
+  font: 700 9px/1 var(--label);
   letter-spacing: 0.06em;
 }
 
@@ -1222,13 +1253,15 @@
 .activityMeta {
   display: block;
   margin-top: 4px;
-  font: 500 11.5px/1.4 var(--mono);
+  font: 500 11.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
 .activityAmount {
   flex: none;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1281,7 +1314,8 @@
 }
 
 .tab span {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tab[aria-selected="true"] {
@@ -1307,7 +1341,8 @@
 }
 
 .meter dt span {
-  font: 500 11.5px/1.2 var(--mono);
+  font: 500 11.5px/1.2 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1334,6 +1369,7 @@
 .volumeValue {
   margin: 10px 0 8px;
   font: 700 clamp(30px, 6vw, 52px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   color: var(--lime);
 }
@@ -1358,7 +1394,8 @@
 
 .statValue {
   margin: 9px 0 0;
-  font: 700 24px/1 var(--mono);
+  font: 700 24px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .splitBar {
@@ -1383,7 +1420,8 @@
   flex-wrap: wrap;
   gap: 18px;
   margin: 0;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Calibration ---------- */
@@ -1401,7 +1439,8 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 2px 0;
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1447,7 +1486,8 @@
 .calAxisX {
   display: flex;
   margin: 7px 0 0 34px;
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1510,7 +1550,7 @@
 
 .pairLine {
   margin: 0 0 10px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--faint);
 }
@@ -1546,6 +1586,7 @@
   border: none;
   outline: none;
   font: 700 clamp(30px, 5vw, 42px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   color: var(--ink);
 }
@@ -1560,12 +1601,14 @@
   background: rgba(5, 6, 26, 0.5);
   border: 1px solid var(--rule);
   border-radius: var(--pk-radius-sm);
-  font: 700 13px/1 var(--mono);
+  font: 700 13px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .balanceRow {
   margin: 0 0 14px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1619,7 +1662,7 @@
   justify-content: space-between;
   gap: 10px;
   margin: 0 0 8px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -1640,14 +1683,15 @@
 
 .tokenStat dt {
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
 
 .tokenStat dd {
   margin: 8px 0 0;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .buybacksRow {
@@ -1659,7 +1703,8 @@
 }
 
 .buybacksRow strong {
-  font: 700 22px/1 var(--mono);
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .keyValues {
@@ -1727,7 +1772,7 @@
   margin: auto auto 0;
   padding: 26px 24px 34px;
   border-top: 1px solid var(--rule);
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--faint);
@@ -1827,7 +1872,8 @@
 
 .agentCardScore strong {
   display: block;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .agentCardScore .label {
@@ -1860,7 +1906,8 @@
 
 .agentStat dd {
   margin: 0;
-  font: 600 13.5px/1.2 var(--mono);
+  font: 600 13.5px/1.2 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .agentStat dt {
@@ -1938,7 +1985,8 @@
 
 .keyStat dd {
   margin: 0;
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .keyStat dt {
@@ -2037,7 +2085,8 @@
 
 .readProb {
   flex: none;
-  font: 700 22px/1 var(--mono);
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   color: #b49bff;
 }
 
@@ -2100,7 +2149,8 @@
   flex: none;
   width: 56px;
   text-align: right;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tonePink {
@@ -2135,7 +2185,8 @@
 
 .readCardWhen {
   margin-left: auto;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -2163,7 +2214,8 @@
 
 .readAnswerProb strong {
   display: block;
-  font: 700 52px/1 var(--mono);
+  font: 700 52px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   color: #b49bff;
 }
 
@@ -2183,7 +2235,8 @@
 
 .readFacts dd {
   margin: 0;
-  font: 600 13px/1.2 var(--mono);
+  font: 600 13px/1.2 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .readFacts dt {
@@ -2248,7 +2301,8 @@
   gap: 10px;
   padding: 6px 0;
   border-bottom: 1px solid rgba(245, 246, 255, 0.08);
-  font: 500 12px/1.3 var(--mono);
+  font: 500 12px/1.3 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .readSources dt {
@@ -2282,6 +2336,7 @@
 .readOutcome strong {
   display: block;
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
 }
 
 .readOutcome .quiet {
@@ -2369,7 +2424,7 @@
   padding: 7px 11px;
   border: 1px solid rgba(245, 246, 255, 0.12);
   border-radius: var(--pk-radius-pill);
-  font: 600 10px/1 var(--mono);
+  font: 600 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: #5c6484;
 }
@@ -2390,7 +2445,8 @@
   height: 15px;
   border-radius: var(--pk-radius-pill);
   background: rgba(245, 246, 255, 0.1);
-  font: 700 9px/1 var(--mono);
+  font: 700 9px/1 var(--label);
+  letter-spacing: 0.08em;
   color: #5c6484;
 }
 
@@ -2433,7 +2489,8 @@
 }
 
 .askAgentPrice strong {
-  font: 700 15px/1 var(--mono);
+  font: 700 15px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   color: #b49bff;
 }
 
@@ -2473,14 +2530,14 @@
   border-color: rgba(155, 123, 255, 0.55);
   color: #b49bff;
   padding: 10px 14px;
-  font: 600 12px/1 var(--mono);
+  font: 600 12px/1 var(--label);
   letter-spacing: 0;
 }
 
 .askChipSoon {
   padding: 10px 14px;
   border-color: rgba(245, 246, 255, 0.1);
-  font: 600 12px/1 var(--mono);
+  font: 600 12px/1 var(--label);
   letter-spacing: 0;
   color: #5c6484;
 }
@@ -2552,7 +2609,8 @@
 
 .askPayPrice strong {
   display: block;
-  font: 700 26px/1 var(--mono);
+  font: 700 26px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .askPayPrice .quiet {
@@ -2571,5 +2629,6 @@
 .platformTitle {
   margin: 0 0 6px;
   font: 700 clamp(22px, 3vw, 30px) / 1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
