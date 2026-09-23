@@ -780,15 +780,23 @@ test("the loser of a concurrent submit gets the winner's account, not a 500", as
   const s = service(f);
   const options = await s.issueChallenge(USER, "ana@pickler.fun");
   // The pre-check passes, then the unique index rejects the insert: saveRegistration reports
-  // created:false and findByUserId now answers with the winner's row.
+  // created:false and findByUserId now answers with the winner's row. The lookup MUST answer
+  // null the first time. If it returns the winner unconditionally, the pre-check returns early,
+  // the backstop is never reached, and this test passes with the whole backstop deleted.
   f.repository.saveRegistration = async () => ({ created: false });
-  f.repository.findByUserId = async () => ({
-    userId: USER,
-    subOrganizationId: "sub-winner",
-    masterWalletId: "wal-winner",
-    rootUserId: "usr-winner",
-    address: "0x2222222222222222222222222222222222222222",
-  });
+  let lookups = 0;
+  f.repository.findByUserId = async () => {
+    lookups += 1;
+    return lookups === 1
+      ? null
+      : {
+          userId: USER,
+          subOrganizationId: "sub-winner",
+          masterWalletId: "wal-winner",
+          rootUserId: "usr-winner",
+          address: "0x2222222222222222222222222222222222222222",
+        };
+  };
 
   const account = await s.register(USER, {
     email: "ana@pickler.fun",
@@ -798,6 +806,27 @@ test("the loser of a concurrent submit gets the winner's account, not a 500", as
   });
 
   assert.equal(account.subOrganizationId, "sub-winner");
+  assert.equal(f.calls(), 1, "the pre-check must have been passed, not short-circuited");
+  assert.equal(lookups, 2, "the winner must be re-read after the conflict");
+});
+
+test("a conflict with no readable winner fails loudly rather than returning nothing", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  f.repository.saveRegistration = async () => ({ created: false });
+  f.repository.findByUserId = async () => null;
+
+  await assert.rejects(
+    () =>
+      s.register(USER, {
+        email: "ana@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    /orphan sub-org/i,
+  );
 });
 ```
 
@@ -892,7 +921,7 @@ Inside the object returned by `createCustodyService`, after `issueChallenge`:
 - [ ] **Step 4: Run and watch it pass**
 
 Run: `node --import tsx --test packages/core/test/custody.test.ts`
-Expected: PASS, 8 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Commit**
 
