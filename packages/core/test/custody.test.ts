@@ -468,3 +468,97 @@ test("confirming a device needs an existing account", async () => {
   );
   assert.equal(f.forwards.length, 0, "nothing may be forwarded without an account to aim it at");
 });
+
+const OTHER_USER = "22222222-2222-4222-8222-222222222222";
+
+test("preparing refuses a challenge belonging to someone else", async () => {
+  const f = fakes();
+  const s = await registered(f);
+  const issued = await s.issueChallenge(USER, "ana@pickler.fun");
+
+  // The fake repository answers the same row for any caller, so the other person clears the
+  // account guard and the ownership clause is the only thing left standing between them and
+  // an activity built against Ana's sub-organization.
+  await assert.rejects(
+    () =>
+      s.prepareAddPasskey(OTHER_USER, {
+        label: "Phone",
+        challenge: issued.challenge,
+        attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+      }),
+    ChallengeNotUsableError,
+  );
+  assert.equal(f.builds.length, 0, "a stranger's claim must never reach the activity builder");
+});
+
+test("preparing refuses a challenge that outlived its TTL", async () => {
+  const f = fakes();
+  const s = await registered(f);
+  const issued = await s.issueChallenge(USER, "ana@pickler.fun");
+  // The service clock is fixed, so age the stored record instead, as in the register case.
+  f.stored.set(issued.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
+
+  await assert.rejects(
+    () =>
+      s.prepareAddPasskey(USER, {
+        label: "Phone",
+        challenge: issued.challenge,
+        attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+      }),
+    ChallengeNotUsableError,
+  );
+  assert.equal(f.builds.length, 0, "an expired challenge must never reach the activity builder");
+});
+
+/** Binds a prepare call for later, so several can be set up before any of them rejects. */
+function prepareWith(svc: ReturnType<typeof service>, userId: string, challenge: string) {
+  return () =>
+    svc.prepareAddPasskey(userId, {
+      label: "Phone",
+      challenge,
+      attestation: { ...attestation, credentialId: "cred-2", transports: ["hybrid"] },
+    });
+}
+
+/** Returns the error a call rejected with, so two rejections can be compared to each other. */
+async function rejection(run: () => Promise<unknown>): Promise<Error> {
+  try {
+    await run();
+  } catch (error) {
+    return error as Error;
+  }
+  throw new Error("expected a rejection");
+}
+
+test("the three ways a challenge can fail reject identically, so none of them is an oracle", async () => {
+  // One fixture per cause, because each cause consumes a challenge and none can be reused.
+  const absent = fakes();
+  const missingCall = prepareWith(await registered(absent), USER, "never-issued");
+
+  const stranger = fakes();
+  const strangerService = await registered(stranger);
+  const theirs = await strangerService.issueChallenge(USER, "ana@pickler.fun");
+  const wrongOwnerCall = prepareWith(strangerService, OTHER_USER, theirs.challenge);
+
+  const aged = fakes();
+  const agedService = await registered(aged);
+  const old = await agedService.issueChallenge(USER, "ana@pickler.fun");
+  aged.stored.set(old.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
+  const expiredCall = prepareWith(agedService, USER, old.challenge);
+
+  const missing = await rejection(missingCall);
+  const wrongOwner = await rejection(wrongOwnerCall);
+  const expired = await rejection(expiredCall);
+
+  // The equality is the whole point, not tidiness: a caller who can tell "no such challenge"
+  // from "not yours" can enumerate which challenges exist and who holds them. A later hand
+  // adding a cause, a code or a more helpful message for debuggability breaks that, and these
+  // three assertions are what says so. They compare the errors to each other rather than to a
+  // class or a literal, so renaming the error or rewording it stays green.
+  for (const other of [wrongOwner, expired]) {
+    assert.equal(other.constructor, missing.constructor, "same error type");
+    assert.equal(other.message, missing.message, "same message, to the character");
+    assert.deepEqual({ ...other }, { ...missing }, "no extra property distinguishes the cause");
+  }
+  assert.equal(absent.builds.length + stranger.builds.length + aged.builds.length, 0);
+});

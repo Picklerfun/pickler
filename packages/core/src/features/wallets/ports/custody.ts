@@ -28,8 +28,17 @@ export interface ChallengeStore {
 export interface RegistrationInput {
   userId: string;
   subOrganizationId: string;
+  /**
+   * The sub-organization's default wallet, recorded on the turnkey_orgs row. It carries the
+   * same value as `walletId` below because registration mints exactly one wallet, but the two
+   * are separate fields because they name different things and will part company: this one is
+   * "whichever wallet this person's sub-organization treats as its main one", while `walletId`
+   * is the wallet this particular registration created. An agent wallet minted later adds a
+   * `wallets` row of its own with kind 'agent' and leaves `masterWalletId` where it pointed.
+   */
   masterWalletId: string;
   rootUserId: string;
+  /** The wallet created by this registration, recorded on the wallets row. */
   walletId: string;
   address: string;
   credentialId: string;

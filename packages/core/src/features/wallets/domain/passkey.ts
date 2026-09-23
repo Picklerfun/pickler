@@ -41,7 +41,18 @@ export function deviceTypeFromTransports(transports: string[]): DeviceType {
   return "platform";
 }
 
-/** The challenge was never issued, was already used, or has expired (HTTP 400). */
+/**
+ * The challenge was never issued, was already used, belongs to someone else, or has expired
+ * (HTTP 400).
+ *
+ * The causes deliberately share one error and one message. Telling them apart would hand a
+ * caller an enumeration oracle: "not yours" rather than "no such challenge" confirms that a
+ * given challenge exists and is held by somebody, which is exactly what an attacker guessing
+ * at them wants to learn. The callers also do equal work before rejecting — the challenge is
+ * consumed first and every clause is judged on the record already in hand — so the three do
+ * not differ in timing either. Resist adding a cause, a code or a more helpful message here
+ * for debuggability; log the detail at the call site instead.
+ */
 export class ChallengeNotUsableError extends Error {
   constructor() {
     super("This passkey request expired. Start again.");
