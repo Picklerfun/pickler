@@ -137,6 +137,21 @@ in the list because nothing in the apparatus could have caught it.
    scanning, so prose stops being an input and every real read still is. The ordering matters
    because a check made quieter is a check trusted more: the cost of silencing the wrong thing is
    paid later, and by someone else.
+10. **A check that reads a shared, uncommitted working tree reports the state of whoever is
+    mid-edit, and nothing in its output separates that from a defect.** An invisible heading —
+    `#0B0D1A` on `#0B0D1A`, 1.00:1, in the one mechanism the whole system rests on — was nearly
+    filed as the most severe finding of the session. It had already been fixed, two minutes before
+    it was read. This is a consequence of running several agents against one dev server: a property
+    of the arrangement rather than of anyone's code, which is why no amount of care inside the check
+    prevents it, and why "re-run before believing a failure" is a habit rather than a fix.
+    The fix is that the harness can know. It reads `git status --short` at the start of a run and
+    annotates failures on any screen whose source is being held — `HOLDS` in `routes.mjs` maps each
+    screen to its directories, and `packages/ui/src` holds every screen, since the tokens are what
+    all of them are made of. The annotation never suppresses a line, never uncounts one and never
+    changes the exit code: a real failure in a held file is still a real failure, and silencing it
+    would be lesson 9's mistake exactly. This is lesson 7 one layer out — the check cannot know
+    which of the two it is looking at, but it can say what it does not know, and that is the half
+    the reader needs.
 
 ---
 

@@ -17,21 +17,24 @@ const notes = [];
 for (const { route, value } of results) {
   const want = GROUND[route.surface];
   if (value.ground !== want) {
-    problems.push(
-      `${route.name} paints ${value.ground} at ${value.where} but is a ${route.surface} surface, which is ${want}`,
-    );
+    problems.push({
+      route,
+      text: `${route.name} paints ${value.ground} at ${value.where} but is a ${route.surface} surface, which is ${want}`,
+    });
   }
   if (value.root !== want) {
-    problems.push(
-      `${route.name}: --pk-bg resolves to ${value.root} at ${value.where}, but a ${route.surface} surface holds ${want}. The element is carrying the wrong data-surface, or something overrode the token.`,
-    );
+    problems.push({
+      route,
+      text: `${route.name}: --pk-bg resolves to ${value.root} at ${value.where}, but a ${route.surface} surface holds ${want}. The element is carrying the wrong data-surface, or something overrode the token.`,
+    });
   }
 
   if (!value.nested) {
     if (MUST_NEST.has(route.name)) {
-      problems.push(
-        `${route.name} has no data-surface inside another data-surface. Its inverted block was built with a literal rather than by nesting, so the system is not doing its work: the one mechanism everything else rests on is unexercised here.`,
-      );
+      problems.push({
+        route,
+        text: `${route.name} has no data-surface inside another data-surface. Its inverted block was built with a literal rather than by nesting, so the system is not doing its work: the one mechanism everything else rests on is unexercised here.`,
+      });
     } else {
       notes.push(`${route.name}: no nested surface (none is required on this screen)`);
     }
@@ -39,9 +42,10 @@ for (const { route, value } of results) {
   }
   const { inner, outer } = value.nested;
   if (inner.bg === outer.bg) {
-    problems.push(
-      `${route.name}: ${inner.selector} [data-surface="${inner.surface}"] inside ${outer.selector} [data-surface="${outer.surface}"] computes the same --pk-bg (${inner.bg}) as its parent. Nesting the opposite value did not invert anything, so the inverted blocks cannot be built this way.`,
-    );
+    problems.push({
+      route,
+      text: `${route.name}: ${inner.selector} [data-surface="${inner.surface}"] inside ${outer.selector} [data-surface="${outer.surface}"] computes the same --pk-bg (${inner.bg}) as its parent. Nesting the opposite value did not invert anything, so the inverted blocks cannot be built this way.`,
+    });
     continue;
   }
   notes.push(

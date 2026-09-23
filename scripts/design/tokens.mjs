@@ -32,9 +32,10 @@ for (const { route, value } of results) {
   if (!value.tokens.names.length) {
     // The stylesheet was unreadable or the tokens are not on this page. Without this, every colour
     // would be a stray and the report would be noise rather than a finding.
-    problems.push(
-      `${route.name}: no --pk-* tokens found on the page at all — the token stylesheet did not load, so nothing here can be judged against it.`,
-    );
+    problems.push({
+      route,
+      text: `${route.name}: no --pk-* tokens found on the page at all — the token stylesheet did not load, so nothing here can be judged against it.`,
+    });
     continue;
   }
   const strays = new Map();
@@ -52,9 +53,10 @@ for (const { route, value } of results) {
   }
   for (const { count, paint, colour } of strays.values()) {
     const alpha = colour[3] === 1 ? "" : ` at ${colour[3]} alpha`;
-    problems.push(
-      `${route.name} ${paint.selector}: ${hex(colour)}${alpha} as ${paint.role} is in no --pk-* token on this page ×${count}`,
-    );
+    problems.push({
+      route,
+      text: `${route.name} ${paint.selector}: ${hex(colour)}${alpha} as ${paint.role} is in no --pk-* token on this page ×${count}`,
+    });
   }
 }
 

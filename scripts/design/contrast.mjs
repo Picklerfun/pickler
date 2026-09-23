@@ -96,6 +96,7 @@ for (const { route, value } of results) {
     seen.set(key, { count: 1 });
     problems.push({
       key,
+      route,
       line: () =>
         `${route.name} ${item.selector}: ${measured.toFixed(2)} needs ${need} — ` +
         `${hex(seenInk)} on ${hex(ground)} at ${item.size}px/${item.weight}` +
@@ -113,4 +114,8 @@ if (overImage) {
   );
 }
 
-finish("contrast", { routes: ROUTES, blocked, problems: problems.map((p) => p.line()) });
+finish("contrast", {
+  routes: ROUTES,
+  blocked,
+  problems: problems.map((p) => ({ route: p.route, text: p.line() })),
+});

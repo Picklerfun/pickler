@@ -32,13 +32,17 @@ for (const { route, value } of results) {
     // next/font generates its own family names, so the stack reads
     // `Archivo, "Archivo Fallback", Archivo, sans-serif`. Matching the word is the check.
     if (!/archivo/i.test(heading.family)) {
-      problems.push(`${where}: font-family is ${heading.family}, which is not the display face`);
+      problems.push({
+        route,
+        text: `${where}: font-family is ${heading.family}, which is not the display face`,
+      });
     }
     const axis = /"wdth"\s*([\d.]+)/.exec(heading.variation ?? "");
     if (!axis) {
-      problems.push(
-        `${where}: font-variation-settings is ${heading.variation || "normal"} — no wdth axis, so this is Archivo at its default width and not the face the canvases use`,
-      );
+      problems.push({
+        route,
+        text: `${where}: font-variation-settings is ${heading.variation || "normal"} — no wdth axis, so this is Archivo at its default width and not the face the canvases use`,
+      });
     }
   }
 }

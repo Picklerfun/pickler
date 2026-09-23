@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { HOLDS } from "../routes.mjs";
 
 const BASE = process.env.DESIGN_BASE_URL ?? "http://localhost:3000";
 
@@ -196,6 +197,40 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
   return { results, blocked };
 }
 
+/* Who is holding the source a screen is built from.
+ *
+ * These checks read a working tree several agents share through one dev server, so a red line can be
+ * a snapshot of someone mid-edit rather than a defect — an invisible heading that was already fixed
+ * before it was read. Nothing in the output tells the two apart, and no amount of care inside the
+ * check prevents it: it is a property of the arrangement, not of anyone's code.
+ *
+ * The harness cannot know which it is looking at. It can know whether anyone is holding the file,
+ * which is the honest half of the answer and the half a reader needs. So failures on a held screen
+ * are annotated, never suppressed and never uncounted — a real failure in a held file is still a
+ * real failure, and silencing it would be the mistake in lesson 9 exactly. */
+function held() {
+  let changed = [];
+  try {
+    const root = fileURLToPath(new URL("../../..", import.meta.url));
+    changed = execFileSync("git", ["status", "--short"], { cwd: root, encoding: "utf8" })
+      .split("\n")
+      .map((line) => line.slice(3).trim().split(" -> ").pop())
+      .filter(Boolean);
+  } catch {
+    return new Map(); // not a git checkout, or git is unavailable: say nothing rather than guess
+  }
+  const holders = new Map();
+  for (const [task, directories] of Object.entries(HOLDS)) {
+    const touched = directories.filter((directory) =>
+      changed.some((file) => file.startsWith(directory)),
+    );
+    if (touched.length) {
+      holders.set(task, touched);
+    }
+  }
+  return holders;
+}
+
 /** Prints what could not be visited and what measured badly, then exits.
  *
  *  Both count as failure — a check that cannot see a route has not passed it — but they are
@@ -205,8 +240,24 @@ export function finish(check, { routes, blocked, problems }) {
   for (const { blocked: isRoute, text } of describe(blocked)) {
     process.stdout.write(isRoute ? `BLOCKED  ${text}\n` : `  → ${text}\n`);
   }
-  for (const line of problems) {
-    process.stdout.write(`FAIL     ${line}\n`);
+  // A problem may be a plain string or { route, text }; only the latter can be attributed.
+  const holders = held();
+  const marked = new Set();
+  for (const problem of problems) {
+    const route = problem?.route;
+    const tasks = route ? [route.task, "ALWAYS"].filter((t) => holders.has(t)) : [];
+    for (const task of tasks) {
+      marked.add(task);
+    }
+    const text = problem?.text ?? problem;
+    process.stdout.write(`FAIL     ${text}${tasks.length ? "  [held]" : ""}\n`);
+  }
+  for (const task of marked) {
+    process.stdout.write(
+      `  ⚠ ${holders.get(task).join(", ")} has uncommitted changes, so a [held] line above may be a\n` +
+        `    snapshot of an edit in progress rather than a defect. It is still counted and this check\n` +
+        `    still fails. Read it again once that work is committed.\n`,
+    );
   }
   const measured = routes.length - blocked.length;
   if (!blocked.length && !problems.length) {

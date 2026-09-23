@@ -13,3 +13,19 @@ export const ROUTES = [
 ];
 
 export const GROUND = { light: "rgb(255, 255, 255)", dark: "rgb(11, 13, 26)" };
+
+/* Which source a screen is built from, so a check can say when its failures may be someone's
+ * half-finished edit rather than a defect. Keyed by task rather than by route because several
+ * routes are states of one screen — the three portfolio entries share a directory, and a state
+ * added later inherits this instead of repeating it.
+ *
+ * ALWAYS holds every route: the tokens are what every screen is made of, so an edit in flight there
+ * puts every measurement on this page in question. */
+export const HOLDS = {
+  ALWAYS: ["packages/ui/src"],
+  "Task 9": ["apps/web/src/features/landing"],
+  "Task 10": ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
+  "Task 11": ["apps/web/src/features/console"],
+  "Task 12": ["apps/web/src/features/console"],
+  "Task 13": ["apps/web/src/features/wallet"],
+};
