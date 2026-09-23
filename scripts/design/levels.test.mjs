@@ -58,6 +58,20 @@ const INKS = ["--pk-ink", "--pk-ink-soft", "--pk-ink-muted", "--pk-ink-faint"];
 const GROUNDS = ["--pk-bg", "--pk-panel", "--pk-panel-2", "--pk-panel-3"];
 const BODY = 4.5; // WCAG AA for body text. Every one of these levels is used as text.
 
+/** The state pairs, discovered rather than listed: `--pk-state-<name>-bg` and its `-ink`. Finding
+ *  them by shape means a pair added later is covered the day it is added, which is the only way a
+ *  check like this stays true — a hand-written list is a list someone forgets to extend. */
+function pairs(tokens, prefix) {
+  const names = new Set();
+  for (const key of Object.keys(tokens)) {
+    const match = new RegExp(`^${prefix}(.+)-(?:bg|ink)$`).exec(key);
+    if (match && tokens[`${prefix}${match[1]}-bg`] && tokens[`${prefix}${match[1]}-ink`]) {
+      names.add(match[1]);
+    }
+  }
+  return [...names].sort();
+}
+
 for (const name of ["light", "dark"]) {
   test(`every ${name} ink is legible on every ${name} ground`, () => {
     const tokens = surface(`[data-surface="${name}"]`);
@@ -70,6 +84,32 @@ for (const name of ["light", "dark"]) {
             `${ink} (${resolve(tokens, ink)}) on ${ground} (${resolve(tokens, ground)}) is ${measured.toFixed(2)}, needs ${BODY}`,
           );
         }
+      }
+    }
+    assert.deepEqual(unreadable, []);
+  });
+}
+
+// A state is a tinted ground with an ink chosen to be legible on it — that legibility is the whole
+// contract, and it is the one thing a pair exists to guarantee. Unlike the ink ramp, each pair has
+// exactly one ground: its own tint. Nothing else is asserted here, because nothing else is promised.
+for (const name of ["light", "dark"]) {
+  test(`every ${name} state ink is legible on its own tint`, () => {
+    const tokens = surface(`[data-surface="${name}"]`);
+    const found = pairs(tokens, "--pk-state-");
+    assert.ok(
+      found.length >= 6,
+      `only ${found.length} state pairs found — the walk matched nothing`,
+    );
+    const unreadable = [];
+    for (const state of found) {
+      const ink = resolve(tokens, `--pk-state-${state}-ink`);
+      const tint = resolve(tokens, `--pk-state-${state}-bg`);
+      const measured = ratio(rgb(ink), rgb(tint));
+      if (measured < BODY) {
+        unreadable.push(
+          `${state}: ink ${ink} on tint ${tint} is ${measured.toFixed(2)}, needs ${BODY}`,
+        );
       }
     }
     assert.deepEqual(unreadable, []);

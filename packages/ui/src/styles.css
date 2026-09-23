@@ -84,7 +84,7 @@
   --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
   --pk-violet: #5b3ce0;
   --pk-violet-ink: #5b3ce0;
-  --pk-magenta-ink: #c62c62;
+  --pk-magenta-ink: #c12b60;
   /* Every accent splits into the colour and the ink of that colour, because an accent bright enough
    * to carry a fill is never dark enough to be read on white. A lime button stays lime; the word
    * "lime" set in lime is 1.3:1 and is not there at all. These two are the light surface's own lime
@@ -92,28 +92,35 @@
   --pk-lime-ink: #3f6b00;
   --pk-amber-ink: #8a6200;
   /* Lime and pink read on black and vanish on white, so the money colours are a green and a red
-   * chosen to survive this ground. They are the one accent pair that is not the same hue on both. */
-  --pk-win: #2e7d32;
-  --pk-loss: #c62c62;
+   * chosen to survive this ground. They are the one accent pair that is not the same hue on both.
+   *
+   * Both were darkened from the canvas, by about one point of lightness each with hue and
+   * saturation held: #C62C62 measured 4.42:1 on its own tint and #2E7D32 measured 4.46:1 on theirs,
+   * and a state ink that cannot be read on the state's ground is the one thing the pair exists to
+   * guarantee. The move is the least that reaches 4.6:1. Every token holding these two colours
+   * moved together — a state ink eight steps from the accent it names is one colour with a
+   * rounding error, not two. Do not restore them from the canvas. */
+  --pk-win: #2d7a31;
+  --pk-loss: #c12b60;
   /* Violet is dark enough here to carry white. */
   --pk-on-violet: #ffffff;
 
   /* Every state is a tint and an ink legible on that tint. A tinted object reads as a state, never
    * as a control, so it never takes a button's fill.
    *
-   * They carry the accent palette too, because the states are the accents: lime is good, amber is
-   * caution, magenta is loss, violet is info, blue is cool, orange is warm. Anything that wants a
-   * coloured tile with a letter on it takes a pair from here. Setting an accent on a wash of itself
-   * is not an option that needs retinting — it has no light form at all, because over white a 14%
-   * wash is very nearly white and the letter on it is the accent. */
+   * These mean something about an outcome. Telling one agent from another is a different job and has
+   * its own pairs below. What both have in common is the shape: a tinted ground and an ink chosen
+   * for it. Setting an accent on a wash of itself is not an option that needs retinting — it has no
+   * light form at all, because over white a 14% wash is very nearly white and the letter on it is
+   * the accent. */
   --pk-state-good-bg: #edf7ce;
   --pk-state-good-ink: #3f6b00;
   --pk-state-win-bg: #e4f3e5;
-  --pk-state-win-ink: #2e7d32;
+  --pk-state-win-ink: #2d7a31;
   --pk-state-caution-bg: #fbf0d4;
   --pk-state-caution-ink: #8a6200;
   --pk-state-loss-bg: #fbe4ec;
-  --pk-state-loss-ink: #c62c62;
+  --pk-state-loss-ink: #c12b60;
   --pk-state-info-bg: #f1eeff;
   --pk-state-info-ink: #5b3ce0;
   --pk-state-cool-bg: #eaf0ff;
@@ -147,7 +154,7 @@
   --pk-lime-tint: var(--pk-state-good-bg);
   --pk-lime-edge: rgba(63, 107, 0, 0.28);
   --pk-magenta-tint: var(--pk-state-loss-bg);
-  --pk-magenta-edge: rgba(198, 44, 98, 0.28);
+  --pk-magenta-edge: rgba(193, 43, 96, 0.28);
   --pk-amber-tint: var(--pk-state-caution-bg);
   --pk-amber-edge: rgba(138, 98, 0, 0.28);
   --pk-cyan-tint: var(--pk-state-cool-bg);
