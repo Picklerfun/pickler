@@ -6,10 +6,20 @@ import { createSupabaseAdmin, createWalletAccounts, syntheticEmail } from "../sr
 const EVM = normalizeAddress("eip155", "0xABC0000000000000000000000000000000000001");
 const SOLANA = normalizeAddress("solana", "7EqQdEULxWcraVx3mXKFjc84LhCkMGZCkRuDpvcMwJeK");
 
+/**
+ * A golden value, pinned deliberately. This derivation is an identity key: every existing account
+ * is found by it, so a change that alters it does not produce a bug report — it orphans everyone
+ * who has signed in before. Anything that moves this digest should have to edit this line and say
+ * why.
+ */
 test("the synthetic address is derived from the wallet and is not deliverable", () => {
   assert.equal(
     syntheticEmail("eip155", EVM, "wallet.pickler.fun"),
-    "eip155-0xabc0000000000000000000000000000000000001@wallet.pickler.fun",
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun",
+  );
+  assert.equal(
+    syntheticEmail("solana", SOLANA, "wallet.pickler.fun"),
+    "solana-f34b68f88b3ac7876624d9521582daeb632899822f728bb90b8619281b72c2fb@wallet.pickler.fun",
   );
 });
 
@@ -24,24 +34,27 @@ test("two spellings of one address give one account", () => {
 });
 
 /**
- * The derivation adds no case rule of its own. `normalizeAddress` already decided the spelling —
- * lower-case for EVM, untouched for base58 — and a second `toLowerCase()` here would silently map
- * two distinct Solana addresses onto one account.
+ * The property that makes the other two leaks harmless. This value travels in every access token's
+ * `email` claim, so it reaches the browser on every request and lands in whatever log or screen
+ * reads a user's email. If the address were spelled into it, all of those would disclose which
+ * wallet an account belongs to; a digest makes them an opaque token only `wallet_links` resolves.
  */
-test("a Solana address keeps its case in the key, because base58 is case-significant", () => {
-  assert.equal(
-    syntheticEmail("solana", SOLANA, "wallet.pickler.fun"),
-    "solana-7EqQdEULxWcraVx3mXKFjc84LhCkMGZCkRuDpvcMwJeK@wallet.pickler.fun",
-  );
+test("the wallet address never appears in the key it derives", () => {
+  for (const [namespace, address] of [
+    ["eip155", EVM],
+    ["solana", SOLANA],
+  ] as const) {
+    const email = syntheticEmail(namespace, address, "wallet.pickler.fun");
+    assert.equal(email.includes(address), false, `${namespace} address leaked into the key`);
+    assert.equal(
+      email.toLowerCase().includes(address.toLowerCase()),
+      false,
+      `${namespace} address leaked in another spelling`,
+    );
+    assert.match(email, /^(eip155|solana)-[0-9a-f]{64}@wallet\.pickler\.fun$/);
+  }
 });
 
-/**
- * The collision itself, with two addresses that are both valid base58 and differ only in case.
- * A second `toLowerCase()` in the derivation maps them onto one synthetic address and therefore
- * one Supabase account — two people sharing an identity, which is the failure this whole
- * specification exists to prevent. It is invisible on EVM, where `normalizeAddress` has already
- * lower-cased, so every test one would naturally write there passes either way.
- */
 test("two Solana addresses differing only in case are two accounts, never one", () => {
   const one = normalizeAddress("solana", "7EqQdEULxWcraVx3mXKFjc84LhCkMGZCkRuDpvcMwJeK");
   const other = normalizeAddress("solana", "7eQqDeuLXwCRAvX3MxkfJC84LHcKmgzcKrUdPVCmWjEk");

@@ -1,3 +1,5 @@
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import type { AccountProvisioner, Namespace, NormalizedAddress } from "@pickler/core";
 import type { SupabaseAdmin } from "./supabase-admin-client.js";
 
@@ -12,16 +14,27 @@ import type { SupabaseAdmin } from "./supabase-admin-client.js";
  *
  * The domain must therefore never be made to accept mail.
  *
- * Note what this does *not* do: it adds no case rule of its own. `normalizeAddress` has already
- * decided the spelling — lower-cased for EVM, untouched for base58 — and lower-casing again here
- * would map two distinct Solana addresses onto one account. One normalisation rule, in one place.
+ * The local part is a digest rather than the address itself, and that is the point. The auth email
+ * travels in every access token's `email` claim, so it reaches the browser on every request and
+ * lands in any log or screen that reads a user's email. Embedding the address there would make all
+ * of those a disclosure of which wallet an account belongs to; a digest makes them an opaque token
+ * that only `identity.wallet_links` can resolve, which is what "internal key" was supposed to mean.
+ *
+ * It also removes a whole shape of bug rather than one instance of it. Base58 is case-significant
+ * while email local parts are not, so spelling an address into one risked mapping two distinct
+ * Solana wallets onto a single account. A hex digest has no case to lose, so a namespace added
+ * later whose addresses are case-significant cannot reintroduce it.
+ *
+ * The namespace is both hashed in and kept as a visible prefix: hashed so one address on two chain
+ * families is two accounts, visible so an operator can still tell the families apart.
  */
 export function syntheticEmail(
   namespace: Namespace,
   address: NormalizedAddress,
   domain: string,
 ): string {
-  return `${namespace}-${address}@${domain}`;
+  const digest = bytesToHex(sha256(new TextEncoder().encode(`${namespace}:${address}`)));
+  return `${namespace}-${digest}@${domain}`;
 }
 
 export interface WalletAccountsConfig {
