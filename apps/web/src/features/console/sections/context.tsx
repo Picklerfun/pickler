@@ -47,7 +47,7 @@ export function Context({ agent, go }: { agent: Agent; go(section: SectionKey): 
   return (
     <div className={styles.section} data-narrow="true">
       <div className={styles.sectionHead}>
-        <h2>Context</h2>
+        <h1>Context</h1>
         <span className={styles.count}>CONFIG v{agent.version}</span>
         <p>what it carries into every run</p>
       </div>

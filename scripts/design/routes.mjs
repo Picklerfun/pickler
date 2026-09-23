@@ -24,6 +24,16 @@ export const ROUTES = [
     task: "Task 10",
   },
   { path: "/console", name: "studio", surface: "dark", task: "Task 11" },
+  // The studio keeps its section in state, so /console alone has only ever shown the overview —
+  // three screens' worth of composition behind a rail click that no check has ever read. The one
+  // most affected by a token change is always the one nothing measures. `?section=` opens each,
+  // outside production only. Picks carries the forecast, the policy codes and the report; activity
+  // carries the trace; skills carries the plugin rows; token is a section with no backend, which is
+  // where the copy saying so lives.
+  { path: "/console?section=picks", name: "studio-picks", surface: "dark", task: "Task 11" },
+  { path: "/console?section=activity", name: "studio-activity", surface: "dark", task: "Task 11" },
+  { path: "/console?section=skills", name: "studio-skills", surface: "dark", task: "Task 11" },
+  { path: "/console?section=token", name: "studio-token", surface: "dark", task: "Task 11" },
   // The empty studio is a state, not a route: the console renders it when the signed-in person has
   // no agents. A later task adds ?state=empty so it can be reached without emptying a database.
   { path: "/console?state=empty", name: "studio-empty", surface: "dark", task: "Task 12" },

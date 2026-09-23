@@ -2,22 +2,10 @@
 import Link from "next/link";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
+import type { SectionKey } from "./keys";
 import styles from "../studio.module.css";
 
-export type SectionKey =
-  | "overview"
-  | "console"
-  | "picks"
-  | "activity"
-  | "brief"
-  | "skills"
-  | "sources"
-  | "limits"
-  | "identity"
-  | "profile"
-  | "audience"
-  | "token"
-  | "board";
+export type { SectionKey } from "./keys";
 
 /**
  * A section with nothing behind it yet still says what it is, what state it is in and why it is
@@ -85,7 +73,7 @@ export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | 
         <span className={styles.stubState}>{page.state}</span>
       </p>
       <div className={styles.sectionHead}>
-        <h2>{page.title}</h2>
+        <h1>{page.title}</h1>
       </div>
       <p className={styles.stubBody}>{page.body}</p>
       {section === "board" && (

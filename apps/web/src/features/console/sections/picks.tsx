@@ -240,7 +240,7 @@ export function Picks({
     return (
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2>Picks</h2>
+          <h1>Picks</h1>
           <p>every decision, with the range, the counter-evidence and who said no</p>
         </div>
         <p className={styles.empty}>
@@ -259,7 +259,7 @@ export function Picks({
   return (
     <div className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2>Picks</h2>
+        <h1>Picks</h1>
         <span className={styles.count}>{picks.length} DECISIONS</span>
         <p>every decision, with the range, the counter-evidence and who said no</p>
       </div>

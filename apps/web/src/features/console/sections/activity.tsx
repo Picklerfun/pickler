@@ -81,7 +81,7 @@ export function Activity({
   return (
     <div className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2>Activity</h2>
+        <h1>Activity</h1>
         <span className={styles.count}>
           {runs.length} RUNS · {failed} FAILED
         </span>

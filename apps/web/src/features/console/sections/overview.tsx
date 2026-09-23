@@ -79,6 +79,10 @@ export function Overview({
 
   return (
     <div className={styles.section}>
+      <div className={styles.sectionHead}>
+        <h1>Overview</h1>
+        <p>what it is about to do, and what it just did</p>
+      </div>
       <div className={styles.cards}>
         <section className={styles.card}>
           <div className={styles.split}>

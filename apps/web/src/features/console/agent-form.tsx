@@ -62,7 +62,7 @@ export function AgentForm({
   return (
     <form onSubmit={submit} className={styles.block}>
       <div className={styles.sectionHead}>
-        <h2>Create an agent</h2>
+        <h1>Create an agent</h1>
       </div>
       <p className={styles.stubBody}>
         The schedule starts disabled. Enabling it requires a connection check and a successful

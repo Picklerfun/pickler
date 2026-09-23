@@ -130,9 +130,9 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Console() {
+export function Console({ openSection }: { openSection?: SectionKey | undefined }) {
   const router = useRouter();
-  const [section, setSection] = useState<SectionKey>("overview");
+  const [section, setSection] = useState<SectionKey>(openSection ?? "overview");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -616,7 +616,7 @@ export function Console() {
           ) : !agent ? (
             <div className={styles.section} data-narrow="true">
               <div className={styles.sectionHead}>
-                <h2>No agent yet</h2>
+                <h1>No agent yet</h1>
               </div>
               <p className={styles.stubBody}>
                 An agent is a standing brief plus the plugins it may reach. Create one and the

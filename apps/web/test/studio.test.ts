@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { previewAllowed, studioPreview } from "../src/features/console/preview";
+import { SECTIONS, sectionFromSearch } from "../src/features/console/sections/keys";
 import {
   forgetRail,
   railOnServer,
@@ -126,4 +127,31 @@ test("blocked storage leaves the rail at its default instead of throwing", () =>
 test("blocked storage does not make closing the rail throw", () => {
   withStorage(null);
   assert.doesNotThrow(() => setRail(false));
+});
+
+/* `?section=` is how every studio section becomes reachable by a check. One behaviour per test. */
+
+test("a production build ignores the section a link asked for", () => {
+  assert.equal(sectionFromSearch("production", "picks"), undefined);
+});
+
+test("a link can open the studio on a section a check would never reach", () => {
+  assert.equal(sectionFromSearch("development", "picks"), "picks");
+});
+
+test("a section the rail does not have is not opened on", () => {
+  assert.equal(sectionFromSearch("development", "../etc/passwd"), undefined);
+});
+
+test("a repeated section param takes the first value rather than the array", () => {
+  assert.equal(sectionFromSearch("development", ["skills", "picks"]), "skills");
+});
+
+test("no section asked for leaves the studio where it opens", () => {
+  assert.equal(sectionFromSearch("development", undefined), undefined);
+});
+
+test("every section the rail can reach is a section a link can ask for", () => {
+  const unreachable = SECTIONS.filter((key) => sectionFromSearch("development", key) !== key);
+  assert.deepEqual(unreachable, []);
 });

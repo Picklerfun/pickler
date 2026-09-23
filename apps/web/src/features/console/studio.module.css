@@ -427,7 +427,7 @@
   align-items: center;
   gap: 12px;
 }
-.sectionHead h2 {
+.sectionHead h1 {
   margin: 0;
   font: 700 28px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
