@@ -4,7 +4,7 @@ import { useReducer } from "react";
 import styles from "../auth.module.css";
 import type { AuthBoardData } from "../lib/board-data";
 import { INITIAL, next, rail } from "../lib/flow";
-import type { Mode, Step } from "../lib/flow";
+import type { Step } from "../lib/flow";
 import { AuthHeader } from "./auth-header";
 import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
@@ -14,9 +14,11 @@ import { HandleStep } from "./steps/handle-step";
 /**
  * The form column and the board, with the flow machine driving which screen is in the column.
  *
- * Only the first three screens exist so far. The rest say so rather than standing in for
- * something: a screen that pretends a passkey was made, or a wallet exists, is worse than an
- * empty one, because the next person to look cannot tell which of the two it is.
+ * Only the first three screens exist so far. The rest are named in plain text and nothing else:
+ * a screen that pretends a passkey was made, or a wallet exists, is worse than an unfinished one,
+ * because the next person to look cannot tell which of the two it is. Both routes are
+ * `robots: { index: false, follow: false }` and unlinked from the landing, so nobody arrives here
+ * by accident — but anyone who does should see at a glance that it is unfinished, not broken.
  */
 const NOT_BUILT: Partial<Record<Step, string>> = {
   passkey: "Creating a passkey",
@@ -27,7 +29,18 @@ const NOT_BUILT: Partial<Record<Step, string>> = {
   recovered: "Saving a passkey on this device",
 };
 
-export function PasskeyFlow({ board, mode }: { board: AuthBoardData; mode: Mode }) {
+export function PasskeyFlow({
+  board,
+  mode,
+}: {
+  board: AuthBoardData;
+  /**
+   * Which rail the route opens: `up` for /signup, `in` for /signin. It is the route's to give,
+   * never defaulted here, because it is what decides whether a verified code goes on to the
+   * handle screen or straight to welcome. `recover` is entered by `device_unknown`, never opened.
+   */
+  mode: "up" | "in";
+}) {
   const [state, dispatch] = useReducer(next, { ...INITIAL, mode });
   const pending = NOT_BUILT[state.step];
 
@@ -79,12 +92,10 @@ export function PasskeyFlow({ board, mode }: { board: AuthBoardData; mode: Mode 
             />
           )}
           {pending && (
-            <div className={styles.flowStep}>
-              <h1 className={styles.flowTitle}>NOT BUILT YET</h1>
-              <p className={`${styles.alert} ${styles.info}`}>
-                {pending} is not implemented in this build. Nothing was signed, created or saved.
-              </p>
-            </div>
+            <p className={styles.notBuilt}>
+              {`NOT BUILT YET\n\nStep: ${state.step}\n${pending}\n\n` +
+                "Nothing was signed, created or saved."}
+            </p>
           )}
         </div>
 

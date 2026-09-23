@@ -1288,3 +1288,13 @@
   font: 600 11px/1.4 var(--mono);
   letter-spacing: 0.06em;
 }
+
+/* Deliberately bare. An unbuilt step has to read as unfinished at a glance rather than as a
+   screen that might merely be broken, so it gets no panel, no display type and no banner —
+   nothing this file gives a finished screen. */
+.notBuilt {
+  margin: 24px 0 0;
+  font: 400 13.5px/1.7 var(--mono);
+  color: var(--muted);
+  white-space: pre-line;
+}
