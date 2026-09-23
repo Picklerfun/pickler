@@ -94,6 +94,10 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
   /**
    * ON CONFLICT DO NOTHING on the unique (namespace, address) index, so a concurrent link of the
    * same address reports `created: false` rather than raising. The caller decides what that means.
+   *
+   * That index is named `wallet_links_address_key`, which reads as uniqueness on the address
+   * alone. It is not: a violation citing that name means the (namespace, address) pair is taken,
+   * and one address is still free to be held in a second chain family.
    */
   async link(link: Omit<WalletLink, "verifiedAt">): Promise<{ created: boolean }> {
     const { rowCount } = await this.pool.query(

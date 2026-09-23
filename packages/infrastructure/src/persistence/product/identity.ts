@@ -106,6 +106,9 @@ export const walletLinks = identity
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [
+      // The name says address; the index is on the pair. One address can therefore be held in
+      // both chain families at once, which is the intended rule — a duplicate-key error citing
+      // `wallet_links_address_key` is about (namespace, address), not about the address alone.
       uniqueIndex("wallet_links_address_key").on(t.namespace, t.address),
       index("wallet_links_user_idx").on(t.userId),
       check("wallet_links_namespace", sql`${t.namespace} in ('eip155', 'solana')`),

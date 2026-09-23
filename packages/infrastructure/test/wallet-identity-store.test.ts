@@ -14,6 +14,14 @@ const ADDR = normalizeAddress("eip155", CHECKSUMMED);
 const OTHER_ADDR = normalizeAddress("eip155", "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc");
 const SOL_ADDR = normalizeAddress("solana", "So11111111111111111111111111111111111111112");
 
+/**
+ * The hex shape the container actually issues. viem's SIWE builder enforces
+ * `/^[a-zA-Z0-9]{8,}$/` and its parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)`, so a hyphenated
+ * nonce does not fail on the way back — it truncates at the hyphen, silently. The store never
+ * sees a SIWE message and so cannot be bitten by that, but a fixture is the thing people copy.
+ */
+const nonce = () => randomUUID().replaceAll("-", "");
+
 const EVM_CHAIN = "eip155:10143";
 const SOLANA_CHAIN = "solana:mainnet";
 
@@ -29,21 +37,23 @@ function external(userId: string, address = ADDR): Omit<WalletLink, "verifiedAt"
 test("a nonce can be consumed once", async (t) => {
   const { wallets } = await setup(t);
   const expiresAt = new Date(Date.now() + 60_000);
-  await wallets.issue("n1", expiresAt);
+  const issued = nonce();
+  await wallets.issue(issued, expiresAt);
 
   // The whole record, so a misspelled alias cannot pass as an unchecked field.
-  assert.deepEqual(await wallets.consume("n1"), { expiresAt });
-  assert.equal(await wallets.consume("n1"), null);
+  assert.deepEqual(await wallets.consume(issued), { expiresAt });
+  assert.equal(await wallets.consume(issued), null);
 });
 
 test("a nonce that was never issued cannot be consumed", async (t) => {
   const { wallets } = await setup(t);
-  assert.equal(await wallets.consume("never-issued"), null);
+  assert.equal(await wallets.consume(nonce()), null);
 });
 
 test("two concurrent consumers, one winner", async (t) => {
   const { store, wallets } = await setup(t);
-  await wallets.issue("n2", new Date(Date.now() + 60_000));
+  const contested = nonce();
+  await wallets.issue(contested, new Date(Date.now() + 60_000));
 
   // Warm the pool first: otherwise the connections open one by one and nothing races.
   const warm = await Promise.all(Array.from({ length: 4 }, () => store.pool.connect()));
@@ -51,7 +61,7 @@ test("two concurrent consumers, one winner", async (t) => {
     client.release();
   }
 
-  const results = await Promise.all(Array.from({ length: 4 }, () => wallets.consume("n2")));
+  const results = await Promise.all(Array.from({ length: 4 }, () => wallets.consume(contested)));
 
   assert.equal(results.filter((row) => row !== null).length, 1);
 });
