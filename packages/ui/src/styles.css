@@ -99,7 +99,13 @@
   --pk-on-violet: #ffffff;
 
   /* Every state is a tint and an ink legible on that tint. A tinted object reads as a state, never
-   * as a control, so it never takes a button's fill. */
+   * as a control, so it never takes a button's fill.
+   *
+   * They carry the accent palette too, because the states are the accents: lime is good, amber is
+   * caution, magenta is loss, violet is info, blue is cool, orange is warm. Anything that wants a
+   * coloured tile with a letter on it takes a pair from here. Setting an accent on a wash of itself
+   * is not an option that needs retinting — it has no light form at all, because over white a 14%
+   * wash is very nearly white and the letter on it is the accent. */
   --pk-state-good-bg: #edf7ce;
   --pk-state-good-ink: #3f6b00;
   --pk-state-win-bg: #e4f3e5;
@@ -112,6 +118,11 @@
   --pk-state-info-ink: #5b3ce0;
   --pk-state-cool-bg: #eaf0ff;
   --pk-state-cool-ink: #2f55c8;
+  /* Derived, not observed: orange is in the accent palette and no canvas in this set gives it a
+   * pair. Same method as the derived dark tints — the accent at roughly 18% over the ground, and an
+   * ink landing inside the range the observed pairs occupy. Check against a canvas that uses it. */
+  --pk-state-warm-bg: #ffe6da;
+  --pk-state-warm-ink: #a04010;
 
   --pk-focus: var(--pk-violet);
 
@@ -195,6 +206,8 @@
   --pk-state-info-ink: #b9a6ff;
   --pk-state-cool-bg: #141c33;
   --pk-state-cool-ink: #5b8cff;
+  --pk-state-warm-bg: #372120;
+  --pk-state-warm-ink: #ff7a3d;
 
   --pk-focus: var(--pk-lime);
 
@@ -311,6 +324,21 @@ h2 {
 
 .pk-button[data-variant="tile"]:hover:not(:disabled) {
   border-color: var(--pk-border-strong);
+}
+
+/* Chip: the quiet pill a navigation bar carries — the wallet, an account. It is a panel step rather
+   than a fill, because the bar already has one action and this is not it. */
+.pk-button[data-variant="chip"] {
+  height: 45px;
+  padding: 0 18px;
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.pk-button[data-variant="chip"]:hover:not(:disabled) {
+  background: var(--pk-panel-3);
 }
 
 .pk-button[data-size="sm"] {

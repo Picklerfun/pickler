@@ -20,10 +20,39 @@ export const ACCENT_ORDER: AccentDto[] = [
   "violet",
 ];
 
-/** CSS custom properties consumed by `.accent`-aware classes in landing.module.css. */
+/**
+ * Which state pair each accent takes. The states *are* the accents, so a coloured tile with a letter
+ * on it reads a pair from here rather than setting the accent on a wash of itself — a construction
+ * with no light form, because over white a 14% wash is very nearly white and the letter is the
+ * accent. `cyan` maps to `cool` alongside `blue`: the new palette has no cyan, and `--pk-cyan` is
+ * carried forward as an alias of `--pk-blue`, so the two agent accents render alike.
+ */
+const ACCENT_STATE: Record<AccentDto, string> = {
+  lime: "good",
+  cyan: "cool",
+  amber: "caution",
+  orange: "warm",
+  magenta: "loss",
+  violet: "info",
+  blue: "cool",
+};
+
+/**
+ * CSS custom properties consumed by `.accent`-aware classes.
+ *
+ * `--accent` and `--accent-rgb` are the raw hue, for the glows and gradients on the dark pages that
+ * still want one. `--accent-bg` and `--accent-ink` are the pair, and are what anything carrying text
+ * should use: they are tokens, so they invert with the surface and the hue does not.
+ */
 export function accentVars(accent: AccentDto): React.CSSProperties {
   const { color, rgb } = ACCENT_COLORS[accent];
-  return { "--accent": color, "--accent-rgb": rgb } as React.CSSProperties;
+  const state = ACCENT_STATE[accent];
+  return {
+    "--accent": color,
+    "--accent-rgb": rgb,
+    "--accent-bg": `var(--pk-state-${state}-bg)`,
+    "--accent-ink": `var(--pk-state-${state}-ink)`,
+  } as React.CSSProperties;
 }
 
 /** Same custom properties for colors outside the accent palette. */

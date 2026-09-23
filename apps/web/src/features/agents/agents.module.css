@@ -125,7 +125,7 @@
 
 .page a.navTabActive,
 .page a.navTabActive:hover {
-  background: rgba(200, 240, 58, 0.12);
+  background: var(--pk-state-good-bg);
   border-bottom: 2px solid var(--lime);
   color: var(--lime-ink);
 }
@@ -275,12 +275,11 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  background: rgba(var(--accent-rgb), 0.14);
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  background: var(--accent-bg);
   border-radius: var(--pk-radius-sm);
   font: 700 13px/1 var(--label);
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* A logo fills the frame the initials had, cropped to it rather than letterboxed. */
@@ -323,8 +322,8 @@
 .stage {
   flex: none;
   padding: 4px 9px;
-  background: rgba(255, 201, 63, 0.12);
-  border: 1px solid rgba(255, 201, 63, 0.45);
+  background: var(--pk-state-caution-bg);
+  border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-pill);
   font: 700 9.5px/1 var(--label);
   letter-spacing: 0.06em;
@@ -333,8 +332,8 @@
 }
 
 .stageGraduated {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.45);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
   border-radius: var(--pk-radius-pill);
 }
@@ -414,8 +413,8 @@
   align-items: center;
   gap: 9px;
   padding: 13px 18px;
-  background: rgba(90, 216, 255, 0.1);
-  border: 1px solid rgba(90, 216, 255, 0.5);
+  background: var(--pk-state-cool-bg);
+  border: 1px solid var(--pk-cyan-edge);
   border-radius: var(--pk-radius-pill);
   font: 600 12.5px/1 var(--body);
   letter-spacing: 0;
@@ -635,20 +634,20 @@
 }
 
 .resultWon {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 
 .resultLost {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .resultOpen {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
@@ -1008,7 +1007,7 @@
   width: 26px;
   height: 26px;
   background: var(--pk-field);
-  border: 1px solid rgba(245, 246, 255, 0.22);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-mark);
   overflow: hidden;
 }
@@ -1024,13 +1023,13 @@
   align-items: center;
   gap: 7px;
   padding: 4px 12px 4px 4px;
-  border-color: rgba(90, 216, 255, 0.4);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
   border-radius: var(--pk-radius-pill);
 }
 
 .page a.meetChip {
-  border-color: rgba(200, 240, 58, 0.45);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 
@@ -1154,8 +1153,8 @@
 }
 
 .rankFirst {
-  background: rgba(200, 240, 58, 0.14);
-  border-color: rgba(200, 240, 58, 0.5);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 
@@ -1218,28 +1217,28 @@
 }
 
 .kindCALL {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 .kindPOSITION {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 .kindPASS {
-  background: rgba(255, 201, 63, 0.12);
-  border-color: rgba(255, 201, 63, 0.4);
+  background: var(--pk-state-caution-bg);
+  border-color: var(--pk-amber-edge);
   color: var(--pk-amber-ink);
 }
 .kindANSWER {
-  background: rgba(155, 123, 255, 0.14);
-  border-color: rgba(155, 123, 255, 0.45);
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
   color: var(--pk-violet-ink);
 }
 .kindPERP {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
@@ -1742,7 +1741,7 @@
 }
 
 .page a.cardCta:hover {
-  background: rgba(90, 216, 255, 0.2);
+  background: var(--pk-state-cool-bg);
   border-color: var(--cyan);
   color: var(--cyan-ink);
 }
@@ -1808,8 +1807,8 @@
 
 /* Availability is not a filter like the others: it is the violet of a paid read. */
 .availableChip[aria-pressed="true"] {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.5);
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
   color: var(--pk-violet-ink);
 }
 
@@ -2004,18 +2003,18 @@
 .beatChip {
   letter-spacing: 0.06em;
   color: var(--accent);
-  border-color: rgba(var(--accent-rgb), 0.45);
+  border-color: var(--accent-ink);
 }
 
 .page .followingButton {
-  border-color: rgba(200, 240, 58, 0.5);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 
 /* ---------- Reads ---------- */
 
 .deliveryTag[data-state="preparing"] {
-  border-color: rgba(90, 216, 255, 0.4);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
@@ -2025,31 +2024,31 @@
 }
 
 .deliveryTag[data-state="failed"] {
-  border-color: rgba(255, 95, 162, 0.4);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .evalTag[data-state="pending"] {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
 .evalTag[data-state="happened"] {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   color: var(--lime-ink);
 }
 
 .evalTag[data-state="missed"] {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .evalTag[data-state="not_evaluable"] {
-  background: rgba(255, 201, 63, 0.12);
-  border-color: rgba(255, 201, 63, 0.4);
+  background: var(--pk-state-caution-bg);
+  border-color: var(--pk-amber-edge);
   color: var(--pk-amber-ink);
 }
 
@@ -2058,12 +2057,12 @@
 }
 
 .page a.newReadButton {
-  border: 1px solid rgba(155, 123, 255, 0.5);
+  border: 1px solid var(--pk-violet-edge);
   color: var(--pk-violet-ink);
 }
 
 .page a.newReadButton:hover {
-  background: rgba(155, 123, 255, 0.16);
+  background: var(--pk-state-info-bg);
   color: var(--pk-violet-ink);
 }
 
@@ -2080,7 +2079,7 @@
 }
 
 .page a.readRow:hover {
-  border-color: rgba(155, 123, 255, 0.5);
+  border-color: var(--pk-violet-edge);
   color: var(--ink);
 }
 
@@ -2391,7 +2390,7 @@
 }
 
 .page .askConnect:hover:not(:disabled) {
-  background: rgba(155, 123, 255, 0.16);
+  background: var(--pk-state-info-bg);
   border-color: var(--pk-violet);
   color: var(--pk-violet-ink);
 }
@@ -2431,7 +2430,7 @@
 }
 
 .askStep[data-state="on"] {
-  border-color: rgba(155, 123, 255, 0.6);
+  border-color: var(--pk-violet-edge);
   color: var(--ink);
 }
 
@@ -2514,8 +2513,8 @@
 
 /* A market is chosen in violet, like everything else a paid read touches. */
 .askChip[aria-pressed="true"] {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.55);
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
   color: var(--pk-violet-ink);
 }
 
@@ -2527,8 +2526,8 @@
 }
 
 .askChipOn {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.55);
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
   color: var(--pk-violet-ink);
   padding: 10px 14px;
   font: 600 12px/1 var(--label);

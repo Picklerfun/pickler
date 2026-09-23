@@ -182,12 +182,11 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
   border-radius: var(--pk-radius-sm);
-  background: rgba(var(--accent-rgb), 0.14);
+  background: var(--accent-bg);
   font: 700 12px/1 var(--label);
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .marketName {

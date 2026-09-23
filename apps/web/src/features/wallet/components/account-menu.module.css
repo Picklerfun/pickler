@@ -8,9 +8,9 @@
   align-items: center;
 }
 
-/* Disconnected and connected are one chip, at one height, so the bar does not change shape the
-   moment a wallet arrives. */
-.connect,
+/* Connected and disconnected are one control in two states, so this matches the system's `chip`
+   variant, which the disconnected one *is*. The shape is stated there; what is here is the part the
+   system has no opinion about — a live dot and an address. */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -27,7 +27,6 @@
   transition: background var(--pk-duration);
 }
 
-.connect:hover:not(:disabled),
 .chip:hover {
   background: var(--pk-panel-3);
 }

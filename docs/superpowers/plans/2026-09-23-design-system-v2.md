@@ -94,6 +94,13 @@ the specification, none visible by reading:
    grep for literals as well as for names. Lightening six marketplace routes surfaced an amber and a
    violet set as text at 1.5:1 and 2.1:1 on white, and seven control grounds made of the old dark
    page's near-black, none of which any rename could have reached.
+6. **A construction can be correct on one surface and structurally impossible on the other.** Unlike
+   the lessons above, this is not about checks. An accent set on a 14% wash of itself is a bright
+   letter on a dim tile over black, and over white it is a pale letter on very nearly nothing — at
+   40px weak, at 16px absent. No retinting fixes it, because there is no value that works: the
+   second colour has to come from somewhere else, which is what a tint-and-ink pair is for. When a
+   surface changes, ask which constructions have no form on the new one, not only which values are
+   wrong.
 
 ---
 
