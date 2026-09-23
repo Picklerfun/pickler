@@ -343,6 +343,11 @@ measurement finds. `scripts/design/contrast.mjs` found both, on rendered pages.
 **State pairs**: no canvas in this set shows those two pairs on dark. They still want checking
 against a canvas that uses them.
 
+**One value passes by four hundredths.** On dark, `--pk-cyan-ink` `#5B8CFF` measures **4.54:1** on
+`--pk-panel-3`. It clears AA and needs no change, but it is the narrowest margin in the palette and
+it is recorded so that darkening that panel is a considered decision rather than an accident. Every
+other ink on every other ground has room.
+
 Everything in this section is measured by `scripts/design/`, which runs against the rendered page
 rather than against this table — because the failure that matters is a component reading the wrong
 token, and a table cannot see that.

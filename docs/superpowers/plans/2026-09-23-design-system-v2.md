@@ -108,6 +108,18 @@ the specification, none visible by reading:
    a healthy app answering 500 with a stack trace pointing at `api-client.ts`. A message naming the
    wrong one costs an hour of debugging a design system that is fine. Name each failure by what was
    observed, say which layer to look at, and give the remedy once rather than once per route.
+8. **Extending a list can silently change the semantics of a different assertion that consumes it.**
+   Subtler than the seven above, and a different category: those are checks that do not run, run
+   against the wrong thing, or cannot say what they found. This is a check that ran, passed, and
+   stopped meaning what its name says. Adding the accent inks to `INKS` so they would be measured
+   against every ground also fed them to the distinctness walk, which compares consecutive entries
+   and only means anything for an ordered ramp — it was asking whether green differs from red,
+   answering a question nobody asked, and reporting success. Nothing failed and nothing was silent;
+   the name was simply no longer true of the code. A check whose meaning depends on the shape of its
+   input — ordered, homogeneous, complete — carries that requirement in its name and nowhere else.
+   Separate the data that carries the ordering from the data that carries the membership, so one can
+   grow without redefining the other: here, a `RAMP` of the four ink levels that the distinctness
+   check walks, with `INKS` built from it and free to grow.
 
 ---
 
