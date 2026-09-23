@@ -1,0 +1,382 @@
+# User profiles, and the line between the two products
+
+Pickler is two products sharing one identity. This specification draws the line between them, says
+what an account is, and connects three pieces that already exist in this repository but have never
+met: Supabase identity, the profile and handle feature, and Turnkey custody.
+
+The work it describes is mostly wiring. Almost nothing here is a new subsystem.
+
+---
+
+## 1. The two products
+
+**The marketplace** — `pickler.fun`. Public, light surface. Agents, tokens, perpetual markets, paid
+reads, the leaderboard, and a person's own portfolio and activity. You arrive with a wallet, or with
+nothing, and you can read everything without signing anything.
+
+**The studio** — `app.pickler.fun`. Dark surface, night blue. Where a person builds an agent, funds
+it, sets its limits and watches it run. Also the account screen and every authentication flow.
+
+They are one Next.js application on one Cloudflare Worker, split by `Host` in a middleware that does
+not exist yet. Not two deployments: the `/api/v1/[...path]` proxy has to answer on both hosts, and
+one application gives that for free. Two deployments would mean two proxies, two sets of
+environment variables and two chances to configure them differently.
+
+### Which routes live where
+
+| Marketplace — `pickler.fun`                                      | Studio — `app.pickler.fun` |
+| ---------------------------------------------------------------- | -------------------------- |
+| `/` the landing                                                  | `/` the studio             |
+| `/agents`, `/agents/[handle]`, `/agents/[handle]/ask`            | `/account`                 |
+| `/tokens`, `/tokens/[ticker]`, `/tokens/[ticker]/picks/[pickId]` | `/signin`, `/signup`       |
+| `/markets`, `/markets/[symbol]`                                  | `/auth/callback`           |
+| `/reads`, `/reads/[id]`                                          | `/apply`                   |
+| `/leaderboard`, `/analytics` (redirects)                         |                            |
+| `/portfolio`, `/activity`                                        |                            |
+
+`/portfolio` and `/activity` are on the marketplace because they need a connected wallet and the
+wallet lives on that side. They are about what you hold and what you spent, not about what you built.
+
+`/apply` moves to the studio. It is an application for **studio access** — it always was — and the
+page being public does not make it part of the marketplace. It stays a growth flow on the email
+side: no Supabase user, no session, a `pk_apply` cookie and a row in `growth.applicants`. Nothing
+about it changes except which host serves it.
+
+---
+
+## 2. What an account is
+
+**One Supabase Auth user per person, reached by several credentials.**
+
+This is already the shape of the repository, and it is worth noting because it means the decision
+has effectively been made and only the wiring is missing. Every table that matters hangs off the
+Supabase user id:
+
+```
+profiles        → userId   (auth.users.id)
+wallets.turnkey_orgs  → user_id
+wallets.wallets       → user_id
+wallets.passkeys      → user_id     ← already one user, many credentials
+```
+
+`wallets.passkeys` is indexed by `user_id` rather than by credential, so a person may already hold
+several passkeys against one account. Linked wallet addresses are the same table shape again, for a
+different kind of credential. Nothing new is being invented.
+
+### The credentials
+
+| Credential             | Where       | What it proves           | What it can sign              |
+| ---------------------- | ----------- | ------------------------ | ----------------------------- |
+| OAuth / six-digit code | studio      | an email address         | nothing on chain              |
+| Wallet (Mera, EOA)     | marketplace | control of an address    | its own transactions, present |
+| Passkey → Turnkey      | studio      | root quorum of a sub-org | agent activity, unattended    |
+
+Any of them authenticates into the same account. A person who trades first and builds an agent
+later does not open a second Pickler; the Turnkey sub-organization attaches to the `user_id` they
+already had.
+
+### Why this is the answer to "no quiero cuentas múltiples"
+
+Polymarket is the worked example of the alternative. Signing up by email produces a Magic proxy;
+connecting MetaMask through their interface produces a Gnosis Safe; using the API from your own key
+is a third thing. They are three accounts with three balances and no path between them, and the
+seam shows in their own issue tracker, where API keys register against the signing EOA rather than
+the wallet holding the funds and orders are rejected with `signer != api_key`.
+
+The fix is not a better proxy. It is having an identity that is not a wallet.
+
+---
+
+## 3. Signing in with a wallet
+
+Connecting a wallet creates a Supabase session. This is the only genuinely new authentication
+surface in this specification.
+
+The shape is Sign-In With Ethereum: the browser asks the API for a nonce, the person signs a message
+containing it, the API verifies the signature against the claimed address and mints a Supabase
+session for the user that address belongs to — creating that user on first sight.
+
+**The nonce is single-use, domain-bound and short-lived**, and it is stored and consumed exactly the
+way `wallets.webauthn_challenges` already is: a row with a five-minute expiry, consumed with
+`DELETE … RETURNING` so that two concurrent attempts cannot both succeed. Workers has no Redis, and
+this is the pattern the custody work already settled on. Do not invent a second one.
+
+The message must name the domain it was signed for. A signature harvested on one site and replayed
+on another is the failure this prevents, and it costs one field.
+
+### A Supabase user with no email
+
+Supabase Auth wants an email or a phone number, and a wallet has neither. The user is therefore
+created through the admin API with a **synthetic, non-deliverable address** derived from the wallet
+— `<lowercase-address>@wallet.pickler.fun` — marked confirmed, with no password. The session is
+minted server-side; the service key never reaches the browser.
+
+The synthetic address is an internal key and never a contact. It is not shown on any screen, it is
+never sent to, and **the real email collected before a paid read is a separate field on the
+profile**, not a change to the auth identity. Conflating them would mean that a person who links a
+second wallet appears to change their email address, and that adding an email would mean rewriting
+the identity every downstream row points at.
+
+`wallet.pickler.fun` must therefore never be made to accept mail, and this is one of the reasons §7
+says subdomains are production infrastructure.
+
+### Linking a second wallet
+
+A person who connects Mera on their phone and MetaMask on their laptop is one person with two
+addresses. `wallets.linked_addresses` holds the pairs:
+
+```
+linked_addresses(user_id, address, chain_id, proved_at)
+  unique (address)          -- an address belongs to at most one account
+  index  (user_id)
+```
+
+The unique index on `address` is the important one: it is what makes "this address is already
+linked to another account" a database answer rather than a race. When someone signs in with an
+address that is already linked, they get that account — which is the whole point.
+
+Linking while signed in is the same ceremony as signing in, with the session already present. There
+is no separate flow to design.
+
+---
+
+## 4. Profiles and handles
+
+`packages/core/src/features/profiles/` already holds this and it is unchanged by this
+specification. A profile is `{ userId, displayName, handle, createdAt }`, the handle is lower-case
+`[a-z0-9_]{3,15}`, creation is atomic across the two unique constraints, and `RESERVED_HANDLES`
+blocks the names that would impersonate the product or its staff. `/v1/handles/:handle/availability`
+and `/v1/profile` are mounted.
+
+What changes is **when a person is asked for one**. Today nothing in the marketplace asks. After
+this work, claiming a handle is part of connecting a wallet — not a blocking step, but the natural
+next one, because a trader with a handle is a participant and a trader without one is an address.
+
+A profile is what makes someone visible on the leaderboard as a person rather than as the owner of
+an agent, and it is what a paid read can be attributed to in public.
+
+---
+
+## 5. Where the money is, and who signs
+
+The split that matters is not mobile against web, nor marketplace against studio. It is **whether a
+human is present when something is signed.**
+
+**Present.** Trading, depositing, backing an agent, buying a read. The person signs, on their
+device, at that moment. Their wallet is their own and Pickler custodies nothing. Mera or an EOA.
+
+**Absent.** An agent that runs every six hours, decides, and signs. No device, no biometric, nobody
+awake. This is Turnkey: a key in a secure enclave under a policy, with the person's passkey as the
+sub-organization's root quorum.
+
+### Why Mera cannot do the second one
+
+Monad's own comparison of embedded wallet providers describes Mera as a "passkey-derived key
+(WebAuthn PRF); non-custodial, no server storage", and lists it as not supporting server-side
+signing, delegated or session keys for backend use, spend policies, or agent signing without user
+presence. Turnkey is listed with all four.
+
+The reason is structural rather than a missing feature, and it is worth stating because it will come
+up again. **Mera derives the key from the passkey; Turnkey uses the passkey to authorize a key that
+lives elsewhere.** If the key is derived from the passkey then no passkey present means no key,
+which means no signature — ever, by construction. That is also exactly why Mera's claim that no
+third party sits in its signing path is true.
+
+Mera's signing sessions do not change this. They remove the biometric prompt from every click while
+**you** are trading; they are not a delegation to a server.
+
+Mera does allow exporting the seed phrase, so an agent could be made to work by holding that seed on
+Pickler's servers. That is refused here. It would put a raw seed in the product with no quorum, no
+policy engine, no per-activity audit trail and none of the two-of-two spend caps specification two
+is built around — worse than Turnkey on every axis. Worse than technical, it would silently make
+custodial a wallet the person chose because it was not.
+
+### Where Mera is better than Turnkey
+
+In the marketplace, clearly. No seed phrase, so onboarding someone who has never held a wallet is
+one biometric rather than twelve words. The same passkey reaches the same account on web and on
+native iOS and Android, so a person who starts on their phone does not start again on a laptop. And
+signing sessions give order-book trading without a prompt per order — the experience Polymarket
+needed a proxy contract, a separate funder address and three account types to approximate.
+
+Each tool is specified where it wins. That the same arrangement satisfies a hackathon bounty is a
+happy coincidence rather than the reason.
+
+---
+
+## 6. The master wallet, and when a passkey is created
+
+The account canvas draws _MASTER WALLET_ above _AGENT WALLETS_. Under this specification the master
+wallet is **the pot that funds agents**, not the person's trading wallet. It is topped up by sending
+to its address, which is why the screen already has a Receive button; Pickler never needs to know
+which wallet the funds came from.
+
+**The Turnkey sub-organization is created when a person builds their first agent**, not at signup.
+Until then there is no master wallet and `/account` says so, in the same voice as the six panels
+that already say what is not built.
+
+The ceremony itself does not change. `issueChallenge`, `register`, `prepareAddPasskey`,
+`confirmAddPasskey`, the five tables and their tests are all as shipped. What moves is the point in
+the product where `register` is called. A person arriving at the studio already has a Supabase
+session — from OAuth, from a six-digit code, or from a wallet they connected in the marketplace —
+and the passkey is what turns that session into custody.
+
+---
+
+## 7. The relying party, and one consequence
+
+`TURNKEY_RPID=pickler.fun` — the apex, not `app.pickler.fun`.
+
+A passkey is scoped to its relying party and the scope reaches downward only: a passkey registered
+against `pickler.fun` works on `app.pickler.fun` and on every other subdomain, while one registered
+against `app.pickler.fun` works nowhere else. The choice cannot be revised later, because changing
+the relying party orphans every credential already enrolled and every person has to enrol again.
+
+The apex is chosen so the door stays open — so that a passkey can one day authorize something on
+the marketplace, or the studio can move host, without re-enrolling anyone.
+
+**The consequence, stated so that nobody meets it by surprise: every subdomain of `pickler.fun` is
+inside the reach of those passkeys.** A documentation or marketing subdomain served by a third
+party becomes attack surface on custody. Subdomains must not be delegated casually, and any that is
+must be treated as production infrastructure.
+
+This restates §10 of `turnkey-passkey-custody-v1.md` with the value now chosen.
+
+---
+
+## 8. What the marketplace stores, and what it reads
+
+**On-chain state is read from the address. State Pickler holds needs an account.**
+
+Positions in perpetuals and tokens someone has backed are on chain: they are read from the connected
+address and need no account at all. A paid read is different. It is Pickler's own product with a
+lifecycle the buyer is not present for — the portfolio screen shows `IN WINDOW · 21H`,
+`SETTLED · HAPPENED`, `EXPIRED · REFUNDED` and a count awaiting evaluation. Two clocks: delivery,
+then the market.
+
+Someone buys a read and comes back a day later to learn what happened. **An address cannot be
+told.** A refund the buyer never hears about is a bad product, and that — not architecture — is why
+a read is attributed to a `user_id`.
+
+The paid-read domain currently has no buyer field at all, because reads are sample content today.
+That is undesigned rather than decided, and this specification decides it: reads attach to the
+account.
+
+### Progressive, not a gate
+
+| Moment               | What happens                    | What is asked for |
+| -------------------- | ------------------------------- | ----------------- |
+| Browsing             | nothing                         | nothing           |
+| Connect a wallet     | account created, address linked | nothing           |
+| Trade, back an agent | read from chain                 | nothing           |
+| Claim a handle       | profile created                 | a handle          |
+| **Buy a paid read**  | Pickler now owes an outcome     | an email          |
+| Build an agent       | passkey → Turnkey sub-org       | the ceremony      |
+
+The account appears when it earns its place rather than at the door. Because it exists from the
+first connection even while empty, nothing ever has to be migrated later.
+
+---
+
+## 9. Splitting by host
+
+A `middleware.ts` at `apps/web/src/` reads the `Host` header and decides what that host may serve.
+
+- On `app.pickler.fun`, `/` rewrites to the studio, and marketplace paths answer 404.
+- On `pickler.fun`, studio paths answer 404, except that `/console` and `/account` **redirect** to
+  the same path on `app.pickler.fun` so that old links and bookmarks survive.
+- `/api/v1/*` answers on both, unchanged.
+- In development the middleware is inert: `localhost` matches neither product, every route answers
+  as it does today, and nothing is rewritten or refused. Requiring two hostnames locally would make
+  the design checks and every contributor's setup worse for no benefit.
+
+The host mapping is a pure function from a hostname to one of three answers — marketplace, studio,
+or neither — so both products can be tested without a browser and without the environment the test
+happens to run in deciding the result. `previewAllowed` and `sectionFromSearch` are the shape to
+copy; each was written that way after a gate tested in only one position turned out to be a gate
+tested once.
+
+A 404 rather than a redirect for the wrong-host case is deliberate: a marketplace path answering on
+the studio host would split every screen's canonical URL in two, which is worse for search and
+worse for anyone reading a link.
+
+### What else has to know about two hosts
+
+`ALLOWED_ORIGINS` on the API must list both. `scripts/design/routes.mjs` measures one base URL and
+will need each route to carry its host. Supabase's allowed redirect URLs must include both callback
+origins.
+
+---
+
+## 10. Data model
+
+New, in the `wallets` schema beside what custody already owns:
+
+```sql
+linked_addresses(
+  user_id     uuid not null,
+  address     text not null,
+  chain_id    integer not null,
+  proved_at   timestamptz not null default now(),
+  unique (address),
+  index on (user_id)
+)
+
+siwe_nonces(
+  nonce       text primary key,
+  address     text,          -- null until the message is built
+  expires_at  timestamptz not null
+)
+```
+
+`siwe_nonces` mirrors `webauthn_challenges` in shape, lifetime and consumption. Both are single-use
+and both are consumed with `DELETE … RETURNING`.
+
+Changed: the paid-read record gains a `user_id`. Unchanged: `profiles`, and every custody table.
+
+---
+
+## 11. Errors, and the cases worth naming
+
+**An address already linked to another account.** The unique index answers this. The person is told
+the address is in use and is not silently signed into someone else's account, and not silently given
+a second one either.
+
+**A signature for the wrong domain.** Refused. The message names its domain and the verifier checks
+it rather than trusting the client.
+
+**A nonce used twice.** The second attempt finds no row. `DELETE … RETURNING` makes this
+indistinguishable from an expired nonce, which is correct: both mean "ask for a new one".
+
+**Someone reaches the studio with no passkey.** Not an error. There is no sub-organization and no
+master wallet, and `/account` says so plainly rather than rendering an empty wallet, which would be
+indistinguishable from a wallet with nothing in it.
+
+**A failed read of the linked addresses.** Must propagate rather than degrade to an empty list, for
+the same reason the passkey count does: "this account has no wallets" and "we could not look" are
+different facts and only one of them is safe to render.
+
+---
+
+## 12. Testing
+
+The wallet sign-in is the only part carrying real risk, and it carries the ordinary ones: replay,
+domain confusion, and the race between two concurrent sign-ins on one nonce. Each gets a test that
+is proved to fail before it is believed — the same discipline the custody work used, where a race
+test was found passing with the race handling deleted.
+
+The host split is a pure function and is tested in both positions, not only in the one the test
+environment happens to run in.
+
+---
+
+## 13. Out of scope
+
+Mera's own integration surface is unknown: there is no published wagmi connector and no ecosystem
+documentation, because the library is new. **The first task of implementation is a spike** — connect
+Mera and sign one transaction — before any screen is built on top of it. If it turns out to need a
+deep integration, that is worth knowing early rather than halfway through.
+
+Agent sub-wallets, spend caps and the two-of-two policies remain specification two of the custody
+work. Merging two accounts that already exist is not designed, because under this specification two
+accounts for one person is not a state the product can reach.
