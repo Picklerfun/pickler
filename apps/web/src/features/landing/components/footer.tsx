@@ -1,27 +1,24 @@
 "use client";
 
 import styles from "../landing.module.css";
-import { ACCENT_ORDER, accentVars } from "@/lib/accent";
 import { useLanding } from "../lib/landing-data";
+import { PALETTE } from "../lib/palette";
+import { Mark } from "./mark";
 
 export function Footer() {
   const { source } = useLanding().data;
   return (
     <footer className={styles.footer}>
-      <div className={`${styles.container} ${styles.footerRow}`}>
-        <span className={styles.footerPixels} aria-hidden="true">
-          {ACCENT_ORDER.map((accent) => (
-            <span key={accent} style={accentVars(accent)} />
+      <div className={styles.footerRow}>
+        <span className={styles.swatches}>
+          {PALETTE.map((hue) => (
+            <Mark key={hue} hue={hue} className={styles.swatch} />
           ))}
         </span>
+        {/* Every number on this page is a snapshot of something real, and this says when the
+            something real is the sample read model rather than a live one. */}
         {source === "sample" && <span className={styles.sampleTag}>SAMPLE DATA</span>}
-        <span className={styles.spacer} />
-        <a href="#agents" className={styles.footerLink}>
-          AGENTS
-        </a>
-        <a href="#launching" className={styles.footerLink}>
-          TOKENS
-        </a>
+        <span className={styles.footerSpacer} />
         <a href="#how" className={styles.footerLink}>
           HOW IT WORKS
         </a>

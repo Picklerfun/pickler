@@ -1,64 +1,73 @@
 "use client";
 
-import { useState } from "react";
 import styles from "../landing.module.css";
-import { ACCENT_ORDER, accentVars } from "@/lib/accent";
 import { formatAgo, formatInteger } from "../lib/format";
-import { useAnimationInterval, useLanding } from "../lib/landing-data";
+import { useLanding } from "../lib/landing-data";
+import { PALETTE, hueOf } from "../lib/palette";
+import { Mark } from "./mark";
 
-const GRID_CELLS = 21;
-const SPAWN_ROTATE_MS = 3400;
+const CELLS = 21;
+const JUST_SPAWNED_MS = 10 * 60_000;
 
+/**
+ * How many agents exist, how many arrived today, and which one arrived last.
+ *
+ * Every figure here is the snapshot's own. The canvas ticks the count up on an interval, and
+ * nothing behind this page produces a new agent every few seconds — a number that climbs against a
+ * fixed snapshot is a claim the product cannot back. So the count is what the API said, and it
+ * moves when the API says something else, which `LandingDataProvider` asks it every thirty seconds.
+ *
+ * The grid is a unit chart of today's arrivals, one square each, and the last lit square pops when
+ * the count actually changes rather than on a timer. Past twenty-one squares the grid is full and
+ * the label carries the real number.
+ */
 export function AgentsCreated() {
   const { data, nowMs } = useLanding();
   const { spawns, stats } = data;
-  const [spawnIndex, setSpawnIndex] = useState(0);
-  useAnimationInterval(() => setSpawnIndex((i) => i + 1), SPAWN_ROTATE_MS);
 
-  const lit = Math.max(1, Math.min(GRID_CELLS, stats.agentsCreatedToday));
-  const spawn = spawns.length > 0 ? spawns[spawnIndex % spawns.length] : undefined;
-  const spawnedRecently = spawn && nowMs - Date.parse(spawn.createdAt) < 10 * 60_000;
+  const today = Math.max(0, stats.agentsCreatedToday);
+  const lit = Math.min(CELLS, today);
+  const newest = [...spawns].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
 
   return (
-    <div className={styles.created}>
-      <span
-        className={`${styles.cornerPixel} ${styles.cornerCreated}`}
-        style={accentVars("magenta")}
-        aria-hidden="true"
-      />
+    <section className={styles.created} aria-label="Agents created">
       <div className={styles.labelRow}>
         <span className={styles.liveDot} aria-hidden="true" />
-        <h2 className={styles.label}>AGENTS CREATED</h2>
+        <p className={styles.label}>AGENTS CREATED</p>
       </div>
       <p className={styles.bigCount}>{formatInteger(stats.agentsCreated)}</p>
-      <p className={styles.createdNote}>people are building them right now</p>
       <div
-        className={styles.awakeGrid}
-        aria-label={`${formatInteger(stats.agentsCreatedToday)} created in the last 24 hours`}
+        className={styles.cellGrid}
         role="img"
+        aria-label={`${formatInteger(today)} created in the last 24 hours`}
       >
-        {Array.from({ length: GRID_CELLS }, (_, i) => {
-          const on = i < lit;
+        {Array.from({ length: CELLS }, (_, i) => {
+          if (i >= lit) {
+            return <span key={i} className={`${styles.cell} ${styles.cellOff}`} />;
+          }
           const fresh = i === lit - 1;
           return (
-            <span
-              // Re-keying the fresh cell replays its pop animation on each spawn.
-              key={fresh ? `fresh-${spawnIndex}` : i}
-              className={`${styles.awakeCell} ${on ? styles.awakeCellOn : ""} ${fresh ? styles.awakeCellFresh : ""}`}
-              style={on ? accentVars(ACCENT_ORDER[i % ACCENT_ORDER.length]!) : undefined}
+            <Mark
+              // Re-keying the newest square on a change in the count is what replays its pop, so it
+              // plays when an agent is actually created and not once a second regardless.
+              key={fresh ? `fresh-${lit}` : i}
+              hue={PALETTE[i % PALETTE.length]!}
+              className={`${styles.cell} ${fresh ? styles.cellFresh : ""}`}
             />
           );
         })}
       </div>
-      {spawn && (
-        <div key={spawnIndex} className={styles.spawn} style={accentVars(spawn.accent)}>
-          <span className={styles.pixel} aria-hidden="true" />
-          <span className={styles.spawnName}>{spawn.name}</span>
+      {newest && (
+        <p className={styles.spawn}>
+          <Mark hue={hueOf(newest.accent)} className={styles.spawnMark} />
+          <span className={styles.spawnName}>{newest.name}</span>
           <span className={styles.spawnNote}>
-            {spawnedRecently ? "just spawned" : `spawned ${formatAgo(spawn.createdAt, nowMs)}`}
+            {nowMs - Date.parse(newest.createdAt) < JUST_SPAWNED_MS
+              ? "just spawned"
+              : `spawned ${formatAgo(newest.createdAt, nowMs)}`}
           </span>
-        </div>
+        </p>
       )}
-    </div>
+    </section>
   );
 }
