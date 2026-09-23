@@ -24,12 +24,20 @@ from memory would be a fourth-hand copy of something the implementer can read fi
 So each screen task gives three things instead: the canvas to read, its structural inventory taken
 from the file, and the Playwright assertions that define done. The assertions are the contract.
 
-**Reading a canvas.** The design MCP (`claude-design`) fails to connect in this repository's
-sessions; use the `DesignSync` tool instead, which reaches the same project:
+**Reading a canvas.** The design MCP (`claude-design`) fails to connect, and `DesignSync` — which
+reaches the same project — is not exposed to subagents. So three canvases are extracted to disk,
+outside the repository so they are not committed:
 
 ```
-DesignSync { method: "get_file", projectId: "c03aadb4-7bb2-429e-aa49-98ae4218bc1f", path: "<file>" }
+/Users/Juvenal/Development/Pickler/canvas/Pickler Studio v4.dc.html
+/Users/Juvenal/Development/Pickler/canvas/Pickler Studio Empty.dc.html
+/Users/Juvenal/Development/Pickler/canvas/Pickler Auth Passkey Flow.dc.html
 ```
+
+The other three — Landing Waitlist, Portfolio Light and Account — arrive inline rather than on disk,
+so their tasks carry a written specification instead. That is the better handover anyway: these
+screens are built from tokens, and a canvas's inline styles are values without meaning. A
+specification says which token, which is the thing that has to be right.
 
 Canvases are 50–105 KB and arrive as a `.dc.html` with inline styles and an `x-dc` template
 dialect (`sc-for`, `sc-if`, `{{ binding }}`). Read them for structure, spacing and copy. Do not port
