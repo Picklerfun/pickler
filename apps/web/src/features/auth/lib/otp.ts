@@ -7,7 +7,12 @@ export const CODE_LENGTH = 6;
 /** Three shots at a code before the honest advice is to ask for a new one. */
 export const MAX_ATTEMPTS = 3;
 
-/** How long the resend button stays shut after a send. GoTrue's own floor is 60s per address. */
+/**
+ * How long the resend button stays shut after a send. It is the screen's own floor, not the
+ * server's: GoTrue's minimum gap is `auth.email.max_frequency`, which a hosted project
+ * defaults to 60s but this repo's supabase/config.toml sets to 1s for local development. So
+ * this only ever makes the button shut for longer than the server would, never shorter.
+ */
 export const RESEND_SECONDS = 60;
 
 /**
