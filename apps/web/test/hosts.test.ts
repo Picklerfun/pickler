@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { productFor } from "../src/server/hosts";
+import { ownerOf, productFor } from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -31,4 +31,37 @@ test("an unknown host is 'either' rather than a guess", () => {
 test("a host that merely ends with the marketplace name is not the marketplace", () => {
   // The check is equality, not suffix: evilpickler.fun must not be served as the product.
   assert.equal(productFor("evilpickler.fun", HOSTS), "either");
+});
+
+test("studio paths belong to the studio", () => {
+  assert.equal(ownerOf("/console"), "studio");
+  assert.equal(ownerOf("/account"), "studio");
+  assert.equal(ownerOf("/signin"), "studio");
+  assert.equal(ownerOf("/signup"), "studio");
+  assert.equal(ownerOf("/apply"), "studio");
+  assert.equal(ownerOf("/auth/callback"), "studio");
+});
+
+test("marketplace paths belong to the marketplace", () => {
+  assert.equal(ownerOf("/"), "marketplace");
+  assert.equal(ownerOf("/leaderboard"), "marketplace");
+  assert.equal(ownerOf("/markets/BTC-PERP"), "marketplace");
+  assert.equal(ownerOf("/portfolio"), "marketplace");
+  assert.equal(ownerOf("/activity"), "marketplace");
+});
+
+test("a nested path belongs where its first segment does", () => {
+  assert.equal(ownerOf("/console?section=picks"), "studio");
+  assert.equal(ownerOf("/tokens/HALF/picks/9"), "marketplace");
+});
+
+test("a path that merely starts with a studio name is not the studio", () => {
+  // /accounts-of-agents is a marketplace page that must not be refused on the marketplace.
+  assert.equal(ownerOf("/accounts-of-agents"), "marketplace");
+});
+
+test("the API and Next's own assets belong to both", () => {
+  assert.equal(ownerOf("/api/v1/landing"), "either");
+  assert.equal(ownerOf("/_next/static/chunk.js"), "either");
+  assert.equal(ownerOf("/favicon.ico"), "either");
 });

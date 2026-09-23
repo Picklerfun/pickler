@@ -27,3 +27,21 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
   }
   return "either";
 }
+
+/** First path segments the studio owns. Everything else that is not shared is the marketplace. */
+const STUDIO_SEGMENTS = new Set(["console", "account", "signin", "signup", "apply", "auth"]);
+
+/** Shared by both hosts: the API proxy, Next's assets, and files served from the root. */
+const SHARED_SEGMENTS = new Set(["api", "_next", "favicon.ico", "robots.txt", "sitemap.xml"]);
+
+/**
+ * Matching is on the whole first segment, never a prefix of the path: `/accounts-of-agents`
+ * starts with `/account` and is not the account screen.
+ */
+export function ownerOf(pathname: string): Product {
+  const segment = pathname.split("?")[0]!.split("/")[1] ?? "";
+  if (SHARED_SEGMENTS.has(segment)) {
+    return "either";
+  }
+  return STUDIO_SEGMENTS.has(segment) ? "studio" : "marketplace";
+}
