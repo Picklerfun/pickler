@@ -231,6 +231,23 @@ in the list because nothing in the apparatus could have caught it.
     Exit 2 now means "refused to measure" throughout, distinct from exit 1 for "measured and found
     something", so the two can never be read as the same outcome.
 
+19. **A CSS module error takes the whole application down, and every type gate stays green.** The
+    tree was felled twice tonight by one stylesheet: once by a missing `account.module.css`, once by
+    eight bare `[data-swatch="..."]` selectors, which a CSS module rejects because it has nothing
+    local to hash. Both times all fifteen routes answered 500 while `npm run typecheck` passed
+    10 of 10 — the failure happens in the bundler at request time, so nothing that reads the source
+    can see it. Two agents lost measurement rounds to this. **Before reporting a task done, request
+    a route**, because the cheapest check in this repository is the one no gate performs.
+
+20. **A selector that finds a block by the attribute under test can never report the attribute
+    missing.** `MUST_NEST` located the account's card with
+    `section[aria-label="Wallet"] [data-surface="light"]`, so removing `data-surface` stopped the
+    element matching at all: the failure arrived as "no such block" and the sharper branch — "this
+    matches, but whatever makes it look inverted is a literal rather than the system" — was
+    unreachable code that no run could produce. Name the element by something stable, then ask what
+    it carries. The two questions have to be asked of the same element in that order, or the second
+    one is decoration.
+
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
