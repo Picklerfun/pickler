@@ -66,3 +66,17 @@ export function caip2(namespace: Namespace, reference: number | string): string 
   }
   return `${namespace}:${text}`;
 }
+
+/**
+ * Compile-time proof that the brand is load-bearing. `Assert<T extends true>` accepts only `true`,
+ * so if `NormalizedAddress` ever collapses back to `string`, `string extends NormalizedAddress`
+ * becomes true, the conditional yields `false`, and this line fails to compile.
+ *
+ * It lives in `src` rather than in the test because `packages/core/tsconfig.json` includes
+ * `src/**` only and `tsx` strips types without checking them — so an assertion in `test/` is never
+ * typechecked by anything and cannot fail. That was the original form of this pin and it was
+ * silent when the brand was deleted outright.
+ */
+type Assert<T extends true> = T;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- tsc checks it; nothing reads it
+type _BrandIsLoadBearing = Assert<string extends NormalizedAddress ? false : true>;

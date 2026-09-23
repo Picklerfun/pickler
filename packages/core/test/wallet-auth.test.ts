@@ -5,7 +5,6 @@ import {
   caip2,
   InvalidAddressError,
   InvalidChainError,
-  type NormalizedAddress,
 } from "../src/index.js";
 
 test("an EVM address is stored lower-case, so two spellings are one link", () => {
@@ -27,12 +26,6 @@ test("a Solana address keeps its case, because base58 is case-significant", () =
 
 test("the chain reference is CAIP-2 and names its own family", () => {
   assert.equal(caip2("eip155", 10143), "eip155:10143");
-});
-
-test("a raw string cannot be passed where a normalized address is required", () => {
-  // @ts-expect-error a raw string is not a NormalizedAddress — this is the whole point of the brand
-  const bad: NormalizedAddress = "0xAbC0000000000000000000000000000000000001";
-  assert.ok(bad);
 });
 
 test("a reference the chain column would refuse is refused here instead", () => {

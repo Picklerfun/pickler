@@ -494,3 +494,30 @@ ship on EOAs and add it without revisiting anything downstream.
 The one genuinely new piece of work this spike found is not the connector at all. It is the
 PRF-unavailable case in answer 3, which needs an error and a screen that tells the person what to
 change.
+
+### `packages/core` does not typecheck its own tests
+
+Recorded here because it was found during this work and is its own task, not part of it.
+
+`packages/core/tsconfig.json` is `"include": ["src/**/*.ts", "src/**/*.tsx"]`. It does not include
+`test/`, and the suite runs under `tsx`, which strips types without checking them. So **nothing
+typechecks `packages/core/test/`** — a type-level assertion placed there is never evaluated by any
+tool and cannot fail. This was found by writing a `@ts-expect-error` pin in `wallet-auth.test.ts`,
+deleting the type it was pinning, and watching the forced typecheck pass in silence. The pin now
+lives at the foot of `src/features/identity/domain/wallet-auth.ts`, where tsc does look.
+
+`apps/web` and `packages/infrastructure` do include `test/` and are unaffected. `packages/chain`,
+`packages/api-schema`, `packages/agent-runtime`, `packages/ui` and `workers/api` have the same gap
+as core.
+
+Turning it on for core is one line and surfaces **56 errors**:
+
+- **41 are `TS2591`** — `node:test`, `node:assert/strict` and `node:crypto` unresolved, because
+  `@types/node` is not in scope for that project. One config fix clears all of them.
+- **15 are genuine type errors** in existing tests: `paper.test.ts` (6), `applications.test.ts` (2),
+  `agents.test.ts` (2 — an `AgentSummary` literal missing `handle` and `venue`, and a directory fake
+  whose `getPersona` is optional where the port requires it), and one each in `nfl.test.ts`,
+  `market-scope.test.ts`, `discovery.test.ts` and `custody.test.ts`.
+
+Those fifteen are the scope. Doing it inside a feature branch would mean that branch's failures and
+this backlog's failures arriving in one test run with no way to tell them apart.
