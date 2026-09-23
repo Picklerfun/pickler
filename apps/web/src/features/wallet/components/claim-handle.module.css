@@ -87,3 +87,11 @@
   font: 500 13px/1.45 var(--pk-font);
   color: var(--pk-state-loss-ink);
 }
+
+.foot {
+  margin: 4px 0 0;
+  max-width: 62ch;
+  font: 400 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}

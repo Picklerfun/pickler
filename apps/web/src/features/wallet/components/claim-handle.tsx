@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button, Field, Input, type FieldTone } from "@pickler/ui";
 import { HANDLE_RULES, RESERVED_HANDLES } from "@pickler/api-schema";
 import styles from "./claim-handle.module.css";
+import { useWallet } from "../lib/wallet-context";
 import {
   checkAvailability,
   claimHandle,
@@ -55,7 +56,8 @@ function note(
     : { text: WORDS.taken, tone: "bad" };
 }
 
-export function ClaimHandle({ token, onClaimed }: { token: string; onClaimed?: () => void }) {
+export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
+  const wallet = useWallet();
   const [handle, setHandle] = useState("");
   const [dismissed, setDismissed] = useState(false);
   /**
@@ -91,10 +93,21 @@ export function ClaimHandle({ token, onClaimed }: { token: string; onClaimed?: (
     return null;
   }
 
+  /**
+   * Claiming is the first thing on the marketplace that needs an account, so this is where the
+   * signature is asked for — inside an action the person started, rather than sprung on them when
+   * they connected. If they close the prompt, `signInWithWallet` answers null with nothing to say,
+   * and the panel simply stays as it was.
+   */
   async function claim() {
     setBusy(true);
     setFailed(null);
     try {
+      const token = await wallet.signInWithWallet();
+      if (!token) {
+        setFailed(wallet.sessionError);
+        return;
+      }
       await claimHandle({ handle: handle.trim().toLowerCase(), displayName: handle.trim() }, token);
       onClaimed?.();
     } catch (caught) {
@@ -136,14 +149,26 @@ export function ClaimHandle({ token, onClaimed }: { token: string; onClaimed?: (
         </Field>
         <div className={styles.actions}>
           <Button variant="primary" disabled={!askable || busy} onClick={() => void claim()}>
-            {busy ? "Claiming…" : "Claim"}
+            {busy ? (wallet.session === "signing" ? "Check your wallet…" : "Claiming…") : "Claim"}
           </Button>
           <button type="button" className={styles.dismiss} onClick={() => setDismissed(true)}>
             Not now
           </button>
         </div>
       </div>
-      {failed && <p className={styles.failed}>{failed}</p>}
+      {/* The chooser promises "connecting is not signing", and this is the moment that changes.
+          Saying so before the wallet opens is the difference between a prompt somebody expected and
+          one that appeared at them — and an unexpected prompt is how people learn to approve them
+          without reading. */}
+      <p className={styles.foot}>
+        Claiming asks your wallet to sign one line of text, so the board knows the name is yours. It
+        costs nothing and moves nothing.
+      </p>
+      {failed && (
+        <p className={styles.failed} role="alert">
+          {failed}
+        </p>
+      )}
     </section>
   );
 }

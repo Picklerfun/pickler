@@ -108,7 +108,7 @@ export function PortfolioPage({
 
   const body = (
     <>
-      {needsHandle && <ClaimHandle token="" />}
+      {needsHandle && <ClaimHandle />}
       <div className={styles.top}>
         {/* The dark block in a light page. It is not a dark-coloured panel: it is the studio's own
             surface appearing inline, so every token inside it resolves to the dark ramp.
