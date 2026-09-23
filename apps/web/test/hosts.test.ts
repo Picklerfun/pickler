@@ -63,5 +63,12 @@ test("a path that merely starts with a studio name is not the studio", () => {
 test("the API and Next's own assets belong to both", () => {
   assert.equal(ownerOf("/api/v1/landing"), "either");
   assert.equal(ownerOf("/_next/static/chunk.js"), "either");
-  assert.equal(ownerOf("/favicon.ico"), "either");
+});
+
+test("the static files both products' pages request belong to both", () => {
+  // The icon is set on the root layout, so a studio page requests it too; universal links need the
+  // association file served as a direct 200 from a fixed origin.
+  assert.equal(ownerOf("/brand/logo.png"), "either");
+  assert.equal(ownerOf("/.well-known/apple-app-site-association"), "either");
+  assert.equal(ownerOf("/_headers"), "either");
 });
