@@ -99,7 +99,11 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     if (!taken) {
       throw new UnknownNonceError();
     }
-    if (taken.expiresAt.getTime() <= deps.clock.now().getTime()) {
+    // Written as "not still valid" rather than "expired" so that an unreadable expiry fails closed.
+    // An Invalid Date yields NaN, and every comparison against NaN is false — so `expiresAt <= now`
+    // would answer "not expired" and make the nonce immortal. A field that is present but invalid
+    // passes a presence check; this is the same shape, one operator further on.
+    if (!(taken.expiresAt.getTime() > deps.clock.now().getTime())) {
       throw new ExpiredNonceError();
     }
     if (parsed.domain !== deps.domain) {

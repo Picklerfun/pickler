@@ -178,6 +178,15 @@ test("an expired nonce is refused even though it exists", async () => {
   );
 });
 
+test("a nonce whose expiry is unreadable is refused rather than trusted", async () => {
+  const store = nonces(new Map([["nonce-1", new Date("not a date")]]));
+  const signIn = service({ nonces: store });
+  await assert.rejects(
+    () => signIn.verify({ raw: signed(), signature: "0xsig" }),
+    ExpiredNonceError,
+  );
+});
+
 test("a signature for another domain is refused", async () => {
   const store = nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]]));
   const signIn = service({ nonces: store });
