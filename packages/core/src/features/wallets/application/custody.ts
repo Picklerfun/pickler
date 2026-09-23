@@ -8,7 +8,7 @@ import {
   NoCustodyAccountError,
   deviceTypeFromTransports,
 } from "../domain/passkey.js";
-import type { ChallengeOptions, PasskeyAttestation } from "../domain/passkey.js";
+import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
   ChallengeStore,
@@ -77,7 +77,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
   }
 
   return {
-    async issueChallenge(userId: string, email: string): Promise<ChallengeOptions> {
+    async issueChallenge(userId: string, identity: DisplayIdentity): Promise<ChallengeOptions> {
       const challenge = deps.randomId();
       await deps.challenges.put(challenge, {
         userId,
@@ -88,7 +88,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         challenge,
         rp: { id: deps.rpId, name: deps.appName },
         // The WebAuthn user handle, a separate opaque value from the challenge above.
-        user: { id: deps.randomId(), name: email, displayName: email },
+        user: { id: deps.randomId(), name: identity.name, displayName: identity.displayName },
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },
           { type: "public-key", alg: -257 },
@@ -109,7 +109,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     async register(
       userId: string,
       input: {
-        email: string;
+        identity: DisplayIdentity;
         label: string;
         challenge: string;
         attestation: PasskeyAttestation;
@@ -130,7 +130,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       }
 
       const created = await deps.turnkey.create({
-        ownerEmail: input.email,
+        ownerLabel: input.identity.name,
         discriminator: userId.slice(0, 8),
         label: input.label,
         challenge: input.challenge,

@@ -13,6 +13,8 @@ import {
   SUPPORTED_TRANSPORTS,
   type createCustodyService,
   type PasskeyAttestation,
+  type createProfileService,
+  type DisplayIdentity,
 } from "@pickler/core";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -32,6 +34,8 @@ export interface BalanceReader {
 
 export interface SigningRouteServices {
   authenticate: Authenticate;
+  /** Supplies the passkey's display name, which must never come from the auth email. */
+  profiles: ReturnType<typeof createProfileService>;
   /**
    * Built per request, so the orphaned-sub-organization report a lost registration race produces
    * can name the request that caused it. Everything expensive is composed once behind this.
@@ -144,21 +148,43 @@ function signedActivity(body: Body) {
  * a union of four kinds, and a future authenticate that resolves a service or agent principal
  * from a bearer token would otherwise reach them silently.
  *
- * The email is the one the token proves. It names the sub-organization in Turnkey's dashboard
- * and identifies the user to the authenticator, and a body-supplied one would let a caller
- * choose both.
+ * The id is the one the token proves; nothing is taken from the body, which would let a caller
+ * choose whose passkey they were registering.
  */
-function person(c: Context<AppEnv>): { id: string; email: string } {
+function person(c: Context<AppEnv>): { id: string } {
   const principal = c.get("principal");
   if (principal.kind !== "user") {
     throw new HttpError(401, "Bearer JWT required");
   }
-  if (!principal.email) {
-    throw badRequest("This account has no email address, which a passkey wallet needs", {
-      error: "email_required",
-    });
+  return { id: principal.id };
+}
+
+/**
+ * What the passkey will be called, in the operating system's credential picker and in Turnkey's
+ * dashboard. It comes from the profile, and never from `principal.email`.
+ *
+ * The auth email cannot be used here. For a wallet account it is synthetic and derived from the
+ * wallet, and WebAuthn's `user.name` is stored inside the authenticator and synced to iCloud
+ * Keychain or Google Password Manager — so labelling a credential with it would put a wallet
+ * address in someone's password manager permanently, uneditable by them or by us. That is on the
+ * ordinary "trade first, build an agent later" path, not a corner of it.
+ *
+ * It is deliberately not given the request context: with no access to the principal there is no
+ * email in reach, so the leak cannot be reintroduced by someone reaching for the nearest value.
+ *
+ * Someone with no profile is labelled by an opaque fragment of their user id rather than refused.
+ * Requiring a profile would be defensible for wallet accounts but would newly lock out existing
+ * email accounts that never made one, and a passkey is not the place to discover that. The id is
+ * random, so the fallback discloses nothing — it is merely unfriendly, which is the right way for
+ * a fallback to be bad.
+ */
+async function identity(services: SigningRouteServices, userId: string): Promise<DisplayIdentity> {
+  const profile = await services.profiles.getProfile(userId);
+  if (profile) {
+    return { name: profile.handle, displayName: profile.displayName };
   }
-  return { id: principal.id, email: principal.email };
+  const fallback = `pickler-${userId.slice(0, 8)}`;
+  return { name: fallback, displayName: fallback };
 }
 
 export function signingRoutes(services: SigningRouteServices) {
@@ -175,7 +201,7 @@ export function signingRoutes(services: SigningRouteServices) {
   api.post("/passkeys/challenge", async (c) => {
     const user = person(c);
     const custody = services.custody(c.get("requestId"));
-    const options = await custody.issueChallenge(user.id, user.email);
+    const options = await custody.issueChallenge(user.id, await identity(services, user.id));
     return c.json(successEnvelope(options, c.req.path, "Challenge issued"));
   });
 
@@ -185,7 +211,7 @@ export function signingRoutes(services: SigningRouteServices) {
     const user = person(c);
     const body = await jsonBody(c);
     const input = {
-      email: user.email,
+      identity: await identity(services, user.id),
       label: text(body, "label", MAX.label),
       challenge: base64url(body, "challenge", MAX.challenge),
       attestation: attestation(body),

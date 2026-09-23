@@ -105,7 +105,8 @@ export interface CustodyRepository {
 
 export interface SubOrganizationCreator {
   create(input: {
-    ownerEmail: string;
+    /** A human label for the Turnkey dashboard, never an email: it is only a name there. */
+    ownerLabel: string;
     discriminator: string;
     label: string;
     challenge: string;

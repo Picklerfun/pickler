@@ -29,6 +29,24 @@ export interface PasskeyAttestation {
 
 export type DeviceType = "platform" | "cross_device" | "security_key";
 
+/**
+ * What a passkey is labelled with, in the operating system's credential picker and in Turnkey's
+ * dashboard. Deliberately not an email.
+ *
+ * WebAuthn's `user.name` and `user.displayName` are stored inside the authenticator and sync to
+ * iCloud Keychain and Google Password Manager, so whatever goes here outlives the account and
+ * cannot be edited afterwards by us or by the person. An auth identifier must therefore never be
+ * passed in: for a wallet account that identifier is synthetic and derived from the wallet, and
+ * labelling a credential with it would put a wallet address in someone's password manager for
+ * good. The profile is the right source — it is the name the person chose to be known by.
+ */
+export interface DisplayIdentity {
+  /** WebAuthn `user.name`: short and stable, the handle where there is one. */
+  name: string;
+  /** WebAuthn `user.displayName`: what a person recognises themselves as. */
+  displayName: string;
+}
+
 export interface ChallengeOptions {
   challenge: string;
   rp: { id: string; name: string };

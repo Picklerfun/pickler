@@ -15,6 +15,7 @@ import {
   type SignedActivityForwarder,
   type StoredChallenge,
   type SubOrganizationCreator,
+  createProfileService,
 } from "@pickler/core";
 import { createApp } from "../src/app.js";
 
@@ -196,6 +197,19 @@ function harness(
     return { principal: principal as never, workspace: null };
   };
 
+  // A real profile service over a fake repository: the passkey's display name comes from here,
+  // and never from the principal's email.
+  const profileRow: {
+    value: { userId: string; displayName: string; handle: string; createdAt: Date } | null;
+  } = { value: { userId: ANA, displayName: "Ana Robles", handle: "anarobles", createdAt: NOW } };
+  const profiles = createProfileService({
+    findByUserId: async (userId) => (profileRow.value?.userId === userId ? profileRow.value : null),
+    isHandleTaken: async () => false,
+    create: async () => {
+      throw new Error("unused");
+    },
+  });
+
   const app = createApp({
     authenticate,
     authenticateAgent: async () => {
@@ -205,11 +219,12 @@ function harness(
     agentQueries: {} as never,
     budgets: {} as never,
     profiles: {} as never,
-    custody: { authenticate, custody, balances },
+    custody: { authenticate, custody, balances, profiles },
   });
 
   return {
     app,
+    profileRow,
     stored,
     row,
     passkeys,
@@ -271,7 +286,7 @@ test("a challenge is issued to the caller the token names, not to whoever the bo
   const body = await data(res);
   assert.equal(body["challenge"], "r1");
   assert.deepEqual(body["rp"], { id: "pickler.fun", name: "Pickler" });
-  assert.deepEqual(body["user"], { id: "r2", name: EMAIL, displayName: EMAIL });
+  assert.deepEqual(body["user"], { id: "r2", name: "anarobles", displayName: "Ana Robles" });
   // The record is what a later register is judged against: if the body could name the owner,
   // one person could mint a challenge another person's session would happily spend.
   assert.deepEqual(h.stored.get("r1"), {
@@ -302,7 +317,7 @@ test("registering answers with the wallet and never with the root user id", asyn
   assert.equal(raw.includes("usr-1"), false, "the root user id is not the browser's business");
   assert.deepEqual(h.creations, [
     {
-      ownerEmail: EMAIL,
+      ownerLabel: "anarobles",
       discriminator: ANA.slice(0, 8),
       label: "Touch ID on This Mac",
       challenge,
@@ -723,14 +738,74 @@ test("a principal that is not a person is refused even by an authenticate that l
   assert.deepEqual(h.requestIds, []);
 });
 
-test("a token with no email address cannot open a wallet", async () => {
+/**
+ * A token with no email used to be a 400 `email_required`, which meant a wallet-only account could
+ * not open a wallet at all. The passkey's label no longer comes from the email, so there is nothing
+ * left to require: the profile supplies the name and the ceremony proceeds.
+ */
+test("a token with no email address can open a wallet, labelled from the profile", async () => {
   const h = harness(buildUserPrincipal({ user: { id: ANA } }));
 
   const res = await post(h, "/v1/signing/passkeys/challenge");
 
-  assert.equal(res.status, 400);
-  assert.equal((await json(res))["error"], "email_required");
-  assert.deepEqual(h.requestIds, [], "nothing is stored for a caller who cannot finish");
+  assert.equal(res.status, 200);
+  const options = (await json(res))["data"] as { user: { name: string; displayName: string } };
+  assert.deepEqual(options.user, { id: "r2", name: "anarobles", displayName: "Ana Robles" });
+});
+
+/**
+ * The rule the whole change exists for. A wallet account's auth email is synthetic and derived from
+ * the wallet, and WebAuthn's `user.name` is stored in the authenticator and synced to a password
+ * manager — so if the email ever reached this field, the address would be in someone's keychain
+ * permanently. Asserts the absence directly rather than trusting the positive assertion above.
+ */
+test("the passkey is never labelled with the caller's auth email", async () => {
+  const synthetic =
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
+
+  // Both branches: the profile supplies the name, and the fallback when there is no profile.
+  // Covering only the first would leave the fallback free to reach for the email.
+  for (const profile of [true, false]) {
+    const h = harness(buildUserPrincipal({ user: { id: ANA, email: synthetic } }));
+    if (!profile) {
+      h.profileRow.value = null;
+    }
+
+    const res = await post(h, "/v1/signing/passkeys/challenge");
+
+    assert.equal(res.status, 200);
+    const body = await res.text();
+    const where = profile ? "with a profile" : "with no profile";
+    assert.equal(
+      body.includes(synthetic),
+      false,
+      `the synthetic address reached the credential, ${where}`,
+    );
+    assert.equal(
+      body.includes("wallet.pickler.fun"),
+      false,
+      `the synthetic domain reached it, ${where}`,
+    );
+  }
+});
+
+/**
+ * Someone who has never claimed a handle is labelled by an opaque fragment of their user id — not
+ * refused, and above all not labelled with the address. The id is random, so this discloses
+ * nothing; it is merely unfriendly, which is the right way for a fallback to be bad.
+ */
+test("a caller with no profile is labelled opaquely, never by their address", async () => {
+  const synthetic =
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
+  const h = harness(buildUserPrincipal({ user: { id: ANA, email: synthetic } }));
+  h.profileRow.value = null;
+
+  const res = await post(h, "/v1/signing/passkeys/challenge");
+
+  assert.equal(res.status, 200);
+  const options = (await json(res))["data"] as { user: { name: string; displayName: string } };
+  assert.equal(options.user.name, "pickler-11111111");
+  assert.equal(options.user.displayName, "pickler-11111111");
 });
 
 test("the orphan of a lost race is logged against the request that caused it", async () => {

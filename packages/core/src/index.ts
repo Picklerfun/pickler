@@ -156,6 +156,7 @@ export {
   ChallengeNotUsableError,
   NoCustodyAccountError,
   SUPPORTED_TRANSPORTS,
+  type DisplayIdentity,
   deviceTypeFromTransports,
   toTurnkeyTransports,
   type ChallengeOptions,

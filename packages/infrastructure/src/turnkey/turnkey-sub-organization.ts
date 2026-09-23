@@ -57,8 +57,10 @@ export function createSubOrganizationCreator(
   const client = createTurnkeyStampingClient(config);
   return {
     async create(input) {
-      // Email plus an id fragment, so the Turnkey dashboard is scannable by a human. Both are
-      // immutable, unlike a workspace name.
+      // A display label plus an id fragment, so the Turnkey dashboard is scannable by a human.
+      // Both are immutable, unlike a workspace name. It is deliberately not an email: a wallet
+      // account's auth identifier is synthetic and derived from the wallet, and sending that here
+      // would hand a third party an address in a field that reads as contact detail.
       //
       // The root user gets the passkey and nothing else: `apiKeys: []` is what keeps Pickler
       // out of the organisation it is creating. No userEmail either, so the parent key cannot
@@ -68,11 +70,11 @@ export function createSubOrganizationCreator(
         timestampMs: String(Date.now()),
         organizationId: config.parentOrganizationId,
         parameters: {
-          subOrganizationName: `${input.ownerEmail} · ${input.discriminator}`,
+          subOrganizationName: `${input.ownerLabel} · ${input.discriminator}`,
           rootQuorumThreshold: 1,
           rootUsers: [
             {
-              userName: input.ownerEmail,
+              userName: input.ownerLabel,
               apiKeys: [],
               oauthProviders: [],
               authenticators: [

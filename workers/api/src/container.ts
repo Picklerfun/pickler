@@ -83,6 +83,7 @@ function custodyServices(
   env: Env,
   pool: PostgresResearchStore["pool"],
   authenticate: Services["authenticate"],
+  profiles: SigningRouteServices["profiles"],
 ): SigningRouteServices | undefined {
   const apiPublicKey = env.TURNKEY_API_PUBLIC_KEY;
   const apiPrivateKey = env.TURNKEY_API_PRIVATE_KEY;
@@ -101,6 +102,7 @@ function custodyServices(
 
   return {
     authenticate,
+    profiles,
     balances: createBalanceReader({
       chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
       ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
@@ -220,7 +222,8 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     now,
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
-  const custody = custodyServices(env, repository.pool, authenticate);
+  const profiles = createProfileService(createSupabaseProfileRepository(db));
+  const custody = custodyServices(env, repository.pool, authenticate, profiles);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
@@ -253,6 +256,6 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     findWorkspace: (id) => workspaces.findById(id),
     agentQueries: createAgentQueries({ agents, events: createSupabaseAgentEventLog(db), now }),
     budgets: new PostgresBudgetLedger(repository.pool),
-    profiles: createProfileService(createSupabaseProfileRepository(db)),
+    profiles,
   };
 }

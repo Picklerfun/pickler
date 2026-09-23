@@ -25,6 +25,9 @@ import type {
 
 const NOW = new Date("2026-09-22T12:00:00Z");
 const USER = "11111111-1111-4111-8111-111111111111";
+/** What a passkey is labelled with. A handle and a display name, never an email. */
+const ANA = { name: "anarobles", displayName: "Ana Robles" };
+const OTRA = { name: "otra", displayName: "Otra" };
 
 export function fakes() {
   const stored = new Map<string, StoredChallenge>();
@@ -152,12 +155,13 @@ export function service(f: ReturnType<typeof fakes>, extra: Partial<CustodyServi
 
 test("a challenge is stored against the caller and offered with the right algorithms", async () => {
   const f = fakes();
-  const options = await service(f).issueChallenge(USER, "ana@pickler.fun");
+  const options = await service(f).issueChallenge(USER, ANA);
 
   assert.equal(options.challenge, "r1");
   assert.equal(options.rp.id, "pickler.fun");
   assert.equal(options.rp.name, "Pickler");
-  assert.equal(options.user.name, "ana@pickler.fun");
+  assert.equal(options.user.name, "anarobles");
+  assert.equal(options.user.displayName, "Ana Robles");
   assert.deepEqual(
     options.pubKeyCredParams.map((p) => p.alg),
     [-7, -257],
@@ -174,7 +178,7 @@ test("a failed credential lookup never blocks the challenge", async () => {
     throw new Error("database down");
   };
 
-  const options = await service(f).issueChallenge(USER, "ana@pickler.fun");
+  const options = await service(f).issueChallenge(USER, ANA);
 
   assert.equal(options.challenge, "r1");
   assert.equal(options.excludeCredentials, undefined);
@@ -190,10 +194,10 @@ const attestation = {
 test("registering creates the sub-organization and returns the account", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
 
   const account = await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID on This Mac",
     challenge: options.challenge,
     attestation,
@@ -207,17 +211,17 @@ test("registering creates the sub-organization and returns the account", async (
 test("a replay returns the existing account and never mints a second sub-organization", async () => {
   const f = fakes();
   const s = service(f);
-  const first = await s.issueChallenge(USER, "ana@pickler.fun");
+  const first = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: first.challenge,
     attestation,
   });
 
-  const second = await s.issueChallenge(USER, "ana@pickler.fun");
+  const second = await s.issueChallenge(USER, ANA);
   const account = await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: second.challenge,
     attestation,
@@ -230,9 +234,9 @@ test("a replay returns the existing account and never mints a second sub-organiz
 test("a challenge cannot be spent twice", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -242,7 +246,7 @@ test("a challenge cannot be spent twice", async () => {
   await assert.rejects(
     () =>
       s.register(USER, {
-        email: "ana@pickler.fun",
+        identity: ANA,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -254,12 +258,12 @@ test("a challenge cannot be spent twice", async () => {
 test("a challenge belonging to someone else is refused", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
 
   await assert.rejects(
     () =>
       s.register("22222222-2222-4222-8222-222222222222", {
-        email: "otra@pickler.fun",
+        identity: OTRA,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -276,7 +280,7 @@ test("a challenge belonging to someone else is refused", async () => {
 test("a challenge that outlived its TTL is refused", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
   // The service clock is fixed, so age the stored record instead: this is what the row looks
   // like once the five-minute TTL has run out under a real clock.
   f.stored.set(options.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
@@ -284,7 +288,7 @@ test("a challenge that outlived its TTL is refused", async () => {
   await assert.rejects(
     () =>
       s.register(USER, {
-        email: "ana@pickler.fun",
+        identity: ANA,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -297,7 +301,7 @@ test("a challenge that outlived its TTL is refused", async () => {
 test("the loser of a concurrent submit gets the winner's account, not a 500", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
   // The pre-check passes, then the unique index rejects the insert: saveRegistration reports
   // created:false and findByUserId now answers with the winner's row. The lookup must answer
   // null the first time, or the pre-check returns early and the backstop is never exercised.
@@ -317,7 +321,7 @@ test("the loser of a concurrent submit gets the winner's account, not a 500", as
   };
 
   const account = await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -331,14 +335,14 @@ test("the loser of a concurrent submit gets the winner's account, not a 500", as
 test("a conflict with no readable winner fails loudly rather than returning nothing", async () => {
   const f = fakes();
   const s = service(f);
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
   f.repository.saveRegistration = async () => ({ created: false });
   f.repository.findByUserId = async () => null;
 
   await assert.rejects(
     () =>
       s.register(USER, {
-        email: "ana@pickler.fun",
+        identity: ANA,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -351,7 +355,7 @@ test("a conflict with no readable winner fails loudly rather than returning noth
 async function lostRace(reportOrphan: CustodyServiceDeps["reportOrphan"], winner: unknown) {
   const f = fakes();
   const s = service(f, { reportOrphan });
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
   f.repository.saveRegistration = async () => ({ created: false });
   let lookups = 0;
   f.repository.findByUserId = async () => {
@@ -359,7 +363,7 @@ async function lostRace(reportOrphan: CustodyServiceDeps["reportOrphan"], winner
     return lookups === 1 ? null : (winner as CustodyAccount | null);
   };
   return s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -409,10 +413,10 @@ test("a registration that does not conflict reports no orphan", async () => {
   const f = fakes();
   const orphans: unknown[] = [];
   const s = service(f, { reportOrphan: (orphan) => orphans.push(orphan) });
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
 
   await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -433,9 +437,9 @@ const FIRST_DEVICE_ROW = {
 /** Registers the first device so there is a sub-organization to add a second one to. */
 async function registered(f: ReturnType<typeof fakes>) {
   const s = service(f);
-  const first = await s.issueChallenge(USER, "ana@pickler.fun");
+  const first = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    email: "ana@pickler.fun",
+    identity: ANA,
     label: "Touch ID",
     challenge: first.challenge,
     attestation,
@@ -475,7 +479,7 @@ test("preparing refuses a challenge that was never issued", async () => {
 test("preparing returns the unsigned activity for the phone to stamp", async () => {
   const f = fakes();
   const s = await registered(f);
-  const next = await s.issueChallenge(USER, "ana@pickler.fun");
+  const next = await s.issueChallenge(USER, ANA);
 
   const prepared = await s.prepareAddPasskey(USER, {
     label: "Phone",
@@ -593,7 +597,7 @@ const OTHER_USER = "22222222-2222-4222-8222-222222222222";
 test("preparing refuses a challenge belonging to someone else", async () => {
   const f = fakes();
   const s = await registered(f);
-  const issued = await s.issueChallenge(USER, "ana@pickler.fun");
+  const issued = await s.issueChallenge(USER, ANA);
 
   // The fake repository answers the same row for any caller, so the other person clears the
   // account guard and the ownership clause is the only thing left standing between them and
@@ -613,7 +617,7 @@ test("preparing refuses a challenge belonging to someone else", async () => {
 test("preparing refuses a challenge that outlived its TTL", async () => {
   const f = fakes();
   const s = await registered(f);
-  const issued = await s.issueChallenge(USER, "ana@pickler.fun");
+  const issued = await s.issueChallenge(USER, ANA);
   // The service clock is fixed, so age the stored record instead, as in the register case.
   f.stored.set(issued.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
 
@@ -656,12 +660,12 @@ test("the three ways a challenge can fail reject identically, so none of them is
 
   const stranger = fakes();
   const strangerService = await registered(stranger);
-  const theirs = await strangerService.issueChallenge(USER, "ana@pickler.fun");
+  const theirs = await strangerService.issueChallenge(USER, ANA);
   const wrongOwnerCall = prepareWith(strangerService, OTHER_USER, theirs.challenge);
 
   const aged = fakes();
   const agedService = await registered(aged);
-  const old = await agedService.issueChallenge(USER, "ana@pickler.fun");
+  const old = await agedService.issueChallenge(USER, ANA);
   aged.stored.set(old.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
   const expiredCall = prepareWith(agedService, USER, old.challenge);
 
@@ -704,7 +708,7 @@ test("a second device is offered the first one's credential to exclude", async (
   // Nobody placed this row: registering the first device wrote it, and the challenge for the
   // second device picks it up. This is the defence against enrolling one authenticator twice,
   // and it only means anything if the two halves meet without a hand in between.
-  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  const options = await s.issueChallenge(USER, ANA);
 
   assert.deepEqual(options.excludeCredentials, [
     { id: "cred-1", type: "public-key", transports: ["internal"] },
