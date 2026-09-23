@@ -81,7 +81,12 @@ export function fromViemAccount(account: ViemAccountLike, chainId: number): Sign
   };
 }
 
-/** UTF-8 to hex. `personal_sign` takes its data as hex, and every wallet reads that the same way. */
+/**
+ * UTF-8 to hex. `personal_sign` takes its data as hex, and its parameters are `[data, address]` —
+ * the reverse of `eth_sign`'s `[address, data]`, which is where the order is usually misremembered.
+ * Both match viem 2.56.8, already vendored here: `signMessage` hex-encodes with `stringToHex` and
+ * requests `params: [message_, account.address]`.
+ */
 function toHex(message: string): string {
   const bytes = new TextEncoder().encode(message);
   return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;

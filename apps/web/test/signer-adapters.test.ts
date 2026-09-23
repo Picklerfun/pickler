@@ -5,7 +5,7 @@ import {
   fromInjectedProvider,
   PasskeyUnusableError,
   describeSignerFailure,
-} from "../src/features/wallet/lib/signers";
+} from "../src/features/wallet/lib/signer-adapters";
 
 // The SIWE string the server built, with the trailing newline connect.test.ts is careful about.
 // Every assertion below that claims a string was signed unchanged compares against this one.
@@ -14,7 +14,8 @@ const MESSAGE = "pickler.fun wants you to sign in…\nNonce: n1\n";
 /**
  * A MeraError as the library actually constructs one. Verified against the published
  * @category-labs/mera@0.2.0 artifact: `name` is "MeraError" and `code` is an own property.
- * Building it here rather than importing keeps this module free of the SDK; see signers.ts.
+ * Building it here rather than importing keeps this module free of the SDK; see
+ * signer-adapters.ts.
  */
 function meraError(code: string, message: string) {
   const error = new Error(message);
@@ -58,12 +59,15 @@ test("an injected wallet signs the same string unchanged, hex-encoded for person
 
   assert.equal(await signer.signMessage(MESSAGE), "0xeoasig");
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].method, "personal_sign");
+  const call = calls[0];
+  assert.ok(call, "the provider was never asked to sign");
+  assert.equal(call.method, "personal_sign");
 
-  // personal_sign takes [data, address]. The data is the message hex-encoded, and decoding it has
-  // to give back the server's string byte for byte — a lost trailing newline or a mangled ellipsis
-  // fails verification in a way that looks like the wrong wallet.
-  const [data, address] = calls[0].params as [string, string];
+  // personal_sign takes [data, address] — the reverse of eth_sign, which is where the argument
+  // order gets misremembered. The data is the message hex-encoded, and decoding it has to give back
+  // the server's string byte for byte: a lost trailing newline or a mangled ellipsis fails
+  // verification in a way that looks like the wrong wallet.
+  const [data, address] = call.params as [string, string];
   assert.equal(Buffer.from(data.slice(2), "hex").toString("utf8"), MESSAGE);
   assert.equal(address, "0xDeF0000000000000000000000000000000000002");
 });
