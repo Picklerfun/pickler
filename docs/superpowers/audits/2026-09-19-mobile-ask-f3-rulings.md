@@ -324,7 +324,7 @@ Del **plan** (no se edita el plan; queda anotado aquí):
 
 ## 4. Estado de las cuentas y del servicio al cierre
 
-- **Wallet del simulador**: `$SIM_ADDR = 0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1` (`0xe371…51C1`).
+- **Wallet del simulador**: `$SIM_ADDR` (`0xe371…51C1`).
   RPC (viem) al inicio del intento del 22 sep (`2026-09-22T05:36:08Z`): AUSD 29.00 · MON 0.03850114. RPC
   antes del intento definitivo del 23 sep (`2026-09-23T00:58:44Z`): idéntico. RPC **después** del cierre
   de la posición (`2026-09-23T01:33:29Z`): **AUSD 29.00 · MON 0.03850114 — sin cambio** en todo el
