@@ -267,7 +267,15 @@ in the list because nothing in the apparatus could have caught it.
     elements paint no ground of their own — which is why a test built on that case passed a model
     that was wrong for every filled control. Against a rendered control the per-layer model reported
     **2.53** where the browser painted **4.38**. It erred safe here, but the same error inverts:
-    a control truly at 5 models at roughly 3 and is reported as a failure that is not there.
+    a control truly at 5 models at roughly 3 and is reported as a failure that is not there, with a
+    ratio nobody can find on the screen. **A false failure costs more than a false pass**, which is
+    the opposite of the intuition: a false pass is one defect, while a false failure teaches people
+    the check is wrong and can be overridden, and a check that gets overridden protects nothing at
+    all. That is the same reasoning that keeps exit 2, refused to measure, distinct from exit 1.
+    Note also what could _not_ have found this. Case A — the dimmed element with no ground of its
+    own — agrees to a hundredth under both models, because with nothing else in the buffer they
+    coincide. A test built on it certifies either implementation. An example agreeing is not
+    evidence a model is right when it is the example that cannot tell the models apart.
 
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
