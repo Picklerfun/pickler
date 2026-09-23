@@ -179,3 +179,10 @@ export {
 } from "./features/wallets/application/custody.js";
 
 export * from "./features/identity/domain/wallet-auth.js";
+export type {
+  AccountProvisioner,
+  NonceStore,
+  SignatureVerifier,
+  WalletLink,
+  WalletLinkRepository,
+} from "./features/identity/ports/wallet-identity.js";
