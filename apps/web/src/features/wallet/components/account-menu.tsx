@@ -89,11 +89,9 @@ export function AccountMenu() {
               </button>
             )}
 
-            {/* Two different accounts can be connected here, so the menu never leaves you
-                guessing which one the portfolio below belongs to. */}
-            <p className={styles.kind}>
-              {wallet.kind === "mera" ? "PICKLER APP ACCOUNT" : "BROWSER WALLET"}
-            </p>
+            {/* The Pickler wallet is custodied in Turnkey and is not what this menu shows, so
+                the menu names whose money the portfolio below is. */}
+            <p className={styles.kind}>BROWSER WALLET</p>
 
             <button type="button" className={styles.address} onClick={() => void copy()}>
               {copied ? "COPIED" : shortAddress(address)}

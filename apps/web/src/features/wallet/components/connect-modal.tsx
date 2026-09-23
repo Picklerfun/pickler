@@ -8,12 +8,12 @@ import type { SignerKind } from "../lib/signer";
 import styles from "./connect-modal.module.css";
 
 /**
- * The chooser. Two ways to hold a key, one of them active at a time.
+ * The chooser. Where the person picks the wallet they brought.
  *
  * It holds up what the person was about to do, the way the app's own sign-in screen does, so the
  * wallet is a step inside their action rather than a wall in front of it. A choice this browser
- * cannot offer stays visible with the reason on it: knowing the app account exists is worth more
- * than a tidy list of one.
+ * cannot offer stays visible with the reason on it, which tells someone what is missing rather
+ * than leaving them in front of an empty list.
  */
 
 const COPY: Record<SignerKind, { title: string; sub: string; icon: IconName }> = {
@@ -21,11 +21,6 @@ const COPY: Record<SignerKind, { title: string; sub: string; icon: IconName }> =
     title: "Browser wallet",
     sub: "MetaMask, Rabby, or whatever this browser injects.",
     icon: "wallet",
-  },
-  mera: {
-    title: "Passkey account · preview",
-    sub: "Use an existing passkey. Matching your iOS account still requires verification.",
-    icon: "key",
   },
 };
 

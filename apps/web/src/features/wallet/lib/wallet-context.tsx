@@ -12,7 +12,6 @@ import {
 import type { ReactNode } from "react";
 import { ConnectModal } from "../components/connect-modal";
 import { injectedSigner } from "./injected-signer";
-import { meraSigner } from "./mera-signer";
 import { TARGET_CHAIN } from "./provider";
 import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
@@ -21,9 +20,10 @@ import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
  * public site: the nav shows it, the portfolio reads it, and the reads list is only meaningful
  * with it.
  *
- * Two kinds of signer can be that connection and only one is active at a time, because the two
- * are different addresses holding different money. Which one it is stays visible — the page never
- * shows an empty portfolio without saying whose it is.
+ * The connection is a wallet the person brought. Their own Pickler wallet is not connected here at
+ * all: it is custodied in Turnkey and reached through the signing API, so nothing on this page ever
+ * holds a key. Which address is connected stays visible — the page never shows an empty portfolio
+ * without saying whose it is.
  *
  * Asking to connect opens the chooser rather than prompting a wallet directly. A page that wanted
  * something first says so, and the chooser holds it up while the person picks, the way the app
@@ -32,12 +32,11 @@ import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
 /**
  * There is no "unsupported" any more. A browser with nothing to connect still opens the chooser,
- * which names what is missing on each choice — more use than a dead button, and the only way
- * someone learns the app account exists.
+ * which names what is missing rather than presenting a dead button.
  */
 export type WalletStatus = "disconnected" | "connecting" | "connected";
 
-const SIGNERS: SignerAdapter[] = [injectedSigner, meraSigner];
+const SIGNERS: SignerAdapter[] = [injectedSigner];
 
 const REMEMBERED = "pk.wallet.kind";
 
@@ -57,7 +56,7 @@ function remember(kind: SignerKind | null) {
 function remembered(): SignerKind | null {
   try {
     const value = window.localStorage.getItem(REMEMBERED);
-    return value === "injected" || value === "mera" ? value : null;
+    return value === "injected" ? value : null;
   } catch {
     return null;
   }
@@ -117,8 +116,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Pick up a connection that is already there, without prompting anyone.
   useEffect(() => {
     let live = true;
-    const wanted = remembered() ?? "injected";
-    const signer = SIGNERS.find((candidate) => candidate.kind === wanted);
+    const wanted = remembered();
+    if (wanted === null) {
+      // Anything this build no longer knows how to connect — the retired passkey account — would
+      // otherwise sit in storage for ever, claiming to be the last one used.
+      remember(null);
+    }
+    const signer = SIGNERS.find((candidate) => candidate.kind === (wanted ?? "injected"));
     if (!signer) {
       return;
     }

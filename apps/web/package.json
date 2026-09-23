@@ -11,7 +11,6 @@
     "preview": "opennextjs-cloudflare preview"
   },
   "dependencies": {
-    "@category-labs/mera": "^0.2.0",
     "@opennextjs/cloudflare": "1.20.6",
     "@pickler/api-schema": "*",
     "@pickler/chain": "*",

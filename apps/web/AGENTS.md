@@ -70,17 +70,13 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## The wallet
 
-`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it. `injected-signer.ts` is the EIP-1193 conversation with the browser wallet, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`. `mera-signer.ts` is the passkey account from the Pickler app, over `@category-labs/mera`.
+`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and one adapter implements it. `injected-signer.ts` is the EIP-1193 conversation with the browser wallet, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`.
 
-The key is the passkey's PRF output, not a random secret held anywhere. Mera documents that output as a deterministic function of the credential, the host and a fixed salt (`sha256("mera.prf.salt.v1")`, which it promises not to change), so the same passkey derives the same private key and therefore the same address on a phone, a laptop or a borrowed browser, with nothing to sync. That is the only reason the app's account can be reached from the web at all, and it is why PR #31 — the Apple App Site Association that binds `fun.pickler.app` to `pickler.fun` — decides whether this works: the host is part of the key, so both surfaces must be the same relying party. Off `pickler.fun` the same passkey derives a different account holding different money; loopback is allowed while developing and the chooser says so in amber.
+`connect` is for a wallet the person already had, and that is all it is for. The person's own Pickler wallet is not a signer here: it is custodied in Turnkey, the key stays in the enclave under their passkey, and the site reaches it through the signing API. Nothing in this app derives or holds a private key, and no new signer may. The PRF path that used to do so (`mera-signer.ts`, over `@category-labs/mera`) is retired: it asked for whichever passkey the person had for `pickler.fun`, which once Turnkey passkeys exist on that host means taking a credential that authorises activities and turning it into key material.
 
-Mera's other model is a vault — a random key encrypted under the passkey — and it is not this one: it would need the app's vault shipped here before the web could open anything. If the app turns out to use it, the address derived on the web will not match the app's, which is why the address is shown rather than assumed.
+The account menu names which wallet you are looking at, so a portfolio is never shown without saying whose it is. A signer without a chain of its own is never "on the wrong network", so `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
 
-The session is ended as soon as the address is derived. Connecting needs no signature, so a private key never waits in memory for a tab's lifetime, and anything that signs later asks the person again.
-
-One signer is active at a time, because the two are different addresses holding different money, and the account menu always says which one you are looking at. A signer without a chain of its own is never "on the wrong network", so `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
-
-`connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick, the way the app's own sign-in screen does. There is no "unsupported" state: a browser with nothing to connect still opens the chooser, which names what is missing on each choice. A dead button teaches nobody that the app account exists.
+`connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick, the way the app's own sign-in screen does. There is no "unsupported" state: a browser with nothing to connect still opens the chooser, which names what is missing on each choice rather than presenting a dead button.
 
 It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
 
@@ -185,8 +181,9 @@ Abort on page hiding, agent changes and unmount. Mutations trigger an immediate 
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
 
-## Passkey acceptance boundary
+## Custody boundary
 
-PRF account derivation is experimental until a real authenticator confirms address parity with
-the iOS implementation. Never present a derived address as authenticated server identity. Clear
-the PRF buffer and end the signing session before querying balances; keep provider failures visible.
+No private key is ever derived or held in this app. Custody of the person's Pickler wallet belongs
+to Turnkey, and a passkey registered against `TURNKEY_RPID` exists to authorise activities — never
+to be read as key material by anything else on the same host. A connected browser wallet is not
+authenticated server identity either: connecting is a read that says which address to show.
