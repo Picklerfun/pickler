@@ -146,7 +146,7 @@ The specification says this is the first task, and it is the only one whose answ
 plan. Mera is new: there is no published wagmi connector and no ecosystem documentation. Do not
 build a screen on top of it before knowing what connecting to it involves.
 
-- [ ] **Step 1: Read Mera's integration surface**
+- [x] **Step 1: Read Mera's integration surface**
 
 Read `https://docs.monad.xyz/tooling-and-infra/wallet-infra/embedded-wallets` and Mera's own
 documentation. Answer exactly three questions:
@@ -155,7 +155,7 @@ documentation. Answer exactly three questions:
 2. Can it produce a `personal_sign` signature over an arbitrary string? (The ceremony needs one.)
 3. Does it work in a desktop browser, or only in the native app?
 
-- [ ] **Step 2: Write the answer into the spec**
+- [x] **Step 2: Write the answer into the spec**
 
 Append to §13 of `docs/specs/user-profiles-and-products-v1.md` a subsection **"What Mera turned out
 to need"** with the three answers and their sources. If it exposes EIP-1193, say that Task 12 gains
@@ -163,7 +163,7 @@ a connector and nothing else changes. If it does not, say so plainly — the res
 stands, because every task below works with any wallet that can sign a string, and Mera becomes a
 second connector rather than a precondition.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "Record what integrating Mera actually requires" -- docs/specs/user-profiles-and-products-v1.md
@@ -182,7 +182,7 @@ A pure function, so both products can be tested without a browser and without th
 test happens to run in deciding the answer. `previewAllowed` and `sectionFromSearch` are the shape;
 each was written this way after a gate tested in one position turned out to be a gate tested once.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // apps/web/test/hosts.test.ts
@@ -222,12 +222,12 @@ test("a host that merely ends with the marketplace name is not the marketplace",
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test apps/web/test/hosts.test.ts`
 Expected: FAIL, `Cannot find module '../src/server/hosts.js'`.
 
-- [ ] **Step 3: Write the function**
+- [x] **Step 3: Write the function**
 
 ```ts
 // apps/web/src/server/hosts.ts
@@ -263,12 +263,12 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
 }
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test apps/web/test/hosts.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Prove the suffix test can fail**
+- [x] **Step 5: Prove the suffix test can fail**
 
 Do **not** simply change the marketplace comparison to `endsWith`. `app.pickler.fun` also ends with
 `pickler.fun`, so with the marketplace branch checked first that mutation swallows the studio host
@@ -291,7 +291,7 @@ between it and green.
 Revert and re-run: 6 passing. Confirm by reading the file that it holds two `===` comparisons and
 no `endsWith`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Say which product a hostname belongs to" -- apps/web/src/server/hosts.ts apps/web/test/hosts.test.ts
@@ -306,7 +306,7 @@ git commit -m "Say which product a hostname belongs to" -- apps/web/src/server/h
 - Modify: `apps/web/src/server/hosts.ts`
 - Test: `apps/web/test/hosts.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `apps/web/test/hosts.test.ts`:
 
@@ -347,12 +347,12 @@ test("the API and Next's own assets belong to both", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test apps/web/test/hosts.test.ts`
 Expected: FAIL, `ownerOf is not a function`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 Append to `apps/web/src/server/hosts.ts`:
 
@@ -376,18 +376,18 @@ export function ownerOf(pathname: string): Product {
 }
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test apps/web/test/hosts.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Prove the prefix test can fail**
+- [x] **Step 5: Prove the prefix test can fail**
 
 Replace the segment comparison with
 `[...STUDIO_SEGMENTS].some((s) => pathname.startsWith("/" + s))`. Re-run.
 Expected: exactly one test red — "a path that merely starts with a studio name". Revert; 11 pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Say which paths each product owns" -- apps/web/src/server/hosts.ts apps/web/test/hosts.test.ts
@@ -402,7 +402,7 @@ git commit -m "Say which paths each product owns" -- apps/web/src/server/hosts.t
 - Create: `apps/web/src/middleware.ts`
 - Test: `apps/web/test/middleware.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // apps/web/test/middleware.test.ts
@@ -445,12 +445,12 @@ test("development is inert: every path is served on localhost", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test apps/web/test/middleware.test.ts`
 Expected: FAIL, cannot find `../src/middleware.js`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 ```ts
 // apps/web/src/middleware.ts
@@ -516,17 +516,17 @@ export const config = {
 };
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test apps/web/test/middleware.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Prove the 404 rule can fail**
+- [x] **Step 5: Prove the 404 rule can fail**
 
 Change the last line of `decide` so a marketplace path on the studio redirects instead. Re-run.
 Expected: exactly one test red — "a marketplace path asked of the studio is 404". Revert; 6 pass.
 
-- [ ] **Step 6: Request the routes**
+- [x] **Step 6: Request the routes**
 
 With `npm run dev` running, confirm nothing broke locally, because a middleware error takes every
 route down and typecheck cannot see it:
@@ -539,7 +539,7 @@ done
 
 Expected: all 200.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git commit -m "Split the two products by host" -- apps/web/src/middleware.ts apps/web/test/middleware.test.ts
@@ -554,7 +554,7 @@ git commit -m "Split the two products by host" -- apps/web/src/middleware.ts app
 - Modify: `packages/infrastructure/src/persistence/product/identity.ts`
 - Create: a generated migration under `packages/infrastructure/drizzle/`
 
-- [ ] **Step 1: Add the table**
+- [x] **Step 1: Add the table**
 
 Append to `packages/infrastructure/src/persistence/product/identity.ts`, after `walletLinks`:
 
@@ -579,7 +579,7 @@ export const siweNonces = identity
   .enableRLS();
 ```
 
-- [ ] **Step 2: Generate the migration**
+- [x] **Step 2: Generate the migration**
 
 ```bash
 cd packages/infrastructure && npx drizzle-kit generate
@@ -590,13 +590,13 @@ Expected: a new `drizzle/NNNN_*.sql` containing `CREATE TABLE "identity"."siwe_n
 **If the file is empty, stop.** `identity` is in `schemaFilter` in `drizzle.config.ts`, so an empty
 migration means the table was not picked up, not that there was nothing to do.
 
-- [ ] **Step 3: Read the generated SQL**
+- [x] **Step 3: Read the generated SQL**
 
 Confirm it creates the table, the primary key and the index, and touches nothing else. A migration
 that also drops or alters another table means the local database is out of step with the
 migrations; do not commit it.
 
-- [ ] **Step 4: Typecheck and commit**
+- [x] **Step 4: Typecheck and commit**
 
 ```bash
 npm run typecheck
@@ -612,7 +612,7 @@ git commit -m "Give a wallet sign-in somewhere to keep its nonce" -- packages/in
 - Create: `packages/core/src/features/identity/domain/wallet-auth.ts`
 - Test: `packages/core/test/wallet-auth.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/wallet-auth.test.ts
@@ -642,12 +642,12 @@ test("the chain reference is CAIP-2 and names its own family", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test packages/core/test/wallet-auth.test.ts`
 Expected: FAIL, `normalizeAddress` is not exported.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 ```ts
 // packages/core/src/features/identity/domain/wallet-auth.ts
@@ -694,17 +694,17 @@ Export from `packages/core/src/index.ts`:
 export * from "./features/identity/domain/wallet-auth.js";
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test packages/core/test/wallet-auth.test.ts`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 5: Prove the case test can fail**
+- [x] **Step 5: Prove the case test can fail**
 
 Return `address` unchanged for `eip155`. Re-run.
 Expected: exactly one test red — "an EVM address is stored lower-case". Revert; 4 pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Say what an address is before anything stores one" -- packages/core/src/features/identity/domain/wallet-auth.ts packages/core/src/index.ts packages/core/test/wallet-auth.test.ts
@@ -721,7 +721,7 @@ git commit -m "Say what an address is before anything stores one" -- packages/co
 
 No test: these are types. They are a separate task so the next one has something to compile against.
 
-- [ ] **Step 1: Write the ports**
+- [x] **Step 1: Write the ports**
 
 ```ts
 // packages/core/src/features/identity/ports/wallet-identity.ts
@@ -780,7 +780,7 @@ export type {
 } from "./features/identity/ports/wallet-identity.js";
 ```
 
-- [ ] **Step 2: Typecheck and commit**
+- [x] **Step 2: Typecheck and commit**
 
 ```bash
 npm run typecheck
@@ -798,7 +798,7 @@ git commit -m "Name what a wallet sign-in needs from the world" -- packages/core
 
 This is where the rules that matter live. Every one of them gets a test that is proved to fail.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/wallet-sign-in.test.ts
@@ -1014,12 +1014,12 @@ test("a failed read of someone's links propagates rather than reading as none", 
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test packages/core/test/wallet-sign-in.test.ts`
 Expected: FAIL, `createWalletSignIn` is not exported.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 ```ts
 // packages/core/src/features/identity/application/wallet-sign-in.ts
@@ -1220,12 +1220,12 @@ export {
 } from "./features/identity/application/wallet-sign-in.js";
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test packages/core/test/wallet-sign-in.test.ts`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 5: Prove three of the pins can fail, one at a time**
+- [x] **Step 5: Prove three of the pins can fail, one at a time**
 
 Each of these is a rule someone could plausibly "simplify" away. Make the change, re-run, confirm
 **exactly one** test goes red, revert.
@@ -1260,7 +1260,7 @@ Keep the spend-twice test as well: it pins single-use, which is a different rule
 | In `verify`, always call `deps.accounts.forAddress`         | "signing in with an already-linked address…"  |
 | Wrap `listLinks` in `try { … } catch { return [] }`         | "a failed read of someone's links propagates" |
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Prove an address before believing it, and never move one between accounts" -- packages/core/src/features/identity/application/wallet-sign-in.ts packages/core/src/index.ts packages/core/test/wallet-sign-in.test.ts
@@ -1276,7 +1276,7 @@ git commit -m "Prove an address before believing it, and never move one between 
 - Test: `packages/infrastructure/test/wallet-identity-store.test.ts`
 - Modify: `packages/infrastructure/src/index.ts`
 
-- [ ] **Step 1: Write it**
+- [x] **Step 1: Write it**
 
 ```ts
 // packages/infrastructure/src/persistence/wallet-identity-store.ts
@@ -1347,7 +1347,7 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
 
 Export it from `packages/infrastructure/src/index.ts` beside the other stores.
 
-- [ ] **Step 2: Write the test against a real database**
+- [x] **Step 2: Write the test against a real database**
 
 `packages/infrastructure/test/custody-store.test.ts` is the model: it runs real SQL against
 Postgres. Copy its setup and skip guard exactly. The tests to write:
@@ -1424,12 +1424,12 @@ test("listForUser returns only that user's links, oldest first", async () => {
 });
 ```
 
-- [ ] **Step 3: Prove the scoping test can fail**
+- [x] **Step 3: Prove the scoping test can fail**
 
 Replace `WHERE user_id = $1` in `listForUser` with `WHERE $1 IS NOT NULL`. Re-run.
 Expected: the scoping test goes red. Revert.
 
-- [ ] **Step 4: Run, typecheck, commit**
+- [x] **Step 4: Run, typecheck, commit**
 
 ```bash
 npm test && npm run typecheck
@@ -1448,7 +1448,7 @@ git commit -m "Read and write the wallet links, one address to one account" -- p
 
 `viem` 2.56.8 is already a dependency of `packages/infrastructure`. It stays out of `packages/core`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/infrastructure/test/siwe.test.ts
@@ -1529,12 +1529,12 @@ test("a malformed signature is false rather than an exception", async () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test packages/infrastructure/test/siwe.test.ts`
 Expected: FAIL, `buildSiweMessage` is not exported.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 ```ts
 // packages/infrastructure/src/chain/siwe.ts
@@ -1602,18 +1602,18 @@ export function createSignatureVerifier(): SignatureVerifier {
 
 Export both from `packages/infrastructure/src/index.ts`.
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test packages/infrastructure/test/siwe.test.ts`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 5: Prove the tamper test can fail**
+- [x] **Step 5: Prove the tamper test can fail**
 
 Make `verify` return `true` unconditionally. Re-run.
 Expected: three tests red — the tamper, the wrong key and the malformed one. That is correct: they
 are three different ways of catching the same lie. Revert; 5 pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Check a signature against the message that was actually signed" -- packages/infrastructure/src/chain/siwe.ts packages/infrastructure/src/index.ts packages/infrastructure/test/siwe.test.ts
@@ -1629,7 +1629,7 @@ git commit -m "Check a signature against the message that was actually signed" -
 - Test: `packages/infrastructure/test/wallet-accounts.test.ts`
 - Modify: `packages/infrastructure/src/index.ts`
 
-- [ ] **Step 1: Write it**
+- [x] **Step 1: Write it**
 
 ```ts
 // packages/infrastructure/src/supabase/wallet-accounts.ts
@@ -1710,7 +1710,7 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
 }
 ```
 
-- [ ] **Step 2: Test what can be tested without Supabase**
+- [x] **Step 2: Test what can be tested without Supabase**
 
 ```ts
 test("the synthetic address is derived from the wallet and is not deliverable", () => {
@@ -1731,7 +1731,7 @@ test("the same address on two chain families gives two accounts", () => {
 });
 ```
 
-- [ ] **Step 3: Run, typecheck, commit**
+- [x] **Step 3: Run, typecheck, commit**
 
 ```bash
 node --import tsx --test packages/infrastructure/test/wallet-accounts.test.ts
@@ -1749,7 +1749,7 @@ git commit -m "Give a wallet an account without pretending it has an email" -- p
 - Modify: `workers/api/src/app.ts`, `workers/api/src/container.ts`, `workers/api/src/env.ts`
 - Test: `workers/api/test/wallet-auth.test.ts`
 
-- [ ] **Step 1: Write the routes**
+- [x] **Step 1: Write the routes**
 
 ```ts
 // workers/api/src/routes/wallet-auth.ts
@@ -1846,7 +1846,7 @@ export function walletAuthRoutes(services: WalletAuthServices) {
 }
 ```
 
-- [ ] **Step 2: Mount it**
+- [x] **Step 2: Mount it**
 
 In `workers/api/src/app.ts`, beside the other conditional mounts:
 
@@ -1911,7 +1911,7 @@ function walletAuthServices(
 `randomNonce` uses `crypto.randomUUID()`, which is available on Workers and is a cryptographically
 strong source. A counter or a timestamp would be guessable, and a guessable nonce is not a nonce.
 
-- [ ] **Step 3: Write the route tests**
+- [x] **Step 3: Write the route tests**
 
 `workers/api/test/signing.test.ts` is the model, including its list of routes feeding "API keys and
 anonymous callers never reach custody". Write:
@@ -1976,12 +1976,12 @@ Before adding `["POST", "/v1/auth/wallet/link"]` to the existing anonymous-calle
 confirm that loop builds a fresh harness per route with per-route assertions, so that extending it
 adds a case rather than changing what an existing assertion means.
 
-- [ ] **Step 4: Prove the 409 test can fail**
+- [x] **Step 4: Prove the 409 test can fail**
 
 Delete the `AddressTakenError` branch from `asHttp`. Re-run.
 Expected: the 409 test goes red with a 500. Revert.
 
-- [ ] **Step 5: Request the route**
+- [x] **Step 5: Request the route**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8787/v1/auth/wallet/nonce
@@ -1990,7 +1990,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8787/v1/auth/w
 Expected: 200 with the API running and the two variables set; 404 without them, which is the
 unmounted case and is correct.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 npm test && npm run typecheck && npm run lint
@@ -2009,7 +2009,7 @@ git commit -m "Open the three doors a wallet sign-in needs" -- workers/api/src/r
 The browser's half is deliberately thin: it asks for a string, signs it, and sends it back. It
 builds nothing, so there is no second builder to drift.
 
-- [ ] **Step 1: Write the client**
+- [x] **Step 1: Write the client**
 
 ```ts
 // apps/web/src/features/wallet/lib/connect.ts
@@ -2073,7 +2073,7 @@ export async function signIn(
 }
 ```
 
-- [ ] **Step 2: Write the test**
+- [x] **Step 2: Write the test**
 
 ```ts
 // apps/web/test/connect.test.ts
@@ -2159,7 +2159,7 @@ test("a failure to get a nonce never reaches the wallet", async () => {
 });
 ```
 
-- [ ] **Step 3: Run and prove the first test can fail**
+- [x] **Step 3: Run and prove the first test can fail**
 
 Run: `node --import tsx --test apps/web/test/connect.test.ts`
 Expected: PASS, 3 tests.
@@ -2170,7 +2170,7 @@ removes, demonstrated once.
 
 Revert; 3 pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Sign the string the server sent, and build none of our own" -- apps/web/src/features/wallet/lib/connect.ts apps/web/test/connect.test.ts
@@ -2203,7 +2203,7 @@ handles the failure the Task 1 spike found.
 `LocalAccount` is possible and is far more work than this needs: the ceremony wants exactly one
 signature. Call the SDK directly for Mera, and leave wagmi to EOAs.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // apps/web/test/signers.test.ts
@@ -2246,12 +2246,12 @@ test("an ordinary refusal stays an ordinary refusal", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test apps/web/test/signers.test.ts`
 Expected: FAIL, cannot find the module.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 ```ts
 // apps/web/src/features/wallet/lib/signers.ts
@@ -2302,17 +2302,17 @@ export function fromViemAccount(account: ViemAccountLike, chainId: number): Sign
 }
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test apps/web/test/signers.test.ts`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 5: Prove the PRF branch can fail**
+- [x] **Step 5: Prove the PRF branch can fail**
 
 Make `describeSignerFailure` return `error` unconditionally. Re-run.
 Expected: exactly one test red — "a passkey with no PRF output is its own failure". Revert.
 
-- [ ] **Step 6: Wire both wallets**
+- [x] **Step 6: Wire both wallets**
 
 Mera: `toViemAccount(session)` from `@category-labs/mera`, wrapped by `fromViemAccount`, with every
 call to the SDK's passkey creation passed through `describeSignerFailure`. EOA: the account from
@@ -2322,7 +2322,7 @@ whatever wallet connection the marketplace already uses, wrapped the same way.
 say in the commit which version you pinned. It is at `0.2.0`; a zero-major dependency in a sign-in
 path is worth pinning exactly rather than by range.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git commit -m "Produce a signer from either wallet, and name the passkey that cannot hold one" -- apps/web/src/features/wallet/lib/signers.ts apps/web/test/signers.test.ts
@@ -2342,7 +2342,7 @@ git commit -m "Produce a signer from either wallet, and name the passkey that ca
 The routes exist — `GET /v1/handles/:handle/availability` and `POST /v1/profile` — and neither core
 nor the API changes. This is the screen that asks.
 
-- [ ] **Step 1: Write the client, taking the rules from core**
+- [x] **Step 1: Write the client, taking the rules from core**
 
 ```ts
 // apps/web/src/features/wallet/lib/handles.ts
@@ -2393,7 +2393,7 @@ export async function claimHandle(
 }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```ts
 // apps/web/test/claim-handle.test.ts
@@ -2415,7 +2415,7 @@ test("a failed availability lookup is unknown, never taken", async () => {
 });
 ```
 
-- [ ] **Step 3: Run it, then prove the second test can fail**
+- [x] **Step 3: Run it, then prove the second test can fail**
 
 Run: `node --import tsx --test apps/web/test/claim-handle.test.ts`
 Expected: PASS, 2 tests.
@@ -2424,7 +2424,7 @@ Change the non-ok branch to `return { known: true, available: false }`. Re-run.
 Expected: the second test red. That branch is the difference between "this name is gone" and "we
 could not check", and only one of them is true. Revert.
 
-- [ ] **Step 4: Build the panel**
+- [x] **Step 4: Build the panel**
 
 `claim-handle.tsx` renders one field and one button, on the marketplace's light surface, using the
 tokens from `@pickler/ui` — no literal colours. It shows `localProblem` as you type and the
@@ -2434,7 +2434,7 @@ handle is an address on the leaderboard, which is a worse experience rather than
 
 Render it in `portfolio-page.tsx` when there is a session and no profile.
 
-- [ ] **Step 5: Look at it**
+- [x] **Step 5: Look at it**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:3001/portfolio?state=connected"
@@ -2444,7 +2444,7 @@ DESIGN_BASE_URL=http://localhost:3001 node scripts/design/shots.mjs
 
 Expected: 200, contrast clean, and a screenshot you open and actually look at.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "Ask for a handle once there is an account to hang it on" -- apps/web/src/features/wallet/lib/handles.ts apps/web/src/features/wallet/components/claim-handle.tsx apps/web/src/features/wallet/components/portfolio-page.tsx apps/web/test/claim-handle.test.ts
@@ -2464,7 +2464,7 @@ at signup. The ceremony does not change — `issueChallenge`, `register`, `prepa
 `confirmAddPasskey`, the five tables and their tests all stay exactly as shipped. What moves is the
 point in the product that calls it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 test("signing up no longer asks for a passkey", () => {
@@ -2483,29 +2483,29 @@ test("signing in is unchanged", () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `node --import tsx --test apps/web/test/auth-flow.test.ts`
 Expected: FAIL — `up` still contains `passkey` and `wallet`.
 
-- [ ] **Step 3: Move the steps**
+- [x] **Step 3: Move the steps**
 
 In `apps/web/src/features/auth/lib/flow.ts`, take `{ label: "PASSKEY", steps: ["passkey"] }` and
 `{ label: "BACKUP", steps: ["wallet"] }` out of the `"up"` progression and into a new `"custody"`
 mode. Add `"custody"` to `Mode`. Leave every step's own logic alone.
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `node --import tsx --test apps/web/test/auth-flow.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Make `/account` honest about having no wallet**
+- [x] **Step 5: Make `/account` honest about having no wallet**
 
 A person who has signed up but built no agent has no sub-organization and no master wallet.
 `/account` must say that in the voice of the six panels that already say what is not built —
 **not** render an empty wallet, which is indistinguishable from a wallet with nothing in it.
 
-- [ ] **Step 6: Request the routes and look**
+- [x] **Step 6: Request the routes and look**
 
 ```bash
 for r in /signup /signin /account; do
@@ -2516,7 +2516,7 @@ done
 Expected: all 200. Then screenshot `/account` and confirm it reads as "no wallet yet" rather than
 as a wallet holding zero.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git commit -m "Ask for a passkey when an agent needs one, not at the door" -- apps/web/src/features/auth/lib/flow.ts apps/web/test/auth-flow.test.ts
@@ -2531,7 +2531,7 @@ git commit -m "Ask for a passkey when an agent needs one, not at the door" -- ap
 - Modify: `scripts/design/routes.mjs`, `scripts/design/lib/render.mjs`
 - Modify: `workers/api/wrangler.jsonc`, `apps/web/wrangler.jsonc`
 
-- [ ] **Step 1: Give each design route its host**
+- [x] **Step 1: Give each design route its host**
 
 `scripts/design/routes.mjs` measures one base URL. Each route gains a `product` field, and
 `render.mjs` chooses a base URL for it:
@@ -2568,12 +2568,12 @@ DESIGN_BASE_URL=http://localhost:3001 node scripts/design/surfaces.mjs
 
 Expected: clean over all 15 routes, exactly as before.
 
-- [ ] **Step 2: List both origins for CORS**
+- [x] **Step 2: List both origins for CORS**
 
 `ALLOWED_ORIGINS` on the API must carry `https://pickler.fun` and `https://app.pickler.fun`. A
 missing origin fails only in a browser, and never in a test or a `curl`.
 
-- [ ] **Step 3: Record what has to be set outside the code**
+- [x] **Step 3: Record what has to be set outside the code**
 
 Append to `docs/specs/user-profiles-and-products-v1.md` a section **"Before this works in a
 deployment"**, in the shape of §10 of the custody spec:
@@ -2586,7 +2586,7 @@ deployment"**, in the shape of §10 of the custody spec:
 - Both hostnames pointed at the web worker.
 - `TURNKEY_RPID=pickler.fun`, and the reason it cannot be changed later.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Tell the checks and the deployment that there are two hosts" -- scripts/design docs/specs/user-profiles-and-products-v1.md workers/api/wrangler.jsonc apps/web/wrangler.jsonc
@@ -2598,13 +2598,13 @@ git commit -m "Tell the checks and the deployment that there are two hosts" -- s
 
 **Files:** none changed unless a check fails.
 
-- [ ] **Step 1: Every gate**
+- [x] **Step 1: Every gate**
 
 ```bash
 npm run typecheck && npm run lint && npx prettier --check . && npm test && npx turbo build --filter=@pickler/web
 ```
 
-- [ ] **Step 2: Every design check**
+- [x] **Step 2: Every design check**
 
 ```bash
 export DESIGN_BASE_URL=http://localhost:3001
@@ -2613,7 +2613,7 @@ node scripts/design/shots.mjs
 node --test scripts/design/*.test.mjs
 ```
 
-- [ ] **Step 3: Request every route on both products**
+- [x] **Step 3: Request every route on both products**
 
 ```bash
 for r in / /leaderboard /portfolio /console /account; do
@@ -2624,14 +2624,14 @@ done
 Expected: all 200, because the middleware is inert on localhost. A 404 here means the host mapping
 is matching something it should not.
 
-- [ ] **Step 4: Sign in once, by hand**
+- [x] **Step 4: Sign in once, by hand**
 
 With the API running and `SIWE_DOMAIN` set, complete one real ceremony in a browser with a wallet:
 connect, sign, land with a session, reload and still be signed in. Then do it again with the same
 wallet and confirm you arrive at the **same** account rather than a second one. That is the whole
 point of this specification and no automated test in this plan proves it end to end.
 
-- [ ] **Step 5: Record the result**
+- [x] **Step 5: Record the result**
 
 Add a `## Validation` section to `docs/specs/user-profiles-and-products-v1.md`: the date, what was
 checked, what behaved differently from this plan, and anything left undone.
