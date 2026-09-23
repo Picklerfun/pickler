@@ -70,6 +70,11 @@ the specification, none visible by reading:
 3. **Pin against an external source** — a vendor's types, a canvas — rather than against prose.
    The most instructive defect was a wrong literal that had a test agreeing with it, because
    whoever writes the test holds the same wrong assumption as the code.
+4. **An assert after a failing assert in the same test never runs**, so a test with several asserts
+   hides every one after the first failure. The runner reports the file red either way, and once the
+   first assert is fixed the rest execute for the first time — which is how a wrong expectation rode
+   along unexecuted in the harness that checks every colour in this product. One behaviour per test,
+   or collect the failures and assert once at the end.
 
 ---
 
