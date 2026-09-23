@@ -215,6 +215,22 @@ in the list because nothing in the apparatus could have caught it.
     first is not thereby handling the second. `contrast.mjs` now multiplies opacity down the
     ancestor chain and composites the ink at that effective alpha over its ground.
 
+18. **A verification script's worst failure is not an error, it is a plausible number.** `BASE`
+    defaulted to `http://localhost:3000`, and port 3000 on this machine is another checkout of this
+    same repository, serving the same application under the same title on a different branch. A run
+    without the env var did not fail — it succeeded, swept the old design system, and printed
+    `clean over all 14 route(s)` for work that was not in the tree. Nothing in that output looks
+    wrong. A default that picks a server is a guess wearing the costume of a measurement, so the
+    default is gone and the scripts exit 2 rather than choose.
+    Naming the port makes a number attributable but still trusts whoever typed it, so the checks now
+    also verify they are looking at _this_ tree: a few token values read off `styles.css` and off
+    the page, since a build of another branch disagrees on at least one. A token the page does not
+    define is absence and ignored; one it defines _differently_ is the dangerous case, because the
+    neighbouring build defines them all. When `packages/ui/src` has uncommitted changes the
+    mismatch is a warning instead — the file on disk is simply ahead of what the server compiled.
+    Exit 2 now means "refused to measure" throughout, distinct from exit 1 for "measured and found
+    something", so the two can never be read as the same outcome.
+
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So

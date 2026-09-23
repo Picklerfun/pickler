@@ -10,43 +10,13 @@
 // stricter than the product needs and is the point: a level that cannot survive the darkest panel
 // is a level with a footnote, and footnotes are what both of these defects were.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 import { ratio } from "./lib/colour.mjs";
+import { resolve, surface } from "./lib/tokens-file.mjs";
 
 // The values live here and only here. colour.test.mjs proves the arithmetic against answers that are
 // public knowledge; pinning token values there as well let a level drift out from under its own
 // test the moment the token changed.
-
-const CSS = readFileSync(
-  fileURLToPath(new URL("../../packages/ui/src/styles.css", import.meta.url)),
-  "utf8",
-).replace(/\/\*[\s\S]*?\*\//g, ""); // comments quote hex values; they are prose, not declarations
-
-/** The custom properties declared in one surface's block. The light surface is selected by its
- *  data-surface rather than by `:root`, because an earlier `:root` block holds the radii and would
- *  otherwise match first and yield a block with no inks in it at all. */
-function surface(selector) {
-  const at = CSS.indexOf(selector);
-  assert.notEqual(at, -1, `${selector} is not in styles.css — this check is looking at nothing`);
-  const open = CSS.indexOf("{", at);
-  const body = CSS.slice(open, CSS.indexOf("\n}", open));
-  return Object.fromEntries(
-    [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
-  );
-}
-
-/** Follows var() chains, so a level that resolves to another level is judged as what it paints. */
-function resolve(tokens, name, seen = new Set()) {
-  const value = tokens[name];
-  const chained = /^var\((--[\w-]+)\)$/.exec(value ?? "");
-  if (!chained) {
-    return value;
-  }
-  assert.ok(!seen.has(name), `${name} resolves in a circle`);
-  return resolve(tokens, chained[1], seen.add(name));
-}
 
 const rgb = (value) => {
   const hex = /^#([0-9a-f]{6})$/i.exec(value);
@@ -96,7 +66,7 @@ function pairs(tokens, prefix) {
 
 for (const name of ["light", "dark"]) {
   test(`every ${name} ink is legible on every ${name} ground`, () => {
-    const tokens = surface(`[data-surface="${name}"]`);
+    const tokens = surface(name);
     const unreadable = [];
     for (const ink of INKS) {
       for (const ground of GROUNDS) {
@@ -117,7 +87,7 @@ for (const name of ["light", "dark"]) {
 // exactly one ground: its own tint. Nothing else is asserted here, because nothing else is promised.
 for (const name of ["light", "dark"]) {
   test(`every ${name} state ink is legible on its own tint`, () => {
-    const tokens = surface(`[data-surface="${name}"]`);
+    const tokens = surface(name);
     const found = pairs(tokens, "--pk-state-");
     assert.ok(
       found.length >= 6,
@@ -144,7 +114,7 @@ test("the ink levels stay distinct rather than collapsing silently", () => {
   // two levels in the spec and paint as one on screen.
   const tooClose = [];
   for (const name of ["light", "dark"]) {
-    const tokens = surface(`[data-surface="${name}"]`);
+    const tokens = surface(name);
     for (let i = 0; i < RAMP.length - 1; i += 1) {
       const [a, b] = [resolve(tokens, RAMP[i]), resolve(tokens, RAMP[i + 1])];
       if (a === b) {

@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOLDS } from "../routes.mjs";
+import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
  * and they serve the same application under the same <title> on different ports — so a wrong guess
@@ -184,6 +185,73 @@ const countText = () =>
       el.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
   ).length;
 
+/* Is the server at BASE serving *this* tree?
+ *
+ * Naming the port makes a number attributable, but it still trusts whoever typed it. Another
+ * checkout of this repository serves the same application under the same title on a neighbouring
+ * port, so a mistyped port returns a well-formed answer about somebody else's branch — and a
+ * verification script's worst failure is not an error, it is a plausible number.
+ *
+ * The cheapest true fingerprint is the palette itself: read a few token values off this tree's
+ * styles.css and off the page, and a server built from another branch disagrees on at least one.
+ * It costs one probe on the first route that loads. */
+async function serving(page) {
+  const wanted = {};
+  for (const name of ["light", "dark"]) {
+    const tokens = surface(name);
+    wanted[name] = Object.fromEntries(SIGNATURE.map((t) => [t, resolve(tokens, t)]));
+  }
+  const painted = await page.evaluate((names) => {
+    // A token the page does not define at all is absence, not conflict: `var(--x)` with no value is
+    // invalid at computed-value time, so `color` inherits and comes back as the sentinel. Only a
+    // token the page defines *differently* says the server is another tree — which is exactly the
+    // dangerous case, since a build of another branch defines all of them.
+    const SENTINEL = "rgb(1, 2, 3)";
+    const read = (scope, name) => {
+      const el = document.querySelector(scope);
+      if (!el) {
+        return null;
+      }
+      const host = document.createElement("div");
+      host.style.color = SENTINEL;
+      const probe = document.createElement("div");
+      host.append(probe);
+      el.append(host);
+      probe.style.color = `var(${name})`;
+      const value = getComputedStyle(probe).color;
+      host.remove();
+      return value === SENTINEL ? null : value;
+    };
+    return {
+      light: Object.fromEntries(names.map((n) => [n, read("body", n)])),
+      dark: Object.fromEntries(names.map((n) => [n, read('[data-surface="dark"]', n)])),
+    };
+  }, SIGNATURE);
+
+  // Compare as the browser renders them, so #0b0d1a and rgb(11, 13, 26) are one value.
+  const normalise = (value) => {
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(value).trim());
+    if (!hex) {
+      return String(value).trim();
+    }
+    const full = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join("") : hex[1];
+    return `rgb(${[0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16)).join(", ")})`;
+  };
+
+  const differs = [];
+  for (const scope of ["light", "dark"]) {
+    for (const name of SIGNATURE) {
+      const here = normalise(wanted[scope][name]);
+      const there = painted[scope][name];
+      // null is either no such scope on this page or no such token: absence, not conflict.
+      if (there && here !== there) {
+        differs.push(`${name} on ${scope}: this tree says ${here}, that server paints ${there}`);
+      }
+    }
+  }
+  return differs;
+}
+
 /** Opens each route in turn and hands the page to `visit`. A route that cannot load is recorded as
  *  blocked rather than thrown on, so that one missing backend does not hide the other four routes'
  *  findings — but `finish` still exits non-zero for it. */
@@ -192,6 +260,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
   const browser = await launch(chromium);
   const results = [];
   const blocked = [];
+  let checked = false;
   try {
     for (const route of routes) {
       const page = await browser.newPage({ viewport: { width, height } });
@@ -221,6 +290,28 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         if (await page.locator("main.fallback").count()) {
           blocked.push({ route, kind: "error-boundary" });
           continue;
+        }
+        if (!checked) {
+          checked = true;
+          const differs = await serving(page);
+          if (differs.length) {
+            // packages/ui/src being edited is the innocent explanation: the file on disk is ahead
+            // of what the server last compiled. Anything else means the wrong server.
+            const editing = held().has("ALWAYS");
+            process.stderr.write(
+              `${editing ? "warning" : "refusing to measure"}: the server at ${BASE} is not painting this tree's tokens.\n` +
+                differs.map((line) => `  ${line}\n`).join("") +
+                (editing
+                  ? "  packages/ui/src has uncommitted changes, so the server may simply not have\n" +
+                    "  recompiled yet. Re-run once it has; the numbers below are suspect until then.\n"
+                  : "  Nobody is editing the tokens, so that is another checkout of this repository\n" +
+                    "  serving its own branch. Measuring it would report somebody else's design.\n"),
+            );
+            if (!editing) {
+              await browser.close();
+              process.exit(2);
+            }
+          }
         }
         // Prove the screen rendered before measuring it. A selector first: it says what the real
         // screen contains and a stub cannot. A count only where no authored hook exists yet.
