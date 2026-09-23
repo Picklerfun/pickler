@@ -168,12 +168,32 @@ in the list because nothing in the apparatus could have caught it.
     route that never loaded. A route declaring neither is reported too, because a route nobody wrote
     a floor for is exactly the route the floor exists to catch.
 
-Ten, eleven and twelve are one family, and it is the family worth naming: **the green was never
+13. **An assertion satisfied by a different element than the one it names is worse than no
+    assertion, because it is believed.** `surfaces.mjs` asked "does anything on this page invert",
+    and on every light route the first inverting pair in document order is the shell's inverted
+    "Create agent" action in the nav. So the portfolio's dark total panel was rebuilt as a literal
+    ground and a literal ink with `data-surface` removed entirely, and the check stayed green — it
+    reported that the portfolio inverts, and what inverted was the nav. Adding the route to the
+    must-nest list would have been satisfied vacuously too. Name the element: the assertion takes a
+    selector for the specific block, not a boolean, and asserts the `data-surface` separately where
+    an authored hook lets it, so "the block is gone" reads differently from "the block lost its
+    surface".
+14. **A literal that happens to equal another token is invisible to a token check.** `#0b0d1a`
+    painted as a background on a light page passes, because that value is `--pk-ink`'s. The check
+    asks "is this colour in the token set" when the question it means is "is this colour the token
+    this element should be reading", and the two surfaces guarantee collisions because each holds
+    the other's ground — every dark value is a legitimate light token and the reverse. This one is
+    recorded rather than fixed: the honest version needs the colour's **role** (a background must
+    resolve to a ground token, text to an ink token), which is a bigger change than it looks,
+    because accents are legitimately both. Until then, `tokens.mjs` catches the careless literal and
+    not the plausible one, and lesson 13's check is what actually caught this instance.
+
+Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
 every check now prints what it actually looked at, on every run and not only when something is
 wrong: the route, the proof that the screen was there, and how much of it was measured. A reader who
-glances at that catches all three without having to think to ask.
+glances at that catches them without having to think to ask.
 
 ---
 

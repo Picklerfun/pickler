@@ -91,8 +91,16 @@ export function paintedColours() {
   return painted;
 }
 
-/** The ground this page paints, and the innermost nested surface if there is one. */
-export function surfaces() {
+/** The ground this page paints, and whether the one block that must invert actually does.
+ *
+ *  `mustNest` is a selector for the specific element, not a boolean. It used to be a boolean, and
+ *  the check looked for the first inverting pair anywhere in the document — which on every light
+ *  route is the shell's inverted "Create agent" action in the nav. So the portfolio's dark total
+ *  panel was rebuilt with `background: #0b0d1a; color: #fff` and no `data-surface` at all, and the
+ *  check stayed green: it reported that the portfolio inverts, when what inverted was the nav. An
+ *  assertion satisfied by a different element than the one it names is worse than no assertion,
+ *  because it is believed. */
+export function surfaces(mustNest) {
   const painted = (el) => {
     for (let node = el; node; node = node.parentElement) {
       const colour = getComputedStyle(node).backgroundColor;
@@ -135,23 +143,24 @@ export function surfaces() {
     }
   }
 
-  // The mechanism the whole system rests on: a subtree taking the opposite data-surface inverts
-  // everything inside it. Find a data-surface inside another data-surface and read both grounds.
-  // Only a rendered one counts — a closed dialog would prove the tokens cascade and prove nothing
-  // about the screen.
-  let nested = null;
-  for (const inner of document.querySelectorAll("[data-surface] [data-surface]")) {
-    const outer = inner.parentElement?.closest("[data-surface]");
-    if (!outer || !inner.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
-      continue;
-    }
-    nested = {
-      inner: { selector: name(inner), surface: inner.dataset.surface, bg: bg(inner) },
-      outer: { selector: name(outer), surface: outer.dataset.surface, bg: bg(outer) },
-    };
-    if (nested.inner.bg !== nested.outer.bg) {
-      break; // an inverting pair is what is being looked for; keep looking past a matching one
+  let nest = null;
+  if (mustNest) {
+    const inner = document.querySelector(mustNest);
+    if (!inner) {
+      nest = { found: false };
+    } else if (!inner.dataset.surface) {
+      nest = { found: true, selector: name(inner), surfaced: false };
+    } else {
+      const outer = inner.parentElement?.closest("[data-surface]");
+      nest = {
+        found: true,
+        surfaced: true,
+        inner: { selector: name(inner), surface: inner.dataset.surface, bg: bg(inner) },
+        outer: outer
+          ? { selector: name(outer), surface: outer.dataset.surface, bg: bg(outer) }
+          : null,
+      };
     }
   }
-  return { where: name(ground), ground: painted(ground), root: bg(ground), nested };
+  return { where: name(ground), ground: painted(ground), root: bg(ground), nest };
 }

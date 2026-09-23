@@ -6,11 +6,27 @@ import { surfaces } from "./lib/probe.mjs";
 import { eachRoute, finish } from "./lib/render.mjs";
 import { GROUND, ROUTES } from "./routes.mjs";
 
-// The two canvases that contain an inverted block. Each must prove nesting works, and a null here
-// means the block was built with a literal instead — which is the failure worth catching.
-const MUST_NEST = new Set(["landing", "account"]);
+/* The blocks that must invert, named one by one. A selector rather than a boolean, and rather than
+ * "does anything on this page invert": on every light route the first inverting pair in document
+ * order is the shell's inverted "Create agent" action, so a boolean is satisfied by the nav no
+ * matter what the screen's own block does. The portfolio's dark total panel was rebuilt as a
+ * literal with no data-surface at all and this check stayed green, reporting that the portfolio
+ * inverts when what inverted was the nav.
+ *
+ * Where the block carries an authored hook the selector names it and the check asserts the
+ * data-surface separately, which tells "the block is gone" apart from "the block lost its surface".
+ * The portfolio's total panel has neither id nor aria-label, so its selector has to lean on
+ * [data-surface] to find it at all and the two failures collapse into one message. An id there
+ * would separate them. */
+const MUST_NEST = {
+  landing: "#how",
+  "portfolio-connected": 'main section[data-surface="dark"]',
+  account: 'section[aria-label="Wallet"] [data-surface="light"]',
+};
 
-const { results, blocked } = await eachRoute(ROUTES, (page) => page.evaluate(surfaces));
+const { results, blocked } = await eachRoute(ROUTES, (page, route) =>
+  page.evaluate(surfaces, MUST_NEST[route.name] ?? null),
+);
 
 const problems = [];
 const notes = [];
@@ -29,27 +45,42 @@ for (const { route, value } of results) {
     });
   }
 
-  if (!value.nested) {
-    if (MUST_NEST.has(route.name)) {
-      problems.push({
-        route,
-        text: `${route.name} has no data-surface inside another data-surface. Its inverted block was built with a literal rather than by nesting, so the system is not doing its work: the one mechanism everything else rests on is unexercised here.`,
-      });
-    } else {
-      notes.push(`${route.name}: no nested surface (none is required on this screen)`);
-    }
+  const wanted = MUST_NEST[route.name];
+  if (!wanted) {
+    notes.push(`${route.name}: no block on this screen is required to invert`);
     continue;
   }
-  const { inner, outer } = value.nested;
-  if (inner.bg === outer.bg) {
+  const nest = value.nest;
+  if (!nest.found) {
     problems.push({
       route,
-      text: `${route.name}: ${inner.selector} [data-surface="${inner.surface}"] inside ${outer.selector} [data-surface="${outer.surface}"] computes the same --pk-bg (${inner.bg}) as its parent. Nesting the opposite value did not invert anything, so the inverted blocks cannot be built this way.`,
+      text: `${route.name}: nothing matches ${wanted}. That block is either gone or no longer carries data-surface, and either way the one mechanism everything else rests on is unexercised on this screen. It must not be rebuilt as a literal ground and a literal ink: that paints the same pixels and inverts nothing.`,
+    });
+    continue;
+  }
+  if (!nest.surfaced) {
+    problems.push({
+      route,
+      text: `${route.name}: ${nest.selector} matches ${wanted} but carries no data-surface, so whatever makes it look inverted is a literal rather than the system.`,
+    });
+    continue;
+  }
+  if (!nest.outer) {
+    problems.push({
+      route,
+      text: `${route.name}: ${nest.inner.selector} takes data-surface="${nest.inner.surface}" but sits inside no other data-surface, so nothing is being inverted against.`,
+    });
+    continue;
+  }
+  if (nest.inner.bg === nest.outer.bg) {
+    problems.push({
+      route,
+      text: `${route.name}: ${nest.inner.selector} [data-surface="${nest.inner.surface}"] inside ${nest.outer.selector} [data-surface="${nest.outer.surface}"] computes the same --pk-bg (${nest.inner.bg}) as its parent. Nesting the opposite value did not invert anything.`,
     });
     continue;
   }
   notes.push(
-    `${route.name}: ${inner.selector} (${inner.surface}, ${inner.bg}) inverts inside ${outer.selector} (${outer.surface}, ${outer.bg})`,
+    `${route.name}: ${nest.inner.selector} (${nest.inner.surface}, ${nest.inner.bg}) inverts inside ${nest.outer.selector} (${nest.outer.surface}, ${nest.outer.bg})`,
   );
 }
 
