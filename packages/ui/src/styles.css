@@ -158,8 +158,13 @@
   --pk-agent-blue-ink: #2f55c8;
   --pk-agent-indigo-bg: #f1eeff;
   --pk-agent-indigo-ink: #5b3ce0;
-  --pk-agent-violet-bg: #ece6ff;
-  --pk-agent-violet-ink: #6b3fd4;
+  /* The palette holds one hue twice, a deep violet and a light one, and at the wash the other tiles
+   * use the two are 9 apart and read as one colour. Both keep the violet the design chose; what
+   * moves is how far it is washed toward the ground, which is a system parameter rather than a
+   * colour. At 42% the tiles separate by 47 and the inks by 46, against the 12 and 44 that amber and
+   * orange — the palette's closest honest pair — sit at. */
+  --pk-agent-violet-bg: #d5c8ff;
+  --pk-agent-violet-ink: #4a2eb8;
 
   --pk-focus: var(--pk-violet);
 
@@ -259,8 +264,9 @@
   --pk-agent-blue-ink: #5b8cff;
   --pk-agent-indigo-bg: #231b3e;
   --pk-agent-indigo-ink: #b9a6ff;
-  --pk-agent-violet-bg: #252143;
-  --pk-agent-violet-ink: #9b7bff;
+  /* Same separation on this ground: a heavier wash, and an ink lifted to stay legible on it. */
+  --pk-agent-violet-bg: #3c3268;
+  --pk-agent-violet-ink: #d2c6ff;
 
   --pk-focus: var(--pk-lime);
 
