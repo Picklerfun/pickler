@@ -248,12 +248,17 @@ Fourteen CSS modules consume these tokens; five screens have new canvases. Most 
 their composition and inherit the new surface, and look coherent in colour and type without being
 redesigned — which is the point of tokens carrying meaning rather than values.
 
-**Three do not, and an earlier draft of this section was wrong to say they would.** `apply`, `agents`
-and `markets` each paint an opaque dark layer of their own — gradients and a starfield — over
-whatever ground the surface provides. Near-black ink on that is not coherent, it is invisible. That
+**Two do not, and an earlier draft of this section was wrong twice — first in saying every page
+would be fine, then in naming three.** `apply` and `agents` each paint an opaque dark layer of their
+own — gradients and a starfield — over whatever ground the surface provides.
+
+`markets` was listed here and should not have been. The starfield it appeared to carry lives in
+`PublicShell` and renders only for the dark surface; `markets.module.css` paints no opaque ground of
+its own. It is light in the code, measured clean over 113 text elements on a white ground, and the
+pin it never needed is recorded here only so nobody restores it from this paragraph. Near-black ink on that is not coherent, it is invisible. That
 is composition, not colour, and no token can fix it.
 
-So those three are pinned to `data-surface="dark"` until someone draws them light, each with a
+So those two are pinned to `data-surface="dark"` until someone draws them light, each with a
 comment saying why and that the attribute goes when a canvas exists. A page whose composition is
 dark belongs on the dark surface. The same test applies to any module not listed here: painting its
 own opaque ground earns the pin, merely reading tokens does not.
