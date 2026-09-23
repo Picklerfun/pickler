@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
 import {
+  ADD_PASSKEY_ACTIVITY_TYPE,
   ChallengeNotUsableError,
   NoCustodyAccountError,
 } from "../src/features/wallets/domain/passkey.js";
@@ -436,10 +437,13 @@ test("confirming forwards the stamped activity and mirrors the credential", asyn
     },
   ]);
   // The forwarder is what stops a stamped body being aimed at another sub-organization or at
-  // some other activity type, so pin what it was told to expect.
+  // some other activity type, so pin what it was told to expect. The literal is deliberately not
+  // repeated here: it is one shared constant, and whether that constant is the value Turnkey
+  // accepts is settled by the compiler where the adapter builds the body against @turnkey/http's
+  // single-member literal type.
   assert.deepEqual(f.forwards[0]?.expectations, {
     organizationId: "sub-1",
-    allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_AUTHENTICATORS"],
+    allowedActivityTypes: [ADD_PASSKEY_ACTIVITY_TYPE],
   });
 });
 

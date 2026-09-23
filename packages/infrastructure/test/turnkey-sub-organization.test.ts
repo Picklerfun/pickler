@@ -1,9 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SigningServiceUnavailableError } from "@pickler/core";
+import {
+  ADD_PASSKEY_ACTIVITY_TYPE,
+  SigningServiceUnavailableError,
+  type TurnkeyReader,
+} from "@pickler/core";
 import {
   createAddPasskeyActivityBuilder,
   createSubOrganizationCreator,
+  createTurnkeyActivityForwarder,
   MONAD_ACCOUNT,
 } from "../src/index.js";
 
@@ -26,6 +31,9 @@ const INPUT = {
   challenge: "chal-1",
   attestation: ATTESTATION,
 };
+
+/** A passkey stamp is what the browser attaches; the forwarder checks the header name. */
+const stampedByPasskey = { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "sig" };
 
 interface Recorded {
   url: string;
@@ -315,4 +323,58 @@ test("the add-passkey activity honours a custom base URL", () => {
   });
 
   assert.equal(activity.url, "https://api.test.example/public/v1/submit/create_authenticators");
+});
+
+// The seam that broke: the builder emits a body, and the forwarder decides whether to send it.
+// Both halves are real here, and the allow-list is the same constant `confirmAddPasskey` passes,
+// so a body this builder produces is provably one the forwarder will carry.
+test("the forwarder accepts a body this builder produced", async () => {
+  const activity = createAddPasskeyActivityBuilder().build({
+    subOrganizationId: "sub-1",
+    rootUserId: "usr-1",
+    label: "iPhone",
+    challenge: "chal-2",
+    attestation: ATTESTATION,
+  });
+  const sent: string[] = [];
+  const forwarder = createTurnkeyActivityForwarder({
+    reader: {} as TurnkeyReader,
+    fetch: (async (_url: string, init: RequestInit) => {
+      sent.push(String(init.body));
+      return Response.json({
+        activity: { id: "act-1", fingerprint: "fp", status: "ACTIVITY_STATUS_COMPLETED" },
+      });
+    }) as unknown as typeof fetch,
+  });
+
+  const result = await forwarder.forward(
+    { url: activity.url, body: activity.body, stamp: stampedByPasskey },
+    { organizationId: "sub-1", allowedActivityTypes: [ADD_PASSKEY_ACTIVITY_TYPE] },
+  );
+
+  assert.equal(result.status, "ACTIVITY_STATUS_COMPLETED");
+  // Forwarded byte for byte: the passkey signed these exact bytes, so any edit voids the stamp.
+  assert.deepEqual(sent, [activity.body]);
+});
+
+test("the forwarder still refuses a body aimed at someone else's sub-organization", async () => {
+  const activity = createAddPasskeyActivityBuilder().build({
+    subOrganizationId: "sub-2",
+    rootUserId: "usr-1",
+    label: "iPhone",
+    challenge: "chal-2",
+    attestation: ATTESTATION,
+  });
+  const forwarder = createTurnkeyActivityForwarder({
+    reader: {} as TurnkeyReader,
+    fetch: (() => assert.fail("must not reach Turnkey")) as unknown as typeof fetch,
+  });
+
+  await assert.rejects(
+    forwarder.forward(
+      { url: activity.url, body: activity.body, stamp: stampedByPasskey },
+      { organizationId: "sub-1", allowedActivityTypes: [ADD_PASSKEY_ACTIVITY_TYPE] },
+    ),
+    /different organization/,
+  );
 });

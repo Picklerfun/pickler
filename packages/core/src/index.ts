@@ -152,6 +152,7 @@ export * from "./features/trading/types.js";
 export * from "./features/trading/service.js";
 
 export {
+  ADD_PASSKEY_ACTIVITY_TYPE,
   ChallengeNotUsableError,
   NoCustodyAccountError,
   deviceTypeFromTransports,

@@ -3,6 +3,22 @@
 // Changed: device type is derived from transports rather than from an AAGUID vendor table.
 // Relayer's table needs upkeep per vendor and is only used to label a row in the interface.
 
+/**
+ * The activity type that adds a device to an existing sub-organization.
+ *
+ * Turnkey's /public/v1/submit/create_authenticators endpoint accepts only the `_V2` literal:
+ * @turnkey/http types the request's `type` as that single literal, so no other value is even
+ * expressible. The un-suffixed `ACTIVITY_TYPE_CREATE_AUTHENTICATORS` also exists, but only as a
+ * historical label on activities read back from get_activity and list_activities — it cannot be
+ * submitted.
+ *
+ * It lives here, rather than as a literal on each side, because two places must agree on it: the
+ * adapter that builds the unsigned body, and the allow-list `confirmAddPasskey` hands the
+ * forwarder. When they disagreed, every add-device attempt failed at the forwarder — after the
+ * person had completed both biometric ceremonies and after the challenge had been spent.
+ */
+export const ADD_PASSKEY_ACTIVITY_TYPE = "ACTIVITY_TYPE_CREATE_AUTHENTICATORS_V2";
+
 /** What `navigator.credentials.create()` gives us, base64url-encoded. */
 export interface PasskeyAttestation {
   credentialId: string;

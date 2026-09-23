@@ -9,6 +9,7 @@
 // been caught.
 
 import {
+  ADD_PASSKEY_ACTIVITY_TYPE,
   SigningServiceUnavailableError,
   toTurnkeyTransports,
   type PasskeyAttestation,
@@ -134,7 +135,7 @@ export function createAddPasskeyActivityBuilder(config: { baseUrl?: string } = {
     }): UnsignedActivity {
       const timestampMs = String(Date.now());
       const request: TurnkeyApiTypes["v1CreateAuthenticatorsRequest"] = {
-        type: "ACTIVITY_TYPE_CREATE_AUTHENTICATORS_V2",
+        type: ADD_PASSKEY_ACTIVITY_TYPE,
         timestampMs,
         organizationId: input.subOrganizationId,
         parameters: {

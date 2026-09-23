@@ -3,6 +3,7 @@
 // Supabase user rather than an integrator.
 
 import {
+  ADD_PASSKEY_ACTIVITY_TYPE,
   ChallengeNotUsableError,
   NoCustodyAccountError,
   deviceTypeFromTransports,
@@ -191,7 +192,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       }
       const activity = await deps.forwarder.forward(input.signed, {
         organizationId: account.subOrganizationId,
-        allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_AUTHENTICATORS"],
+        allowedActivityTypes: [ADD_PASSKEY_ACTIVITY_TYPE],
       });
       if (activity.status === "ACTIVITY_STATUS_COMPLETED") {
         await deps.repository.addPasskey({
