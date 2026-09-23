@@ -29,8 +29,17 @@ export interface FlowState {
   email: string;
   code: string;
   handle: string;
-  /** The master wallet's address, known only once a passkey has created one. */
+  /**
+   * The master wallet's address, known only once a passkey has created one. This is the screens'
+   * one copy of it: the register response carries it too, but only so the shell can put it here.
+   */
   address: string | null;
+  /**
+   * Whether the account has a second passkey. Account state rather than a place in the flow, so
+   * it moves no step — but the wallet screen's copy and the rail's BACKUP phase both read it, and
+   * a screen holding it privately is how those two come to disagree.
+   */
+  hasBackup: boolean;
 }
 
 /**
@@ -91,6 +100,7 @@ export const INITIAL: FlowState = {
   code: "",
   handle: "",
   address: null,
+  hasBackup: false,
 };
 
 export function next(state: FlowState, event: FlowEvent): FlowState {
@@ -112,8 +122,8 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       return { ...state, step: "wallet", address: event.address };
     case "backup_added":
       // A backup is an addition to the account, not a place in the flow: the wallet screen stays
-      // up and says so. Whether one exists is the wallet screen's own business.
-      return state;
+      // up and says so. The step does not move; what the screen and the rail say does.
+      return { ...state, hasBackup: true };
     case "device_unknown":
       // Not just another screen — the rail above the form becomes the three-phase recovery one.
       return { ...state, mode: "recover", step: "recover" };
@@ -132,12 +142,16 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
 export function rail(state: FlowState): RailPhase[] {
   const phases = RAILS[state.mode];
   const at = phases.findIndex((current) => current.steps.includes(state.step));
+  // The one phase that can finish while you are still standing on it. A backup is an addition to
+  // the account rather than a screen to leave, so once it exists nothing on the rail is pending
+  // and BACKUP goes green under you instead of sitting there asking for something already done.
+  const finished = state.step === "wallet" && state.hasBackup;
   return phases.map((current, index) => ({
     label: current.label,
-    active: index === at,
+    active: index === at && !finished,
     // `at` is -1 when the step belongs to no phase of this rail, and `index < -1` is false for
     // every phase — so a rail that does not contain the step lights nothing, rather than
     // reading as "every phase is behind you".
-    done: index < at,
+    done: index < at || (index === at && finished),
   }));
 }

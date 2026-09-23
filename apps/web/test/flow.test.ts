@@ -32,6 +32,7 @@ test("the flow starts on the account screen of the sign-up rail, with nothing kn
     code: "",
     handle: "",
     address: null,
+    hasBackup: false,
   });
 });
 
@@ -52,6 +53,7 @@ test("signing up walks account, code, handle, passkey, backup", () => {
     code: "482913",
     handle: "nightowl",
     address: "0xAbC0000000000000000000000000000000000001",
+    hasBackup: true,
   });
 });
 
@@ -113,14 +115,51 @@ test("a fresh code replaces whatever was typed for the last one", () => {
   assert.equal(typed.code, "");
 });
 
-test("adding a backup passkey leaves the flow where it is", () => {
+test("adding a backup passkey leaves the screen where it is, but is recorded", () => {
   const onBackup = walk(INITIAL, [
     { type: "code_sent", email: "ana@pickler.xyz" },
     { type: "code_verified" },
     { type: "handle_claimed", handle: "nightowl" },
     { type: "passkey_created", address: "0x01" },
   ]).state;
-  assert.deepEqual(next(onBackup, { type: "backup_added" }), onBackup);
+  assert.equal(onBackup.hasBackup, false);
+
+  const added = next(onBackup, { type: "backup_added" });
+  assert.equal(added.step, "wallet", "a backup is an addition to the account, not a new screen");
+  // The machine has to hold it, not the screen: the rail above the form reads it too, and two
+  // copies of the same fact is how the rail and the screen come to disagree.
+  assert.equal(added.hasBackup, true);
+  assert.deepEqual(added, { ...onBackup, hasBackup: true }, "nothing else may move");
+});
+
+test("a backup lights the last phase rather than leaving it pending under you", () => {
+  const onWallet = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    { type: "code_verified" },
+    { type: "handle_claimed", handle: "nightowl" },
+    { type: "passkey_created", address: "0x01" },
+  ]).state;
+  assert.deepEqual(rail(onWallet), [
+    phase("ACCOUNT", "done"),
+    phase("HANDLE", "done"),
+    phase("PASSKEY", "done"),
+    phase("BACKUP", "active"),
+  ]);
+
+  // BACKUP is the one phase that can finish while you are still standing on it, because a backup
+  // is an addition rather than a place to go. Once it exists nothing on the rail is pending.
+  assert.deepEqual(rail(next(onWallet, { type: "backup_added" })), [
+    phase("ACCOUNT", "done"),
+    phase("HANDLE", "done"),
+    phase("PASSKEY", "done"),
+    phase("BACKUP", "done"),
+  ]);
+});
+
+test("a backup does not light a phase on a rail that has no backup in it", () => {
+  // `hasBackup` is account state and survives a rail change; the sign-in rail must not read it.
+  const stray: FlowState = { ...INITIAL, mode: "in", step: "welcome", hasBackup: true };
+  assert.deepEqual(rail(stray), [phase("ACCOUNT", "done"), phase("IN", "active")]);
 });
 
 test("the sign-up rail lights the phase you are on and every phase before it", () => {
