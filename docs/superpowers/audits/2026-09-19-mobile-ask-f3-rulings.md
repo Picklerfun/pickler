@@ -10,26 +10,34 @@ remoción de nivel, book `LIVE` con datos reales que cambian, socket que se cier
 pill, línea de target «above/inside/below the book», sign-out que limpia `tradeLevel` (incluso uno colgado
 por una orden fallida), push sintético de recordatorio que abre Trade, `metro.log` limpio.
 
-**No verificado end to end**: la única orden autorizada (2.00 AUSD, 1x, LONG BTC, nivel +0.5%·1H) quedó
-**`unknown`** — Perpl no confirmó dentro del timeout de 30 s (`ORDER_TIMEOUT_MS`) — y nunca llenó. Posiciones en 0.00 antes y después, saldo
-`104.86 AUSD free in trading` sin cambio, `LevelCard` no consumido. Por guardrail no se reintentó más de
-una vez en el primer intento; un reintento autorizado por Jesús se abortó **dos veces** antes de `Confirm`
-por una colisión del simulador compartido con otra sesión (Proflores). **Consecuencia directa: `reminder-set`
-nunca se llamó con datos reales, ninguna fila se creó en `mobile.reminders`, y el cron con `fire_at` forzado
-y `remindersSent` nunca se ejercitó en la app** — esa ruta está cubierta por test unitario (Tasks 1–3, RED/
-GREEN documentado) y por el curl server-side de F1, pero no por un recorrido real en el simulador. Esto se
-declara sin adornos en este audit, en el spec (§3 F3) y en el overview.
+**Verificado end to end el 2026-09-23** (retomado tras liberar el simulador; ver §1.1 y la sección
+«Fill definitivo — cierre exitoso» de `task-8-report.md`): intento 1 (22 sep) quedó **`unknown`** — Perpl
+no confirmó dentro del timeout de 30 s (`ORDER_TIMEOUT_MS`) — y dos reintentos se abortaron antes de
+`Confirm` por colisión de simulador (Proflores) y por una pérdida de foreground hacia el Home Screen. El
+intento definitivo (23 sep), con el simulador hecho exclusivo (los otros tres UDIDs apagados, autorizado
+por Jesús), **llenó**: 0.00002 BTC LONG @ 86671.8, margen 2.00 AUSD, 1x, fee taker 0.0005 AUSD, `Confirm`
+único a las 2026-09-23T01:18:48Z. La app llamó `reminder-set` tras el fill y mostró la nota de
+recordatorios; se crearon dos filas en `mobile.reminders` para `0xe371…51C1` (`pre` `4d0db863…`, `expiry`
+`af4b6755…`), ambas forzadas por SQL y procesadas por el cron a `status = sent` (ticks `{"refunded":0,
+"resolved":0,"voided":0,"remindersSent":1,"pushSent":0}`, ids 3990 y 3992 — **`pushSent: 0`**: el pipeline
+de recordatorios corrió limpio, pero **no hubo entrega real de push** porque los secretos APNs siguen
+ausentes; `sent` aquí significa "procesado por `resolve-reads`", no "llegó al dispositivo"). La posición se
+cerró a mano desde Markets (0.00002 BTC @ 86588.1, fee 0.0005 AUSD). Trading 104.86 free → 103.13 free +
+1.73 en posición → 104.86 free; RPC on-chain AUSD 29.00 / MON 0.03850114 sin cambio antes y después (todo
+el movimiento vivió dentro del saldo de trading de Perpl). El intento `unknown` del 22 sep y los dos
+reintentos abortados quedan en el registro como historia — no se borran, explican la secuencia.
 
 Rama `feat/mobile-ask-f3`, base `main` (`5b9acfd`), **8 commits** (`5b9acfd` docs base del plan + 7 de código
-`07dd719..5fb26fe`) más el de esta documentación; sin push y sin merge.
+`07dd719..5fb26fe`) más el de esta documentación; **mergeada y pusheada a `origin/main`** (`38c3fa0`).
 Spec: `docs/superpowers/specs/2026-09-19-mobile-ask-design.md` (D11, D12, D14 y §3/§4 marcados **(F3)**);
 plan: `docs/superpowers/plans/2026-09-19-mobile-ask-f3.md` (P1–P15). Ejecutado con
 subagent-driven-development: un implementador por task (Tasks 1–8), revisión por task, el controlador
 commiteando por nombre de archivo y llevando el ledger (`.superpowers/sdd/2026-09-19-mobile-ask-f3/progress.md`).
 
-**F3 queda `completed`** (ruling 8, abajo): D11 y D12 tienen implementación, tests y verificación visual
-completos, y el único ítem sin evidencia real (la orden llenada + recordatorios + cron) es exactamente lo
-que este audit declara como el primer residual, no algo escondido detrás del status.
+**F3 queda `completed`** (ruling 8, abajo, y confirmado por el fill definitivo del 23 sep): D11 y D12 tienen
+implementación, tests y verificación visual completos, y el ítem que antes quedaba sin evidencia real (la
+orden llenada + recordatorios + cron) ya se ejecutó end to end. El único residual que queda de esta fase es
+el push **real** (`pushSent: 0`, key APNs pendiente) — ver §5.
 
 ## 1. Qué quedó hecho y verificado
 
@@ -46,7 +54,7 @@ Por task; los comandos y salidas son los de los reportes de cada implementador
 | **5** — script `perpl-market-data-capture.mjs` y fixture `market-data-frames.json` (`0d7c7a2`) | Una sola corrida de 20 s (`--market 16 --seconds 20`): `{ '6': 1, '15': 1, '16': 4 }`, `sid 1000016`, snapshot `bid[113]`/`ask[10]` ordenado (mejor precio primero), **34 niveles con `o: 0`** en los updates (objetivo de borrado ampliamente cubierto), 6169 bytes. `EXIT:0`, no hizo falta repetir. |
 | **6** — `src/perpl/marketData.ts` (parser, libro, `MarketDataSocket`), `perpl/config.ts`/`config/perpl.ts`/`app.config.ts` (`65a34e1`) | RED: `Cannot find module '../src/perpl/marketData'`. GREEN: **13/13** tests del módulo (incluido uno contra los frames reales de Task 5: `updates are deltas per price level: o 0 removes, anything else upserts (P4, real frames)`), + 1 test nuevo en `perpl-config.test.ts` (7/7). Suite completa **270/270, 35 suites**; `tsc` limpio. Sin desviaciones del brief. |
 | **7** — `useMarketData`, `BookCard` (`book.tsx`), montaje en `ctx.ts`/`App.tsx`/`market.tsx` (`5fb26fe`) | `tsc` limpio; suite **270/270** sin cambio de conteo. Smoke: **`07-book-live.png`** (LIVE, spread 1.2 bps, mejor bid 85153.4/ask 85163.4), **`07b-book-later.png`** (10 s después, mismo montaje: mejor bid/ask cambiaron, spread igual — confirma frames por bloque sin `recordVideo`), **`07c-book-reopened.png`** (cambio de pill Ask→Trade: socket recreado, libro nuevo, sin residuo), **`07d-book-target.png`** / **`07e-book-target-live.png`** (target «book not loaded» mientras `CONNECTING`, luego «above the book» cuando `LIVE`, 86052.2 > 85213.9 ✓). Desviación: `useMemo` en `BookCard` (cierra el minor de performance de Task 6). |
-| **8** — recorrido en el simulador: nivel, orden de 2.00 AUSD, recordatorios, cron | Ver §1.1 abajo. Resultado: orden `unknown`, sin fill, sin recordatorios, dos intentos de reintento abortados por colisión de simulador. |
+| **8** — recorrido en el simulador: nivel, orden de 2.00 AUSD, recordatorios, cron | Ver §1.1 abajo. Intento 1 (22 sep): `unknown`, sin fill; dos reintentos abortados por colisión de simulador/pérdida de foreground. Intento definitivo (23 sep, simulador exclusivo): **FILLED**, dos recordatorios creados y procesados por el cron, posición cerrada. |
 | **9** — esta documentación | Checks finales en §1.2. |
 
 ### 1.1 Recorrido en el simulador (Task 8, 2026-09-22 ~05:14–06:20Z, cuenta #620)
@@ -111,6 +119,70 @@ selector) → captura de verificación (`08k0-peek.png` + `verify-home-direct.pn
 instrucción #6** («si una captura muestra otra app en primer plano, detente y avísame») — no se tocó
 `Review`, `Confirm`, ni Proflores; no se relanzó nada por cuenta propia. La causa (otra sesión, un cierre
 automático, o el simulador mismo) no se pudo determinar y no se especula.
+
+**Reintento 3, 2026-09-23 (bloqueado de nuevo en Step 1)**: Step 0 repetido (RPC `2026-09-23T00:58:44Z` →
+AUSD 29.00 / MON 0.03850114, `mobile.reminders` `0 · 0`, `verify-fresh-start.png` confirma Wallet en
+foreground). Navegación por celda (`08m-sheet.png`, target 86870.8) → `tapOn: "trade-level"` **`FAILED`**
+(fuera de la porción visible de la hoja, sin enviar ningún evento) → a los 3–5 s, **sin ningún tap
+exitoso de por medio**, el foreground volvió a caer al Home Screen de iOS (`verify-before-scroll.png` /
+`verify-home-check2.png`, dos tomas independientes 3 s aparte). Diagnóstico sin tocar la app:
+`xcrun simctl list devices | grep booted` mostró **4 simuladores booteados simultáneamente**
+(`9D1E60C5`, el nuestro `2B2A0BAD`, `022E44BF`, `D009A318`) y un proceso de automatización de Proflores
+(`duoSplitProbe`) corriendo contra `Simulator.app`, aunque dirigido a otro UDID (`D009A318`); sin crash
+report de Pickler. Concern nuevo (#6 del reporte): la garantía de "simulador exclusivo" no se sostiene
+mientras haya varios simuladores booteados y automatización de otro proyecto activa en paralelo.
+
+**Intento definitivo, 2026-09-23 (simulador realmente exclusivo): FILLED.** El coordinador apagó los
+otros tres UDIDs (`9D1E60C5`, `022E44BF`, `D009A318`) y confirmó que ningún proceso de Proflores seguía
+corriendo; `xcrun simctl list devices booted` mostró **una sola línea** (nuestro UDID). Verificado de forma
+independiente con `simctl io … screenshot` directo (`verify-resume.png`): Pickler en foreground, hoja Ask
+ya armada (target 87007.6). A partir de ahí, Steps 1–4 completos **sin ninguna otra pérdida de foreground**:
+
+- **Step 1**: `scroll` + `tapOn: "trade-level"` → `LevelCard` (target 87014.1, `Segmented` Long, `BookCard`
+  **LIVE** spread 1.2 bps, margen 0.00, 104.86 AUSD free in trading, 1x).
+- **Step 2 — la orden**: **hallazgo de UI nuevo**: con el teclado numérico abierto, un `tapOn` sobre
+  cualquier elemento cuyo nodo de accesibilidad quede geométricamente **detrás** de la línea visible del
+  teclado golpea en realidad la tecla subyacente — un primer `tapOn: "review"` con el teclado abierto no
+  navegó a Review, sino que **agregó un "0" extra al margen** (`2.00` → `2.000`), reproduciendo el mismo
+  bug de "2.002" documentado en el Reintento 1. Causa raíz: `market.tsx` no implementa
+  `Keyboard.dismiss()` ni hay tecla de retorno/"Done" en el `decimal-pad`; sólo tocar un `Text` **no
+  interactivo** visible **por encima** del teclado cierra el teclado de forma confiable (`tapOn: "SPREAD"`
+  funcionó; el header fijo y otros `Touchable` no). Corregido el margen (`eraseText` + `inputText: "2.00"`)
+  y cerrado el teclado con `tapOn: "SPREAD"` → **`tapOn: "review"`** (ya visible) → `YOU OPEN · LONG BTC ·
+  1X · MARKET`, `2.00 AUSD`, NOTIONAL ≈1.73 AUSD · 0.00002 BTC, EST. PRICE 86652.9, FEE ≈0.0005 AUSD,
+  LIQUIDATION ≈1444.2, LEVEL `+0.5%·1H → 87014.1`. **`tapOn: "confirm"` — una sola vez, a las
+  `2026-09-23T01:18:48Z`** → **`FILLED` — "Filled 0.00002 BTC at 86671.8" — "Fee 0.0005 AUSD · LONG 1x"**.
+  Nota **"Reminders set: 15 min before and at expiry."** bajo la card; `LevelCard` consumido al volver a
+  Trade (margen reseteado a `0.00`, 103.13 AUSD free in trading).
+- **Step 3 — recordatorios y cron forzado**: dos filas `scheduled` en `mobile.reminders` para
+  `0xe371…51C1` (`pre` `4d0db863-0ab0-4945-89f6-dd09ae120c03`, `expiry` `af4b6755-c576-48e0-9fa8-f15a516808dc`,
+  target `870141` = 87014.1). Forzado `pre` (`fire_at = now()`) → a los 78 s, `status = sent`
+  (`sent_at 2026-09-23 01:22:01.769503+00`); tick de cron `{"refunded":0,"resolved":0,"voided":0,
+  "remindersSent":1,"pushSent":0}` (id 3990). Forzado `expiry` igual → `status = sent`
+  (`sent_at 2026-09-23 01:24:01.473184+00`); tick `{"refunded":0,"resolved":0,"voided":0,"remindersSent":1,
+  "pushSent":0}` (id 3992). `select count(*) … where status = 'scheduled'` → **0**. **`pushSent: 0` en
+  ambos ticks**: el pipeline de recordatorios corrió limpio end-to-end por primera vez, pero no hubo
+  entrega real de push (sin secretos APNs) — `sent` significa "procesado por `resolve-reads`", no
+  "llegó al dispositivo".
+- **Step 4 — cierre**: `tapOn: "Close"` (texto exacto, visible) **falló dos veces** con "Element not
+  found" pese al texto visible en pantalla; se usó `tapOn: point` con coordenadas — la primera estimación
+  aterrizó por error en la fila **LIT Perp** (navegación sin daño, corregida) y la segunda dio la hoja
+  correcta: `YOU CLOSE · AT MARKET`, `0.00002 BTC LONG`, EST. PNL +0.00 AUSD, botones "Keep it" / "Close
+  position". `tapOn: "close-position"` a las `2026-09-23T01:33:06Z`** → **`FILLED` — "Closed 0.00002 BTC at
+  86588.1" — "Fee 0.0005 AUSD"**. Re-medición RPC (`2026-09-23T01:33:29Z`): AUSD 29.00 / MON 0.03850114,
+  **sin cambio** (esperado: el margen y el PnL viven en el saldo de trading de Perpl, no en el saldo
+  on-chain). Balance de trading final: `TRADING · AUSD 104.86` — `0.00 in positions · 104.86 free` — de
+  vuelta al valor previo a la orden.
+
+**Hallazgos de UI/Maestro de este cierre, para el equipo**: (a) el campo de margen puede recibir un dígito
+extra si se toca cualquier botón cuyo nodo de accesibilidad quede detrás de la posición visible del
+teclado numérico — `market.tsx` no tiene `Keyboard.dismiss()` ni tecla "Done" en el `decimal-pad`; (b)
+`tapOn` por texto exacto visible ("Close", "Back to Markets") falló repetidamente mientras que el
+`accessibilityLabel` explícito (`back-to-markets`, `close-position`) siempre funcionó — preferir siempre
+`accessibilityLabel` sobre texto visible en cualquier corrida futura de Maestro en esta app; (c) con el
+simulador realmente exclusivo (los otros 3 UDIDs apagados, sin proceso `duoSplitProbe` de Proflores), **no
+hubo ninguna pérdida de foreground** en todo el recorrido — confirma que la colisión de recursos (no un
+bug de Pickler ni de Maestro) era la causa raíz de los tres intentos anteriores.
 
 **Pregunta de las keys sobrantes de #620**: Jesús responde **«No / todavía no»** (residual heredado 12 del
 audit F2, no bloquea).
@@ -188,6 +260,21 @@ aparición en el ledger; cada una con *qué cuesta si está mal*.
    hueco escondido. Precedente: F2 se cerró `completed` con el push real pendiente de la key APNs (audit
    F2 ruling 10). El **Step 5** (revisión independiente) lo dispatchea el controlador por fuera de esta
    task, como en F1/F2. **Coste si está mal**: cambiar un status.
+9. **Retomar el reintento de la orden tras el `unknown` del 22 sep (autorizado por Jesús).** Tras el
+   diagnóstico de la ruling 5 (`unknown` ≠ rechazo, hipótesis de hipo del forwarder/testnet) y los dos
+   reintentos abortados por colisión de simulador (rulings 6–7), Jesús autorizó retomar el intento el
+   23 sep con los mismos parámetros (2.00 AUSD, 1x, LONG BTC). El primer retomo de ese día se bloqueó de
+   nuevo en Step 1 (pérdida de foreground hacia el Home Screen, con los 4 simuladores aún booteados y
+   automatización de Proflores corriendo en paralelo) — ver §1.1. **Coste si está mal**: ninguno — es una
+   autorización de reintento, no una acción que mueva dinero; el bloqueo se reportó sin especular la causa.
+10. **Apagar los otros tres simuladores para aislar el UDID (autorizado por Jesús).** Diagnosticada la
+    colisión de recursos como causa probable de los tres bloqueos anteriores (rulings 6, 7 y 9), el
+    coordinador apagó `9D1E60C5`, `022E44BF` y `D009A318` (`xcrun simctl shutdown`) y confirmó por
+    `simctl list devices booted` que sólo quedaba el UDID de Pickler antes de retomar. Con el simulador
+    realmente exclusivo, el intento definitivo llenó sin ninguna otra pérdida de foreground (Step 1–4
+    completos, ver §1.1) — confirma la hipótesis, no la contradice. **Coste si está mal**: ninguno directo;
+    si la causa hubiera sido otra, el intento habría vuelto a bloquearse sin dañar nada (no se llegó a
+    `Confirm` hasta verificar el foreground estable).
 
 ### Minors diferidos del ledger (sin corregir; ninguno con efecto observable en lo que F3 entrega)
 
@@ -218,11 +305,11 @@ Del **spec** (aplicadas en esta task, marcadas **(F3)** en el archivo):
 
 | Dónde | Decía | Queda | Quién lo detectó |
 |---|---|---|---|
-| Cabecera **Estado** | F1/F2 ejecutadas | + F3 ejecutada; orden nunca llenó, recordatorios/cron sin ejercitar end-to-end | Esta task |
+| Cabecera **Estado** | F1/F2 ejecutadas | + F3 ejecutada; orden **FILLED** el 23 sep (tras un intento `unknown` y dos reintentos abortados por colisión de simulador), recordatorios y cron ejercitados end-to-end; sólo el push real queda pendiente de la key APNs | Esta task |
 | D11 | «La semántica exacta de `mt: 16` (reemplazo por nivel vs. delta) se fija en F3 contra frames reales» | **Fijada**: `mt: 16` es delta por nivel de precio, `o: 0` borra — verificado contra los 4 updates reales del fixture (34 niveles con `o: 0`) | Task 5/6, Task 9 |
-| D12 | Botón en hoja y card; recordatorios tras `filled`/`open` | + archivos reales (`level.ts`, `postReminders`, `LevelCard`), consumo del nivel sólo si se programaron, push de recordatorio sin `LevelCard` (P9) | Tasks 1–4, Task 9 |
+| D12 | Botón en hoja y card; recordatorios tras `filled`/`open` | + archivos reales (`level.ts`, `postReminders`, `LevelCard`), consumo del nivel sólo si se programaron, push de recordatorio sin `LevelCard` (P9); **verificado con datos reales el 23 sep**: dos filas en `mobile.reminders`, ambas procesadas por el cron | Tasks 1–4, Task 8, Task 9 |
 | D14 | «Trade this level» no se renderiza hasta F3 (F2, P9) | Se renderiza: hoja (outline lima) y card sólo con la read `open` | Task 4, Task 9 |
-| §3 F3 | «cerrar la posición a mano desde Markets» como si la orden se hubiera llenado | Lo verificado y cómo (Task 8): la orden quedó `unknown`, sin fill; Steps 3–4 (recordatorios, cron, cierre) quedan N/A por esa causa, no por omisión | Task 8, Task 9 |
+| §3 F3 | «cerrar la posición a mano desde Markets» como si la orden se hubiera llenado | **Ya verificado tal cual, el 23 sep**: la orden llenó (Task 8, intento definitivo), la app llamó `reminder-set`, el cron procesó ambos recordatorios (`pushSent: 0`, sin push real por falta de la key APNs) y la posición se cerró a mano desde Markets como describía el spec desde el principio | Task 8, Task 9 |
 | §4 (riesgos) | Cuenta #620 con dos keys sobrantes — revocar antes de F3 | Jesús, 2026-09-22: «todavía no revocadas» — sigue igual, residual heredado sin bloquear | Task 8 |
 
 Del **plan** (no se edita el plan; queda anotado aquí):
@@ -237,69 +324,103 @@ Del **plan** (no se edita el plan; queda anotado aquí):
 
 ## 4. Estado de las cuentas y del servicio al cierre
 
-- **Wallet del simulador**: `$SIM_ADDR = 0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1`. RPC (viem) **antes**
-  (`2026-09-22T05:36:08Z`): **AUSD 29.00 · MON 0.03850114**. RPC **después** (`2026-09-22T05:47:20Z`, tras
-  el intento de orden y la regresión): **AUSD 29.00 · MON 0.03850114** — sin cambio (esperado: el margen
-  de una orden de Perpl sale del saldo ya depositado en la cuenta, no de una tx on-chain nueva; y esta
-  orden ni siquiera llenó). Ningún depósito, retiro, `Enable`/`Reconnect`/`Reset trading key`.
-- **Trading · AUSD (cuenta Perpl #620)**: **104.86 AUSD** en todo momento — `0.00 in positions · 104.86
-  free` antes, durante y después del intento de orden y de los dos reintentos abortados. Ninguna orden se
-  ejecutó realmente pese al `Confirm long` (resultado UI `unknown`).
-- **Orden**: intento único autorizado, margen 2.00 AUSD, 1x, LONG BTC, nivel `+0.5% · 1H → 85691.5` (desde
-  una read `open` pedida vía Ask). Resultado: **`unknown`** (no confirmation) — Perpl nunca confirmó dentro del timeout de 30 s.
-  Verificado por tres señales independientes (0 en posiciones, `mobile.reminders` vacío, `LevelCard` no
-  consumido) que no hubo fill silencioso. **No se reintentó una segunda vez con `Confirm`** — los dos
-  reintentos autorizados se abortaron antes de llegar a esa pantalla, por colisión de simulador.
-- **Cierre**: N/A — no existe posición que cerrar.
-- **Recordatorios (`mobile.reminders`)**: **0 filas** en todo el recorrido (verificado 3 veces: Step 0,
-  tras el intento de orden, y al cierre `2026-09-22T05:59:56Z`). Ningún `update … set fire_at` ejecutado
-  (no había nada que forzar). Ningún tick de `resolve-reads` con `remindersSent`/`pushSent` distinto de 0
-  atribuible a esta fase.
+- **Wallet del simulador**: `$SIM_ADDR = 0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1` (`0xe371…51C1`).
+  RPC (viem) al inicio del intento del 22 sep (`2026-09-22T05:36:08Z`): AUSD 29.00 · MON 0.03850114. RPC
+  antes del intento definitivo del 23 sep (`2026-09-23T00:58:44Z`): idéntico. RPC **después** del cierre
+  de la posición (`2026-09-23T01:33:29Z`): **AUSD 29.00 · MON 0.03850114 — sin cambio** en todo el
+  recorrido (esperado: el margen y el PnL de una orden de Perpl viven en el saldo de trading ya
+  depositado en la cuenta, no en una tx on-chain nueva). Ningún depósito, retiro, `Enable`/`Reconnect`/
+  `Reset trading key`.
+- **Trading · AUSD (cuenta Perpl #620)**: ciclo completo por el fill real — **104.86 AUSD free** antes de
+  abrir → **103.13 free / 1.73 en posición** tras el `Confirm` (`FILLED` 0.00002 BTC LONG @ 86671.8,
+  margen 2.00 AUSD, 1x, fee taker 0.0005 AUSD, `Confirm` único a las `2026-09-23T01:18:48Z`) → **104.86
+  free / 0.00 en posición** tras el cierre a mano desde Markets (`FILLED` 0.00002 BTC @ 86588.1, fee
+  0.0005 AUSD, a las `2026-09-23T01:33:06Z`). Costo neto de las dos fees (0.001 AUSD) invisible al
+  redondeo a 2 decimales mostrado.
+- **Orden**: **FILLED** el 23 sep, margen 2.00 AUSD, 1x, LONG BTC, nivel `+0.5% · 1H → 87014.1` (desde la
+  celda de Ask, sin `readId`). Historia: el intento 1 (22 sep, desde una read `open`, nivel
+  `+0.5%·1H → 85691.5`) quedó `unknown` — Perpl no confirmó dentro del timeout de 30 s, verificado por tres
+  señales independientes (0 en posiciones, `mobile.reminders` vacío, `LevelCard` no consumido) que no
+  hubo fill silencioso; dos reintentos posteriores se abortaron antes de `Confirm`/`Review` por colisión
+  de simulador (Proflores en foreground, y una pérdida de foreground hacia el Home Screen) — ver §1.1 y
+  §2 (rulings 5–7). Un tercer retomo el 23 sep volvió a bloquearse en Step 1 por el mismo patrón antes de
+  que el coordinador apagara los otros tres UDIDs (ruling 9–10); con el simulador realmente exclusivo, el
+  intento definitivo llenó sin más pérdidas de foreground.
+- **Cierre**: **FILLED** el 23 sep (ver arriba) — 0.00002 BTC @ 86588.1, fee 0.0005 AUSD, cerrado a mano
+  desde Markets como describe el spec.
+- **Recordatorios (`mobile.reminders`)**: 0 filas durante todo el intento 1 y los reintentos abortados
+  (verificado repetidamente, incluida la re-consulta previa al intento definitivo). Tras el fill del 23
+  sep, **dos filas `scheduled`** para `0xe371…51C1`: `pre` `4d0db863-0ab0-4945-89f6-dd09ae120c03` (target
+  870141, `fire_at` original `2026-09-23 01:50:45.309+00`) y `expiry` `af4b6755-c576-48e0-9fa8-f15a516808dc`
+  (`fire_at` original `2026-09-23 02:05:45.309+00`). Ambas forzadas por SQL (`fire_at = now()`) y
+  procesadas por el cron: `pre` → `status = sent` (`sent_at 2026-09-23 01:22:01.769503+00`), tick
+  `{"refunded":0,"resolved":0,"voided":0,"remindersSent":1,"pushSent":0}` (id 3990); `expiry` → `status =
+  sent` (`sent_at 2026-09-23 01:24:01.473184+00`), tick idéntico (id 3992). `select count(*) … where
+  status = 'scheduled'` → **0** al cierre. **`pushSent: 0` en ambos ticks** — el pipeline de recordatorios
+  corrió limpio end-to-end por primera vez en esta fase, pero **no hubo entrega real de push**: los
+  secretos APNs siguen ausentes, así que `status = sent` significa "la fila fue procesada y despachada
+  por `resolve-reads`", no "un dispositivo recibió una notificación". No hubo banner en el simulador
+  durante este forzado (no se capturó ninguno), coherente con `pushSent: 0`.
 - **`mobile.devices`**: sin cambios, `env sandbox`, `length(token) = 160` — **el token no se copia** (ni
   aquí ni en los reportes).
 - **Ask credits**: **17 → 16** (1 gastado: la única read solicitada por el guardrail #3 para ver el botón
-  de la `ReadCard`; la hoja de Ask propiamente nunca se envió).
+  de la `ReadCard`, en el intento 1; el intento definitivo del 23 sep usó la celda directa de Ask sin
+  pedir otra read, sin gasto adicional).
 - **Secretos de funciones**: sin cambio desde F1/F2. Presentes (sólo nombres): `ANTHROPIC_API_KEY`,
-  `PERPL_REST`, `CRON_SECRET`. **Ausentes**: `APNS_KEY_P8_B64`, `APNS_KEY_ID`, `APNS_TEAM_ID`. Ninguna
-  función redesplegada, ninguna migración: F3 no tocó `services/reads`. El push de recordatorio usado en
-  Task 8 fue **sintético** (`xcrun simctl push` con un payload armado a mano, `reminderId:
-  "synthetic-test-no-fill"`) — no vino de `resolve-reads`, sólo prueba la navegación (`patchForPush`).
+  `PERPL_REST`, `CRON_SECRET`. **Ausentes**: `APNS_KEY_P8_B64`, `APNS_KEY_ID`, `APNS_TEAM_ID` — esto es lo
+  que explica `pushSent: 0` en los dos ticks de cron del fill real; ninguna función redesplegada, ninguna
+  migración, F3 no tocó `services/reads`. El push de recordatorio probado en Task 8 fuera del fill real
+  fue **sintético** (`xcrun simctl push` con un payload armado a mano, `reminderId:
+  "synthetic-test-no-fill"`) — no vino de `resolve-reads`, sólo probó la navegación (`patchForPush`).
 - **App/simulador**: dev build de `mobile-nav` (build 9) sin rebuild nativo (F3 no añade módulos nativos);
-  Metro del worktree vivo toda la sesión (PID 55611); Face ID enrolado; permiso de notificaciones
-  concedido. **Incidente de simulador compartido**: durante los dos reintentos de la orden, el mismo UDID
-  mostró en foreground la app de **Proflores** (`captura@proflores.app`, pedidos reales) y después la
-  pantalla de inicio de iOS, en ambos casos sin ningún tap propio de por medio — otra sesión (o el propio
-  simulador) tomó el foreground de forma concurrente. Ningún tap de este recorrido tocó Proflores.
-- **Cuenta Perpl #620**: sin tocar más allá del intento de orden que no llenó; las dos trading keys
-  sobrantes siguen sin revocar (Jesús, 2026-09-22: «No / todavía no»).
-- **Rollback**: nada que revertir en el proyecto compartido — ninguna fila nueva quedó en `mobile.reminders`
-  ni en ninguna otra tabla (la única read de Task 8 ya la cubre el ledger de créditos existente). En la
-  app, `git revert` por commit. Nada de esto se ejecutó.
+  Metro del worktree vivo toda la sesión; Face ID enrolado; permiso de notificaciones concedido.
+  **Incidente de simulador compartido (historia, resuelto)**: durante los reintentos del 22 y 23 sep, el
+  mismo UDID mostró en foreground la app de **Proflores** (`captura@proflores.app`, pedidos reales) y,
+  por separado, la pantalla de inicio de iOS, en ambos casos sin ningún tap propio de por medio — otra
+  sesión (o el propio simulador, con 4 UDIDs booteados y automatización de Proflores corriendo en
+  paralelo) tomó el foreground de forma concurrente. Ningún tap de este recorrido tocó Proflores. El
+  coordinador apagó los otros tres UDIDs (`9D1E60C5`, `022E44BF`, `D009A318`) y verificó exclusividad
+  antes del intento definitivo, que corrió sin ninguna otra pérdida de foreground.
+- **Cuenta Perpl #620**: la orden de prueba llenó y se cerró limpiamente; las dos trading keys sobrantes
+  siguen sin revocar (Jesús, 2026-09-22: «No / todavía no»).
+- **Rollback**: nada que revertir en el proyecto compartido — las dos filas de `mobile.reminders` del fill
+  real ya quedaron en `sent`/procesadas (no hay `scheduled` colgado que limpiar) y la posición ya está
+  cerrada. En la app, `git revert` por commit. Nada de esto se ejecutó.
 
 ## 5. Pendientes / residuales
 
-Ordenados por peso — primero lo nuevo de esta fase, después lo heredado:
+Ordenados por peso — primero lo nuevo de esta fase, después lo heredado. **Resuelto en este cierre** (ya no
+es residual): la colisión de simulador con Proflores que bloqueó dos reintentos — el coordinador apagó los
+otros tres UDIDs y verificó exclusividad antes del intento definitivo, que corrió sin ninguna otra pérdida
+de foreground (§1.1, ruling 10).
 
-1. **La orden de prueba no llenó y la ruta real de `reminder-set`/cron nunca se ejercitó en la app**
-   (Task 8, §1.1 y §4). `reminder-set` y el fallback local están cubiertos por test unitario (RED/GREEN de
-   Tasks 1–3) y la resolución de reads por el curl server-side de F1, pero **nadie ha visto, en el
-   simulador, una orden real que dispare dos filas `scheduled` en `mobile.reminders` y un cron que las
-   procese con `fire_at` forzado.** Requiere una ventana exclusiva del simulador (sin colisión con
-   Proflores u otra sesión) para reintentar el `Confirm`; vale también preguntar a alguien con más
-   contexto de Perpl por qué el order forwarder no confirmó dentro de los 30 s del timeout en testnet.
-2. **Simulador `2B2A0BAD-…` compartido con otras sesiones (Proflores) sin coordinación**: el UDID que el
-   plan reservó para Pickler cambió de foreground dos veces durante los reintentos de Task 8 sin ningún
-   tap propio de por medio. Cualquier recorrido futuro en este simulador corre el riesgo de interferencia;
-   coordinar una ventana de tiempo exclusiva o pedir un UDID dedicado antes de reintentar la orden.
-3. **Dos keys de trading sobrantes en la cuenta #620 sin revocar** (residual 12 del audit F2; Jesús,
+1. **Falta el push REAL de recordatorio**: `pushSent: 0` en los dos ticks de cron del fill real
+   (`remindersSent` sí en 1) porque los secretos APNs (`APNS_KEY_P8_B64`, `APNS_KEY_ID`, `APNS_TEAM_ID`)
+   siguen ausentes (Task 8, §1.1 y §4; residual 1 del audit F1/F2, sigue igual). El pipeline de
+   recordatorios ya corrió limpio end-to-end en el simulador — `reminder-set`, las dos filas en
+   `mobile.reminders` y el cron que las procesa a `sent` —, así que este residual ya **no** es «la orden
+   nunca llenó»; es específicamente que ningún dispositivo recibió una notificación real. El tap del push
+   sólo se probó con un payload sintético de `simctl push`, no con un `resolve-reads` real.
+2. **Dos keys de trading sobrantes en la cuenta #620 sin revocar** (residual 12 del audit F2; Jesús,
    2026-09-22: «No / todavía no»). No bloquea — la key del simulador sigue enrolada y funciona.
-4. **Push real de recordatorio sin ver llegar**: depende de la key APNs (residual 1 del audit F1/F2, sigue
-   pendiente); el tap se probó con un payload sintético de `simctl push`, no con un `resolve-reads` real.
-5. **Capability Push Notifications en el App ID `fun.pickler.app`** (heredado del audit F2, residual 2):
+3. **Capability Push Notifications en el App ID `fun.pickler.app`** (heredado del audit F2, residual 2):
    insumo de Jesús para el iPhone y el próximo build de TestFlight (F4).
-6. **Persona real del agente `jesus` sigue en placeholder** (heredado de F1/F2, residual 8 del audit F2).
-7. **Maestro `id:` no matchea en esta app** (accessibilityText, no resource-id): cualquier flujo futuro debe
-   usar `tapOn` por texto, no `id:` — documentado en tres tasks (4, 7, 8) para que no se repita el hallazgo.
+4. **Persona real del agente `jesus` sigue en placeholder** (heredado de F1/F2, residual 8 del audit F2).
+5. **Maestro `id:` no matchea en esta app** (accessibilityText, no resource-id): cualquier flujo futuro debe
+   usar `tapOn` por texto o `accessibilityLabel`, no `id:` — documentado en tres tasks (4, 7, 8) para que no
+   se repita el hallazgo.
+6. **Nuevo — `market.tsx` no cierra el teclado numérico del margen**: el `decimal-pad` del campo de margen
+   no tiene `Keyboard.dismiss()`, `TouchableWithoutFeedback` ni tecla de retorno/"Done" (sólo
+   `keyboardShouldPersistTaps="handled"` en el `ScrollView` de `Page.tsx`). Con el teclado abierto, un tap
+   sobre cualquier elemento geométricamente detrás de la línea visible del teclado (p. ej. el botón
+   Review) golpea en realidad la tecla subyacente y agrega un dígito extra al margen — pasó dos veces en
+   este recorrido (`2.002` en el reintento 1, `2.000` en el intento definitivo antes de corregirlo). Vale
+   la pena que el equipo de producto le añada un cierre de teclado real a Trade.
+7. **Nuevo — en Maestro, `tapOn` por texto exacto es poco confiable en esta app**: "Close" y "Back to
+   Markets" fallaron repetidamente con "Element not found" pese a estar visibles en pantalla, mientras que
+   el `accessibilityLabel` explícito (`back-to-markets`, `close-position`) siempre funcionó. Recomendación
+   para cualquier corrida futura de Maestro en Pickler: preferir siempre `accessibilityLabel` sobre
+   selector de texto.
 8. **Minors diferidos del ledger** (§2, sin efecto observable en lo que F3 entrega): Task 2
    (`ReminderKind` inlineado en dos archivos), Task 4 (copy «Resolves … · in …» con palabra repetida;
    `level` capturado antes del fill sin re-chequeo de vencimiento), Task 6 (seis, todos en
@@ -312,13 +433,16 @@ Ordenados por peso — primero lo nuevo de esta fase, después lo heredado:
 
 ## 6. Siguiente punto de decisión
 
-F3 termina aquí en `completed` (ruling 8): **sin push, sin merge y sin key APNs**, con el fill real de la
-orden pendiente de una ventana exclusiva del simulador. La rama `feat/mobile-ask-f3` tiene 8 commits sobre
-`main` (`5b9acfd`, 1 de docs base + 7 de código) más el de esta documentación; 270/270 tests, 35 suites y
-`tsc` en verde; book L2 vivo, «Trade this level» y `LevelCard` reales en el simulador. Decide Jesús:
-(1) si se **mergea/pushea F3** (y F1+F2, que siguen en `main` local sin llegar a `origin/main`); (2) si se
-**reintenta la orden** en una ventana exclusiva del simulador para cerrar el residual 1 (fill real +
-recordatorios + cron) antes o después del merge; (3) **F4** — retitulada a «TestFlight con F3 (siguiente
-build tras el merge)» por P15, sigue `pending`, prerequisito «F3; autorización explícita de Jesús»; (4) la
-**key APNs** (residual 4, heredado de F1/F2) y las **dos keys de trading sobrantes de #620** (residual 3,
-respuesta de Jesús: «todavía no»). Quedan **21 días** para el bounty (13 oct 2026, 21:59 CST).
+**F3 queda verificada end to end** (2026-09-23): la orden llenó, la app llamó `reminder-set`, las dos
+filas de `mobile.reminders` se procesaron por el cron y la posición se cerró a mano desde Markets — el
+único residual nuevo de esta fase es el push **real** (`pushSent: 0`, key APNs pendiente, ver §5.1). El
+merge y el push ya se hicieron: `feat/mobile-ask-f3` está mergeada y `main` (`38c3fa0`) está en
+`origin/main`. 270/270 tests, 35 suites y `tsc` en verde; book L2 vivo, «Trade this level», `LevelCard` y
+ahora también el fill/recordatorios/cierre reales en el simulador. Decide Jesús:
+(1) **F4** — retitulada a «TestFlight con F3 (siguiente build tras el merge)» por P15, sigue `pending`,
+prerequisito «F3; autorización explícita de Jesús» — F3 ya cumple su prerequisito, falta la autorización
+para subir el build; (2) la **key APNs** (residual 4, heredado de F1/F2, ahora la única pieza que falta
+para que el push de recordatorio sea real) y las **dos keys de trading sobrantes de #620** (residual 2,
+respuesta de Jesús: «todavía no»); (3) si vale la pena que producto revise el hallazgo del `decimal-pad`
+sin cierre de teclado (residual 6) antes del siguiente build. Quedan **20 días** para el bounty (13 oct
+2026, 21:59 CST).

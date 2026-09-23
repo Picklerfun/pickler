@@ -13,10 +13,10 @@ distinto o más preciso. **F1 `completed`** (push real de APNs visto el 2026-09-
 fix gate ejecutado (plan `2026-09-21-markets-ask-gate.md`).
 **F3 ejecutada** (plan `docs/superpowers/plans/2026-09-19-mobile-ask-f3.md`, audit
 `docs/superpowers/audits/2026-09-19-mobile-ask-f3-rulings.md`): `MarketDataSocket`/`BookCard` con frames
-reales de Perpl y «Trade this level»/`LevelCard`/`reminder-set` completos y probados por unidad; la única
-orden autorizada en el simulador quedó `unknown` (sin confirmación de Perpl) y nunca llenó, así que
-`reminder-set` y el cron con recordatorios reales **no se ejercitaron end-to-end en la app** (sí por test
-unitario y por el curl de F1). Ver audit F3 §1 y §5.
+reales de Perpl y «Trade this level»/`LevelCard`/`reminder-set` completos, probados por unidad y **verificados
+end to end el 2026-09-23** (tras un primer intento `unknown` y dos reintentos abortados por colisión de
+simulador): orden FILLED, dos recordatorios creados y procesados por el cron, posición cerrada a mano. El
+push **real** sigue pendiente (`pushSent: 0`, falta la key APNs). Ver audit F3 §1 y §5.
 **Slug**: `mobile-ask`
 **Rama**: `feat/mobile-ask`, base `main` (`5ed4e1c`, = `origin/main`), worktree `.claude/worktrees/mobile-ask`
 **Contexto**: el build 5 de TestFlight (2026-09-19) deja Wallet y Trade reales con el diseño hi-fi, y
@@ -294,21 +294,23 @@ autorización de Jesús en esa sesión.
   en 0 sin `APNS_*`) y el prompt visible de Face ID (el simulador resolvió la lectura autenticada del
   keychain sin prompt). Con la wallet `unlocked` tras el passkey la sesión se firma sola (P3), así que
   «pide Face ID una sola vez» se cumplió como «ninguna vez visible».
-- **F3**: **(F3) Lo verificado y cómo** (audit F3 §1 y §4, 2026-09-22, simulador `2B2A…05E0`, wallet
+- **F3**: **(F3) Lo verificado y cómo** (audit F3 §1 y §4, 2026-09-22/23, simulador `2B2A…05E0`, wallet
   `0xe371…51c1`): `BookCard` con bids/asks que cambian y el spread en vivo (spread 1.2 bps, 8.2 bps en
   el reintento), 5 niveles por lado; cambiar de pill cierra el socket y volver lo reabre (`LIVE` de
   nuevo); «Trade this level» desde la `ReadCard` de una read `open` pone el lado sugerido y la
   `LevelCard` con target/vencimiento; sign out limpia `tradeLevel` (incluso uno colgado por una orden
   fallida); un push sintético de recordatorio abre Market → Trade sin `LevelCard` (P9); `metro.log` sin
-  `ERROR`/`Require cycle`. **No verificado end to end**: la única orden autorizada (2.00 AUSD, 1x, LONG
-  BTC, nivel +0.5%·1H) quedó **`unknown`** (Perpl no confirmó en 30 s) y nunca llenó — posiciones en
-  0.00 antes y después, `104.86 AUSD free in trading` sin cambio, `LevelCard` no consumido. Por
-  guardrail, no se reintentó más de una vez; un reintento autorizado se abortó dos veces antes de
-  `Confirm` por colisión del simulador con otra sesión (Proflores). Consecuencia: **`reminder-set` nunca
-  se llamó con datos reales, ninguna fila se creó en `mobile.reminders` y el cron con `fire_at` forzado
-  y `remindersSent` nunca se ejercitó en la app** — la ruta de recordatorios está cubierta por test
-  unitario (Tasks 1–3) y por el curl server-side de F1, no por un recorrido real en el simulador. Ver
-  audit F3 §1 (tabla por task), §4 (saldos antes/después) y §5 (primer residual).
+  `ERROR`/`Require cycle`. **Verificado end to end el 2026-09-23**: tras un primer intento que quedó
+  `unknown` (Perpl no confirmó en 30 s) y dos reintentos abortados por colisión del simulador con otra
+  sesión (Proflores), el intento definitivo — con el simulador hecho exclusivo (los otros tres UDIDs
+  apagados, autorizado por Jesús) — **llenó**: 0.00002 BTC LONG @ 86671.8, margen 2.00 AUSD, 1x, fee
+  0.0005 AUSD. La app llamó `reminder-set` y mostró la nota de recordatorios; se crearon dos filas en
+  `mobile.reminders` (`pre`, `expiry`), ambas forzadas por SQL y procesadas por el cron
+  (`{"remindersSent":1,"pushSent":0}` en ambos ticks — **`pushSent: 0`: el pipeline corrió limpio pero no
+  hubo entrega real de push porque los secretos APNs siguen ausentes**). La posición se cerró a mano
+  desde Markets (0.00002 BTC @ 86588.1, fee 0.0005 AUSD); trading 104.86 free → 103.13 free + 1.73 en
+  posición → 104.86 free; RPC on-chain AUSD 29.00 / MON 0.03850114 sin cambio. Ver audit F3 §1 (tabla por
+  task e intento definitivo), §4 (saldos antes/después) y §5 (residual del push real).
 - **F4**: `buildNumber` siguiente (los builds 6–9 de TestFlight ya subieron otras fases; éste sube
   con Ask + Trade completos de F3), archive, upload, `VALID` con el grupo Equipo, tracker
   `docs/overview/dev/<fecha>-testflight-build<N>.html`; en el iPhone de Jesús: una lectura completa

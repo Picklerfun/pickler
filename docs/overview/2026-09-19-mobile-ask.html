@@ -248,7 +248,7 @@
         <div class="phase-body">
           <p><code>MarketDataSocket</code> sobre <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>order-book@&lt;id&gt;</code>, mt 15/16, un socket por ticket visible, sin pings), <code>BookCard</code> con 5 niveles por lado y spread, <code>LevelCard</code> con lado sugerido y <code>reminder-set</code> tras el fill (15 min antes y al vencer, con el mark en el push). Sin cierre automático ni take-profit. 270/270 tests, 35 suites, <code>tsc</code> limpio.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Verificado en el simulador: book L2 en vivo (spread real, 5 niveles por lado, se cierra/reabre con el pill), «Trade this level» desde una read <code>open</code> con <code>LevelCard</code>, sign-out limpia el nivel, push <b>sintético</b> de recordatorio (<code>simctl push</code>, no una entrega real de APNs) abre Trade. <b>No verificado:</b> la única orden autorizada (2.00 AUSD, 1x, LONG BTC) quedó <code>unknown</code> y nunca llenó — <code>reminder-set</code> no se llamó con datos reales, sin filas en <code>mobile.reminders</code> ni tick de cron ejercitado en la app (sí cubierto por test unitario y por el curl server-side de F1). Detalle en el audit F3.</div></div>
+            <div><div class="k">Entregable</div><div class="v">Verificado en el simulador: book L2 en vivo (spread real, 5 niveles por lado, se cierra/reabre con el pill), «Trade this level» desde una read <code>open</code> con <code>LevelCard</code>, sign-out limpia el nivel, push <b>sintético</b> de recordatorio (<code>simctl push</code>, no una entrega real de APNs) abre Trade. <b>Verificado end to end el 2026-09-23:</b> tras un intento que quedó <code>unknown</code> y dos reintentos abortados por colisión de simulador, el intento definitivo (simulador exclusivo, autorizado por Jesús) <b>llenó</b> — 0.00002 BTC LONG @ 86671.8, margen 2.00 AUSD, 1x — la app llamó <code>reminder-set</code>, se crearon dos filas en <code>mobile.reminders</code> y el cron las procesó (<code>remindersSent: 1</code> en ambos ticks); posición cerrada a mano desde Markets @ 86588.1. <b>Pendiente:</b> el push <b>real</b> — <code>pushSent: 0</code> en los dos ticks porque los secretos APNs siguen ausentes; el pipeline corrió limpio, pero ningún dispositivo recibió una notificación. Detalle en el audit F3.</div></div>
             <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620 (Jesús responde 2026-09-22: «No / todavía no» — residual heredado, no bloquea)</div></div>
           </div>
           <details class="tasks">
@@ -271,10 +271,12 @@
           <details class="followups">
             <summary>Pendientes (no bloqueantes)</summary>
             <ul>
-              <li><b>La orden de prueba no llenó</b> (<code>unknown</code>, sin confirmación de Perpl en 30 s): la ruta real de <code>reminder-set</code>/cron con datos de la app queda sin ejercitar; reintentarla exige una ventana exclusiva del simulador (colisión con otra sesión, Proflores, durante el intento).</li>
+              <li>Falta el push <b>real</b> de recordatorio: <code>pushSent: 0</code> en los ticks de cron del fill del 23 sep porque los secretos APNs siguen ausentes; el pipeline de recordatorios ya corrió limpio end-to-end en el simulador (heredado de F1/F2, residual 1).</li>
               <li>Dos keys de trading sobrantes en la cuenta #620 sin revocar (Jesús, 2026-09-22: «No / todavía no»).</li>
               <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> y la key APNs siguen pendientes (heredado de F1/F2): el push real de recordatorio depende de ellas.</li>
               <li>Persona real del agente <code>jesus</code> sigue en placeholder (heredado de F1).</li>
+              <li><code>market.tsx</code> no cierra el teclado numérico del margen (sin <code>Keyboard.dismiss()</code> ni tecla "Done"): un tap detrás del teclado puede agregar un dígito extra al margen (visto dos veces en el recorrido del 23 sep).</li>
+              <li>En Maestro, <code>tapOn</code> por texto exacto es poco confiable en esta app ("Close" falló repetidamente pese a estar visible) — preferir siempre <code>accessibilityLabel</code>.</li>
             </ul>
           </details>
         </div>
