@@ -358,7 +358,7 @@
 .railPause[data-paused="true"] {
   background: var(--pk-lime-tint);
   border-color: var(--pk-lime-edge);
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 .railPause:disabled {
   opacity: 0.5;
@@ -974,7 +974,7 @@
 }
 .key[data-tint="lime"] {
   border-color: var(--pk-lime-edge);
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 .keyBand {
   width: 10px;
@@ -995,7 +995,7 @@
   background: var(--pk-lime);
 }
 .keyValue[data-ok="true"] {
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 .keyValue[data-ok="false"] {
   color: var(--pk-pink-ink);
@@ -1045,7 +1045,7 @@
   font-weight: 700;
 }
 .policyLine strong[data-tint="lime"] {
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 .policyLine strong[data-tint="magenta"] {
   color: var(--pk-pink-ink);
@@ -1105,7 +1105,7 @@
 }
 .passed svg {
   flex: none;
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 
 .trio {
@@ -1509,7 +1509,7 @@ a.source:hover {
   border-color: var(--pk-lime-edge);
 }
 .limit[data-on="true"] b {
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 .limit span {
   display: block;
@@ -1660,7 +1660,7 @@ a.source:hover {
   filter: brightness(1.12);
 }
 .note[data-warn="true"] {
-  color: var(--pk-amber);
+  color: var(--pk-amber-ink);
 }
 
 /* The escape hatch: what the API actually stored, for when the designed surfaces disagree with

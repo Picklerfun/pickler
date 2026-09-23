@@ -153,7 +153,7 @@
   background: var(--pk-lime-tint);
   font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 
 .choiceSub {
@@ -168,7 +168,7 @@
   display: block;
   margin-top: 4px;
   font: 500 11.5px/1.4 var(--pk-font);
-  color: var(--pk-amber);
+  color: var(--pk-amber-ink);
 }
 
 .waiting,

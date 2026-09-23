@@ -9,6 +9,7 @@
   --cyan-ink: var(--pk-cyan-ink);
   --rule: var(--pk-rule);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan: var(--pk-cyan);
   --magenta: var(--pk-magenta);
   --display: var(--pk-font-display);
@@ -347,7 +348,7 @@
   width: auto;
   border-color: rgba(200, 240, 58, 0.45);
   font-weight: 700;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .hint {
@@ -364,7 +365,7 @@
 }
 
 .good {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .bad {
@@ -481,7 +482,7 @@
 .pieceCount {
   font: 500 12px/1 var(--label);
   letter-spacing: 0.08em;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .well {
@@ -651,7 +652,7 @@
 }
 
 .tileLime dd {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .tileCyan dd {

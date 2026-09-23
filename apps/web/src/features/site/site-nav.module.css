@@ -66,7 +66,7 @@
 }
 
 .menuButtonOn {
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 
 .dropdown {
@@ -147,7 +147,7 @@
   composes: soon;
   border-color: var(--pk-lime-edge);
   background: var(--pk-lime-tint);
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 
 /* Connect sits beside Join, quieter: one of them is the page's action and the other is a utility. */
@@ -217,7 +217,7 @@
 
 /* A menu entry lights lime on the way in: that is the colour of going somewhere in this product. */
 .nav a.item:hover .itemTitle {
-  color: var(--pk-lime);
+  color: var(--pk-lime-ink);
 }
 
 .nav a.item .itemSub {

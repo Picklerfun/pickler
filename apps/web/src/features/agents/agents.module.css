@@ -8,6 +8,7 @@
   --faint: var(--pk-ink-faint);
   --cyan-ink: var(--pk-cyan-ink);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan: var(--pk-cyan);
   --pink-ink: var(--pk-pink-ink);
   --magenta: var(--pk-magenta);
@@ -41,7 +42,7 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
@@ -87,7 +88,7 @@
 }
 
 .toneWin {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 .toneLoss {
   color: var(--pink-ink);
@@ -126,7 +127,7 @@
 .page a.navTabActive:hover {
   background: rgba(200, 240, 58, 0.12);
   border-bottom: 2px solid var(--lime);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* ---------- Board ---------- */
@@ -334,7 +335,7 @@
 .stageGraduated {
   background: rgba(200, 240, 58, 0.12);
   border-color: rgba(200, 240, 58, 0.45);
-  color: var(--lime);
+  color: var(--lime-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -636,7 +637,7 @@
 .resultWon {
   background: rgba(200, 240, 58, 0.12);
   border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .resultLost {
@@ -1030,7 +1031,7 @@
 
 .page a.meetChip {
   border-color: rgba(200, 240, 58, 0.45);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .curveLabel {
@@ -1155,7 +1156,7 @@
 .rankFirst {
   background: rgba(200, 240, 58, 0.14);
   border-color: rgba(200, 240, 58, 0.5);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .tableScore {
@@ -1219,7 +1220,7 @@
 .kindCALL {
   background: rgba(200, 240, 58, 0.12);
   border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 .kindPOSITION {
   background: rgba(90, 216, 255, 0.12);
@@ -1279,7 +1280,7 @@
 .page a.ghostButton:hover,
 .ghostButton:hover {
   border-color: var(--lime);
-  color: var(--lime);
+  color: var(--lime-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -1371,7 +1372,7 @@
   font: 700 clamp(30px, 6vw, 52px)/1 var(--display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .analyticsGroup {
@@ -1847,7 +1848,7 @@
 }
 
 .page a.agentCardHead:hover strong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .agentCardName {
@@ -2008,7 +2009,7 @@
 
 .page .followingButton {
   border-color: rgba(200, 240, 58, 0.5);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* ---------- Reads ---------- */
@@ -2037,7 +2038,7 @@
 .evalTag[data-state="happened"] {
   background: rgba(200, 240, 58, 0.12);
   border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .evalTag[data-state="missed"] {
@@ -2350,7 +2351,7 @@
 }
 
 .readOutcome[data-tone="win"] strong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .readOutcome[data-tone="loss"] {

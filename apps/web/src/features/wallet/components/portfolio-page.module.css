@@ -75,7 +75,7 @@
   border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-pill);
   font: 600 12px/1 var(--pk-font);
-  color: var(--pk-amber);
+  color: var(--pk-amber-ink);
   cursor: pointer;
 }
 

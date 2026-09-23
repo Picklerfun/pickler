@@ -79,6 +79,12 @@
   --pk-violet: #5b3ce0;
   --pk-violet-ink: #5b3ce0;
   --pk-magenta-ink: #c62c62;
+  /* Every accent splits into the colour and the ink of that colour, because an accent bright enough
+   * to carry a fill is never dark enough to be read on white. A lime button stays lime; the word
+   * "lime" set in lime is 1.3:1 and is not there at all. These two are the light surface's own lime
+   * and amber, which is to say the good and caution state inks. */
+  --pk-lime-ink: #3f6b00;
+  --pk-amber-ink: #8a6200;
   /* Lime and pink read on black and vanish on white, so the money colours are a green and a red
    * chosen to survive this ground. They are the one accent pair that is not the same hue on both. */
   --pk-win: #2e7d32;
@@ -156,6 +162,10 @@
   --pk-violet: #9b7bff;
   --pk-violet-ink: #b9a6ff;
   --pk-magenta-ink: #ff9ec6;
+  /* On this ground the accent already reads, so the ink is the accent. The split still has to
+   * exist, or the light surface has nowhere to differ. */
+  --pk-lime-ink: #c8f03a;
+  --pk-amber-ink: #ffc93f;
   --pk-win: #c8f03a;
   --pk-loss: #ff9ec6;
   --pk-on-violet: #0b0618;

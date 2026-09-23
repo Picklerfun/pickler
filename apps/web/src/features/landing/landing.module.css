@@ -9,8 +9,10 @@
   --space: var(--pk-bg);
   --rule: var(--pk-rule);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan: var(--pk-cyan);
   --amber: var(--pk-amber);
+  --amber-ink: var(--pk-amber-ink);
   --magenta: var(--pk-magenta);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
@@ -296,7 +298,7 @@
 }
 
 .toneWin {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .toneLoss {
@@ -308,7 +310,7 @@
 }
 
 .toneCaution {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .toneNeutral {
@@ -455,7 +457,7 @@
 }
 
 .headline span {
-  color: var(--lime);
+  color: var(--lime-ink);
   text-shadow: 0 0 40px rgba(200, 240, 58, 0.6);
 }
 
@@ -627,7 +629,7 @@
   font: 700 clamp(48px, 6vw, 76px)/0.9 var(--display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
-  color: var(--lime);
+  color: var(--lime-ink);
   text-shadow: 0 0 36px rgba(200, 240, 58, 0.5);
 }
 
@@ -706,7 +708,7 @@
 .funded {
   font: 500 12px/1 var(--label);
   letter-spacing: 0.06em;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .well {
@@ -1346,7 +1348,7 @@
   border: 1px solid rgba(255, 201, 63, 0.5);
   font: 500 11px/1 var(--label);
   letter-spacing: 0.1em;
-  color: var(--amber);
+  color: var(--amber-ink);
   border-radius: var(--pk-radius-pill);
 }
 

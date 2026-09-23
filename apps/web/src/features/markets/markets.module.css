@@ -12,10 +12,12 @@
   --faint: var(--pk-ink-faint);
   --placeholder: var(--pk-ink-placeholder);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan-ink: var(--pk-cyan-ink);
   --violet-ink: var(--pk-violet-ink);
   --pink-ink: var(--pk-pink-ink);
   --amber: var(--pk-amber);
+  --amber-ink: var(--pk-amber-ink);
   --rule: var(--pk-rule);
   --border: var(--pk-border);
   --display: var(--pk-font-display);
@@ -66,7 +68,7 @@
 }
 
 .toneWin {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .toneLoss {
@@ -74,7 +76,7 @@
 }
 
 .toneWarn {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .toneAskInk {
@@ -392,7 +394,7 @@
 .modes [data-value="trade"][aria-pressed="true"] {
   border-color: var(--pk-lime-edge);
   background: var(--pk-lime-tint);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .coverage {
@@ -428,7 +430,7 @@
 
 .surface {
   composes: pk-panel from global;
-  --accent-ink: var(--lime);
+  --accent-ink: var(--lime-ink);
   --accent-on: rgba(200, 240, 58, 0.4);
   --accent-soft: rgba(200, 240, 58, 0.08);
 
@@ -494,7 +496,7 @@
 
 .toneLong .railLong,
 .toneAsk .railLong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .toneShort .railShort,
@@ -720,7 +722,7 @@
 .noticeTitle {
   margin: 0;
   font: 700 13px/1.3 var(--body);
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .noticeBody {
