@@ -49,6 +49,21 @@ export function fakes() {
     async listCredentials() {
       return credentials;
     },
+    // Built from the same rows `listCredentials` answers from, so the two cannot drift apart in a
+    // way that would let a test pass while the real store returned different sets. The synthesised
+    // columns are deterministic: the id is the index and `lastUsedAt` is null, which is the state a
+    // passkey is in until it signs something.
+    async listPasskeys() {
+      return credentials.map((credential, index) => ({
+        id: `passkey-${index}`,
+        credentialId: credential.credentialId,
+        label: credential.label,
+        transports: credential.transports,
+        deviceType: credential.deviceType,
+        createdAt: new Date(NOW.getTime() + index),
+        lastUsedAt: null,
+      }));
+    },
     async saveRegistration(input) {
       if (rows.account) {
         return { created: false };
@@ -694,4 +709,35 @@ test("a second device is offered the first one's credential to exclude", async (
   assert.deepEqual(options.excludeCredentials, [
     { id: "cred-1", type: "public-key", transports: ["internal"] },
   ]);
+});
+
+/* The pair below is the design rule of the two list methods, stated as two tests that must both
+ * keep passing. `listCredentials` feeds `excludeCredentials` and swallows a failure, because a
+ * lookup failure must never stop somebody registering — "a failed credential lookup never blocks
+ * the challenge" above pins that. `listPasskeys` answers a question about whether somebody can
+ * still reach their funds, so it must do the opposite. One method serving both callers would mean
+ * one of them is silently wrong, and it would be this one. */
+
+test("the passkey list reaches the caller whole, oldest first", async () => {
+  const f = fakes();
+  const s = await registered(f);
+
+  const listed = await s.listPasskeys(USER);
+
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0]?.credentialId, "cred-1");
+  // Never used, so no last-used date. Not the creation date standing in for one.
+  assert.equal(listed[0]?.lastUsedAt, null);
+});
+
+test("a failed passkey lookup propagates instead of reading as no passkeys", async () => {
+  const f = fakes();
+  const down = new Error("database down");
+  f.repository.listPasskeys = async () => {
+    throw down;
+  };
+
+  // The mirror of the swallow above, and the reason these are two methods. If this ever resolves
+  // to [], the screen behind it tells somebody they have no passkeys because Postgres was down.
+  await assert.rejects(() => service(f).listPasskeys(USER), down);
 });

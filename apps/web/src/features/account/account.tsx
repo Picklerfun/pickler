@@ -14,7 +14,11 @@ import {
   openChallenge,
   type CustodyDeps,
 } from "../auth/lib/custody";
-import { wallet as readWallet, type ChallengeOptionsDto } from "../auth/lib/custody-api";
+import {
+  passkeys as readPasskeys,
+  wallet as readWallet,
+  type ChallengeOptionsDto,
+} from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
 import { ApiError, getProfile, type ProfileDto } from "../auth/lib/pickler-api";
 import type { SheetPhase } from "../auth/lib/sheet";
@@ -23,21 +27,12 @@ import { coverage } from "./lib/coverage";
 import { accountPreview } from "./lib/preview";
 import { SECTIONS, type SectionKey } from "./lib/sections";
 import { ProfileSection } from "./sections/profile";
-import { SecuritySection } from "./sections/security";
+import { SecuritySection, type PasskeyState } from "./sections/security";
 import { WalletSection, type WalletState } from "./sections/wallet";
 import styles from "./account.module.css";
 
 /** What a passkey added from this screen is called in the account's list. */
 const BACKUP_LABEL = "Backup passkey";
-
-/**
- * How many passkeys this account has, which nothing in this build can answer.
- *
- * A named constant rather than a literal null threaded through three components, because it is the
- * single fact the whole security section turns on and the day a route lists them this is the one
- * line that changes. lib/coverage.ts holds the reasoning and the two near-misses.
- */
-const PASSKEY_COUNT: number | null = null;
 
 /** Everything the reused auth sheet needs to draw itself, and the challenge behind it. */
 interface SheetState {
@@ -89,6 +84,9 @@ export function Account({ opening }: { opening: SectionKey }) {
     preview ? { kind: "ready", wallet: preview.wallet } : { kind: "loading" },
   );
   const [session, setSession] = useState<string | null>(preview?.session ?? null);
+  const [passkeys, setPasskeys] = useState<PasskeyState>(
+    preview ? { kind: "ready", passkeys: preview.passkeys } : { kind: "loading" },
+  );
   const [signedIn, setSignedIn] = useState<boolean | null>(preview ? false : null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const origin = useSyncExternalStore(subscribeOrigin, readOrigin, originOnServer);
@@ -112,7 +110,7 @@ export function Account({ opening }: { opening: SectionKey }) {
       setSignedIn(true);
       setSession(describeDevice(userAgent()));
       const token = data.session.access_token;
-      const [found, dto] = await Promise.all([
+      const [found, dto, keys] = await Promise.all([
         getProfile(token).then(
           (value) => value,
           () => null,
@@ -129,12 +127,20 @@ export function Account({ opening }: { opening: SectionKey }) {
                   reason: "Your balances could not be read just now. Nothing has moved.",
                 },
         ),
+        // A rejection becomes `failed`, never an empty list. Everything from the repository method
+        // down exists to keep those apart, and this is the last place it could be undone: `[]`
+        // here would render "no passkeys on this account" for a database that did not answer.
+        readPasskeys(token).then(
+          (value): PasskeyState => ({ kind: "ready", passkeys: value }),
+          (): PasskeyState => ({ kind: "failed" }),
+        ),
       ]);
       if (!live) {
         return;
       }
       setProfile(found);
       setWallet(dto);
+      setPasskeys(keys);
     })();
     return () => {
       live = false;
@@ -203,7 +209,7 @@ export function Account({ opening }: { opening: SectionKey }) {
   }
 
   const handle = profile?.handle ?? null;
-  const covered = coverage(PASSKEY_COUNT);
+  const covered = coverage(passkeys.kind === "ready" ? passkeys.passkeys.length : null);
 
   return (
     <main className={styles.account} data-surface="dark">
@@ -240,8 +246,11 @@ export function Account({ opening }: { opening: SectionKey }) {
               {/* The canvas puts "1 KEY" here below two passkeys. Nothing can count them, so the
                   badge carries the state the screen is actually in rather than the number it would
                   like to print. It still earns its caution pair: not knowing is not covered. */}
-              {item.key === "security" && covered !== "covered" && (
-                <span className={styles.railBadge}>{covered === "one" ? "1 KEY" : "UNKNOWN"}</span>
+              {/* Nothing while the read is in flight: "unknown" is a real answer here — the list
+                  could not be read — and flashing it for 200ms on every load would spend the
+                  badge's alarm on something that is not alarming. */}
+              {item.key === "security" && passkeys.kind !== "loading" && covered !== "covered" && (
+                <span className={styles.railBadge}>{covered === "one" ? "1 KEY" : "UNREAD"}</span>
               )}
             </button>
           ))}
@@ -270,7 +279,7 @@ export function Account({ opening }: { opening: SectionKey }) {
               {section === "wallet" && <WalletSection state={wallet} />}
               {section === "security" && (
                 <SecuritySection
-                  passkeys={PASSKEY_COUNT}
+                  state={passkeys}
                   onAddPasskey={openSheet}
                   canAdd={signedIn === true}
                   session={session}

@@ -1,27 +1,36 @@
 "use client";
 
 import { Button, Icon } from "@pickler/ui";
+import type { PasskeyDto } from "../../auth/lib/custody-api";
 import { coverage, coverageCopy, EMAIL_RECOVERY_ON } from "../lib/coverage";
+import { passkeyMeta, removalBlocked } from "../lib/passkeys";
 import { NotYet } from "../components/not-yet";
 import { Toggle } from "../components/toggle";
 import styles from "../account.module.css";
 
+/** What the screen knows about this account's passkeys. `failed` is not an empty list. */
+export type PasskeyState =
+  { kind: "loading" } | { kind: "ready"; passkeys: PasskeyDto[] } | { kind: "failed" };
+
 export function SecuritySection({
-  /** How many passkeys this account has, or null when nothing can count them. */
-  passkeys,
+  state: read,
   onAddPasskey,
   canAdd,
   session,
 }: {
-  passkeys: number | null;
+  state: PasskeyState;
   onAddPasskey: () => void;
   /** False without a session: the ceremony needs a token, and offering a button that throws is
    *  worse than offering one that says why it cannot run. */
   canAdd: boolean;
   session: string | null;
 }) {
-  const state = coverage(passkeys);
-  const copy = coverageCopy(state, passkeys);
+  // A failed read counts as null, never as zero. `coverage` turns that into the third state, and
+  // the whole chain from the repository down exists to keep those two apart; see lib/coverage.ts.
+  const listed = read.kind === "ready" ? read.passkeys : null;
+  const count = listed === null ? null : listed.length;
+  const state = coverage(count);
+  const copy = coverageCopy(state, count);
 
   return (
     <section id="account-panel-security" className={styles.section} aria-label="Security">
@@ -35,13 +44,38 @@ export function SecuritySection({
       </div>
 
       <h3 className={styles.heading}>PASSKEYS · CAN MOVE FUNDS</h3>
-      {/* No rows, and the reason is in lib/coverage.ts: nothing in this build lists an account's
-          passkeys. Inventing a "This device" row out of the fact that a wallet exists would be the
-          claim the headline above refuses to make, made smaller. */}
-      <NotYet title="This account&rsquo;s passkeys cannot be listed">
-        The signing API has no route that reads them back. Adding one below is real and does reach
-        your account; what no screen can yet show you is which devices are already on it, or remove
-        one. Until that route exists the count above stays unknown rather than guessed.
+      {read.kind === "loading" && <p className={styles.rowMeta}>READING YOUR PASSKEYS…</p>}
+      {read.kind === "failed" && (
+        <p className={styles.rowMeta}>
+          THIS LIST COULD NOT BE READ · YOUR PASSKEYS HAVE NOT CHANGED
+        </p>
+      )}
+      {listed?.map((passkey) => (
+        <div key={passkey.id} className={styles.row}>
+          <span className={styles.passkeyMark} aria-hidden="true" />
+          <div className={styles.rowText}>
+            <p className={styles.rowTitle}>{passkey.label}</p>
+            <p className={styles.rowMeta}>{passkeyMeta(passkey)}</p>
+          </div>
+          {/* Always disabled, with the title saying which of the two reasons applies. No route
+              deletes a passkey, so nothing here could run — and the one-key rule is already in
+              `removalBlocked` so that it is in place the day the route lands. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            title={removalBlocked(listed.length)}
+            className={styles.remove}
+          >
+            Remove
+          </Button>
+        </div>
+      ))}
+      {listed?.length === 0 && <p className={styles.rowMeta}>NO PASSKEYS ON THIS ACCOUNT YET</p>}
+      <NotYet title="A passkey cannot be removed yet">
+        The signing API reads them and adds them; nothing deletes one. Until it does, the Remove on
+        each row stays disabled — and it would stay disabled on the last passkey whatever happens,
+        because removing the only key into an account locks its funds for good.
       </NotYet>
 
       <Button

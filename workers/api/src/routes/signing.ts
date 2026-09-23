@@ -251,6 +251,39 @@ export function signingRoutes(services: SigningRouteServices) {
     );
   });
 
+  /**
+   * This person's passkeys, oldest first, and nothing about anyone else's: the user id comes from
+   * the verified token rather than the path, so there is no identifier here to tamper with.
+   *
+   * Nothing is caught. A failed read must reach the browser as a failure, because the screen that
+   * calls this decides whether to tell somebody they can still reach their funds after losing a
+   * device — and an empty list would read as "no passkeys", which is the more alarming of the two
+   * ways to be wrong. `listPasskeys` in core carries the same note, and the pair exists precisely
+   * so that `excludeCredentials`'s deliberate swallow cannot leak into this answer.
+   *
+   * `device_type` and `last_used_at` go out null when they are null. A passkey that has never
+   * signed anything has no last-used date, and saying so is the point of the column.
+   */
+  api.get("/passkeys", async (c) => {
+    const user = person(c);
+    const passkeys = await services.custody(c.get("requestId")).listPasskeys(user.id);
+    return c.json(
+      successEnvelope(
+        passkeys.map((passkey) => ({
+          id: passkey.id,
+          credential_id: passkey.credentialId,
+          label: passkey.label,
+          transports: passkey.transports,
+          device_type: passkey.deviceType,
+          created_at: passkey.createdAt.toISOString(),
+          last_used_at: passkey.lastUsedAt === null ? null : passkey.lastUsedAt.toISOString(),
+        })),
+        c.req.path,
+        "Passkeys retrieved",
+      ),
+    );
+  });
+
   api.get("/wallets/me", async (c) => {
     const user = person(c);
     const account = await services.custody(c.get("requestId")).getAccount(user.id);

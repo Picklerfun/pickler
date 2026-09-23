@@ -201,6 +201,47 @@ test("adding the same device twice stores it once", async (t) => {
   assert.equal((await custody.listCredentials(input.userId)).length, 2);
 });
 
+test("the passkey list is ordered, scoped to one person, and keeps its nulls", async (t) => {
+  const { store, custody } = await setup(t);
+  const mine = registration({ label: "MacBook", transports: ["internal"] });
+  await custody.saveRegistration(mine);
+  await custody.addPasskey({
+    userId: mine.userId,
+    credentialId: `credential-${hex(16)}`,
+    label: "iPhone",
+    transports: ["hybrid"],
+    deviceType: "multiDevice",
+  });
+  // A stranger, so a query that forgot its WHERE would be caught rather than measured. Without a
+  // second person in the table, `SELECT ... FROM passkeys` with no predicate passes every
+  // assertion below.
+  await custody.saveRegistration(registration({ label: "Someone else's laptop" }));
+
+  const listed = await custody.listPasskeys(mine.userId);
+
+  assert.deepEqual(
+    listed.map((passkey) => passkey.label),
+    ["MacBook", "iPhone"],
+  );
+  assert.deepEqual(listed[1]?.transports, ["hybrid"]);
+  assert.ok(listed[0]?.createdAt instanceof Date);
+  // Neither row has ever signed anything, and the column says so rather than defaulting to the
+  // creation date — which is the one substitution that would look entirely reasonable on screen.
+  assert.equal(listed[0]?.lastUsedAt, null);
+  assert.equal(listed[1]?.lastUsedAt, null);
+  // A device type the transports named nothing for stays null through the query.
+  await store.pool.query(
+    `UPDATE wallets.passkeys SET device_type = NULL WHERE user_id = $1 AND label = 'iPhone'`,
+    [mine.userId],
+  );
+  assert.equal((await custody.listPasskeys(mine.userId))[1]?.deviceType, null);
+});
+
+test("an account with no passkeys lists nothing rather than throwing", async (t) => {
+  const { custody } = await setup(t);
+  assert.deepEqual(await custody.listPasskeys(randomUUID()), []);
+});
+
 test("a challenge can be spent once and never again", async (t) => {
   const { custody } = await setup(t);
   const userId = randomUUID();

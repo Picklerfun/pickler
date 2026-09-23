@@ -20,12 +20,13 @@
 // not-built panel a signed-in person gets, which is the point.
 
 import { isAuthConfigured } from "../../auth/lib/config";
-import type { WalletDto } from "../../auth/lib/custody-api";
+import type { PasskeyDto, WalletDto } from "../../auth/lib/custody-api";
 import type { ProfileDto } from "../../auth/lib/pickler-api";
 
 export interface PreviewState {
   profile: ProfileDto;
   wallet: WalletDto;
+  passkeys: PasskeyDto[];
   /** What the sessions list calls the browser looking at it. No fixture has a real session. */
   session: string;
 }
@@ -60,6 +61,29 @@ export function accountPreview(): PreviewState | null {
         native: { symbol: "MON", decimals: 18, raw: "3420000000000000000" },
       },
     },
+    // Two, so the fixture renders the covered state the product wants people in — and the second
+    // one has never been used, which is the null this screen has to say something true about. A
+    // one-passkey fixture would show the louder screen and leave that column unexercised.
+    passkeys: [
+      {
+        id: "preview-1",
+        credential_id: "preview-credential-1",
+        label: "Touch ID on this Mac",
+        transports: ["internal"],
+        device_type: "singleDevice",
+        created_at: "2026-03-14T00:00:00.000Z",
+        last_used_at: "2026-09-21T00:00:00.000Z",
+      },
+      {
+        id: "preview-2",
+        credential_id: "preview-credential-2",
+        label: "Backup passkey",
+        transports: ["hybrid"],
+        device_type: "multiDevice",
+        created_at: "2026-04-02T00:00:00.000Z",
+        last_used_at: null,
+      },
+    ],
     session: "This browser",
   };
 }

@@ -1,27 +1,17 @@
-// What the security panel is allowed to say about this account's passkeys.
+// What the security panel says about this account's passkeys.
 //
-// The canvas draws two states: COVERED. at two or more passkeys, ONE KEY AWAY. at one. Both are
-// claims about whether somebody can still reach their money after losing a device, and both need a
-// count to be true. There is a third state, and it is the one this build is actually in.
+// The claim is about whether somebody can still reach their money after losing a device, so it
+// needs a count, and `GET /v1/signing/passkeys` now answers with one. Two or more is COVERED; one
+// is ONE KEY AWAY.
 //
-// **There is no route that lists an account's passkeys.** workers/api/src/routes/signing.ts mounts
-// five: passkeys/challenge, passkeys/register, passkeys/add/prepare, passkeys/add/confirm and
-// wallets/me. `CustodyRepository.listCredentials` exists in packages/core and nothing exposes it
-// over HTTP, so the browser cannot count them.
-//
-// Two near-misses, written down so that nobody reaches for either:
-//
-//   - `wallets/me` answering 200 proves at least one passkey exists, because registration mints
-//     one. It cannot tell one from five, which is the only distinction the headline makes.
-//   - `passkeys/challenge` answers with `excludeCredentials`, built from listCredentials. It looks
-//     like a count and must not be used as one: core's `excludeCredentials` swallows a lookup
-//     failure and returns undefined, so "this account has no passkeys" and "the database did not
-//     answer" arrive identically. A security headline read off a field that degrades silently will
-//     one day tell somebody they are covered when nobody looked. It also spends a stored challenge
-//     per call, which is a write standing in for a read.
-//
-// So the third state says it does not know. That is worse to look at than a green tick, and it is
-// the only thing here that is true.
+// The third state stays, and it is not dead code. A read can fail, and a failed read must never
+// render as an account with no passkeys — `null` here means "nobody could check", which is a
+// different thing from any number and is shown as such. The reason that distinction survives all
+// the way down to the database is written on `CustodyRepository.listCredentials` in
+// packages/core/src/features/wallets/ports/custody.ts: the method feeding `excludeCredentials`
+// swallows a lookup failure on purpose, `listPasskeys` beside it does not, and they are two
+// methods so that the swallow cannot reach this screen. `coverage(null)` is the last link in
+// that chain.
 
 export type Coverage = "covered" | "one" | "unknown";
 
@@ -40,7 +30,7 @@ export interface CoverageCopy {
   tone: "good" | "caution";
 }
 
-/** `null` is "nothing can count them", which is every account in this build. */
+/** `null` is a read that failed, never an account with no passkeys. */
 export function coverage(passkeys: number | null): Coverage {
   if (passkeys === null) {
     return "unknown";
@@ -68,12 +58,12 @@ export function coverageCopy(state: Coverage, passkeys: number | null): Coverage
     };
   }
   return {
-    eyebrow: `PASSKEYS UNCOUNTED · ${RECOVERY}`,
+    eyebrow: `PASSKEYS UNREAD · ${RECOVERY}`,
     headline: "CAN'T TELL YET.",
     body:
-      "Nothing in this build can list the passkeys on this account, so Pickler will not tell you " +
-      "that you are covered. If you are not sure you have a second one, add it — a passkey you " +
-      "already have is refused by the device, not by us.",
+      "Your passkeys could not be read just now, so Pickler will not tell you that you are " +
+      "covered. This is a failed lookup and not an empty account — nothing has changed about the " +
+      "keys on it. Reload, and add a second passkey if you are not sure you have one.",
     tone: "caution",
   };
 }

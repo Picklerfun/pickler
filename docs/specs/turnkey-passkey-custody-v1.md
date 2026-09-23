@@ -110,10 +110,40 @@ following `PostgresBudgetLedger`.
 | `POST /register`    | create the sub-organization and Master Wallet; idempotent          |
 | `POST /add/prepare` | build the unsigned `CREATE_AUTHENTICATORS` for a new device        |
 | `POST /add/confirm` | forward the stamped activity                                       |
-| `GET /`             | list this person's devices                                         |
+| `GET /passkeys`     | list this person's devices                                         |
+| `GET /wallets/me`   | the master wallet's address and balances                           |
+
+The paths are as `signing.ts` mounts them, which is not what an earlier draft of this table said.
+It listed the device list as `GET /` and omitted `GET /wallets/me` altogether — and the device list
+was then **never implemented**, so for the whole of the first specification this document described
+a route that did not exist. Task 13's account screen was planned against this table, and its brief
+repeated the promise as fact; the screen was built refusing to state a passkey count it could not
+obtain, and the route was added afterwards. A route table is a claim about the code and is worth
+re-reading against `signing.ts` before anything is planned on top of it.
 
 New bindings: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_PARENT_ORG_ID`,
 `TURNKEY_RPID`, `TURNKEY_APP_NAME`.
+
+### Two list methods, and why they are not one
+
+`CustodyRepository` has `listCredentials` and `listPasskeys`, and the difference is the contract on
+failure rather than the columns.
+
+`listCredentials` feeds `excludeCredentials` on a challenge. Its caller catches and degrades to no
+exclusions, because a lookup failure must never stop somebody registering — Relayer learned that the
+same way. So "this account has no credentials" and "the database did not answer" leave that method
+indistinguishable, which is correct for an exclusion list.
+
+`listPasskeys` answers the account screen, which tells a person whether they can still reach their
+funds after losing a device. **Errors propagate**: nothing in the repository, the service or the
+route catches, and the browser turns a rejection into a `failed` state rather than an empty array.
+An empty list for an unreachable database would read as "no passkeys", which is the more alarming
+of the two ways to be wrong, and it would look entirely reasonable on screen.
+
+Sharing one method would mean one of the two callers is silently wrong, and it would be the one
+that matters. `workers/api/test/signing.test.ts` pins the distinction directly — a repository that
+throws must surface as a failed read and not as `[]` — because an untested distinction collapses
+back into the first method the next time somebody tidies.
 
 **A defect fixed while porting.** Relayer's `register` writes four tables in sequence without a
 transaction, and every intermediate failure path carries a comment reading _"orphan in Turnkey"_.

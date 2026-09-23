@@ -8,7 +8,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { PasskeyDto } from "../src/features/auth/lib/custody-api";
 import { coverage, coverageCopy, EMAIL_RECOVERY_ON } from "../src/features/account/lib/coverage";
+import { passkeyMeta, removalBlocked } from "../src/features/account/lib/passkeys";
 import { previewAllowed } from "../src/features/account/lib/preview";
 import { joinedLabel, profileLink } from "../src/features/account/lib/profile";
 import { openingSection, SECTIONS } from "../src/features/account/lib/sections";
@@ -54,7 +56,9 @@ test("the preview never stands in front of a real account", () => {
   assert.equal(previewAllowed("production", true), false);
 });
 
-test("an uncountable passkey list is neither covered nor one key away", () => {
+test("a failed read is neither covered nor one key away", () => {
+  // `null` is a lookup that failed, and it must never render as an account with no passkeys. The
+  // chain that keeps those apart starts at CustodyRepository.listPasskeys and ends here.
   assert.equal(coverage(null), "unknown");
   const copy = coverageCopy("unknown", null);
   assert.equal(copy.tone, "caution");
@@ -62,6 +66,15 @@ test("an uncountable passkey list is neither covered nor one key away", () => {
   // The claim the screen must never make without a count.
   assert.doesNotMatch(copy.headline, /COVERED/);
   assert.doesNotMatch(copy.eyebrow, /\d/);
+  // And it must not read as an empty account either, which is the other way to be wrong.
+  assert.match(copy.body, /not an empty account/);
+});
+
+test("zero passkeys is one key away, not a failed read", () => {
+  // The boundary that would collapse if a caller ever turned a rejection into []: zero and null
+  // must not produce the same screen.
+  assert.equal(coverage(0), "one");
+  assert.notEqual(coverage(0), coverage(null));
 });
 
 test("a counted account gets the canvas's two states", () => {
@@ -102,4 +115,48 @@ test("a stamp that is not a date produces no line rather than a bad one", () => 
 test("the profile link is built from the origin it is given", () => {
   assert.equal(profileLink("https://example.test", "nightowl"), "example.test/@nightowl");
   assert.equal(profileLink("http://localhost:3001", "nightowl"), "localhost:3001/@nightowl");
+});
+
+const passkey = (over: Partial<PasskeyDto> = {}): PasskeyDto => ({
+  id: "p1",
+  credential_id: "c1",
+  label: "Touch ID on this Mac",
+  transports: ["internal"],
+  device_type: "singleDevice",
+  created_at: "2026-03-14T00:00:00.000Z",
+  last_used_at: "2026-09-21T00:00:00.000Z",
+  ...over,
+});
+
+test("a passkey that has never signed says so rather than borrowing its creation date", () => {
+  // The substitution that would be invisible on screen: last_used_at defaulting to created_at
+  // turns "never used" into "used the day you made it", and a backup nobody has ever signed with
+  // is exactly the one worth checking before relying on it.
+  const meta = passkeyMeta(passkey({ last_used_at: null }));
+  assert.match(meta, /NEVER USED/);
+  assert.doesNotMatch(meta, /LAST USED/);
+  assert.match(meta, /ADDED MARCH 2026/);
+});
+
+test("a used passkey names both months", () => {
+  const meta = passkeyMeta(passkey());
+  assert.match(meta, /ADDED MARCH 2026/);
+  assert.match(meta, /LAST USED SEPTEMBER 2026/);
+  assert.match(meta, /THIS DEVICE ONLY/);
+});
+
+test("a null device type drops its phrase rather than inventing one", () => {
+  const meta = passkeyMeta(passkey({ device_type: null }));
+  assert.doesNotMatch(meta, /DEVICE/);
+  assert.match(meta, /ADDED MARCH 2026/);
+  // A device type the map has no word for is dropped too, rather than printed raw.
+  assert.doesNotMatch(passkeyMeta(passkey({ device_type: "somethingNew" })), /somethingNew/);
+});
+
+test("the last passkey cannot be removed, and says the reason that outlives the missing route", () => {
+  // Two different reasons, and the title must say which. One is temporary — no route deletes a
+  // passkey — and one is permanent: removing the only key locks the funds for good.
+  assert.match(removalBlocked(1), /only passkey/);
+  assert.match(removalBlocked(2), /not built yet/);
+  assert.notEqual(removalBlocked(1), removalBlocked(2));
 });

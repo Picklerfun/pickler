@@ -567,6 +567,20 @@
   color: var(--pk-ink-faint);
 }
 
+/* A passkey's mark. Lime because the row is a key that can move funds, which is the good state
+   rather than a warning — the caution in this section is reserved for what is missing. */
+.passkeyMark {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-lime);
+}
+
+.remove {
+  flex: 0 0 auto;
+}
+
 .current {
   padding: 7px 10px;
   border-radius: var(--pk-radius-pill);

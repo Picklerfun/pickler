@@ -230,5 +230,16 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     getAccount: (userId: string) => deps.repository.findByUserId(userId),
+
+    /**
+     * Every passkey on the account, oldest first.
+     *
+     * Deliberately not wrapped. `excludeCredentials` above catches, because a lookup failure must
+     * never stop somebody registering; this one must do the opposite, because its caller is
+     * deciding whether to tell a person they can still reach their money after losing a device.
+     * A catch here would return an empty list for an unreachable database, and the screen would
+     * read that as "no passkeys" — the same silent degradation, moved one layer up.
+     */
+    listPasskeys: (userId: string) => deps.repository.listPasskeys(userId),
   };
 }
