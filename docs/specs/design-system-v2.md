@@ -191,17 +191,42 @@ monospace family and any `--pk-*` name that does not survive into the new set.
 
 ## 7. Verification
 
-A token system is easy to get subtly wrong and hard to see. Three checks, in order of value:
+A token system is easy to get subtly wrong and hard to see: it fails by looking almost right. Every
+check below runs against the **rendered page**, not against this document, because the failure that
+matters is a component reading the wrong token — and a table cannot see that.
 
-**Contrast.** Every ink-on-ground and ink-on-tint pair in §4 must be measured, not eyeballed. The
-light state inks were chosen by the designer to be legible on their tints; that should be
-confirmed rather than assumed, and the two derived dark pairs especially.
+Playwright 1.63 is available globally with Chromium cached, and is deliberately **not** added as a
+repository dependency: these are verification scripts run against a dev server, not a test suite the
+build depends on. They live in `scripts/design/`.
 
-**No literals.** After migration, no `#rrggbb` may remain in any CSS module or component outside
-the token file. A grep is the test.
+**Contrast, measured on the DOM.** Walk every text node in each route, read its computed colour and
+its nearest painted background, and compute the WCAG ratio from those two values. Body text must
+reach 4.5:1 and large text 3:1. This is stronger than checking §4's table in the way that matters:
+the table can be right while a component reads `--pk-ink-faint` where it should read
+`--pk-ink-muted`, and only the rendering shows it. Report every failure with its selector, the two
+colours and the ratio.
 
-**Both surfaces, every component.** Each component in `packages/ui` renders on both surfaces. A
-component that only works on one is a component that reads a token it should not.
+**The tokens are actually the source.** Collect every distinct computed colour across all five
+routes and assert each one resolves to a value in §4. A colour that appears on screen and is in no
+token is a literal someone typed, wherever it lives.
+
+**Both surfaces, and inversion.** Assert `/` and `/portfolio` paint a white ground and `/console`
+and `/account` a night-blue one. Then assert the nested case, which is the mechanism the whole
+system rests on: the landing's "FOUR MOVES" panel must compute to the dark ground while its parent
+computes to white, and Account's wallet card the reverse. If nesting does not invert, the system is
+two themes wearing one name.
+
+**The display face carries its width axis.** Assert the computed `font-variation-settings` on
+display headings includes `wdth`. Archivo at the right weight and the wrong width is a different
+typeface, and it is invisible unless measured.
+
+**Screenshots, for a person to judge.** Capture each route at desktop and phone widths into
+`scripts/design/shots/`. The automated checks above catch what is measurable; spacing, rhythm and
+whether it _reads_ like the canvas are not, and want eyes.
+
+**No literals in source.** After migration, no `#rrggbb` outside the token file. A grep is the test,
+and it is the weakest of these — it catches the careless case, while the DOM checks catch the
+plausible one.
 
 ## 8. Out of scope
 
