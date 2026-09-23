@@ -111,11 +111,19 @@ The same hue on both surfaces; only the ink changes.
 | ----------------- | -------------------------------- | --------- |
 | `--pk-lime`       | `#C8F03A`                        | —         |
 | `--pk-lime-hover` | `#D6F95C`                        | —         |
+| `--pk-lime-ink`   | `#3F6B00` light / `#C8F03A` dark | —         |
+| `--pk-amber-ink`  | `#8A6200` light / `#FFC93F` dark | —         |
 | `--pk-violet`     | `#5B3CE0` light / `#9B7BFF` dark | `#B9A6FF` |
 | `--pk-amber`      | `#FFC93F`                        | —         |
 | `--pk-magenta`    | `#FF5FA2`                        | `#FF9EC6` |
 | `--pk-blue`       | `#5B8CFF`                        | —         |
 | `--pk-orange`     | `#FF7A3D`                        | —         |
+
+Lime and amber need an ink of their own for the same reason violet and magenta do, and it is not a
+preference: as text on white they measure 1.31:1 and 1.54:1, which is unreadable. Their light inks
+are values the design already uses — they are the `good` and `caution` state inks below. As a fill
+both stay exactly as they are; an accent bright enough to carry a fill is never dark enough to be
+read on white.
 
 The seven-colour agent palette — lime, violet `#5B3CE0`, amber, orange, magenta, blue `#5B8CFF`,
 violet `#9B7BFF` — is unchanged in spirit and appears as the footer swatch row and the avatar grids.
@@ -189,10 +197,19 @@ it must not pretend otherwise.
 
 ## 6. What the other pages get
 
-Fourteen CSS modules consume these tokens; five screens have new canvases. The rest —
-tokens, agents, markets, leaderboard, reads, apply, activity, wallet — keep their current
-composition and inherit the new surface. They will look coherent in colour and type without being
-redesigned, which is the point of tokens carrying meaning rather than values.
+Fourteen CSS modules consume these tokens; five screens have new canvases. Most of the rest keep
+their composition and inherit the new surface, and look coherent in colour and type without being
+redesigned — which is the point of tokens carrying meaning rather than values.
+
+**Three do not, and an earlier draft of this section was wrong to say they would.** `apply`, `agents`
+and `markets` each paint an opaque dark layer of their own — gradients and a starfield — over
+whatever ground the surface provides. Near-black ink on that is not coherent, it is invisible. That
+is composition, not colour, and no token can fix it.
+
+So those three are pinned to `data-surface="dark"` until someone draws them light, each with a
+comment saying why and that the attribute goes when a canvas exists. A page whose composition is
+dark belongs on the dark surface. The same test applies to any module not listed here: painting its
+own opaque ground earns the pin, merely reading tokens does not.
 
 Any page that reads a token this document removes must be migrated in the same change. That is the
 monospace family and any `--pk-*` name that does not survive into the new set.
