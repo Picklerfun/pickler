@@ -6,7 +6,7 @@
 // call and costs milliseconds, so the thing worth rationing is the report, not the work. Findings
 // are therefore grouped by the four things that decide a ratio — ink, ground, size, weight — so one
 // mis-read token reports once with a count and a line to look at, instead of four hundred times.
-import { composite, hex, parse, ratio } from "./lib/colour.mjs";
+import { composite, effectiveOpacity, hex, parse, ratio } from "./lib/colour.mjs";
 import { eachRoute, finish } from "./lib/render.mjs";
 import { ROUTES } from "./routes.mjs";
 
@@ -82,12 +82,7 @@ for (const { route, value } of results) {
     /* Effective opacity at each level: the product of every opacity from that element up to the
      * root, because an ancestor's opacity dims its whole subtree against whatever is behind it. The
      * chain runs element-first, so these are suffix products. */
-    const effective = [];
-    let carried = 1;
-    for (let i = item.chain.length - 1; i >= 0; i -= 1) {
-      carried *= item.chain[i].opacity;
-      effective[i] = carried;
-    }
+    const effective = effectiveOpacity(item.chain.map((level) => level.opacity));
     if (effective[0] === 0) {
       // Dimmed to nothing. A ratio for it would be arithmetic about something nobody can see, and
       // scoring it 1:1 would bury every real finding — but skipping it in silence would hide a

@@ -3,7 +3,7 @@
 // Run: node --test scripts/design/colour.test.mjs
 import assert from "node:assert/strict";
 import test from "node:test";
-import { composite, hex, parse, ratio } from "./lib/colour.mjs";
+import { composite, effectiveOpacity, hex, parse, ratio } from "./lib/colour.mjs";
 
 const WHITE = [255, 255, 255, 1];
 const BLACK = [0, 0, 0, 1];
@@ -68,4 +68,27 @@ test("hex prints what a person can paste into the token file", () => {
   assert.equal(hex([11, 13, 26]), "#0B0D1A");
   assert.equal(hex([255, 255, 255]), "#FFFFFF");
   assert.equal(hex([127.5, 127.5, 127.5]), "#808080", "composited channels are rounded, not cut");
+});
+
+test("element opacity compounds down the tree", () => {
+  all([
+    [round(effectiveOpacity([0.55, 0.8])[0]), 0.44, "0.55 inside 0.8 is 0.44, not 0.55"],
+    [round(effectiveOpacity([0.55, 0.8])[1]), 0.8, "the outer level keeps its own"],
+    [round(effectiveOpacity([0.55, 1, 0.8])[0]), 0.44, "an undimmed level between changes nothing"],
+    [round(effectiveOpacity([1, 1, 1])[0]), 1, "nothing dimmed is nothing changed"],
+    [effectiveOpacity([]).length, 0, "no chain, no levels"],
+  ]);
+});
+
+test("a dimmed ink is measured as the eye sees it, not as its colour reads", () => {
+  // The regression case this was built for: white on the night-blue panel, which is 19.32 on the
+  // two colours alone and stays 19.32 to any check that reads only the alpha inside a colour. The
+  // waitlist submit's disabled state was exactly this shape.
+  const NIGHT = [11, 13, 26, 1];
+  const seenAt = (opacity) => round(ratio(composite([255, 255, 255, opacity], NIGHT), NIGHT));
+  all([
+    [seenAt(1), 19.32, "undimmed white on night blue"],
+    [seenAt(0.55), 6.24, "0.55 alone still clears 4.5 — this is not where it breaks"],
+    [seenAt(effectiveOpacity([0.55, 0.8])[0]), 4.36, "0.55 inside 0.8 drops it under AA"],
+  ]);
 });
