@@ -107,7 +107,13 @@ index; bare `git commit` commits whatever is staged, including someone else's wo
    and a half. Before reporting a red from the shared tree: re-run it, and check whether the file
    at `HEAD` differs from the working tree. `git show HEAD:<path>` answers in one command what an
    investigation cannot.
-7. **A test whose name has quietly become false is a defect even while it passes.** One here was
+7. **Grepping a command's output is not a verification; its exit status is.** An agent confirmed a
+   clean typecheck from `tsc | grep -c "error TS"` returning `0` — but `grep -c` says zero both for
+   "no matching lines" and for "no output at all", and those are not the same thing. The lead made
+   the same mistake in the other direction, printing "no lines means clean" for `lint` and
+   `prettier` and reporting green while both were failing. Check `$?`, or `${PIPESTATUS[0]}` when a
+   pipe is unavoidable. A filter that finds nothing looks identical to a command that ran nothing.
+8. **A test whose name has quietly become false is a defect even while it passes.** One here was
    called "the sign-in rail has two phases, not the sign-up rail's four" after the sign-up rail had
    three. The assertion held; the sentence did not. Rename it rather than leaving a reader to
    trust it.
