@@ -76,6 +76,7 @@ export {
   createAddPasskeyActivityBuilder,
   createSubOrganizationCreator,
   MONAD_ACCOUNT,
+  type CreateSubOrgResponse,
   type SubOrganizationCreatorConfig,
 } from "./turnkey/turnkey-sub-organization.js";
 

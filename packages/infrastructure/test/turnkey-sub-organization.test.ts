@@ -5,12 +5,34 @@ import {
   SigningServiceUnavailableError,
   type TurnkeyReader,
 } from "@pickler/core";
+import type { TurnkeyApiTypes } from "@turnkey/http";
 import {
   createAddPasskeyActivityBuilder,
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   MONAD_ACCOUNT,
+  type CreateSubOrgResponse,
 } from "../src/index.js";
+
+// Two compile-time guards, enforced by `tsc -p packages/infrastructure --noEmit` rather than by
+// the test runner, because a type cannot be observed at runtime.
+//
+// The first binds the adapter's response type to the SDK's own `v1Result` in both directions, so
+// re-describing the envelope by hand — which is what left the V7/V8 read unpinned — stops
+// compiling. The second says the SDK really does constrain that type: if `v1Result` were ever a
+// `Record<string, unknown>`, reading an undefined key would be legal, the directive would go
+// unused, and tsc would fail with TS2578.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+const _responsePinnedToSdk: Exact<
+  NonNullable<CreateSubOrgResponse["activity"]>["result"],
+  TurnkeyApiTypes["v1Result"] | undefined
+> = true;
+void _responsePinnedToSdk;
+
+const _envelope = {} as TurnkeyApiTypes["v1Result"];
+// @ts-expect-error the installed SDK defines no createSubOrganizationResultV9
+void _envelope.createSubOrganizationResultV9;
+void _envelope.createSubOrganizationResultV8;
 
 // A throwaway P-256 pair, generated for this test only. It grants nothing: no Turnkey
 // organisation has ever seen it.

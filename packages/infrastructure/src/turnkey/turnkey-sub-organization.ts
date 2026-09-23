@@ -40,16 +40,15 @@ export interface SubOrganizationCreatorConfig {
   timeoutMs?: number;
 }
 
-interface CreateSubOrgResponse {
-  activity?: {
-    result?: {
-      createSubOrganizationResultV8?: {
-        subOrganizationId?: string;
-        rootUserIds?: string[];
-        wallet?: { walletId?: string; addresses?: string[] };
-      };
-    };
-  };
+/**
+ * The result envelope comes from the SDK rather than being described here, so the version key
+ * read below is checked against it. Spelling the shape out by hand would have left the read
+ * unpinned: a renamed key would be `undefined`, then "Sub-organization was created without an
+ * id" — a message that sends the reader to Turnkey while a real sub-organization sits orphaned
+ * there. Pinning turns that into a build error next to the request literal it must agree with.
+ */
+export interface CreateSubOrgResponse {
+  activity?: { result?: TurnkeyApiTypes["v1Result"] };
 }
 
 export function createSubOrganizationCreator(
