@@ -60,6 +60,14 @@ export type FlowEvent =
   | { type: "device_unknown" }
   | { type: "approve_started" }
   | { type: "device_added" }
+  /**
+   * The new-device rail ended without adding a device, and the two ways that happens are both
+   * ordinary. Either the person took the way out of it — that screen is offered on a hint that can
+   * be wrong, so it must never be a room with no door — or the authenticator answered that this
+   * browser already holds a credential for the account, which is the hint being corrected by
+   * something that actually knows. Either way there is nothing left to approve.
+   */
+  | { type: "device_skipped" }
   | { type: "change_email" };
 
 interface Phase {
@@ -131,6 +139,12 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       return { ...state, step: "approve" };
     case "device_added":
       return { ...state, step: "recovered" };
+    case "device_skipped":
+      // The rail goes back with the step. `welcome` belongs to no phase of the recover rail, so
+      // leaving the mode alone would light nothing above the form and leave the person reading
+      // three phases of a journey they are no longer on. They are simply signed in, which is
+      // what the `in` rail says.
+      return { ...state, mode: "in", step: "welcome" };
     case "change_email":
       // The address stays so the field comes back filled in; the code does not, because it was
       // issued for whatever address is about to be replaced.

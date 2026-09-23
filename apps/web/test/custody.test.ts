@@ -11,6 +11,7 @@ import type {
 import {
   SessionExpired,
   addPasskey,
+  alreadyEnrolled,
   createWallet,
   describeCustodyFailure,
   isEnrolledHere,
@@ -309,6 +310,19 @@ test("a dismissed prompt stays nothing to report, and every other failure keeps 
     describeCustodyFailure(new ApiError(500, "boom", undefined, "")),
     "Setting up the passkey did not finish. Please try again.",
   );
+});
+
+test("a refused duplicate is recognised as the authenticator answering, not as a fault", () => {
+  const duplicate = new Error("The authenticator already holds a credential");
+  duplicate.name = "InvalidStateError";
+  assert.equal(alreadyEnrolled(duplicate), true);
+  // Everything else must stay a failure: reading a cancellation or a network fault as "you are
+  // already enrolled" would send somebody to a wallet screen on no evidence at all.
+  assert.equal(alreadyEnrolled(cancelled()), false);
+  assert.equal(alreadyEnrolled(new ApiError(401, "Bearer JWT required", undefined, "")), false);
+  assert.equal(alreadyEnrolled(new SessionExpired()), false);
+  assert.equal(alreadyEnrolled("InvalidStateError"), false, "a string is not an error");
+  assert.equal(alreadyEnrolled(null), false);
 });
 
 test("where a signed-in person belongs follows what the account holds", () => {

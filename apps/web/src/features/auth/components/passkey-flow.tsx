@@ -10,6 +10,7 @@ import {
   CUSTODY_API,
   SessionExpired,
   addPasskey,
+  alreadyEnrolled,
   createWallet,
   describeCustodyFailure,
   isEnrolledHere,
@@ -167,6 +168,17 @@ export function PasskeyFlow({
         await runCeremony(current.ceremony, options);
         setSheet({ ...running, phase: "ok" });
       } catch (caught) {
+        // The new-device screen is shown on a hint that this browser holds no passkey. Refusing a
+        // duplicate is the authenticator saying that hint was wrong, and it is the only thing in
+        // reach that knows — so the mark is corrected and the person goes to the wallet they were
+        // trying to reach. Telling them to "use the passkey you already have" on a screen that
+        // offers no way to do so would be answering a question they did not ask with a dead end.
+        if (current.ceremony === "here" && alreadyEnrolled(caught)) {
+          await remember();
+          dispatch({ type: "device_skipped" });
+          setSheet(null);
+          return;
+        }
         failed(running, caught);
       }
     })();
@@ -369,7 +381,11 @@ export function PasskeyFlow({
           {/* One screen for both steps: `approve` is the same page with the rail moved on, and a
               form column that emptied itself behind the sheet would strand a failed ceremony. */}
           {(state.step === "recover" || state.step === "approve") && (
-            <NewDeviceStep phase={phase} onUsePhone={() => open("here")} />
+            <NewDeviceStep
+              phase={phase}
+              onUsePhone={() => open("here")}
+              onOpenWallet={() => dispatch({ type: "device_skipped" })}
+            />
           )}
           {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(STUDIO)} />}
         </div>

@@ -164,6 +164,16 @@ export function describeCustodyFailure(error: unknown): string | null {
   return describeCeremonyFailure(error);
 }
 
+/**
+ * The authenticator's word for "I already hold a credential for that account".
+ *
+ * It is raised by `excludeCredentials`, which every challenge carries, and on the new-device path
+ * it is not a failure at all: it is the answer to the question that screen was asking, from the
+ * one thing that actually knows. See `isEnrolledHere` for why that matters.
+ */
+export const alreadyEnrolled = (error: unknown): boolean =>
+  error instanceof Error && error.name === "InvalidStateError";
+
 /** Which screen a signed-in person belongs on. */
 export type Landing = "handle" | "passkey" | "recover" | "welcome";
 
@@ -171,11 +181,8 @@ export type Landing = "handle" | "passkey" | "recover" | "welcome";
  * Where to put somebody who has just proved an email address, from what the account actually
  * holds rather than from which link they arrived on.
  *
- * `enrolledHere` is the one part that is not server truth: no browser API says whether this device
- * holds a credential for an account without running a ceremony to find out, so it is a mark this
- * browser left on itself. It is read only to choose between `welcome` and `recover` — the
- * new-device path is what an unmarked browser gets, which is the safe way round, because its
- * remedy is to add a passkey and adding a second one costs a ceremony rather than an account.
+ * `enrolledHere` is the one part that is not server truth. It is read only to choose between
+ * `welcome` and `recover`, and `isEnrolledHere` says at length why it is a hint rather than a fact.
  */
 export function landing(account: {
   /** The profile's handle, or null when there is no profile yet. */
@@ -204,9 +211,24 @@ const MARK = "pickler.passkey.";
 /**
  * Whether this browser has ever finished a ceremony for this account.
  *
- * Every failure reads as "no": a private window throws on the property, a cleared store has
- * forgotten, and both should send somebody down the path that offers to add a passkey rather than
- * the one that assumes they have one here.
+ * Read this before trying to make it authoritative, because it cannot be. **No browser API answers
+ * "does this account have a credential on this device"** without running a ceremony, which means
+ * putting a prompt in front of somebody to find out what to show them. So the question is answered
+ * from a mark the browser left on itself, and a mark is a hint. It is wrong in at least three
+ * ordinary situations, none of them exotic:
+ *
+ * - the store was cleared, or is refused — a private window, "clear site data", a locked-down
+ *   profile — so a browser that has enrolled reads as one that has not;
+ * - the passkey is in a platform store that syncs, iCloud Keychain or Google Password Manager, so
+ *   a second browser or a fresh profile on the same machine can use a credential it never made;
+ * - the account was created on another device entirely and its passkey has since synced here.
+ *
+ * Every failure reads as "no" on purpose. The unmarked path is the new-device screen, whose remedy
+ * costs a ceremony rather than an account, where the marked path would quietly assume a passkey
+ * that may not exist. But being wrong in the safe direction is still being wrong, which is why
+ * that screen has a way out of it and why `alreadyEnrolled` exists: when the authenticator refuses
+ * a duplicate, it has just told us the truth this mark was guessing at, and the caller corrects
+ * the mark rather than arguing with it.
  */
 export function isEnrolledHere(store: EnrolmentStore | null, userId: string): boolean {
   try {

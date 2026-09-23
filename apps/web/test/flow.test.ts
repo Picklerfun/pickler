@@ -94,6 +94,47 @@ test("device_unknown switches the rail as well as the step", () => {
   ]);
 });
 
+test("leaving the new-device rail lands on the welcome screen, on the rail that has one", () => {
+  const recover = next(next(INITIAL, { type: "mode_chosen", mode: "in" }), {
+    type: "device_unknown",
+  });
+  const left = next(recover, { type: "device_skipped" });
+  assert.equal(left.step, "welcome");
+  // The mode has to come back with the step. `welcome` is in no phase of the recover rail, so a
+  // state that kept `mode: "recover"` would light nothing above the form.
+  assert.equal(left.mode, "in", "the rail must change back, not only the screen");
+  assert.deepEqual(rail(left), [phase("ACCOUNT", "done"), phase("IN", "active")]);
+});
+
+test("the way out of the new-device rail is open from the approve step too", () => {
+  // The screen stays up while the phone is asked, and a stamp that never comes must not trap
+  // somebody on a step they can no longer finish.
+  const approving = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
+    { type: "device_unknown" },
+    { type: "approve_started" },
+  ]).state;
+  assert.equal(approving.step, "approve");
+  const left = next(approving, { type: "device_skipped" });
+  assert.equal(left.step, "welcome");
+  assert.equal(left.mode, "in");
+});
+
+test("leaving the new-device rail invents nothing and forgets nothing", () => {
+  const recover: FlowState = {
+    ...INITIAL,
+    mode: "recover",
+    step: "recover",
+    email: "ana@pickler.xyz",
+    handle: "nightowl",
+    address: "0x01",
+  };
+  assert.deepEqual(next(recover, { type: "device_skipped" }), {
+    ...recover,
+    mode: "in",
+    step: "welcome",
+  });
+});
+
 test("changing the email goes back to the account screen and forgets the code", () => {
   const typed = walk(INITIAL, [
     { type: "code_sent", email: "ana@pickler.xyz" },

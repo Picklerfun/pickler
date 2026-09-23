@@ -35,9 +35,16 @@ const PHONE_NOTE: Record<UsePhonePhase, string> = {
 export function NewDeviceStep({
   phase,
   onUsePhone,
+  onOpenWallet,
 }: {
   phase: UsePhonePhase;
   onUsePhone: () => void;
+  /**
+   * The way out, and it is not a cancel — nothing is running to cancel. This screen is reached on
+   * a hint that this browser holds no passkey, and that hint is wrong often enough that a person
+   * who knows better has to be able to disagree with it and carry on to the wallet they came for.
+   */
+  onOpenWallet: () => void;
 }) {
   return (
     <div className={styles.flowStep}>
@@ -58,6 +65,14 @@ export function NewDeviceStep({
         </span>
         <Icon name="arrow" size={16} />
       </Button>
+
+      {/* Named for where it goes rather than for what it declines: somebody who already approved
+          this device is not skipping a step, they are going where they were going. */}
+      <div className={styles.flowActions}>
+        <Button variant="secondary" onClick={onOpenWallet} disabled={phase !== "idle"} arrow>
+          Go to my wallet
+        </Button>
+      </div>
 
       <p className={styles.point} data-accent="muted">
         <span className={styles.pointTitle}>Recover by email</span>
