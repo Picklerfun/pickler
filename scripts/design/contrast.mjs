@@ -6,7 +6,7 @@
 // call and costs milliseconds, so the thing worth rationing is the report, not the work. Findings
 // are therefore grouped by the four things that decide a ratio — ink, ground, size, weight — so one
 // mis-read token reports once with a count and a line to look at, instead of four hundred times.
-import { composite, effectiveOpacity, hex, parse, ratio } from "./lib/colour.mjs";
+import { hex, paint, parse, ratio } from "./lib/colour.mjs";
 import { eachRoute, finish } from "./lib/render.mjs";
 import { ROUTES } from "./routes.mjs";
 
@@ -79,30 +79,22 @@ for (const { route, value } of results) {
       overImage += 1;
       continue;
     }
-    /* Effective opacity at each level: the product of every opacity from that element up to the
-     * root, because an ancestor's opacity dims its whole subtree against whatever is behind it. The
-     * chain runs element-first, so these are suffix products. */
-    const effective = effectiveOpacity(item.chain.map((level) => level.opacity));
-    if (effective[0] === 0) {
+    /* What the browser paints, group by group. Opacity is not an alpha that folds into a colour:
+     * it makes the element and its contents one buffer, composited once onto what is behind. */
+    const levels = item.chain.map((level) => ({
+      opacity: level.opacity,
+      ground: level.ground ? parse(level.ground) : null,
+    }));
+    const dimmed = levels.reduce((carried, level) => carried * level.opacity, 1);
+    if (dimmed === 0) {
       // Dimmed to nothing. A ratio for it would be arithmetic about something nobody can see, and
       // scoring it 1:1 would bury every real finding — but skipping it in silence would hide a
       // control someone switched off by accident, so it is named below instead of judged here.
       invisible.push(`${route.name} ${item.selector} — "${item.text}"`);
       continue;
     }
-    // Composite the stack from the far end back: the page's own ground first, then anything
-    // translucent painted over it, then the ink. White is what a browser paints under all of it.
-    // Each layer carries its own alpha times the opacity in force where it is painted.
-    let ground = [255, 255, 255, 1];
-    for (let i = item.chain.length - 1; i >= 0; i -= 1) {
-      const layer = item.chain[i].ground;
-      if (!layer) {
-        continue;
-      }
-      const colour = parse(layer);
-      ground = composite([colour[0], colour[1], colour[2], colour[3] * effective[i]], ground);
-    }
-    const seenInk = composite([ink[0], ink[1], ink[2], ink[3] * effective[0]], ground);
+    const ground = paint(levels);
+    const seenInk = paint(levels, ink);
     const large = item.size >= LARGE || (item.size >= LARGE_BOLD && item.weight >= 700);
     const need = large ? 3 : 4.5;
     const measured = ratio(seenInk, ground);
@@ -123,7 +115,7 @@ for (const { route, value } of results) {
       line: () =>
         `${route.name} ${item.selector}: ${measured.toFixed(2)} needs ${need} — ` +
         `${hex(seenInk)} on ${hex(ground)} at ${item.size}px/${item.weight}` +
-        (effective[0] < 1 ? ` (opacity ${effective[0].toFixed(2)})` : "") +
+        (dimmed < 1 ? ` (opacity ${dimmed.toFixed(2)})` : "") +
         ` ×${seen.get(key).count} — "${item.text}"`,
     });
   }

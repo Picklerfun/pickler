@@ -19,19 +19,42 @@ export function composite(over, under) {
   return [0, 1, 2].map((i) => over[i] * a + under[i] * (1 - a)).concat(1);
 }
 
-/** Element opacity in force at each level, given each element's own opacity from the text element
- *  up to the root. Opacity is not part of a colour and it compounds down the tree, so 0.55 inside
- *  0.8 is 0.44 — which is where white ink on the night-blue panel drops under AA while measuring
- *  21:1 on the two colours alone. These are suffix products: the value at index i is the opacity
- *  applying to whatever is painted at that level, including every ancestor above it. */
-export function effectiveOpacity(opacities) {
-  const out = [];
-  let carried = 1;
-  for (let i = opacities.length - 1; i >= 0; i -= 1) {
-    carried *= opacities[i];
-    out[i] = carried;
+/** Paint `src` (a colour and its coverage) onto `dst`, either of which may be partly covering. */
+function over(src, srcA, dst, dstA) {
+  const outA = srcA + dstA * (1 - srcA);
+  if (outA === 0) {
+    return [[0, 0, 0], 0];
   }
-  return out;
+  const colour = [0, 1, 2].map((i) => (src[i] * srcA + dst[i] * dstA * (1 - srcA)) / outA);
+  return [colour, outA];
+}
+
+/** What the browser actually paints, given the chain of levels from an element up to the root and
+ *  an optional ink on top. `levels` runs element-first, each `{ opacity, ground }`.
+ *
+ *  Element opacity is not an alpha that can be folded into a colour. It creates a stacking context:
+ *  the element and everything inside it render into one buffer, and that buffer is composited once
+ *  onto what is behind. So an element that paints its own ground and dims itself does not dim its
+ *  ink against its own ground — at a text pixel the buffer holds the opaque ink, and it is the ink
+ *  that gets blended with whatever is behind the group.
+ *
+ *  Multiplying the opacities and folding the product into the ink's alpha is right only while the
+ *  dimmed elements paint no ground of their own, because then there is nothing else in the buffer.
+ *  Where they do, that model lands the opacity on the ink twice: measured against a rendered
+ *  control it reported 2.53 where the browser painted 4.38. */
+export function paint(levels, ink = null) {
+  let colour = ink ? [ink[0], ink[1], ink[2]] : [0, 0, 0];
+  let covered = ink ? ink[3] : 0;
+  for (const { opacity, ground } of levels) {
+    if (ground) {
+      [colour, covered] = over(colour, covered, ground, ground[3]);
+    }
+    // The whole group — this element's ground and everything drawn inside it — dims as one.
+    covered *= opacity;
+  }
+  // White is what a browser paints under all of it.
+  const [seen] = over(colour, covered, [255, 255, 255], 1);
+  return [...seen, 1];
 }
 
 function channel(c) {

@@ -3,7 +3,7 @@
 // Run: node --test scripts/design/colour.test.mjs
 import assert from "node:assert/strict";
 import test from "node:test";
-import { composite, effectiveOpacity, hex, parse, ratio } from "./lib/colour.mjs";
+import { composite, hex, paint, parse, ratio } from "./lib/colour.mjs";
 
 const WHITE = [255, 255, 255, 1];
 const BLACK = [0, 0, 0, 1];
@@ -70,25 +70,54 @@ test("hex prints what a person can paste into the token file", () => {
   assert.equal(hex([127.5, 127.5, 127.5]), "#808080", "composited channels are rounded, not cut");
 });
 
+const NIGHT = [11, 13, 26, 1];
+const PANEL = [245, 246, 250, 1];
+const WHITE_INK = [255, 255, 255, 1];
+
 test("element opacity compounds down the tree", () => {
+  // Three nested groups, none painting a ground: the classic case, where the opacities simply
+  // multiply. 0.55 inside 0.8 is 0.44, and an undimmed level between them changes nothing.
+  const through = (...opacities) =>
+    opacities.map((opacity, i) => ({ opacity, ground: i === opacities.length - 1 ? NIGHT : null }));
   all([
-    [round(effectiveOpacity([0.55, 0.8])[0]), 0.44, "0.55 inside 0.8 is 0.44, not 0.55"],
-    [round(effectiveOpacity([0.55, 0.8])[1]), 0.8, "the outer level keeps its own"],
-    [round(effectiveOpacity([0.55, 1, 0.8])[0]), 0.44, "an undimmed level between changes nothing"],
-    [round(effectiveOpacity([1, 1, 1])[0]), 1, "nothing dimmed is nothing changed"],
-    [effectiveOpacity([]).length, 0, "no chain, no levels"],
+    [hex(paint(through(0.55, 1), WHITE_INK)), "#919298", "one group at 0.55 over night blue"],
+    [hex(paint(through(0.55, 0.8, 1), WHITE_INK)), "#76777F", "0.55 inside 0.8 is dimmer still"],
+    [
+      hex(paint(through(0.55, 1, 0.8, 1), WHITE_INK)),
+      "#76777F",
+      "an undimmed level between changes nothing",
+    ],
+    [hex(paint(through(1, 1), WHITE_INK)), "#FFFFFF", "nothing dimmed is nothing changed"],
   ]);
 });
 
-test("a dimmed ink is measured as the eye sees it, not as its colour reads", () => {
-  // The regression case this was built for: white on the night-blue panel, which is 19.32 on the
-  // two colours alone and stays 19.32 to any check that reads only the alpha inside a colour. The
-  // waitlist submit's disabled state was exactly this shape.
-  const NIGHT = [11, 13, 26, 1];
-  const seenAt = (opacity) => round(ratio(composite([255, 255, 255, opacity], NIGHT), NIGHT));
+test("a dimmed group is composited once, not once per layer", () => {
+  /* Both cases read off the rendered page, pixel by pixel, rather than derived. They differ in one
+   * thing: whether the dimmed element paints a ground of its own.
+   *
+   * A — no ground of its own. Nothing else is in the buffer, so dimming the ink is the whole story.
+   * B — its own ground. At a text pixel the buffer holds the opaque ink, so the ink blends with
+   *     what is behind the *group*, not with the group's own dimmed ground. Folding the opacity
+   *     into the ink's alpha instead reports 2.53 where the browser paints 4.38. */
+  const A = [
+    { opacity: 0.55, ground: null },
+    { opacity: 1, ground: NIGHT },
+  ];
+  const B = [
+    { opacity: 0.55, ground: NIGHT },
+    { opacity: 1, ground: PANEL },
+  ];
+  const seen = (levels) => ({
+    ink: hex(paint(levels, WHITE_INK)),
+    ground: hex(paint(levels)),
+    ratio: round(ratio(paint(levels, WHITE_INK), paint(levels))),
+  });
   all([
-    [seenAt(1), 19.32, "undimmed white on night blue"],
-    [seenAt(0.55), 6.24, "0.55 alone still clears 4.5 — this is not where it breaks"],
-    [seenAt(effectiveOpacity([0.55, 0.8])[0]), 4.36, "0.55 inside 0.8 drops it under AA"],
+    [seen(A).ink, "#919298", "A: ink, as the browser painted it"],
+    [seen(A).ground, "#0B0D1A", "A: ground is undimmed — the opacity is inside it"],
+    [seen(A).ratio, 6.24, "A: still clears 4.5, so this is not where dimming breaks"],
+    [seen(B).ink, "#FBFBFD", "B: ink blends with what is behind the group"],
+    [seen(B).ground, "#74767F", "B: ground is the dimmed night blue over the panel"],
+    [seen(B).ratio, 4.38, "B: the number a per-layer model gets wrong, reporting 2.53"],
   ]);
 });

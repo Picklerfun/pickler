@@ -248,6 +248,27 @@ in the list because nothing in the apparatus could have caught it.
     it carries. The two questions have to be asked of the same element in that order, or the second
     one is decoration.
 
+21. **A disagreement too large to be a real defect is a broken instrument until proven
+    otherwise.** Reading back what the browser actually paints, to settle whether element opacity
+    composites per layer or per group, first produced `#000000` grounds and ratios of 1.00 and
+    20.82 — confident nonsense, because the PNG reader assumed 8-bit RGBA while Playwright emits
+    colour type 2, RGB at three bytes per pixel, so every row was shifted by a byte. What caught it
+    was not suspicion of the decoder: it was that one case disagreed with the model by fourteen
+    points, and no real defect in a contrast check is fourteen points wide. Calibrate on the case
+    you already know the answer to; when the instrument and the model disagree by more than the
+    defect could be, doubt the instrument first. The fix here was not to write a better decoder but
+    to stop decoding — screenshot with the browser, then hand the PNG back to the same browser and
+    read it off a canvas, so no byte layout is assumed anywhere.
+22. **Element opacity composites the group, not the layers.** `opacity` makes an element and its
+    descendants one buffer that is composited once onto what is behind. So an element that paints
+    its own ground and dims itself does _not_ dim its ink against that ground: at a text pixel the
+    buffer holds the opaque ink, which then blends with whatever is behind the group. Multiplying
+    the opacities and folding the product into the ink's alpha is right only while the dimmed
+    elements paint no ground of their own — which is why a test built on that case passed a model
+    that was wrong for every filled control. Against a rendered control the per-layer model reported
+    **2.53** where the browser painted **4.38**. It erred safe here, but the same error inverts:
+    a control truly at 5 models at roughly 3 and is reported as a failure that is not there.
+
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead
 of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
