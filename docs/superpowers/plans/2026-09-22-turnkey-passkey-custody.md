@@ -796,6 +796,16 @@ test("a challenge belonging to someone else is refused", async () => {
       }),
     ChallengeNotUsableError,
   );
+  // Load-bearing. `put` already exists, so a compensating rollback — restoring the challenge
+  // because "a stranger should not burn someone else's" — needs no port change, looks obviously
+  // right to whoever writes it, and passes every other test. It would leave a challenge that
+  // survives probing and a window where the same one is claimed twice. This assertion is what
+  // stops it; a comment would not.
+  assert.equal(
+    f.stored.has(options.challenge),
+    false,
+    "a rejected claim still spends the challenge; putting it back would let a stranger probe it",
+  );
 });
 
 test("the loser of a concurrent submit gets the winner's account, not a 500", async () => {
