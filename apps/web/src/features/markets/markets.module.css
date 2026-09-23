@@ -430,22 +430,22 @@
 .surface {
   composes: pk-panel from global;
   --accent-ink: var(--lime-ink);
-  --accent-on: rgba(200, 240, 58, 0.4);
-  --accent-soft: rgba(200, 240, 58, 0.08);
+  --accent-on: var(--pk-lime-edge);
+  --accent-soft: var(--pk-state-good-bg);
 
   overflow: hidden;
 }
 
 .toneShort {
   --accent-ink: var(--pink-ink);
-  --accent-on: rgba(255, 95, 162, 0.4);
-  --accent-soft: rgba(255, 95, 162, 0.08);
+  --accent-on: var(--pk-magenta-edge);
+  --accent-soft: var(--pk-state-loss-bg);
 }
 
 .toneAsk {
   --accent-ink: var(--violet-ink);
-  --accent-on: rgba(155, 123, 255, 0.45);
-  --accent-soft: rgba(155, 123, 255, 0.09);
+  --accent-on: var(--pk-violet-edge);
+  --accent-soft: var(--pk-state-info-bg);
 }
 
 .surfaceHead {
@@ -483,14 +483,17 @@
   color: var(--faint);
 }
 
+/* The grid's two halves. At 0.04 the split read on the dark page and vanished on a white one, which
+   is the whole of what alpha over a hex does wrong: these are large areas, so the pairs make them
+   quieter in proportion and visible at all. */
 .railLong {
   flex: 5;
-  background: rgba(200, 240, 58, 0.04);
+  background: var(--pk-state-good-bg);
 }
 
 .railShort {
   flex: 4;
-  background: rgba(255, 95, 162, 0.04);
+  background: var(--pk-state-loss-bg);
 }
 
 .toneLong .railLong,
@@ -758,17 +761,17 @@
 
 .ticket.long {
   border-color: var(--pk-lime-edge);
-  background: rgba(200, 240, 58, 0.06);
+  background: var(--pk-state-good-bg);
 }
 
 .ticket.short {
   border-color: var(--pk-magenta-edge);
-  background: rgba(255, 95, 162, 0.06);
+  background: var(--pk-state-loss-bg);
 }
 
 .ticket.ask {
   border-color: var(--pk-violet-edge);
-  background: rgba(155, 123, 255, 0.07);
+  background: var(--pk-state-info-bg);
 }
 
 .ticket.warn {
@@ -1053,12 +1056,12 @@
 
 .pulseLime {
   background: var(--lime);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
+  box-shadow: 0 0 10px var(--pk-lime);
 }
 
 .pulseCyan {
   background: var(--pk-cyan);
-  box-shadow: 0 0 10px rgba(90, 216, 255, 0.9);
+  box-shadow: 0 0 10px var(--pk-blue);
 }
 
 @keyframes pulse {
