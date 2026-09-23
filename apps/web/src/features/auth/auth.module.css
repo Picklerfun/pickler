@@ -1352,42 +1352,50 @@
 
 /* ---------- The ceremony sheet ---------- */
 
-/* It sits over the flow because the operating system is about to sit over everything: the sheet is
-   the last thing that is ours, and it names the ceremony the prompt belongs to so the prompt is
-   not the first explanation the person gets. */
-.sheetScrim {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0;
-  background: rgba(6, 6, 9, 0.72);
-  backdrop-filter: blur(6px);
-  animation: fadeIn 160ms ease-out;
-}
-
+/* A native dialog, so the modality is real rather than claimed: the browser holds the focus
+   inside it, makes the page behind inert and handles Escape itself. It sits over the flow because
+   the operating system is about to sit over everything — the sheet is the last thing that is
+   ours, and it names the ceremony the prompt about to appear belongs to. */
 .sheet {
   composes: pk-panel from global;
-  display: flex;
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
   flex-direction: column;
   gap: 12px;
   width: 100%;
   max-width: 460px;
+  max-height: 90dvh;
+  margin: 0 auto;
   padding: 24px 22px 26px;
+  overflow-y: auto;
   border-bottom: none;
   border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
   background: #101014;
+  color: var(--ink);
+  font-family: var(--body);
+  animation: fadeIn 160ms ease-out;
 }
 
-@media (min-width: 640px) {
-  .sheetScrim {
-    align-items: center;
-    padding: 22px;
-  }
+/* The element is in the tree whether or not it is open, so the flex layout waits for `open`
+   rather than fighting the user agent's `display: none`. */
+.sheet[open] {
+  display: flex;
+}
 
+.sheet::backdrop {
+  background: rgba(6, 6, 9, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+/* A bottom sheet on a phone, a centred card once there is room. `height: fit-content` is what
+   lets `margin: auto` centre it vertically; with an auto height it would stretch to both edges. */
+@media (min-width: 640px) {
   .sheet {
+    inset: 0;
+    width: min(460px, calc(100% - 44px));
+    height: fit-content;
+    margin: auto;
     border-bottom: 1px solid var(--line);
     border-radius: var(--pk-radius-xl);
   }
@@ -1420,6 +1428,8 @@
 }
 
 .sheetSaved {
+  margin-right: 7px;
+  vertical-align: -3px;
   color: var(--lime);
 }
 

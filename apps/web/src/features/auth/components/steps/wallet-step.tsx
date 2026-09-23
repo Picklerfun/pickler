@@ -66,10 +66,15 @@ export function WalletStep({
         >
           {addressButtonLabel(address, copy)}
         </button>
+        {/* The button's own name cannot change to announce this: a renamed control is not read
+            out. The success is said here, and the failure says more than that below. */}
+        <span className={styles.srOnly} role="status">
+          {copy === "copied" ? "Address copied" : ""}
+        </span>
       </p>
 
       {copy === "failed" && (
-        <p className={styles.copyFailed}>
+        <p className={styles.copyFailed} role="status">
           <span>COULD NOT COPY · SELECT IT INSTEAD</span>
           {address}
         </p>
