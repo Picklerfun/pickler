@@ -127,6 +127,25 @@ export const walletLinks = identity
   )
   .enableRLS();
 
+/**
+ * Single-use, five-minute TTL, consumed with DELETE ... RETURNING — the same shape and the same
+ * reasoning as wallets.webauthn_challenges, because Workers has no Redis and KV cannot promise a
+ * single consumer.
+ *
+ * It carries no address. The nonce is issued before anyone knows which wallet will answer, and
+ * binding it to an address the client claims would bind it to something unverified.
+ */
+export const siweNonces = identity
+  .table(
+    "siwe_nonces",
+    {
+      nonce: text("nonce").primaryKey(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    },
+    (t) => [index("siwe_nonces_expiry_idx").on(t.expiresAt)],
+  )
+  .enableRLS();
+
 /** The creator's space. A person owns at most one; they can be a member of others. */
 export const workspaces = identity
   .table(
