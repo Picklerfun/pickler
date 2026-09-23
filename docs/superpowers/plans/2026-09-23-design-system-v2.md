@@ -101,6 +101,13 @@ the specification, none visible by reading:
    second colour has to come from somewhere else, which is what a tint-and-ink pair is for. When a
    surface changes, ask which constructions have no form on the new one, not only which values are
    wrong.
+7. **A check that cannot tell which layer failed will send someone to the wrong one**, and the cost
+   is paid by whoever reads the output rather than whoever wrote it. Three processes fail
+   independently behind these checks — the script, the dev server, and the API fixture — and only
+   one of them fails visibly: a dead dev server refuses the connection, while a dead fixture leaves
+   a healthy app answering 500 with a stack trace pointing at `api-client.ts`. A message naming the
+   wrong one costs an hour of debugging a design system that is fine. Name each failure by what was
+   observed, say which layer to look at, and give the remedy once rather than once per route.
 
 ---
 
