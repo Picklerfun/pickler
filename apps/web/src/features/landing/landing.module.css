@@ -239,6 +239,18 @@
   background: var(--pk-panel-3);
 }
 
+/* Dimmed with tokens rather than with opacity, and not for tidiness. Opacity dims the label and the
+   ground together and leaves neither in any token — and contrast.mjs reads colours and never reads
+   opacity, so it would have scored a dimmed control on the two values underneath it while the eye
+   saw something far darker. A state no check can reach is the one that should least be guessed at,
+   so this is the inverted ramp's own panel and muted ink, which measure against each other. */
+.invert:disabled {
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
 .navCta {
   margin-left: auto;
 }
@@ -805,12 +817,6 @@
 
 .submit:hover:not(:disabled) {
   transform: translateY(-2px);
-}
-
-.submit:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
 }
 
 .formError {
