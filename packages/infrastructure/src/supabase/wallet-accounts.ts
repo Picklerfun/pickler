@@ -66,7 +66,13 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
       const created = await config.admin.auth.admin.createUser({
         email,
         email_confirm: true,
-        user_metadata: { wallet_namespace: namespace, wallet_address: address },
+        // The namespace only, never the address. `user_metadata` is carried in the access token
+        // and exposed on `session.user`, which the browser already reads
+        // (apps/web/src/features/auth/lib/account.ts). Putting the address here would undo the
+        // reason the local part of `email` is a digest: it would disclose which wallet an account
+        // belongs to, on every request, to anything that reads a user. `identity.wallet_links` is
+        // the authoritative record of that link and nothing needs a second copy in a token.
+        user_metadata: { wallet_namespace: namespace },
       });
       if (created.data.user) {
         return { userId: created.data.user.id };

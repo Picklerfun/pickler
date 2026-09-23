@@ -1640,6 +1640,19 @@ import type { SupabaseAdmin } from "./supabase-admin-client.js";
  * Supabase Auth wants an email or a phone and a wallet has neither, so the user is created with a
  * synthetic, non-deliverable address derived from the wallet.
  *
+ * THE LOCAL PART IS A DIGEST, NOT THE ADDRESS. The auth email travels in every access token's
+ * `email` claim, so it reaches the browser on every request and lands in any log that reads a
+ * user. Spelling the address into it would make all of those a disclosure of which wallet an
+ * account belongs to. The namespace stays visible so operators can tell the families apart, and is
+ * hashed in as well so one address on two families stays two accounts.
+ *
+ * The same reasoning governs `user_metadata`, which is also carried in the token: the namespace may
+ * go there, the address may not.
+ *
+ * A second `toLowerCase` here was a live defect: a no-op on EVM, and on Solana — where base58 is
+ * case-significant — it collapsed two distinct addresses into one account shared by two people. A
+ * hex digest has no case to lose, which removes the shape rather than the instance.
+ *
  * It is an internal key and never a contact: it is shown on no screen and never sent to. The real
  * email a person gives later is a field on their profile, not a change to this identity — because
  * changing it would mean rewriting the row every other table points at, and because linking a
@@ -1648,7 +1661,7 @@ import type { SupabaseAdmin } from "./supabase-admin-client.js";
  * The domain must therefore never be made to accept mail.
  */
 export function syntheticEmail(namespace: Namespace, address: string, domain: string): string {
-  return `${namespace}-${address.toLowerCase()}@${domain}`;
+  return `${namespace}-${sha256hex(`${namespace}:${address}`)}@${domain}`;
 }
 
 export interface WalletAccountsConfig {
@@ -1716,7 +1729,7 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
 test("the synthetic address is derived from the wallet and is not deliverable", () => {
   assert.equal(
     syntheticEmail("eip155", "0xABC0000000000000000000000000000000000001", "wallet.pickler.fun"),
-    "eip155-0xabc0000000000000000000000000000000000001@wallet.pickler.fun",
+    "eip155-<sha256 of `eip155:0xabc…01`>@wallet.pickler.fun", // pin the real digest as a golden value,
   );
 });
 
