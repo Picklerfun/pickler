@@ -5,6 +5,7 @@ import { test } from "node:test";
 // checked against the types the API is built from rather than against a paragraph of prose.
 import type {
   ChallengeOptions,
+  Passkey,
   PasskeyAttestation,
   SignedActivityRequest,
   UnsignedActivity,
@@ -20,6 +21,7 @@ import {
 import type {
   AttestationDto,
   ChallengeOptionsDto,
+  PasskeyDto,
   SignedActivityDto,
   UnsignedActivityDto,
 } from "../src/features/auth/lib/custody-api";
@@ -38,6 +40,42 @@ const _unsignedActivityFitsTheDto: UnsignedActivityDto = {} as UnsignedActivity;
 void _unsignedActivityFitsTheDto;
 const _signedActivityFitsTheDto: SignedActivityRequest = {} as SignedActivityDto;
 void _signedActivityFitsTheDto;
+
+// PasskeyDto cannot be assigned from core's Passkey the way the others can: GET /passkeys
+// snake_cases the keys and serialises both Dates with toISOString(). So the pin is the mapping
+// itself. Record<keyof Passkey, ...> fails to compile if core grows a field the DTO has no name
+// for — a field the account screen would then never see — and the reverse fails if the DTO grows
+// one the route does not send.
+const _everyPasskeyFieldReachesTheDto: Record<keyof Passkey, keyof PasskeyDto> = {
+  id: "id",
+  credentialId: "credential_id",
+  label: "label",
+  transports: "transports",
+  deviceType: "device_type",
+  createdAt: "created_at",
+  lastUsedAt: "last_used_at",
+};
+void _everyPasskeyFieldReachesTheDto;
+const _everyDtoFieldComesFromOne: Record<keyof PasskeyDto, keyof Passkey> = {
+  id: "id",
+  credential_id: "credentialId",
+  label: "label",
+  transports: "transports",
+  device_type: "deviceType",
+  created_at: "createdAt",
+  last_used_at: "lastUsedAt",
+};
+void _everyDtoFieldComesFromOne;
+// The two the route sends null for must stay nullable. `call` casts rather than validates, so a
+// DTO narrowed to `string` here would hand the account screen a null it swears cannot happen —
+// and the screen reads last_used_at === null as NEVER USED, which is the whole point of it.
+const _deviceTypeStaysNullable: PasskeyDto["device_type"] = null;
+void _deviceTypeStaysNullable;
+const _lastUsedStaysNullable: PasskeyDto["last_used_at"] = null;
+void _lastUsedStaysNullable;
+// @ts-expect-error the dates cross the wire as ISO text, not as Date objects
+const _datesAreText: PasskeyDto["created_at"] = new Date();
+void _datesAreText;
 
 const TOKEN = "supabase.jwt.value";
 
