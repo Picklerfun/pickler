@@ -1760,12 +1760,12 @@
   padding: 8px 10px 4px;
 }
 
-/* Licence credit for the charting library, quiet enough to read as a footer and still be a link. */
+/* The page footer. It carries the charting library's licence credit on the two routes that draw one
+   — quiet enough to read as a footer and still be a link — and the year on all of them. */
 .credit {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   width: 100%;
   max-width: 1200px;
@@ -1788,7 +1788,10 @@
   border-bottom-color: var(--rule);
 }
 
+/* Pinned right whether or not the credit is beside it, so the footer does not change shape between
+   a page that draws a chart and a page that does not. */
 .creditNote {
+  margin-left: auto;
   color: var(--faint);
 }
 

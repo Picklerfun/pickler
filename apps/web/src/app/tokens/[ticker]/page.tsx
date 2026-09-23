@@ -29,7 +29,7 @@ export default async function TokenDetailPage({ params }: { params: Params }) {
     notFound();
   }
   return (
-    <PublicShell>
+    <PublicShell charts>
       <TokenPage agent={profile} nowMs={services.clock.now().getTime()} />
     </PublicShell>
   );
