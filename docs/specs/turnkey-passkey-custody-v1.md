@@ -332,3 +332,19 @@ missing is the wiring: those three builders have no caller outside their tests, 
 `cosigner.providers.ts` and `wallets.service.ts` only read. That is why the extraction report says
 nothing writes `agent_policy_meta`. Specification two connects tested builders to agent creation;
 it does not design the round.
+
+**Two client shapes worth knowing before adding routes.** The web client's DTOs are deliberately
+not one type across the signing routes: `/passkeys/register` answers two ids and an address,
+`/wallets/me` answers an address and balances and neither id, and `/passkeys/add/confirm` answers
+`{ activity_id, status }`. A type spanning them would be wrong in a direction no path check
+reaches, and it would not surface as an error — `call` casts its envelope with `as T` rather than
+validating, so an overstated DTO appears as `undefined` at a property access, or as a null the type
+swears is impossible, far from the cause. When specification two adds agent-wallet routes, give
+each response its own type.
+
+And `wallet()` throws `ApiError(404)` for an account that has no wallet yet rather than returning
+`null`. That follows the existing idiom at `account.ts:43`, but it means every caller needs a
+`try`/`catch` to render the ordinary "not yet" state — a case that is not an error from the
+person's point of view. Worth settling deliberately when the agent-wallet reads land, because
+there will be more of these and the same choice made twice by accident is how an idiom becomes a
+rule nobody chose.
