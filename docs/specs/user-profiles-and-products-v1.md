@@ -708,19 +708,27 @@ means "no matching lines" and "no output at all" indistinguishably. Both an agen
 reported clean gates from filtered output while those gates were failing. Exit status is the
 verification; the filter is a convenience.
 
-### What is built but not reachable
+### What a person can and cannot reach
 
-**Nothing in the product can sign in with a wallet yet.** `signIn` in
-`apps/web/src/features/wallet/lib/connect.ts` has no caller, and nothing calls
-`supabase.auth.setSession` with the tokens it returns, so even if it were called the session would
-be discarded. `POST /v1/auth/wallet/link` has no browser caller at all, and `custody_started` is
-dispatched by nothing — so §6's "the passkey is created when a person builds their first agent" is
-modelled in the state machine and unreachable in the product.
+**Reachable, end to end.** Connect a wallet, type a handle, press Claim: that signs one line the
+server built, verifies it, and puts the tokens into Supabase. The session is cached, so a second
+action does not spend a second prompt. Signing in happens on Claim rather than on connect
+deliberately — `connect-modal.tsx` promises on screen that connecting is not signing, and firing a
+prompt the moment someone connects would make that line false and train people to approve prompts.
 
-The ceremony is complete and tested end to end from the API's side down; the three buttons that
-would start it are not written. No task in the plan wired them, which is a gap in the plan rather
-than an incomplete task, and it is recorded here so that "the sign-in works" is not read as "a
-person can sign in".
+Custody is reachable too: `/custody` mounts the rail on the mode Task 16 built, and `/account`
+offers it where the screen already says there is no wallet yet. Nothing new was designed; it is the
+sign-up ceremony on its own page, entered by someone who chose it.
+
+**Not reachable.** Custody does not start from the studio's first-agent journey. `agent-form.tsx`
+has no idea whether a wallet exists, and giving it one means a new `GET /wallets/me` dependency
+inside `features/console` plus the design questions that come with it — what an agent without a
+wallet can and cannot do, whether the rail belongs in a sheet or a page. So §6's trigger is
+currently "when the person chooses", not yet "when they build their first agent". `custody_started`
+is still dispatched by nothing; the page sets its initial step directly.
+
+Linking a second wallet is unbuilt: `POST /v1/auth/wallet/link` has no browser caller. A person with
+one wallet has a complete account, which is why this was the one of the three to drop.
 
 **Solana cannot happen.** `namespace` is hardcoded `"eip155"` in both places that could produce
 one, and the store writes `method` as the literal `'siwe'`. §3 explains why `(namespace, address)`,
@@ -735,6 +743,11 @@ designed: the client would have to say, and no field exists for it.
 **Expired nonces are never deleted.** Rows leave `identity.siwe_nonces` only through `consume`, so
 an issued-and-abandoned nonce stays forever. The index on `expires_at` is there for a sweeper that
 does not exist.
+
+**And the `(auth)` group has never been measured by the design checks.** Not `/signin`, not
+`/signup` — `routes.mjs` carries 15 routes and none of them is in that group. Pointing a route at
+`/signup` finds eight violation classes. That is unmeasured ground rather than a regression, and it
+retires a claim made in `design-system-v2.md`, corrected there.
 
 ### What was left
 
