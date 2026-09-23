@@ -29,29 +29,6 @@
   white-space: nowrap;
 }
 
-/* A disabled control here takes a token pair instead of the system button's `opacity: 0.4`.
- *
- * Element opacity is a second way to paint a colour no token holds, and the quieter of the two: the
- * token check cannot see through it either. contrast.mjs can — it composites the dimming and scores
- * what the eye actually sees — and it read the three disabled actions on this screen at 1.66, 2.59
- * and 3.80 against a 4.5 floor. This screen has more disabled actions than any other in the product
- * because most of what the canvas draws is not built yet, so it is worth naming their colours.
- *
- * Both values are tokens, which is what lets one rule serve both surfaces: inside the light wallet
- * card the same two names resolve to the light panel and the light muted grey, and the disabled
- * Send inverts with everything around it. A literal pair would have been correct on one surface and
- * invisible on the other.
- *
- * The fix belongs in @pickler/ui with the button itself, and this rule goes the day it lands there.
- */
-.account :global(.pk-button):disabled {
-  opacity: 1;
-  border-color: var(--pk-rule-strong);
-  background: var(--pk-panel);
-  color: var(--pk-ink-muted);
-  box-shadow: none;
-}
-
 /* ---------- Top bar ---------- */
 
 .topbar {
