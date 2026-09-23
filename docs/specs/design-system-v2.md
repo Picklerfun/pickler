@@ -56,6 +56,22 @@ So a surface is not a page-level theme. It is a property any subtree can take, a
 opposite value inverts everything inside it. That single mechanism produces every inverted block in
 all five canvases with no special-case CSS.
 
+### An inverted block must be told what it inverts from
+
+Nesting the opposite surface is how a dark panel sits in a light page. It is not, by itself, how a
+single control inverts — and the difference cost an afternoon to find, in a browser rather than in
+prose.
+
+The marketplace's "Create agent" action is dark on a white bar. Built as `data-surface="dark"` it is
+correct on the light routes and **disappears on the dark one**, painting `#0B0D1A` on a bar that is
+already `#0B0D1A`. A dark action is not dark; it is dark _relative to_ a light bar. So the control
+takes the bar's surface as an input and renders the opposite of whatever it is given.
+
+The sharper form of the same point: for an object made of two tokens, swapping `--pk-ink` and
+`--pk-bg` inverts by itself and needs no attribute at all. This control only needs a surface because
+its hover reaches for a third value off the inverted ramp. If the design ever drops that hover step,
+the attribute goes with it.
+
 ## 3. Approach
 
 `packages/ui/src/styles.css` already switches on `data-surface`, redefining the same semantic token
