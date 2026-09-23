@@ -244,6 +244,25 @@ local stack currently sends a link.
 - Whether X (Twitter) OAuth credentials exist for the Supabase project. If not, that button is
   hidden rather than shown dead.
 
+## 11b. Two ways a passkey can exist that authorises nothing
+
+Neither is damage and neither blocks release, but both leave a Pickler credential in someone's
+keychain that belongs to no sub-organization, indistinguishable in the operating system's picker
+from the one that works.
+
+**A cancelled stamp.** Adding a device is two ceremonies and they cannot be reordered: the local
+credential must exist before `prepareAddPasskey` can build the activity the phone stamps. Cancel the
+second and the first survives. The honest fix is a server-side adopt-or-prune endpoint — the
+browser reports the credential it made, and the server either completes the activity or records
+that it should never be trusted.
+
+**A retried registration.** `register` is idempotent and returns the existing account early, which
+is the behaviour that stops a retry minting a second sub-organization. The cost is that the
+credential the browser made for that retry is discarded unused. `excludeCredentials` prevents a
+duplicate on the same authenticator, so this is bounded, but it is the same orphan by another route.
+
+Both are worth closing together, because one endpoint answers both.
+
 ## 12. What specification two inherits
 
 Each agent is **not** its own sub-organization. Inside the person's single sub-organization an
