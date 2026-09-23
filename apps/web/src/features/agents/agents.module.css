@@ -2169,7 +2169,7 @@
 }
 
 .readCard {
-  border: 1px solid rgba(155, 123, 255, 0.45);
+  border: 1px solid var(--pk-violet-edge);
   background: var(--pk-panel);
   border-radius: var(--pk-radius-lg);
   overflow: hidden;
@@ -2181,8 +2181,8 @@
   align-items: center;
   gap: 9px;
   padding: 14px 20px;
-  background: rgba(155, 123, 255, 0.08);
-  border-bottom: 1px solid rgba(155, 123, 255, 0.3);
+  background: var(--pk-state-info-bg);
+  border-bottom: 1px solid var(--pk-violet-edge);
   font: 700 14px/1 var(--body);
 }
 
@@ -2347,9 +2347,14 @@
   margin-top: 5px;
 }
 
+/* These were an accent at 0.07, which is not a faint tint but a different colour on every ground it
+   lands on — over the dark page it lifted visibly, over white it composited to #FBFEF1, four values
+   from white in one channel and no tint at all. A pair resolves to one value per surface and can be
+   read; alpha resolves to whatever happens to be underneath. The light rendering is stronger than a
+   literal port of 0.07 because 0.07 on light was never a tint. */
 .readOutcome[data-tone="win"] {
-  border-color: rgba(200, 240, 58, 0.4);
-  background: rgba(200, 240, 58, 0.07);
+  border-color: var(--pk-lime-edge);
+  background: var(--pk-state-good-bg);
 }
 
 .readOutcome[data-tone="win"] strong {
@@ -2357,8 +2362,8 @@
 }
 
 .readOutcome[data-tone="loss"] {
-  border-color: rgba(255, 95, 162, 0.4);
-  background: rgba(255, 95, 162, 0.07);
+  border-color: var(--pk-magenta-edge);
+  background: var(--pk-state-loss-bg);
 }
 
 .readOutcome[data-tone="loss"] strong {
@@ -2366,8 +2371,8 @@
 }
 
 .readOutcome[data-tone="curve"] {
-  border-color: rgba(255, 201, 63, 0.4);
-  background: rgba(255, 201, 63, 0.07);
+  border-color: var(--pk-amber-edge);
+  background: var(--pk-state-caution-bg);
 }
 
 .readOutcome[data-tone="curve"] strong {
@@ -2548,8 +2553,8 @@
 /* The question is the agent's, not the asker's, so it gets the violet frame. */
 .askQuestion {
   padding: 18px;
-  border: 1px solid rgba(155, 123, 255, 0.45);
-  background: rgba(155, 123, 255, 0.07);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-state-info-bg);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -2601,8 +2606,8 @@
   align-items: center;
   gap: 14px;
   padding: 18px;
-  border: 1px solid rgba(155, 123, 255, 0.45);
-  background: rgba(155, 123, 255, 0.07);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-state-info-bg);
   border-radius: var(--pk-radius-lg);
 }
 

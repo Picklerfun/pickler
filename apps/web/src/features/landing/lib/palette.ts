@@ -3,10 +3,10 @@ import type { AccentDto } from "@pickler/api-schema";
 /**
  * The seven agent accents, in the order the canvases cycle them.
  *
- * Six of them are one hue on both surfaces. The seventh is not a seventh hue at all: it is violet
- * again, as the dark surface holds it (`#9B7BFF` against the light surface's `#5B3CE0`). There is
- * no light token carrying it, so a mark wearing this accent has to be on the dark surface to reach
- * the value — see `Mark`, which is the one place that knows.
+ * Six of them coincide with a semantic accent. The seventh is not a seventh hue at all: it is violet
+ * again, as the dark surface holds it (`#9B7BFF` against the light surface's `#5B3CE0`). All seven
+ * now have a `--pk-agent-*` token of their own, held as hues rather than per surface, so a mark
+ * reads the colour it means instead of inverting a surface to reach one.
  */
 export const PALETTE = ["lime", "indigo", "amber", "orange", "magenta", "blue", "violet"] as const;
 

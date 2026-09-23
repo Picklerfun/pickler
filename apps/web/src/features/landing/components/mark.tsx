@@ -5,17 +5,17 @@ import type { Hue } from "../lib/palette";
  * A coloured square: the unit this page is built from — the perk rows, the agent grid, the deposit
  * blocks, the four moves and the footer swatches are all this.
  *
- * `violet` is the one accent whose value lives only on the dark surface, so that mark takes
- * `data-surface="dark"` and reads `--pk-violet` there. Hard-coding `#9B7BFF` would paint the same
- * pixels and be a literal no token holds; nesting the surface is the mechanism the system already
- * has for "the other surface's value, here".
+ * Every hue reads a `--pk-agent-*` token, which holds the palette as hues rather than per surface,
+ * because a mark is not text: it exists to be told from the six beside it, so it is the same colour
+ * wherever it sits. `violet` used to reach its value by nesting `data-surface="dark"` — inverting a
+ * whole surface to look up one colour, on a one-element subtree with nothing in it — because no
+ * light token held `#9B7BFF`. Now one does.
  */
 export function Mark({ hue, className }: { hue: Hue; className?: string | undefined }) {
   return (
     <span
       className={className ? `${styles.mark} ${className}` : styles.mark}
       data-hue={hue}
-      data-surface={hue === "violet" ? "dark" : undefined}
       aria-hidden="true"
     />
   );

@@ -68,25 +68,25 @@
 }
 
 .mark[data-hue="lime"] {
-  --hue: var(--pk-lime);
+  --hue: var(--pk-agent-lime);
 }
 .mark[data-hue="indigo"] {
-  --hue: var(--pk-violet);
+  --hue: var(--pk-agent-indigo);
 }
 .mark[data-hue="amber"] {
-  --hue: var(--pk-amber);
+  --hue: var(--pk-agent-amber);
 }
 .mark[data-hue="orange"] {
-  --hue: var(--pk-orange);
+  --hue: var(--pk-agent-orange);
 }
 .mark[data-hue="magenta"] {
-  --hue: var(--pk-magenta);
+  --hue: var(--pk-agent-magenta);
 }
 .mark[data-hue="blue"] {
-  --hue: var(--pk-blue);
+  --hue: var(--pk-agent-blue);
 }
 .mark[data-hue="violet"] {
-  --hue: var(--pk-violet);
+  --hue: var(--pk-agent-violet);
 }
 
 /* ---------- Ticker tape ---------- */

@@ -43,6 +43,23 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
+  /* The agent palette as hues, and they sit here rather than per surface because a mark is not text.
+   *
+   * A 12px coloured square exists to be told from the six beside it, so it wants the accent itself —
+   * not the tint-and-ink pair, which is chosen for legibility, and not the surface-appropriate
+   * variant, which would make the same agent two colours. Six of these coincide with an accent above
+   * and the seventh, `violet`, is the light violet that no semantic token holds: `--pk-violet` is
+   * `#5B3CE0` on light, right for ink and wrong for a dot. Without this, a mark wanting it had to
+   * nest `data-surface="dark"` — inverting a whole surface to look up one colour, which leaves the
+   * next reader an attribute implying far more than was meant. */
+  --pk-agent-lime: #c8f03a;
+  --pk-agent-indigo: #5b3ce0;
+  --pk-agent-amber: #ffc93f;
+  --pk-agent-orange: #ff7a3d;
+  --pk-agent-magenta: #ff5fa2;
+  --pk-agent-blue: #5b8cff;
+  --pk-agent-violet: #9b7bff;
+
   --pk-font-display: var(--font-display), Archivo, sans-serif;
   --pk-font: var(--font-body), "Instrument Sans", sans-serif;
   /* The display face is only itself with its width axis set. Archivo at the right weight and the
