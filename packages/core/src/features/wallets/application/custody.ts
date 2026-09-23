@@ -18,6 +18,7 @@ import type {
   UnsignedActivity,
 } from "../ports/custody.js";
 import type { SignedActivityForwarder } from "../../signing/ports/signing.js";
+import { COMPLETED_ACTIVITY_STATUS } from "../../signing/domain/turnkey-activity.js";
 import type { SignedActivityRequest } from "../../signing/domain/turnkey-activity.js";
 
 const CHALLENGE_TTL_MS = 300_000;
@@ -194,7 +195,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         organizationId: account.subOrganizationId,
         allowedActivityTypes: [ADD_PASSKEY_ACTIVITY_TYPE],
       });
-      if (activity.status === "ACTIVITY_STATUS_COMPLETED") {
+      if (activity.status === COMPLETED_ACTIVITY_STATUS) {
         await deps.repository.addPasskey({
           userId,
           credentialId: input.credentialId,

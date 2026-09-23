@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ADD_PASSKEY_ACTIVITY_TYPE,
+  COMPLETED_ACTIVITY_STATUS,
   SigningServiceUnavailableError,
   type TurnkeyReader,
 } from "@pickler/core";
@@ -33,6 +34,20 @@ const _envelope = {} as TurnkeyApiTypes["v1Result"];
 // @ts-expect-error the installed SDK defines no createSubOrganizationResultV9
 void _envelope.createSubOrganizationResultV9;
 void _envelope.createSubOrganizationResultV8;
+
+// The same two directions for core's COMPLETED_ACTIVITY_STATUS, which `confirmAddPasskey`
+// compares with `===` against a `string`-typed field. Core cannot check it — it depends on no
+// vendor — so the check lives here, where the Turnkey dependency already is.
+//
+// The first line fails if the constant is renamed, typo'd, or widened to `string`, since none of
+// those are assignable to the SDK's closed union. The second says the union is closed at all: if
+// `v1ActivityStatus` were ever `string`, the directive would go unused and tsc would fail.
+const _completedIsAnSdkStatus: TurnkeyApiTypes["v1ActivityStatus"] = COMPLETED_ACTIVITY_STATUS;
+void _completedIsAnSdkStatus;
+
+// @ts-expect-error a status Turnkey does not define must not be assignable
+const _notAStatus: TurnkeyApiTypes["v1ActivityStatus"] = "ACTIVITY_STATUS_INVENTED";
+void _notAStatus;
 
 // A throwaway P-256 pair, generated for this test only. It grants nothing: no Turnkey
 // organisation has ever seen it.
