@@ -187,6 +187,18 @@ in the list because nothing in the apparatus could have caught it.
     resolve to a ground token, text to an ink token), which is a bigger change than it looks,
     because accents are legitimately both. Until then, `tokens.mjs` catches the careless literal and
     not the plausible one, and lesson 13's check is what actually caught this instance.
+15. **The `font` shorthand resets `font-family`, so a module can undo a rule in another file with
+    nothing to notice.** Like item 6, this is not a check that missed something — it is CSS doing
+    exactly what it is specified to do, silently. `h1, h2 { font-family: var(--pk-font-display) }`
+    lives in the token file; `.label { font: 500 11px/1 var(--label) }` lives in a feature module;
+    a heading carrying that class leaves the display face entirely. There is no specificity conflict
+    to spot, no warning, and nothing in either file that hints at the other — anyone writing `font:`
+    in a module is overriding the display face without knowing the rule exists. Eleven headings
+    across five features had done it. Nine were labels wearing an `<h2>`, which is a markup bug the
+    styling was right about; two were deliberate headings in the body face, which the `h1, h2` rule
+    cannot express and so cannot be true of. Grep for the shape — a heading element whose class
+    carries a `font:` shorthand that does not name the display face — rather than looking for it on
+    screen, where it reads as a slightly different weight and nothing more.
 
 Ten to fourteen are one family, and it is the family worth naming: **the green was never
 lying about what it measured, only about that being the thing anyone cared about** — a stub instead

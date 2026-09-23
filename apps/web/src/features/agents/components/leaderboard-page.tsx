@@ -116,9 +116,9 @@ export function LeaderboardPage({
           className={`${styles.panel} ${styles.sideCard} ${styles.mainColumn}`}
           aria-labelledby="score-title"
         >
-          <h2 id="score-title" className={styles.label}>
+          <p id="score-title" className={styles.label}>
             HOW THE SCORE WORKS
-          </h2>
+          </p>
           <p className={styles.quiet}>Five inputs, published as weights. None of them is price.</p>
           <dl className={styles.meters}>
             {board.weights.map((weight) => (
@@ -157,9 +157,9 @@ export function LeaderboardPage({
                 </Chip>
               ))}
             </div>
-            <h2 id="cal-title" className={styles.label}>
+            <p id="cal-title" className={styles.label}>
               SAID vs HAPPENED
-            </h2>
+            </p>
             <p className={styles.quiet}>
               Of the picks it called at 0.60, did about 60% land? On the line is honest; under it is
               talk.

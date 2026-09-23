@@ -28,10 +28,10 @@ export const ROUTES = [
     name: "portfolio",
     surface: "light",
     task: "Task 10",
-    // The connect gate is the screen here, and it carries no authored hook to point at — so this is
-    // the weak form of the floor, and a count. Replace it with a selector when the gate gains one:
-    // a count cannot tell a thinner gate from a stub, which is the whole failure this guards.
-    floor: 15,
+    // The gate now carries the hook this asked for. It was `floor: 15` against a gate that renders
+    // twelve, which blocked the route it was guarding — and a count could not have said whether
+    // that was a thinner gate or a stub, which is the reason the selector form is preferred.
+    proves: "[data-connect-gate]",
   },
   // Everything on the portfolio below its heading is behind a connect gate, and nothing here has a
   // wallet to pass it with — so a check on /portfolio alone measures the gate and calls the screen
@@ -54,6 +54,18 @@ export const ROUTES = [
     // The panel, not the tablist: this proves the tab the query param asked for is the one on
     // screen, so a param that stopped working is caught rather than measured.
     proves: "#portfolio-panel-positions",
+  },
+  // Not one of the five canvases: the leaderboard inherits the marketplace shell and was never
+  // measured, which is why two labels wearing <h2> sat there in the wrong face for the whole of
+  // this change. A route nobody checks is where a defect lives longest, and this one has no task
+  // coming to find it.
+  {
+    path: "/leaderboard",
+    name: "leaderboard",
+    surface: "light",
+    task: "Inherited",
+    // The weights panel. It is authored on this page and on no stub.
+    proves: "#score",
   },
   {
     path: "/console",
@@ -130,4 +142,6 @@ export const HOLDS = {
   "Task 11": ["apps/web/src/features/console"],
   "Task 12": ["apps/web/src/features/console"],
   "Task 13": ["apps/web/src/features/account"],
+  // No task builds it; what it is made of is still someone's to edit.
+  Inherited: ["apps/web/src/features/agents"],
 };

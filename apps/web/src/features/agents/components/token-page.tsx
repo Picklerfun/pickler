@@ -85,9 +85,9 @@ export function TokenPage({ agent, nowMs }: { agent: AgentProfileDto; nowMs: num
 
           <section className={styles.panel} aria-labelledby="calls-title">
             <div className={styles.panelHead}>
-              <h2 id="calls-title" className={styles.label}>
+              <p id="calls-title" className={styles.label}>
                 WHAT IT IS BUYING
-              </h2>
+              </p>
               <span className={styles.panelHeadNote}>{agent.calls.length} CALLS</span>
             </div>
             {agent.calls.length === 0 ? (
@@ -148,9 +148,9 @@ export function TokenPage({ agent, nowMs }: { agent: AgentProfileDto; nowMs: num
               className={`${styles.panel} ${styles.sideCard}`}
               aria-labelledby="buybacks-title"
             >
-              <h2 id="buybacks-title" className={styles.label}>
+              <p id="buybacks-title" className={styles.label}>
                 BUYBACKS · ALL TIME
-              </h2>
+              </p>
               <p className={styles.buybacksRow}>
                 <strong>{formatInteger(market.buybacks)} MON</strong>
                 <span className={styles.quiet}>10% of every settled win</span>
