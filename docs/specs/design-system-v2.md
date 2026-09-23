@@ -136,7 +136,7 @@ The same hue on both surfaces; only the ink changes.
 | `--pk-lime`       | `#C8F03A`                        | —         |
 | `--pk-lime-hover` | `#D6F95C`                        | —         |
 | `--pk-lime-ink`   | `#3F6B00` light / `#C8F03A` dark | —         |
-| `--pk-amber-ink`  | `#8A6200` light / `#FFC93F` dark | —         |
+| `--pk-amber-ink`  | `#855E00` light / `#FFC93F` dark | —         |
 | `--pk-violet`     | `#5B3CE0` light / `#9B7BFF` dark | `#B9A6FF` |
 | `--pk-amber`      | `#FFC93F`                        | —         |
 | `--pk-magenta`    | `#FF5FA2`                        | `#FF9EC6` |
@@ -145,7 +145,8 @@ The same hue on both surfaces; only the ink changes.
 
 Lime and amber need an ink of their own for the same reason violet and magenta do, and it is not a
 preference: as text on white they measure 1.31:1 and 1.54:1, which is unreadable. Their light inks
-are values the design already uses — they are the `good` and `caution` state inks below. As a fill
+are values the design already uses — they are the `good` and `caution` state inks below. `caution`'s
+is darkened from the canvas; see **Validation**. As a fill
 both stay exactly as they are; an accent bright enough to carry a fill is never dark enough to be
 read on white.
 
@@ -160,15 +161,15 @@ state, never as a control, so it never borrows a button's fill.
 | State   | Light tint / ink      | Dark tint / ink       |
 | ------- | --------------------- | --------------------- |
 | good    | `#EDF7CE` / `#3F6B00` | `#2A3A0F` / `#C8F03A` |
-| win     | `#E4F3E5` / `#2D7A31` | `#2A3A0F` / `#C8F03A` |
-| caution | `#FBF0D4` / `#8A6200` | `#3A2E0B` / `#FFC93F` |
-| loss    | `#FBE4EC` / `#C12B60` | `#3A1626` / `#FF9EC6` |
+| win     | `#E4F3E5` / `#2B732E` | `#2A3A0F` / `#C8F03A` |
+| caution | `#FBF0D4` / `#855E00` | `#3A2E0B` / `#FFC93F` |
+| loss    | `#FBE4EC` / `#BB2A5D` | `#3A1626` / `#FF9EC6` |
 | info    | `#F1EEFF` / `#5B3CE0` | `#231B3E` / `#B9A6FF` |
 | cool    | `#EAF0FF` / `#2F55C8` | `#141C33` / `#5B8CFF` |
 
-The light `win` and `loss` inks are darkened a little from the canvas, for the reason in
-**Validation**: a state ink that cannot be read on its own tint fails the one thing the pair exists
-to guarantee.
+The light `win`, `loss` and `caution` inks are darkened from the canvas, for the reason in
+**Validation**: an ink is only as legible as its worst ground, and for these three that ground is
+`--pk-panel-3` rather than the state's own tint.
 
 The dark tints for `info` and `cool` are not read from a canvas: the canvases show those two pairs
 on light only. They are derived by the same method the observed dark pairs use — the accent at
@@ -317,16 +318,22 @@ So the level collapses onto muted, deliberately and in writing, rather than ship
 the spec calls different and the screen does not. Nothing is lost: the token is only ever used as
 text colour, never as a border or a fill, so its lightness carried no other job.
 
-**The light `win` and `loss` state inks, `#2E7D32` → `#2D7A31` and `#C62C62` → `#C12B60`.** Measured
-on their own tints the canvas values are **4.46:1** and **4.42:1** — a hair under, and a state ink
-that cannot be read on the state's ground fails the one promise a tint-and-ink pair makes. Each is
-darkened by about one point of lightness, hue and saturation held, which is the least that reaches
-4.6:1 (4.63 and 4.60). `loss` matters more than its name suggests: the agent avatars borrow it, so
-it appears on every marketplace page rather than only where something went wrong.
+**The light `win`, `loss` and `caution` inks, darkened twice.** Measured on their own tints the
+canvas values were **4.46:1** (`win` `#2E7D32`) and **4.42:1** (`loss` `#C62C62`) — both a hair
+under, and a state ink that cannot be read on the state's ground fails the one promise a
+tint-and-ink pair makes. Darkening them to clear their tints then showed the real constraint: the
+same inks are used as accents on the ink-ramp grounds, where `--pk-panel-3` is far harsher than any
+tint. On that ground the canvas values read **4.07**, **4.23** and **4.36**. So each is moved by the
+least that reaches 4.6:1 on `--pk-panel-3`, hue and saturation held — `#2E7D32` → `#2B732E`,
+`#C62C62` → `#BB2A5D`, `#8A6200` → `#855E00` — which clears every lighter ground with it, tints
+included (5.08, 4.83, 5.15). `loss` matters more than its name suggests: the agent avatars borrow
+it, so it appears on every marketplace page rather than only where something went wrong.
 
-Every token holding those two colours moved together — `--pk-win`, `--pk-loss`, `--pk-magenta-ink`,
-both state inks and `--pk-magenta-edge`. A state ink eight channel steps from the accent it names is
-one colour with a rounding error, not two, which is the same trap that sank `#5F6578` above.
+Every token holding one of those colours moved together — `--pk-win`, `--pk-loss`,
+`--pk-magenta-ink`, `--pk-amber-ink`, the three state inks and the two edge rgbas. A state ink a few
+channel steps from the accent it names is one colour with a rounding error, not two, which is the
+same trap that sank `#5F6578` above. `--pk-agent-*` is left alone: that palette is a separate set of
+names with its own grounds.
 
 The canvas is not wrong in either case and the transcriptions were not careless. The design was
 drawn by eye, and eyes do not compute contrast ratios; this is the class of defect only a

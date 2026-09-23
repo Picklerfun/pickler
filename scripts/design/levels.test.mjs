@@ -54,7 +54,29 @@ const rgb = (value) => {
   return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)).concat(1);
 };
 
-const INKS = ["--pk-ink", "--pk-ink-soft", "--pk-ink-muted", "--pk-ink-faint"];
+/* Every token used as text on one of the grounds below: the ink ramp, the two money colours, and
+ * the `-ink` half of each accent — that half exists precisely because the accent itself cannot be
+ * read on a surface, so it is text by definition.
+ *
+ * `--pk-on-*` is deliberately absent. Those are the ink for a filled accent, never for a page
+ * ground, and `--pk-on-violet` is white: judging it against --pk-bg would report 1:1 and be wrong
+ * about it. An ink belongs here when the grounds below are the grounds it lands on. */
+// The ink ramp alone, in order, lightest-contrast last. "Is this level distinct from the next one"
+// is a question about a ramp and only about a ramp: two accents of different hues are not levels,
+// and asking it of --pk-win and --pk-loss would be asking whether green differs from red.
+const RAMP = ["--pk-ink", "--pk-ink-soft", "--pk-ink-muted", "--pk-ink-faint"];
+
+const INKS = [
+  ...RAMP,
+  "--pk-win",
+  "--pk-loss",
+  "--pk-lime-ink",
+  "--pk-amber-ink",
+  "--pk-violet-ink",
+  "--pk-magenta-ink",
+  "--pk-cyan-ink",
+  "--pk-pink-ink",
+];
 const GROUNDS = ["--pk-bg", "--pk-panel", "--pk-panel-2", "--pk-panel-3"];
 const BODY = 4.5; // WCAG AA for body text. Every one of these levels is used as text.
 
@@ -123,8 +145,8 @@ test("the ink levels stay distinct rather than collapsing silently", () => {
   const tooClose = [];
   for (const name of ["light", "dark"]) {
     const tokens = surface(`[data-surface="${name}"]`);
-    for (let i = 0; i < INKS.length - 1; i += 1) {
-      const [a, b] = [resolve(tokens, INKS[i]), resolve(tokens, INKS[i + 1])];
+    for (let i = 0; i < RAMP.length - 1; i += 1) {
+      const [a, b] = [resolve(tokens, RAMP[i]), resolve(tokens, RAMP[i + 1])];
       if (a === b) {
         continue; // an explicit fallback, not an accident
       }
@@ -132,7 +154,7 @@ test("the ink levels stay distinct rather than collapsing silently", () => {
         .slice(0, 3)
         .reduce((total, channel, c) => total + Math.abs(channel - rgb(b)[c]), 0);
       if (apart < 20) {
-        tooClose.push(`${name}: ${INKS[i]} ${a} and ${INKS[i + 1]} ${b} differ by ${apart}/765`);
+        tooClose.push(`${name}: ${RAMP[i]} ${a} and ${RAMP[i + 1]} ${b} differ by ${apart}/765`);
       }
     }
   }
