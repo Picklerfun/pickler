@@ -123,14 +123,18 @@ export function PasskeyFlow({
     };
   }
 
-  /** A ceremony that ended badly. A dismissed prompt has no sentence, and closes the sheet. */
+  /**
+   * A ceremony that did not finish — including one the person dismissed, which is why the null
+   * `describeCustodyFailure` answers for that is passed straight through rather than branched on.
+   *
+   * The sheet draws the difference: a sentence is a failure, and null is the cancelled state, which
+   * says "Passkey cancelled" over "NOTHING WAS SIGNED · NOTHING MOVED" and shows no banner. Closing
+   * quietly instead would be the wrong kindness here. Somebody who has just backed out of a prompt
+   * in a custody flow is not asking what went wrong; they are asking whether anything happened to
+   * their money, and an empty screen does not answer that.
+   */
   function failed(current: SheetState, caught: unknown) {
-    const message = describeCustodyFailure(caught);
-    if (message === null) {
-      setSheet(null);
-      return;
-    }
-    setSheet({ ...current, phase: "error", error: message });
+    setSheet({ ...current, phase: "error", error: describeCustodyFailure(caught) });
   }
 
   /**
