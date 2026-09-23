@@ -177,3 +177,5 @@ export {
   createCustodyService,
   type CustodyServiceDeps,
 } from "./features/wallets/application/custody.js";
+
+export * from "./features/identity/domain/wallet-auth.js";
