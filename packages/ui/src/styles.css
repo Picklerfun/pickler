@@ -1,9 +1,10 @@
 /* Pickler control system. One set of shapes, two surfaces.
  *
- * The public site (landing, tokens, agents) and the creator console share the same radii, control
- * sizes and button variants. What changes between them is tone: typeface, background and density.
- * Pick a surface with `data-surface="public"` or `data-surface="console"` on any wrapper; the
- * public surface is the default.
+ * The marketplace (landing, tokens, agents, markets, portfolio, leaderboard, reads) is light; the
+ * studio (the creator dashboard, account and auth) is night blue. They share radii, control sizes
+ * and button variants; what changes is the ground and the ink that reads on it. Put
+ * `data-surface="light"` or `data-surface="dark"` on any wrapper — light is the default, and a
+ * subtree may take the opposite value of the page it sits in.
  *
  * Shapes: pill for actions, chips and status; 16 for cards and panels; 12 for inputs and tiles;
  * 6 for small marks. Nothing square.
@@ -51,55 +52,84 @@
   --pk-violet-edge: rgba(155, 123, 255, 0.4);
 
   --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
+  --pk-font: var(--font-body), Manrope, sans-serif;
+  --pk-font-mono: var(--font-mono), "JetBrains Mono", monospace;
 
   --pk-duration: 140ms;
 }
 
-/* Public surface: the landing, token and agent pages. Playful and roomier. */
-[data-surface="public"],
+/* One dark in the product and one light, and either can appear inside the other. A surface is not
+ * a page theme: it is a property any subtree takes with data-surface, so nesting the opposite value
+ * inverts everything inside it. That is how the landing's dark panels and the account's white
+ * wallet card work, with no rule of their own. Light is the default. */
+[data-surface="light"],
 :root {
-  --pk-font: var(--font-body), Manrope, sans-serif;
-  --pk-font-mono: var(--font-mono), "JetBrains Mono", monospace;
-  --pk-bg: #05061a;
-  --pk-ink: #f5f6ff;
-  --pk-ink-soft: #dde1f5;
-  --pk-ink-dim: #c3c9e4;
-  --pk-ink-muted: #a9b0d0;
-  --pk-ink-faint: #8891b5;
-  --pk-ink-placeholder: #6c7398;
-  --pk-panel: rgba(245, 246, 255, 0.05);
-  --pk-field: rgba(5, 6, 26, 0.65);
-  --pk-field-autofill: #05061a;
-  --pk-surface: rgba(245, 246, 255, 0.05);
-  --pk-surface-strong: rgba(245, 246, 255, 0.09);
-  --pk-border: rgba(245, 246, 255, 0.18);
-  --pk-border-strong: rgba(245, 246, 255, 0.45);
-  /* Hairlines that separate content, quieter than a control's border. */
-  --pk-rule: rgba(245, 246, 255, 0.16);
-  --pk-rule-strong: rgba(245, 246, 255, 0.24);
-  --pk-focus: var(--pk-cyan);
+  /* Not a token: it tells the browser what to paint scrollbars, autofill and native controls
+   * against. A subtree that inverts the ground has to invert this with it. */
+  color-scheme: light;
+  --pk-bg: #ffffff;
+  --pk-ink: #0b0d1a;
+  /* Light has no softened ink: body copy inside a white card is full strength, and the step below
+   * is already the muted grey. The slot exists for components that read it and does nothing here. */
+  --pk-ink-soft: var(--pk-ink);
+  --pk-ink-muted: #5a5f78;
+  --pk-ink-faint: #6b7186;
+  --pk-panel: #f5f6fa;
+  --pk-panel-2: #f1f2f7;
+  --pk-panel-3: #e2e5ee;
+  --pk-rule: rgba(11, 13, 26, 0.08);
+  --pk-rule-strong: rgba(11, 13, 26, 0.12);
+  --pk-nav-bg: rgba(255, 255, 255, 0.88);
+  --pk-popover: #ffffff;
+  --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
+  --pk-focus: var(--pk-violet);
+
+  /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
+   * names, and every one of them was written against a ground that is now white. So each resolves
+   * onto the new palette instead of being deleted out from under a page nobody has touched yet.
+   * They retire as those pages are redrawn, not before. */
+  --pk-ink-dim: var(--pk-ink-muted);
+  --pk-ink-placeholder: var(--pk-ink-faint);
+  --pk-surface: var(--pk-panel);
+  --pk-surface-strong: var(--pk-panel-2);
+  --pk-field: var(--pk-panel);
+  --pk-field-autofill: var(--pk-panel);
+  --pk-border: var(--pk-rule-strong);
+  /* A control's edge has to be seen, and a 12% hairline on white is not seen. */
+  --pk-border-strong: rgba(11, 13, 26, 0.28);
 }
 
-/* Console surface: the creator dashboard. Denser and quieter. */
-[data-surface="console"] {
-  --pk-font: var(--font-body), Manrope, sans-serif;
-  --pk-bg: #08080a;
-  --pk-ink: #f3f1ec;
-  --pk-ink-soft: #b9b9b4;
-  --pk-ink-dim: #c9c6bf;
-  --pk-ink-muted: #8c8c88;
-  --pk-ink-faint: #8b8880;
-  --pk-ink-placeholder: #6f6f6a;
-  --pk-panel: #0d0d10;
-  --pk-field: #121216;
-  --pk-field-autofill: #121216;
-  --pk-surface: rgba(243, 241, 236, 0.04);
-  --pk-surface-strong: rgba(243, 241, 236, 0.09);
-  --pk-border: rgba(243, 241, 236, 0.14);
-  --pk-border-strong: rgba(243, 241, 236, 0.36);
-  --pk-rule: rgba(243, 241, 236, 0.12);
-  --pk-rule-strong: rgba(243, 241, 236, 0.18);
+/* The studio, the account and the auth screens. Night blue, not black: #0B0D1A carries a clear blue
+ * dominant, and its panels are navy. Pure white body copy on it is harsh, which is what ink-soft is
+ * for — the level light does not need. */
+[data-surface="dark"] {
+  color-scheme: dark;
+  --pk-bg: #0b0d1a;
+  --pk-ink: #ffffff;
+  --pk-ink-soft: #c7cad8;
+  --pk-ink-muted: #9aa0b8;
+  --pk-ink-faint: #5a5f78;
+  --pk-panel: #15182a;
+  --pk-panel-2: #1c2036;
+  --pk-panel-3: #25293d;
+  --pk-rule: rgba(255, 255, 255, 0.08);
+  --pk-rule-strong: rgba(255, 255, 255, 0.12);
+  /* Opaque. The landing's nav is translucent over a scrolling page; the studio's top bar sits on a
+   * fixed layout and is solid. */
+  --pk-nav-bg: #0b0d1a;
+  --pk-popover: #15182a;
+  --pk-popover-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
   --pk-focus: var(--pk-lime);
+
+  /* Carried forward, as above. */
+  --pk-ink-dim: var(--pk-ink-soft);
+  --pk-ink-placeholder: var(--pk-ink-faint);
+  --pk-surface: var(--pk-panel);
+  --pk-surface-strong: var(--pk-panel-2);
+  --pk-field: var(--pk-panel);
+  --pk-field-autofill: var(--pk-panel);
+  --pk-border: var(--pk-rule-strong);
+  --pk-border-strong: rgba(255, 255, 255, 0.32);
 }
 
 /* ---------- Button ---------- */
@@ -130,7 +160,7 @@
 }
 
 .pk-button:focus-visible {
-  outline: 2px solid var(--pk-lime);
+  outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }
 
@@ -347,7 +377,7 @@
 }
 
 .pk-segment:focus-visible {
-  outline: 2px solid var(--pk-lime);
+  outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }
 

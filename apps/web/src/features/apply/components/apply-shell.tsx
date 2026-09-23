@@ -6,7 +6,7 @@ import styles from "../apply.module.css";
 
 export function ApplyShell({ children }: { children: ReactNode }) {
   return (
-    <div className={styles.page} data-surface="public">
+    <div className={styles.page} data-surface="light">
       <div aria-hidden="true">
         <div className={styles.space} />
         <div className={styles.stars} />

@@ -337,7 +337,7 @@ export function Console() {
   }
 
   return (
-    <main className={styles.studio} data-surface="console" onClick={() => setMenu(null)}>
+    <main className={styles.studio} data-surface="dark" onClick={() => setMenu(null)}>
       <div className={styles.horizon} aria-hidden="true" />
 
       <header className={styles.topbar}>

@@ -17,7 +17,7 @@ import { WaitlistForm } from "./waitlist-form";
 export function LandingPage({ initial }: { initial: LandingResponse }) {
   return (
     <LandingDataProvider initial={initial}>
-      <div className={styles.page} data-surface="public">
+      <div className={styles.page} data-surface="light">
         <SpaceBackground />
         <Tape />
         <SiteNav />
