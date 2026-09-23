@@ -17,10 +17,10 @@
   place-items: center;
   width: 46px;
   height: 46px;
-  border: 1px solid rgba(155, 123, 255, 0.5);
+  border: 1px solid var(--pk-violet-edge);
   border-radius: var(--pk-radius-pill);
-  background: rgba(155, 123, 255, 0.12);
-  color: #b49bff;
+  background: var(--pk-violet-tint);
+  color: var(--pk-violet-ink);
 }
 
 .title {

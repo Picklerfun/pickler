@@ -6,7 +6,7 @@
   position: relative;
   z-index: 30;
   border-bottom: 1px solid var(--pk-rule);
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-nav-bg);
   backdrop-filter: blur(16px);
 }
 
@@ -75,10 +75,10 @@
   z-index: 40;
   width: 290px;
   padding: 12px;
-  background: #080a22;
+  background: var(--pk-popover);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--pk-popover-shadow);
 }
 
 .dropdownLabel {
@@ -101,12 +101,12 @@
 }
 
 .item:hover {
-  background: rgba(245, 246, 255, 0.07);
+  background: var(--pk-panel-2);
 }
 
 .itemOn {
-  background: rgba(200, 240, 58, 0.1);
-  border-color: rgba(200, 240, 58, 0.3);
+  background: var(--pk-lime-tint);
+  border-color: var(--pk-lime-edge);
 }
 
 .itemSoon {
@@ -164,7 +164,7 @@
 }
 
 .connect:hover {
-  background: rgba(245, 246, 255, 0.06);
+  background: var(--pk-panel-2);
   color: var(--pk-ink);
 }
 
@@ -174,7 +174,7 @@
   gap: 11px;
   margin-left: auto;
   padding: 16px 22px;
-  background: rgba(245, 246, 255, 0.08);
+  background: var(--pk-panel);
   border-left: 1px solid var(--pk-rule);
   font: 500 13px/1 var(--pk-font-mono);
   letter-spacing: 0.1em;
@@ -187,7 +187,7 @@
 }
 
 .cta:hover {
-  background: rgba(245, 246, 255, 0.16);
+  background: var(--pk-panel-3);
 }
 
 .arrow {

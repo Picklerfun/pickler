@@ -538,7 +538,7 @@
 
 .row {
   display: flex;
-  border-bottom: 1px solid var(--pk-hairline, rgba(245, 246, 255, 0.08));
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .rowLevel {

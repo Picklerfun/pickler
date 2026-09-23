@@ -25,31 +25,17 @@
   --pk-control-font-md: 600 14px/1;
   --pk-control-font-lg: 600 15px/1;
 
-  /* Accents are the same hue on both surfaces; only the ink and the ground change. */
+  /* The hue is the same on both surfaces. What changes per surface is the ink that has to read
+   * against it, which is why violet, magenta, win and loss are set down there and not here. */
   --pk-lime: #c8f03a;
   --pk-lime-hover: #d6f95c;
-  --pk-on-lime: #0b1200;
-  --pk-violet: #9b7bff;
-  --pk-violet-ink: #b9aeff;
-  --pk-on-violet: #0b0618;
-  --pk-magenta: #ff5fa2;
-  --pk-cyan: #5ad8ff;
-  --pk-cyan-ink: #7fe3ff;
-  --pk-pink-ink: #ff9ec6;
   --pk-amber: #ffc93f;
+  --pk-orange: #ff7a3d;
+  --pk-blue: #5b8cff;
+  --pk-magenta: #ff5fa2;
 
-  /* Tints: the same accent as a quiet ground and an edge, for badges, banners and status rows.
-   * A tinted object reads as a state, not as a control, so it never borrows a button's fill. */
-  --pk-lime-tint: rgba(200, 240, 58, 0.1);
-  --pk-lime-edge: rgba(200, 240, 58, 0.36);
-  --pk-magenta-tint: rgba(255, 95, 162, 0.1);
-  --pk-magenta-edge: rgba(255, 95, 162, 0.36);
-  --pk-amber-tint: rgba(255, 201, 63, 0.1);
-  --pk-amber-edge: rgba(255, 201, 63, 0.36);
-  --pk-cyan-tint: rgba(90, 216, 255, 0.08);
-  --pk-cyan-edge: rgba(90, 216, 255, 0.4);
-  --pk-violet-tint: rgba(155, 123, 255, 0.1);
-  --pk-violet-edge: rgba(155, 123, 255, 0.4);
+  /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
+  --pk-on-lime: #0b1200;
 
   --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
   --pk-font: var(--font-body), Manrope, sans-serif;
@@ -82,6 +68,31 @@
   --pk-nav-bg: rgba(255, 255, 255, 0.88);
   --pk-popover: #ffffff;
   --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
+  --pk-violet: #5b3ce0;
+  --pk-violet-ink: #5b3ce0;
+  --pk-magenta-ink: #c62c62;
+  /* Lime and pink read on black and vanish on white, so the money colours are a green and a red
+   * chosen to survive this ground. They are the one accent pair that is not the same hue on both. */
+  --pk-win: #2e7d32;
+  --pk-loss: #c62c62;
+  /* Violet is dark enough here to carry white. */
+  --pk-on-violet: #ffffff;
+
+  /* Every state is a tint and an ink legible on that tint. A tinted object reads as a state, never
+   * as a control, so it never takes a button's fill. */
+  --pk-state-good-bg: #edf7ce;
+  --pk-state-good-ink: #3f6b00;
+  --pk-state-win-bg: #e4f3e5;
+  --pk-state-win-ink: #2e7d32;
+  --pk-state-caution-bg: #fbf0d4;
+  --pk-state-caution-ink: #8a6200;
+  --pk-state-loss-bg: #fbe4ec;
+  --pk-state-loss-ink: #c62c62;
+  --pk-state-info-bg: #f1eeff;
+  --pk-state-info-ink: #5b3ce0;
+  --pk-state-cool-bg: #eaf0ff;
+  --pk-state-cool-ink: #2f55c8;
+
   --pk-focus: var(--pk-violet);
 
   /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
@@ -97,6 +108,21 @@
   --pk-border: var(--pk-rule-strong);
   /* A control's edge has to be seen, and a 12% hairline on white is not seen. */
   --pk-border-strong: rgba(11, 13, 26, 0.28);
+  /* The accent tints predate the state pairs and say the same thing less precisely, so each one
+   * resolves to the state it was always naming. The edge is that state's ink, held back. */
+  --pk-cyan: var(--pk-blue);
+  --pk-cyan-ink: var(--pk-state-cool-ink);
+  --pk-pink-ink: var(--pk-magenta-ink);
+  --pk-lime-tint: var(--pk-state-good-bg);
+  --pk-lime-edge: rgba(63, 107, 0, 0.28);
+  --pk-magenta-tint: var(--pk-state-loss-bg);
+  --pk-magenta-edge: rgba(198, 44, 98, 0.28);
+  --pk-amber-tint: var(--pk-state-caution-bg);
+  --pk-amber-edge: rgba(138, 98, 0, 0.28);
+  --pk-cyan-tint: var(--pk-state-cool-bg);
+  --pk-cyan-edge: rgba(47, 85, 200, 0.28);
+  --pk-violet-tint: var(--pk-state-info-bg);
+  --pk-violet-edge: rgba(91, 60, 224, 0.28);
 }
 
 /* The studio, the account and the auth screens. Night blue, not black: #0B0D1A carries a clear blue
@@ -119,6 +145,28 @@
   --pk-nav-bg: #0b0d1a;
   --pk-popover: #15182a;
   --pk-popover-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  --pk-violet: #9b7bff;
+  --pk-violet-ink: #b9a6ff;
+  --pk-magenta-ink: #ff9ec6;
+  --pk-win: #c8f03a;
+  --pk-loss: #ff9ec6;
+  --pk-on-violet: #0b0618;
+
+  --pk-state-good-bg: #2a3a0f;
+  --pk-state-good-ink: #c8f03a;
+  --pk-state-win-bg: #2a3a0f;
+  --pk-state-win-ink: #c8f03a;
+  --pk-state-caution-bg: #3a2e0b;
+  --pk-state-caution-ink: #ffc93f;
+  --pk-state-loss-bg: #3a1626;
+  --pk-state-loss-ink: #ff9ec6;
+  /* Derived, not observed: no canvas in this set shows these two on dark. Same method as the pairs
+   * above — the accent at roughly 18% over the ground. Check against a canvas that uses them. */
+  --pk-state-info-bg: #231b3e;
+  --pk-state-info-ink: #b9a6ff;
+  --pk-state-cool-bg: #141c33;
+  --pk-state-cool-ink: #5b8cff;
+
   --pk-focus: var(--pk-lime);
 
   /* Carried forward, as above. */
@@ -130,6 +178,19 @@
   --pk-field-autofill: var(--pk-panel);
   --pk-border: var(--pk-rule-strong);
   --pk-border-strong: rgba(255, 255, 255, 0.32);
+  --pk-cyan: var(--pk-blue);
+  --pk-cyan-ink: var(--pk-state-cool-ink);
+  --pk-pink-ink: var(--pk-magenta-ink);
+  --pk-lime-tint: var(--pk-state-good-bg);
+  --pk-lime-edge: rgba(200, 240, 58, 0.4);
+  --pk-magenta-tint: var(--pk-state-loss-bg);
+  --pk-magenta-edge: rgba(255, 158, 198, 0.4);
+  --pk-amber-tint: var(--pk-state-caution-bg);
+  --pk-amber-edge: rgba(255, 201, 63, 0.4);
+  --pk-cyan-tint: var(--pk-state-cool-bg);
+  --pk-cyan-edge: rgba(91, 140, 255, 0.4);
+  --pk-violet-tint: var(--pk-state-info-bg);
+  --pk-violet-edge: rgba(185, 166, 255, 0.4);
 }
 
 /* ---------- Button ---------- */
@@ -297,9 +358,9 @@
 
 .pk-chip[aria-pressed="true"],
 .pk-chip[data-selected="true"] {
-  background: rgba(200, 240, 58, 0.14);
-  border-color: rgba(200, 240, 58, 0.45);
-  color: var(--pk-lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--pk-state-good-ink);
 }
 
 /* Read-only status, not a control. */
@@ -332,7 +393,7 @@
   display: block;
   height: 100%;
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-cyan);
+  background: var(--pk-blue);
   transition: width var(--pk-duration);
 }
 
@@ -415,15 +476,15 @@
 }
 
 .pk-field-note[data-tone="good"] {
-  color: var(--pk-lime);
+  color: var(--pk-state-good-ink);
 }
 
 .pk-field-note[data-tone="warn"] {
-  color: var(--pk-amber);
+  color: var(--pk-state-caution-ink);
 }
 
 .pk-field-note[data-tone="bad"] {
-  color: var(--pk-magenta);
+  color: var(--pk-state-loss-ink);
 }
 
 .pk-input {
@@ -450,7 +511,7 @@
 }
 
 .pk-input[aria-invalid="true"] {
-  border-color: var(--pk-magenta);
+  border-color: var(--pk-loss);
 }
 
 .pk-input[data-mono="true"] {
@@ -552,40 +613,42 @@
 /* ---------- Tint ---------- */
 
 /* A state, not a control. Anything marked `data-tint` gets a foreground, a ground and an edge that
- * belong together, so a badge, a banner, a status row and a dot all say "amber" the same way. Use
- * it for what something *is*; a button's fill still comes from its variant. */
+ * belong together, so a badge, a banner, a status row and a dot all say "caution" the same way. Use
+ * it for what something *is*; a button's fill still comes from its variant. The names are the old
+ * accent names because that is what the features write, but each one resolves to the state pair it
+ * was always describing, which is the reason a tint stays legible when the ground turns white. */
 [data-tint] {
   --tint-fg: var(--pk-ink-muted);
   --tint-bg: transparent;
   --tint-bd: var(--pk-border);
 }
 [data-tint="lime"] {
-  --tint-fg: var(--pk-lime);
-  --tint-bg: var(--pk-lime-tint);
+  --tint-fg: var(--pk-state-good-ink);
+  --tint-bg: var(--pk-state-good-bg);
   --tint-bd: var(--pk-lime-edge);
 }
 [data-tint="magenta"] {
-  --tint-fg: var(--pk-pink-ink);
-  --tint-bg: var(--pk-magenta-tint);
+  --tint-fg: var(--pk-state-loss-ink);
+  --tint-bg: var(--pk-state-loss-bg);
   --tint-bd: var(--pk-magenta-edge);
 }
 [data-tint="amber"] {
-  --tint-fg: var(--pk-amber);
-  --tint-bg: var(--pk-amber-tint);
+  --tint-fg: var(--pk-state-caution-ink);
+  --tint-bg: var(--pk-state-caution-bg);
   --tint-bd: var(--pk-amber-edge);
 }
 [data-tint="cyan"] {
-  --tint-fg: var(--pk-cyan-ink);
-  --tint-bg: var(--pk-cyan-tint);
+  --tint-fg: var(--pk-state-cool-ink);
+  --tint-bg: var(--pk-state-cool-bg);
   --tint-bd: var(--pk-cyan-edge);
 }
 [data-tint="violet"] {
-  --tint-fg: var(--pk-violet-ink);
-  --tint-bg: var(--pk-violet-tint);
+  --tint-fg: var(--pk-state-info-ink);
+  --tint-bg: var(--pk-state-info-bg);
   --tint-bd: var(--pk-violet-edge);
 }
 [data-tint="grey"] {
   --tint-fg: var(--pk-ink-muted);
-  --tint-bg: var(--pk-surface);
+  --tint-bg: var(--pk-panel);
   --tint-bd: var(--pk-border);
 }

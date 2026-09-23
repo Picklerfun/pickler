@@ -31,7 +31,7 @@
 }
 
 .chip:hover {
-  background: rgba(245, 246, 255, 0.06);
+  background: var(--pk-panel-2);
   color: var(--pk-ink);
 }
 
@@ -65,10 +65,10 @@
   z-index: 40;
   width: 260px;
   padding: 14px;
-  background: #080a22;
+  background: var(--pk-popover);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--pk-popover-shadow);
 }
 
 .balanceLabel {
@@ -101,8 +101,8 @@
   width: 100%;
   margin-bottom: 12px;
   padding: 10px 12px;
-  background: rgba(255, 201, 63, 0.12);
-  border: 1px solid rgba(255, 201, 63, 0.4);
+  background: var(--pk-amber-tint);
+  border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-pill);
   font: 600 12px/1 var(--pk-font);
   color: var(--pk-amber);
@@ -147,7 +147,7 @@
 }
 
 .link:hover {
-  background: rgba(245, 246, 255, 0.07);
+  background: var(--pk-panel-2);
   color: var(--pk-lime);
 }
 
