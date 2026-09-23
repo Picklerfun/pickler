@@ -85,14 +85,23 @@ export function PasskeyFlow({
 }: {
   board: AuthBoardData;
   /**
-   * Which rail the route opens: `up` for /signup, `in` for /signin. It is the route's to give,
-   * never defaulted here, because it is what decides whether a verified code goes on to the
-   * handle screen or straight to welcome. `recover` is entered by `device_unknown`, never opened.
+   * Which rail the route opens: `up` for /signup, `in` for /signin, `custody` for /custody. It is
+   * the route's to give, never defaulted here, because it is what decides whether a verified code
+   * goes on to the handle screen or straight to welcome. `recover` is entered by `device_unknown`,
+   * never opened.
+   *
+   * `custody` opens on the passkey step rather than on `auth`: whoever reaches it is already signed
+   * in — the ceremony needs their session — so asking for an email again would be asking a question
+   * that is already answered.
    */
-  mode: "up" | "in";
+  mode: "up" | "in" | "custody";
 }) {
   const router = useRouter();
-  const [state, dispatch] = useReducer(next, { ...INITIAL, mode });
+  const [state, dispatch] = useReducer(next, {
+    ...INITIAL,
+    mode,
+    ...(mode === "custody" ? { step: "passkey" as const } : {}),
+  });
   const [sheet, setSheet] = useState<SheetState | null>(null);
   /** Only ever the sign-in rail's: nothing reaches the welcome screen from the sign-up rail. */
   const [profileHandle, setProfileHandle] = useState("");

@@ -72,3 +72,9 @@ test("the static files both products' pages request belong to both", () => {
   assert.equal(ownerOf("/.well-known/apple-app-site-association"), "either");
   assert.equal(ownerOf("/_headers"), "either");
 });
+
+test("taking custody is a studio path, not a marketplace one", () => {
+  // The ceremony is reached from /account and from the studio's agent form. Left out of the studio
+  // list it resolves to the marketplace, and app.pickler.fun 404s its own custody flow.
+  assert.equal(ownerOf("/custody"), "studio");
+});

@@ -29,7 +29,15 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
 }
 
 /** First path segments the studio owns. Everything else that is not shared is the marketplace. */
-const STUDIO_SEGMENTS = new Set(["console", "account", "signin", "signup", "apply", "auth"]);
+const STUDIO_SEGMENTS = new Set([
+  "console",
+  "account",
+  "signin",
+  "signup",
+  "apply",
+  "auth",
+  "custody",
+]);
 
 /**
  * Shared by both hosts: the API proxy, Next's assets, and the static files under `public/`.

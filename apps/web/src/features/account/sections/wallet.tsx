@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Icon } from "@pickler/ui";
+import Link from "next/link";
+import { Button, ButtonLink, Icon } from "@pickler/ui";
 import { MONAD_TESTNET } from "@pickler/chain";
 import { addressButtonLabel, type CopyState } from "../../auth/lib/address";
 import { formatBalance } from "../../auth/lib/balance";
@@ -67,10 +68,21 @@ export function WalletSection({ state }: { state: WalletState }) {
         <p className={styles.cardLabel}>MASTER WALLET · AVAILABLE</p>
         {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
         {state.kind === "none" && (
-          <p className={styles.cardNote}>
-            No wallet yet. One is created with your first passkey, and its key never leaves the
-            enclave it is made in.
-          </p>
+          <>
+            {/* The trigger moved. A wallet used to be made during sign-up, so this said it arrived
+                with your first passkey; it is now made when you build your first agent, or here,
+                whenever you decide to. Saying the old thing would describe a product that no
+                longer exists. */}
+            <p className={styles.cardNote}>
+              No wallet yet. One is made when you build your first agent — or now, if you would
+              rather have it ready. Its key never leaves the enclave it is made in.
+            </p>
+            <div className={styles.cardActions}>
+              <ButtonLink as={Link} href="/custody" variant="primary" arrow>
+                Create my wallet
+              </ButtonLink>
+            </div>
+          </>
         )}
         {state.kind === "error" && <p className={styles.cardNote}>{state.reason}</p>}
         {wallet && (
