@@ -92,6 +92,17 @@ index; bare `git commit` commits whatever is staged, including someone else's wo
 3. **Failure must propagate where absence and error mean different things.** "This account has no
    linked wallets" and "we could not read them" are different facts and only one is safe to render.
 4. **Typecheck cannot see a route that 500s.** Before reporting a task done, request the route.
+5. **Assert the behaviour, not the description of it.** This plan has specified the wrong test
+   three times, always the same way: `decide()` asserted a data structure while the routing lived
+   in a branch above it; `stepsFor("up")` asserted a list of rail labels while the progression was
+   hardwired in `next()`. Both went green with the defect present. Before believing a test,
+   mutate the thing the task exists to prevent and check that **this** test is what goes red — if
+   a different one catches it, the one you wrote is describing something else, and both may be
+   worth keeping for different reasons.
+6. **A test whose name has quietly become false is a defect even while it passes.** One here was
+   called "the sign-in rail has two phases, not the sign-up rail's four" after the sign-up rail had
+   three. The assertion held; the sentence did not. Rename it rather than leaving a reader to
+   trust it.
 
 ---
 
