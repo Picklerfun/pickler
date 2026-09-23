@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
+import { ChallengeNotUsableError } from "../src/features/wallets/domain/passkey.js";
 import type {
   ChallengeStore,
   CustodyAccount,
@@ -188,7 +189,7 @@ test("a challenge cannot be spent twice", async () => {
         challenge: options.challenge,
         attestation,
       }),
-    /expired/i,
+    ChallengeNotUsableError,
   );
 });
 
@@ -205,8 +206,29 @@ test("a challenge belonging to someone else is refused", async () => {
         challenge: options.challenge,
         attestation,
       }),
-    /expired/i,
+    ChallengeNotUsableError,
   );
+});
+
+test("a challenge that outlived its TTL is refused", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  // The service clock is fixed, so age the stored record instead: this is what the row looks
+  // like once the five-minute TTL has run out under a real clock.
+  f.stored.set(options.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
+
+  await assert.rejects(
+    () =>
+      s.register(USER, {
+        email: "ana@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    ChallengeNotUsableError,
+  );
+  assert.equal(f.calls(), 0, "an expired challenge must never reach Turnkey");
 });
 
 test("the loser of a concurrent submit gets the winner's account, not a 500", async () => {

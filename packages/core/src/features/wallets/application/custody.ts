@@ -93,6 +93,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         return existing;
       }
 
+      // Spent on read, so a rejection below still burns it and a leaked challenge cannot be retried.
       const claimed = await deps.challenges.consume(input.challenge);
       if (!claimed || claimed.userId !== userId || claimed.expiresAt <= deps.now()) {
         throw new ChallengeNotUsableError();
