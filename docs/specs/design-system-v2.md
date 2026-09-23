@@ -485,7 +485,20 @@ pairs against a composition that is about to change. The order that works when t
 is to convert first and design against what the pairs actually paint. The 5 remaining literals in
 `styles.css` are the `--pk-*-edge` definitions and belong there.
 
-Every colour in both products that any route or interaction can reach resolves to a token.
+**Correction, made later and from outside this work.** The sentence that stood here said every
+colour in both products that any route or interaction can reach resolves to a token. It was false,
+and it contradicted the paragraph directly above it: `auth` and `apply` are reachable routes, their
+39 literals were recorded as deferred, and the blanket claim was written anyway.
+
+The measurement makes it worse. **No route in the `(auth)` group has ever been in the design
+checks** — `scripts/design/routes.mjs` has 15 routes and none of them is `/signin` or `/signup`. So
+those screens were not merely unconverted, they were never measured. Pointing a route at `/signup`
+finds eight violation classes, including `#5AD8FF` used as a raw background and `#FFFFFF` at 0.45
+alpha as a border.
+
+What is true: every colour on the **fifteen measured routes** resolves to a token. The auth group is
+unmeasured ground, and covering it is its own task — the four failures reproduce by adding one entry
+to `routes.mjs`.
 
 The studio's rail truncates "Public profile" to "Public pro…" at 1400px. Left as drawn; it is a
 layout question for the next pass rather than a token one.
