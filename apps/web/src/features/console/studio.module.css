@@ -1586,18 +1586,6 @@ a.source:hover {
   }
 }
 
-/* A disabled control still has to be read. The shared button fades the whole element to 0.4, which
-   puts its label at 3.80:1 on a panel and 2.79:1 once it is a ghost — and half the disabled controls
-   on this screen are disabled permanently, because the thing they do is not built. Naming the two
-   colours instead of fading one reaches 6.4:1 and says the same thing. */
-.studio :global(.pk-button):disabled,
-.studio :global(.pk-button)[aria-disabled="true"] {
-  opacity: 1;
-  background: var(--pk-panel-2);
-  border-color: transparent;
-  color: var(--pk-ink-muted);
-}
-
 /* Small placements the sections need by name, so no component carries a style attribute. */
 .fieldGrow {
   flex: 1 1 150px;

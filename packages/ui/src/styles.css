@@ -370,13 +370,6 @@ h2 {
   outline-offset: 2px;
 }
 
-.pk-button:disabled,
-.pk-button[aria-disabled="true"] {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-
 /* One filled lime action per view. Never two filled buttons side by side. */
 .pk-button[data-variant="primary"] {
   background: var(--pk-lime);
@@ -466,6 +459,30 @@ h2 {
 
 .pk-button[data-glow="true"]:disabled {
   box-shadow: none;
+  transform: none;
+}
+
+/* Disabled says so in colour, not by fading its own label out of legibility.
+ *
+ * `opacity: 0.4` composites the label and the ground together against whatever happens to be behind
+ * the control, so one declaration measured 1.83:1 as a ghost on white and 2.78:1 on navy — the same
+ * fault the alpha literals had, and the reason three screens repaired it separately. A pair resolves
+ * per surface and can be read: 5.62:1 on light and 6.18:1 on dark. The edge is what keeps the shape
+ * when the control sits on a panel, where a fill alone is eleven values from its ground.
+ *
+ * No incidental-control exemption. WCAG excuses a disabled control on the reasoning that it is not
+ * actionable, so its label need not be read — but the studio's Top up and Withdraw are disabled
+ * permanently, because the thing they do is not built. That is not a state anyone is waiting out; it
+ * is a label describing what this product does not do yet, and there is every reason to read it.
+ *
+ * It sits after the variants because at equal specificity source order decides, and a disabled
+ * primary has to lose its lime fill rather than keep it at four tenths. */
+.pk-button:disabled,
+.pk-button[aria-disabled="true"] {
+  background: var(--pk-panel-2);
+  border-color: var(--pk-rule-strong);
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
   transform: none;
 }
 
