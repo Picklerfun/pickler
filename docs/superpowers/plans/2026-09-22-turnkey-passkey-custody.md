@@ -3423,6 +3423,22 @@ git commit -m "Claim a name before a wallet exists to attach it to"
 
 ---
 
+## The sheet's copy is per ceremony, not generic
+
+The canvas keys it by which ceremony is running, each with a title, a subtitle and a success line:
+
+| Ceremony | Title                          | Subtitle                                | Done          |
+| -------- | ------------------------------ | --------------------------------------- | ------------- |
+| `create` | Create a passkey for Pickler?  | `<RP DOMAIN> · ICLOUD KEYCHAIN`         | Passkey saved |
+| `backup` | Add a backup passkey?          | PHONE · SECURITY KEY · PASSWORD MANAGER | Backup saved  |
+| `here`   | Save a passkey on this device? | CHROME · MACOS · 2 OF 2                 | Saved         |
+
+The error line is shared: _"Passkey cancelled"_ over _"NOTHING WAS SIGNED · NOTHING MOVED"_ — which
+is worth keeping, because it answers the question a cancelled ceremony actually raises. The canvas
+also carries `sign` and `send` entries; both belong to flows outside this specification. The
+subtitle names the live relying party and browser, so derive those rather than copying the canvas's
+literals.
+
 ## Task 17: Passkey screen and the ceremony sheet
 
 **Files:**
@@ -3512,10 +3528,12 @@ The three custody points and the headline are the design's, verbatim.
 import { Button, Icon } from "@pickler/ui";
 import styles from "../../auth.module.css";
 
+// Verbatim from the design canvas, including the per-point colour. An earlier draft of this plan
+// invented longer copy; the canvas's is shorter and says more.
 const POINTS = [
-  { title: "Your passkey signs every payment", tag: "ON THIS DEVICE" },
-  { title: "Pickler cannot move your funds", tag: "NO KEYS HELD" },
-  { title: "Nothing leaves without your approval", tag: "EVERY TIME" },
+  { title: "Sends, withdrawals, agent budgets", tag: "NEEDS IT", color: "#C8F03A" },
+  { title: "Pickler holds no copy", tag: "YOURS ONLY", color: "#9B7BFF" },
+  { title: "Keep it safe", tag: "NO RESET", color: "#FFC93F" },
 ];
 
 export function PasskeyStep({ onCreate, busy }: { onCreate: () => void; busy: boolean }) {
