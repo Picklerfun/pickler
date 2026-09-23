@@ -77,46 +77,35 @@ export function NewDeviceStep({
 }
 
 /**
- * The last screen of the new-device rail: the phone has vouched for this browser, so offer to
- * leave a passkey behind rather than make the person fetch the phone again next time.
+ * The last screen of the new-device rail, and it has one state on purpose.
  *
- * `passkeys` is what the account holds once this one is saved. Two is what this path produces —
- * the phone's and this device's — which is the number the canvas prints; a shell that knows
- * better says so.
+ * The canvas offers "save a passkey here" *after* the phone approves, and that ordering cannot
+ * happen: `prepareAddPasskey` needs an attestation to build the activity it hands the phone, so
+ * this browser's credential necessarily exists before the phone can stamp anything. By the time
+ * this screen is on, the passkey is already saved — there is no state in which it is not, which
+ * is why there is no branch here and no action to save one. Do not add it back from the canvas.
+ *
+ * `passkeys` is what the account holds now. Two is what this path produces — the phone's and this
+ * device's — which is the number the canvas prints; a shell that knows better says so.
  */
 export function RecoveredStep({
-  saved,
-  busy,
   passkeys = 2,
-  onSave,
   onFinish,
 }: {
-  saved: boolean;
-  busy: boolean;
   passkeys?: number | undefined;
-  onSave: () => void;
   onFinish: () => void;
 }) {
   return (
     <div className={styles.flowStep}>
-      <h1 className={styles.flowTitle}>{saved ? "ALL SET" : "SAVE ONE HERE"}</h1>
+      <h1 className={styles.flowTitle}>ALL SET</h1>
       <p className={styles.subhead}>
-        {saved
-          ? `This device can move funds now. You have ${passkeys} ${
-              passkeys === 1 ? "passkey" : "passkeys"
-            }.`
-          : "So next time you don't need your phone."}
+        This device can move funds now. You have {passkeys}{" "}
+        {passkeys === 1 ? "passkey" : "passkeys"}.
       </p>
 
       <div className={styles.flowActions}>
-        {!saved && (
-          <Button className={styles.primary} onClick={onSave} disabled={busy}>
-            <Icon name="key" size={19} />
-            Save a passkey here
-          </Button>
-        )}
         <Button variant="secondary" onClick={onFinish} arrow>
-          {saved ? "Open the studio" : "Not now"}
+          Open the studio
         </Button>
       </div>
     </div>
