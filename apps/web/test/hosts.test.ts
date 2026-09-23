@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { productFor } from "../src/server/hosts.js";
+import { productFor } from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 

@@ -150,7 +150,7 @@ each was written this way after a gate tested in one position turned out to be a
 // apps/web/test/hosts.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { productFor } from "../src/server/hosts.js";
+import { productFor } from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -232,10 +232,26 @@ Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Prove the suffix test can fail**
 
-Change `hostname === hosts.marketplace.toLowerCase()` to
-`hostname.endsWith(hosts.marketplace.toLowerCase())`. Re-run.
-Expected: exactly one test red — "a host that merely ends with the marketplace name is not the
-marketplace". Revert and re-run: 6 passing.
+Do **not** simply change the marketplace comparison to `endsWith`. `app.pickler.fun` also ends with
+`pickler.fun`, so with the marketplace branch checked first that mutation swallows the studio host
+as well and four tests go red. The collateral is real but it muddies the proof: it does not show
+the `evilpickler.fun` test is load-bearing, because three other tests were already objecting.
+
+Use the isolated mutation instead — check the **studio** first by equality, and the marketplace by
+`endsWith`:
+
+```ts
+if (hostname === hosts.studio.toLowerCase()) return "studio";
+if (hostname.endsWith(hosts.marketplace.toLowerCase())) return "marketplace";
+```
+
+Expected: **exactly one** test red, "a host that merely ends with the marketplace name is not the
+marketplace". That ordering is a plausible thing a future edit arrives at, it serves
+`evilpickler.fun` as the product, and that single test is the only thing in the suite standing
+between it and green.
+
+Revert and re-run: 6 passing. Confirm by reading the file that it holds two `===` comparisons and
+no `endsWith`.
 
 - [ ] **Step 6: Commit**
 
@@ -257,7 +273,7 @@ git commit -m "Say which product a hostname belongs to" -- apps/web/src/server/h
 Append to `apps/web/test/hosts.test.ts`:
 
 ```ts
-import { ownerOf } from "../src/server/hosts.js";
+import { ownerOf } from "../src/server/hosts";
 
 test("studio paths belong to the studio", () => {
   assert.equal(ownerOf("/console"), "studio");
@@ -354,7 +370,7 @@ git commit -m "Say which paths each product owns" -- apps/web/src/server/hosts.t
 // apps/web/test/middleware.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decide } from "../src/middleware.js";
+import { decide } from "../src/middleware";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -1997,7 +2013,7 @@ export async function signIn(
 // apps/web/test/connect.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { signIn, ConnectError } from "../src/features/wallet/lib/connect.js";
+import { signIn, ConnectError } from "../src/features/wallet/lib/connect";
 
 const MESSAGE = "pickler.fun wants you to sign in…\nNonce: n1";
 
@@ -2165,7 +2181,7 @@ export async function claimHandle(
 // apps/web/test/claim-handle.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { localProblem, checkAvailability } from "../src/features/wallet/lib/handles.js";
+import { localProblem, checkAvailability } from "../src/features/wallet/lib/handles";
 
 test("the local rules match core's, including the reserved list", () => {
   assert.equal(localProblem("ab"), "too_short");
