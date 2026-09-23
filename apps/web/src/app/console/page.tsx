@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Console } from "@/features/console/console";
-import { sectionFromSearch } from "@/features/console/sections/keys";
+import { phaseFromSearch, sectionFromSearch } from "@/features/console/sections/keys";
 
 export const metadata: Metadata = {
   title: "Studio — Pickler",
@@ -11,8 +11,13 @@ export const dynamic = "force-dynamic";
 export default async function ConsolePage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string | string[] }>;
+  searchParams: Promise<{ section?: string | string[]; phase?: string | string[] }>;
 }) {
   const search = await searchParams;
-  return <Console openSection={sectionFromSearch(process.env.NODE_ENV, search.section)} />;
+  return (
+    <Console
+      openSection={sectionFromSearch(process.env.NODE_ENV, search.section)}
+      openPhase={phaseFromSearch(process.env.NODE_ENV, search.phase)}
+    />
+  );
 }

@@ -82,18 +82,58 @@ export const ROUTES = [
   // outside production only. Picks carries the forecast, the policy codes and the report; activity
   // carries the trace; skills carries the plugin rows; token is a section with no backend, which is
   // where the copy saying so lives.
-  { path: "/console?section=picks", name: "studio-picks", surface: "dark", task: "Task 11" },
-  { path: "/console?section=activity", name: "studio-activity", surface: "dark", task: "Task 11" },
-  { path: "/console?section=skills", name: "studio-skills", surface: "dark", task: "Task 11" },
-  { path: "/console?section=token", name: "studio-token", surface: "dark", task: "Task 11" },
+  // The panel carries the section it is showing, so each of these proves the query param put the
+  // screen it named on the page rather than proving the shell loaded around the overview again.
+  {
+    path: "/console?section=picks",
+    name: "studio-picks",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-picks",
+  },
+  {
+    path: "/console?section=activity",
+    name: "studio-activity",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-activity",
+  },
+  {
+    path: "/console?section=skills",
+    name: "studio-skills",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-skills",
+  },
+  {
+    path: "/console?section=token",
+    name: "studio-token",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-token",
+  },
   // The empty studio is a state, not a route: the console renders it when the signed-in person has
-  // no agents. A later task adds ?state=empty so it can be reached without emptying a database.
+  // no agents. ?state=empty reaches it without emptying a database, outside production only.
+  //
+  // It proves its own panel and not the rail: the rail is the one thing it shares with Studio v4,
+  // so a rail selector would have gone on passing if the whole stepped flow had failed to render.
   {
     path: "/console?state=empty",
     name: "studio-empty",
     surface: "dark",
     task: "Task 12",
-    proves: 'nav[aria-label="Studio sections"]',
+    proves: "#studio-panel-empty",
+  },
+  // The second half of that screen: the checklist between a draft agent and a public one. It is
+  // only reachable by finishing the first half, so without ?phase= no check ever saw it — and it is
+  // the half where every row is a thing the product cannot do yet, which is the copy most worth
+  // measuring. It proves the checklist and not the panel, because the panel is the half it shares.
+  {
+    path: "/console?state=empty&phase=draft",
+    name: "studio-draft",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#go-public",
   },
   // The account sits behind the same auth gate the studio did, so it needs the same floor for the
   // same reason. These three selectors are a contract with Task 13 rather than an observation: the

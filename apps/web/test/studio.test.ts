@@ -14,19 +14,27 @@ import {
    four gate positions at once would report the first failure and hide the other three. */
 
 test("the studio preview is refused in a production build", () => {
-  assert.equal(previewAllowed("production", false, ""), false);
+  assert.equal(previewAllowed("production", false), false);
 });
 
 test("the studio preview is refused where authentication is configured", () => {
-  assert.equal(previewAllowed("development", true, ""), false);
-});
-
-test("the studio preview leaves ?state=empty to the empty studio", () => {
-  assert.equal(previewAllowed("development", false, "?state=empty"), false);
+  assert.equal(previewAllowed("development", true), false);
 });
 
 test("the studio preview stands in where there is no authentication at all", () => {
-  assert.equal(previewAllowed("development", false, ""), true);
+  assert.equal(previewAllowed("development", false), true);
+});
+
+test("?state=empty is the empty studio: the same fixture with no agents in it", () => {
+  const preview = studioPreview(Date.UTC(2026, 0, 1), "?state=empty");
+  assert.ok(preview);
+  assert.deepEqual(preview.agents, []);
+});
+
+test("the empty studio still carries the catalog its market step needs", () => {
+  const preview = studioPreview(Date.UTC(2026, 0, 1), "?state=empty");
+  assert.ok(preview);
+  assert.equal(preview.catalog.categories[0]?.subcategories.length, 4);
 });
 
 test("the preview carries the plugin roster the skills screen draws its rows from", () => {

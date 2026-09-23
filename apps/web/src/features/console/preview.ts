@@ -202,26 +202,23 @@ const catalog: Catalog = {
 };
 
 /**
- * Whether the fixture may stand in for the studio. Its three inputs are arguments rather than reads
- * so each condition can be pinned on its own: a gate tested only through the environment it happens
- * to run in is a gate tested in one position.
+ * Whether the fixture may stand in for the studio. Both inputs are arguments rather than reads so
+ * each condition can be pinned on its own: a gate tested only through the environment it happens to
+ * run in is a gate tested in one position.
  */
-export function previewAllowed(
-  nodeEnv: string | undefined,
-  authConfigured: boolean,
-  search: string,
-): boolean {
-  if (nodeEnv === "production" || authConfigured) {
-    return false;
-  }
-  // `?state=empty` is the empty studio's route and a task of its own. It keeps the screen it has.
-  return new URLSearchParams(search).get("state") !== "empty";
+export function previewAllowed(nodeEnv: string | undefined, authConfigured: boolean): boolean {
+  return nodeEnv !== "production" && !authConfigured;
 }
 
 /** The preview, or null when the real studio — or someone else's screen — is what should render. */
 export function studioPreview(now: number, search = ""): PreviewState | null {
-  if (!previewAllowed(process.env.NODE_ENV, isAuthConfigured(), search)) {
+  if (!previewAllowed(process.env.NODE_ENV, isAuthConfigured())) {
     return null;
+  }
+  // `?state=empty` is the empty studio: the same fixture with nothing in it, so the journey from no
+  // agents to a first one is a screen a check can reach rather than a database to empty.
+  if (new URLSearchParams(search).get("state") === "empty") {
+    return { agents: [], runs: [], events: [], catalog, options };
   }
   const agents: Agent[] = [
     {

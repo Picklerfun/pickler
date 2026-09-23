@@ -19,6 +19,7 @@ import {
 import { useNow } from "@/lib/now";
 import { startPolling } from "./lib/polling";
 import { AgentForm } from "./agent-form";
+import { EmptyStudio } from "./empty/empty-studio";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -30,6 +31,7 @@ import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
+import type { Phase } from "./sections/keys";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -130,7 +132,13 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Console({ openSection }: { openSection?: SectionKey | undefined }) {
+export function Console({
+  openSection,
+  openPhase,
+}: {
+  openSection?: SectionKey | undefined;
+  openPhase?: Phase | undefined;
+}) {
   const router = useRouter();
   const [section, setSection] = useState<SectionKey>(openSection ?? "overview");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
@@ -187,12 +195,20 @@ export function Console({ openSection }: { openSection?: SectionKey | undefined 
           setPreview(true);
           setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
           setAgents(fixture.agents);
-          setAgentId(fixture.agents[0]!.id);
-          setRuns(fixture.runs);
-          setRunId(fixture.runs[0]!.id);
-          setTrace({ runId: fixture.runs[0]!.id, events: fixture.events });
           setCatalog(fixture.catalog);
           setOptions(fixture.options);
+          /* The empty studio's fixture has neither, and indexing into it threw where the catch
+             turned a crash into a blank screen with the catalog never set. */
+          const first = fixture.agents[0];
+          const run = fixture.runs[0];
+          if (first) {
+            setAgentId(first.id);
+          }
+          if (run) {
+            setRuns(fixture.runs);
+            setRunId(run.id);
+            setTrace({ runId: run.id, events: fixture.events });
+          }
           return;
         }
         const { data } = await supabase.auth.getSession();
@@ -357,6 +373,27 @@ export function Console({ openSection }: { openSection?: SectionKey | undefined 
     setSection(next);
     setCreating(false);
     setMenu(null);
+  }
+
+  /* No agents is not an empty studio, it is a different screen: the journey to a first one. It
+     brings its own shell, so it replaces this one rather than sitting inside it. */
+  if (access && !agents.length && !creating) {
+    return (
+      <EmptyStudio
+        openPhase={openPhase}
+        catalog={catalog}
+        defaults={options?.defaults ? ({ ...options.defaults } as Config) : null}
+        canManage={canManage}
+        owner="@you"
+        onCreated={(id) => {
+          void act(async () => {
+            await loadAgents();
+            setAgentId(id);
+            setSection("overview");
+          });
+        }}
+      />
+    );
   }
 
   return (
@@ -566,7 +603,7 @@ export function Console({ openSection }: { openSection?: SectionKey | undefined 
           </div>
         </nav>
 
-        <div className={styles.main}>
+        <div className={styles.main} id={`studio-panel-${section}`}>
           {preview && (
             <p className={styles.preview} role="status">
               <Icon name="alert" size={13} />

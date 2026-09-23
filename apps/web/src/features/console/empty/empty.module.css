@@ -1,0 +1,905 @@
+/* The empty studio — drawn from `Pickler Studio Empty.dc.html`.
+ *
+ * It borrows the shell from studio.module.css (top bar, rail, status, pills) and adds the stepped
+ * flow, the piece it builds and the draft overview. Every colour is a `--pk-*` token.
+ *
+ * The canvas's radii here are 2, 3, 4, 5, 8, 12, 14, 16, 18, 20, 24 and 28. Mapped onto §4's scale:
+ * 2–5 are marks, 12 is sm, 14 is md, 16 is lg, 18 and 20 are xl, 24 is 2xl and 28 is 3xl. 8 and 18
+ * have no step of their own — see the report; 8 takes sm and 18 takes xl, the nearest each way.
+ */
+
+.main {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 28px 60px;
+}
+
+/* ---------- Top bar pieces the empty state has and the studio does not ---------- */
+
+.noAgent,
+.agentChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 7px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.noAgent {
+  border: 1px dashed var(--pk-rule-strong);
+  color: var(--pk-ink-muted);
+}
+.agentChip {
+  background: var(--pk-panel);
+  border: 1px solid transparent;
+  color: var(--pk-ink);
+}
+.noAgentMark,
+.agentMark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: var(--pk-radius-sm);
+}
+.noAgentMark {
+  background: var(--pk-panel);
+  font: 600 15px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.agentMark {
+  background: var(--swatch, var(--pk-panel-3));
+  color: var(--pk-bg);
+  font: 700 10.5px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+
+/* A rail item with nothing behind it is not a disabled button, it is not a button at all. */
+.railLocked {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--pk-radius-md);
+  font: 600 13.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.railLocked svg {
+  flex: none;
+}
+
+/* ---------- The flow ---------- */
+
+.flow {
+  flex: 1 1 380px;
+  max-width: 440px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rail {
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rail li {
+  flex: 1;
+  min-width: 0;
+}
+.railStep {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.railStep:disabled {
+  cursor: not-allowed;
+}
+.railBar {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+}
+.railStep[data-state="here"] {
+  color: var(--pk-ink);
+}
+.railStep[data-state="here"] .railBar {
+  background: var(--pk-ink);
+}
+.railStep[data-state="done"] {
+  color: var(--pk-lime-ink);
+}
+.railStep[data-state="done"] .railBar {
+  background: var(--pk-lime);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kicker {
+  margin: 0;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.headline {
+  margin: 0;
+  font: 700 clamp(46px, 5.4vw, 64px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+  text-wrap: balance;
+}
+.headline span {
+  color: var(--pk-lime);
+}
+
+.well {
+  padding: 8px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.prose {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  resize: none;
+  font: 500 19px/1.4 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+  outline: none;
+}
+.prose::placeholder {
+  color: var(--pk-ink-faint);
+}
+.ideas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+.idea {
+  padding: 8px 12px;
+  border-radius: var(--pk-radius-pill);
+  border: none;
+  background: var(--pk-bg);
+  color: var(--pk-ink-soft);
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.idea:hover {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink);
+}
+.count {
+  margin-left: auto;
+  font: 600 10.5px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.count[data-over="true"] {
+  color: var(--pk-magenta-ink);
+}
+
+.namePair {
+  display: flex;
+  gap: 8px;
+}
+.nameField,
+.tickerField {
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+  border: 1px solid transparent;
+  color: var(--pk-ink);
+  outline: none;
+}
+.nameField {
+  flex: 1 1 auto;
+  font: 600 22px/1.1 var(--pk-font);
+  letter-spacing: -0.03em;
+}
+.tickerField {
+  flex: 0 0 112px;
+  padding: 18px 14px;
+  font: 700 17px/1.1 var(--pk-font);
+  color: var(--pk-lime-ink);
+}
+.nameField:focus,
+.tickerField:focus {
+  border-color: var(--pk-border-strong);
+}
+.hint {
+  margin: 0;
+  padding: 0 4px;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-magenta-ink);
+}
+.hint[data-ok="true"] {
+  color: var(--pk-lime-ink);
+}
+
+.beats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.beat {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 16px;
+  border-radius: var(--pk-radius-xl);
+  border: 1px solid transparent;
+  background: var(--pk-panel);
+  color: var(--pk-ink-soft);
+  font: 600 16px/1.1 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+.beat[aria-pressed="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.beat:disabled {
+  background: transparent;
+  border-color: var(--pk-rule);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.beat em {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.beatDot {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--swatch, var(--pk-ink-faint));
+}
+
+/* The agent palette. A beat is an identity, so these are the accents themselves rather than the
+   state scale — which has six entries and no orange, and would have put two of the eight in grey.
+   Anchored on a local class because a CSS module refuses a selector that is only an attribute: the
+   flow and the piece are inside .main, and the top bar's mark carries the attribute itself. */
+.main [data-swatch="lime"],
+.agentMark[data-swatch="lime"] {
+  --swatch: var(--pk-lime);
+}
+.main [data-swatch="blue"],
+.agentMark[data-swatch="blue"] {
+  --swatch: var(--pk-blue);
+}
+.main [data-swatch="violet"],
+.agentMark[data-swatch="violet"] {
+  --swatch: var(--pk-violet);
+}
+.main [data-swatch="amber"],
+.agentMark[data-swatch="amber"] {
+  --swatch: var(--pk-amber);
+}
+.main [data-swatch="orange"],
+.agentMark[data-swatch="orange"] {
+  --swatch: var(--pk-orange);
+}
+.main [data-swatch="indigo"],
+.agentMark[data-swatch="indigo"] {
+  --swatch: var(--pk-violet-ink);
+}
+.main [data-swatch="magenta"],
+.agentMark[data-swatch="magenta"] {
+  --swatch: var(--pk-magenta);
+}
+.main [data-swatch="soft"],
+.agentMark[data-swatch="soft"] {
+  --swatch: var(--pk-ink-soft);
+}
+.sports {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid transparent;
+  background: var(--pk-bg);
+  color: var(--pk-ink-soft);
+  font: 600 14px/1 var(--pk-font);
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+
+.runIdle {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 36px 12px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+}
+.runLines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.runLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+.runDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-violet);
+}
+.runText {
+  flex: 1;
+  min-width: 0;
+  font: 500 14px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink);
+  overflow-wrap: anywhere;
+}
+.thinking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 12px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  animation: pkPulse 1s steps(1, end) infinite;
+}
+@keyframes pkPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.filled {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-good-bg);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-state-good-ink);
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.primary,
+.back {
+  padding: 17px 22px;
+  border-radius: var(--pk-radius-pill);
+  border: none;
+  font: 600 17px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+.primary {
+  flex: 1;
+  background: var(--pk-lime);
+  color: var(--pk-bg);
+}
+.primary:hover:not(:disabled) {
+  background: var(--pk-lime-hover);
+}
+.primary:disabled {
+  background: var(--pk-panel-2);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.back {
+  flex: none;
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  font-size: 16px;
+}
+.back:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
+}
+.quiet {
+  align-self: center;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-pill);
+  border: none;
+  background: transparent;
+  font: 600 11.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+}
+.quiet:hover {
+  color: var(--pk-ink);
+}
+
+.note {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font: 400 12.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.mark {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--tint-bg);
+  border: 1px solid var(--tint-bd);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--tint-fg);
+  white-space: nowrap;
+}
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-state-loss-bg);
+  border: 1px solid var(--pk-magenta-edge);
+  font: 600 12.5px/1.45 var(--pk-font);
+  color: var(--pk-magenta-ink);
+  text-wrap: pretty;
+}
+.error svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- The piece ---------- */
+
+.piece {
+  flex: 1 1 300px;
+  max-width: 360px;
+  min-width: 0;
+  padding: 22px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+}
+.pieceHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pieceMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--pk-radius-md);
+  background: var(--swatch, var(--pk-panel-3));
+  color: var(--pk-bg);
+  font: 700 19px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+.pieceMark[data-swatch="none"] {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink-muted);
+}
+.pieceWho {
+  flex: 1;
+  min-width: 0;
+}
+.pieceWho b {
+  display: block;
+  font: 700 26px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pieceWho small {
+  display: block;
+  margin-top: 5px;
+  font: 600 11.5px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pieceWho em {
+  font-style: normal;
+  color: var(--pk-lime-ink);
+}
+.stack {
+  position: relative;
+  height: 300px;
+  padding: 8px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-bg);
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  gap: 5px;
+  overflow: hidden;
+}
+.stackEmpty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+}
+.block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+}
+.blockCells {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+.blockCells i {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--swatch, var(--pk-ink-faint));
+}
+.blockValue {
+  flex: 1;
+  min-width: 0;
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blockLabel {
+  flex: none;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.pieceOwner {
+  margin: 12px 4px 0;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.pieceOwner b {
+  color: var(--pk-ink);
+}
+
+/* ---------- Draft overview ---------- */
+
+.draft {
+  flex: 1 1 auto;
+  max-width: 680px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.draftHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+.draftHead .headline {
+  flex: 1 1 280px;
+}
+.progressLabel {
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.progress {
+  display: block;
+  height: 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  height: 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+}
+.task {
+  padding: 16px 18px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.taskHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.taskMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.taskWho {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.taskWho b {
+  display: block;
+  font: 600 16px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.taskWho small {
+  display: block;
+  margin-top: 4px;
+  font: 600 10.5px/1.3 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+.taskCta {
+  flex: none;
+  padding: 11px 16px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-border-strong);
+  background: transparent;
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.taskCta:hover {
+  background: var(--pk-panel-2);
+}
+.taskWhy {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  font: 400 12.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.taskWhy svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pk-amber-ink);
+}
+.voice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sample {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+  font: 400 16px/1.45 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink);
+  text-wrap: pretty;
+}
+
+/* ---------- The passkey sheet ---------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+/* The canvas dims the page with rgba(0,0,0,.55), which no token holds. So the veil is the page's
+   own ground at less than full strength: the colour is the token and only its opacity is layout,
+   rather than a literal black nobody can trace. It is a sibling and not a pseudo-element on
+   purpose — an element is something the token check can see. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background: var(--pk-bg);
+  opacity: 0.72;
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  padding: 26px 24px 20px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-popover);
+  color: var(--pk-ink);
+  box-shadow: var(--pk-popover-shadow);
+  text-align: center;
+}
+.sheetMark {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-lime-ink);
+}
+.sheetTitle {
+  margin: 0 0 6px;
+  font: 600 18px/1.25 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.sheetBody {
+  margin: 0 0 14px;
+  font: 400 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-wrap: pretty;
+}
+.sheetWhy {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-state-caution-bg);
+  font: 400 12.5px/1.45 var(--pk-font);
+  color: var(--pk-amber-ink);
+  text-align: left;
+  text-wrap: pretty;
+}
+.sheetWhy svg {
+  flex: none;
+  margin-top: 2px;
+}
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sheetGo {
+  padding: 14px;
+  border-radius: var(--pk-radius-pill);
+  border: none;
+  background: var(--pk-lime);
+  color: var(--pk-bg);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+.sheetGo:disabled {
+  background: var(--pk-panel-2);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.sheetCancel {
+  padding: 12px;
+  border-radius: var(--pk-radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 500 14px/1 var(--pk-font);
+  cursor: pointer;
+}
+.sheetCancel:hover {
+  color: var(--pk-ink);
+}
+
+@media (max-width: 900px) {
+  .main {
+    gap: 24px;
+    padding: 24px 16px 48px;
+  }
+  .piece {
+    max-width: none;
+  }
+  /* The shell turns the rail into a wrapping row of destinations here, and these have to go with
+     it: at full width they stack into a column twelve rows tall above the work. */
+  .railLocked {
+    width: auto;
+    border: 1px solid var(--pk-rule);
+  }
+}
