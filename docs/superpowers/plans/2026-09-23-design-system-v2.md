@@ -74,7 +74,11 @@ cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:8787 npx next dev
 ```
 
 **What this plan has learned, from the custody work that preceded it.** Twenty-one defects, all in
-the specification, none visible by reading:
+the specification, none visible by reading. What the list has in common is worth reading first:
+**all but one are a way for a check to be believed while not doing its job.** They are not about
+code being wrong; they are about the apparatus that is supposed to tell you. The exception is item
+6, which says so of itself — it is about a construction with no form on the new surface, and it is
+in the list because nothing in the apparatus could have caught it.
 
 1. **Assert against what reached the collaborator**, never against a constant a fake returns.
 2. **Prove each test can fail, and prove the sabotage landed** — assert the target text occurs
@@ -120,6 +124,19 @@ the specification, none visible by reading:
    Separate the data that carries the ordering from the data that carries the membership, so one can
    grow without redefining the other: here, a `RAMP` of the four ink levels that the distinctness
    check walks, with `INKS` built from it and free to grow.
+9. **When a check reports something you believe is noise, find out what the noise looks like before
+   you filter it.** The token checker reported `--pk-` as an undefined read, and it was prose: a
+   comment saying "every colour here is a `--pk-*` token", matched up to the asterisk. The obvious
+   fix is to discard bare fragments — and it would have destroyed the thing the check was for. A
+   bare `--pk-` is exactly the shape of a truncated template literal, `var(--pk-agent-${hue}-bg)`
+   seen by a grep, which is the one failure that check exists to catch, because a name built by
+   string interpolation is invisible to grep, to the type checker and to every test. Filtering by
+   shape would have silenced the false alarm and the real one together, and nobody would have found
+   out until a composed token name went missing in production. If the false positive and the true
+   positive have the same shape, narrow the **input** instead — here, strip comments before
+   scanning, so prose stops being an input and every real read still is. The ordering matters
+   because a check made quieter is a check trusted more: the cost of silencing the wrong thing is
+   paid later, and by someone else.
 
 ---
 
