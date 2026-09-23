@@ -23,10 +23,8 @@ const headings = () =>
 const { results, blocked } = await eachRoute(ROUTES, (page) => page.evaluate(headings));
 
 const problems = [];
-const counts = [];
 for (const { route, value } of results) {
   const shown = value.filter((heading) => heading.rendered);
-  counts.push(`${route.name}: ${shown.length} heading(s)`);
   for (const heading of shown) {
     const where = `${route.name} ${heading.selector} "${heading.text}"`;
     // next/font generates its own family names, so the stack reads
@@ -47,5 +45,10 @@ for (const { route, value } of results) {
   }
 }
 
-process.stdout.write(`measured — ${counts.join(", ") || "nothing"}\n`);
-finish("type", { routes: ROUTES, blocked, problems });
+finish("type", {
+  routes: ROUTES,
+  blocked,
+  results,
+  summary: (value) => `${value.filter((h) => h.rendered).length} heading(s)`,
+  problems,
+});

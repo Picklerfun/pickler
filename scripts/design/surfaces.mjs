@@ -56,4 +56,10 @@ for (const { route, value } of results) {
 for (const note of notes) {
   process.stdout.write(`ok       ${note}\n`);
 }
-finish("surfaces", { routes: ROUTES, blocked, problems });
+finish("surfaces", {
+  routes: ROUTES,
+  blocked,
+  results,
+  summary: (value) => `ground ${value.ground}`,
+  problems,
+});

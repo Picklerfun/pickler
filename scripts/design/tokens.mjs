@@ -23,12 +23,8 @@ const { results, blocked } = await eachRoute(ROUTES, async (page) => ({
 }));
 
 const problems = [];
-const counts = [];
 for (const { route, value } of results) {
   const held = new Set(value.tokens.values.map(key));
-  counts.push(
-    `${route.name}: ${value.tokens.names.length} token(s), ${value.painted.length} paint(s)`,
-  );
   if (!value.tokens.names.length) {
     // The stylesheet was unreadable or the tokens are not on this page. Without this, every colour
     // would be a stray and the report would be noise rather than a finding.
@@ -60,5 +56,10 @@ for (const { route, value } of results) {
   }
 }
 
-process.stdout.write(`measured — ${counts.join("; ")}\n`);
-finish("tokens", { routes: ROUTES, blocked, problems });
+finish("tokens", {
+  routes: ROUTES,
+  blocked,
+  results,
+  summary: (value) => `${value.tokens.names.length} token(s), ${value.painted.length} paint(s)`,
+  problems,
+});

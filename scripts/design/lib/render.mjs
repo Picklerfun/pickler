@@ -124,6 +124,19 @@ const KINDS = {
       `    ${START_FIXTURE}\n` +
       `  If the fixture is alive, read the dev server log — the throw will name the endpoint.`,
   },
+  stub: {
+    line: (route, detail) => `${route.path} — loaded, but ${detail}`,
+    remedy:
+      "The page answered 200 and rendered something other than the screen — a sign-in stub, a gate,\n" +
+      "  a half-mounted client component. Measuring it would report green for a screen nobody looked\n" +
+      "  at, which is what happened to /console for the whole of this change. Not measured, not passed.",
+  },
+  "no-floor": {
+    line: (route) => `${route.path} — declares no \`proves\` selector and no \`floor\``,
+    remedy:
+      "Add one to routes.mjs. A route with no floor cannot be told from a stub, and a route nobody\n" +
+      "  wrote a floor for is exactly the route the floor exists to catch, so it is not measured.",
+  },
   "error-boundary": {
     line: (route) =>
       `${route.path} — 200, but rendered the error/not-found fallback instead of the page`,
@@ -147,6 +160,15 @@ export function describe(blocked) {
   }
   return out;
 }
+
+// Counted in the page, for the `floor` form of the proof. Visible elements only, so the number
+// means the same thing the checks' own counts mean and the two cannot appear to disagree.
+const countText = () =>
+  [...document.querySelectorAll("body *")].filter(
+    (el) =>
+      [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim()) &&
+      el.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
+  ).length;
 
 /** Opens each route in turn and hands the page to `visit`. A route that cannot load is recorded as
  *  blocked rather than thrown on, so that one missing backend does not hide the other four routes'
@@ -186,7 +208,32 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           blocked.push({ route, kind: "error-boundary" });
           continue;
         }
-        results.push({ route, value: await visit(page, route) });
+        // Prove the screen rendered before measuring it. A selector first: it says what the real
+        // screen contains and a stub cannot. A count only where no authored hook exists yet.
+        let proof;
+        if (route.proves) {
+          const found = await page.locator(route.proves).count();
+          if (!found) {
+            blocked.push({ route, kind: "stub", detail: `nothing matches ${route.proves}` });
+            continue;
+          }
+          proof = route.proves;
+        } else if (typeof route.floor === "number") {
+          const carried = await page.evaluate(countText);
+          if (carried < route.floor) {
+            blocked.push({
+              route,
+              kind: "stub",
+              detail: `only ${carried} text element(s), and the floor is ${route.floor}`,
+            });
+            continue;
+          }
+          proof = `${carried} text elements ≥ floor ${route.floor}`;
+        } else {
+          blocked.push({ route, kind: "no-floor" });
+          continue;
+        }
+        results.push({ route, proof, value: await visit(page, route) });
       } finally {
         await page.close();
       }
@@ -236,7 +283,17 @@ function held() {
  *  Both count as failure — a check that cannot see a route has not passed it — but they are
  *  different failures and the summary says which, because "it went red" sends someone looking for a
  *  design defect that may not exist. */
-export function finish(check, { routes, blocked, problems }) {
+export function finish(check, { routes, blocked, problems, results = [], summary }) {
+  /* What this run actually looked at, printed every time and not only when something is wrong.
+   * Three of the things this harness has been wrong about were not wrong assertions — they were
+   * right assertions about the wrong thing: a stub instead of a screen, an overridden rule instead
+   * of a live one, someone's mid-edit instead of their work. None of them would have survived a
+   * reader glancing at what was measured, so it stops being something a person has to think to ask
+   * for. */
+  for (const { route, proof, value } of results) {
+    const what = summary ? summary(value) : "";
+    process.stdout.write(`looked at  ${route.name} — ${proof}${what ? `, ${what}` : ""}\n`);
+  }
   for (const { blocked: isRoute, text } of describe(blocked)) {
     process.stdout.write(isRoute ? `BLOCKED  ${text}\n` : `  → ${text}\n`);
   }

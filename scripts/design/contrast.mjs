@@ -55,13 +55,9 @@ const collect = () =>
 const { results, blocked } = await eachRoute(ROUTES, (page) => page.evaluate(collect));
 
 const problems = [];
-const counts = [];
 let overImage = 0;
 for (const { route, value } of results) {
   const seen = new Map();
-  // Printed even when clean. A walk that silently matched nothing reports the same green as a page
-  // with no problems, and this is the number that tells the two apart.
-  counts.push(`${route.name}: ${value.length} text element(s)`);
   for (const item of value) {
     const ink = parse(item.ink);
     if (!ink || ink[3] === 0) {
@@ -105,8 +101,6 @@ for (const { route, value } of results) {
   }
 }
 
-process.stdout.write(`measured — ${counts.join(", ")}\n`);
-
 if (overImage) {
   process.stdout.write(
     `note: ${overImage} element(s) sit over a background image; their ground cannot be read, so ` +
@@ -117,5 +111,7 @@ if (overImage) {
 finish("contrast", {
   routes: ROUTES,
   blocked,
+  results,
+  summary: (value) => `${value.length} text element(s)`,
   problems: problems.map((p) => ({ route: p.route, text: p.line() })),
 });

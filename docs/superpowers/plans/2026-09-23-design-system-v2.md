@@ -152,6 +152,28 @@ in the list because nothing in the apparatus could have caught it.
     would be lesson 9's mistake exactly. This is lesson 7 one layer out — the check cannot know
     which of the two it is looking at, but it can say what it does not know, and that is the half
     the reader needs.
+11. **When proving a DOM check can fail, confirm the mutation won the cascade — not merely that it
+    is in the file.** A sabotage plant landed on a declaration another rule overrode. Nothing
+    changed on screen, the check found nothing, and the plant proved neither that the check works
+    nor that it does not. This is rule 2 one layer further in: a mutation that does not render is
+    the same as a mutation that did not land. Read the computed value back off the element you
+    expect to change and assert it is the sabotaged one before believing either result.
+12. **A route can answer 200 and not be the screen.** `/console` renders a sign-in stub wherever
+    Supabase is unconfigured, which is every environment these checks run in, so all four checks
+    walked 33 elements of the stub and reported green — for the whole of this change. That is rule 2
+    at the top of the stack rather than inside a test: a check that matches nothing produces the
+    same green as a check that passes, and an HTTP status cannot tell them apart. Every route now
+    names something the real screen contains and a stub cannot (`proves` in `routes.mjs`, a count
+    `floor` only where no authored hook exists), and a route that cannot show it is reported like a
+    route that never loaded. A route declaring neither is reported too, because a route nobody wrote
+    a floor for is exactly the route the floor exists to catch.
+
+Ten, eleven and twelve are one family, and it is the family worth naming: **the green was never
+lying about what it measured, only about that being the thing anyone cared about** — a stub instead
+of a screen, an overridden rule instead of a live one, someone's mid-edit instead of their work. So
+every check now prints what it actually looked at, on every run and not only when something is
+wrong: the route, the proof that the screen was there, and how much of it was measured. A reader who
+glances at that catches all three without having to think to ask.
 
 ---
 
