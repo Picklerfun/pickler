@@ -754,8 +754,31 @@ test("a challenge cannot be spent twice", async () => {
         challenge: options.challenge,
         attestation,
       }),
-    /expired/i,
+    ChallengeNotUsableError,
   );
+});
+
+test("a challenge that outlived its TTL is refused", async () => {
+  const f = fakes();
+  const s = service(f);
+  const options = await s.issueChallenge(USER, "ana@pickler.fun");
+  // The service clock is fixed, so age the stored record instead: this is what the row looks
+  // like once the five-minute TTL has run out under a real clock. Without this test the expiry
+  // clause can be deleted and the whole suite stays green — it is the only gate on the TTL,
+  // because the Postgres consume in Task 7 returns an expired row as readily as a live one.
+  f.stored.set(options.challenge, { userId: USER, expiresAt: new Date(NOW.getTime() - 1) });
+
+  await assert.rejects(
+    () =>
+      s.register(USER, {
+        email: "ana@pickler.fun",
+        label: "Touch ID",
+        challenge: options.challenge,
+        attestation,
+      }),
+    ChallengeNotUsableError,
+  );
+  assert.equal(f.calls(), 0, "an expired challenge must never reach Turnkey");
 });
 
 test("a challenge belonging to someone else is refused", async () => {
@@ -771,7 +794,7 @@ test("a challenge belonging to someone else is refused", async () => {
         challenge: options.challenge,
         attestation,
       }),
-    /expired/i,
+    ChallengeNotUsableError,
   );
 });
 
@@ -838,7 +861,16 @@ The first `findByUserId` fake must read from `rows.account`. Replace the fake's 
     },
 ```
 
-and add `import type { CustodyAccount } from "../src/features/wallets/ports/custody.js";` to the test imports.
+and add `import type { CustodyAccount } from "../src/features/wallets/ports/custody.js";` to the test imports,
+plus a value import of the error class the tests assert on:
+
+```ts
+import { ChallengeNotUsableError } from "../src/features/wallets/domain/passkey.js";
+```
+
+Assert the class, never the message. The class is the contract the HTTP layer maps to a 400; the
+message is product copy that someone will reword while tightening onboarding, and when they do, a
+message assertion fails and points at custody rather than at the copy.
 
 - [ ] **Step 2: Run and watch it fail**
 
@@ -921,7 +953,7 @@ Inside the object returned by `createCustodyService`, after `issueChallenge`:
 - [ ] **Step 4: Run and watch it pass**
 
 Run: `node --import tsx --test packages/core/test/custody.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 5: Commit**
 
