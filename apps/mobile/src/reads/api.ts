@@ -1,7 +1,8 @@
 // Cliente del servicio de reads (D16). fetch con AbortController + setTimeout: AbortSignal.timeout no existe en RN (P4).
+import type { Side } from "../perpl/orders";
 import { READ_REQUEST_TIMEOUT_MS, READS_TIMEOUT_MS } from "./constants";
 import { type ReadsSession, signedHeaders } from "./session";
-import { type Agent, parseAgentsList, parseRead, parseReadResponse, parseReadsList, type Read } from "./types";
+import { type Agent, parseAgentsList, parseRead, parseReadResponse, parseReadsList, parseRemindersResponse, type Read, type Reminder } from "./types";
 
 export type DoFetch = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -24,6 +25,8 @@ const COPY: Record<string, string> = {
   missing_signature: "Your Ask session expired. Unlock again.",
   signature_expired: "Your Ask session expired. Unlock again.",
   bad_signature: "Your Ask session expired. Unlock again.",
+  expired: "That level already expired.",
+  read_not_found: "That read isn't yours anymore.",
   timeout: "The agent took too long. Check My reads — your credit comes back if it failed.",
   network: "Couldn't reach the reads service.",
   bad_response: "The reads service sent something unexpected.",
@@ -75,4 +78,16 @@ export function requestRead(base: string, session: ReadsSession, body: ReadReque
   return call(`${base}/read-request`, {
     method: "POST", headers: { ...signedHeaders(session), "content-type": "application/json" }, body: JSON.stringify(body),
   }, READ_REQUEST_TIMEOUT_MS, doFetch).then(parseReadResponse);
+}
+
+export type ReminderRequest = {
+  marketId: number; levelBps: number; horizonMin: number; target: number; expiresAt: string; side: Side;
+  readId?: string; pushToken?: string; pushEnv?: "sandbox" | "production";
+};
+
+/** POST reminder-set (D12): el servidor crea `pre` (si faltan > 15 min) y `expiry` en mobile.reminders. */
+export function postReminders(base: string, session: ReadsSession, body: ReminderRequest, doFetch: DoFetch = fetch): Promise<Reminder[]> {
+  return call(`${base}/reminder-set`, {
+    method: "POST", headers: { ...signedHeaders(session), "content-type": "application/json" }, body: JSON.stringify(body),
+  }, READS_TIMEOUT_MS, doFetch).then(parseRemindersResponse);
 }

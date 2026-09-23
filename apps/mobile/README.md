@@ -114,7 +114,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 244/244 esperado (33 suites)
+npm test          # jest, 270/270 esperado (35 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -173,6 +173,12 @@ Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
   `Age` del CDN.
 - Fees se muestran con 4 decimales; saldos y montos con 2.
 - Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
+- Order book L2 en Trade: `wss://testnet.perpl.xyz/ws/v1/market-data` (override `PICKLER_PERPL_MARKET_DATA_WS`,
+  mismas reglas de `run:ios` que las otras URLs), un socket por ticket visible con una sola suscripción
+  `order-book@<id>`, sin pings (10 requests/min por conexión; el `mt: 5` es el único). `mt: 15` reemplaza el
+  libro, `mt: 16` es un delta por nivel (`o: 0` borra). `src/perpl/marketData.ts` es puro; los frames reales se
+  graban con `node scripts/perpl-market-data-capture.mjs --market 16 --seconds 20` (Node 22, sin cuenta) en
+  `__tests__/fixtures/perpl/market-data-frames.json`.
 
 ## Ask y Agents (pills de Market)
 
@@ -187,6 +193,10 @@ tap sin APNs: `xcrun simctl push <UDID> fun.pickler.app payload.apns` con `{ "pi
 `expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.
 La matriz es el `Grid` del prototipo (sparkline con los últimos 60 marks que la app vio, escalera de 5 niveles, celdas
 con punto donde ya hay reads, hoja con steppers); `src/perpl/marks.ts` y `src/reads/matrix.ts` son puros y tienen test.
+«Trade this level» (hoja de la celda y card de una read `open`) pone `S.tradeLevel`, sugiere el lado (nivel + → long)
+y abre Trade con la `LevelCard`; cuando la orden queda `filled` u `open` la app llama `reminder-set` (firmado, misma
+sesión de Ask) y el servidor programa `pre` (15 min antes, si faltan más de 15) y `expiry`; `resolve-reads` los manda
+con el mark del momento. Nada cierra la posición. `src/reads/level.ts` es puro y tiene test.
 
 ## Subir a TestFlight
 

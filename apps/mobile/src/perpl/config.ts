@@ -4,6 +4,7 @@ import { type Address, parseAbi } from "viem";
 export const PERPL_CHAIN_ID = 10143;
 export const PERPL_REST = "https://testnet.perpl.xyz/api";
 export const PERPL_WS = "wss://testnet.perpl.xyz/ws/v1/trading";
+export const PERPL_MARKET_DATA_WS = "wss://testnet.perpl.xyz/ws/v1/market-data"; // público, sin firma ni pings (D11)
 export const PERPL_WEB = "https://testnet.perpl.xyz";
 
 export const EXCHANGE_ADDRESS: Address = "0x1964c32f0be608e7d29302aff5e61268e72080cc";
@@ -29,6 +30,9 @@ export const SOCKET_GRACE_MS = 2000;
 
 export const LEVERAGES = [1, 2, 3, 5] as const;
 export type Leverage = (typeof LEVERAGES)[number];
+
+/** Niveles por lado que muestra BookCard (D11). */
+export const BOOK_DEPTH = 5;
 
 /** Un reintento debe reemplazar una tx descartada por falta de MON (lección del spike). */
 export const PRIORITY_FEE_WEI = 20_000_000_000n;

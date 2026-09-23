@@ -230,7 +230,7 @@
       </article>
 
       <!-- Phase 3 ====================================================== -->
-      <article class="phase-card" data-phase="3" data-status="plan_ready">
+      <article class="phase-card" data-phase="3" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F3</span>
@@ -239,17 +239,17 @@
           <div class="phase-status-control">
             <select aria-label="Phase 3 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
-          <p><code>MarketDataSocket</code> sobre <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>order-book@&lt;id&gt;</code>, mt 15/16, un socket por ticket visible, sin pings), <code>BookCard</code> con 5 niveles por lado y spread, <code>LevelCard</code> con lado sugerido y <code>reminder-set</code> tras el fill (15 min antes y al vencer, con el mark en el push). Sin cierre automático ni take-profit.</p>
+          <p><code>MarketDataSocket</code> sobre <code>wss://testnet.perpl.xyz/ws/v1/market-data</code> (<code>order-book@&lt;id&gt;</code>, mt 15/16, un socket por ticket visible, sin pings), <code>BookCard</code> con 5 niveles por lado y spread, <code>LevelCard</code> con lado sugerido y <code>reminder-set</code> tras el fill (15 min antes y al vencer, con el mark en el push). Sin cierre automático ni take-profit. 270/270 tests, 35 suites, <code>tsc</code> limpio.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Book vivo en el simulador, frames grabados a fixture (script commiteado), una orden de 2.00 AUSD a 1x en BTC con sus dos recordatorios en <code>mobile.reminders</code> procesados por el cron (el push real sigue dependiendo de la key APNs)</div></div>
-            <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620 (Jesús; se pregunta al arrancar Task 8, no bloquea)</div></div>
+            <div><div class="k">Entregable</div><div class="v">Verificado en el simulador: book L2 en vivo (spread real, 5 niveles por lado, se cierra/reabre con el pill), «Trade this level» desde una read <code>open</code> con <code>LevelCard</code>, sign-out limpia el nivel, push <b>sintético</b> de recordatorio (<code>simctl push</code>, no una entrega real de APNs) abre Trade. <b>No verificado:</b> la única orden autorizada (2.00 AUSD, 1x, LONG BTC) quedó <code>unknown</code> y nunca llenó — <code>reminder-set</code> no se llamó con datos reales, sin filas en <code>mobile.reminders</code> ni tick de cron ejercitado en la app (sí cubierto por test unitario y por el curl server-side de F1). Detalle en el audit F3.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F2; revocar las dos keys de trading sobrantes de #620 (Jesús responde 2026-09-22: «No / todavía no» — residual heredado, no bloquea)</div></div>
           </div>
           <details class="tasks">
             <summary>
@@ -257,16 +257,25 @@
               <span class="progress-pill" data-tasks-counter>0/0</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 1: src/reads/level.ts — celda/read → TradeLevel, lado sugerido, copy; useNow compartido</label></li>
-              <li><label><input type="checkbox"> Task 2: cliente de reminder-set, parser y contenido local del fallback</label></li>
-              <li><label><input type="checkbox"> Task 3: useNotifications.scheduleLocalReminders y useReads.setReminders</label></li>
-              <li><label><input type="checkbox"> Task 4: «Trade this level» en Ask, LevelCard y nota de recordatorios en Trade (checkpoint D12)</label></li>
-              <li><label><input type="checkbox"> Task 5: script de captura y fixture market-data-frames.json</label></li>
-              <li><label><input type="checkbox"> Task 6: src/perpl/marketData.ts — parser, libro y MarketDataSocket</label></li>
-              <li><label><input type="checkbox"> Task 7: useMarketData, BookCard y montaje en Trade</label></li>
-              <li><label><input type="checkbox"> Task 8: recorrido en el simulador — nivel, orden de 2.00 AUSD, recordatorios y cron</label></li>
-              <li><label><input type="checkbox"> Task 9: README, spec, overview (F4 retitulada), manifest, audit F3 y revisión independiente</label></li>
+              <li><label><input type="checkbox" checked> Task 1: src/reads/level.ts — celda/read → TradeLevel, lado sugerido, copy; useNow compartido</label></li>
+              <li><label><input type="checkbox" checked> Task 2: cliente de reminder-set, parser y contenido local del fallback</label></li>
+              <li><label><input type="checkbox" checked> Task 3: useNotifications.scheduleLocalReminders y useReads.setReminders</label></li>
+              <li><label><input type="checkbox" checked> Task 4: «Trade this level» en Ask, LevelCard y nota de recordatorios en Trade (checkpoint D12)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: script de captura y fixture market-data-frames.json</label></li>
+              <li><label><input type="checkbox" checked> Task 6: src/perpl/marketData.ts — parser, libro y MarketDataSocket</label></li>
+              <li><label><input type="checkbox" checked> Task 7: useMarketData, BookCard y montaje en Trade</label></li>
+              <li><label><input type="checkbox" checked> Task 8: recorrido en el simulador — nivel, orden de 2.00 AUSD, recordatorios y cron</label></li>
+              <li><label><input type="checkbox" checked> Task 9: README, spec, overview (F4 retitulada), manifest, audit F3 y revisión independiente</label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes (no bloqueantes)</summary>
+            <ul>
+              <li><b>La orden de prueba no llenó</b> (<code>unknown</code>, sin confirmación de Perpl en 30 s): la ruta real de <code>reminder-set</code>/cron con datos de la app queda sin ejercitar; reintentarla exige una ventana exclusiva del simulador (colisión con otra sesión, Proflores, durante el intento).</li>
+              <li>Dos keys de trading sobrantes en la cuenta #620 sin revocar (Jesús, 2026-09-22: «No / todavía no»).</li>
+              <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> y la key APNs siguen pendientes (heredado de F1/F2): el push real de recordatorio depende de ellas.</li>
+              <li>Persona real del agente <code>jesus</code> sigue en placeholder (heredado de F1).</li>
+            </ul>
           </details>
         </div>
       </article>
@@ -276,11 +285,11 @@
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F4</span>
-            <h3 class="phase-title">TestFlight build 0.1.0 (6)</h3>
+            <h3 class="phase-title">TestFlight con F3 (siguiente build tras el merge)</h3>
           </div>
           <div class="phase-status-control">
             <select aria-label="Phase 4 status">
-              <option value="pending">pending</option>
+              <option value="pending" selected>pending</option>
               <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
@@ -288,9 +297,9 @@
           </div>
         </div>
         <div class="phase-body">
-          <p><code>buildNumber 6</code>, archive con entitlement <code>aps-environment</code> verificado, upload, <code>VALID</code> con el grupo Equipo y tracker <code>pickler-dev-new</code>. En el iPhone de Jesús: una lectura completa hasta el push de resolución y un nivel con recordatorio.</p>
+          <p><code>buildNumber</code> siguiente (los builds 6–9 de TestFlight ya subieron otras fases; éste sube con Ask + Trade completos de F3), archive con entitlement <code>aps-environment</code> verificado, upload, <code>VALID</code> con el grupo Equipo y tracker <code>pickler-dev-new</code>. En el iPhone de Jesús: una lectura completa hasta el push de resolución y un nivel con recordatorio.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Build 6 distribuido al grupo Equipo con tracker en <code>docs/overview/dev/</code></div></div>
+            <div><div class="k">Entregable</div><div class="v">Build con Ask + Trade completos distribuido al grupo Equipo, probado en el iPhone de Jesús: una lectura hasta el push y un nivel con recordatorio; tracker en <code>docs/overview/dev/</code></div></div>
             <div><div class="k">Prerequisitos</div><div class="v">F3; autorización explícita de Jesús para subir</div></div>
           </div>
         </div>
@@ -456,7 +465,7 @@ create index on mobile.reads (expires_at) where status = 'open';
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> ·
        planes en <code>docs/superpowers/plans/2026-09-19-mobile-ask-f*.md</code> (F1, F2 y F3 escritos) ·
-       audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1 y F2)</p>
+       audits en <code>docs/superpowers/audits/2026-09-19-mobile-ask-f*-rulings.md</code> (F1, F2 y F3)</p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>

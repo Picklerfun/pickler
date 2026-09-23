@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { accountAddress, type AccountState } from "../account";
 import { PUSH_MODE, READS_URL } from "../config/reads";
-import { describeReadsError, fetchAgents, fetchReads, isSessionError, requestRead } from "../reads/api";
+import type { Side } from "../perpl/orders";
+import { describeReadsError, fetchAgents, fetchReads, isSessionError, postReminders, requestRead } from "../reads/api";
 import { READS_POLL_MS } from "../reads/constants";
+import type { ReminderKind } from "../reads/level";
 import { createSession, type ReadsSession, sessionFor } from "../reads/session";
 import type { Agent, Read } from "../reads/types";
 import { clearReadsSession, loadReadsSession, saveReadsSession } from "../storage/reads";
-import type { AskCell } from "../store";
+import type { AskCell, TradeLevel } from "../store";
 import { describeError, type Wallet } from "../wallet/wallet";
 import type { Notifications } from "./useNotifications";
 import { useUnlock } from "./useUnlock";
@@ -18,6 +20,8 @@ export type RequestState =
   | { step: "pending"; cell: AskCell; agentId: string }
   | { step: "done"; read: Read }
   | { step: "failed"; text: string };
+
+export type RemindersOutcome = { ok: true; kinds: ReminderKind[] } | { ok: false; text: string };
 
 export type Reads = {
   session: ReadsSessionStatus;
@@ -36,6 +40,8 @@ export type Reads = {
   refresh: () => Promise<void>;
   ask: (cell: AskCell, agentId: string) => Promise<void>;
   resetRequest: () => void;
+  /** «Trade this level» tras una orden filled/open (D12, P7–P8): reminder-set con el nivel y el lado; local además con PUSH_MODE local. */
+  setReminders: (symbol: string, level: TradeLevel, side: Side) => Promise<RemindersOutcome>;
   setActive: (active: boolean) => void;
 };
 
@@ -65,7 +71,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const droppedRef = useRef(false);
   // Promesa de firma en vuelo: una segunda llamada concurrente la reutiliza en vez de abrir Face ID dos veces (Finding #3).
   const signingRef = useRef<Promise<boolean> | null>(null);
-  const { ensurePermission, scheduleLocal } = notifications; // el objeto cambia por render; las funciones son estables
+  const { ensurePermission, scheduleLocal, scheduleLocalReminders } = notifications; // el objeto cambia por render; las funciones son estables
 
   const dropSession = useCallback(async () => {
     sessionRef.current = null;
@@ -203,5 +209,23 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
 
   const resetRequest = useCallback(() => setRequest({ step: "idle" }), []);
 
-  return { session: status, sessionError, credits, reads, listError, agents, agentsError, request, ensureSession, refresh, ask, resetRequest, setActive };
+  const setReminders = useCallback(async (symbol: string, level: TradeLevel, side: Side): Promise<RemindersOutcome> => {
+    if (!(await ensureSession())) return { ok: false, text: "Unlock Ask to set reminders." };
+    const s = sessionRef.current!;
+    const device = PUSH_MODE === "apns" ? await ensurePermission() : null; // misma política que ask(): el permiso se pide cuando algo lo necesita (P6 de F2)
+    try {
+      const rows = await postReminders(READS_URL, s, {
+        marketId: level.marketId, levelBps: level.levelBps, horizonMin: level.horizonMin, target: level.target, expiresAt: level.expiresAt, side,
+        ...(level.readId ? { readId: level.readId } : {}),
+        ...(device ? { pushToken: device.token, pushEnv: device.env } : {}),
+      });
+      if (PUSH_MODE === "local") void scheduleLocalReminders(symbol, level);
+      return { ok: true, kinds: rows.map((r) => r.kind) };
+    } catch (e) {
+      if (isSessionError(e)) await dropSession();
+      return { ok: false, text: describeReadsError(e) };
+    }
+  }, [ensureSession, ensurePermission, scheduleLocalReminders, dropSession]);
+
+  return { session: status, sessionError, credits, reads, listError, agents, agentsError, request, ensureSession, refresh, ask, resetRequest, setReminders, setActive };
 }

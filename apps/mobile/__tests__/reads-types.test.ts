@@ -1,5 +1,5 @@
 import readJson from "./fixtures/reads/read.json";
-import { parseAgentsList, parseRead, parseReadResponse, parseReadsList } from "../src/reads/types";
+import { parseAgentsList, parseRead, parseReadResponse, parseReadsList, parseRemindersResponse } from "../src/reads/types";
 
 test("parseRead reads the DTO of F1 verbatim", () => {
   const r = parseRead(readJson);
@@ -45,4 +45,15 @@ test("parseAgentsList reads the record and keeps the server order", () => {
   expect(agents.map((a) => a.id)).toEqual(["jesus", "drift"]);
   expect(agents[1].record).toEqual({ reads: 2, resolved: 1, right: 1, brierAvg: 0.0144 });
   expect(() => parseAgentsList({ agents: [{ id: "x" }] })).toThrow(/Reads API/);
+});
+
+test("parseRemindersResponse accepts the reminder-set shape and rejects unknown kinds", () => {
+  const body = { reminders: [
+    { id: "0b4b6d1e-4b6d-4c1e-9f2a-6f1c2d3e4f5a", kind: "pre", fireAt: "2026-09-22T21:45:00.000Z" },
+    { id: "1c5c7e2f-5c7e-4d2f-8a3b-7a2d3e4f5a6b", kind: "expiry", fireAt: "2026-09-22T22:00:00.000Z" },
+  ] };
+  expect(parseRemindersResponse(body)).toEqual(body.reminders);
+  expect(() => parseRemindersResponse({ reminders: [{ id: "x", kind: "later", fireAt: "2026-09-22T22:00:00.000Z" }] })).toThrow("reminder.kind later is unknown");
+  expect(() => parseRemindersResponse({ reminders: [{ id: "x", kind: "pre", fireAt: "yesterday" }] })).toThrow("reminder.fireAt is not a date");
+  expect(() => parseRemindersResponse({})).toThrow("response.reminders is not an array");
 });

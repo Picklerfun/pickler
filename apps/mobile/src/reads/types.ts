@@ -77,3 +77,17 @@ export function parseAgentsList(body: unknown): Agent[] {
   if (!Array.isArray(b.agents)) fail("response.agents is not an array");
   return (b.agents as unknown[]).map(parseAgent);
 }
+
+export type Reminder = { id: string; kind: "pre" | "expiry"; fireAt: string };
+
+/** `{ reminders: [{ id, kind, fireAt }] }` de reminder-set (F1 dto.ts `toReminderDto`). */
+export function parseRemindersResponse(body: unknown): Reminder[] {
+  const b = rec(body, "response");
+  if (!Array.isArray(b.reminders)) fail("response.reminders is not an array");
+  return (b.reminders as unknown[]).map((v) => {
+    const r = rec(v, "reminder");
+    const kind = str(r, "kind", "reminder");
+    if (kind !== "pre" && kind !== "expiry") fail(`reminder.kind ${kind} is unknown`);
+    return { id: str(r, "id", "reminder"), kind: kind as "pre" | "expiry", fireAt: iso(r, "fireAt", "reminder") };
+  });
+}
