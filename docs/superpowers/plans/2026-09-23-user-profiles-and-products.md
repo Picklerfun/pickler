@@ -1216,9 +1216,32 @@ Expected: PASS, 10 tests.
 Each of these is a rule someone could plausibly "simplify" away. Make the change, re-run, confirm
 **exactly one** test goes red, revert.
 
+**The ordering mutation is not caught by the spend-twice test, and cannot be.** Spending a nonce
+twice _in sequence_ behaves identically under both orderings — the first call consumes it, the
+second finds nothing, wherever the consume sits. The window the order closes is a **concurrent**
+one, and a sequential test has no concurrency to observe.
+
+What distinguishes them is a _failed_ attempt. Consume-first burns the nonce on a bad signature;
+verify-first leaves it sitting there, so a harvested message can be retried against the same nonce
+until a signature lands. That is the actual security property, and it **is** observable in sequence:
+
+```ts
+test("a bad signature still spends the nonce, so it cannot be retried", async () => {
+  const store = nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]]));
+  const signIn = service({ nonces: store, verifier: { verify: async () => false } });
+  await assert.rejects(
+    () => signIn.verify({ raw: signed(), signature: "0xsig" }),
+    BadSignatureError,
+  );
+  assert.equal(store.rows.has("nonce-1"), false);
+});
+```
+
+Keep the spend-twice test as well: it pins single-use, which is a different rule.
+
 | Break                                                       | Only this test should fail                    |
 | ----------------------------------------------------------- | --------------------------------------------- |
-| Move the `consume` call to after the signature check        | "the same nonce cannot be spent twice"        |
+| Move the `consume` call to after the signature check        | "a bad signature still spends the nonce"      |
 | Delete the `presented.message.domain !== deps.domain` check | "a signature for another domain is refused"   |
 | In `verify`, always call `deps.accounts.forAddress`         | "signing in with an already-linked address…"  |
 | Wrap `listLinks` in `try { … } catch { return [] }`         | "a failed read of someone's links propagates" |
