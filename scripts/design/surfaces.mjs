@@ -19,15 +19,19 @@ import { GROUND, ROUTES } from "./routes.mjs";
  * rather than counted. Each selector asserts every element it matches, so a selector that is too
  * loose reports loudly instead of quietly standing for whichever element came first.
  *
- * The tape and the mascot card are matched on the tail of their CSS-module class because neither
- * carries a hook yet. That is the weak form: `[class*="tape"]` matches sixty elements on this page
- * — every `tapeItem` — and the ends-with form matches exactly one only while each block keeps a
- * single class. It fails by matching nothing, which is reported, rather than by matching the wrong
- * thing, which would not be. Replace both the day they carry an id or a data attribute. */
+ * Every selector here is an id, and that is deliberate rather than stylistic. These began as class
+ * matches — `[class$="tape"]` and the like — which hold only while a block keeps exactly one class,
+ * and whose looser cousin `[class*="tape"]` matches sixty elements on this page. An id is unique by
+ * definition, which is the property the assertion needs.
+ *
+ * None of them may find the block by `[data-surface]`. A selector that does can never reach the
+ * "matches but carries no data-surface" branch below: remove the attribute and the element stops
+ * matching, so the block reports as missing and the sharper failure is dead code. Name the element,
+ * then ask what surface it carries. */
 const MUST_NEST = {
-  landing: ["#how", '[class$="tape"]', '[class$="mascotCard"]'],
+  landing: ["#how", "#tape", "#mascot-card"],
   "portfolio-connected": ["#portfolio-balance"],
-  account: ['section[aria-label="Wallet"] [data-surface="light"]'],
+  account: ["#account-wallet-card"],
 };
 
 const { results, blocked } = await eachRoute(ROUTES, (page, route) =>

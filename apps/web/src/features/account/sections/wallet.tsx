@@ -63,7 +63,7 @@ export function WalletSection({ state }: { state: WalletState }) {
       {/* The page's inversion, and the one surfaces.mjs asserts on this route: a light card inside
           the night-blue page, built by nesting the opposite data-surface rather than by a rule of
           its own. Everything inside reads the light value of the same token names. */}
-      <div className={styles.card} data-surface="light">
+      <div id="account-wallet-card" className={styles.card} data-surface="light">
         <p className={styles.cardLabel}>MASTER WALLET · AVAILABLE</p>
         {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
         {state.kind === "none" && (
