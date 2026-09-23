@@ -72,3 +72,9 @@ export { PostgresBudgetLedger } from "./console/budget.js";
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";
 export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
+export {
+  createAddPasskeyActivityBuilder,
+  createSubOrganizationCreator,
+  MONAD_ACCOUNT,
+  type SubOrganizationCreatorConfig,
+} from "./turnkey/turnkey-sub-organization.js";
