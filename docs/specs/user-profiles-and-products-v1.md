@@ -407,3 +407,90 @@ there.
 Agent sub-wallets, spend caps and the two-of-two policies remain specification two of the custody
 work. Merging two accounts that already exist is not designed, because under this specification two
 accounts for one person is not a state the product can reach.
+
+### What Mera turned out to need
+
+The spike this section asked for is done, and the answer is narrower than the paragraph opening it
+feared. Mera is open source and readable, so the three answers below come from its source and
+reference documentation rather than from a summary of either: repository `category-labs/mera` at
+commit `a3102f4` (2026-08-31), published as `@category-labs/mera@0.2.0`.
+
+**1. It does not expose an EIP-1193 provider. It is an SDK.**
+
+There is no provider object, no `window.ethereum` injection, no EIP-6963 announcement and no wagmi
+connector in the library. Searching the entire repository for `1193`, `window.ethereum`, `wagmi`,
+`eth_requestAccounts` and `eip6963` returns nothing at all. The package declares three entry points
+— the root, `/viem` and `/react-native-webauthn-client` — and none of them is a provider; the public
+API is a set of functions (`createPasskeyWithPrfOutput`, `getPasskeyPrfOutput`,
+`createSecp256k1SigningSession`, `getEvmAddress`, the secret-vault calls) that the application calls
+itself.
+
+What it offers instead is one adapter, `toViemAccount(session)`, which returns a viem
+`LocalAccount<"mera">` — "accepted anywhere viem takes an account". That is the whole integration
+surface for EVM signing.
+
+Source: `library/package.json` and `library/src/index.ts` in
+[github.com/category-labs/mera](https://github.com/category-labs/mera);
+[mera.category.xyz/reference/to-viem-account/](https://mera.category.xyz/reference/to-viem-account/).
+
+**2. Yes. It signs an arbitrary string, and produces exactly the signature §3 already verifies.**
+
+`toViemAccount(...).signMessage({ message })` "resolves to the EIP-191 personal-message signature
+for `message`, 65 bytes as hex" — which is what `personal_sign` produces. The implementation is
+`serializeSignature(await signHash(hashMessage(message)))`: viem's own `hashMessage`, so the string
+is prefixed and hashed the standard way and signed unchanged, with no wrapping of its own. The
+library's test suite asserts the round trip — `recoverMessageAddress({ message, signature })`
+returns the account's address.
+
+The address is an ordinary EOA: keccak-256 of the uncompressed public key, last twenty bytes, EIP-55
+checksummed. **So verification server-side is plain `ecrecover` and nothing else** — there is no
+smart account and no ERC-1271 path to add. This is the answer the sign-in ceremony depended on, and
+it is the good one.
+
+One detail worth carrying into the UI rather than discovering later: signing through a session shows
+**no** passkey prompt, because the session holds the key in memory. The biometric happens once,
+earlier, when the PRF output is fetched.
+
+Source: `library/src/viem.ts` and `library/test/viem-account.test.ts`;
+[mera.category.xyz/reference/to-viem-account/](https://mera.category.xyz/reference/to-viem-account/).
+
+**3. Yes, it works in a desktop browser — but only where the authenticator delivers WebAuthn PRF,
+and the gaps are real.**
+
+Mera's own compatibility table records a confirmed live PRF cycle for iCloud Keychain on macOS 15+
+under Safari, Chrome and Firefox 139+; Google Password Manager on desktop Chrome 132+; Windows
+Password Manager on Windows 11 25H2+ under Edge, Chrome 147+ and Firefox 148+; YubiKey 5C Nano; and
+Proton Pass. Native iOS 18+ and Android 9+ are supported too, so the cross-device claim in §5 holds.
+
+The exceptions matter more than the list. Marked **not supported** as of 2026-06-01: passkeys held
+in the local Chrome profile, Bitwarden on desktop Chrome, and Dashlane on desktop Chrome. The
+documentation is blunt about why: "On desktop Chrome, only passkeys saved to Google Password Manager
+carry PRF. The local profile authenticator lacks `hmac-secret`, the CTAP primitive behind PRF."
+Worse, Chrome may put the passkey there without being asked — when "Offer to save passwords and
+passkeys" is off, or when a third-party password-manager extension intercepts WebAuthn — and then
+"the passkey exists but returns no PRF output, so mera cannot use it and
+`createPasskeyWithPrfOutput` fails".
+
+That is a person with a working passkey who cannot be onboarded, caused by a browser setting they
+have never seen. It is a named error, not a caught exception, and it belongs with the cases in §11.
+
+Source: [mera.category.xyz/authenticator-support/](https://mera.category.xyz/authenticator-support/).
+
+### What this means for the plan
+
+**Nothing is blocked, and no task changes shape.** Every task in the plan was written to work with
+any wallet that can sign a string, and Mera signs strings — producing the ordinary EIP-191 signature
+over an EOA address that §3's verification already expects. The server side needs no Mera-specific
+code whatsoever, and `wallet_links.kind = 'mera'` remains exactly right.
+
+**But the connector task does not simply gain a connector.** Because there is no EIP-1193 provider,
+wagmi cannot discover or connect Mera, and no adapter exists to be installed; the two honest options
+are to write a custom wagmi connector that synthesises a provider around the viem `LocalAccount`, or
+to leave Mera outside wagmi entirely and call the SDK directly for the one signature sign-in needs,
+keeping wagmi for EOAs. The second is much smaller and is all the ceremony actually requires, so it
+is the one to cost first. **Mera is a second connector, not a precondition** — the marketplace can
+ship on EOAs and add it without revisiting anything downstream.
+
+The one genuinely new piece of work this spike found is not the connector at all. It is the
+PRF-unavailable case in answer 3, which needs an error and a screen that tells the person what to
+change.
