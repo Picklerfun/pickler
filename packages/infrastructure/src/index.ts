@@ -81,6 +81,7 @@ export {
 } from "./turnkey/turnkey-sub-organization.js";
 
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
+export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
 export {
