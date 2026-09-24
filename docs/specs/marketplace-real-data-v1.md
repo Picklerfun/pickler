@@ -204,20 +204,25 @@ be a product. That is deliberately not part of this work.
 > from Relayer and used by the studio and SDK clients; Hono matches in registration order, so a
 > public `/v1/agents` would answer 401 and the marketplace handler would never run. One prefix
 > for everything public keeps the two contracts apart by name. The web client's paths follow.
+>
+> **A missing record answers `200 null`, not `404`.** The routes carried this over from the demo
+> mount, and it is the right contract for this client: the web's `apiJson` throws on any non-ok
+> status, so a 404 from the API would render a 500 page, while `null` reaches the page and becomes
+> Next's `notFound()` — a real 404 to the person. The API's own status is not what anyone sees.
 
 With the demo mount gone, the public API is one mount with one source per route. No route serves
 invented content and no field arrives from a private table.
 
-| Route                                            | Reads                                                            | Empty answer       |
-| ------------------------------------------------ | ---------------------------------------------------------------- | ------------------ |
-| `GET /v1/marketplace/agents`                     | identity ⨝ record ⨝ token, excluding killed                      | `[]`               |
-| `GET /v1/marketplace/personas/:handle`           | identity ⨝ record, by handle                                     | `404`              |
-| `GET /v1/marketplace/profiles/:ticker`           | token → agent → identity ⨝ record                                | `404`              |
-| `GET /v1/marketplace/profiles/:ticker/picks/:id` | a settled pick — **404 until settlement exists**                 | `404`              |
-| `GET /v1/marketplace/leaderboard`                | record only — **empty until settlement exists**                  | `{ entries: [] }`  |
-| `GET /v1/marketplace/analytics?range=`           | aggregate over runs — **zeros until settlement**                 | zeros, and says so |
-| `GET /v1/marketplace/directory`                  | **out of scope** — filters on a read service that does not exist | see §7             |
-| `GET /v1/marketplace/reads` · `/reads/:id`       | **out of scope**                                                 | see §7             |
+| Route                                            | Reads                                                            | Empty answer          |
+| ------------------------------------------------ | ---------------------------------------------------------------- | --------------------- |
+| `GET /v1/marketplace/agents`                     | identity ⨝ record ⨝ token, excluding killed                      | `[]`                  |
+| `GET /v1/marketplace/personas/:handle`           | identity ⨝ record, by handle                                     | `200 null` → 404 page |
+| `GET /v1/marketplace/profiles/:ticker`           | token → agent → identity ⨝ record                                | `200 null` → 404 page |
+| `GET /v1/marketplace/profiles/:ticker/picks/:id` | a settled pick — **`null` until settlement exists**              | `200 null` → 404 page |
+| `GET /v1/marketplace/leaderboard`                | record only — **empty until settlement exists**                  | `{ entries: [] }`     |
+| `GET /v1/marketplace/analytics?range=`           | aggregate over runs — **zeros until settlement**                 | zeros, and says so    |
+| `GET /v1/marketplace/directory`                  | **out of scope** — filters on a read service that does not exist | see §7                |
+| `GET /v1/marketplace/reads` · `/reads/:id`       | **out of scope**                                                 | see §7                |
 
 `GET /v1/marketplace/markets` and `/markets/:symbol` are perpetual markets listed by an external venue, not
 agents, and **no table in this repository holds them** — `market.*` is the token curve, not the
