@@ -71,6 +71,9 @@ export function Trading({
     }
   };
   const disabled = !canManage || busy || !account?.enabled;
+  const manualCompleted = orders.some(
+    (order) => order.origin === "manual" && order.status === "settled",
+  );
   const mode = (value: "off" | "manual" | "automatic") =>
     onSave({ ...agent.config, trading: { version: 1, mode: value } });
   return (
@@ -134,6 +137,12 @@ export function Trading({
       <Button disabled={!canManage || busy} onClick={() => mode("off")}>
         Stop new purchases
       </Button>
+      {manualCompleted && (
+        <p>
+          The manual purchase is confirmed. Automatic mode still requires your explicit
+          authorization.
+        </p>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -164,7 +173,7 @@ export function Trading({
             />
           </Field>
         ))}
-        <Button type="submit" disabled={disabled}>
+        <Button type="submit" disabled={disabled || manualCompleted}>
           Preview purchase
         </Button>
       </form>
