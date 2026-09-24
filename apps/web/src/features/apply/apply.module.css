@@ -119,7 +119,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 0%, #1b1f6b 0%, #0a0b2e 45%, #05061a 100%);
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    var(--pk-space-core) 0%,
+    var(--pk-space-mid) 45%,
+    var(--pk-space-edge) 100%
+  );
 }
 
 .stars {

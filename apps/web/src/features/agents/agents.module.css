@@ -55,7 +55,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 70% at 50% 0%, #1b1f6b 0%, #0a0b2e 45%, #05061a 100%);
+  background: radial-gradient(
+    120% 70% at 50% 0%,
+    var(--pk-space-core) 0%,
+    var(--pk-space-mid) 45%,
+    var(--pk-space-edge) 100%
+  );
 }
 
 .stars {
@@ -1408,7 +1413,11 @@
 }
 
 .splitPredictions {
-  background: #9b7bff;
+  /* A bar segment is a mark, not writing: it has to be told from the cyan beside it and there is
+     nothing set on it to read. That is the fill's job, and the fill is the value already here —
+     the ink would put this and its neighbour a rounding error apart on the light ground this
+     page ships on. */
+  background: var(--pk-agent-violet-fill);
 }
 .splitPerps {
   flex: 1;
@@ -1929,17 +1938,27 @@
   gap: 8px;
 }
 
-/* A paid read is violet everywhere it appears: asking is not backing. */
-.page .askButton,
-.page a.askButton {
+/* A paid read is violet everywhere it appears: asking is not backing.
+ *
+ * The attribute and the two :not()s are what make that true rather than merely stated. Every
+ * pk-button carries data-variant, so matching on it costs nothing and buys the specificity to
+ * clear `.pk-button[data-variant="..."]:hover:not(:disabled)` at (0,4,0), which used to win here.
+ * These buttons are a primary in the ask flow and a secondary in the directory and on a persona,
+ * so the hover painted lime on one and the dark surface on the other while the ink stayed
+ * --pk-on-violet: #0B0618 on #15182A is 1.14, a label nobody can read, and lime is the backing
+ * colour on the one button whose point is that asking is not backing. The rest state only ever
+ * won by source order, which is the same rule one bundling change away from breaking.
+ *
+ * The :not()s also keep a disabled ask button out of this rule, so `.pk-button:disabled` takes it
+ * back to the muted fill instead of being out-specified into staying violet. */
+.page .askButton[data-variant]:not(:disabled):not([aria-disabled="true"]) {
   background: var(--pk-violet);
   color: var(--pk-on-violet);
   font-weight: 700;
 }
 
-.page .askButton:hover,
-.page a.askButton:hover {
-  background: #b49bff;
+.page .askButton[data-variant]:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--pk-violet-hover);
   color: var(--pk-on-violet);
 }
 
@@ -2277,7 +2296,10 @@
   top: 8px;
   width: 6px;
   height: 6px;
-  background: #b49bff;
+  /* The bullet on a line of body text, which is punctuation and takes the ink. This was the dark
+     surface's violet ink hard-coded onto a page that ships light, where it composited to 2.31
+     against white and was very nearly not drawn at all. */
+  background: var(--pk-violet-ink);
   border-radius: var(--pk-radius-pill);
 }
 

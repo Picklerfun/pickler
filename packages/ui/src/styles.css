@@ -43,6 +43,20 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
+  /* The night sky the dark shells paint behind their content: a core, a middle and an edge, read
+   * outward from the top of the page. Two features drew it from the same three literals — the
+   * marketplace's agent routes and /apply — which is a ground the product depends on and had never
+   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are
+   * rgba(5, 6, 26, a), the same colour at a fraction, so a change to it that reached only the
+   * gradient would leave the scrims behind.
+   *
+   * These sit here rather than under the dark surface for the reason the agent fills do: a scene
+   * does not become a different scene because the page around it changed. Nothing paints them on
+   * light — both `.space` elements render only when their shell is dark. */
+  --pk-space-core: #1b1f6b;
+  --pk-space-mid: #0a0b2e;
+  --pk-space-edge: #05061a;
+
   /* The palette's third member: the hue itself, for anything filled rather than written.
    *
    * Each agent colour has a `-bg` and an `-ink`, which are a tint and something legible on it, and
@@ -104,6 +118,14 @@
   --pk-popover: #ffffff;
   --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
   --pk-violet: #5b3ce0;
+  /* A filled violet control under the cursor. It moves the same 6.3 points of lightness the dark
+   * surface's hover moves, with hue and saturation held — and in the opposite direction, because
+   * direction is set by the ink the fill carries, not by taste. `--pk-lime-hover` goes lighter
+   * because lime carries dark ink; violet here carries white, so lighter is the one move that
+   * makes it harder to read. White on the base is 6.63 and on this is 8.42. Before this token the
+   * hover was written as a literal at one call site, and it was the *dark* surface's hover: had
+   * that control ever rendered on light it would have jumped from 6.63 to 2.31 on hover. */
+  --pk-violet-hover: #4523d9;
   --pk-violet-ink: #5b3ce0;
   --pk-magenta-ink: #bb2a5d;
   /* Every accent splits into the colour and the ink of that colour, because an accent bright enough
@@ -245,6 +267,9 @@
   --pk-popover: #15182a;
   --pk-popover-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
   --pk-violet: #9b7bff;
+  /* Lighter here, for the mirror of the reason it is darker on light: this fill carries near-black
+   * ink, which reads 6.33 on the base and 8.61 on this. */
+  --pk-violet-hover: #b49bff;
   --pk-violet-ink: #b9a6ff;
   --pk-magenta-ink: #ff9ec6;
   /* On this ground the accent already reads, so the ink is the accent. The split still has to
