@@ -110,8 +110,21 @@ After §2, an agent's public record is assembled from three schemas:
 
 - **Identity**, from `agents.agents` left-joined to `agents.agent_profiles`. Left, because agents
   created before this work have no profile row and are still agents.
-- **The record**, aggregated from `pickler.runs` where `decision` is present. The shape of that
-  jsonb decides what can be counted and **must be read before the query is written**, not assumed.
+- **The record — which cannot be computed from anything that exists.** §9 said to read
+  `pickler.runs.decision` before writing a query, and reading it settles the matter: all four
+  `Decision` versions carry `action: "TRADE" | "ABSTAIN"`, a probability and prices, and **no field
+  for whether the pick was right**. A decision is a prediction. The orders are not the answer
+  either: `paper_orders.status` is `filled | not_filled | failed` and `live_orders` reconciles to
+  `settled | not_filled` — both say whether a position was _opened_, never whether the market
+  resolved in the agent's favour. **There is no settlement table.** `resolved`, `hitRate`, `net`,
+  `calibrationGap`, `form` and every call's `outcome` have no source, in exactly the way `followers`
+  has none.
+
+  So the record is **absent for every agent** until settlement exists, and the views say so: a
+  count of resolved picks is `0` because zero is the true count, and a hit rate is `null` because
+  there is no rate to state. That is not a placeholder — it is what is true of every agent today.
+  Building settlement is its own specification and is named in §7.
+
 - **The token**, from `market.tokens` by `agent_id`, left-joined, with the newest `market.candles`
   row for a price. Left again: most agents will have no token.
 
@@ -185,16 +198,16 @@ invented content and no field arrives from a private table.
 | `GET /v1/agents`                     | identity ⨝ record ⨝ token, excluding killed                      | `[]`               |
 | `GET /v1/personas/:handle`           | identity ⨝ record, by handle                                     | `404`              |
 | `GET /v1/profiles/:ticker`           | token → agent → identity ⨝ record                                | `404`              |
-| `GET /v1/profiles/:ticker/picks/:id` | one run's decision                                               | `404`              |
-| `GET /v1/leaderboard`                | record only, agents with ≥1 resolved pick                        | `{ rows: [] }`     |
-| `GET /v1/analytics?range=`           | aggregate over runs in range                                     | zeros, and says so |
+| `GET /v1/profiles/:ticker/picks/:id` | a settled pick — **404 until settlement exists**                 | `404`              |
+| `GET /v1/leaderboard`                | record only — **empty until settlement exists**                  | `{ entries: [] }`  |
+| `GET /v1/analytics?range=`           | aggregate over runs — **zeros until settlement**                 | zeros, and says so |
 | `GET /v1/directory`                  | **out of scope** — filters on a read service that does not exist | see §7             |
 | `GET /v1/reads` · `/reads/:id`       | **out of scope**                                                 | see §7             |
 
-`GET /v1/markets` and `/markets/:symbol` are perpetual markets, not agents, and are not touched
-here — but `createSampleMarketBoard` is their only source, so they get the same treatment: a real
-adapter over `market.*`, or an honest empty state. Decide which when reading what the launchpad
-indexer writes.
+`GET /v1/markets` and `/markets/:symbol` are perpetual markets listed by an external venue, not
+agents, and **no table in this repository holds them** — `market.*` is the token curve, not the
+perpetuals board. `createSampleMarketBoard` therefore stays, as the one remaining sample adapter,
+and is named as such in §7. Replacing it means a venue integration, which is its own work.
 
 **Failure propagates.** A query that fails is a failure, never an empty list. "No agents yet" and
 "we could not read the agents" are different facts and only one is safe to render — the rule the
@@ -214,10 +227,19 @@ become a 404.
 invent it. Until that work lands, the routes return an honest empty state and the persona screen
 does not draw a read service.
 
+**Settlement.** No table records whether a pick was right, so no record can be computed. The
+leaderboard, analytics, pick detail, calibration and every agent's hit rate wait on it. The adapter
+returns the honest empty shape for each; the day settlement lands, those methods get a source and
+nothing else here changes.
+
 **Following an agent.** `followers` comes off the screen until there is a table.
 
 **The launchpad indexer** that fills `market.*` — PR #37. This adapter reads whatever it writes and
 draws "no token" when it has written nothing.
+
+**The perpetuals board.** `/markets` is served by `createSampleMarketBoard` and stays that way
+until there is a venue integration; it is the one sample adapter this work leaves in place, on
+purpose, because there is no table to read instead.
 
 **A harness seed**, per §5.
 
@@ -255,8 +277,8 @@ rule goes red.
 
 ## 9. Order of work
 
-1. **Read `pickler.runs.decision`'s actual shape** and write down what a resolved pick looks like.
-   Everything in "the record" depends on it and nothing here assumes it.
+1. ~~Read `pickler.runs.decision`'s actual shape.~~ **Done, and it changed the plan** — see §3. No
+   settlement exists; the record is absent everywhere and the adapter returns honest empties.
 2. **The studio writes the profile.** Form, schema, transaction. This is independent of the
    marketplace and unblocks it.
 3. **`PostgresAgentDirectory`**, method by method, with the database tests.
