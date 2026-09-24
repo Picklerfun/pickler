@@ -60,3 +60,7 @@ configuration version. It does not initialize alpha/beta or change their global 
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Cloudflare trading pilot
+
+Trading setup requires explicit TRADING_TENANT_ID/TRADING_AGENT_ID; it no longer assigns alpha. Node trading uses the same wallet-filtered claims and operator enablement as Cloudflare. See ../../docs/polymarket-worker-pilot.md.
