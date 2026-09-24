@@ -211,3 +211,44 @@ test("the directory lists every live agent with a null service", async (t) => {
   assert.equal(entries[0]?.service, null);
   assert.equal(entries[0]?.score, null);
 });
+
+test("a profile by ticker resolves through the token, or is null", async (t) => {
+  const { pool, directory } = await setup(t);
+  const id = await seedAgent(pool, { handle: "halftime" });
+  await seedToken(pool, id, "pre_graduation");
+
+  const profile = await directory.getProfile("$HALF");
+
+  assert.equal(profile?.handle, "halftime");
+  assert.equal(profile?.market, null, "no candles indexed yet, so no market");
+  assert.deepEqual(profile?.calls, []);
+  assert.equal(await directory.getProfile("$NOPE"), null);
+});
+
+test("a reserved ticker has no profile page, because it is not a launched token", async (t) => {
+  const { pool, directory } = await setup(t);
+  const id = await seedAgent(pool);
+  await seedToken(pool, id, "reserved");
+
+  assert.equal(await directory.getProfile("$HALF"), null);
+});
+
+test("the leaderboard is empty until settlement exists", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool);
+
+  const board = await directory.getLeaderboard();
+
+  assert.deepEqual(board.entries, []);
+  assert.deepEqual(board.calibration, []);
+});
+
+test("a pick is null until settlement exists, and reads are empty until they exist", async (t) => {
+  const { pool, directory } = await setup(t);
+  const id = await seedAgent(pool);
+  await seedToken(pool, id, "graduated");
+
+  assert.equal(await directory.getPick("$HALF", "anything"), null);
+  assert.deepEqual(await directory.listReads(), []);
+  assert.equal(await directory.getRead("anything"), null);
+});

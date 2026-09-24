@@ -85,6 +85,25 @@ raw SQL, parameters, error messages or causes; ownership/configuration errors pa
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
 
+## Agent directory
+
+`src/persistence/agent-directory.ts` exports `PostgresAgentDirectory`, the `AgentDirectory` adapter
+behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
+(an agent created before profiles existed is still an agent, and gets the profile's defaults), to
+`identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
+and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
+and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
+their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
+still resolves.
+
+No table records whether a pick was right, so no record is computed anywhere here: `resolved` and
+`net` are `0` because zero is the true count, `hitRate` and `calibrationGap` are null, and the
+pick, leaderboard, analytics and read methods return the honest empty shape. A token's market
+figures are `0` and the profile's `market` is null until the launchpad indexer (PR #37) has
+written `market.candles` and `market.holders`. Nothing in the class catches: a failed read is a
+failure, never an empty marketplace. See `docs/specs/marketplace-real-data-v1.md` §3 and §7 before
+filling any of these in.
+
 ## Chain balance reads
 
 `src/chain/balances.ts` exports `createBalanceReader`, the server-side reader behind the sign-in

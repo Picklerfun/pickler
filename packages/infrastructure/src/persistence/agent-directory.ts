@@ -140,14 +140,38 @@ export class PostgresAgentDirectory implements AgentDirectory {
     return rows.map(summary);
   }
 
-  // Added in Task 6. Declared so the class satisfies the port; each throws so nothing silently
-  // serves a stub.
-  async getProfile(): Promise<AgentProfile | null> {
-    throw new Error("Task 6");
+  /**
+   * Tickers arrive normalized as "$HALF", and market.tokens stores them the same way. The token
+   * join only matches a launched token, so a reserved or failed ticker has no profile page.
+   */
+  async getProfile(ticker: string): Promise<AgentProfile | null> {
+    const { rows } = await this.pool.query<AgentRow>(
+      `${AGENT_SELECT}
+       WHERE t.ticker = $1`,
+      [ticker],
+    );
+    const row = rows[0];
+    if (!row || !stageOf(row.tokenStatus)) {
+      return null;
+    }
+    const s = summary(row);
+    return {
+      ...s,
+      blurb: row.blurb ?? "",
+      xHandle: row.xHandle,
+      creatorHandle: row.creatorHandle,
+      // No settlement exists (spec §3), so nothing is open and there are no calls to list.
+      openPicks: 0,
+      // market.candles and market.holders are written by the launchpad indexer (PR #37).
+      // Until it has written, there is no market to show: null, not zeros.
+      market: null,
+      calls: [],
+    };
   }
 
-  async getPick(): Promise<PickDetail | null> {
-    throw new Error("Task 6");
+  /** No settlement exists (spec §3): no pick has ever been resolved, so none can be shown. */
+  async getPick(_ticker: string, _pickId: string): Promise<PickDetail | null> {
+    return null;
   }
 
   /**
@@ -221,19 +245,34 @@ export class PostgresAgentDirectory implements AgentDirectory {
     });
   }
 
+  /** Paid reads have no persistence (spec §7): nobody has paid for one, so there is none to list. */
   async listReads(): Promise<AgentRead[]> {
-    throw new Error("Task 6");
+    return [];
   }
 
-  async getRead(): Promise<AgentRead | null> {
-    throw new Error("Task 6");
+  async getRead(_id: string): Promise<AgentRead | null> {
+    return null;
   }
 
-  async getAnalytics(_range: AnalyticsRange): Promise<PlatformAnalytics> {
-    throw new Error("Task 6");
+  /**
+   * Analytics are settled volume over a window, and nothing has settled (spec §3). Zero is the
+   * true total, and there is no series, no log and no table to draw it from.
+   */
+  async getAnalytics(range: AnalyticsRange): Promise<PlatformAnalytics> {
+    return {
+      range,
+      settledVolumeAllTime: 0,
+      groups: [],
+      predictionsShare: 0,
+      splitNote: "Nothing has settled yet.",
+      series: [],
+      log: [],
+      table: [],
+    };
   }
 
+  /** Ranks by record, and no record exists until settlement does (spec §3). */
   async getLeaderboard(): Promise<Leaderboard> {
-    throw new Error("Task 6");
+    return { entries: [], weights: [], calibration: [] };
   }
 }
