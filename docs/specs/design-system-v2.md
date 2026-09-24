@@ -496,9 +496,27 @@ those screens were not merely unconverted, they were never measured. Pointing a 
 finds eight violation classes, including `#5AD8FF` used as a raw background and `#FFFFFF` at 0.45
 alpha as a border.
 
-What is true: every colour on the **fifteen measured routes** resolves to a token. The auth group is
-unmeasured ground, and covering it is its own task — the four failures reproduce by adding one entry
-to `routes.mjs`.
+**Closed afterwards.** `/signin` and `/signup` are now in `routes.mjs` and the four checks are clean
+over **seventeen** routes, with no literal colour left in any declaration in the product — only in
+comments explaining why the tokens exist.
+
+Measuring those two screens for the first time found nine violation classes and two defects nothing
+else could have reported.
+
+`apps/web/src/lib/accent.ts` held `#5AD8FF` for `cyan`, a value in no token in the palette, while
+`ACCENT_PALETTE` already routed cyan's ground and ink to `indigo` — so a cyan agent painted a cyan
+tetromino over an indigo tint. The value had drifted from a palette that no longer contained it.
+
+And the shared button's hover **never painted**. `.pk-button[data-variant="…"]:hover:not(:disabled)`
+is a specificity of (0,4,0) against a feature rule's (0,3,0), so the "Ask · \$25" button hovered to
+lime in the ask flow and to the dark surface in the directory, while its ink stayed
+`--pk-on-violet`: **1.14:1 on `/agents`**, a label that all but vanishes under the cursor. No check
+found that. Someone opened the screenshot.
+
+A dark-surface ink was also hard-coded onto a light page — `#b49bff` on a bullet at **2.31:1**
+against white, very nearly not drawn. And the duplicated background gradient turned out to matter
+more than its two copies suggested: its outermost stop is the base of eight `rgba(5, 6, 26, α)`
+scrims elsewhere, so it was a ground the product leant on in nine places and had never named.
 
 The studio's rail truncates "Public profile" to "Public pro…" at 1400px. Left as drawn; it is a
 layout question for the next pass rather than a token one.
