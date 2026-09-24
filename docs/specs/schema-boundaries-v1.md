@@ -50,6 +50,35 @@ that needs both sides pays for the join, every new reader has to learn which id 
 and a translation table is a place where two systems can drift out of agreement with nothing to
 notice.
 
+### It is worse, and cheaper, than that: the two identities are already the same values
+
+Traced through `packages/infrastructure/src/console/directory.ts`, which is the only place either
+is created:
+
+```sql
+-- line 46, the only INSERT into workspace_tenants in the repository
+INSERT INTO pickler.workspace_tenants (workspace_id, tenant_id)
+SELECT id, id::text FROM identity.workspaces WHERE owner_user_id=$1
+
+-- line 121, the only INSERT into product_agents
+INSERT INTO pickler.product_agents (product_agent_id, workspace_id, tenant_id, runtime_agent_id, …)
+VALUES ($1::uuid, $2, $3, $1::text, …)
+```
+
+**`tenant_id` is `workspace_id` cast to text.** **`runtime_agent_id` is `product_agent_id` cast to
+text** — the same `$1`, twice, in one statement. And `pickler.agents.id` is inserted at line 117
+with the same `randomUUID()` that line 109 gave `agents.agents.id`.
+
+`workspace_tenants` enforces it structurally too: `workspace_id` is the primary key and `tenant_id`
+carries a unique index, so the relation is one-to-one in both directions by construction.
+
+So `product_agents` is not a translator. **It maps every value to itself**, in a different type.
+Every row is `(x::uuid, w, w::text, x::text, …)`.
+
+This changes what the work is. There is **no data migration that has to decide which registry agent
+a runtime agent is** — they are already the same uuid, one of them stored as text. The change is a
+column type and a set of deletes, not a reconciliation.
+
 ### The fix: the registry's uuid is the id
 
 `agents.agents.id` is the agent's identity. The runtime stops having one of its own.
@@ -147,11 +176,13 @@ them source and four tests.
 The translation itself is narrower: `product_agents` and `runtimeAgentId` appear in **four source
 files** — `console-schema.ts`, `research-store.ts`, `console/directory.ts` and `console/budget.ts`.
 
-**The rename is mechanical and the identity change is not.** Renaming a schema is a migration and a
-find-and-replace over 70 call sites, each verifiable by the type checker and the suite. Collapsing
-two identities means a data migration that must decide, for every existing runtime agent, which
-registry agent it is — which `product_agents` answers today and would have to answer during the
-migration before it is dropped.
+**Both are more mechanical than they first look.** Renaming a schema is a migration and a
+find-and-replace over 70 call sites, each verifiable by the type checker and the suite.
+
+The identity change looked like the expensive half and is not, because §2 established that the two
+identities are already the same values in different types. `ALTER TABLE … ALTER COLUMN id TYPE uuid
+USING id::uuid` is the whole of the data change; `tenant_id` is dropped rather than mapped, because
+the column it would map to is the one it was cast from.
 
 **Do them as two pieces, in this order.** The identity change first, because it deletes tables the
 rename would otherwise have to carry; the rename second, when there is less to rename.
@@ -168,9 +199,11 @@ different product could sit on. If that is still wanted, `product_agents` is not
 interface, and this specification is wrong. Nothing in the code says either way, and the person who
 built it knows.
 
-**If `tenant_id` means something `workspace_id` does not.** This assumes they are the same concept
-under two names. If a tenant can hold several workspaces, or a workspace span tenants, collapsing
-them loses information.
+**~~If `tenant_id` means something `workspace_id` does not.~~ Answered: it does not.** This was
+listed as an open question and the code settles it. `workspace_tenants` is one-to-one in both
+directions by index, and its only INSERT writes `id, id::text` from `identity.workspaces`. A tenant
+is a workspace's uuid as a string. Nothing is lost by collapsing them because there is nothing
+there to lose.
 
 **If the runtime's `jsonb` config is deliberately opaque.** `agents.agent_configs` is versioned and
 typed; `pickler.agents.config` is a blob. That may be so the runtime can evolve its configuration
