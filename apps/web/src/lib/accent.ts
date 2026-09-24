@@ -1,8 +1,22 @@
 import type { AccentDto } from "@pickler/api-schema";
 
+/**
+ * Each accent's fill, and the same fill as an `r,g,b` triple for the glows that need components
+ * rather than a colour.
+ *
+ * `color` is written down twice on purpose — here and as `--pk-agent-<hue>-fill` in
+ * packages/ui/src/styles.css — because `rgba()` cannot take a custom property as its first three
+ * arguments. `accentVars` therefore paints from the token and only the triple comes from here, so
+ * a value that drifts apart shows up as a glow that no longer matches its own fill.
+ *
+ * `cyan` is what drift looked like. It held #5AD8FF, which is in no token in the palette at all,
+ * while its ground and its ink already took `indigo` below — so a cyan agent painted a cyan
+ * tetromino with an indigo tint behind it, and the sign-up board was the screen that showed it.
+ * It now holds indigo's, which is the colour the palette says this accent is.
+ */
 export const ACCENT_COLORS: Record<AccentDto, { color: string; rgb: string }> = {
   lime: { color: "#C8F03A", rgb: "200,240,58" },
-  cyan: { color: "#5AD8FF", rgb: "90,216,255" },
+  cyan: { color: "#5B3CE0", rgb: "91,60,224" },
   amber: { color: "#FFC93F", rgb: "255,201,63" },
   orange: { color: "#FF7A3D", rgb: "255,122,61" },
   magenta: { color: "#FF5FA2", rgb: "255,95,162" },
@@ -43,10 +57,14 @@ const ACCENT_PALETTE: Record<AccentDto, string> = {
 };
 
 export function accentVars(accent: AccentDto): React.CSSProperties {
-  const { color, rgb } = ACCENT_COLORS[accent];
+  const { rgb } = ACCENT_COLORS[accent];
   const hue = ACCENT_PALETTE[accent];
   return {
-    "--accent": color,
+    // The token, not the hex beside it: the fill a screen paints has to be a colour the palette
+    // holds, or the design checks read it off the page as a literal someone typed — which is how
+    // `cyan` was found. The triple below is the same colour, and only exists because `rgba()`
+    // cannot be handed a custom property.
+    "--accent": `var(--pk-agent-${hue}-fill)`,
     "--accent-rgb": rgb,
     "--accent-bg": `var(--pk-agent-${hue}-bg)`,
     "--accent-ink": `var(--pk-agent-${hue}-ink)`,

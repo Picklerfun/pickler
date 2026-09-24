@@ -186,6 +186,36 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
+  // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
+  // not one of them was /signin or /signup, so those two screens were never unconverted — nobody
+  // had looked. A claim that every colour any route can reach resolved to a token was withdrawn
+  // over exactly this, and the first run here found nine violation classes waiting on each.
+  //
+  // Both are the studio by the same rule as /console: apps/web/src/server/hosts.ts lists `signin`
+  // and `signup` among STUDIO_SEGMENTS. The (auth) layout pins data-surface="dark", so the ground
+  // is the dark one on both.
+  //
+  // Each proves its own title and the board in the same selector, and that pairing is the point.
+  // The board is the half a stub cannot have; the title is the half that says which rail rendered.
+  // /signin and /signup are one component with one prop between them, so a selector that only
+  // proved the composition would report green for a /signin that had quietly opened the sign-up
+  // rail — the same class of failure as measuring the console's sign-in stub, one prop smaller.
+  {
+    path: "/signin",
+    name: "signin",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("GET IN")',
+  },
+  {
+    path: "/signup",
+    name: "signup",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("JOIN THE BOARD")',
+  },
 ];
 
 export const GROUND = { light: "rgb(255, 255, 255)", dark: "rgb(11, 13, 26)" };
@@ -206,4 +236,9 @@ export const HOLDS = {
   "Task 13": ["apps/web/src/features/account"],
   // No task builds it; what it is made of is still someone's to edit.
   Inherited: ["apps/web/src/features/agents"],
+  // Neither does any task build the auth screens — they predate this design work, which is how
+  // they went fifteen routes without being measured. Their own key rather than `Inherited`
+  // because attribution is the whole purpose of this map: sharing a key with the leaderboard
+  // would mark a leaderboard failure [held] whenever somebody was editing auth.
+  Auth: ["apps/web/src/features/auth"],
 };
