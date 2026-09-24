@@ -1,8 +1,26 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { Button, Chip, Field, Icon, Input, Textarea } from "@pickler/ui";
+import { Button, Chip, Field, Icon, Input, Segmented, Textarea } from "@pickler/ui";
+import { ACCENTS, VENUES, type AccentDto, type VenueDto } from "@pickler/api-schema";
+import { accentVars } from "@/lib/accent";
 import { consoleApi, type Agent, type Catalog, type Config, type Options } from "./api";
 import styles from "./studio.module.css";
+
+const VENUE_LABELS: Record<VenueDto, string> = {
+  predictions: "Predictions",
+  perps: "Perps",
+  both: "Both",
+};
+const VENUE_OPTIONS = VENUES.map((value) => ({ value, label: VENUE_LABELS[value] }));
+
+/** Adds the `@` the API requires when the person left it off. Empty stays empty. */
+function xHandleOf(typed: string): string | null {
+  const trimmed = typed.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
 
 /**
  * Creating an agent: the four things that must exist before it can run — who it is, what it hunts,
@@ -22,6 +40,10 @@ export function AgentForm({
 }) {
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
+  const [accent, setAccent] = useState<AccentDto>("lime");
+  const [venue, setVenue] = useState<VenueDto>("predictions");
+  const [blurb, setBlurb] = useState("");
+  const [xHandle, setXHandle] = useState("");
   const [config, setConfig] = useState<Config>(() => ({
     ...options.defaults,
     marketScope: { version: 1, category: "sports", subcategories: [] },
@@ -49,7 +71,21 @@ export function AgentForm({
       const created = await consoleApi<Agent>("/agents", {
         method: "POST",
         headers: { "Idempotency-Key": key },
-        body: JSON.stringify({ name, handle, config }),
+        body: JSON.stringify({
+          name,
+          handle,
+          config,
+          profile: {
+            accent,
+            blurb,
+            venue,
+            vibe: "",
+            voice: "",
+            decides: "",
+            wrong: "",
+            xHandle: xHandleOf(xHandle),
+          },
+        }),
       });
       onSaved(created.productId ?? created.id);
     } catch (caught) {
@@ -80,6 +116,36 @@ export function AgentForm({
             pattern="[a-z0-9_]{3,15}"
             value={handle}
             onChange={(e) => setHandle(e.target.value.toLowerCase())}
+          />
+        </Field>
+        <Field label="Accent" note="The colour that is this agent's on every board.">
+          <div className={styles.accentRow} role="radiogroup" aria-label="Accent">
+            {ACCENTS.map((hue) => (
+              <button
+                key={hue}
+                type="button"
+                role="radio"
+                aria-checked={accent === hue}
+                aria-label={hue}
+                className={styles.accentSwatch}
+                style={accentVars(hue)}
+                onClick={() => setAccent(hue)}
+              />
+            ))}
+          </div>
+        </Field>
+        <Field label="Venue" note="Where it trades.">
+          <Segmented label="Venue" value={venue} onChange={setVenue} options={VENUE_OPTIONS} />
+        </Field>
+        <Field label="Blurb" note="One sentence, up to 280 characters. Shown under the name.">
+          <Textarea maxLength={280} value={blurb} onChange={(e) => setBlurb(e.target.value)} />
+        </Field>
+        <Field label="X handle" note="Optional. With the @.">
+          <Input
+            value={xHandle}
+            placeholder="@"
+            pattern="@?[A-Za-z0-9_]{1,15}"
+            onChange={(e) => setXHandle(e.target.value)}
           />
         </Field>
         <Field

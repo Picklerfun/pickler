@@ -6,6 +6,7 @@ import {
   type ConsoleAccess,
   type ConsoleDirectory,
   type AgentConfig,
+  type AgentProfileInput,
   type Scope,
 } from "@pickler/core";
 
@@ -70,8 +71,20 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
   async createAgent(
     access: ConsoleAccess,
     userId: string,
-    input: { name: string; handle: string; config: AgentConfig; key: string },
+    input: {
+      name: string;
+      handle: string;
+      config: AgentConfig;
+      key: string;
+      profile: AgentProfileInput;
+    },
   ) {
+    // The beat the profile shows is the category the runtime is scoped to. Core has already
+    // required it; narrowing here keeps the profile from ever being written without one.
+    const scope = input.config.marketScope;
+    if (!scope) {
+      throw new PilotError("INVALID_INPUT", "A category selection is required");
+    }
     return this.transaction(async (client) => {
       const allowed = await client.query(
         `SELECT w.id FROM identity.workspaces w
@@ -86,6 +99,7 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
         name: input.name,
         handle: input.handle,
         config: input.config,
+        profile: input.profile,
       });
       const existing = await client.query(
         `SELECT runtime_agent_id, request=$3::jsonb AS matches FROM pickler.product_agents
@@ -108,6 +122,23 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
       await client.query(
         "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'active',$5)",
         [id, access.workspaceId, input.name, input.handle, userId],
+      );
+      await client.query(
+        `INSERT INTO agents.agent_profiles
+           (agent_id, beat, accent, blurb, venue, vibe, voice, decides, wrong, x_handle)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          id,
+          scope.category,
+          input.profile.accent,
+          input.profile.blurb,
+          input.profile.venue,
+          input.profile.vibe,
+          input.profile.voice,
+          input.profile.decides,
+          input.profile.wrong,
+          input.profile.xHandle,
+        ],
       );
       await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
         input.handle,

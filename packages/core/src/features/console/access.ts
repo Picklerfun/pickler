@@ -1,5 +1,6 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
+import type { AgentProfileInput } from "../agents/domain/agents.js";
 import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
 
 export interface ConsoleAccess {
@@ -15,7 +16,13 @@ export interface ConsoleDirectory {
   createAgent(
     access: ConsoleAccess,
     userId: string,
-    input: { name: string; handle: string; config: AgentConfig; key: string },
+    input: {
+      name: string;
+      handle: string;
+      config: AgentConfig;
+      key: string;
+      profile: AgentProfileInput;
+    },
   ): Promise<Scope>;
   agentScope(access: ConsoleAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
@@ -41,7 +48,13 @@ export function createConsoleAccess(directory: ConsoleDirectory) {
     },
     async create(
       principal: Principal,
-      input: { name: string; handle: string; config: AgentConfig; key: string },
+      input: {
+        name: string;
+        handle: string;
+        config: AgentConfig;
+        key: string;
+        profile: AgentProfileInput;
+      },
     ) {
       const access = await this.authorize(principal, true);
       assertConfig(input.config);

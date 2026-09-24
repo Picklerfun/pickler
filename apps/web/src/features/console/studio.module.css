@@ -1474,6 +1474,26 @@ a.source:hover {
   gap: 16px;
   max-width: 62ch;
 }
+
+/* The accent is a colour and nothing else, so the choice is drawn as the colours themselves. Each
+   swatch paints from `--accent`, which accentVars sets to the palette token for that hue. */
+.accentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.accentSwatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--pk-radius-pill);
+  border: 2px solid transparent;
+  background: var(--accent);
+  cursor: pointer;
+}
+.accentSwatch[aria-checked="true"] {
+  border-color: var(--pk-ink);
+}
 .limits {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

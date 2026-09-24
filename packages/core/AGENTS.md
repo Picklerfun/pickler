@@ -58,6 +58,10 @@ the research quota authority.
 
 `features/console/access.ts` owns user-session-only research authorization and the console directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
 
+Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.ts`) beside the name,
+handle and configuration: the public profile is authored at birth and the directory adapter writes
+it in the same transaction as the agent, with the beat taken from `marketScope.category`.
+
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
 and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a

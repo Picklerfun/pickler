@@ -17,6 +17,17 @@ const config: AgentConfig = {
   ...base,
   marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
 };
+const profile = {
+  accent: "amber" as const,
+  blurb: "Bets on NBA injury news before the lines move.",
+  venue: "predictions" as const,
+  vibe: "",
+  voice: "",
+  decides: "",
+  wrong: "",
+  xHandle: null,
+};
+const input = { name: "Agent", handle: "agent_one", config, key: "create", profile };
 
 async function setup(t: Parameters<typeof createTestStore>[0]) {
   const store = await createTestStore(t);
@@ -39,14 +50,7 @@ test("onboarding is idempotent and account creation does not enable research", a
     (await store.pool.query("SELECT count(*)::int AS n FROM identity.workspaces")).rows[0].n,
     1,
   );
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      name: "Agent",
-      handle: "agent_one",
-      config,
-      key: "create",
-    }),
-  );
+  await assert.rejects(directory.createAgent(access, userId, input));
   assert.equal((await store.agents(access.tenantId)).length, 0);
   assert.equal((await store.agents("alpha")).length, 1);
 });
@@ -56,7 +60,6 @@ test("concurrent creation preserves one handle, config, mapping and disabled sch
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const input = { name: "Agent", handle: "agent_one", config, key: "create" };
   const scopes = await Promise.all(
     Array.from({ length: 5 }, () => directory.createAgent(access, userId, input)),
   );
@@ -94,12 +97,7 @@ test("PostgreSQL budget coordinates independent executors and preserves idempote
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const { agentId } = await directory.createAgent(access, userId, {
-    name: "Agent",
-    handle: "agent_one",
-    config,
-    key: "create",
-  });
+  const { agentId } = await directory.createAgent(access, userId, input);
   const ledger = new PostgresBudgetLedger(store.pool);
   const peer = new PostgresBudgetLedger(store.connectPeer().pool);
   await ledger.configure(agentId, { tokens: "1000" });
@@ -132,12 +130,7 @@ test("revoking operator access blocks claims and writes from an active execution
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, {
-    name: "Agent",
-    handle: "agent_one",
-    config,
-    key: "create",
-  });
+  const scope = await directory.createAgent(access, userId, input);
   const queued = await store.enqueue(scope, "first", null, Date.now());
   const running = await store.claim(Date.now());
   assert.equal(running!.id, queued.id);
@@ -160,15 +153,70 @@ test("global lab connection validation never enables a managed agent's schedule"
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, {
-    name: "Agent",
-    handle: "agent_one",
-    config,
-    key: "create",
-  });
+  const scope = await directory.createAgent(access, userId, input);
   await store.setConnectionsChecked(true);
   await assert.rejects(store.schedule(scope, true, Date.now()));
   await store.setAgentConnectionsChecked(scope, 1, true);
   // A successful manual research is independently required.
   await assert.rejects(store.schedule(scope, true, Date.now()));
+});
+
+test("creating an agent writes its profile in the same transaction", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+
+  const { agentId } = await directory.createAgent(access, userId, {
+    name: "Halftime",
+    handle: "halftime",
+    config,
+    key: "profile",
+    profile,
+  });
+
+  const { rows } = await store.pool.query(
+    `SELECT beat, accent, blurb, venue FROM agents.agent_profiles WHERE agent_id = $1`,
+    [agentId],
+  );
+  assert.deepEqual(rows[0], {
+    beat: "sports",
+    accent: "amber",
+    blurb: "Bets on NBA injury news before the lines move.",
+    venue: "predictions",
+  });
+});
+
+test("a retry under the same key with a different profile is refused", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  await directory.createAgent(access, userId, input);
+
+  await assert.rejects(
+    directory.createAgent(access, userId, { ...input, profile: { ...profile, accent: "blue" } }),
+    { code: "CONFLICT" },
+  );
+});
+
+test("a profile the database refuses rolls the agent back too", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+
+  await assert.rejects(() =>
+    directory.createAgent(access, userId, {
+      name: "Halftime",
+      handle: "halftime",
+      config,
+      key: "toolong",
+      // 281 characters: violates agent_profiles_blurb_length inside the transaction
+      profile: { ...profile, blurb: "x".repeat(281) },
+    }),
+  );
+
+  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
+  assert.equal(rows[0].n, 0, "the agent row must not survive a failed profile insert");
 });

@@ -9,7 +9,7 @@
  * What the canvas draws that the product cannot store is named here too, in `UNBACKED`, because a
  * field with nowhere to go is a fact about the screen and not a detail of one component.
  */
-import type { Config } from "../api";
+import type { Config, Profile } from "../api";
 
 /** The four the market catalog carries. The API takes these ids and no others. */
 export type Sport = Extract<NonNullable<Config["marketScope"]>["subcategories"], string[]>[number];
@@ -176,7 +176,7 @@ export function stepReachable(step: Step, draft: Draft): boolean {
 export function toCreate(
   draft: Draft,
   defaults: Config,
-): { name: string; handle: string; config: Config } {
+): { name: string; handle: string; config: Config; profile: Profile } {
   return {
     name: draft.name.trim().slice(0, 40),
     handle: suggestHandle(draft.name),
@@ -185,5 +185,22 @@ export function toCreate(
       profile: draft.why.trim(),
       marketScope: { version: 1, category: "sports", subcategories: draft.sports },
     } as Config,
+    profile: DRAFT_PROFILE,
   };
 }
+
+/**
+ * The public profile the API requires with every agent. The stepped flow asks for none of it — the
+ * accent, venue and blurb are the full form's questions — so it sends the same defaults that form
+ * opens on, and each one is a value the database accepts as written.
+ */
+export const DRAFT_PROFILE: Profile = {
+  accent: "lime",
+  blurb: "",
+  venue: "predictions",
+  vibe: "",
+  voice: "",
+  decides: "",
+  wrong: "",
+  xHandle: null,
+};

@@ -2,6 +2,7 @@
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type {
   agentConfigSchema,
+  agentProfileInputSchema,
   agentResponseSchema,
   consoleOptionsSchema,
   runResponseSchema,
@@ -10,6 +11,8 @@ import type {
   paperOrderSchema,
 } from "@pickler/api-schema";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
+/** The public profile the API writes with the agent. Every field travels; the API fills none in. */
+export type Profile = ReturnType<typeof agentProfileInputSchema.parse>;
 export type Agent = ReturnType<typeof agentResponseSchema.parse> & {
   productId?: string;
   name?: string;

@@ -45,6 +45,11 @@ configuration.
 
 `src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
+`createAgentSchema` also requires `profile` (`agentProfileInputSchema`): accent, blurb, venue, the
+four prose lines and an optional `@` X handle, all stored with the agent in one transaction. `ACCENTS`
+and `VENUES` are exported here because the studio form draws the choice; they mirror core's lists the
+way `CATEGORY_OPTIONS` does.
+
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

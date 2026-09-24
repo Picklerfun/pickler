@@ -86,7 +86,10 @@ export const agentProfiles = agentsSchema
       xHandle: text("x_handle"),
       /** Which venue the agent trades on. Public; the runtime's config is not. */
       venue: text("venue").notNull().default("predictions"),
-      /** Two lines of self-description shown on the persona. Authored at creation. */
+      /**
+       * The persona's prose: how it sounds (vibe, voice), how it decides, and what it does when it
+       * is wrong. Authored at creation.
+       */
       vibe: text("vibe").notNull().default(""),
       voice: text("voice").notNull().default(""),
       decides: text("decides").notNull().default(""),

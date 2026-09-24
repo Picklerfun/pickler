@@ -154,6 +154,20 @@ test("the chosen markets become the scope the API enforces", () => {
   });
 });
 
+test("the draft flow sends the profile the API requires, with the full form's defaults", () => {
+  const created = toCreate(draftWith({ name: "Halftime", why: "edge" }), defaults);
+  assert.deepEqual(created.profile, {
+    accent: "lime",
+    blurb: "",
+    venue: "predictions",
+    vibe: "",
+    voice: "",
+    decides: "",
+    wrong: "",
+    xHandle: null,
+  });
+});
+
 test("a name over forty characters is cut to what the API accepts", () => {
   assert.equal(toCreate(draftWith({ name: "N".repeat(60) }), defaults).name.length, 40);
 });
