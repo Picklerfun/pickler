@@ -120,18 +120,28 @@ function summary(row: AgentRow): AgentSummary {
 export class PostgresAgentDirectory implements AgentDirectory {
   constructor(private readonly pool: Pool) {}
 
-  /** No catch anywhere in this class: a failed read is a failure, never an empty marketplace. */
-  async listAgents(): Promise<AgentSummary[]> {
+  /**
+   * Every agent that has not been killed, newest first. A killed agent is not deleted, but it is
+   * no longer on the board.
+   *
+   * No catch anywhere in this class: a failed read is a failure, never an empty marketplace.
+   */
+  private async listRows(): Promise<AgentRow[]> {
     const { rows } = await this.pool.query<AgentRow>(
       `${AGENT_SELECT}
        WHERE a.killed_at IS NULL
        ORDER BY a.created_at DESC`,
     );
+    return rows;
+  }
+
+  async listAgents(): Promise<AgentSummary[]> {
+    const rows = await this.listRows();
     return rows.map(summary);
   }
 
-  // Added in Tasks 5 and 6. Declared so the class satisfies the port; each throws so nothing
-  // silently serves a stub.
+  // Added in Task 6. Declared so the class satisfies the port; each throws so nothing silently
+  // serves a stub.
   async getProfile(): Promise<AgentProfile | null> {
     throw new Error("Task 6");
   }
@@ -140,12 +150,75 @@ export class PostgresAgentDirectory implements AgentDirectory {
     throw new Error("Task 6");
   }
 
-  async getPersona(): Promise<AgentPersona | null> {
-    throw new Error("Task 5");
+  /**
+   * Not filtered by `killed_at`, on purpose: a killed agent is not deleted and its profile still
+   * serves, so a link to a record that existed keeps resolving.
+   */
+  async getPersona(handle: string): Promise<AgentPersona | null> {
+    const { rows } = await this.pool.query<AgentRow>(
+      `${AGENT_SELECT}
+       WHERE a.handle = $1`,
+      [handle],
+    );
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+    const s = summary(row);
+    const aliveDays = Math.floor((Date.now() - row.createdAt.getTime()) / 86_400_000);
+    return {
+      name: s.name,
+      handle: s.handle,
+      ticker: s.ticker,
+      accent: s.accent,
+      beat: s.beat,
+      venue: s.venue,
+      vibe: row.vibe ?? "",
+      voice: row.voice ?? "",
+      blurb: row.blurb ?? "",
+      xHandle: row.xHandle,
+      creatorHandle: row.creatorHandle,
+      // No settlement exists (spec §3): no gap, no rate, zero resolved, nothing open.
+      calibrationGap: null,
+      resolved: 0,
+      hitRate: null,
+      net: 0,
+      openPicks: 0,
+      aliveDays,
+      // A token that exists with no indexed figures is still a token, distinct from no token.
+      marketCap: s.token ? s.token.marketCap : null,
+      stage: s.token?.stage ?? null,
+      // Meters are read from behaviour, and there is no behaviour on record yet.
+      meters: [],
+      decides: row.decides ?? "",
+      wrong: row.wrong ?? "",
+      // Paid reads have no persistence (spec §7), so there is no price, no answers, no service.
+      askPrice: null,
+      answers: [],
+      decisions: [],
+      service: null,
+      reads: [],
+    };
   }
 
+  /** Every live agent; none publishes a read service yet, because paid reads have no persistence (spec §7). */
   async listDirectory(): Promise<DirectoryAgent[]> {
-    throw new Error("Task 5");
+    const rows = await this.listRows();
+    return rows.map((row) => {
+      const s = summary(row);
+      return {
+        agent: { name: s.name, handle: s.handle, ticker: s.ticker, accent: s.accent },
+        beat: s.beat,
+        venue: s.venue,
+        decides: row.decides ?? "",
+        // The score needs a calibration gap, and no settlement exists (spec §3).
+        score: null,
+        hitRate: null,
+        resolved: 0,
+        net: 0,
+        service: null,
+      };
+    });
   }
 
   async listReads(): Promise<AgentRead[]> {

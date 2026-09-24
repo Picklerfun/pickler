@@ -164,3 +164,50 @@ test("a failed read is a failure, never an empty marketplace", async (t) => {
 
   await assert.rejects(() => directory.listAgents());
 });
+
+test("a persona is one agent by handle, with its profile prose and no record", async (t) => {
+  const { pool, directory } = await setup(t);
+  const id = await seedAgent(pool, { handle: "halftime" });
+  await pool.query(
+    `UPDATE agents.agent_profiles SET vibe = 'Patient', voice = 'Dry' WHERE agent_id = $1`,
+    [id],
+  );
+
+  const persona = await directory.getPersona("halftime");
+
+  assert.equal(persona?.name, "Halftime");
+  assert.equal(persona?.vibe, "Patient");
+  assert.equal(persona?.calibrationGap, null);
+  assert.equal(persona?.service, null, "no read service exists yet");
+  assert.deepEqual(persona?.reads, []);
+  assert.deepEqual(persona?.decisions, []);
+  assert.equal(persona?.marketCap, null);
+});
+
+test("a killed agent still has a persona, so links to a record that existed survive", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { handle: "gone", killed: true });
+
+  assert.ok(await directory.getPersona("gone"));
+});
+
+test("an unknown handle is null", async (t) => {
+  const { directory } = await setup(t);
+
+  assert.equal(await directory.getPersona("nobody"), null);
+});
+
+test("the directory lists every live agent with a null service", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { handle: "alpha" });
+  await seedAgent(pool, { handle: "beta", killed: true });
+
+  const entries = await directory.listDirectory();
+
+  assert.deepEqual(
+    entries.map((e) => e.agent.handle),
+    ["alpha"],
+  );
+  assert.equal(entries[0]?.service, null);
+  assert.equal(entries[0]?.score, null);
+});
