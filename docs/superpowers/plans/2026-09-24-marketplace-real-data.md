@@ -1330,6 +1330,12 @@ exist.
 
 ## Follow-ups the reviews surfaced, not done here
 
+- **Not every agent launches a token — the owner decides, in the studio (product decision,
+  2026-09-24).** The types already allow it (`ticker: string | null`, `token: null`), `/tokens`
+  lists only launched tokens, and the empty states say so. What does not exist is the studio
+  surface where the owner reserves a ticker and launches; `docs/market/token-launch.md` records
+  the decision. Task 8 fixes the board's lead copy, which still says every agent launches.
+
 - **`AgentSummary.token`'s market fields are `number`, so a launched token whose candles the
   indexer has not written shows `0` market cap, price and volume on the board.** `AgentPersona.marketCap`
   is already `number | null` and says "unread"; the summary's token should say the same. Make
