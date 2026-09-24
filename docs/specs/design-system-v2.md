@@ -520,3 +520,42 @@ scrims elsewhere, so it was a ground the product leant on in nine places and had
 
 The studio's rail truncates "Public profile" to "Public pro…" at 1400px. Left as drawn; it is a
 layout question for the next pass rather than a token one.
+
+### Fifteen routes became thirty-two
+
+Two sweeps after the auth gap closed the rest of the unmeasured ground: twelve marketplace screens
+that nothing had ever rendered, then the filled market ticket.
+
+**`.legendMark` was doing the opposite of its job.** `1px solid rgba(255, 255, 255, 0.5)` on a
+`rgb(245, 246, 250)` panel — a dark-ground leftover on a light surface, washing each swatch's edge
+into the panel instead of lifting it off. The same declaration that separates on one ground erases
+on the other, and only compositing against the real ground shows it.
+
+**Five scrim weights collapsed to two, decided by measurement rather than taste.** The eight
+`rgba(5, 6, 26, α)` scrims used five alphas. Sampled against 1.36M real sky pixels and composited
+in Lab, every adjacent step falls under the just-noticeable threshold while the span does not —
+0.45≈0.5, 0.55≈0.6, and 0.45≠0.6 at dE 4.05. A greedy reading of "collapse what nobody can point
+at" gives one weight and a timid one gives three; the non-transitivity is what decides it, and only
+measuring shows that. The eighth scrim turned out not to belong to that scene at all: it sits on
+the ticket's light panel, where the same alpha step is dE 9.3 rather than 2.
+
+**A hook to click before measuring, and the hazard it introduced.** `/markets/[symbol]`'s ticket
+is behind a grid-square click, so `act: { click, proves }` reaches it with no production code — the
+squares already carry stable `aria-label`s. It carries its own proof because the empty ticket shares
+the filled one's title id and reads "PICK A SQUARE.", so a bare title selector would have proved
+itself.
+
+Its first run reported `#EDF7CE at 0.106 alpha`. That value is impossible — the token is a solid hex
+— **and the impossibility is what prompted looking rather than fixing**. `.cell` carries a 140ms
+background transition and the hook had measured eleven squares mid-fade. It now waits on
+`document.getAnimations()` filtered to transitions, bounded, rather than on a duration, because the
+duration is a token and a hard-coded wait ages. Every other route measures long after `networkidle`;
+clicking immediately before measuring is new, and any future `act` inherits the fix.
+
+The filled ticket measures **335 paints and 107 text elements** against 213 and 71 empty — roughly a
+third of that screen had never been rendered by anything — and it is clean on all four checks.
+
+Two roughnesses are flagged rather than fixed, both wrapping rather than tokens: the take-profit and
+time steppers sit at unequal heights because one label wraps, and the four preview pills have very
+uneven text. The review phase behind them needs a connected wallet and stays unmeasured, so
+`markets .order` keeps its literal with a comment rather than being converted on a resemblance.
