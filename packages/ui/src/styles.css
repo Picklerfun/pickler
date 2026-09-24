@@ -64,10 +64,31 @@
    * a value that drifts apart shows up as a scrim that no longer matches the sky behind it.
    *
    * `color: var(--pk-space-edge-rgb)` is not a colour, so probe.mjs's sentinel excludes this from
-   * the values tokens.mjs compares against — which is correct and is also the limit of what it
-   * buys. It makes the scrims track the palette; it does not make a translucent scrim resolve to a
-   * token, because the check compares alpha too. Naming the weights is a separate decision. */
+   * the values tokens.mjs compares against. The triple makes the scrims track the palette; the two
+   * veils below are what a check can recognise, because they hold the composited value and the
+   * check keys on alpha as well as hue. */
   --pk-space-edge-rgb: 5, 6, 26;
+
+  /* The edge as a scrim, at the two weights the scene can actually tell apart.
+   *
+   * There were five: 0.45, 0.5, 0.55 and 0.6 across seven places, plus a 0.4 in markets that turned
+   * out not to belong to this scene at all. Nobody chose 0.45 over 0.5, and naming all five would
+   * have made a drift permanent by giving it the look of a decision — a literal is obviously
+   * unconsidered, a token is not.
+   *
+   * Two rather than three or one, decided by measuring rather than by eye. Every sky pixel /apply
+   * paints was sampled — 1.36M of them, from #05061A out to the brightest point of the core — and
+   * each alpha composited against every one. Adjacent fifths of an alpha differ by at most dE 1.9
+   * to 2.1, under the ~2.3 just-noticeable threshold, so 0.45 folds into 0.5 and 0.55 into 0.6 with
+   * nothing visible moving. The two that remain differ by dE 4.05, which is above it, so both names
+   * are earned. One weight was tested and refused: it lands 3.87 from the far end, which is a
+   * difference somebody could point at.
+   *
+   * Why these are colours and not an `opacity`, when .trailLine took the opposite route: that line
+   * IS the thing being painted and has no children, so weighting the element weights only it. A
+   * scrim sits *under* content — fading .header would fade the brand and the nav with it. */
+  --pk-space-veil: rgba(var(--pk-space-edge-rgb), 0.5);
+  --pk-space-veil-strong: rgba(var(--pk-space-edge-rgb), 0.6);
 
   /* The rim a lit element carries: a bright hairline on a saturated fill against the night sky.
    * Three places wanted it — the glow button below, and the two accent pixels in /apply — and all

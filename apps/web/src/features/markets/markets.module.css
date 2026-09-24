@@ -987,6 +987,15 @@
   padding: 10px 12px;
   border: 1px solid var(--rule);
   border-radius: var(--pk-radius-sm);
+  /* The eighth scrim, and the one that is not the night sky. This renders only in the trade
+     ticket's review phase, which sits behind two clicks and no check has reached, and it sits on
+     the ticket's #F5F6FA panel rather than on the dark scene /apply paints. So it takes the triple
+     and not a veil: the veils are weights measured against that scene, and against a light panel
+     this composites to a mid grey around (149, 150, 160) — a 0.1 step here is dE 9.3 where the same
+     step on the sky is 2, so it would be a different decision wearing a name that promises this one.
+     That it shares a literal with seven night-sky scrims is a strong hint it is a dark-ground
+     leftover, the way .legendMark was. It cannot be confirmed until the review phase is measurable,
+     so it is left alone and said out loud rather than converted on a guess. */
   background: rgba(var(--pk-space-edge-rgb), 0.4);
   font: 700 13px/1.3 var(--body);
 }
