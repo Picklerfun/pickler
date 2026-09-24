@@ -44,7 +44,10 @@ interface AgentRow {
   tokenStatus: string | null;
   tokenAddress: string | null;
   tokenChain: string | null;
+  /** Quote base units, numeric(78,0) as text. Nullable even on a launched token. */
   graduationTarget: string | null;
+  /** Required on a launched token (`tokens_launched_consistent`); null before launch. */
+  quoteDecimals: number | null;
 }
 
 const AGENT_SELECT = `
@@ -66,7 +69,8 @@ const AGENT_SELECT = `
          t.status AS "tokenStatus",
          t.address AS "tokenAddress",
          t.chain AS "tokenChain",
-         t.graduation_target::text AS "graduationTarget"
+         t.graduation_target::text AS "graduationTarget",
+         t.quote_decimals AS "quoteDecimals"
     FROM agents.agents a
     LEFT JOIN agents.agent_profiles p ON p.agent_id = a.id
     LEFT JOIN identity.profiles cp ON cp.user_id = a.created_by
@@ -82,6 +86,26 @@ function stageOf(status: string | null): TokenStage | null {
     return "graduated";
   }
   return null;
+}
+
+/**
+ * The integer part of a base-units amount in display units: "5000000000" at 6 decimals is 5000.
+ * BigInt division truncates, which is enough for a figure the board shows as a round number.
+ */
+function toDisplayUnits(raw: string, decimals: number): number {
+  return Number(BigInt(raw) / 10n ** BigInt(decimals));
+}
+
+/**
+ * A launched token's graduation target in display units. `graduation_target` is not part of
+ * `tokens_launched_consistent`, so it can be null on a launched token; then the target is 0
+ * because the column was null, not because the curve needs nothing.
+ */
+function graduationTargetOf(row: AgentRow): number {
+  if (row.graduationTarget === null || row.quoteDecimals === null) {
+    return 0;
+  }
+  return toDisplayUnits(row.graduationTarget, row.quoteDecimals);
 }
 
 function summary(row: AgentRow): AgentSummary {
@@ -106,7 +130,7 @@ function summary(row: AgentRow): AgentSummary {
           // measurements, and the profile's `market` stays null for the same reason.
           marketCap: 0,
           raised: 0,
-          graduationTarget: Number(row.graduationTarget ?? 0),
+          graduationTarget: graduationTargetOf(row),
           volume24h: 0,
           price: 0,
           change24h: 0,
@@ -209,8 +233,9 @@ export class PostgresAgentDirectory implements AgentDirectory {
       net: 0,
       openPicks: 0,
       aliveDays,
-      // A token that exists with no indexed figures is still a token, distinct from no token.
-      marketCap: s.token ? s.token.marketCap : null,
+      // A launched token's cap is unread until the indexer (PR #37) is read; this field can say
+      // so, where the summary's `token.marketCap` cannot. `stage` still says the token exists.
+      marketCap: null,
       stage: s.token?.stage ?? null,
       // Meters are read from behaviour, and there is no behaviour on record yet.
       meters: [],

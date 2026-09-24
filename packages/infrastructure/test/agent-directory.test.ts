@@ -17,7 +17,13 @@ const hex = (length: number) =>
  */
 async function seedAgent(
   pool: Pool,
-  over: { name?: string; handle?: string; killed?: boolean; profile?: boolean } = {},
+  over: {
+    name?: string;
+    handle?: string;
+    killed?: boolean;
+    profile?: boolean;
+    createdAt?: Date;
+  } = {},
 ) {
   const id = randomUUID();
   const userId = randomUUID();
@@ -38,8 +44,9 @@ async function seedAgent(
   try {
     await client.query("BEGIN");
     await client.query(
-      `INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by, killed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO agents.agents
+         (id, workspace_id, name, handle, status, created_by, killed_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, now()))`,
       [
         id,
         workspaceId,
@@ -48,6 +55,7 @@ async function seedAgent(
         over.killed ? "killed" : "active",
         userId,
         over.killed ? new Date() : null,
+        over.createdAt ?? null,
       ],
     );
     await client.query(`INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)`, [
@@ -77,13 +85,19 @@ async function seedAgent(
  * launched status (`pre_graduation`, `graduated`) must carry an address, a launch time, a supply
  * and quote decimals (`tokens_launched_consistent`); a graduated one also a graduation time.
  */
-async function seedToken(pool: Pool, agentId: string, status: string, ticker = "$HALF") {
+async function seedToken(
+  pool: Pool,
+  agentId: string,
+  status: string,
+  ticker = "$HALF",
+  target: { graduationTarget: string; quoteDecimals: number } | null = null,
+) {
   const launched = status === "pre_graduation" || status === "graduated";
   await pool.query(
     `INSERT INTO market.tokens
        (agent_id, ticker, name, chain, status, address, launched_at, total_supply, quote_decimals,
-        graduated_at)
-     VALUES ($1, $2, 'Halftime', 'eip155:10143', $3, $4, $5, $6, $7, $8)`,
+        graduated_at, graduation_target)
+     VALUES ($1, $2, 'Halftime', 'eip155:10143', $3, $4, $5, $6, $7, $8, $9)`,
     [
       agentId,
       ticker,
@@ -91,8 +105,9 @@ async function seedToken(pool: Pool, agentId: string, status: string, ticker = "
       launched ? `0x${hex(40)}` : null,
       launched ? new Date() : null,
       launched ? "1000000000000000000000000" : null,
-      launched ? 18 : null,
+      launched ? (target?.quoteDecimals ?? 18) : null,
       status === "graduated" ? new Date() : null,
+      target?.graduationTarget ?? null,
     ],
   );
 }
@@ -158,6 +173,30 @@ test("only a launched token is a token", async (t) => {
   assert.equal(byHandle.live?.token?.stage, "pre-graduation");
 });
 
+test("a graduation target is shown in display units, scaled by the quote's decimals", async (t) => {
+  const { pool, directory } = await setup(t);
+  const id = await seedAgent(pool, { handle: "halftime" });
+  await seedToken(pool, id, "pre_graduation", "$HALF", {
+    graduationTarget: "5000000000",
+    quoteDecimals: 6,
+  });
+
+  const [agent] = await directory.listAgents();
+
+  assert.equal(agent?.token?.graduationTarget, 5000);
+});
+
+test("the listing is newest first", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { handle: "older", createdAt: new Date("2026-01-01T00:00:00Z") });
+  await seedAgent(pool, { handle: "newer", createdAt: new Date("2026-06-01T00:00:00Z") });
+  await seedAgent(pool, { handle: "middle", createdAt: new Date("2026-03-01T00:00:00Z") });
+
+  const handles = (await directory.listAgents()).map((a) => a.handle);
+
+  assert.deepEqual(handles, ["newer", "middle", "older"]);
+});
+
 test("a failed read is a failure, never an empty marketplace", async (t) => {
   const { pool, directory } = await setup(t);
   await pool.query(`DROP TABLE agents.agent_profiles CASCADE`);
@@ -172,6 +211,7 @@ test("a persona is one agent by handle, with its profile prose and no record", a
     `UPDATE agents.agent_profiles SET vibe = 'Patient', voice = 'Dry' WHERE agent_id = $1`,
     [id],
   );
+  await seedToken(pool, id, "pre_graduation");
 
   const persona = await directory.getPersona("halftime");
 
@@ -181,7 +221,8 @@ test("a persona is one agent by handle, with its profile prose and no record", a
   assert.equal(persona?.service, null, "no read service exists yet");
   assert.deepEqual(persona?.reads, []);
   assert.deepEqual(persona?.decisions, []);
-  assert.equal(persona?.marketCap, null);
+  assert.equal(persona?.stage, "pre-graduation", "the token exists");
+  assert.equal(persona?.marketCap, null, "its cap is unread, which is not zero");
 });
 
 test("a killed agent still has a persona, so links to a record that existed survive", async (t) => {
