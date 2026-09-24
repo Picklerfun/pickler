@@ -673,9 +673,38 @@
   color: var(--placeholder);
 }
 
-/* A column Ask cannot use is dimmed, not hidden: the position side still has it. */
-.column[data-off] {
-  opacity: 0.4;
+/* A column Ask cannot use is marked, not hidden: the position side still has it.
+ *
+ * It was `opacity: 0.4`, and this element holds nothing but its two labels — so the multiplier
+ * landed entirely on text that was already the dim ink, and put "1H" and "18:45" at 1.80:1 where
+ * 4.5 is wanted. That is the third time on this project a state has been written as a multiplier
+ * instead of a colour, and it is the same failure each time: an opacity composites against whatever
+ * ink it lands on, so one declaration is a different result on every element it touches, and
+ * multiplying an ink that is already dim is that at its worst.
+ *
+ * These are column headings, not controls. WCAG excuses an inactive component; a heading is not
+ * something anyone activates, so that exemption was never available here. It also matters more than
+ * the usual disabled label: in Ask the heading names a horizon the product will not answer a read
+ * on, and the person reading it is deciding whether to switch to Trade — where these columns are
+ * live. A state one toggle away is a state worth being able to read.
+ *
+ * So the state is left where it is already stated, and stated on something that is not text: every
+ * square in the column carries `.cell[data-blocked]`, which paints it --pk-panel where a live cell
+ * shows --pk-panel-3 through it. Measured off the page that is dE 6.5, well above the ~2.3 the eye
+ * resolves, so the column still reads as dead from its whole body — and it reads that way without
+ * touching a glyph. The labels go from 1.80:1 to 5.82:1.
+ *
+ * The ink is named rather than inherited so the declaration says what it means. Nothing dimmer is
+ * available: on light `--pk-ink-faint`, `--pk-ink-muted`, `--pk-ink-dim` and `--pk-ink-placeholder`
+ * all resolve to #5A5F78, and the palette explains why there is no level below it — a value that
+ * clears 4.6 on --pk-panel-3 lands five channel steps from muted, which is one level with a
+ * rounding error rather than two. */
+.column[data-off] .columnLabel {
+  color: var(--ink-dim);
+}
+
+.column[data-off] .columnTime {
+  color: var(--placeholder);
 }
 
 /* ---------- Under the surface ---------- */
