@@ -1,0 +1,166 @@
+import { test, type TestContext } from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import type { Pool } from "pg";
+import { PostgresAgentDirectory } from "../src/persistence/agent-directory.js";
+import { createTestStore } from "./database.js";
+
+const hex = (length: number) =>
+  `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
+
+/**
+ * An agent row plus its profile, the way the studio writes them. Returns the id.
+ *
+ * The agent and its handle reference each other through deferrable foreign keys, so the two
+ * inserts share one transaction, as `src/console/directory.ts` does. Handles must match
+ * `^[a-z0-9_]{3,15}$`.
+ */
+async function seedAgent(
+  pool: Pool,
+  over: { name?: string; handle?: string; killed?: boolean; profile?: boolean } = {},
+) {
+  const id = randomUUID();
+  const userId = randomUUID();
+  const workspaceId = randomUUID();
+  const handle = over.handle ?? `h${id.slice(0, 8)}`;
+
+  // identity.create_profile writes identity.profiles and claims the handle, as signup does.
+  await pool.query(`SELECT identity.create_profile($1, 'Maker', $2)`, [
+    userId,
+    `maker_${id.slice(0, 6)}`,
+  ]);
+  await pool.query(
+    `INSERT INTO identity.workspaces (id, owner_user_id, name) VALUES ($1, $2, 'w')`,
+    [workspaceId, userId],
+  );
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by, killed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        id,
+        workspaceId,
+        over.name ?? "Halftime",
+        handle,
+        over.killed ? "killed" : "active",
+        userId,
+        over.killed ? new Date() : null,
+      ],
+    );
+    await client.query(`INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)`, [
+      handle,
+      id,
+    ]);
+    if (over.profile !== false) {
+      await client.query(
+        `INSERT INTO agents.agent_profiles (agent_id, beat, accent, blurb, venue)
+         VALUES ($1, 'sports', 'amber', 'Bets on injury news.', 'predictions')`,
+        [id],
+      );
+    }
+    await client.query("COMMIT");
+  } catch (cause) {
+    await client.query("ROLLBACK");
+    throw cause;
+  } finally {
+    client.release();
+  }
+  return id;
+}
+
+/**
+ * A token in the given status. The ticker is stored with its `$`, as `tokens_ticker_format`
+ * requires, and is unique across every token that has not failed (`tokens_ticker_key`). A
+ * launched status (`pre_graduation`, `graduated`) must carry an address, a launch time, a supply
+ * and quote decimals (`tokens_launched_consistent`); a graduated one also a graduation time.
+ */
+async function seedToken(pool: Pool, agentId: string, status: string, ticker = "$HALF") {
+  const launched = status === "pre_graduation" || status === "graduated";
+  await pool.query(
+    `INSERT INTO market.tokens
+       (agent_id, ticker, name, chain, status, address, launched_at, total_supply, quote_decimals,
+        graduated_at)
+     VALUES ($1, $2, 'Halftime', 'eip155:10143', $3, $4, $5, $6, $7, $8)`,
+    [
+      agentId,
+      ticker,
+      status,
+      launched ? `0x${hex(40)}` : null,
+      launched ? new Date() : null,
+      launched ? "1000000000000000000000000" : null,
+      launched ? 18 : null,
+      status === "graduated" ? new Date() : null,
+    ],
+  );
+}
+
+async function setup(t: TestContext) {
+  const store = await createTestStore(t);
+  return { pool: store.pool, directory: new PostgresAgentDirectory(store.pool) };
+}
+
+test("an agent with no runs and no token lists with an absent record and a null token", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { handle: "halftime" });
+
+  const [agent] = await directory.listAgents();
+
+  assert.equal(agent?.handle, "halftime");
+  assert.equal(agent?.beat, "sports");
+  assert.equal(agent?.accent, "amber");
+  assert.equal(agent?.ticker, null);
+  assert.equal(agent?.token, null);
+  assert.equal(agent?.resolved, 0);
+  assert.equal(agent?.hitRate, null, "no rate to state, so null, never 0");
+  assert.equal(agent?.net, 0);
+});
+
+test("an agent with no profile row still lists, with the profile's defaults", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { profile: false });
+
+  const [agent] = await directory.listAgents();
+
+  assert.ok(agent, "a missing profile must not drop the agent");
+  assert.equal(agent.accent, "lime");
+  assert.equal(agent.beat, "");
+});
+
+test("a killed agent is absent from the listing", async (t) => {
+  const { pool, directory } = await setup(t);
+  await seedAgent(pool, { handle: "alive" });
+  await seedAgent(pool, { handle: "dead", killed: true });
+
+  const handles = (await directory.listAgents()).map((a) => a.handle);
+
+  assert.deepEqual(handles, ["alive"]);
+});
+
+test("only a launched token is a token", async (t) => {
+  const { pool, directory } = await setup(t);
+  const reserved = await seedAgent(pool, { handle: "reserved" });
+  const live = await seedAgent(pool, { handle: "live" });
+  await seedToken(pool, reserved, "reserved", "$RSVD");
+  // A failed launch frees the agent and the ticker for another attempt, so the live agent has
+  // two token rows. Only the launched one may join, or the agent would list twice.
+  await seedToken(pool, live, "failed");
+  await seedToken(pool, live, "pre_graduation");
+
+  const agents = await directory.listAgents();
+  const byHandle = Object.fromEntries(agents.map((a) => [a.handle, a]));
+
+  assert.equal(agents.length, 2, "each agent lists once, whatever its token history");
+  assert.equal(byHandle.reserved?.ticker, null, "a reserved ticker is not a launched token");
+  assert.equal(byHandle.live?.ticker, "$HALF");
+  assert.equal(byHandle.live?.token?.stage, "pre-graduation");
+});
+
+test("a failed read is a failure, never an empty marketplace", async (t) => {
+  const { pool, directory } = await setup(t);
+  await pool.query(`DROP TABLE agents.agent_profiles CASCADE`);
+
+  await assert.rejects(() => directory.listAgents());
+});
