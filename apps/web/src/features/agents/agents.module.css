@@ -854,10 +854,19 @@
   border-radius: var(--pk-radius-pill);
 }
 
+/* The connector takes its step's accent, like the dot above it — each <li> carries its own
+   accentVars, so the hue changes down the rail and the line stays with its dot. It is the accent at
+   a subordinate weight, not a rule that happens to be coloured, which is why --pk-rule-strong is
+   the wrong answer here: it would flatten four connectors to one grey.
+   The weight is the element's opacity rather than an alpha mixed into the colour. Same pixels — the
+   element is the line and has no children for the opacity to reach — but the painted colour now
+   traces back to --pk-agent-<hue>-fill like every other accent use, instead of being a triple
+   hand-mixed at a literal alpha that no token can hold. */
 .trailLine {
   flex: 1 1 auto;
   width: 2px;
-  background: rgba(var(--accent-rgb), 0.4);
+  background: var(--accent);
+  opacity: 0.4;
 }
 
 .trailStep:last-child .trailLine {

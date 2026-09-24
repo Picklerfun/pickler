@@ -46,9 +46,9 @@
   /* The night sky the dark shells paint behind their content: a core, a middle and an edge, read
    * outward from the top of the page. Two features drew it from the same three literals — the
    * marketplace's agent routes and /apply — which is a ground the product depends on and had never
-   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are
-   * rgba(5, 6, 26, a), the same colour at a fraction, so a change to it that reached only the
-   * gradient would leave the scrims behind.
+   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are the
+   * same colour at a fraction, so a change to it that reached only the gradient would leave the
+   * scrims behind. They now read it through the triple below rather than retyping it.
    *
    * These sit here rather than under the dark surface for the reason the agent fills do: a scene
    * does not become a different scene because the page around it changed. Nothing paints them on
@@ -56,6 +56,27 @@
   --pk-space-core: #1b1f6b;
   --pk-space-mid: #0a0b2e;
   --pk-space-edge: #05061a;
+
+  /* The edge again, as an `r, g, b` triple, because the eight scrims above could not be written
+   * from `--pk-space-edge`: rgba() will not take a custom property for its first three arguments.
+   * That is the same constraint `accentVars` documents for `--accent-rgb` and the same workaround,
+   * so this applies a precedent rather than setting one. It is written down twice on purpose, and
+   * a value that drifts apart shows up as a scrim that no longer matches the sky behind it.
+   *
+   * `color: var(--pk-space-edge-rgb)` is not a colour, so probe.mjs's sentinel excludes this from
+   * the values tokens.mjs compares against — which is correct and is also the limit of what it
+   * buys. It makes the scrims track the palette; it does not make a translucent scrim resolve to a
+   * token, because the check compares alpha too. Naming the weights is a separate decision. */
+  --pk-space-edge-rgb: 5, 6, 26;
+
+  /* The rim a lit element carries: a bright hairline on a saturated fill against the night sky.
+   * Three places wanted it — the glow button below, and the two accent pixels in /apply — and all
+   * three had typed the same value, which is agreement by coincidence rather than by contract.
+   *
+   * Not `--pk-border-strong`, which is 0.32 on dark and deliberately quieter: the edge of a panel
+   * and the rim of something lit are different questions, and answering one with the other is what
+   * makes a rim look like a border. */
+  --pk-glow-rim: rgba(255, 255, 255, 0.5);
 
   /* The palette's third member: the hue itself, for anything filled rather than written.
    *
@@ -466,7 +487,7 @@ h2 {
 /* Glow: the marketing call to action, lit from inside. One per page, and only where the page is
    asking for something — the hero, the waitlist, the application. */
 .pk-button[data-glow="true"] {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: var(--pk-glow-rim);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.3),
     0 0 24px rgba(200, 240, 58, 0.32);
