@@ -20,6 +20,7 @@ import {
   PolymarketData,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
+  PostgresTradingStore,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
@@ -93,6 +94,25 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     onboard: (userId) => directory.onboard(userId),
     console: {
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
+      trading: {
+        repository: new PostgresTradingStore(repository.pool),
+        admissionsEnabled: env.TRADING_ADMISSIONS_ENABLED === "true",
+        async invoke(path, input) {
+          if (!env.TRADING_EXECUTOR) {
+            throw new Error("Trading executor unavailable");
+          }
+          return env.TRADING_EXECUTOR.fetch(
+            new Request(`https://trading.internal${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(input),
+            }),
+          );
+        },
+        async notify() {
+          await env.TRADING_QUEUE?.send({ kind: "trading-wakeup" });
+        },
+      },
       authenticate,
       directory,
       repository,
