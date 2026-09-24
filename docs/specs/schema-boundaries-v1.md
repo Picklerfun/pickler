@@ -83,13 +83,27 @@ schema called `wallets` would suggest a custody that does not exist.
 **`audit.events`, `pickler.events` and `agents.agent_events` are three logs with two names between
 them.**
 
+The replacement for `wallets` is **`signing`**, and it is not a new word — it is the one the
+product already chose. The API mounts these at `/v1/signing`, with passkeys nested under it at
+`/v1/signing/passkeys/*`, and `packages/core/src/features/signing/` exists.
+
+**It must not be `custody`.** That was the first proposal in this document and it was wrong, for
+the reason this same section gives two paragraphs above: a schema name that implies Pickler holds
+something is a claim about custody, and here the claim would be false.
+`turnkey-sub-organization.ts:65` is explicit — _"The root user gets the passkey and nothing else:
+`apiKeys: []` is what keeps Pickler out"_ — with `rootQuorumThreshold: 1` and the person's passkey
+as the only root user. The screen says **"YOUR KEY. NOT OURS."**
+
+`custody` names a **relationship of holding**, which is the one thing this design exists to refuse.
+`signing` names a **capability**, which stays true whoever holds the key.
+
 ### Proposed
 
 | Now        | Proposed   | Holds                                                                   |
 | ---------- | ---------- | ----------------------------------------------------------------------- |
 | `pickler`  | `runtime`  | what an agent **did**: runs, decisions, orders, quotas, policy          |
 | `agents`   | `agents`   | what an agent **is**: registry, profile, config, credentials            |
-| `wallets`  | `custody`  | keys Pickler holds under quorum: Turnkey orgs, passkeys, accounts       |
+| `wallets`  | `signing`  | the apparatus a person signs with: Turnkey orgs, passkeys, accounts     |
 | `identity` | `identity` | who someone is, including wallets they proved and Pickler does not hold |
 | `market`   | `market`   | the curve: tokens, pools, trades, fees, candles                         |
 | `budget`   | `budget`   | spend and its ledger — **absorbs the console budget tables**            |
