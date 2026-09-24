@@ -14,11 +14,14 @@ import type { WalletDto } from "../../lib/custody-api";
 export function WelcomeStep({
   handle,
   wallet,
+  destination,
 }: {
   /** May be empty: the sign-in rail never asks for a name, so the shell supplies it or does not. */
   handle: string;
   /** Null when GET /wallets/me has not answered, or answered 404 for an account with no wallet. */
   wallet: WalletDto | null;
+  /** The door to the rest: the studio, or wherever the guard turned them away from. */
+  destination: string;
 }) {
   const token = formatBalance(wallet?.balances.token);
   const native = formatBalance(wallet?.balances.native);
@@ -57,7 +60,7 @@ export function WelcomeStep({
         )}
       </div>
 
-      <ButtonLink href="/console" className={styles.primary} variant="primary" arrow>
+      <ButtonLink href={destination} className={styles.primary} variant="primary" arrow>
         Open the studio
       </ButtonLink>
     </div>

@@ -40,7 +40,7 @@ import { WelcomeStep } from "./steps/welcome-step";
 /** What a backup is called in the account's list of passkeys; the device it lands on is not ours. */
 const BACKUP_LABEL = "Backup passkey";
 
-/** Where "Open the studio" goes from every screen that offers it. */
+/** Where "Open the studio" goes when nothing said otherwise. */
 const STUDIO = "/console";
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
@@ -82,6 +82,7 @@ interface SheetState {
 export function PasskeyFlow({
   board,
   mode,
+  destination = STUDIO,
 }: {
   board: AuthBoardData;
   /**
@@ -95,6 +96,12 @@ export function PasskeyFlow({
    * that is already answered.
    */
   mode: "up" | "in" | "custody";
+  /**
+   * Where every screen that offers a way out of this flow goes. The route supplies it from the
+   * `next` the guard wrote when it turned an anonymous request away, already checked by `returnTo`
+   * — someone bounced from /account has to come back to /account, not be dropped on the studio.
+   */
+  destination?: string | undefined;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(next, {
@@ -383,10 +390,12 @@ export function PasskeyFlow({
               hasBackup={state.hasBackup}
               busy={busy}
               onAddBackup={() => open("backup")}
-              onFinish={() => router.push(STUDIO)}
+              onFinish={() => router.push(destination)}
             />
           )}
-          {state.step === "welcome" && <WelcomeStep handle={profileHandle} wallet={wallet} />}
+          {state.step === "welcome" && (
+            <WelcomeStep handle={profileHandle} wallet={wallet} destination={destination} />
+          )}
           {/* One screen for both steps: `approve` is the same page with the rail moved on, and a
               form column that emptied itself behind the sheet would strand a failed ceremony. */}
           {(state.step === "recover" || state.step === "approve") && (
@@ -396,7 +405,9 @@ export function PasskeyFlow({
               onOpenWallet={() => dispatch({ type: "device_skipped" })}
             />
           )}
-          {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(STUDIO)} />}
+          {state.step === "recovered" && (
+            <RecoveredStep onFinish={() => router.push(destination)} />
+          )}
         </div>
 
         <SpawnBoard board={board} />

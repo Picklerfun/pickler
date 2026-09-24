@@ -28,7 +28,13 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
   return "either";
 }
 
-/** First path segments the studio owns. Everything else that is not shared is the marketplace. */
+/**
+ * First path segments the studio owns. Everything else that is not shared is the marketplace.
+ *
+ * Three of these are also behind a session: `PROTECTED_SEGMENTS` in ./guard.ts is a subset of this
+ * set, and the four that are not — signin, signup, apply, auth — are the ones that have to stay
+ * open for anyone to reach the other three.
+ */
 const STUDIO_SEGMENTS = new Set([
   "console",
   "account",
@@ -58,11 +64,18 @@ const STUDIO_SEGMENTS = new Set([
 const SHARED_SEGMENTS = new Set(["api", "_next", "brand", ".well-known", "_headers"]);
 
 /**
- * Matching is on the whole first segment, never a prefix of the path: `/accounts-of-agents`
- * starts with `/account` and is not the account screen.
+ * The first path segment, which is what every set in this file and in ./guard.ts is keyed on.
+ *
+ * Whole segment, never a prefix of the path: `/accounts-of-agents` starts with `/account` and is
+ * not the account screen. Shared so that ownership and protection can never disagree about where
+ * one path ends and another begins.
  */
+export function firstSegment(pathname: string): string {
+  return pathname.split("?")[0]!.split("/")[1] ?? "";
+}
+
 export function ownerOf(pathname: string): Product {
-  const segment = pathname.split("?")[0]!.split("/")[1] ?? "";
+  const segment = firstSegment(pathname);
   if (SHARED_SEGMENTS.has(segment)) {
     return "either";
   }
