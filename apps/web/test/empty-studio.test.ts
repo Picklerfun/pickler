@@ -17,6 +17,7 @@ import {
   type Draft,
 } from "../src/features/console/empty/draft";
 import type { Config } from "../src/features/console/api";
+import { DEFAULT_PROFILE } from "../src/features/console/profile";
 
 /* One behaviour per test: an assert after a failing assert never runs, and these rules are the ones
    a person's first agent is built out of. */
@@ -156,6 +157,7 @@ test("the chosen markets become the scope the API enforces", () => {
 
 test("the draft flow sends the profile the API requires, with the full form's defaults", () => {
   const created = toCreate(draftWith({ name: "Halftime", why: "edge" }), defaults);
+  assert.equal(created.profile, DEFAULT_PROFILE);
   assert.deepEqual(created.profile, {
     accent: "lime",
     blurb: "",

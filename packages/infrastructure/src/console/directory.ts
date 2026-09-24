@@ -10,6 +10,11 @@ import {
   type Scope,
 } from "@pickler/core";
 
+/** Which unique index a duplicate hit, so the refusal names the field a person can change. */
+const CONFLICTS: Record<string, string> = {
+  agent_profiles_x_handle_key: "X handle already used",
+};
+
 export class PostgresConsoleDirectory implements ConsoleDirectory {
   constructor(private readonly pool: Pool) {}
   private async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -21,8 +26,12 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
       return result;
     } catch (error) {
       await client.query("ROLLBACK");
-      if ((error as { code?: string }).code === "23505") {
-        throw new PilotError("CONFLICT", "Name or handle already used");
+      const { code, constraint } = error as { code?: string; constraint?: string };
+      if (code === "23505") {
+        throw new PilotError(
+          "CONFLICT",
+          CONFLICTS[constraint ?? ""] ?? "Name or handle already used",
+        );
       }
       throw error;
     } finally {

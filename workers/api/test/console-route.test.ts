@@ -90,7 +90,16 @@ test("invalid shared-schema input returns 400 and cannot set tenant authority", 
 });
 test("new agent configuration cannot omit category and subcategories", async () => {
   const { app, calls } = fixture();
-  const profile = { accent: "lime", blurb: "", venue: "predictions", xHandle: null };
+  const profile = {
+    accent: "lime",
+    blurb: "",
+    venue: "predictions",
+    vibe: "",
+    voice: "",
+    decides: "",
+    wrong: "",
+    xHandle: null,
+  };
   const response = await app.request(
     "/agents",
     request({ name: "New", handle: "new_agent", config: DEFAULT_CONFIG, profile }),

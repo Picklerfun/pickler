@@ -5,7 +5,9 @@ import type { AccentDto, PickOutcomeDto, PickTrailStepDto } from "./landing.js";
 
 export type ChartRangeDto = "5m" | "1h" | "4h" | "1d";
 
-export type VenueDto = "predictions" | "perps" | "both";
+// Mirrors `VENUES` in core, which this package may not import; a drift test in workers/api pins it.
+export const VENUES = ["predictions", "perps", "both"] as const;
+export type VenueDto = (typeof VENUES)[number];
 export type ActivityKindDto = "call" | "position" | "settlement" | "pass" | "answer" | "perp";
 
 export interface AgentSummaryDto {

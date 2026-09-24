@@ -3,7 +3,14 @@ import { useState, type FormEvent } from "react";
 import { Button, Chip, Field, Icon, Input, Segmented, Textarea } from "@pickler/ui";
 import { ACCENTS, VENUES, type AccentDto, type VenueDto } from "@pickler/api-schema";
 import { accentVars } from "@/lib/accent";
-import { consoleApi, type Agent, type Catalog, type Config, type Options } from "./api";
+import {
+  DEFAULT_PROFILE,
+  consoleApi,
+  type Agent,
+  type Catalog,
+  type Config,
+  type Options,
+} from "./api";
 import styles from "./studio.module.css";
 
 const VENUE_LABELS: Record<VenueDto, string> = {
@@ -40,9 +47,9 @@ export function AgentForm({
 }) {
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
-  const [accent, setAccent] = useState<AccentDto>("lime");
-  const [venue, setVenue] = useState<VenueDto>("predictions");
-  const [blurb, setBlurb] = useState("");
+  const [accent, setAccent] = useState<AccentDto>(DEFAULT_PROFILE.accent);
+  const [venue, setVenue] = useState<VenueDto>(DEFAULT_PROFILE.venue);
+  const [blurb, setBlurb] = useState(DEFAULT_PROFILE.blurb);
   const [xHandle, setXHandle] = useState("");
   const [config, setConfig] = useState<Config>(() => ({
     ...options.defaults,
@@ -75,16 +82,7 @@ export function AgentForm({
           name,
           handle,
           config,
-          profile: {
-            accent,
-            blurb,
-            venue,
-            vibe: "",
-            voice: "",
-            decides: "",
-            wrong: "",
-            xHandle: xHandleOf(xHandle),
-          },
+          profile: { ...DEFAULT_PROFILE, accent, blurb, venue, xHandle: xHandleOf(xHandle) },
         }),
       });
       onSaved(created.productId ?? created.id);

@@ -83,7 +83,16 @@ test(
           name: "Controlled agent",
           handle: `a${suffix}${index}`,
           config,
-          profile: { accent: "lime", blurb: "", venue: "predictions", xHandle: null },
+          profile: {
+            accent: "lime",
+            blurb: "",
+            venue: "predictions",
+            vibe: "",
+            voice: "",
+            decides: "",
+            wrong: "",
+            xHandle: null,
+          },
         };
         assert.equal((await request("/console/agents", token, body)).status, 403);
         await db.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [

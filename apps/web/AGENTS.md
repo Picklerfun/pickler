@@ -176,7 +176,7 @@ The private console uses the Studio shell and sections under `features/console/s
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
 The create request carries the public profile: the full form asks for accent, venue, blurb and X
-handle; the stepped empty-studio flow sends the same defaults the form opens on (`DRAFT_PROFILE`).
+handle; the stepped empty-studio flow sends the same defaults the form opens on (`DEFAULT_PROFILE` in `profile.ts`, re-exported by `api.ts`).
 Swatches paint from `accentVars`, never from a hue name typed into a token.
 `features/console/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
 the selected trace every three seconds; stop when terminal unless scheduling needs discovery.

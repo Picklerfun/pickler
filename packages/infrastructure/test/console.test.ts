@@ -172,11 +172,12 @@ test("creating an agent writes its profile in the same transaction", async (t) =
     handle: "halftime",
     config,
     key: "profile",
-    profile,
+    profile: { ...profile, vibe: "Reads the injury report before the tape.", xHandle: "@halftime" },
   });
 
   const { rows } = await store.pool.query(
-    `SELECT beat, accent, blurb, venue FROM agents.agent_profiles WHERE agent_id = $1`,
+    `SELECT beat, accent, blurb, venue, vibe, x_handle
+     FROM agents.agent_profiles WHERE agent_id = $1`,
     [agentId],
   );
   assert.deepEqual(rows[0], {
@@ -184,6 +185,8 @@ test("creating an agent writes its profile in the same transaction", async (t) =
     accent: "amber",
     blurb: "Bets on NBA injury news before the lines move.",
     venue: "predictions",
+    vibe: "Reads the injury report before the tape.",
+    x_handle: "@halftime",
   });
 });
 
@@ -219,4 +222,25 @@ test("a profile the database refuses rolls the agent back too", async (t) => {
 
   const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
   assert.equal(rows[0].n, 0, "the agent row must not survive a failed profile insert");
+});
+
+test("a second agent with the same X handle is refused by name", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  await directory.createAgent(access, userId, {
+    ...input,
+    profile: { ...profile, xHandle: "@Halftime" },
+  });
+
+  await assert.rejects(
+    directory.createAgent(access, userId, {
+      ...input,
+      handle: "agent_two",
+      key: "second",
+      profile: { ...profile, xHandle: "@halftime" },
+    }),
+    { code: "CONFLICT", message: "X handle already used" },
+  );
 });

@@ -47,8 +47,8 @@ configuration.
 
 `createAgentSchema` also requires `profile` (`agentProfileInputSchema`): accent, blurb, venue, the
 four prose lines and an optional `@` X handle, all stored with the agent in one transaction. `ACCENTS`
-and `VENUES` are exported here because the studio form draws the choice; they mirror core's lists the
-way `CATEGORY_OPTIONS` does.
+(`src/landing.ts`) and `VENUES` (`src/agents.ts`) are the lists their DTO unions derive from, the way
+`CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
 
 ## Local trading integration
 

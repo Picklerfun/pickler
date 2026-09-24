@@ -9,7 +9,8 @@
  * What the canvas draws that the product cannot store is named here too, in `UNBACKED`, because a
  * field with nowhere to go is a fact about the screen and not a detail of one component.
  */
-import type { Config, Profile } from "../api";
+import type { Config } from "../api";
+import { DEFAULT_PROFILE, type Profile } from "../profile";
 
 /** The four the market catalog carries. The API takes these ids and no others. */
 export type Sport = Extract<NonNullable<Config["marketScope"]>["subcategories"], string[]>[number];
@@ -185,22 +186,8 @@ export function toCreate(
       profile: draft.why.trim(),
       marketScope: { version: 1, category: "sports", subcategories: draft.sports },
     } as Config,
-    profile: DRAFT_PROFILE,
+    // The stepped flow asks for none of the profile: accent, venue and blurb are the full form's
+    // questions, so it sends what that form opens on.
+    profile: DEFAULT_PROFILE,
   };
 }
-
-/**
- * The public profile the API requires with every agent. The stepped flow asks for none of it — the
- * accent, venue and blurb are the full form's questions — so it sends the same defaults that form
- * opens on, and each one is a value the database accepts as written.
- */
-export const DRAFT_PROFILE: Profile = {
-  accent: "lime",
-  blurb: "",
-  venue: "predictions",
-  vibe: "",
-  voice: "",
-  decides: "",
-  wrong: "",
-  xHandle: null,
-};
