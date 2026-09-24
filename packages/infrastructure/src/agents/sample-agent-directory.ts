@@ -769,9 +769,7 @@ export function createSampleAgentDirectory(clock: Clock): AgentDirectory {
         blurb: agent.blurb,
         xHandle: agent.xHandle,
         creatorHandle: agent.creator,
-        followers: agent.followers,
         openPicks: agent.openPicks,
-        brief: { edge: agent.edge, limits: agent.limits, rule: agent.rule },
         market: {
           price: agent.price,
           change24h: agent.change24h,

@@ -1,8 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { AgentPersona, AgentSummary, DirectoryAgent, ReadService } from "@pickler/core";
+import type {
+  AgentPersona,
+  AgentProfile,
+  AgentSummary,
+  DirectoryAgent,
+  ReadService,
+} from "@pickler/core";
 import {
   toAgentPersonaDto,
+  toAgentProfileDto,
   toAgentSummaryDto,
   toDirectoryAgentDto,
 } from "../src/growth/agent-responses.js";
@@ -98,6 +105,23 @@ test("the persona carries no followers, brief or rules on the wire", () => {
   assert.equal("followers" in dto, false);
   assert.equal("brief" in dto, false);
   assert.equal("rules" in dto, false);
+});
+
+test("the token profile carries no followers or brief on the wire either", () => {
+  const profile: AgentProfile = {
+    ...summary("$HALF"),
+    blurb: "",
+    xHandle: null,
+    creatorHandle: null,
+    openPicks: 0,
+    market: null,
+    calls: [],
+  };
+  const dto = toAgentProfileDto(profile) as Record<string, unknown>;
+
+  assert.equal("followers" in dto, false);
+  assert.equal("brief" in dto, false);
+  assert.equal(dto.slug, "half");
 });
 
 test("a read service is written with each market's question, and its absence passes through", () => {

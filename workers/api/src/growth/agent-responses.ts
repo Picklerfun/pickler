@@ -68,9 +68,7 @@ export function toAgentProfileDto(profile: AgentProfile): AgentProfileDto {
     blurb: profile.blurb,
     xHandle: profile.xHandle,
     creatorHandle: profile.creatorHandle,
-    followers: profile.followers,
     openPicks: profile.openPicks,
-    brief: { ...profile.brief },
     market: profile.market && {
       ...profile.market,
       candles: Object.fromEntries(

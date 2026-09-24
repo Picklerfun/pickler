@@ -66,9 +66,7 @@ export interface AgentProfile extends AgentSummary {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  followers: number;
   openPicks: number;
-  brief: { edge: string | null; limits: string | null; rule: string | null };
   market: {
     price: number;
     /** 24h price change as a ratio, e.g. 0.184 for +18.4%. */

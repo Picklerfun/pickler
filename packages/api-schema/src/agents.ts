@@ -217,9 +217,7 @@ export interface AgentProfileDto extends AgentSummaryDto {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  followers: number;
   openPicks: number;
-  brief: { edge: string | null; limits: string | null; rule: string | null };
   market: {
     price: number;
     change24h: number;
