@@ -190,3 +190,7 @@ run its controlled-clock regression tests with `node --import tsx --test apps/we
 PRF account derivation is experimental until a real authenticator confirms address parity with
 the iOS implementation. Never present a derived address as authenticated server identity. Clear
 the PRF buffer and end the signing session before querying balances; keep provider failures visible.
+
+## Cloudflare trading pilot
+
+The console Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private console API DTOs and visibility-aware polling. Never import signer or infrastructure code.
