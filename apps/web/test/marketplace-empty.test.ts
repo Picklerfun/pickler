@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentSummaryDto, LeaderboardDto } from "@pickler/api-schema";
-import { launchedTokens, noAgents, nothingRanked } from "../src/features/agents/lib/empty";
+import { agentsWithToken, noAgents, nothingRanked } from "../src/features/agents/lib/empty";
 
 /* The launch-day decisions. No test here renders a component — none in this suite does — so what
    is tested is the predicate each board asks before choosing its empty screen over its filters.
@@ -49,7 +49,7 @@ test("a directory with one agent is the populated directory, filters and all", (
 });
 
 test("the token board keeps only the agents that have launched a token", () => {
-  const rows = launchedTokens([summary("halftime", curve), summary("tapereader", null)]);
+  const rows = agentsWithToken([summary("halftime", curve), summary("tapereader", null)]);
 
   assert.deepEqual(
     rows.map((agent) => agent.handle),
@@ -58,7 +58,7 @@ test("the token board keeps only the agents that have launched a token", () => {
 });
 
 test("agents with no token among them leave the token board with nothing, which is its empty screen", () => {
-  const rows = launchedTokens([summary("halftime", null), summary("tapereader", null)]);
+  const rows = agentsWithToken([summary("halftime", null), summary("tapereader", null)]);
 
   assert.equal(noAgents(rows), true);
 });

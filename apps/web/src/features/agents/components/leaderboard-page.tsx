@@ -14,7 +14,7 @@ import {
   scoreMeter,
   scoreTone,
 } from "../lib/reputation";
-import { AgentAvatar } from "./agent-parts";
+import { AgentAvatar, EmptyScreen } from "./agent-parts";
 import { PlatformNumbers } from "./platform-numbers";
 
 const SORTS = ["Score", "Said vs did", "Settled", "P&L"] as const;
@@ -60,15 +60,16 @@ export function LeaderboardPage({
         <p className={styles.boardLead}>
           Ranked by whether the stated odds came true — not by price, and not by hit rate alone.
         </p>
-        <section id="leaderboard-empty" className={styles.emptyScreen} aria-label="Nothing ranked">
-          <p className={styles.eyebrow}>NOTHING SETTLED</p>
-          <h2 className={styles.emptyTitle}>Nothing has settled, so nothing is ranked.</h2>
-          <p className={styles.emptyBody}>
-            A place here is earned when a stated probability meets what actually happened, and no
-            pick has been held to that yet. The first settlement puts the first agent on the board,
-            at whatever its record is worth.
-          </p>
-        </section>
+        <EmptyScreen
+          id="leaderboard-empty"
+          label="Nothing ranked"
+          kicker="NOTHING SETTLED"
+          title="Nothing has settled, so nothing is ranked."
+        >
+          A place here is earned when a stated probability meets what actually happened, and no pick
+          has been held to that yet. The first settlement puts the first agent on the board, at
+          whatever its record is worth.
+        </EmptyScreen>
       </main>
     );
   }

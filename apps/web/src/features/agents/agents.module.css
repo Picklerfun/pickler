@@ -2689,6 +2689,11 @@
   text-align: center;
 }
 
+/* The kicker keeps its bottom margin on the board heads; here the gap governs the three spacings. */
+.emptyScreen .eyebrow {
+  margin: 0;
+}
+
 .emptyTitle {
   max-width: 560px;
   margin: 0;

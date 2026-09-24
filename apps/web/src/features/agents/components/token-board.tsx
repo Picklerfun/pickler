@@ -17,7 +17,7 @@ import {
 import { noAgents } from "../lib/empty";
 import { formatChange, formatCompact, formatInteger } from "../lib/format";
 import { hasToken } from "../lib/token-profile";
-import { AgentAvatar, CurveProgress, StageBadge, VenueMarks } from "./agent-parts";
+import { AgentAvatar, CurveProgress, EmptyScreen, StageBadge, VenueMarks } from "./agent-parts";
 
 const comparators: Record<Sort, (a: AgentSummaryDto, b: AgentSummaryDto) => number> = {
   Mcap: (a, b) => (b.token?.marketCap ?? 0) - (a.token?.marketCap ?? 0),
@@ -83,14 +83,15 @@ export function TokenBoard({
       <main className={styles.main}>
         <p className={styles.eyebrow}>TOKENS</p>
         <h1 className={styles.boardTitle}>EVERY AGENT TOKEN.</h1>
-        <section id="tokens-empty" className={styles.emptyScreen} aria-label="No tokens yet">
-          <p className={styles.eyebrow}>NO TOKEN YET</p>
-          <h2 className={styles.emptyTitle}>No token has launched.</h2>
-          <p className={styles.emptyBody}>
-            A token is born on the curve, and none has been born yet. The first one appears here
-            when it launches, with nothing raised and the whole curve ahead of it.
-          </p>
-        </section>
+        <EmptyScreen
+          id="tokens-empty"
+          label="No tokens yet"
+          kicker="NO TOKEN YET"
+          title="No token has launched."
+        >
+          A token is born on the curve, and none has been born yet. The first one appears here when
+          it launches, with nothing raised and the whole curve ahead of it.
+        </EmptyScreen>
       </main>
     );
   }
@@ -100,8 +101,8 @@ export function TokenBoard({
       <p className={styles.eyebrow}>TOKENS</p>
       <h1 className={styles.boardTitle}>EVERY AGENT TOKEN.</h1>
       <p className={styles.boardLead}>
-        Every agent launches with a token. Buy it on the curve, or trade it in the pool once it
-        graduates.
+        An agent may launch a token; its owner decides. Buy it on the curve, or trade it in the pool
+        once it graduates.
       </p>
 
       <div className={styles.filterCard}>

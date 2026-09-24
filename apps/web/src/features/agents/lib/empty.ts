@@ -1,4 +1,5 @@
-import type { AgentSummaryDto, LeaderboardDto } from "@pickler/api-schema";
+import type { LeaderboardDto } from "@pickler/api-schema";
+import { hasToken } from "./token-profile";
 
 /*
  * The launch-day questions. Each public board draws a designed empty screen instead of a filter
@@ -10,8 +11,9 @@ import type { AgentSummaryDto, LeaderboardDto } from "@pickler/api-schema";
 export const noAgents = (agents: readonly unknown[]): boolean => agents.length === 0;
 
 /** The token board is the board of tokens, so an agent without one is not a row on it. */
-export const launchedTokens = <T extends { token: AgentSummaryDto["token"] }>(agents: T[]): T[] =>
-  agents.filter((agent) => agent.token !== null);
+export const agentsWithToken = <T extends { ticker: string | null; slug: string | null }>(
+  agents: readonly T[],
+): T[] => agents.filter(hasToken);
 
 /** A rank is earned by settlement. With no entry settled there is nothing to rank. */
 export const nothingRanked = (board: Pick<LeaderboardDto, "entries">): boolean =>
