@@ -106,7 +106,7 @@ x_handle, updated_at`. Checks: blurb ≤ 280, beat ≤ 40, x_handle matches `^@[
 | `workers/api/src/growth/services.ts` · `workers/api/src/container.ts`                         | wire the store, drop the sample       |
 | `workers/api/src/app.ts` · `workers/api/src/routes/demo.ts`                                   | `/v1/demo` becomes `/v1`              |
 | `apps/web/src/server/container.ts`                                                            | paths follow                          |
-| **deleted:** `packages/infrastructure/src/agents/sample-agent-directory.ts`                   | 1,110 lines of invented agents        |
+| **moved:** `packages/infrastructure/src/agents/sample-*.ts` → `scripts/design/fixtures/`      | invented agents become harness-only   |
 
 ---
 
@@ -1226,13 +1226,37 @@ every one of those thirteen paths answers something other than 404.
 In `apps/web/src/server/container.ts`, every `"/demo/…"` becomes `"/…"`. Nothing else changes: the
 DTO types are the same, only the paths moved.
 
-- [ ] **Step 4: Delete the fixture**
+- [ ] **Step 4: Move the fixture to the harness**
+
+The design harness has its own loopback API — `scripts/design/fixture-api.mjs`, started by
+`render.mjs` — that imports `createSampleAgentDirectory` so the 32 design routes have populated
+pages to measure (`/agents/halftime`, `/tokens/half`, picks, ask, reads). Nothing in the product
+reaches it: `api-client.ts` refuses any `PICKLER_API_LOCAL_URL` that is not loopback. Deleting the
+fixture would leave persona, token profile, pick, ask and reads unmeasured until real agents exist.
+Decided 2026-09-24: **the fixture leaves the product and lives in the harness.**
 
 ```bash
-git rm packages/infrastructure/src/agents/sample-agent-directory.ts
+git mv packages/infrastructure/src/agents/sample-agent-directory.ts scripts/design/fixtures/sample-agent-directory.ts
+git mv packages/infrastructure/src/agents/sample-personas.ts        scripts/design/fixtures/sample-personas.ts
+git mv packages/infrastructure/src/agents/sample-reads.ts           scripts/design/fixtures/sample-reads.ts
 ```
 
-Remove its export from `packages/infrastructure/src/index.ts`. `sample-market-board.ts` **stays**.
+Then: remove the `createSampleAgentDirectory` export from `packages/infrastructure/src/index.ts`;
+fix the moved files' imports (`@pickler/core` types stay; anything they imported relatively from
+infrastructure — `systemClock`? — now comes from `@pickler/infrastructure`'s public exports);
+`fixture-api.mjs` imports `createSampleAgentDirectory` from `./fixtures/sample-agent-directory.ts`
+instead of `@pickler/infrastructure`; delete `packages/infrastructure/test/agents.test.ts` (it
+tested the fixture, which is no longer product code) — or move it beside the fixture only if the
+harness has a test runner for `scripts/design/*.test.mjs` (it does: `levels.test.mjs`,
+`colour.test.mjs`; check how they are discovered by `npm test`). `sample-market-board.ts` and the
+landing model **stay in infrastructure**: the product still serves them (spec §5, §7).
+
+`fixture-api.mjs`'s header comment says "the sample adapters … are the product's own, imported from
+where the worker imports them". That sentence stops being true for agents; rewrite it: the agent
+fixture is the harness's own, the market board and landing are still the product's.
+
+After this step: `grep -rn "createSampleAgentDirectory" packages workers apps` must be empty;
+`grep -rn "createSampleAgentDirectory" scripts` finds only the harness.
 
 - [ ] **Step 5: Every gate, by exit status**
 
@@ -1273,7 +1297,7 @@ is exactly what a person sees at launch; look at it the way they will.
 ```bash
 git commit -m "Serve the marketplace from the database, and delete the agents that never existed
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" -- workers/api/src apps/web/src/server/container.ts packages/infrastructure/src/index.ts packages/infrastructure/src/agents
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" -- workers/api/src apps/web/src/server/container.ts packages/infrastructure/src/index.ts packages/infrastructure/src/agents packages/infrastructure/test/agents.test.ts scripts/design
 ```
 
 ---
