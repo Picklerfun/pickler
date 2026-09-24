@@ -1,0 +1,22 @@
+{
+  "name": "@pickler/trading-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:worker": "wrangler deploy --dry-run --outdir .wrangler/build"
+  },
+  "dependencies": {
+    "@pickler/api-schema": "*",
+    "@pickler/core": "*",
+    "@pickler/infrastructure": "*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@pickler/typescript-config": "*",
+    "@polymarket/client": "0.10.0",
+    "wrangler": "4.133.0"
+  }
+}
