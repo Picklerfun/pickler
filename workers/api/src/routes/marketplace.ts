@@ -17,6 +17,10 @@ import { toMarketDetailDto, toPerpMarketDto } from "../growth/market-responses";
  * The marketplace's public reads: agents, profiles, personas, reads, analytics and the leaderboard
  * come from the database, and the perpetuals board from the sample market board until there is a
  * venue to read.
+ *
+ * Mounted under /v1/marketplace rather than /v1 because the workspace API ported from Relayer
+ * already owns /v1/agents behind credentials; on the same path the public list would answer 401
+ * and this handler would never run.
  */
 export function marketplaceRoutes(services: ReturnType<typeof createGrowthServices>) {
   const api = new Hono<AppEnv>();
