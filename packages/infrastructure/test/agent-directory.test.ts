@@ -2,6 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
+import type { AgentDirectory } from "@pickler/core";
 import { PostgresAgentDirectory } from "../src/persistence/agent-directory.js";
 import { createTestStore } from "./database.js";
 
@@ -112,9 +113,11 @@ async function seedToken(
   );
 }
 
+/** Typed as the port: the tests call what the marketplace calls, and nothing narrower. */
 async function setup(t: TestContext) {
   const store = await createTestStore(t);
-  return { pool: store.pool, directory: new PostgresAgentDirectory(store.pool) };
+  const directory: AgentDirectory = new PostgresAgentDirectory(store.pool);
+  return { pool: store.pool, directory };
 }
 
 test("an agent with no runs and no token lists with an absent record and a null token", async (t) => {
@@ -202,11 +205,16 @@ test("a failed read is a failure, never an empty marketplace", async (t) => {
   await pool.query(`DROP TABLE agents.agent_profiles CASCADE`);
 
   await assert.rejects(() => directory.listAgents());
+  await assert.rejects(() => directory.listDirectory());
+  await assert.rejects(() => directory.getPersona("x"));
+  await assert.rejects(() => directory.getProfile("$X"));
 });
 
 test("a persona is one agent by handle, with its profile prose and no record", async (t) => {
   const { pool, directory } = await setup(t);
-  const id = await seedAgent(pool, { handle: "halftime" });
+  // Ten and a half days, so a small drift between this clock and the database's cannot make it 9.
+  const createdAt = new Date(Date.now() - 10.5 * 86_400_000);
+  const id = await seedAgent(pool, { handle: "halftime", createdAt });
   await pool.query(
     `UPDATE agents.agent_profiles SET vibe = 'Patient', voice = 'Dry' WHERE agent_id = $1`,
     [id],
@@ -221,6 +229,7 @@ test("a persona is one agent by handle, with its profile prose and no record", a
   assert.equal(persona?.service, null, "no read service exists yet");
   assert.deepEqual(persona?.reads, []);
   assert.deepEqual(persona?.decisions, []);
+  assert.equal(persona?.aliveDays, 10);
   assert.equal(persona?.stage, "pre-graduation", "the token exists");
   assert.equal(persona?.marketCap, null, "its cap is unread, which is not zero");
 });

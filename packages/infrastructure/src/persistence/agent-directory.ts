@@ -25,10 +25,11 @@ import type {
  * null because there is no rate to state. See docs/specs/marketplace-real-data-v1.md §3.
  */
 interface AgentRow {
-  id: string;
   name: string;
   handle: string;
   createdAt: Date;
+  /** Whole days since creation, on the database clock; the only clock this class reads. */
+  aliveDays: number;
   beat: string | null;
   accent: Accent | null;
   blurb: string | null;
@@ -51,10 +52,10 @@ interface AgentRow {
 }
 
 const AGENT_SELECT = `
-  SELECT a.id,
-         a.name,
+  SELECT a.name,
          a.handle,
          a.created_at AS "createdAt",
+         floor(extract(epoch from now() - a.created_at) / 86400)::int AS "aliveDays",
          p.beat,
          p.accent,
          p.blurb,
@@ -165,8 +166,10 @@ export class PostgresAgentDirectory implements AgentDirectory {
   }
 
   /**
-   * Tickers arrive normalized as "$HALF", and market.tokens stores them the same way. The token
-   * join only matches a launched token, so a reserved or failed ticker has no profile page.
+   * Tickers arrive normalized as "$HALF", and market.tokens stores them the same way. A reserved
+   * or failed ticker has no profile page, and that is locked twice on purpose: the token join only
+   * matches a launched status, and the stage check below refuses anything else independently of
+   * the join, so a change to AGENT_SELECT alone cannot open a page for a token that never launched.
    */
   async getProfile(ticker: string): Promise<AgentProfile | null> {
     const { rows } = await this.pool.query<AgentRow>(
@@ -194,7 +197,7 @@ export class PostgresAgentDirectory implements AgentDirectory {
   }
 
   /** No settlement exists (spec §3): no pick has ever been resolved, so none can be shown. */
-  async getPick(_ticker: string, _pickId: string): Promise<PickDetail | null> {
+  async getPick(): Promise<PickDetail | null> {
     return null;
   }
 
@@ -213,7 +216,6 @@ export class PostgresAgentDirectory implements AgentDirectory {
       return null;
     }
     const s = summary(row);
-    const aliveDays = Math.floor((Date.now() - row.createdAt.getTime()) / 86_400_000);
     return {
       name: s.name,
       handle: s.handle,
@@ -232,7 +234,7 @@ export class PostgresAgentDirectory implements AgentDirectory {
       hitRate: null,
       net: 0,
       openPicks: 0,
-      aliveDays,
+      aliveDays: row.aliveDays,
       // A launched token's cap is unread until the indexer (PR #37) is read; this field can say
       // so, where the summary's `token.marketCap` cannot. `stage` still says the token exists.
       marketCap: null,
@@ -275,7 +277,7 @@ export class PostgresAgentDirectory implements AgentDirectory {
     return [];
   }
 
-  async getRead(_id: string): Promise<AgentRead | null> {
+  async getRead(): Promise<AgentRead | null> {
     return null;
   }
 
