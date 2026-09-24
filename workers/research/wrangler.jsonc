@@ -9,7 +9,10 @@
   "preview_urls": false,
   "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
   "queues": {
-    "producers": [{ "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" }],
+    "producers": [
+      { "binding": "RESEARCH_QUEUE", "queue": "pickler-research-staging" },
+      { "binding": "TRADING_QUEUE", "queue": "pickler-trading-queue-staging" },
+    ],
     "consumers": [
       {
         "queue": "pickler-research-staging",
