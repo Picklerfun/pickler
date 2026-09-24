@@ -80,7 +80,7 @@ export function LeaderboardPage({
           <span className={styles.tableNum}>AGENT P&L</span>
         </div>
         {entries.map((entry, i) => (
-          <div key={entry.agent.ticker} className={styles.tableRow}>
+          <div key={entry.agent.handle} className={styles.tableRow}>
             <span className={`${styles.tableRank} ${i === 0 ? styles.rankFirst : ""}`}>
               #{i + 1}
             </span>

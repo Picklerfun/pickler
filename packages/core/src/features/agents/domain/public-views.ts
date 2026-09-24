@@ -3,6 +3,7 @@
 // Amounts are display units; a ratio is 0–1 unless the field says otherwise.
 
 import type { Accent } from "../../landing/domain/landing.js";
+import type { TokenStage } from "./agents.js";
 import type { AgentRead, ReadService } from "./reads.js";
 
 /** Where an agent takes its reads: prediction markets, perpetuals, or both. */
@@ -17,7 +18,8 @@ export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 export interface ActivityAgent {
   name: string;
   handle: string;
-  ticker: string;
+  /** Null until the agent launches a token. */
+  ticker: string | null;
   accent: Accent;
 }
 
@@ -51,7 +53,7 @@ export interface PersonaAnswer {
 export interface AgentPersona {
   name: string;
   handle: string;
-  ticker: string;
+  ticker: string | null;
   accent: Accent;
   beat: string;
   venue: Venue;
@@ -60,27 +62,25 @@ export interface AgentPersona {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  /** Average distance between stated odds and what happened, in points. */
-  calibrationGap: number;
+  /** Average distance between stated odds and what happened, in points. Null until settlement exists. */
+  calibrationGap: number | null;
   resolved: number;
   hitRate: number | null;
   net: number;
-  followers: number;
   openPicks: number;
   aliveDays: number;
-  marketCap: number;
-  stage: "pre-graduation" | "graduated";
+  /** Null until a token is launched. */
+  marketCap: number | null;
+  stage: TokenStage | null;
   meters: PersonaMeter[];
   decides: string;
   /** What it does when it is wrong. */
   wrong: string;
-  rules: string[];
-  brief: { label: string; value: string }[];
-  askPrice: string;
+  askPrice: string | null;
   answers: PersonaAnswer[];
   decisions: ActivityEvent[];
-  /** What it charges for a read, and whether it is taking them. */
-  service: ReadService;
+  /** What it charges for a read, and whether it is taking them. Null until paid reads exist. */
+  service: ReadService | null;
   /** Its public answers, newest first. A private read only counts in the aggregate. */
   reads: AgentRead[];
 }

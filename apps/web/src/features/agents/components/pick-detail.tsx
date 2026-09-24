@@ -38,7 +38,10 @@ export function PickDetail({ pick, nowMs }: { pick: PickDetailDto; nowMs: number
 
   return (
     <main className={`${styles.main} ${styles.mainNarrow}`}>
-      <Link href={`/tokens/${pick.agent.slug}`} className={styles.backLink}>
+      <Link
+        href={pick.agent.slug === null ? "/tokens" : `/tokens/${pick.agent.slug}`}
+        className={styles.backLink}
+      >
         <Icon name="arrowLeft" size={14} /> {pick.agent.name.toUpperCase()}
       </Link>
 

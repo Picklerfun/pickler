@@ -1,4 +1,3 @@
-import type { AgentProfileDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { Icon, ChipLink } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
@@ -14,6 +13,7 @@ import {
   formatTwo,
   outcomeClass,
 } from "../lib/format";
+import type { TokenProfileDto } from "../lib/token-profile";
 import { AgentAvatar, StageBadge, VenueChips } from "./agent-parts";
 import { TokenActions } from "./token-actions";
 import { PriceChart } from "./price-chart";
@@ -22,7 +22,7 @@ import { TradePanel } from "./trade-panel";
 const xUrl = (handle: string) => `https://x.com/${handle.replace(/^@/, "")}`;
 
 /** The token: what it costs, what the agent is buying with it, and how to back it. */
-export function TokenPage({ agent, nowMs }: { agent: AgentProfileDto; nowMs: number }) {
+export function TokenPage({ agent, nowMs }: { agent: TokenProfileDto; nowMs: number }) {
   const market = agent.market;
   const token = agent.token;
   const graduated = token?.stage === "graduated";

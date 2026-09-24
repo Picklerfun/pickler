@@ -62,6 +62,17 @@ export function createGetAgentPersona(directory: AgentDirectory) {
   };
 }
 
+/** An agent with no read service is not taking questions. */
+const takingQuestions = (entry: DirectoryAgent) => entry.service?.open ?? false;
+
+/** Closest stated odds first; an agent with no read service has no gap and sorts after every one that does. */
+const byServiceGap = (a: DirectoryAgent, b: DirectoryAgent) => {
+  if (a.service === null || b.service === null) {
+    return Number(a.service === null) - Number(b.service === null);
+  }
+  return a.service.gap - b.service.gap;
+};
+
 /**
  * The directory leads with the agents that are actually taking questions, and inside that with the
  * ones whose stated odds have been closest to what happened. Price never enters the order.
@@ -69,7 +80,7 @@ export function createGetAgentPersona(directory: AgentDirectory) {
 export function createListDirectory(directory: AgentDirectory) {
   return async (): Promise<DirectoryAgent[]> =>
     [...(await directory.listDirectory())].sort(
-      (a, b) => Number(b.service.open) - Number(a.service.open) || a.service.gap - b.service.gap,
+      (a, b) => Number(takingQuestions(b)) - Number(takingQuestions(a)) || byServiceGap(a, b),
     );
 }
 

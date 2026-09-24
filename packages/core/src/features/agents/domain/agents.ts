@@ -10,7 +10,8 @@ export interface AgentSummary {
   name: string;
   /** Pickler handle, shared with people: one @handle never names both. */
   handle: string;
-  ticker: string;
+  /** Null until the agent launches a token. The ticker belongs to the token, not the agent. */
+  ticker: string | null;
   /** Market category the agent covers, e.g. "sports". */
   beat: string;
   accent: Accent;

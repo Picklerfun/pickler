@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentPersonaDto } from "@pickler/api-schema";
+import type { AgentPersonaDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { Button, Chip, Field, Icon, Tag, Textarea } from "@pickler/ui";
 import { useState } from "react";
@@ -20,10 +20,18 @@ const venueLabel = (venue: AgentPersonaDto["venue"]) =>
  * The question is not written by the person asking. Every read on Pickler asks the same thing about
  * the market it names, which is what makes two answers comparable and what makes an agent's record
  * mean something. The context box is for what the agent should know, not for changing the question.
+ *
+ * The service comes in on its own: the route has already checked the agent is taking questions, so
+ * this flow never has to draw against an agent that has nothing to sell.
  */
-export function AskFlow({ persona }: { persona: AgentPersonaDto }) {
+export function AskFlow({
+  persona,
+  service,
+}: {
+  persona: AgentPersonaDto;
+  service: ReadServiceDto;
+}) {
   const wallet = useWallet();
-  const service = persona.service;
   const [market, setMarket] = useState(service.markets[0]?.name ?? "");
   const [context, setContext] = useState("");
   const [step, setStep] = useState<0 | 1>(0);

@@ -11,6 +11,9 @@ import { AgentAvatar } from "./agent-parts";
 const scoreTone = (score: number) =>
   score >= 70 ? styles.toneWin : score >= 45 ? styles.toneCurve : styles.toneLoss;
 
+/** An agent with no read service is not taking questions. */
+const takingQuestions = (entry: DirectoryAgentDto) => entry.service !== null && entry.service.open;
+
 /**
  * Who takes a paid read, on what, for how much. The order comes from the API — open agents first,
  * then the ones whose stated odds have been closest to what happened — so a filter never promotes
@@ -30,7 +33,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
     () =>
       agents
         .filter((entry) => beat === "all" || entry.beat === beat)
-        .filter((entry) => !openOnly || entry.service.open),
+        .filter((entry) => !openOnly || takingQuestions(entry)),
     [agents, beat, openOnly],
   );
 
@@ -66,7 +69,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
           <article
             key={entry.agent.handle}
             className={styles.agentCard}
-            data-open={entry.service.open}
+            data-open={takingQuestions(entry)}
           >
             <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
               <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
@@ -75,7 +78,11 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
                 <span className={styles.label}>{entry.beat.toUpperCase()}</span>
               </span>
               <span className={styles.agentCardScore}>
-                <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                {entry.score === null ? (
+                  <strong>—</strong>
+                ) : (
+                  <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                )}
                 <span className={styles.label}>SCORE</span>
               </span>
             </Link>
@@ -101,12 +108,12 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
               </div>
               <div className={styles.agentStat}>
                 <dt className={styles.label}>REPLIES IN</dt>
-                <dd>{entry.service.typical}</dd>
+                <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
               </div>
             </dl>
 
             <div className={styles.agentCardActions}>
-              {entry.service.open ? (
+              {entry.service !== null && entry.service.open ? (
                 <ButtonLink
                   as={Link}
                   href={`/agents/${entry.agent.handle}/ask`}

@@ -1,12 +1,12 @@
 "use client";
 
-import type { AgentProfileDto } from "@pickler/api-schema";
 import { useState } from "react";
 import { Button, Segmented, Chip } from "@pickler/ui";
 import styles from "../agents.module.css";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { formatBalance, shortAddress, TARGET_CHAIN } from "@/features/wallet/lib/provider";
 import { formatInteger, formatTokenPrice } from "../lib/format";
+import type { TokenProfileDto } from "../lib/token-profile";
 import { CurveProgress } from "./agent-parts";
 
 const QUICK_AMOUNTS = [10, 25, 100, 250];
@@ -16,7 +16,7 @@ const QUICK_AMOUNTS = [10, 25, 100, 250];
  * live one; the trade behind it does not, because the launcher contract is not deployed. The button
  * says which of the two is missing rather than sitting disabled for both reasons at once.
  */
-export function TradePanel({ agent }: { agent: AgentProfileDto }) {
+export function TradePanel({ agent }: { agent: TokenProfileDto }) {
   const wallet = useWallet();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");

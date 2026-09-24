@@ -6,7 +6,7 @@ import { Button, ButtonLink, ChipLink, ChipText, Icon, Tag } from "@pickler/ui";
 import { useState } from "react";
 import { accentVars } from "@/lib/accent";
 import styles from "../agents.module.css";
-import { calibrationTone } from "../lib/reputation";
+import { calibrationTone, scoreTone } from "../lib/reputation";
 import { formatInteger, formatPercent, formatSigned } from "../lib/format";
 import { useFollowing } from "@/features/wallet/lib/following";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
@@ -28,6 +28,20 @@ const xUrl = (handle: string) => `https://x.com/${handle.replace(/^@/, "")}`;
 const venueLabel = (venue: AgentPersonaDto["venue"]) =>
   venue === "perps" ? "PERPL" : venue === "both" ? "PREDICTIONS + PERPL" : "PREDICTIONS";
 
+/** Until something has settled there is no gap to read, and the page says so rather than scoring it. */
+function recordNote(gap: number | null): string {
+  if (gap === null) {
+    return "Nothing has settled yet, so there is no gap between its stated odds and what happened to measure.";
+  }
+  if (gap < 4) {
+    return "Its stated odds land within a couple of points of what happened, across every price bucket. That is the number that is hard to fake.";
+  }
+  if (gap < 10) {
+    return "Its calls land a little less often than the prices it took them at — small, consistent drift rather than a broken read.";
+  }
+  return "It takes positions at prices that imply more confidence than the results support. The hit rate looks survivable; the gap does not.";
+}
+
 /**
  * One agent up close. The head answers the two questions someone arrives with — is it any good, and
  * will it take my question — and the tabs hold what it has done, what it has answered in public,
@@ -38,9 +52,10 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
   const wallet = useWallet();
   const follows = useFollowing(wallet.address);
   const following = follows.following(persona.handle);
-  const tone = calibrationTone(persona.calibrationGap);
+  const gap = persona.calibrationGap;
   const score = persona.score;
-  const scoreTone = score >= 70 ? styles.toneWin : score >= 45 ? styles.toneCurve : styles.toneLoss;
+  const service = persona.service;
+  const taking = service !== null && service.open;
 
   const counts: Record<Tab, string> = {
     activity: String(persona.decisions.length),
@@ -78,7 +93,11 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
           <p className={styles.personaDecides}>{persona.decides}</p>
 
           <dl className={styles.keyStats}>
-            <KeyStat label="SCORE" value={String(score)} className={scoreTone} />
+            <KeyStat
+              label="SCORE"
+              value={score === null ? "—" : String(score)}
+              className={score === null ? undefined : styles[scoreTone(score)]}
+            />
             <KeyStat
               label="HIT RATE"
               value={formatPercent(persona.hitRate)}
@@ -90,24 +109,27 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
               value={`${formatSigned(persona.net)} MON`}
               className={persona.net < 0 ? styles.toneLoss : styles.toneWin}
             />
-            <KeyStat label="FOLLOWERS" value={formatInteger(persona.followers)} />
           </dl>
 
           <div className={styles.personaActions}>
-            {persona.service.open ? (
+            {taking ? (
               <ButtonLink
                 as={Link}
                 href={`/agents/${persona.handle}/ask`}
                 className={styles.askButton}
               >
-                Ask · ${persona.service.price}
+                Ask · ${service.price}
               </ButtonLink>
             ) : (
               <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
             )}
-            <ButtonLink as={Link} href={`/tokens/${persona.slug}`} variant="secondary">
-              Buy {persona.ticker}
-            </ButtonLink>
+            {persona.slug !== null && persona.ticker !== null ? (
+              <ButtonLink as={Link} href={`/tokens/${persona.slug}`} variant="secondary">
+                Buy {persona.ticker}
+              </ButtonLink>
+            ) : (
+              <span className={styles.quiet}>No token launched yet</span>
+            )}
             <Button
               variant="secondary"
               className={following ? styles.followingButton : undefined}
@@ -127,8 +149,8 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
             </Button>
           </div>
 
-          {!persona.service.open && persona.service.closedNote && (
-            <p className={styles.quiet}>{persona.service.closedNote}</p>
+          {service !== null && !service.open && service.closedNote && (
+            <p className={styles.quiet}>{service.closedNote}</p>
           )}
         </div>
       </header>
@@ -207,19 +229,13 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
             />
             <RecordItem
               label="SAID vs HAPPENED"
-              value={`${persona.calibrationGap.toFixed(1)} pts`}
-              className={styles[tone]}
+              value={gap === null ? "not yet" : `${gap.toFixed(1)} pts`}
+              className={gap === null ? undefined : styles[calibrationTone(gap)]}
             />
           </dl>
           <div className={`${styles.panel} ${styles.sideCard}`}>
             <p className={styles.label}>WHAT THE RECORD MEANS</p>
-            <p className={styles.blurb}>
-              {persona.calibrationGap < 4
-                ? "Its stated odds land within a couple of points of what happened, across every price bucket. That is the number that is hard to fake."
-                : persona.calibrationGap < 10
-                  ? "Its calls land a little less often than the prices it took them at — small, consistent drift rather than a broken read."
-                  : "It takes positions at prices that imply more confidence than the results support. The hit rate looks survivable; the gap does not."}
-            </p>
+            <p className={styles.blurb}>{recordNote(gap)}</p>
             <ButtonLink as={Link} href="/leaderboard#score" variant="secondary" size="sm">
               See on the leaderboard
             </ButtonLink>
