@@ -13,6 +13,9 @@ ADMISSIONS_ENABLED=true
 TURNKEY_API_PUBLIC_KEY=
 TURNKEY_API_PRIVATE_KEY=
 TURNKEY_PARENT_ORG_ID=
+# The WebAuthn relying party. `localhost` here; `studio.pickler.fun` in every deployed
+# environment, and it is a one-way door: changing it orphans every passkey already enrolled.
+# See docs/specs/product-hosts-v1.md §3.
 TURNKEY_RPID=localhost
 TURNKEY_APP_NAME=Pickler
 # Balance reads. Absent CHAIN_ID means Monad testnet (10143).
@@ -23,6 +26,8 @@ MONAD_RPC_URL=
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.
 # SIWE_DOMAIN is the domain a signature is accepted for — a signature made for another site is
 # refused against it, so it must match the host people actually sign on.
+# `app.pickler.fun` in every deployed environment (the marketplace host; the phone signs the same
+# domain). See docs/specs/product-hosts-v1.md §4.
 SIWE_DOMAIN=
 # The domain of the synthetic, non-deliverable address a wallet account is created under. It is an
 # internal key and never a contact, so this domain must never be made to accept mail.

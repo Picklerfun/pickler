@@ -246,6 +246,10 @@ and the passkey is what turns that session into custody.
 
 ## 7. The relying party, and one consequence
 
+> **Superseded by `product-hosts-v1.md` §3.** The relying party is `studio.pickler.fun`, not the
+> apex, because the door this section kept open — a passkey authorising something on the
+> marketplace — was closed on purpose. The consequence below no longer applies. Kept for the record.
+
 `TURNKEY_RPID=pickler.fun` — the apex, not `app.pickler.fun`.
 
 A passkey is scoped to its relying party and the scope reaches downward only: a passkey registered
@@ -306,6 +310,10 @@ first connection even while empty, nothing ever has to be migrated later.
 ---
 
 ## 9. Splitting by host
+
+> **Extended by `product-hosts-v1.md`.** Three hosts, not two: the marketplace moves to
+> `app.pickler.fun`, the studio to `studio.pickler.fun`, and the apex becomes a landing with no
+> authentication. The mechanism below is unchanged; the hostnames and the AASA rule are there.
 
 A `middleware.ts` at `apps/web/src/` reads the `Host` header and decides what that host may serve.
 
@@ -595,7 +603,7 @@ and `https://app.pickler.fun/auth/callback`. An origin that is not listed does n
 sign-in; it completes and returns the person to the site root with no session, which reads as "it
 just did not work".
 
-**`TURNKEY_RPID=pickler.fun`, and it is a one-way door.** A passkey is scoped to its relying party
+**`TURNKEY_RPID`, and it is a one-way door.** _(Value superseded: `studio.pickler.fun`, per `product-hosts-v1.md` §3.)_ A passkey is scoped to its relying party
 and the scope reaches downward only: one registered against `pickler.fun` works on
 `app.pickler.fun` and every other subdomain, while one registered against `app.pickler.fun` works
 nowhere else. Changing the value later does not migrate anything — it **orphans every credential

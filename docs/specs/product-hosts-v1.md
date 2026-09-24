@@ -128,6 +128,31 @@ all three point at `app.pickler.fun`:
 - **The SIWE domain.** The message the phone signs names `app.pickler.fun`, the same value the web
   marketplace uses. One `SIWE_DOMAIN`, not two.
 
+### The four values the app carries, and why each one is `app.pickler.fun`
+
+The React Native app exists and has not shipped. It was built while the marketplace lived on the
+apex, so it is likely to carry `pickler.fun` in four places. Each must read `app.pickler.fun`
+before the first build that reaches a person, and — because nobody has enrolled a Mera passkey and
+nobody has signed in from the phone — changing them costs nothing today and a re-enrolment
+tomorrow.
+
+| Where in the app                                       | Must be                          | If left on the apex                                                                                                                                                                           |
+| ------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| iOS Associated Domains, `webcredentials:` entitlement  | `webcredentials:app.pickler.fun` | **This is the one that breaks §3.** Mera's relying party would be the apex, and a passkey's scope reaches downward, so that passkey is offered on `studio.pickler.fun` — in Turnkey's picker. |
+| iOS Associated Domains, `applinks:` entitlement        | `applinks:app.pickler.fun`       | `pickler.fun/agents/x` opens the landing in Safari instead of the app. Paths are unchanged.                                                                                                   |
+| Mera's `rpId` (or equivalent) in the SDK configuration | `app.pickler.fun`                | Same failure as the entitlement; the two must agree or WebAuthn refuses the ceremony.                                                                                                         |
+| The `domain` the SIWE message builder writes           | `app.pickler.fun`                | The API's `SIWE_DOMAIN` will not match, and every signature from the phone is refused as a replay — which reads as an attack, not as a configuration.                                         |
+
+The API base URL is a fifth host reference and does **not** change: the API is its own worker. Only
+if the app was pointed at `pickler.fun/api/v1` does it need to become `app.pickler.fun/api/v1`.
+
+Android is the same four values in `assetlinks.json` and the app's manifest when it comes; nothing
+here is iOS-specific except the file name.
+
+The alternative — leave Mera on the apex and put Turnkey back there too — was considered and
+refused: it recreates the shared picker this specification exists to prevent, and it does so
+permanently, because both relying parties would then be one-way doors pointing at the same place.
+
 The AASA file is in `apps/web/public/.well-known/` and so is served on every host. It should not
 be. Served on `studio.pickler.fun`, `webcredentials` would associate the app with the studio's
 relying party — the Turnkey passkeys — which is precisely the association §3 exists to prevent. The
