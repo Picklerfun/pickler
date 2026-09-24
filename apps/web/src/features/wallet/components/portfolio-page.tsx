@@ -22,7 +22,7 @@ import { formatProbability } from "@/features/agents/lib/format";
  *               cannot sign against, so there is nothing to list and nothing to total.
  *   backed    — the launcher contracts are not deployed, so no wallet holds an agent token. The
  *               board knows each agent's curve; it does not know anyone's holding.
- *   reads     — real, from /demo/reads: the question, the probability, the price and both clocks.
+ *   reads     — real, from /marketplace/reads: the question, the probability, the price and both clocks.
  *
  * So the composition is the canvas's and the figures are only the ones that exist. The empty tabs
  * say what is missing rather than showing a plausible row, and the headline is the balance the

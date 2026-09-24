@@ -20,7 +20,8 @@
       "dependsOn": ["^build"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
-    }
+      "dependsOn": ["^typecheck", "//#typecheck:design"]
+    },
+    "//#typecheck:design": {}
   }
 }

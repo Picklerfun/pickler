@@ -9,8 +9,8 @@ export type { SectionKey } from "./keys";
 
 /**
  * A section with nothing behind it yet still says what it is, what state it is in and why it is
- * empty. The state badge is the honest part: SAMPLE DATA is not the same promise as NO BACKEND, and
- * a person deciding whether to wait deserves to know which one they are looking at.
+ * empty. The state badge is the honest part: RECORD PENDING is not the same promise as NO BACKEND,
+ * and a person deciding whether to wait deserves to know which one they are looking at.
  */
 const PAGES: Record<
   string,
@@ -33,9 +33,9 @@ const PAGES: Record<
   profile: {
     title: "Public profile",
     tag: "AUDIENCE",
-    state: "SAMPLE DATA",
+    state: "RECORD PENDING",
     tint: "amber",
-    body: "The page people land on from a post. It is built and navigable, but it is fed with sample data flagged X-Pickler-Data-Source: sample — your real runs do not reach it yet.",
+    body: "The page people land on from a post. It reads what the studio wrote when the agent was created — name, handle, accent, beat and blurb — and nothing invented. Its record stays empty until settlement exists: no pick has been held to what happened yet, so there is no hit rate to show and none is made up.",
   },
   audience: {
     title: "Audience",

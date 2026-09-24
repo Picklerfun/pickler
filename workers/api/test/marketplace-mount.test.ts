@@ -95,6 +95,8 @@ const PUBLIC_READS = [
   "/v1/marketplace/leaderboard",
 ];
 
+// This is the test that guards the mount: with the routes on /v1 instead of /v1/marketplace, the
+// public agents list lands behind the workspace API's credentials and answers 401 here.
 test("every marketplace read answers without credentials", async () => {
   const api = app();
 
@@ -119,7 +121,7 @@ test("/v1/demo is retired", async () => {
   assert.equal(response.status, 404);
 });
 
-test("/v1/agents is still the authenticated workspace list, which is why the marketplace has a prefix", async () => {
+test("the workspace agent list stays authenticated", async () => {
   const response = await app().request("/v1/agents", {}, env);
 
   assert.equal(response.status, 401);
