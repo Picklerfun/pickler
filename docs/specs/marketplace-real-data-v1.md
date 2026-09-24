@@ -164,10 +164,19 @@ the design harness proves the empty state rather than a container that exists ei
 
 ---
 
-## 5. The sample adapters are deleted
+## 5. The sample adapters leave the product
 
-`createSampleAgentDirectory` and `createSampleMarketBoard` go, with `sample-agent-directory.ts` and
-`sample-market-board.ts`. There is one read path and it is the real one. The `/v1/demo` mount and
+> **Decided 2026-09-24, while building it:** the agent fixture is not deleted but **moved into the
+> design harness** (`scripts/design/fixtures/`), because the harness's own loopback API
+> (`scripts/design/fixture-api.mjs`) already used it to give the 32 design routes populated pages,
+> and nothing in the product can reach that API. This is the "harness-only seed" the last
+> paragraph of this section proposed, realised by moving what existed rather than writing it
+> again. The product's read path is still the real one and only one; `/v1/demo` and its header
+> still go. `createSampleMarketBoard` **stays in the product** (§7) — an earlier draft of this
+> sentence said it goes, which §7 contradicted.
+
+`createSampleAgentDirectory` leaves `packages/infrastructure`, with `sample-agent-directory.ts`,
+`sample-personas.ts` and `sample-reads.ts`. There is one read path and it is the real one. The `/v1/demo` mount and
 its `X-Pickler-Data-Source: sample` header go with them; the routes it served move to `/v1` beside
 `landing`, because they are no longer demos.
 
@@ -241,7 +250,7 @@ draws "no token" when it has written nothing.
 until there is a venue integration; it is the one sample adapter this work leaves in place, on
 purpose, because there is no table to read instead.
 
-**A harness seed**, per §5.
+**A harness seed** — resolved by moving the existing fixture into the harness, per §5.
 
 **Agents' private `brief` and `rules` on the public persona**, per §2.2 — removed rather than
 promoted, until someone decides they should be public.
