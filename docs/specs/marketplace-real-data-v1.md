@@ -199,21 +199,27 @@ be a product. That is deliberately not part of this work.
 
 ## 6. The endpoints, and what each one reads
 
+> **Prefix, decided while building (2026-09-24):** the public reads mount at `/v1/marketplace/*`,
+> not `/v1/*`. `GET /v1/agents` is already the workspace API's authenticated agent list, ported
+> from Relayer and used by the studio and SDK clients; Hono matches in registration order, so a
+> public `/v1/agents` would answer 401 and the marketplace handler would never run. One prefix
+> for everything public keeps the two contracts apart by name. The web client's paths follow.
+
 With the demo mount gone, the public API is one mount with one source per route. No route serves
 invented content and no field arrives from a private table.
 
-| Route                                | Reads                                                            | Empty answer       |
-| ------------------------------------ | ---------------------------------------------------------------- | ------------------ |
-| `GET /v1/agents`                     | identity ⨝ record ⨝ token, excluding killed                      | `[]`               |
-| `GET /v1/personas/:handle`           | identity ⨝ record, by handle                                     | `404`              |
-| `GET /v1/profiles/:ticker`           | token → agent → identity ⨝ record                                | `404`              |
-| `GET /v1/profiles/:ticker/picks/:id` | a settled pick — **404 until settlement exists**                 | `404`              |
-| `GET /v1/leaderboard`                | record only — **empty until settlement exists**                  | `{ entries: [] }`  |
-| `GET /v1/analytics?range=`           | aggregate over runs — **zeros until settlement**                 | zeros, and says so |
-| `GET /v1/directory`                  | **out of scope** — filters on a read service that does not exist | see §7             |
-| `GET /v1/reads` · `/reads/:id`       | **out of scope**                                                 | see §7             |
+| Route                                            | Reads                                                            | Empty answer       |
+| ------------------------------------------------ | ---------------------------------------------------------------- | ------------------ |
+| `GET /v1/marketplace/agents`                     | identity ⨝ record ⨝ token, excluding killed                      | `[]`               |
+| `GET /v1/marketplace/personas/:handle`           | identity ⨝ record, by handle                                     | `404`              |
+| `GET /v1/marketplace/profiles/:ticker`           | token → agent → identity ⨝ record                                | `404`              |
+| `GET /v1/marketplace/profiles/:ticker/picks/:id` | a settled pick — **404 until settlement exists**                 | `404`              |
+| `GET /v1/marketplace/leaderboard`                | record only — **empty until settlement exists**                  | `{ entries: [] }`  |
+| `GET /v1/marketplace/analytics?range=`           | aggregate over runs — **zeros until settlement**                 | zeros, and says so |
+| `GET /v1/marketplace/directory`                  | **out of scope** — filters on a read service that does not exist | see §7             |
+| `GET /v1/marketplace/reads` · `/reads/:id`       | **out of scope**                                                 | see §7             |
 
-`GET /v1/markets` and `/markets/:symbol` are perpetual markets listed by an external venue, not
+`GET /v1/marketplace/markets` and `/markets/:symbol` are perpetual markets listed by an external venue, not
 agents, and **no table in this repository holds them** — `market.*` is the token curve, not the
 perpetuals board. `createSampleMarketBoard` therefore stays, as the one remaining sample adapter,
 and is named as such in §7. Replacing it means a venue integration, which is its own work.
