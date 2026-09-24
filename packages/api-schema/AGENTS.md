@@ -50,3 +50,7 @@ Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` 
 signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries
 the read's sentence with `{level}` where the chosen price goes, so a page fills in a number and
 never rewrites the wording.
+
+## Cloudflare trading pilot
+
+Trading account DTOs include operator enablement; order previews optionally include outcome labels for historical compatibility. Public responses never contain lease tokens, signed payloads or secrets. See ../../docs/polymarket-worker-pilot.md.
