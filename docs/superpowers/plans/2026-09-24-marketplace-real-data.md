@@ -1327,3 +1327,21 @@ landing, which keeps its sample model. Asking for `vibe`, `voice`, `decides` and
 creation — the columns exist and default empty; a form that asks four paragraphs is a product
 decision. And a harness seed, so populated marketplace screens remain unmeasured until real agents
 exist.
+
+## Follow-ups the reviews surfaced, not done here
+
+- **`AgentSummary.token`'s market fields are `number`, so a launched token whose candles the
+  indexer has not written shows `0` market cap, price and volume on the board.** `AgentPersona.marketCap`
+  is already `number | null` and says "unread"; the summary's token should say the same. Make
+  `marketCap`, `raised`, `volume24h`, `price`, `change24h` nullable in core before or with the
+  indexer PR (#37), and render "—" on the board. No token is launched today, so nothing shows the
+  zero yet.
+- **Nothing ties the DB enums to core's lists.** `agents.accent` and the `agent_profiles_venue`
+  check list the same values as `ACCENTS`/`VENUES` in core by hand. `product/agents.ts` could pass
+  the core lists into `pgEnum`/`check` (infrastructure → core is the permitted direction) so a
+  divergence fails typecheck instead of reaching a page as an unknown accent.
+- **The design harness cannot measure the studio on this worktree's dev server.** `apps/web/.env.local`
+  configures Supabase, which turns the session guard on and the studio fixture off (by design,
+  `user-profiles-and-products-v1.md`). Task 3's swatch row was verified standalone against the real
+  stylesheet, not inside the live form. Either run a second server without the Supabase env for the
+  harness, or give `previewAllowed()` a development-only door — a product decision.
