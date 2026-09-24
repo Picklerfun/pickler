@@ -13,13 +13,13 @@ import {
 } from "../growth/agent-responses";
 import { toMarketDetailDto, toPerpMarketDto } from "../growth/market-responses";
 
-/** Explicit sample content only. Private research never feeds these public endpoints. */
-export function demoRoutes(services: ReturnType<typeof createGrowthServices>) {
+/**
+ * The marketplace's public reads: agents, profiles, personas, reads, analytics and the leaderboard
+ * come from the database, and the perpetuals board from the sample market board until there is a
+ * venue to read.
+ */
+export function marketplaceRoutes(services: ReturnType<typeof createGrowthServices>) {
   const api = new Hono<AppEnv>();
-  api.use("*", async (c, next) => {
-    c.header("X-Pickler-Data-Source", "sample");
-    await next();
-  });
   api.get("/agents", async (c) => c.json((await services.listAgents()).map(toAgentSummaryDto)));
   api.get("/directory", async (c) =>
     c.json((await services.listDirectory()).map(toDirectoryAgentDto)),

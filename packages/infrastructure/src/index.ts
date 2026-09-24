@@ -6,7 +6,6 @@ export const systemClock: Clock = {
   now: () => new Date(),
 };
 
-export { createSampleAgentDirectory } from "./agents/sample-agent-directory.js";
 export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
   createSampleLandingReadModel,

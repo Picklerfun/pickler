@@ -22,8 +22,8 @@ import {
   type PickOutcome,
   agentScore,
 } from "@pickler/core";
-import { ACTIVITY, PERSONAS, REPUTATION_WEIGHTS } from "./sample-personas.js";
-import { READS, SERVICES, type SampleRead, type SampleService } from "./sample-reads.js";
+import { ACTIVITY, PERSONAS, REPUTATION_WEIGHTS } from "./sample-personas.mts";
+import { READS, SERVICES, type SampleRead, type SampleService } from "./sample-reads.mts";
 
 // Sample content from the "Pickler Public" design. Not live data. Wallets and
 // transaction hashes are placeholders and do not exist on any network.

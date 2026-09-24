@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createGetMarket, createListMarkets, READ_HORIZON } from "@pickler/core";
 import { createSampleMarketBoard } from "@pickler/infrastructure";
-import { demoRoutes } from "../src/routes/demo.js";
+import { marketplaceRoutes } from "../src/routes/marketplace.js";
 import type { createGrowthServices } from "../src/growth/services.js";
 import type { MarketDetailDto, PerpMarketDto } from "@pickler/api-schema";
 
@@ -10,17 +10,16 @@ const env = { APP_ENV: "staging", ALLOWED_ORIGINS: "https://web.example" } as ne
 
 function fixture() {
   const board = createSampleMarketBoard();
-  return demoRoutes({
+  return marketplaceRoutes({
     listMarkets: createListMarkets(board),
     getMarket: createGetMarket(board),
   } as ReturnType<typeof createGrowthServices>);
 }
 
-test("the market board is sample content and says so in the wire format", async () => {
+test("the market board lists six perpetual markets in the wire format", async () => {
   const response = await fixture().request("/markets", {}, env);
 
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get("x-pickler-data-source"), "sample");
 
   const markets = (await response.json()) as PerpMarketDto[];
   assert.equal(markets.length, 6);

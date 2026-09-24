@@ -10,8 +10,8 @@ import { authRoutes } from "./routes/auth";
 import { corsFromEnv } from "./middleware/cors";
 import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes/profiles";
 
-import { demoRoutes } from "./routes/demo";
 import { growthRoutes } from "./routes/growth";
+import { marketplaceRoutes } from "./routes/marketplace";
 import type { createGrowthServices } from "./growth/services";
 import { consoleRoutes, type ConsoleServices } from "./routes/console";
 import { signingRoutes, type SigningRouteServices } from "./routes/signing";
@@ -53,7 +53,8 @@ export function createApp(services: Services) {
   }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
-    app.route("/v1/demo", demoRoutes(services.growth));
+    // Under its own prefix: /v1/agents is the authenticated workspace list ported from Relayer.
+    app.route("/v1/marketplace", marketplaceRoutes(services.growth));
   }
   return app;
 }

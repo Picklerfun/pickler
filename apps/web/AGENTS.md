@@ -28,8 +28,8 @@ src/server/
 ```
 
 Landing, signup, applications, token pages, paid reads, wallet and ranking designs are retained.
-Public demo content comes from explicitly sample-labeled API endpoints; research results never
-appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
+The marketplace reads `/api/v1/marketplace/*`: agents come from the database, the perpetuals board
+is still sample content, and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
 Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in URLs or JSON.
 
 ## Three-layer implementation example

@@ -229,7 +229,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     authenticate,
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(env),
+    growth: createGrowthServices(env, repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     console: {
