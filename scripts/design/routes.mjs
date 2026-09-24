@@ -14,6 +14,16 @@
 // drifts into passing as a stub grows. `floor` is only for screens with no authored hook to point
 // at yet. Every route must carry one or the other; render.mjs refuses a route with neither, since a
 // route nobody wrote a floor for is exactly the route this was built to catch.
+// `act` is for a screen that is a click deep rather than a URL away: `{ click, proves }`, clicked
+// after the route has proved it loaded. It must always carry its own `proves`, and that selector
+// must name something only the post-click screen has — the hook is otherwise a way to report green
+// for the screen before the click, which is this file's oldest failure wearing a new shape.
+//
+// It is not an alternative to `?state=` and `?section=`. Those exist because a wallet connection
+// and a Supabase session are states no click produces, so a dev-guarded parameter in shipped code
+// was the only way in and was worth its cost. A click is not a door: Playwright already has clicks,
+// so a state a person reaches by clicking needs nothing added to the product to reach here.
+//
 // `product` is which host owns the route, by the same first-segment rule
 // apps/web/src/server/hosts.ts applies: /console and /account are the studio, everything else here
 // is the marketplace. In development the middleware is inert and both answer on one origin, so this
@@ -217,6 +227,42 @@ export const ROUTES = [
     surface: "light",
     task: "Markets",
     proves: '[aria-label^="Long BTC-PERP to"]',
+  },
+  /* The ticket with a square in it, which is the half of this screen where a person commits money
+   * and the half nothing had ever rendered. `act` clicks a square after the route has proved it
+   * loaded, and asserts what the click produced — see lib/render.mjs for why the second assertion
+   * is the whole point of the hook.
+   *
+   * Each `act.proves` names the filled composition *and* the square that was asked for. Naming
+   * only `#ticket-title` would have been the bug the hook is built to prevent: the empty ticket
+   * carries that id too, reading "PICK A SQUARE.", so a click that landed nowhere would have proved
+   * itself. The leverage preset and the level stepper exist only once a square is picked; the title
+   * text says which square, so a click that lands on a different one is caught rather than measured.
+   */
+  {
+    path: "/markets/BTC-PERP?side=trade",
+    name: "market-trade-picked",
+    product: "marketplace",
+    surface: "light",
+    task: "Markets",
+    proves: '[aria-label^="Long BTC-PERP to"]',
+    act: {
+      click: '[aria-label="Long BTC-PERP to 63,902.1 within 4H"]',
+      proves:
+        'main:has(button:text-is("10\u00d7")) #ticket-title:text-is("Long BTC-PERP to 63,902.1 within 4H")',
+    },
+  },
+  {
+    path: "/markets/BTC-PERP",
+    name: "market-ask-picked",
+    product: "marketplace",
+    surface: "light",
+    task: "Markets",
+    proves: '[aria-label^="Ask whether BTC-PERP is above"]',
+    act: {
+      click: '[aria-label="Ask whether BTC-PERP is above 63,902.1 in 24H"]',
+      proves: 'main:has([aria-label="Raise the level"]) #ticket-title:has-text("63,902.1")',
+    },
   },
   // The reads list is the portfolio's situation exactly: everything below the heading is behind a
   // connect gate and no headless browser has a wallet to pass it with. So this route proves the

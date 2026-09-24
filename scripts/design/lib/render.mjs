@@ -160,6 +160,15 @@ const KINDS = {
       "  a half-mounted client component. Measuring it would report green for a screen nobody looked\n" +
       "  at, which is what happened to /console for the whole of this change. Not measured, not passed.",
   },
+  "click-missed": {
+    line: (route, detail) => `${route.path} — loaded and proved, but ${detail}`,
+    remedy:
+      "The route reaches its screen through a click and the click landed somewhere else. Almost\n" +
+      "  always the selector: a renamed aria-label, a control that moved, a square the sample data\n" +
+      "  no longer makes takeable. Nothing here is a design failure — but nothing was measured\n" +
+      "  either, because measuring the screen before the click would report green for the half this\n" +
+      "  route exists to reach.",
+  },
   "no-floor": {
     line: (route) => `${route.path} — declares no \`proves\` selector and no \`floor\``,
     remedy:
@@ -366,6 +375,59 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         } else {
           blocked.push({ route, kind: "no-floor" });
           continue;
+        }
+
+        /* Some screens are a click deep, and a click is not a door.
+         *
+         * ?state=connected and ?section= exist because a wallet connection and a Supabase session
+         * are states no click produces — there was no other way in, so a dev-guarded parameter was
+         * worth its cost in shipped code. That reasoning does not extend to everything hidden: the
+         * market's ticket only fills once a square is picked, and picking is what a browser does.
+         * Playwright already has clicks, so reaching it needs nothing added to the product. Anyone
+         * about to add a query parameter for a state a person reaches by clicking should use this
+         * instead.
+         *
+         * `act.proves` is not decoration and the hook must never take a bare selector. A click that
+         * quietly stops matching — a renamed label, a moved control — would leave the route
+         * measuring the screen *before* the click and reporting green for it, which is the stub
+         * failure this file exists to catch, one layer deeper and in the place hardest to notice.
+         * So the click asserts its own result exactly as `proves` does, and a miss is reported as a
+         * route that was never measured. */
+        if (route.act) {
+          await page.click(route.act.click);
+          /* Let the click's transitions finish before anything reads a colour.
+           *
+           * This is not caution, it is a defect that was caught. `.cell` carries
+           * `transition: background 140ms`, so the first run measured eleven lit squares mid-fade
+           * and reported #EDF7CE — a solid token with no alpha — as "at 0.106 alpha, in no token".
+           * A plausible, specific, entirely false finding, and one that would have sent somebody
+           * looking for a literal nobody typed.
+           *
+           * Waiting on the animations rather than on a duration, because a duration is a guess that
+           * ages: --pk-duration is a token and can change. Transitions only, and bounded, since a
+           * looping decoration never finishes and waiting on one would hang the run rather than
+           * measure it. */
+          await page
+            .waitForFunction(
+              () =>
+                document
+                  .getAnimations()
+                  .filter((a) => a.constructor.name === "CSSTransition")
+                  .every((a) => a.playState === "finished"),
+              null,
+              { timeout: 2000 },
+            )
+            .catch(() => {});
+          const landed = await page.locator(route.act.proves).count();
+          if (!landed) {
+            blocked.push({
+              route,
+              kind: "click-missed",
+              detail: `clicked ${route.act.click}, then nothing matched ${route.act.proves}`,
+            });
+            continue;
+          }
+          proof = `${proof} → ${route.act.proves}`;
         }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {
