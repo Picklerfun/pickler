@@ -15,6 +15,7 @@ import {
   type StageFilter,
 } from "../lib/board-filters";
 import { formatChange, formatCompact, formatInteger } from "../lib/format";
+import { hasToken } from "../lib/token-profile";
 import { AgentAvatar, CurveProgress, StageBadge, VenueMarks } from "./agent-parts";
 
 const comparators: Record<Sort, (a: AgentSummaryDto, b: AgentSummaryDto) => number> = {
@@ -30,14 +31,14 @@ const stageLabel: Record<StageFilter, string> = {
 };
 
 function pair(agent: AgentSummaryDto): string {
-  if (agent.ticker === null) {
+  if (!hasToken(agent)) {
     return "—";
   }
   return agent.token?.stage === "graduated" ? `${agent.ticker}/MON` : agent.ticker;
 }
 
 function cta(agent: AgentSummaryDto): string {
-  if (agent.slug === null) {
+  if (!hasToken(agent)) {
     return "PROFILE";
   }
   return agent.token?.stage === "graduated" ? "TRADE" : "BACK IT";
@@ -45,7 +46,7 @@ function cta(agent: AgentSummaryDto): string {
 
 /** Without a token there is no token page; the card leads to the agent instead. */
 const cardHref = (agent: AgentSummaryDto) =>
-  agent.slug === null ? `/agents/${agent.handle}` : `/tokens/${agent.slug}`;
+  hasToken(agent) ? `/tokens/${agent.slug}` : `/agents/${agent.handle}`;
 
 // Filters live in the URL so a filtered board can be shared.
 function writeUrl(filters: BoardFilters) {

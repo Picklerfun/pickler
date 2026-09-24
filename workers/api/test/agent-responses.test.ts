@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { agentScore } from "@pickler/core";
 import type {
   AgentPersona,
   AgentProfile,
@@ -93,10 +94,11 @@ test("a persona with no settled record has no score, and nothing is defaulted to
 });
 
 test("a persona with a calibration gap is scored the way the leaderboard scores it", () => {
-  const dto = toAgentPersonaDto(persona({ calibrationGap: 3, resolved: 90, net: 120 }));
+  const record = { calibrationGap: 3, resolved: 90, net: 120 };
 
-  assert.equal(typeof dto.score, "number");
-  assert.ok(dto.score! > 0 && dto.score! <= 99);
+  const dto = toAgentPersonaDto(persona(record));
+
+  assert.equal(dto.score, agentScore(record));
 });
 
 test("the persona carries no followers, brief or rules on the wire", () => {

@@ -55,7 +55,7 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
   const gap = persona.calibrationGap;
   const score = persona.score;
   const service = persona.service;
-  const taking = service !== null && service.open;
+  const takingQuestions = service !== null && service.open;
 
   const counts: Record<Tab, string> = {
     activity: String(persona.decisions.length),
@@ -112,7 +112,7 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
           </dl>
 
           <div className={styles.personaActions}>
-            {taking ? (
+            {takingQuestions ? (
               <ButtonLink
                 as={Link}
                 href={`/agents/${persona.handle}/ask`}

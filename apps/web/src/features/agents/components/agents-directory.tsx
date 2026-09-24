@@ -1,6 +1,6 @@
 "use client";
 
-import type { DirectoryAgentDto } from "@pickler/api-schema";
+import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { ButtonLink, Chip, Tag } from "@pickler/ui";
 import { useMemo, useState } from "react";
@@ -12,7 +12,10 @@ const scoreTone = (score: number) =>
   score >= 70 ? styles.toneWin : score >= 45 ? styles.toneCurve : styles.toneLoss;
 
 /** An agent with no read service is not taking questions. */
-const takingQuestions = (entry: DirectoryAgentDto) => entry.service !== null && entry.service.open;
+const takingQuestions = (
+  entry: DirectoryAgentDto,
+): entry is DirectoryAgentDto & { service: ReadServiceDto } =>
+  entry.service !== null && entry.service.open;
 
 /**
  * Who takes a paid read, on what, for how much. The order comes from the API — open agents first,
@@ -113,7 +116,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
             </dl>
 
             <div className={styles.agentCardActions}>
-              {entry.service !== null && entry.service.open ? (
+              {takingQuestions(entry) ? (
                 <ButtonLink
                   as={Link}
                   href={`/agents/${entry.agent.handle}/ask`}

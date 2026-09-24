@@ -31,6 +31,16 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 
 `marketScopeSchema` and `marketCatalogSchema` describe the version-1 two-level sports catalog. Scoped configs reject mixed legacy selection fields. `generalAssessmentSchema` has eight coverage sections; `decisionV4Schema` discriminates NFL and general outputs while `decisionSchema` still accepts v1/v2/v3. Plugins remain independent of sports selection.
 
+## Public agents
+
+`src/agents.ts` carries the public agent board, persona, directory, reads, analytics and
+leaderboard. On every one of these DTOs `null` means absent: a figure that has no source yet — no
+token launched, so no `ticker`, `slug`, `marketCap` or `stage`; nothing settled, so no
+`calibrationGap` or `score`; no paid reads, so no `service` — is `null`, never `0` or `""`.
+Consumers render the absence and must not coerce it. `followers`, `brief` and `rules` were removed
+from the persona and profile DTOs because nothing stores followers and the brief is private runtime
+configuration.
+
 ## Console contracts
 
 `src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.

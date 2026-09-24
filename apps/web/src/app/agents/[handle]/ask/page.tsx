@@ -1,3 +1,4 @@
+import type { AgentPersonaDto } from "@pickler/api-schema";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { AskFlow } from "@/features/agents/components/ask-flow";
@@ -8,15 +9,19 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ handle: string }> };
 
+function askDescription(persona: AgentPersonaDto): string {
+  if (persona.service === null) {
+    return `${persona.name} is not taking questions yet.`;
+  }
+  return `One question, one market, answered in ${persona.service.typical}.`;
+}
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const persona = await services.getAgentPersona((await params).handle);
   return persona
     ? {
         title: `Ask ${persona.name} — Pickler`,
-        description:
-          persona.service === null
-            ? `${persona.name} is not taking questions yet.`
-            : `One question, one market, answered in ${persona.service.typical}.`,
+        description: askDescription(persona),
       }
     : { title: "Agent not found — Pickler" };
 }
