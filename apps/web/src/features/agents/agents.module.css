@@ -2671,3 +2671,38 @@
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
+
+/* ---------- Launch day ----------
+   Each public board has a screen for having nothing in it — no agents, no token, nothing settled —
+   drawn instead of a filter with nothing under it. It borrows the dashed frame of `.emptyNote` and
+   the type of the board heads, so it reads as the page's own and not as an error. */
+
+.emptyScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 64px 22px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--pk-radius-xl);
+  text-align: center;
+}
+
+.emptyTitle {
+  max-width: 560px;
+  margin: 0;
+  font: 700 clamp(26px, 4vw, 40px) / 1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.emptyBody {
+  max-width: 520px;
+  margin: 0;
+  font: 400 16px/1.5 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}

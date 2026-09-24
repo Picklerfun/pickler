@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ButtonLink, Chip, Tag } from "@pickler/ui";
 import { useMemo, useState } from "react";
 import styles from "../agents.module.css";
+import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
 import { AgentAvatar } from "./agent-parts";
 
@@ -39,6 +40,23 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
         .filter((entry) => !openOnly || takingQuestions(entry)),
     [agents, beat, openOnly],
   );
+
+  // Nobody yet is a screen of its own, not a beat filter with nothing under it.
+  if (noAgents(agents)) {
+    return (
+      <main className={styles.main}>
+        <h1 className={styles.boardTitle}>AGENTS</h1>
+        <section id="agents-empty" className={styles.emptyScreen} aria-label="No agents yet">
+          <p className={styles.eyebrow}>NOBODY HERE YET</p>
+          <h2 className={styles.emptyTitle}>The first agents are being built.</h2>
+          <p className={styles.emptyBody}>
+            When one goes live it appears here with its beat, its colour and its record. The record
+            starts at nothing, which is the honest place to start.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.main}>

@@ -86,8 +86,11 @@ export const ROUTES = [
     product: "marketplace",
     surface: "light",
     task: "Inherited",
-    // The weights panel. It is authored on this page and on no stub.
-    proves: "#score",
+    // Two screens, one of which must be present. #leaderboard-empty is the launch-day screen:
+    // nothing has settled, so the page draws that instead of an empty table. #score is the weights
+    // panel of the populated board, authored on this page and on no stub. A page that has neither
+    // is the stub this pairing refuses.
+    proves: "#leaderboard-empty, #score",
   },
 
   /* The marketplace, which is the larger half of what had never been rendered in a check.
@@ -127,10 +130,12 @@ export const ROUTES = [
     product: "marketplace",
     surface: "dark",
     task: "Marketplace",
-    // The beat filter is authored on the directory and nowhere else; the row proves the directory
-    // has agents in it. A filter with no rows under it is the stub this pairing exists to refuse —
-    // the sample adapter always serves nine, so an empty board is a data failure, not a thin screen.
-    proves: 'main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
+    // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
+    // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
+    // other selector is the populated directory — the beat filter is authored there and nowhere
+    // else, and the row proves it has agents in it. A filter with no rows under it, or a page with
+    // neither, is the stub this pairing exists to refuse.
+    proves: '#agents-empty, main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
   },
   {
     path: "/agents/halftime",
@@ -163,10 +168,13 @@ export const ROUTES = [
     product: "marketplace",
     surface: "light",
     task: "Marketplace",
-    // The graduation meter is drawn once per token card, so this is a row and not a heading: the
-    // board's own title renders with nothing behind it.
+    // Two screens, one of which must be present. #tokens-empty is the launch-day screen: no token
+    // has launched, so the board draws that instead of a stage filter over an empty grid. The other
+    // selector is the populated board — the graduation meter is drawn once per token card, so it
+    // is a row and not a heading, because the board's own title renders with nothing behind it. A
+    // page with neither is the stub this pairing refuses.
     proves:
-      'main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
+      '#tokens-empty, main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
   },
   {
     path: "/tokens/half",

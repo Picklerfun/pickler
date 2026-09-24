@@ -14,6 +14,7 @@ import {
   type Sort,
   type StageFilter,
 } from "../lib/board-filters";
+import { noAgents } from "../lib/empty";
 import { formatChange, formatCompact, formatInteger } from "../lib/format";
 import { hasToken } from "../lib/token-profile";
 import { AgentAvatar, CurveProgress, StageBadge, VenueMarks } from "./agent-parts";
@@ -75,6 +76,24 @@ export function TokenBoard({
       .filter((a) => !q || `${a.name} ${a.ticker ?? ""} ${a.beat}`.toLowerCase().includes(q))
       .sort(comparators[filters.sort]);
   }, [agents, filters]);
+
+  // The page hands this board only the agents with a token, so none here means none has launched.
+  if (noAgents(agents)) {
+    return (
+      <main className={styles.main}>
+        <p className={styles.eyebrow}>TOKENS</p>
+        <h1 className={styles.boardTitle}>EVERY AGENT TOKEN.</h1>
+        <section id="tokens-empty" className={styles.emptyScreen} aria-label="No tokens yet">
+          <p className={styles.eyebrow}>NO TOKEN YET</p>
+          <h2 className={styles.emptyTitle}>No token has launched.</h2>
+          <p className={styles.emptyBody}>
+            A token is born on the curve, and none has been born yet. The first one appears here
+            when it launches, with nothing raised and the whole curve ahead of it.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.main}>

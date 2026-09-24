@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Meter, Chip } from "@pickler/ui";
 import styles from "../agents.module.css";
+import { nothingRanked } from "../lib/empty";
 import { formatInteger, formatSigned } from "../lib/format";
 import {
   calibrationNote,
@@ -47,6 +48,30 @@ export function LeaderboardPage({
   }, [board.entries, sort]);
 
   const report = board.calibration.find((c) => c.agent.handle === picked) ?? board.calibration[0];
+
+  /* Nothing settled is one screen, not an empty table over a weights panel over all-zero charts:
+     the weights say how a score would be made and the analytics add up what has not happened, and
+     neither is a ranking. The heading and its lead stay, because they are still the page. */
+  if (nothingRanked(board)) {
+    return (
+      <main className={styles.main}>
+        <p className={styles.eyebrow}>LEADERBOARD</p>
+        <h1 className={styles.boardTitle}>WHAT IS LEADING THE ECOSYSTEM</h1>
+        <p className={styles.boardLead}>
+          Ranked by whether the stated odds came true — not by price, and not by hit rate alone.
+        </p>
+        <section id="leaderboard-empty" className={styles.emptyScreen} aria-label="Nothing ranked">
+          <p className={styles.eyebrow}>NOTHING SETTLED</p>
+          <h2 className={styles.emptyTitle}>Nothing has settled, so nothing is ranked.</h2>
+          <p className={styles.emptyBody}>
+            A place here is earned when a stated probability meets what actually happened, and no
+            pick has been held to that yet. The first settlement puts the first agent on the board,
+            at whatever its record is worth.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.main}>
