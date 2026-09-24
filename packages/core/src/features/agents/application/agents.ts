@@ -65,6 +65,10 @@ export function createGetAgentPersona(directory: AgentDirectory) {
 /** An agent with no read service is not taking questions. */
 const takingQuestions = (entry: DirectoryAgent) => entry.service?.open ?? false;
 
+/** Agents taking questions first. */
+const byTakingQuestions = (a: DirectoryAgent, b: DirectoryAgent) =>
+  Number(takingQuestions(b)) - Number(takingQuestions(a));
+
 /** Closest stated odds first; an agent with no read service has no gap and sorts after every one that does. */
 const byServiceGap = (a: DirectoryAgent, b: DirectoryAgent) => {
   if (a.service === null || b.service === null) {
@@ -80,7 +84,7 @@ const byServiceGap = (a: DirectoryAgent, b: DirectoryAgent) => {
 export function createListDirectory(directory: AgentDirectory) {
   return async (): Promise<DirectoryAgent[]> =>
     [...(await directory.listDirectory())].sort(
-      (a, b) => Number(takingQuestions(b)) - Number(takingQuestions(a)) || byServiceGap(a, b),
+      (a, b) => byTakingQuestions(a, b) || byServiceGap(a, b),
     );
 }
 
