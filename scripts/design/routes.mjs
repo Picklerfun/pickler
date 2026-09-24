@@ -79,6 +79,194 @@ export const ROUTES = [
     // The weights panel. It is authored on this page and on no stub.
     proves: "#score",
   },
+
+  /* The marketplace, which is the larger half of what had never been rendered in a check.
+   *
+   * Twelve screens — the agent directory and a profile, the ask flow, the token board and a token
+   * and one of its calls, the market board and a market, the reads list and a read, the follow
+   * feed, the application — and the same claim was made about all of them that was made about the
+   * (auth) group: that every colour a route can reach resolves to a token. It was withdrawn there
+   * because nobody had looked, and this is the same withdrawal, six screens larger.
+   *
+   * Every parameterised path below names a value the sample adapters actually serve, taken from a
+   * link the index page renders rather than invented: `halftime` and `tapereader` are handles in
+   * createSampleAgentDirectory, `half` is its slug, `half-1` one of its calls, `r1` a read,
+   * BTC-PERP a symbol in createSampleMarketBoard. An invented one answers 404, which this file
+   * reports as "not built yet" — the one wrong answer available here.
+   */
+  /* The three /agents screens declare `dark`, and they are the only marketplace routes that do
+   * besides /apply. That is not this file disagreeing with the product — it is this file recording
+   * a redraw the product already admits it owes.
+   *
+   * public-shell.tsx takes a `surface` prop and says what it is for: "It is light, which is what
+   * the marketplace is. `surface` exists for the routes whose *bodies* still compose against a
+   * dark ground — the agent pages — because one wrapper cannot hold two surfaces and those bodies
+   * are not this task's to redraw. The prop goes when the last body is redrawn." Only these three
+   * pass `surface="dark"`, and /agents/[handle]/ask carries the same admission in its own words.
+   *
+   * So the ground they paint today is night blue and the ground the marketplace is, is white.
+   * Declaring `light` here would put six standing failures in surfaces.mjs that say only what this
+   * comment says, on three screens nobody disputes; declaring `dark` measures the ground they
+   * actually ship on, which is what makes their inversions and their contrast numbers mean
+   * anything. When those bodies are redrawn and the prop goes, these three flip to `light` in one
+   * edit and surfaces.mjs is what catches a body that was missed.
+   */
+  {
+    path: "/agents",
+    name: "agents",
+    product: "marketplace",
+    surface: "dark",
+    task: "Marketplace",
+    // The beat filter is authored on the directory and nowhere else; the row proves the directory
+    // has agents in it. A filter with no rows under it is the stub this pairing exists to refuse —
+    // the sample adapter always serves nine, so an empty board is a data failure, not a thin screen.
+    proves: 'main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
+  },
+  {
+    path: "/agents/halftime",
+    name: "agent-profile",
+    product: "marketplace",
+    surface: "dark",
+    task: "Marketplace",
+    // The activity panel, on a page that also carries this agent's token link. The panel alone
+    // would report green for any profile; the token link says it is Halftime's, which is the
+    // /signin-and-/signup lesson one prop smaller — the persona page is one component for nine
+    // agents, so a selector that proves only the composition proves nothing about the data.
+    proves: 'main:has(a[href="/tokens/half"]) #panel-activity',
+  },
+  {
+    path: "/agents/halftime/ask",
+    name: "agent-ask",
+    product: "marketplace",
+    surface: "dark",
+    task: "Marketplace",
+    // COMPOSE, which is step one of three and the only one a GET reaches. The market chooser and
+    // the sentence under the fixed question both belong to that step: REVIEW replaces them, so
+    // this proves the step as well as the screen. Steps two and three are unmeasured and named as
+    // such in the report rather than quietly counted here.
+    proves:
+      'main:has([role="group"][aria-label="Market"]) p:text-is("clock starts at delivery · equal counts as no")',
+  },
+  {
+    path: "/tokens",
+    name: "tokens",
+    product: "marketplace",
+    surface: "light",
+    task: "Marketplace",
+    // The graduation meter is drawn once per token card, so this is a row and not a heading: the
+    // board's own title renders with nothing behind it.
+    proves:
+      'main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
+  },
+  {
+    path: "/tokens/half",
+    name: "token",
+    product: "marketplace",
+    surface: "light",
+    task: "Marketplace",
+    // The calls panel, on the page that links back to the agent it belongs to. Same pairing and
+    // same reason as the profile: one component serves nine tokens.
+    proves: 'main:has(a[href="/agents/halftime"]) #calls-title',
+  },
+  {
+    path: "/tokens/half/picks/half-1",
+    name: "token-pick",
+    product: "marketplace",
+    surface: "light",
+    task: "Marketplace",
+    // The trail and the post, which are the two blocks this screen exists for and which no list
+    // page draws.
+    proves: "main:has(#post-title) #trail-title",
+  },
+  {
+    path: "/markets",
+    name: "markets",
+    product: "marketplace",
+    surface: "light",
+    task: "Markets",
+    // The coverage filter is the board's own; the row proves markets under it.
+    proves: 'main:has([role="group"][aria-label="Coverage"]) a[href="/markets/BTC-PERP"]',
+  },
+  /* One market, and the two things a square can be. This is the screen that matters most here and
+   * the one that has escaped every sweep, because the part of it where a person commits money is
+   * the ticket, and the ticket only fills once a square is clicked.
+   *
+   * These two routes reach the two modes and not the filled ticket. `?side=` is not a verification
+   * door: the board's own ASK and TRADE buttons link to it and `page.tsx` reads it in production,
+   * so this is the product's path and costs nothing to measure. What it reaches is each mode's
+   * empty ticket — "PICK A SQUARE TO ASK." and its trade twin — which is a real authored screen,
+   * but it is not the trade ticket. Margin, leverage, the liquidation line, the review phase and
+   * the preview strip are all behind a click and all still unmeasured; reaching them needs a door
+   * this file does not have, and inventing one silently is how a screen gets reported green.
+   *
+   * Each proves its own grid, by the label the squares carry in that mode. The grid is the half a
+   * stub cannot have; the mode-specific wording is the half that says `?side=` did what it says.
+   */
+  {
+    path: "/markets/BTC-PERP",
+    name: "market-ask",
+    product: "marketplace",
+    surface: "light",
+    task: "Markets",
+    proves: '[aria-label^="Ask whether BTC-PERP is above"]',
+  },
+  {
+    path: "/markets/BTC-PERP?side=trade",
+    name: "market-trade",
+    product: "marketplace",
+    surface: "light",
+    task: "Markets",
+    proves: '[aria-label^="Long BTC-PERP to"]',
+  },
+  // The reads list is the portfolio's situation exactly: everything below the heading is behind a
+  // connect gate and no headless browser has a wallet to pass it with. So this route proves the
+  // gate and says so in its name, and the table behind it — five rows, two clocks each, the filter
+  // chips — is unmeasured until it has the door /portfolio was given.
+  {
+    path: "/reads",
+    name: "reads-gate",
+    product: "marketplace",
+    surface: "light",
+    task: "Gated",
+    proves: "[data-connect-gate]",
+  },
+  {
+    path: "/reads/r1",
+    name: "read",
+    product: "marketplace",
+    surface: "light",
+    task: "Marketplace",
+    // A read detail is not gated — it is the one screen in this group that renders whole on a GET.
+    // LIMITS sits inside the answer block, which is conditional on the read having been answered,
+    // so this proves an answered read and not the header of an empty one; the agent link proves it
+    // is r1's.
+    proves: 'main:has(a[href="/agents/tapereader"]) p:text-is("LIMITS")',
+  },
+  // Same gate, the other feed. Named for the gate for the same reason /reads is.
+  {
+    path: "/activity",
+    name: "activity-gate",
+    product: "marketplace",
+    surface: "light",
+    task: "Gated",
+    proves: "[data-connect-gate]",
+  },
+  // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
+  // for a request carrying the apply cookie, and without one the route answers with NoSeat — a
+  // whole authored screen, so this measures a screen rather than a stub. The form behind it is
+  // unmeasured, and the cookie is a door this file does not have either.
+  //
+  // The only dark ground in the marketplace list: ApplyShell pins data-surface="dark", where
+  // PublicShell leaves every other route here on the light default.
+  {
+    path: "/apply",
+    name: "apply-no-seat",
+    product: "marketplace",
+    surface: "dark",
+    task: "Apply",
+    proves: 'main h1:text-is("GET IN LINE FIRST.")',
+  },
+
   {
     path: "/console",
     name: "studio",
@@ -236,6 +424,18 @@ export const HOLDS = {
   "Task 13": ["apps/web/src/features/account"],
   // No task builds it; what it is made of is still someone's to edit.
   Inherited: ["apps/web/src/features/agents"],
+  /* No task builds the marketplace either — like the auth screens it predates this design work,
+   * which is how twelve routes went unmeasured. Four keys rather than one, because attribution is
+   * the purpose of this map and a single `Marketplace` would mark a market failure [held] whenever
+   * somebody was editing the agent directory.
+   *
+   * `Gated` is /reads and /activity, which are the two screens whose measurable half is the
+   * connect gate. It holds the gate's own directory as well as the page's, because the thing being
+   * measured on those routes is the gate and the gate is the wallet's. */
+  Marketplace: ["apps/web/src/features/agents"],
+  Markets: ["apps/web/src/features/markets"],
+  Gated: ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
+  Apply: ["apps/web/src/features/apply"],
   // Neither does any task build the auth screens — they predate this design work, which is how
   // they went fifteen routes without being measured. Their own key rather than `Inherited`
   // because attribution is the whole purpose of this map: sharing a key with the leaderboard

@@ -849,12 +849,18 @@
   color: var(--ink-soft);
 }
 
+/* The rim that separates each swatch from the panel it sits on. It was white at half alpha, which
+   is not a colour but a compositing instruction: on the dark ground this legend was drawn against
+   it lifted a lime or pink square off the night blue, and on the #F5F6FA panel the ticket actually
+   paints it does the opposite — it washes the swatch's own edge out into the panel. The token is
+   surface-aware and so does the one job on both: rgba(11, 13, 26, 0.28) on light, and on dark
+   rgba(255, 255, 255, 0.32), which is within a hair of what was typed here. */
 .legendMark {
   flex: none;
   width: 14px;
   height: 14px;
   margin-top: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-mark);
 }
 
