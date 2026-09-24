@@ -25,6 +25,7 @@ import { describeDevice } from "../lib/device";
 import { INITIAL, next, rail } from "../lib/flow";
 import { ApiError, getProfile } from "../lib/pickler-api";
 import type { Ceremony, SheetPhase } from "../lib/sheet";
+import { useStudioHref } from "@/features/site/studio-href";
 import { getSupabase } from "../lib/supabase-browser";
 import { AuthHeader } from "./auth-header";
 import { PasskeySheet } from "./passkey-sheet";
@@ -39,9 +40,6 @@ import { WelcomeStep } from "./steps/welcome-step";
 
 /** What a backup is called in the account's list of passkeys; the device it lands on is not ours. */
 const BACKUP_LABEL = "Backup passkey";
-
-/** Where "Open the studio" goes when nothing said otherwise. */
-const STUDIO = "/console";
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
 
@@ -82,7 +80,7 @@ interface SheetState {
 export function PasskeyFlow({
   board,
   mode,
-  destination = STUDIO,
+  destination,
 }: {
   board: AuthBoardData;
   /**
@@ -100,10 +98,13 @@ export function PasskeyFlow({
    * Where every screen that offers a way out of this flow goes. The route supplies it from the
    * `next` the guard wrote when it turned an anonymous request away, already checked by `returnTo`
    * — someone bounced from /account has to come back to /account, not be dropped on the studio.
+   * Undefined when nobody was turned away, and then the studio's own home is the destination.
    */
   destination?: string | undefined;
 }) {
   const router = useRouter();
+  const studio = useStudioHref();
+  const target = destination ?? studio;
   const [state, dispatch] = useReducer(next, {
     ...INITIAL,
     mode,
@@ -390,11 +391,11 @@ export function PasskeyFlow({
               hasBackup={state.hasBackup}
               busy={busy}
               onAddBackup={() => open("backup")}
-              onFinish={() => router.push(destination)}
+              onFinish={() => router.push(target)}
             />
           )}
           {state.step === "welcome" && (
-            <WelcomeStep handle={profileHandle} wallet={wallet} destination={destination} />
+            <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
           )}
           {/* One screen for both steps: `approve` is the same page with the rail moved on, and a
               form column that emptied itself behind the sheet would strand a failed ceremony. */}
@@ -405,9 +406,7 @@ export function PasskeyFlow({
               onOpenWallet={() => dispatch({ type: "device_skipped" })}
             />
           )}
-          {state.step === "recovered" && (
-            <RecoveredStep onFinish={() => router.push(destination)} />
-          )}
+          {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(target)} />}
         </div>
 
         <SpawnBoard board={board} />

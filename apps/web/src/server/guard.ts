@@ -17,10 +17,14 @@ import { firstSegment } from "./hosts";
  * `/auth/callback`, `/apply` — has to stay open: you cannot sign in if signing in needs a session,
  * and applying for studio access is done by someone who has no account yet.
  *
+ * `console` is here as the segment the studio root resolves to, not as a URL anyone can reach: on
+ * the studio host `/console` is a 404 and `/` is the studio. On localhost, where both products are
+ * served together, it is the studio's real address and is guarded as one.
+ *
  * These are a subset of `STUDIO_SEGMENTS` in ./hosts.ts, and the matching is the same whole-segment
  * equality, so `/accounts-of-agents` is not `/account`.
  */
-const PROTECTED_SEGMENTS = new Set(["console", "account", "custody"]);
+const PROTECTED_SEGMENTS = new Set(["console", "account", "passkey"]);
 
 export function requiresSession(pathname: string): boolean {
   return PROTECTED_SEGMENTS.has(firstSegment(pathname));

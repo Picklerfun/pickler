@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { PRODUCT_HOSTS, productFor, studioHref } from "@/server/hosts";
 
 /** Authentication callback only; product provisioning belongs to the business API. */
 export async function GET(request: Request) {
@@ -24,7 +25,10 @@ export async function GET(request: Request) {
     },
   });
   const { error } = await client.auth.exchangeCodeForSession(code);
-  const response = NextResponse.redirect(new URL(error ? "/signin" : "/console", url.origin));
+  // The studio's address depends on the host this callback came back to: `/` on the studio host,
+  // `/console` where both products share one. `/console` is no longer carried across by a redirect.
+  const studio = studioHref(productFor(request.headers.get("host"), PRODUCT_HOSTS), PRODUCT_HOSTS);
+  const response = NextResponse.redirect(new URL(error ? "/signin" : studio, url.origin));
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }

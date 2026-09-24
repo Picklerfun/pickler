@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { MONAD_TESTNET } from "@pickler/chain";
@@ -68,6 +69,7 @@ function Mark({ className }: { className: string | undefined }) {
 }
 
 export function Account({ opening }: { opening: SectionKey }) {
+  const studio = useStudioHref();
   const [section, setSection] = useState<SectionKey>(opening);
   /**
    * The fixture, decided once at the first render rather than from an effect.
@@ -254,7 +256,7 @@ export function Account({ opening }: { opening: SectionKey }) {
               )}
             </button>
           ))}
-          <Link href="/console" className={styles.back}>
+          <Link href={studio} className={styles.back}>
             ← Back to studio
           </Link>
         </nav>

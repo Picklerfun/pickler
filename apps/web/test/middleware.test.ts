@@ -16,7 +16,7 @@ const OUT: AuthState = { configured: true, session: false };
 /** Not configured: nobody can sign in, so there is nothing to guard. */
 const OFF: AuthState = { configured: false, session: false };
 
-const PROTECTED = ["/console", "/account", "/custody"];
+const PROTECTED = ["/console", "/account", "/passkey"];
 const PUBLIC = ["/signin", "/signup", "/auth/callback", "/apply"];
 
 /**
@@ -40,22 +40,33 @@ function nextOf(decision: Decision): string | null {
 test("a path on its own host is served", () => {
   assert.deepEqual(decide("pickler.fun", "/leaderboard", HOSTS, OFF), { kind: "serve" });
   assert.deepEqual(decide("app.pickler.fun", "/account", HOSTS, OFF), { kind: "serve" });
+  assert.deepEqual(decide("app.pickler.fun", "/passkey", HOSTS, OFF), { kind: "serve" });
 });
 
 test("the studio root serves the studio", () => {
   assert.deepEqual(decide("app.pickler.fun", "/", HOSTS, OFF), { kind: "rewrite", to: "/console" });
 });
 
-test("a studio path asked of the marketplace redirects, so old links survive", () => {
-  assert.deepEqual(decide("pickler.fun", "/account", HOSTS, OFF), {
-    kind: "redirect",
-    to: "https://app.pickler.fun/account",
-  });
+test("each host 404s what it does not own, in both directions", () => {
+  // Symmetric on purpose. Nothing has ever been deployed, so there is no link or bookmark anywhere
+  // that a cross-host redirect would rescue, and a redirect kept for nobody is a branch, a test and
+  // a behaviour to keep true forever. Links inside this repository that cross products go through
+  // `studioHref`, which builds an absolute URL rather than leaning on a rewrite.
+  assert.deepEqual(decide("pickler.fun", "/account", HOSTS, OFF), { kind: "notFound" });
+  assert.deepEqual(decide("pickler.fun", "/console", HOSTS, OFF), { kind: "notFound" });
+  assert.deepEqual(decide("pickler.fun", "/passkey", HOSTS, OFF), { kind: "notFound" });
+  assert.deepEqual(decide("app.pickler.fun", "/leaderboard", HOSTS, OFF), { kind: "notFound" });
+  assert.deepEqual(decide("app.pickler.fun", "/portfolio", HOSTS, OFF), { kind: "notFound" });
 });
 
-test("a marketplace path asked of the studio is 404, not a redirect", () => {
-  // A redirect would give every screen two canonical URLs.
-  assert.deepEqual(decide("app.pickler.fun", "/leaderboard", HOSTS, OFF), { kind: "notFound" });
+test("no decision is a redirect any more, on either host", () => {
+  // The only redirect left in this function is the sign-in guard, which is not about an address.
+  for (const host of ["pickler.fun", "app.pickler.fun"]) {
+    for (const path of ["/", "/console", "/account", "/passkey", "/leaderboard", "/apply"]) {
+      const kind = decide(host, path, HOSTS, OFF).kind;
+      assert.ok(["serve", "notFound", "rewrite"].includes(kind), `${host}${path} gave ${kind}`);
+    }
+  }
 });
 
 test("shared paths are served on both hosts", () => {
@@ -72,35 +83,34 @@ test("development is inert: every path is served on localhost", () => {
 
 // --- One studio, one URL --------------------------------------------------------------------
 
-test("the studio lives at the root, so /console there is a second URL and redirects to it", () => {
-  // The same canonical-URL rule the 404 above applies in the other direction. It is a redirect and
-  // not a 404 because /console is linked from the nav, from the account and from old bookmarks.
-  assert.deepEqual(decide("app.pickler.fun", "/console", HOSTS, OFF), {
-    kind: "redirect",
-    to: "/",
-  });
+test("the studio lives at the root, so /console there is a second URL and is refused", () => {
+  // Not a redirect. Nothing has ever linked to it from outside this repository, and the links
+  // inside it resolve through `studioHref` instead.
+  assert.deepEqual(decide("app.pickler.fun", "/console", HOSTS, OFF), { kind: "notFound" });
 });
 
-test("/console on the marketplace still crosses to the studio host, keeping the path", () => {
-  // The cross-host hop does not also canonicalise: the studio host is where that rule is applied,
-  // and collapsing both here would hide whether the studio host applies it at all.
-  assert.deepEqual(decide("pickler.fun", "/console", HOSTS, OFF), {
-    kind: "redirect",
-    to: "https://app.pickler.fun/console",
-  });
+test("refusing /console does not refuse the studio itself", () => {
+  // The rewrite is internal and Next does not re-run middleware on it, so the page `/` renders is
+  // the one `/console` names. Getting this wrong 404s the studio's homepage for every visitor.
+  assert.deepEqual(decide("app.pickler.fun", "/", HOSTS, OFF), { kind: "rewrite", to: "/console" });
+});
+
+test("/console is still the studio where both products share a host", () => {
+  // On localhost and previews `/` is the marketplace, so the studio has to keep its own route.
+  assert.deepEqual(decide("localhost:3001", "/console", HOSTS, OFF), { kind: "serve" });
 });
 
 // --- The guard ------------------------------------------------------------------------------
 
 test("a protected path without a session goes to sign-in", () => {
   assert.equal(sentTo(decide("app.pickler.fun", "/account", HOSTS, OUT)), "/signin");
-  assert.equal(sentTo(decide("app.pickler.fun", "/custody", HOSTS, OUT)), "/signin");
+  assert.equal(sentTo(decide("app.pickler.fun", "/passkey", HOSTS, OUT)), "/signin");
 });
 
 test("sign-in carries where they were going, so they land there and not on the studio home", () => {
   // The round trip, not the spelling: what the guard writes is what the sign-in page reads back.
   assert.equal(nextOf(decide("app.pickler.fun", "/account", HOSTS, OUT)), "/account");
-  assert.equal(nextOf(decide("app.pickler.fun", "/custody", HOSTS, OUT)), "/custody");
+  assert.equal(nextOf(decide("app.pickler.fun", "/passkey", HOSTS, OUT)), "/passkey");
   assert.equal(nextOf(decide("localhost:3001", "/console", HOSTS, OUT)), "/console");
   // The studio root is the console, so coming back to `/` is coming back to the console.
   assert.equal(nextOf(decide("app.pickler.fun", "/", HOSTS, OUT)), "/");
@@ -113,7 +123,7 @@ test("the studio root is protected too, because it IS the console", () => {
 
 test("a protected path with a session is served", () => {
   assert.deepEqual(decide("app.pickler.fun", "/account", HOSTS, IN), { kind: "serve" });
-  assert.deepEqual(decide("app.pickler.fun", "/custody", HOSTS, IN), { kind: "serve" });
+  assert.deepEqual(decide("app.pickler.fun", "/passkey", HOSTS, IN), { kind: "serve" });
   assert.deepEqual(decide("app.pickler.fun", "/", HOSTS, IN), { kind: "rewrite", to: "/console" });
 });
 
@@ -135,7 +145,7 @@ test("the guard is inert when authentication is not configured", () => {
   // all. A guard that fired here would take every design check over those routes down with it.
   assert.deepEqual(decide("app.pickler.fun", "/", HOSTS, OFF), { kind: "rewrite", to: "/console" });
   assert.deepEqual(decide("app.pickler.fun", "/account", HOSTS, OFF), { kind: "serve" });
-  assert.deepEqual(decide("app.pickler.fun", "/custody", HOSTS, OFF), { kind: "serve" });
+  assert.deepEqual(decide("app.pickler.fun", "/passkey", HOSTS, OFF), { kind: "serve" });
   for (const path of PROTECTED) {
     assert.deepEqual(decide("localhost:3001", path, HOSTS, OFF), { kind: "serve" }, path);
   }
@@ -155,11 +165,17 @@ test("a path that merely starts with a protected name is not protected", () => {
 test("a path the host does not own is settled before the guard", () => {
   // Guarding first would answer /account on the marketplace with a sign-in page served from the
   // wrong host, and would bounce a studio-host 404 to sign-in instead of refusing it.
-  assert.deepEqual(decide("pickler.fun", "/account", HOSTS, OUT), {
-    kind: "redirect",
-    to: "https://app.pickler.fun/account",
-  });
+  assert.deepEqual(decide("pickler.fun", "/account", HOSTS, OUT), { kind: "notFound" });
+  assert.deepEqual(decide("pickler.fun", "/passkey", HOSTS, OUT), { kind: "notFound" });
   assert.deepEqual(decide("app.pickler.fun", "/leaderboard", HOSTS, OUT), { kind: "notFound" });
+  assert.deepEqual(decide("app.pickler.fun", "/console", HOSTS, OUT), { kind: "notFound" });
+});
+
+test("the old custody address is gone from the studio, with nothing left behind", () => {
+  // It was created hours ago, never deployed and never linked, so it needed no redirect. A
+  // marketplace path by default, which the studio host refuses like any other.
+  assert.deepEqual(decide("app.pickler.fun", "/custody", HOSTS, OFF), { kind: "notFound" });
+  assert.deepEqual(decide("app.pickler.fun", "/custody", HOSTS, OUT), { kind: "notFound" });
 });
 
 test("what both hosts share stays shared: the API does its own bearer check", () => {

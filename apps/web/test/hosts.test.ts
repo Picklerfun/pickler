@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ownerOf, productFor } from "../src/server/hosts";
+import { ownerOf, productFor, studioHref, studioUrl } from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -39,6 +39,7 @@ test("studio paths belong to the studio", () => {
   assert.equal(ownerOf("/signin"), "studio");
   assert.equal(ownerOf("/signup"), "studio");
   assert.equal(ownerOf("/apply"), "studio");
+  assert.equal(ownerOf("/passkey"), "studio");
   assert.equal(ownerOf("/auth/callback"), "studio");
 });
 
@@ -75,6 +76,38 @@ test("the static files both products' pages request belong to both", () => {
 
 test("taking custody is a studio path, not a marketplace one", () => {
   // The ceremony is reached from /account and from the studio's agent form. Left out of the studio
-  // list it resolves to the marketplace, and app.pickler.fun 404s its own custody flow.
-  assert.equal(ownerOf("/custody"), "studio");
+  // list it resolves to the marketplace, and app.pickler.fun 404s its own passkey flow. The concept
+  // is still custody; only the address a person sees says passkey.
+  assert.equal(ownerOf("/passkey"), "studio");
+});
+
+test("the old custody address is nobody's studio path any more", () => {
+  // Nothing was ever deployed under it and nothing links to it, so it is a marketplace path by the
+  // same default every unlisted segment gets — which means the studio host 404s it.
+  assert.equal(ownerOf("/custody"), "marketplace");
+});
+
+test("the studio's home has a different address on each host", () => {
+  // No one string is right everywhere, which is why this takes the product. On the marketplace it
+  // has to be absolute: the cross-host redirect that used to carry /console is gone.
+  const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
+  assert.equal(studioHref("studio", hosts), "/");
+  assert.equal(studioHref("marketplace", hosts), "https://app.pickler.fun/");
+  assert.equal(studioHref("either", hosts), "/console");
+});
+
+test("a studio path gets an origin only where it has to cross one", () => {
+  // /apply is the live case: the waitlist form is on the marketplace landing and sends whoever
+  // joins to a studio route, which the marketplace host now 404s rather than forwarding.
+  const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
+  assert.equal(studioUrl("marketplace", hosts, "/apply"), "https://app.pickler.fun/apply");
+  assert.equal(studioUrl("studio", hosts, "/apply"), "/apply");
+  assert.equal(studioUrl("either", hosts, "/apply"), "/apply");
+});
+
+test("the studio link follows a reconfigured studio host", () => {
+  // Hard-coding the production hostname would make a preview pair link at production.
+  const hosts = { marketplace: "market.test", studio: "studio.test" };
+  assert.equal(studioHref("marketplace", hosts), "https://studio.test/");
+  assert.equal(studioUrl("marketplace", hosts, "/apply"), "https://studio.test/apply");
 });

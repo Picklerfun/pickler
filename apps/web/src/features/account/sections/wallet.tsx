@@ -78,7 +78,7 @@ export function WalletSection({ state }: { state: WalletState }) {
               rather have it ready. Its key never leaves the enclave it is made in.
             </p>
             <div className={styles.cardActions}>
-              <ButtonLink as={Link} href="/custody" variant="primary" arrow>
+              <ButtonLink as={Link} href="/passkey" variant="primary" arrow>
                 Create my wallet
               </ButtonLink>
             </div>

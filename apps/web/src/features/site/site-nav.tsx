@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@pickler/ui";
+import { useStudioHref } from "./studio-href";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useState } from "react";
 import styles from "./site-nav.module.css";
@@ -63,6 +64,7 @@ export function SiteNav({
   surface?: "light" | "dark";
 }) {
   const pathname = usePathname();
+  const studio = useStudioHref();
   const [open, setOpen] = useState<string | null>(null);
   const owner = MENUS.find((menu) =>
     menu.items.some((item) => "href" in item && pathname.startsWith(item.href.split("#")[0]!)),
@@ -134,7 +136,7 @@ export function SiteNav({
               *from*: hard-coding dark here is right only while the bar is light, and on the dark
               bar it painted a dark action on a dark ground and disappeared. */}
           <Link
-            href="/console"
+            href={studio}
             className={styles.cta}
             data-surface={surface === "dark" ? "light" : "dark"}
           >
