@@ -95,8 +95,8 @@ const PUBLIC_READS = [
   "/v1/marketplace/leaderboard",
 ];
 
-// This is the test that guards the mount: with the routes on /v1 instead of /v1/marketplace, the
-// public agents list lands behind the workspace API's credentials and answers 401 here.
+// This is the test that guards the mount: with the routes on /v1 instead of /v1/marketplace, these
+// paths do not exist and answer 404 — and the public list would sit behind /v1/agents' credentials.
 test("every marketplace read answers without credentials", async () => {
   const api = app();
 
