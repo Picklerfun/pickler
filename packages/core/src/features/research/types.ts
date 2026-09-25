@@ -450,12 +450,9 @@ export function assertConfig(config: AgentConfig): void {
       throw new PilotError("INVALID_INPUT", `At most ${MAX_SKILLS} skills`);
     }
     for (const skill of config.skills) {
-      if (
-        !skill.name.trim() ||
-        skill.name.trim().length > 40 ||
-        !skill.prompt.trim() ||
-        skill.prompt.trim().length > MAX_SKILL_PROMPT
-      ) {
+      const name = skill.name.trim();
+      const prompt = skill.prompt.trim();
+      if (!name || name.length > 40 || !prompt || prompt.length > MAX_SKILL_PROMPT) {
         throw new PilotError(
           "INVALID_INPUT",
           `A skill needs a name (≤ 40) and a prompt (≤ ${MAX_SKILL_PROMPT})`,

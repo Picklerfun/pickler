@@ -54,6 +54,8 @@ export const studioOptionsSchema = z.object({
     limits: agentConfigSchema.shape.limits,
     intervalHours: agentConfigSchema.shape.intervalHours,
     uncertaintyPolicy: agentConfigSchema.shape.uncertaintyPolicy,
+    sources: agentConfigSchema.shape.sources,
+    skills: agentConfigSchema.shape.skills,
   }),
   plugins: z.array(
     z.object({

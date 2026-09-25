@@ -51,7 +51,16 @@ export const sourcesSchema = z
       .nullable(),
     books: z.array(z.string().max(40)),
   })
-  .strict();
+  .strict()
+  .superRefine((sources, ctx) => {
+    if (sources.web && sources.web.mode !== "anywhere" && sources.web.sites.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Prefer and only need at least one site",
+        path: ["web", "sites"],
+      });
+    }
+  });
 export const marketCatalogSchema = z.object({
   version: z.literal(1),
   categories: z.array(
