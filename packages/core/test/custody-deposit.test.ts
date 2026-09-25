@@ -8,7 +8,9 @@ import {
 import {
   DepositAlreadyRecordedError,
   DepositFeeTooHighError,
+  DepositNonceError,
   DepositsUnavailableError,
+  SignedTransactionMismatchError,
   InvalidDepositAmountError,
 } from "../src/features/wallets/domain/deposit.js";
 import type {
@@ -71,6 +73,11 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
     saveFails: null as Error | null,
     /** The chain's fee quote at confirm. */
     quote: { maxFeePerGas: 102n, maxPriorityFeePerGas: 2n },
+    /** The master's pending nonce at confirm. */
+    pendingNonce: 7,
+    /** Makes the signed-transaction check refuse, as for a transaction Turnkey altered. */
+    signedMismatch: false,
+    verified: [] as { signedTransaction: string; unsignedTransaction: string; signer: string }[],
     unrecorded: [] as { agentId: string; txHash: string; amountMicroUsd: bigint }[],
     activity: {
       id: "act-1",
@@ -150,6 +157,7 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
       state.prepared.push(input);
       return encode({
         chainId: 10143,
+        nonce: 7,
         to: TOKEN,
         value: 0n,
         gas: 60_000n,
@@ -162,6 +170,16 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
     inspectTransfer: decode,
     async quoteFees() {
       return state.quote;
+    },
+    async pendingNonce(address) {
+      assert.equal(address, MASTER);
+      return state.pendingNonce;
+    },
+    async verifySignedTransfer(input) {
+      state.verified.push(input);
+      if (state.signedMismatch) {
+        throw new SignedTransactionMismatchError("signer");
+      }
     },
     transactionHash: () => HASH,
     async broadcast(signed) {
@@ -432,5 +450,49 @@ test("a duplicate refused at save is not reported as unrecorded: its row exists"
     DepositAlreadyRecordedError,
   );
 
+  assert.deepEqual(f.state.unrecorded, []);
+});
+
+test("a stamped nonce other than the master's pending nonce is refused before Turnkey", async () => {
+  for (const pending of [6, 8]) {
+    const f = fakes();
+    const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+    // Stamped with 7; the chain has moved on to 8, or (a dropped transaction) back to 6.
+    f.state.pendingNonce = pending;
+
+    await assert.rejects(
+      service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
+      DepositNonceError,
+    );
+
+    assert.equal(f.state.forwards.length, 0, `pending ${pending}`);
+    assert.equal(f.state.broadcasts.length, 0);
+  }
+});
+
+test("the signed transaction is checked against the stamped one and the master before sending", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  const stampedTransaction = JSON.parse(unsigned.body).parameters.unsignedTransaction;
+
+  await service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned));
+
+  assert.deepEqual(f.state.verified, [
+    { signedTransaction: "02signed", unsignedTransaction: stampedTransaction, signer: MASTER },
+  ]);
+});
+
+test("a signed transaction that does not match is never broadcast or recorded", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  f.state.signedMismatch = true;
+
+  await assert.rejects(
+    service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
+    SignedTransactionMismatchError,
+  );
+
+  assert.equal(f.state.broadcasts.length, 0);
+  assert.equal(f.state.deposits.length, 0);
   assert.deepEqual(f.state.unrecorded, []);
 });

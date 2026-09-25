@@ -225,6 +225,7 @@ export interface AgentWalletRepository {
 /** What an unsigned transaction does, read back so a confirm can check it against the request. */
 export interface TransferInspection {
   chainId: number;
+  nonce: number;
   /** The contract called — the token, for an ERC-20 transfer. */
   to: string;
   /** Native value sent alongside; a deposit sends none. */
@@ -252,10 +253,24 @@ export interface DepositChain {
    * failed gas estimate is `DepositNotSendableError`, never a guessed limit.
    */
   prepareTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
+  /** The address's pending nonce, read exactly as `prepareTransfer` reads it. */
+  pendingNonce(address: string): Promise<number>;
   /** The chain's fees now, quoted exactly as `prepareTransfer` quotes them. */
   quoteFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>;
-  /** Null unless the transaction is an EIP-1559 call to an ERC-20 `transfer`, and nothing more. */
+  /**
+   * Null unless the transaction is a canonically encoded, unsigned EIP-1559 call to an ERC-20
+   * `transfer`, and nothing more.
+   */
   inspectTransfer(unsignedTransaction: string): TransferInspection | null;
+  /**
+   * Refuses (`SignedTransactionMismatchError`) unless the signed transaction carries exactly the
+   * unsigned one's fields and its recovered signer is `signer`.
+   */
+  verifySignedTransfer(input: {
+    signedTransaction: string;
+    unsignedTransaction: string;
+    signer: string;
+  }): Promise<void>;
   /** The hash a signed transaction will have on chain, lowercased, computed locally. */
   transactionHash(signedTransaction: string): string;
   /**

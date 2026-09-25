@@ -34,6 +34,30 @@ export class DepositFeeTooHighError extends Error {
   }
 }
 
+/**
+ * The stamped transaction's nonce is not the master wallet's pending nonce (HTTP 400). A lower one
+ * can never be mined and a higher one would sit queued behind a gap; only the pending nonce sends.
+ * The person prepares again.
+ */
+export class DepositNonceError extends Error {
+  constructor() {
+    super("This deposit is out of date. Prepare it again.");
+    this.name = "DepositNonceError";
+  }
+}
+
+/**
+ * The transaction Turnkey signed is not the one the passkey approved, or its signer is not the
+ * master wallet (HTTP 500). Turnkey answered something unexpected; nothing is broadcast. The
+ * message names fields only.
+ */
+export class SignedTransactionMismatchError extends Error {
+  constructor(detail: string) {
+    super(`The signed transaction does not match what was approved: ${detail}`);
+    this.name = "SignedTransactionMismatchError";
+  }
+}
+
 /** A deposit amount outside the offered set (HTTP 400). */
 export class InvalidDepositAmountError extends Error {
   constructor() {

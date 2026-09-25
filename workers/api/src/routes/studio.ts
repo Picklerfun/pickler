@@ -17,6 +17,7 @@ import {
   AgentWalletNotFoundError,
   DepositAlreadyRecordedError,
   DepositFeeTooHighError,
+  DepositNonceError,
   DepositNotSendableError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
@@ -24,6 +25,7 @@ import {
   NoCustodyAccountError,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
+  SignedTransactionMismatchError,
   type createCustodyService,
   type AgentDrafter,
   type AgentWallet,
@@ -129,6 +131,9 @@ function custodyFailure(
   if (error instanceof InvalidSignedActivityError) {
     return { code: "INVALID_SIGNED_ACTIVITY", status: 400 };
   }
+  if (error instanceof DepositNonceError) {
+    return { code: "DEPOSIT_NONCE_MISMATCH", status: 400 };
+  }
   if (error instanceof DepositFeeTooHighError) {
     return { code: "DEPOSIT_FEE_TOO_HIGH", status: 400 };
   }
@@ -179,6 +184,15 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof PilotError) {
       return c.json({ error: error.code }, pilotStatus(error.code));
+    }
+    if (error instanceof SignedTransactionMismatchError) {
+      // Turnkey answered a transaction other than the approved one; nothing was broadcast. The
+      // message names fields only, never the transaction or key material.
+      console.error("Signed deposit transaction mismatch", {
+        requestId: c.get("requestId"),
+        message: error.message,
+      });
+      return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
     }
     const custody = custodyFailure(error);
     if (custody) {

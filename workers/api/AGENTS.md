@@ -190,12 +190,16 @@ answer 503 `DEPOSITS_UNAVAILABLE`. `container.ts` gives the service `createAusdD
 `CHAIN_ID` and `MONAD_RPC_URL`, forgetting through the per-isolate AUSD reader. Failures are bare
 codes: 400 `INVALID_INPUT`, 400 `INVALID_SIGNED_ACTIVITY` (the stamped transfer is not this amount
 to this agent, or the body differs), 400 `DEPOSIT_FEE_TOO_HIGH` (a stamped fee over twice a fresh
-quote), 400 `SIGNED_ACTIVITY_REJECTED`, 404 `AGENT_WALLET_NOT_FOUND`, 409 `NO_CUSTODY_ACCOUNT`, 409
+quote), 400 `DEPOSIT_NONCE_MISMATCH` (the master's pending nonce moved; prepare again), 400
+`SIGNED_ACTIVITY_REJECTED`, 404 `AGENT_WALLET_NOT_FOUND`, 409 `NO_CUSTODY_ACCOUNT`, 409
 `DEPOSIT_NOT_SENDABLE` (the gas estimate failed), 409 `DEPOSIT_ALREADY_RECORDED` (a repeated
 confirm; nothing is sent again) and 502 `SIGNING_UNAVAILABLE`. A refused broadcast is 500 and
 records nothing. A deposit that was broadcast but could not be recorded is logged with
 `console.error` by `reportUnrecordedDeposit` in `container.ts`: request id, hash, amount and agent
-id, never key material.
+id, never key material. A signed transaction from Turnkey that is not the approved one, or not
+signed by the master, is 500 `INTERNAL_OR_PROVIDER_FAILURE`. It is logged with `console.error` as
+"Signed deposit transaction mismatch", with the request id and a message that names fields only.
+Nothing is broadcast.
 
 The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.
 

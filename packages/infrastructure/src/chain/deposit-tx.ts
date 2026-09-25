@@ -2,10 +2,27 @@
 // read back for core's checks, and the signed one broadcast. viem serializes and parses; the RPC
 // stays the plain JSON-RPC client in erc20.ts. Nothing here signs or holds a key.
 
-import { keccak256, parseTransaction, serializeTransaction, type Hex } from "viem";
+import {
+  keccak256,
+  parseTransaction,
+  recoverTransactionAddress,
+  serializeTransaction,
+  type Hex,
+} from "viem";
 import { AUSD, networkByChainId, requireSupportedChain } from "@pickler/chain";
-import { DepositNotSendableError, type DepositChain, type TransferInspection } from "@pickler/core";
-import { createJsonRpc, transferCalldata, type Rpc, type TokenBalanceReader } from "./erc20.js";
+import {
+  DepositNotSendableError,
+  SignedTransactionMismatchError,
+  type DepositChain,
+  type TransferInspection,
+} from "@pickler/core";
+import {
+  createJsonRpc,
+  JsonRpcError,
+  transferCalldata,
+  type Rpc,
+  type TokenBalanceReader,
+} from "./erc20.js";
 
 /** A tip for RPCs that do not implement `eth_maxPriorityFeePerGas`. */
 const FALLBACK_PRIORITY_FEE = 1_000_000_000n;
@@ -42,14 +59,42 @@ export interface TransferTx {
   gas: bigint;
 }
 
+/** JSON-RPC's "method not found". */
+const METHOD_NOT_FOUND = -32601;
+
+/**
+ * Only a node that does not implement the method gets the fallback tip. Any other failure — the
+ * RPC down, a timeout, a malformed answer — propagates: a guessed tip on a healthy chain's bad day
+ * is how fees go wrong without anyone seeing it.
+ */
+function methodNotFound(error: unknown): boolean {
+  return (
+    error instanceof JsonRpcError &&
+    (error.code === METHOD_NOT_FOUND || /method not found/i.test(error.message))
+  );
+}
+
 async function priorityFee(rpc: Rpc): Promise<bigint> {
   let answer: unknown;
   try {
     answer = await rpc.call("eth_maxPriorityFeePerGas", []);
-  } catch {
-    return FALLBACK_PRIORITY_FEE;
+  } catch (error) {
+    if (methodNotFound(error)) {
+      return FALLBACK_PRIORITY_FEE;
+    }
+    throw error;
   }
   return quantity(answer, "eth_maxPriorityFeePerGas");
+}
+
+/** The address's pending nonce. Prepare builds with it and confirm requires the stamped one equal it. */
+export async function pendingNonce(rpc: Rpc, address: string): Promise<number> {
+  return Number(
+    quantity(
+      await rpc.call("eth_getTransactionCount", [address, "pending"]),
+      "eth_getTransactionCount",
+    ),
+  );
 }
 
 export interface FeeQuote {
@@ -58,8 +103,8 @@ export interface FeeQuote {
 }
 
 /**
- * The fees a deposit pays: the tip from `eth_maxPriorityFeePerGas` (1 gwei where the method
- * fails) and twice the latest base fee plus that tip. Prepare builds with this and confirm caps the
+ * The fees a deposit pays: the tip from `eth_maxPriorityFeePerGas` (1 gwei where the node does
+ * not implement the method) and twice the latest base fee plus that tip. Prepare builds with this and confirm caps the
  * stamped fees against it, so both must go through this one function.
  */
 export async function quoteFees(rpc: Rpc): Promise<FeeQuote> {
@@ -84,11 +129,7 @@ export async function buildTransferTx(input: TransferTxInput): Promise<TransferT
   const { rpc } = input;
   const data = transferCalldata(input.to, input.amount) as Hex;
 
-  const [nonceAnswer, fees] = await Promise.all([
-    rpc.call("eth_getTransactionCount", [input.from, "pending"]),
-    quoteFees(rpc),
-  ]);
-  const nonce = Number(quantity(nonceAnswer, "eth_getTransactionCount"));
+  const [nonce, fees] = await Promise.all([pendingNonce(rpc, input.from), quoteFees(rpc)]);
 
   let estimate: bigint;
   try {
@@ -131,6 +172,11 @@ export function inspectTransfer(unsignedTransaction: string): TransferInspection
   if (parsed.type !== "eip1559" || parsed.r !== undefined || !parsed.to) {
     return null;
   }
+  // One encoding per transaction. A field with a leading zero parses to the same value but is
+  // different bytes, which the signer may read otherwise than this does: refused.
+  if (serializeTransaction(parsed).toLowerCase() !== unsignedTransaction.toLowerCase()) {
+    return null;
+  }
   if (parsed.accessList && parsed.accessList.length > 0) {
     return null;
   }
@@ -138,6 +184,7 @@ export function inspectTransfer(unsignedTransaction: string): TransferInspection
   if (
     !match ||
     parsed.chainId === undefined ||
+    parsed.nonce === undefined ||
     parsed.gas === undefined ||
     parsed.maxFeePerGas === undefined ||
     parsed.maxPriorityFeePerGas === undefined
@@ -146,6 +193,7 @@ export function inspectTransfer(unsignedTransaction: string): TransferInspection
   }
   return {
     chainId: parsed.chainId,
+    nonce: parsed.nonce,
     to: parsed.to,
     value: parsed.value ?? 0n,
     gas: parsed.gas,
@@ -159,6 +207,47 @@ export function inspectTransfer(unsignedTransaction: string): TransferInspection
 /** Turnkey returns Ethereum signatures without a `0x` prefix today and has said it will add one. */
 function prefixed(signedTransaction: string): Hex {
   return (signedTransaction.startsWith("0x") ? signedTransaction : `0x${signedTransaction}`) as Hex;
+}
+
+/**
+ * Refuses unless the signed transaction is the unsigned one plus a signature — every field,
+ * compared through viem's canonical encoding — and its recovered signer is `signer`. Turnkey signs
+ * what it is given, so a failure here means it answered something unexpected; nothing is sent.
+ */
+export async function verifySignedTransfer(input: {
+  signedTransaction: string;
+  unsignedTransaction: string;
+  signer: string;
+}): Promise<void> {
+  const raw = prefixed(input.signedTransaction);
+  let parsed: ReturnType<typeof parseTransaction>;
+  try {
+    parsed = parseTransaction(raw);
+  } catch {
+    throw new SignedTransactionMismatchError("it does not parse");
+  }
+  const { r, s, v, yParity, ...fields } = parsed;
+  if (r === undefined || s === undefined) {
+    throw new SignedTransactionMismatchError("it carries no signature");
+  }
+  void v;
+  void yParity;
+  if (serializeTransaction(fields).toLowerCase() !== input.unsignedTransaction.toLowerCase()) {
+    throw new SignedTransactionMismatchError("its fields differ from the approved transaction");
+  }
+  let recovered: string;
+  try {
+    recovered = await recoverTransactionAddress({
+      serializedTransaction: raw as Parameters<
+        typeof recoverTransactionAddress
+      >[0]["serializedTransaction"],
+    });
+  } catch {
+    throw new SignedTransactionMismatchError("its signer cannot be recovered");
+  }
+  if (recovered.toLowerCase() !== input.signer.toLowerCase()) {
+    throw new SignedTransactionMismatchError("it is signed by another address");
+  }
 }
 
 /** The hash a signed transaction has on chain, lowercased, with or without its `0x` prefix. */
@@ -230,7 +319,9 @@ export function createAusdDepositChain(config: AusdDepositChainConfig): DepositC
       return built.unsignedTransaction;
     },
     quoteFees: () => quoteFees(rpc),
+    pendingNonce: (address) => pendingNonce(rpc, address),
     inspectTransfer,
+    verifySignedTransfer,
     transactionHash,
     broadcast: (signedTransaction) => broadcastTransaction(rpc, signedTransaction),
     forgetBalance: (address) => config.balances.forget(address),

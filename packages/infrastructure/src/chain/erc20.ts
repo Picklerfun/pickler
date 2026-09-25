@@ -15,6 +15,17 @@ interface JsonRpcResponse {
 
 const RPC_TIMEOUT_MS = 10_000;
 
+/** A JSON-RPC `error` payload, with the node's code kept so callers can tell "no such method". */
+export class JsonRpcError extends Error {
+  constructor(
+    message: string,
+    readonly code: number | undefined,
+  ) {
+    super(message);
+    this.name = "JsonRpcError";
+  }
+}
+
 /** `balanceOf(address)` and `transfer(address,uint256)` selectors. */
 const BALANCE_OF = "0x70a08231";
 const TRANSFER = "0xa9059cbb";
@@ -46,7 +57,7 @@ export function createJsonRpc(url: string, call: typeof fetch = fetch): Rpc {
       const payload = (await response.json()) as JsonRpcResponse;
 
       if (payload.error) {
-        throw new Error(payload.error.message ?? `${method} failed`);
+        throw new JsonRpcError(payload.error.message ?? `${method} failed`, payload.error.code);
       }
 
       return payload.result;

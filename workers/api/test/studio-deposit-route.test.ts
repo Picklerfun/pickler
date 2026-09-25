@@ -6,6 +6,7 @@ import {
   createCustodyService,
   DepositAlreadyRecordedError,
   PilotError,
+  SignedTransactionMismatchError,
   type AgentWalletRepository,
   type CustodyRepository,
   type ForwardExpectations,
@@ -41,6 +42,9 @@ const RPC_ANSWERS: Record<string, unknown> = {
 
 function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
   const sent: unknown[] = [];
+  /** What the RPC answers as the master's pending nonce; a test can move it on. */
+  const chainState = { nonce: "0x7", signedMismatch: false };
+  const verified: { signedTransaction: string; unsignedTransaction: string; signer: string }[] = [];
   const forwards: ForwardExpectations[] = [];
   const deposits: { agentId: string; txHash: string; amountMicroUsd: bigint }[] = [];
   const forgotten: string[] = [];
@@ -52,6 +56,9 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
     };
     if (method === "eth_sendRawTransaction") {
       sent.push(params[0]);
+    }
+    if (method === "eth_getTransactionCount") {
+      return Response.json({ jsonrpc: "2.0", id: 1, result: chainState.nonce });
     }
     return Response.json({ jsonrpc: "2.0", id: 1, result: RPC_ANSWERS[method] });
   }) as typeof globalThis.fetch;
@@ -94,6 +101,12 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
     },
   };
 
+  const chain = createAusdDepositChain({
+    chainId: 10143,
+    rpcUrl: "https://rpc.example",
+    fetch,
+    balances: { forget: (address) => forgotten.push(address) },
+  });
   const custody = createCustodyService({
     challenges: { put: async () => {}, consume: async () => null },
     repository,
@@ -106,12 +119,17 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
     forwarder,
     agentActivities: createActivityBuilders({ baseUrl: "https://api.turnkey.com" }),
     agentWallets,
-    deposits: createAusdDepositChain({
-      chainId: 10143,
-      rpcUrl: "https://rpc.example",
-      fetch,
-      balances: { forget: (address) => forgotten.push(address) },
-    }),
+    deposits: {
+      ...chain,
+      // The real check recovers the signer from a genuine signature and is tested in
+      // infrastructure with a real key; this worker declares no signing library to make one.
+      async verifySignedTransfer(input) {
+        verified.push(input);
+        if (chainState.signedMismatch) {
+          throw new SignedTransactionMismatchError("it is signed by another address");
+        }
+      },
+    },
     delegatedPublicKey: null,
     venueContracts: [],
     rpId: "pickler.fun",
@@ -157,7 +175,7 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
       };
     },
   });
-  return { app, sent, forwards, deposits, forgotten };
+  return { app, sent, forwards, deposits, forgotten, chainState, verified };
 }
 
 const post = (body: unknown) => ({
@@ -207,7 +225,7 @@ test("prepare answers the sign_transaction activity for the master wallet, in th
 });
 
 test("confirm forwards, broadcasts, records the deposit and answers the hash", async () => {
-  const { app, sent, forwards, deposits, forgotten } = fixture();
+  const { app, sent, forwards, deposits, forgotten, verified } = fixture();
   const prepared = await prepare(app, 50);
 
   const response = await app.request(
@@ -223,6 +241,50 @@ test("confirm forwards, broadcasts, records the deposit and answers the hash", a
   assert.deepEqual(sent, [`0x${SIGNED}`]);
   assert.deepEqual(deposits, [{ agentId: AGENT, txHash: HASH, amountMicroUsd: 50_000_000n }]);
   assert.deepEqual(forgotten, [AGENT_ADDRESS]);
+  assert.deepEqual(verified, [
+    {
+      signedTransaction: SIGNED,
+      unsignedTransaction: JSON.parse(prepared.body).parameters.unsignedTransaction,
+      signer: MASTER,
+    },
+  ]);
+});
+
+test("a deposit prepared before the master's nonce moved is 400 and nothing is forwarded", async () => {
+  const { app, chainState, forwards, sent } = fixture();
+  const prepared = await prepare(app, 25);
+  chainState.nonce = "0x8";
+
+  const response = await app.request(
+    `/agents/${AGENT}/deposit/confirm`,
+    post({ amountAusd: 25, signed: stamp(prepared) }),
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "DEPOSIT_NONCE_MISMATCH" });
+  assert.deepEqual(forwards, []);
+  assert.deepEqual(sent, []);
+});
+
+test("a signed transaction that is not the approved one is 500, logged, and never sent", async (t) => {
+  const { app, chainState, sent, deposits } = fixture();
+  const prepared = await prepare(app, 25);
+  chainState.signedMismatch = true;
+  const logged: unknown[][] = [];
+  t.mock.method(console, "error", (...args: unknown[]) => logged.push(args));
+
+  const response = await app.request(
+    `/agents/${AGENT}/deposit/confirm`,
+    post({ amountAusd: 25, signed: stamp(prepared) }),
+  );
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "INTERNAL_OR_PROVIDER_FAILURE" });
+  assert.deepEqual(sent, []);
+  assert.deepEqual(deposits, []);
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0]![0], "Signed deposit transaction mismatch");
+  assert.match(String((logged[0]![1] as { message: string }).message), /another address/);
 });
 
 test("a stamped transfer to another recipient is refused with 400 and nothing is broadcast", async () => {

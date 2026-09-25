@@ -6,6 +6,7 @@ import {
   createJsonRpc,
   createTokenBalanceReader,
   erc20Balance,
+  JsonRpcError,
   toDisplay,
   transferCalldata,
   type Rpc,
@@ -173,4 +174,25 @@ test("the AUSD reader defaults to Monad testnet's public endpoint and AUSD contr
 
 test("the AUSD reader refuses an unsupported chain at composition", () => {
   assert.throws(() => createAusdBalanceReader({ chainId: 8453 }));
+});
+
+test("a JSON-RPC error keeps the node's code", async () => {
+  const rpc = createJsonRpc(
+    "https://rpc.example",
+    fakeFetch(() =>
+      Response.json({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32601, message: "Method not found" },
+      }),
+    ).call,
+  );
+
+  await assert.rejects(
+    rpc.call("eth_maxPriorityFeePerGas", []),
+    (error: unknown) =>
+      error instanceof JsonRpcError &&
+      error.code === -32601 &&
+      error.message === "Method not found",
+  );
 });

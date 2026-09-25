@@ -168,21 +168,30 @@ schedule and next due stay unchanged, so readiness for the current version survi
 
 `src/chain/deposit-tx.ts` is the chain side of a deposit and implements core's `DepositChain`. It
 uses the existing `viem` dependency only to serialize and parse transactions and to hash; the RPC
-stays `createJsonRpc`. `quoteFees` reads `eth_maxPriorityFeePerGas` (1 gwei when the method fails)
-and the latest block's base fee, and answers `maxFeePerGas = 2 × base + tip`. Prepare builds with it
-and core's confirm caps stamped fees against it, so both go through this one function.
+stays `createJsonRpc`, whose `error` payloads now throw `JsonRpcError` with the node's `code`.
+`quoteFees` reads `eth_maxPriorityFeePerGas` and the latest block's base fee, and answers
+`maxFeePerGas = 2 × base + tip`. The tip falls back to 1 gwei only when the node does not implement
+the method (code -32601 or "method not found"); any other failure propagates. Prepare builds with
+this quote and core's confirm caps stamped fees against it, so both go through this one function.
+`pendingNonce` reads `eth_getTransactionCount(address, "pending")`, likewise shared.
 `buildTransferTx` adds the pending nonce and a gas estimate. It builds an EIP-1559 `transfer` with
 the quoted fees and the estimate padded by a fifth, rounded up. A
 failed estimate is core's `DepositNotSendableError` with the RPC error as its cause, never a
 guessed limit. `inspectTransfer` answers null unless the input is an unsigned EIP-1559 call with no
-access list whose data is exactly `transfer(address,uint256)`; it also answers both fee caps.
+access list whose data is exactly `transfer(address,uint256)`, and unless viem re-serializes it to
+the same bytes; a non-canonical encoding such as a nonce with a leading zero is refused. It also
+answers the nonce and both fee caps. `verifySignedTransfer` parses the signed transaction, requires
+its fields without the signature to re-serialize to the approved unsigned transaction, and requires
+`recoverTransactionAddress` to give the expected signer. Anything else is core's
+`SignedTransactionMismatchError`, whose message names fields only.
 `transactionHash` is the lowercased keccak of the signed bytes, with or without `0x`.
 `broadcastTransaction` adds the `0x` Turnkey omits, sends it with `eth_sendRawTransaction` and
 requires the node's hash to equal the locally computed one. A refusal is not believed at once: it
 looks the hash up with `eth_getTransactionByHash`. If the node holds this very transaction (a
 repeated confirm answered "already known" or "nonce too low"), it answers the hash. Otherwise,
-including when the lookup fails, the original refusal propagates. `createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these
-for AUSD from `@pickler/chain` and forgets through the studio's balance reader.
+including when the lookup fails, the original refusal propagates.
+`createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these for AUSD from
+`@pickler/chain` and forgets through the studio's balance reader.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
 `DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
 `updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so

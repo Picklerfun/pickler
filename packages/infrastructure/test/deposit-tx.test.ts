@@ -1,14 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { keccak256, parseTransaction, serializeTransaction, type Hex } from "viem";
+import { keccak256, parseTransaction, serializeTransaction, toHex, toRlp, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { AUSD } from "@pickler/chain";
-import { DepositNotSendableError } from "@pickler/core";
+import { DepositNotSendableError, SignedTransactionMismatchError } from "@pickler/core";
 import {
   broadcastTransaction,
   buildTransferTx,
   createAusdDepositChain,
   inspectTransfer,
+  JsonRpcError,
+  pendingNonce,
   quoteFees,
+  verifySignedTransfer,
   transactionHash,
   transferCalldata,
   type Rpc,
@@ -120,24 +124,52 @@ test("the padded estimate rounds up", async () => {
 });
 
 test("an RPC without eth_maxPriorityFeePerGas falls back to a 1 gwei tip", async () => {
-  const { rpc } = fakeRpc({
-    ...healthy,
-    eth_maxPriorityFeePerGas: () => {
-      throw new Error("the method eth_maxPriorityFeePerGas does not exist");
-    },
-  });
+  for (const unsupported of [
+    new JsonRpcError("the method eth_maxPriorityFeePerGas does not exist", -32601),
+    new JsonRpcError("Method not found", undefined),
+  ]) {
+    const { rpc } = fakeRpc({
+      ...healthy,
+      eth_maxPriorityFeePerGas: () => {
+        throw unsupported;
+      },
+    });
 
-  const built = await buildTransferTx({
-    rpc,
-    chainId: 10143,
-    token: TOKEN,
-    from: FROM,
-    to: TO,
-    amount: 1n,
-  });
+    const built = await buildTransferTx({
+      rpc,
+      chainId: 10143,
+      token: TOKEN,
+      from: FROM,
+      to: TO,
+      amount: 1n,
+    });
 
-  assert.equal(built.maxPriorityFeePerGas, GWEI);
-  assert.equal(built.maxFeePerGas, 50n * GWEI * 2n + GWEI);
+    assert.equal(built.maxPriorityFeePerGas, GWEI);
+    assert.equal(built.maxFeePerGas, 50n * GWEI * 2n + GWEI);
+  }
+});
+
+test("any other failure of eth_maxPriorityFeePerGas propagates rather than guessing a tip", async () => {
+  for (const failure of [
+    new Error("eth_maxPriorityFeePerGas failed with HTTP 502"),
+    new JsonRpcError("header not found", -32000),
+  ]) {
+    const { rpc } = fakeRpc({
+      ...healthy,
+      eth_maxPriorityFeePerGas: () => {
+        throw failure;
+      },
+    });
+
+    await assert.rejects(quoteFees(rpc), failure);
+  }
+});
+
+test("the pending nonce is read with the pending tag", async () => {
+  const { rpc, calls } = fakeRpc(healthy);
+
+  assert.equal(await pendingNonce(rpc, FROM), 7);
+  assert.deepEqual(calls, [{ method: "eth_getTransactionCount", params: [FROM, "pending"] }]);
 });
 
 test("a failed estimate propagates as a transfer the master wallet cannot send", async () => {
@@ -206,6 +238,7 @@ const SIGNATURE = {
 test("inspection reads chain, token, value, gas, recipient and amount back", () => {
   assert.deepEqual(inspectTransfer(serializeTransaction(TRANSFER)), {
     chainId: 10143,
+    nonce: 3,
     to: TOKEN.toLowerCase(),
     value: 0n,
     gas: 60_000n,
@@ -371,5 +404,99 @@ test("a refusal the node cannot back with this transaction propagates", async ()
   ]) {
     const { rpc } = fakeRpc({ eth_sendRawTransaction: refuse, eth_getTransactionByHash: lookup });
     await assert.rejects(broadcastTransaction(rpc, signed), /nonce too low/);
+  }
+});
+
+test("a non-canonical encoding of the same transfer is refused", () => {
+  // The TRANSFER fields by hand, with the nonce encoded as 0x0003 instead of 0x03.
+  const fields = (nonce: Hex) =>
+    `0x02${toRlp([
+      toHex(10143),
+      nonce,
+      toHex(1n),
+      toHex(100n),
+      toHex(60_000n),
+      TRANSFER.to,
+      "0x",
+      TRANSFER.data,
+      [],
+    ]).slice(2)}` as Hex;
+  const canonical = fields("0x03");
+  const padded = fields("0x0003");
+  assert.equal(canonical, serializeTransaction(TRANSFER));
+  // viem reads both as nonce 3, so only the encoding check tells them apart.
+  assert.equal(parseTransaction(padded).nonce, 3);
+
+  assert.notEqual(inspectTransfer(canonical), null);
+  assert.equal(inspectTransfer(padded), null);
+});
+
+// A throwaway key for tests only; it holds nothing on any network.
+const MASTER_KEY = `0x${"11".repeat(32)}` as Hex;
+const OTHER_KEY = `0x${"22".repeat(32)}` as Hex;
+const master = privateKeyToAccount(MASTER_KEY);
+const other = privateKeyToAccount(OTHER_KEY);
+
+test("a transaction signed by the master with the approved fields passes", async () => {
+  const unsigned = serializeTransaction(TRANSFER);
+  const signed = await master.signTransaction(TRANSFER);
+
+  await verifySignedTransfer({
+    signedTransaction: signed.slice(2),
+    unsignedTransaction: unsigned,
+    signer: master.address.toLowerCase(),
+  });
+});
+
+test("a transaction signed by another key is refused", async () => {
+  const signed = await other.signTransaction(TRANSFER);
+
+  await assert.rejects(
+    verifySignedTransfer({
+      signedTransaction: signed,
+      unsignedTransaction: serializeTransaction(TRANSFER),
+      signer: master.address,
+    }),
+    (error: unknown) =>
+      error instanceof SignedTransactionMismatchError && /another address/.test(error.message),
+  );
+});
+
+test("a signed transaction whose fields differ from the approved one is refused", async () => {
+  for (const edit of [
+    { nonce: 4 },
+    { to: FROM as Hex },
+    { value: 1n },
+    { data: transferCalldata(FROM, 10_000_000n) as Hex },
+    { gas: 60_001n },
+    { maxFeePerGas: 101n },
+    { maxPriorityFeePerGas: 2n },
+    { chainId: 143 },
+  ]) {
+    const signed = await master.signTransaction({ ...TRANSFER, ...edit });
+
+    await assert.rejects(
+      verifySignedTransfer({
+        signedTransaction: signed,
+        unsignedTransaction: serializeTransaction(TRANSFER),
+        signer: master.address,
+      }),
+      (error: unknown) =>
+        error instanceof SignedTransactionMismatchError && /fields differ/.test(error.message),
+      JSON.stringify(edit, (_k, v) => (typeof v === "bigint" ? String(v) : v)),
+    );
+  }
+});
+
+test("an unsigned or unparseable answer is refused", async () => {
+  for (const signedTransaction of [serializeTransaction(TRANSFER), "0x02dead"]) {
+    await assert.rejects(
+      verifySignedTransfer({
+        signedTransaction,
+        unsignedTransaction: serializeTransaction(TRANSFER),
+        signer: master.address,
+      }),
+      SignedTransactionMismatchError,
+    );
   }
 });

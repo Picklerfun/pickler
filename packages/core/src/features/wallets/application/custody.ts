@@ -18,6 +18,7 @@ import { agentWalletPolicies, delegatedSelfDeletePolicy } from "../domain/agent-
 import {
   DepositAlreadyRecordedError,
   DepositFeeTooHighError,
+  DepositNonceError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
   isDepositAmount,
@@ -719,6 +720,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       ) {
         throw new DepositFeeTooHighError();
       }
+      // Exactly the pending nonce: a lower one can never be mined, a higher one waits on a gap.
+      if (transfer.nonce !== (await chain.pendingNonce(account.address))) {
+        throw new DepositNonceError();
+      }
       assertStampedAsPrepared(signed, (timestampMs) =>
         deps.agentActivities.signTransaction({
           subOrganizationId: account.subOrganizationId,
@@ -739,6 +744,12 @@ export function createCustodyService(deps: CustodyServiceDeps) {
           "Completed activity carried no signed transaction",
         );
       }
+      // What Turnkey signed must be what the passkey approved, signed by the master wallet.
+      await chain.verifySignedTransfer({
+        signedTransaction,
+        unsignedTransaction,
+        signer: account.address,
+      });
       // A repeated confirm of the same stamp: already sent and recorded, so nothing is sent again.
       if (await deps.agentWallets.depositRecorded(chain.transactionHash(signedTransaction))) {
         throw new DepositAlreadyRecordedError();
