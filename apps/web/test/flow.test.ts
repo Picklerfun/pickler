@@ -31,8 +31,6 @@ test("the flow starts on the account screen of the sign-up rail, with nothing kn
     email: "",
     code: "",
     handle: "",
-    address: null,
-    hasBackup: false,
   });
 });
 
@@ -43,9 +41,9 @@ test("signing up walks account, code, handle, welcome — and stops there", () =
     { type: "code_verified" },
     { type: "handle_claimed", handle: "nightowl" },
   ]);
-  // The walk, not the rail. A rail that merely stopped listing PASSKEY would leave this green
-  // with `passkey` still in it, which is the whole reason this asserts the steps a person is put
-  // through rather than the labels drawn above them.
+  // The walk, not the rail. A rail that merely stopped listing HANDLE would leave this green
+  // with the step still reachable, which is the whole reason this asserts the steps a person is
+  // put through rather than the labels drawn above them.
   assert.deepEqual(steps, ["code", "code", "handle", "welcome"]);
   assert.deepEqual(state, {
     mode: "up",
@@ -53,27 +51,7 @@ test("signing up walks account, code, handle, welcome — and stops there", () =
     email: "ana@pickler.xyz",
     code: "482913",
     handle: "nightowl",
-    address: null,
-    hasBackup: false,
   });
-});
-
-test("custody is a rail of its own, entered by building an agent", () => {
-  const signedUp = walk(INITIAL, [
-    { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
-    { type: "handle_claimed", handle: "nightowl" },
-  ]).state;
-
-  const { steps, state } = walk(signedUp, [
-    { type: "custody_started" },
-    { type: "passkey_created", address: "0xAbC0000000000000000000000000000000000001" },
-    { type: "backup_added" },
-  ]);
-  assert.deepEqual(steps, ["passkey", "wallet", "wallet"]);
-  assert.equal(state.mode, "custody", "the rail has to change with the step, not only the screen");
-  assert.equal(state.address, "0xAbC0000000000000000000000000000000000001");
-  assert.equal(state.hasBackup, true);
 });
 
 test("signing in walks account, code, welcome — the handle is never asked for", () => {
@@ -145,7 +123,6 @@ test("leaving the new-device rail invents nothing and forgets nothing", () => {
     step: "recover",
     email: "ana@pickler.xyz",
     handle: "nightowl",
-    address: "0x01",
   };
   assert.deepEqual(next(recover, { type: "device_skipped" }), {
     ...recover,
@@ -173,47 +150,6 @@ test("a fresh code replaces whatever was typed for the last one", () => {
     { type: "code_sent", email: "ana@pickler.xyz" },
   ]).state;
   assert.equal(typed.code, "");
-});
-
-test("adding a backup passkey leaves the screen where it is, but is recorded", () => {
-  const onBackup = walk(INITIAL, [
-    { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
-    { type: "handle_claimed", handle: "nightowl" },
-    { type: "passkey_created", address: "0x01" },
-  ]).state;
-  assert.equal(onBackup.hasBackup, false);
-
-  const added = next(onBackup, { type: "backup_added" });
-  assert.equal(added.step, "wallet", "a backup is an addition to the account, not a new screen");
-  // The machine has to hold it, not the screen: the rail above the form reads it too, and two
-  // copies of the same fact is how the rail and the screen come to disagree.
-  assert.equal(added.hasBackup, true);
-  assert.deepEqual(added, { ...onBackup, hasBackup: true }, "nothing else may move");
-});
-
-test("a backup lights the last phase rather than leaving it pending under you", () => {
-  const onWallet = walk(INITIAL, [
-    { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
-    { type: "handle_claimed", handle: "nightowl" },
-    { type: "custody_started" },
-    { type: "passkey_created", address: "0x01" },
-  ]).state;
-  assert.deepEqual(rail(onWallet), [phase("PASSKEY", "done"), phase("BACKUP", "active")]);
-
-  // BACKUP is the one phase that can finish while you are still standing on it, because a backup
-  // is an addition rather than a place to go. Once it exists nothing on the rail is pending.
-  assert.deepEqual(rail(next(onWallet, { type: "backup_added" })), [
-    phase("PASSKEY", "done"),
-    phase("BACKUP", "done"),
-  ]);
-});
-
-test("a backup does not light a phase on a rail that has no backup in it", () => {
-  // `hasBackup` is account state and survives a rail change; the sign-in rail must not read it.
-  const stray: FlowState = { ...INITIAL, mode: "in", step: "welcome", hasBackup: true };
-  assert.deepEqual(rail(stray), [phase("ACCOUNT", "done"), phase("IN", "active")]);
 });
 
 test("the sign-up rail lights the phase you are on and every phase before it", () => {
@@ -244,16 +180,6 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
   );
 });
 
-test("the custody rail lights its two phases in turn", () => {
-  const signedUp = walk(INITIAL, [
-    { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
-    { type: "handle_claimed", handle: "nightowl" },
-  ]).state;
-  const onPasskey = next(signedUp, { type: "custody_started" });
-  assert.deepEqual(rail(onPasskey), [phase("PASSKEY", "active"), phase("BACKUP", "todo")]);
-});
-
 test("the sign-in rail has two phases, not the sign-up rail's three", () => {
   const signIn = next(INITIAL, { type: "mode_chosen", mode: "in" });
   assert.deepEqual(rail(signIn), [phase("ACCOUNT", "active"), phase("IN", "todo")]);
@@ -282,20 +208,14 @@ test("the new-device rail lights each phase in turn", () => {
 test("a step outside the current rail lights nothing rather than lighting everything", () => {
   // Not reachable through `next`, but `rail` is called on whatever a screen holds, and a
   // findIndex miss returns -1 — which, compared with `<`, would mark every phase done.
-  const stray: FlowState = { ...INITIAL, mode: "in", step: "passkey" };
+  const stray: FlowState = { ...INITIAL, mode: "in", step: "recovered" };
   assert.deepEqual(rail(stray), [phase("ACCOUNT", "todo"), phase("IN", "todo")]);
 });
 
-test("signing up no longer asks for a passkey", () => {
-  const steps = stepsFor("up");
-  assert.ok(!steps.includes("passkey"));
-  assert.ok(!steps.includes("wallet"));
-});
-
-test("the custody steps still exist, for the flow that needs them", () => {
-  assert.deepEqual(stepsFor("custody"), ["passkey", "wallet"]);
-});
-
-test("signing in is unchanged", () => {
+test("neither rail this machine still drives ever asks for a passkey", () => {
+  // Enrolment — the ceremony that creates a sub-organization — is not a step of any Mode this
+  // file models any more: it moved entirely into the studio's own "Create and run it once". So
+  // there is no `Step` value left to assert an absence of; the type itself is the guarantee.
+  assert.deepEqual(stepsFor("up"), ["auth", "code", "handle", "welcome"]);
   assert.deepEqual(stepsFor("in"), ["auth", "code", "welcome"]);
 });

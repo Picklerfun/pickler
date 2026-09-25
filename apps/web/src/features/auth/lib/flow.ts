@@ -7,29 +7,19 @@
 // The names are the canvas's own — `STEPS` and `RAILS` below are the same words, in the same
 // order, as the constants in the canvas's logic half. The canvas also has an `agent` rail —
 // `{ LIMITS: ['agent'], LIVE: ['done'] }`, whose two steps are titled NEW AGENT and AGENT LIVE —
-// for creating an agent. That flow is not modelled here, and it is where the `custody` rail below
-// is entered from: the canvas drew custody hanging off agent creation before the code did.
+// for creating an agent, and it once drew a `custody` rail hanging off it — a passkey step and a
+// backup step, mounted at /passkey. That rail is gone from here: the studio's own "Create and run
+// it once" ceremony (`features/studio/create/ceremony.ts`) is a second, independent sequence that
+// was built to do the same job and never called into this one, so the custody rail sat in this
+// file unreachable from any page. Under the studio-create-and-fund specification the
+// sub-organization is born in exactly one place — that ceremony — so the rail that could also
+// have made one is deleted rather than left to rot. `/passkey` now renders outside this machine
+// entirely; see `PasskeyAddFlow` in `components/passkey-flow.tsx`.
 
-export type Step =
-  | "auth"
-  | "code"
-  | "handle"
-  | "passkey"
-  | "wallet"
-  | "welcome"
-  | "recover"
-  | "approve"
-  | "recovered";
+export type Step = "auth" | "code" | "handle" | "welcome" | "recover" | "approve" | "recovered";
 
-/**
- * Which rail is on screen: creating an account, returning to one, adding a device to one, or
- * taking custody.
- *
- * Custody is its own rail because it no longer happens at sign-up. The Turnkey sub-organization is
- * created when somebody builds their first agent, so a person who has only ever traded holds a
- * session and no custody — which is the correct state for them, not a half-finished one.
- */
-export type Mode = "up" | "in" | "recover" | "custody";
+/** Which rail is on screen: creating an account, returning to one, or adding a device to one. */
+export type Mode = "up" | "in" | "recover";
 
 export interface FlowState {
   mode: Mode;
@@ -37,17 +27,6 @@ export interface FlowState {
   email: string;
   code: string;
   handle: string;
-  /**
-   * The master wallet's address, known only once a passkey has created one. This is the screens'
-   * one copy of it: the register response carries it too, but only so the shell can put it here.
-   */
-  address: string | null;
-  /**
-   * Whether the account has a second passkey. Account state rather than a place in the flow, so
-   * it moves no step — but the wallet screen's copy and the rail's BACKUP phase both read it, and
-   * a screen holding it privately is how those two come to disagree.
-   */
-  hasBackup: boolean;
 }
 
 /**
@@ -62,10 +41,6 @@ export type FlowEvent =
   | { type: "code_changed"; code: string }
   | { type: "code_verified" }
   | { type: "handle_claimed"; handle: string }
-  /** Building a first agent, which is the thing that needs a sub-organization to exist. */
-  | { type: "custody_started" }
-  | { type: "passkey_created"; address: string }
-  | { type: "backup_added" }
   /** Signed in, but this browser holds no passkey for the account. */
   | { type: "device_unknown" }
   | { type: "approve_started" }
@@ -100,12 +75,6 @@ const RAILS: Record<Mode, readonly Phase[]> = {
     // Sign-up ends where signing in ends, under the label the `in` rail already gives `welcome`.
     { label: "IN", steps: ["welcome"] },
   ],
-  // Entered from agent creation, never from sign-up. The two phases are the canvas's own, moved
-  // here whole: what they ask of a person has not changed, only when they are asked.
-  custody: [
-    { label: "PASSKEY", steps: ["passkey"] },
-    { label: "BACKUP", steps: ["wallet"] },
-  ],
   in: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
     { label: "IN", steps: ["welcome"] },
@@ -132,8 +101,6 @@ export const INITIAL: FlowState = {
   email: "",
   code: "",
   handle: "",
-  address: null,
-  hasBackup: false,
 };
 
 export function next(state: FlowState, event: FlowEvent): FlowState {
@@ -153,14 +120,6 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       // Sign-up is over here. It used to fall through to `passkey`, which is what made every new
       // account create custody it had no use for yet.
       return { ...state, step: "welcome", handle: event.handle };
-    case "custody_started":
-      return { ...state, mode: "custody", step: "passkey" };
-    case "passkey_created":
-      return { ...state, step: "wallet", address: event.address };
-    case "backup_added":
-      // A backup is an addition to the account, not a place in the flow: the wallet screen stays
-      // up and says so. The step does not move; what the screen and the rail say does.
-      return { ...state, hasBackup: true };
     case "device_unknown":
       // Not just another screen — the rail above the form becomes the three-phase recovery one.
       return { ...state, mode: "recover", step: "recover" };
@@ -185,16 +144,12 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
 export function rail(state: FlowState): RailPhase[] {
   const phases = RAILS[state.mode];
   const at = phases.findIndex((current) => current.steps.includes(state.step));
-  // The one phase that can finish while you are still standing on it. A backup is an addition to
-  // the account rather than a screen to leave, so once it exists nothing on the rail is pending
-  // and BACKUP goes green under you instead of sitting there asking for something already done.
-  const finished = state.step === "wallet" && state.hasBackup;
   return phases.map((current, index) => ({
     label: current.label,
-    active: index === at && !finished,
+    active: index === at,
     // `at` is -1 when the step belongs to no phase of this rail, and `index < -1` is false for
     // every phase — so a rail that does not contain the step lights nothing, rather than
     // reading as "every phase is behind you".
-    done: index < at || (index === at && finished),
+    done: index < at,
   }));
 }

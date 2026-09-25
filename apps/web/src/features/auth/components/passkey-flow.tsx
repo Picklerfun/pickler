@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
@@ -11,15 +11,16 @@ import {
   SessionExpired,
   addPasskey,
   alreadyEnrolled,
-  createWallet,
   describeCustodyFailure,
   isEnrolledHere,
   landing,
   markEnrolled,
   openChallenge,
+  passkeyScreenFor,
   type CustodyDeps,
+  type PasskeyScreen,
 } from "../lib/custody";
-import { wallet as readWallet } from "../lib/custody-api";
+import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
 import type { ChallengeOptionsDto, WalletDto } from "../lib/custody-api";
 import { describeDevice } from "../lib/device";
 import { INITIAL, next, rail } from "../lib/flow";
@@ -31,14 +32,14 @@ import { AuthHeader } from "./auth-header";
 import { PasskeySheet } from "./passkey-sheet";
 import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
+import { AddPasskeyStep, type PasskeysRead } from "./steps/add-passkey-step";
 import { CodeStep } from "./steps/code-step";
 import { HandleStep } from "./steps/handle-step";
 import { NewDeviceStep, RecoveredStep } from "./steps/new-device-step";
-import { PasskeyStep } from "./steps/passkey-step";
-import { WalletStep } from "./steps/wallet-step";
+import { NoneYetStep } from "./steps/none-yet-step";
 import { WelcomeStep } from "./steps/welcome-step";
 
-/** What a backup is called in the account's list of passkeys; the device it lands on is not ours. */
+/** What a second passkey is called in the account's list, wherever this file adds one. */
 const BACKUP_LABEL = "Backup passkey";
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
@@ -56,6 +57,72 @@ function enrolmentStore() {
   }
 }
 
+/**
+ * The access token and the person it belongs to. supabase-js refreshes an expired session as it
+ * answers, so this is read again after every prompt rather than carried across one. Shared by
+ * both flows below: neither closes over component state to get it.
+ */
+async function session(): Promise<{ token: string; userId: string }> {
+  const supabase = getSupabase();
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+  if (!data.session) {
+    throw new SessionExpired();
+  }
+  return { token: data.session.access_token, userId: data.session.user.id };
+}
+
+/** Every ceremony either flow below runs is stamped the same way, against the same token. */
+function custody(): CustodyDeps {
+  return {
+    token: async () => (await session()).token,
+    credentials: navigator.credentials,
+    api: CUSTODY_API,
+    stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
+  };
+}
+
+/** A 404 from the profile or the wallet route is an ordinary state, not a failure. */
+function absent<T>(error: unknown): T | null {
+  if (error instanceof ApiError && error.status === 404) {
+    return null;
+  }
+  throw error;
+}
+
+/**
+ * The form column and the board, on whichever of the two flows the route asked for.
+ *
+ * `add` — /passkey — is not this file's sign-up/sign-in machine at all. It used to be: the
+ * enrolment ceremony that creates a sub-organization lived behind a `custody` mode of the same
+ * `useReducer` this file still runs for `up`/`in`. Under the studio-create-and-fund specification
+ * a sub-organization is born in exactly one place — the first agent's "Create and run it once",
+ * in `features/studio/create/ceremony.ts` — so that mode is gone from `lib/flow.ts`, and `add` is
+ * routed to `PasskeyAddFlow`, a smaller component with no rail and no `handle_claimed` to trip
+ * over. See that component and `NoneYetStep` for what is left for a person with no sub-organization
+ * yet to do here: nothing that starts one.
+ */
+export function PasskeyFlow({
+  board,
+  mode,
+  destination,
+}: {
+  board: AuthBoardData;
+  /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
+  mode: "up" | "in" | "add";
+  /**
+   * Where every screen that offers a way out of this flow goes. The route supplies it from the
+   * `next` the guard wrote when it turned an anonymous request away, already checked by `returnTo`
+   * — someone bounced from /account has to come back to /account, not be dropped on the studio.
+   * Undefined when nobody was turned away, and then the studio's own home is the destination.
+   */
+  destination?: string | undefined;
+}) {
+  if (mode === "add") {
+    return <PasskeyAddFlow board={board} destination={destination} />;
+  }
+  return <SignFlow board={board} mode={mode} destination={destination} />;
+}
+
 /** Everything the sheet needs to draw itself, and the challenge the ceremony behind it will use. */
 interface SheetState {
   ceremony: Ceremony;
@@ -69,47 +136,29 @@ interface SheetState {
 }
 
 /**
- * The form column and the board, with the flow machine driving which screen is in the column.
+ * The sign-up and sign-in rail: `create/code/handle/welcome` and its sign-in-only cousin, plus
+ * the new-device recovery rail entered from either. No ceremony here can create a
+ * sub-organization — that moved to the studio — so the only ceremony this component ever opens is
+ * `here`, the one that lends a browser that has never seen the account a passkey for it.
  *
  * The division of labour is the whole design here. A screen owns what only it does — sending a
  * code, verifying one, checking a handle — and holds its own busy and error while it does it. The
- * shell owns what crosses screens, which is the custody ceremony: it is the one piece of work
- * whose failure halfway through matters to a screen other than the one that started it, and it is
- * the reason `lib/custody.ts` exists rather than a `useCallback` here. This file is the wiring.
+ * shell owns what crosses screens, which is the new-device ceremony: it is the one piece of work
+ * whose failure halfway through matters to a screen other than the one that started it.
  */
-export function PasskeyFlow({
+function SignFlow({
   board,
   mode,
   destination,
 }: {
   board: AuthBoardData;
-  /**
-   * Which rail the route opens: `up` for /signup, `in` for /signin, `custody` for /custody. It is
-   * the route's to give, never defaulted here, because it is what decides whether a verified code
-   * goes on to the handle screen or straight to welcome. `recover` is entered by `device_unknown`,
-   * never opened.
-   *
-   * `custody` opens on the passkey step rather than on `auth`: whoever reaches it is already signed
-   * in — the ceremony needs their session — so asking for an email again would be asking a question
-   * that is already answered.
-   */
-  mode: "up" | "in" | "custody";
-  /**
-   * Where every screen that offers a way out of this flow goes. The route supplies it from the
-   * `next` the guard wrote when it turned an anonymous request away, already checked by `returnTo`
-   * — someone bounced from /account has to come back to /account, not be dropped on the studio.
-   * Undefined when nobody was turned away, and then the studio's own home is the destination.
-   */
+  mode: "up" | "in";
   destination?: string | undefined;
 }) {
   const router = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [state, dispatch] = useReducer(next, {
-    ...INITIAL,
-    mode,
-    ...(mode === "custody" ? { step: "passkey" as const } : {}),
-  });
+  const [state, dispatch] = useReducer(next, { ...INITIAL, mode });
   const [sheet, setSheet] = useState<SheetState | null>(null);
   /** Only ever the sign-in rail's: nothing reaches the welcome screen from the sign-up rail. */
   const [profileHandle, setProfileHandle] = useState("");
@@ -118,28 +167,6 @@ export function PasskeyFlow({
   const [claimError, setClaimError] = useState<string | null>(null);
 
   const device = describeDevice(userAgent());
-
-  /**
-   * The access token and the person it belongs to. supabase-js refreshes an expired session as it
-   * answers, so this is read again after every prompt rather than carried across one.
-   */
-  async function session() {
-    const supabase = getSupabase();
-    const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-    if (!data.session) {
-      throw new SessionExpired();
-    }
-    return { token: data.session.access_token, userId: data.session.user.id };
-  }
-
-  function custody(): CustodyDeps {
-    return {
-      token: async () => (await session()).token,
-      credentials: navigator.credentials,
-      api: CUSTODY_API,
-      stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
-    };
-  }
 
   /**
    * A ceremony that did not finish — including one the person dismissed, which is why the null
@@ -182,7 +209,7 @@ export function PasskeyFlow({
     setSheet(running);
     void (async () => {
       try {
-        await runCeremony(current.ceremony, options);
+        await runCeremony(options);
         setSheet({ ...running, phase: "ok" });
       } catch (caught) {
         // The new-device screen is shown on a hint that this browser holds no passkey. Refusing a
@@ -215,37 +242,25 @@ export function PasskeyFlow({
   }
 
   /**
-   * The three ceremonies, and what each one tells the flow machine when it lands.
-   *
-   * Note what is not here: the address is handed to `passkey_created` and read back from
-   * `state.address` afterwards. The register response carries it, but the screens have one copy
-   * of it and this is the only line that puts it there.
+   * The one ceremony this flow can still open: lending a browser that holds no passkey for the
+   * account one, the second half of "use my phone" on the new-device rail. `open` is only ever
+   * called with `"here"`, so this needs no ceremony of its own to branch on.
    */
-  async function runCeremony(ceremony: Ceremony, options: ChallengeOptionsDto) {
-    if (ceremony === "create") {
-      const created = await createWallet(custody(), { options, label: device });
-      await remember();
-      dispatch({ type: "passkey_created", address: created.address });
-      return;
-    }
-
-    const backup = ceremony === "backup";
+  async function runCeremony(options: ChallengeOptionsDto) {
     await addPasskey(custody(), {
       options,
-      // A backup goes on a phone or a security key, which is what "cross-platform" asks the
-      // operating system for; a new device saves one on itself and the phone only stamps.
-      attachment: backup ? "cross-platform" : "platform",
-      label: backup ? BACKUP_LABEL : device,
+      attachment: "platform",
+      label: device,
       onStep: (step) => {
         setSheet((current) => (current ? { ...current, step } : current));
-        if (!backup && step === 2) {
+        if (step === 2) {
           // The rail moves to APPROVE as the phone is asked, not after it answers.
           dispatch({ type: "approve_started" });
         }
       },
     });
     await remember();
-    dispatch(backup ? { type: "backup_added" } : { type: "device_added" });
+    dispatch({ type: "device_added" });
   }
 
   /**
@@ -284,9 +299,9 @@ export function PasskeyFlow({
             dispatch({ type: "code_verified" });
             return;
           case "passkey":
-            dispatch({ type: "mode_chosen", mode: "up" });
+            // No wallet yet either — a sub-organization is only ever born in the studio now, so
+            // this account belongs on the studio's own door to that rather than on a screen here.
             dispatch({ type: "code_verified" });
-            dispatch({ type: "handle_claimed", handle: handle ?? "" });
             return;
           case "recover":
             dispatch({ type: "device_unknown" });
@@ -326,7 +341,6 @@ export function PasskeyFlow({
     })();
   }
 
-  const busy = sheet !== null;
   const phase: "idle" | "creating" | "verifying" =
     sheet?.ceremony === "here" && sheet.phase === "busy"
       ? sheet.step === 2
@@ -383,17 +397,6 @@ export function PasskeyFlow({
               onClaimed={claim}
             />
           )}
-          {state.step === "passkey" && <PasskeyStep busy={busy} onCreate={() => open("create")} />}
-          {state.step === "wallet" && state.address !== null && (
-            <WalletStep
-              address={state.address}
-              deviceLabel={device}
-              hasBackup={state.hasBackup}
-              busy={busy}
-              onAddBackup={() => open("backup")}
-              onFinish={() => router.push(target)}
-            />
-          )}
           {state.step === "welcome" && (
             <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
           )}
@@ -414,7 +417,7 @@ export function PasskeyFlow({
 
       <PasskeySheet
         open={sheet !== null}
-        ceremony={sheet?.ceremony ?? "create"}
+        ceremony={sheet?.ceremony ?? "here"}
         phase={sheet?.phase ?? "idle"}
         error={sheet?.error ?? null}
         rpId={sheet?.options?.rp.id ?? null}
@@ -430,10 +433,161 @@ export function PasskeyFlow({
   );
 }
 
-/** A 404 from the profile or the wallet route is an ordinary state, not a failure. */
-function absent<T>(error: unknown): T | null {
-  if (error instanceof ApiError && error.status === 404) {
-    return null;
+/** What `PasskeyAddFlow` has read about the account, before it can choose a screen. */
+type AddFlowScreen = "loading" | "error" | PasskeyScreen;
+
+/** The ceremony sheet `PasskeyAddFlow` runs, always the same one: adding a second passkey. */
+interface AddSheetState {
+  phase: SheetPhase;
+  error: string | null;
+  options: ChallengeOptionsDto | null;
+  step?: 1 | 2;
+}
+
+/**
+ * `/passkey`, reached only by a signed-in person.
+ *
+ * There is exactly one thing this screen can do that the studio cannot: add another passkey to a
+ * sub-organization that already exists, and show which ones are on it. It cannot create one — see
+ * `PasskeyFlow`'s own comment for where that ceremony lives now — so the first read this component
+ * makes decides which of two screens to draw, via the same signal `landing` reads for sign-in:
+ * GET /wallets/me, where a 404 means there is no sub-organization yet.
+ */
+function PasskeyAddFlow({
+  board,
+  destination,
+}: {
+  board: AuthBoardData;
+  destination?: string | undefined;
+}) {
+  const studio = useStudioHref();
+  const target = destination ?? studio;
+  const [screen, setScreen] = useState<AddFlowScreen>("loading");
+  const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
+  const [sheet, setSheet] = useState<AddSheetState | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const { token } = await session();
+        const [found, keys] = await Promise.all([
+          readWallet(token).then(
+            (value) => value,
+            (error: unknown) => absent<WalletDto>(error),
+          ),
+          readPasskeys(token).then(
+            (value): PasskeysRead => ({ kind: "ready", passkeys: value }),
+            (): PasskeysRead => ({ kind: "failed" }),
+          ),
+        ]);
+        if (!live) {
+          return;
+        }
+        setScreen(passkeyScreenFor({ hasSubOrganization: found !== null }));
+        setPasskeysState(keys);
+      } catch {
+        if (live) {
+          setScreen("error");
+        }
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
+  function refreshPasskeys() {
+    void (async () => {
+      try {
+        const { token } = await session();
+        const keys = await readPasskeys(token);
+        setPasskeysState({ kind: "ready", passkeys: keys });
+      } catch {
+        setPasskeysState({ kind: "failed" });
+      }
+    })();
   }
-  throw error;
+
+  function openSheet() {
+    const opening: AddSheetState = { phase: "busy", error: null, options: null };
+    setSheet(opening);
+    void (async () => {
+      try {
+        setSheet({ ...opening, phase: "idle", options: await openChallenge(custody()) });
+      } catch (caught) {
+        setSheet({ ...opening, phase: "error", error: describeCustodyFailure(caught) });
+      }
+    })();
+  }
+
+  function confirm() {
+    const current = sheet;
+    const options = current?.options;
+    if (!current || !options) {
+      return;
+    }
+    const running: AddSheetState = { ...current, phase: "busy", error: null };
+    setSheet(running);
+    void (async () => {
+      try {
+        await addPasskey(custody(), {
+          options,
+          // A second key belongs on something other than the device in your hand, which is what
+          // "cross-platform" asks the operating system for.
+          attachment: "cross-platform",
+          label: BACKUP_LABEL,
+          onStep: (step) => setSheet((now) => (now ? { ...now, step } : now)),
+        });
+        try {
+          markEnrolled(enrolmentStore(), (await session()).userId);
+        } catch {
+          // The ceremony already succeeded; a session that expired on this last read changes
+          // nothing it did.
+        }
+        setSheet({ ...running, phase: "ok" });
+        refreshPasskeys();
+      } catch (caught) {
+        setSheet({ ...running, phase: "error", error: describeCustodyFailure(caught) });
+      }
+    })();
+  }
+
+  return (
+    <>
+      <AuthHeader />
+      <main className={styles.signup}>
+        <div className={styles.formColumn}>
+          {screen === "loading" && <p className={styles.flowLead}>READING YOUR ACCOUNT…</p>}
+          {screen === "error" && (
+            <p className={styles.flowLead}>YOUR ACCOUNT COULD NOT BE READ · RELOAD TO TRY AGAIN</p>
+          )}
+          {screen === "none-yet" && <NoneYetStep />}
+          {screen === "add" && (
+            <AddPasskeyStep
+              passkeys={passkeysState}
+              busy={sheet !== null}
+              onAdd={openSheet}
+              destination={target}
+            />
+          )}
+        </div>
+
+        <SpawnBoard board={board} />
+      </main>
+
+      <PasskeySheet
+        open={sheet !== null}
+        ceremony="backup"
+        phase={sheet?.phase ?? "idle"}
+        error={sheet?.error ?? null}
+        rpId={sheet?.options?.rp.id ?? null}
+        userAgent={userAgent()}
+        onConfirm={confirm}
+        onRetry={openSheet}
+        onCancel={() => setSheet(null)}
+      />
+    </>
+  );
 }

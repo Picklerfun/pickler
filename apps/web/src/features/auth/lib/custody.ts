@@ -247,3 +247,17 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
     // Nothing is lost that was not already unavailable: see isEnrolledHere.
   }
 }
+
+/** Which half of /passkey a signed-in person sees. */
+export type PasskeyScreen = "add" | "none-yet";
+
+/**
+ * `/passkey` never creates a sub-organization — only the studio's "Create and run it once"
+ * ceremony does that, in `features/studio/create/ceremony.ts` — so this reads the same signal
+ * `landing` reads (GET /wallets/me; a 404 is an account with no wallet yet) and turns it into
+ * which of the two screens the page draws. There is no third answer: a sub-organization with no
+ * wallet is not a state this reads, because `register` cannot return without one.
+ */
+export function passkeyScreenFor(account: { hasSubOrganization: boolean }): PasskeyScreen {
+  return account.hasSubOrganization ? "add" : "none-yet";
+}
