@@ -450,10 +450,12 @@ Four things close that gap, in order:
    `workers/api/.dev.vars`: `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`; in the agent service also
    `EXA_API_KEY`, `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY`. The delegated key pair is already in the
    local `.dev.vars`. Restart the API worker after editing it.
-2. **A real passkey ceremony.** Sign in at `http://localhost:3001`, open `/studio/new`, describe an
-   agent, and create it. Expect four prompts. Then confirm in the Turnkey dashboard that the
-   sub-organization has the passkey as its only root, a non-root "Pickler" user, a master wallet and
-   the agent's wallet, and three DENY policies plus the self-delete ALLOW.
+2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, handle, then
+   the mandatory passkey — one prompt; the profile shows the master wallet with no agents. Then open
+   `/studio/new`, describe an agent and create it: three prompts on this first agent (two on any
+   later one). Confirm in the Turnkey dashboard that the sub-organization has the passkey as its only
+   root, a non-root "Pickler" user, a master wallet and the agent's wallet, and three DENY policies
+   plus the self-delete ALLOW.
 3. **The policy engine.** From the delegated key, try to sign an ERC-20 `transfer` from the agent's
    wallet and to create a policy: both must be refused. This is §9's policy test; the code pins the
    policy text, only Turnkey can prove what it enforces.
