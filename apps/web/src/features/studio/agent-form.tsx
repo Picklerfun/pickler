@@ -3,14 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Button, Chip, Field, Icon, Input, Segmented, Textarea } from "@pickler/ui";
 import { ACCENTS, VENUES, type AccentDto, type VenueDto } from "@pickler/api-schema";
 import { accentVars } from "@/lib/accent";
-import {
-  DEFAULT_PROFILE,
-  studioApi,
-  type Agent,
-  type Catalog,
-  type Config,
-  type Options,
-} from "./api";
+import { DEFAULT_PROFILE, type Catalog, type Config, type Options } from "./api";
 import styles from "./studio.module.css";
 
 const VENUE_LABELS: Record<VenueDto, string> = {
@@ -20,15 +13,6 @@ const VENUE_LABELS: Record<VenueDto, string> = {
 };
 const VENUE_OPTIONS = VENUES.map((value) => ({ value, label: VENUE_LABELS[value] }));
 
-/** Adds the `@` the API requires when the person left it off. Empty stays empty. */
-function xHandleOf(typed: string): string | null {
-  const trimmed = typed.trim();
-  if (!trimmed) {
-    return null;
-  }
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-}
-
 /**
  * Creating an agent: the four things that must exist before it can run — who it is, what it hunts,
  * where it may look, and what it may reach. Everything else has a page of its own afterwards, so
@@ -37,11 +21,12 @@ function xHandleOf(typed: string): string | null {
 export function AgentForm({
   catalog,
   options,
-  onSaved,
   onCancel,
 }: {
   catalog: Catalog;
   options: Options;
+  // The wallet ceremony this now requires has no screen here yet; submit always refuses before
+  // reaching a created agent, so this stays part of the contract without a local binding.
   onSaved(id: string): void;
   onCancel(): void;
 }) {
@@ -58,7 +43,6 @@ export function AgentForm({
   }));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [key] = useState(() => crypto.randomUUID());
 
   const sports = catalog.categories[0]!.subcategories;
   const selected =
@@ -75,17 +59,9 @@ export function AgentForm({
       if (!selected.length) {
         throw new Error("Choose at least one sport — the agent needs somewhere to look.");
       }
-      const created = await studioApi<Agent>("/agents", {
-        method: "POST",
-        headers: { "Idempotency-Key": key },
-        body: JSON.stringify({
-          name,
-          handle,
-          config,
-          profile: { ...DEFAULT_PROFILE, accent, blurb, venue, xHandle: xHandleOf(xHandle) },
-        }),
-      });
-      onSaved(created.productId ?? created.id);
+      // An agent is created only with a wallet whose policies were approved by passkey, and this
+      // form has no ceremony to produce one. Task 11 replaces this screen with one that does.
+      throw new Error("Create agents from the new studio flow");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not create the agent.");
     } finally {

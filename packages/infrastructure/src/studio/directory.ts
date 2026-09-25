@@ -7,12 +7,14 @@ import {
   type StudioDirectory,
   type AgentConfig,
   type AgentProfileInput,
+  type AgentWalletLink,
   type Scope,
 } from "@pickler/core";
 
 /** Which unique index a duplicate hit, so the refusal names the field a person can change. */
 const CONFLICTS: Record<string, string> = {
   agent_profiles_x_handle_key: "X handle already used",
+  agent_wallets_wallet_key: "That wallet already belongs to an agent",
 };
 
 export class PostgresStudioDirectory implements StudioDirectory {
@@ -86,6 +88,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       config: AgentConfig;
       key: string;
       profile: AgentProfileInput;
+      wallet: AgentWalletLink;
     },
   ) {
     // The beat the profile shows is the category the runtime is scoped to. Core has already
@@ -109,6 +112,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
         handle: input.handle,
         config: input.config,
         profile: input.profile,
+        wallet: input.wallet,
       });
       const existing = await client.query(
         `SELECT runtime_agent_id, request=$3::jsonb AS matches FROM pickler.product_agents
@@ -148,6 +152,20 @@ export class PostgresStudioDirectory implements StudioDirectory {
           input.profile.wrong,
           input.profile.xHandle,
         ],
+      );
+      // The wallet must be this person's own agent wallet, locked so a concurrent creation
+      // cannot race the check. An agent is created with its wallet, or not at all: this rejects
+      // (rolling the agent and its profile back) before anything else is written.
+      const owned = await client.query(
+        `SELECT 1 FROM wallets.wallets WHERE wallet_id=$1 AND user_id=$2 AND kind='agent' FOR UPDATE`,
+        [input.wallet.walletId, userId],
+      );
+      if (!owned.rows.length) {
+        throw new PilotError("NOT_FOUND", "Wallet not found");
+      }
+      await client.query(
+        "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,$3)",
+        [id, input.wallet.walletId, input.wallet.policyIds],
       );
       await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
         input.handle,

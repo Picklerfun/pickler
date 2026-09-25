@@ -50,6 +50,12 @@ four prose lines and an optional `@` X handle, all stored with the agent in one 
 (`src/landing.ts`) and `VENUES` (`src/agents.ts`) are the lists their DTO unions derive from, the way
 `CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
 
+`createAgentSchema` also requires `wallet` (`agentWalletLinkSchema`): the `walletId` of the agent
+wallet whose policies the person already approved with their passkey, and the `policyIds` (2–8)
+that ceremony returned. An agent is created only with a wallet; the field is not optional. The
+infrastructure layer links it inside the same transaction that creates the agent, so a wallet not
+owned by the creator, or already linked to another agent, rejects the whole creation.
+
 Drafting from one line: `draftRequestSchema` (`line`, 3–280 characters), `agentDraftSchema` (the
 strict shape a model must answer with, also the validator the API injects into the drafter; every
 subcategory must be one of `BEAT_SUBS[beat]` and a draft proposes at most 6 sites, though a config

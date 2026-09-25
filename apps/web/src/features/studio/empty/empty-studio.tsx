@@ -3,14 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { Icon, type IconName } from "@pickler/ui";
-import { studioApi, errorCode, type Agent, type Catalog, type Config, type RunEvent } from "../api";
+import { studioApi, errorCode, type Catalog, type Config, type RunEvent } from "../api";
 import {
   BEATS,
   STEPS,
   emptyDraft,
   guessFrom,
   stepReady,
-  toCreate,
   type Draft,
   type Sport,
   type Step,
@@ -96,7 +95,10 @@ export function EmptyStudio({
   const [filled, setFilled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [agentId, setAgentId] = useState<string | null>(null);
+  // Submitting always refuses before an agent is created (see `createAndRun`), so nothing here
+  // ever sets it; it stays state so the checks below keep reading the same way once Task 11
+  // wires a real wallet ceremony in.
+  const [agentId] = useState<string | null>(null);
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [running, setRunning] = useState(false);
   const [ran, setRan] = useState(false);
@@ -136,17 +138,14 @@ export function EmptyStudio({
     setRunning(true);
     setError("");
     try {
-      let id = agentId;
-      if (!id) {
-        const created = await studioApi<Agent>("/agents", {
-          method: "POST",
-          headers: { "Idempotency-Key": crypto.randomUUID() },
-          body: JSON.stringify(toCreate(draft, defaults)),
-        });
-        id = created.productId ?? created.id;
-        setAgentId(id);
+      if (!agentId) {
+        // An agent is created only with a wallet whose policies were approved by passkey, and
+        // this stepped flow has no ceremony to produce one. Task 11 replaces this screen with
+        // one that does; until then, refuse here rather than send a request the API can only
+        // reject.
+        throw new Error("Create agents from the new studio flow");
       }
-      const run = await studioApi<{ runId: string }>(`/agents/${id}/runs`, {
+      const run = await studioApi<{ runId: string }>(`/agents/${agentId}/runs`, {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({}),
@@ -168,7 +167,7 @@ export function EmptyStudio({
       setBusy(false);
       setRunning(false);
     }
-  }, [agentId, defaults, draft]);
+  }, [agentId, defaults]);
 
   const next = useCallback(() => {
     if (step === "run") {

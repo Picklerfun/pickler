@@ -79,6 +79,14 @@ test(
           marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
           plugins: { version: 1, enabled: ["polymarket", "exa"] },
         });
+        // An agent is created with its wallet, or not at all: seed the wallet this person owns
+        // so the create request below has one to link.
+        const walletId = `wallet-${randomUUID().replaceAll("-", "")}`;
+        await db.query(
+          `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
+           VALUES ($1, $2, $3, 'agent', 'Controlled agent')`,
+          [user.id, walletId, `sub-${randomUUID().replaceAll("-", "")}`],
+        );
         const body = {
           name: "Controlled agent",
           handle: `a${suffix}${index}`,
@@ -93,6 +101,7 @@ test(
             wrong: "",
             xHandle: null,
           },
+          wallet: { walletId, policyIds: ["p1", "p2"] },
         };
         assert.equal((await request("/console/agents", token, body)).status, 403);
         await db.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import type { Pool } from "pg";
 import {
   DEFAULT_CONFIG,
   createStudioAccess,
@@ -28,6 +29,28 @@ const profile = {
   xHandle: null,
 };
 const input = { name: "Agent", handle: "agent_one", config, key: "create", profile };
+const hex = (length: number) =>
+  `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
+
+/** A `wallets.wallets` row (with its account) an `agent_wallets` link can reference. */
+async function seedWallet(
+  pool: Pool,
+  userId: string,
+  overrides: { walletId?: string; name?: string } = {},
+) {
+  const walletId = overrides.walletId ?? `wallet-${hex(12)}`;
+  await pool.query(
+    `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
+     VALUES ($1, $2, $3, 'agent', $4)`,
+    [userId, walletId, `sub-${hex(12)}`, overrides.name ?? "halftime"],
+  );
+  await pool.query(
+    `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
+     VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', 'm/44')`,
+    [walletId, `0x${hex(40)}`],
+  );
+  return walletId;
+}
 
 async function setup(t: Parameters<typeof createTestStore>[0]) {
   const store = await createTestStore(t);
@@ -39,44 +62,47 @@ async function setup(t: Parameters<typeof createTestStore>[0]) {
   await store.pool.query("SELECT identity.create_profile($1,'Researcher','researcher')", [userId]);
   await Promise.all([directory.onboard(userId), directory.onboard(userId)]);
   const access = (await directory.access(userId, null))!;
-  return { store, directory, userId, access };
+  const walletId = await seedWallet(store.pool, userId);
+  const wallet = { walletId, policyIds: ["p1", "p2"] };
+  return { store, directory, userId, access, wallet };
 }
 
 test("onboarding is idempotent and account creation does not enable research", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   assert.equal(access.enabled, false);
   assert.equal(access.workspaceId, access.tenantId);
   assert.equal(
     (await store.pool.query("SELECT count(*)::int AS n FROM identity.workspaces")).rows[0].n,
     1,
   );
-  await assert.rejects(directory.createAgent(access, userId, input));
+  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet }));
   assert.equal((await store.agents(access.tenantId)).length, 0);
   assert.equal((await store.agents("alpha")).length, 1);
 });
 
 test("concurrent creation preserves one handle, config, mapping and disabled schedule", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
   const scopes = await Promise.all(
-    Array.from({ length: 5 }, () => directory.createAgent(access, userId, input)),
+    Array.from({ length: 5 }, () => directory.createAgent(access, userId, { ...input, wallet })),
   );
   assert.equal(new Set(scopes.map((s) => s.agentId)).size, 1);
   const agent = await store.agent(scopes[0]!);
   assert.equal(agent.scheduleEnabled, false);
   assert.deepEqual(agent.config.marketScope, config.marketScope);
-  await assert.rejects(directory.createAgent(access, userId, { ...input, name: "Changed" }), {
-    code: "CONFLICT",
-  });
+  await assert.rejects(
+    directory.createAgent(access, userId, { ...input, name: "Changed", wallet }),
+    { code: "CONFLICT" },
+  );
   await assert.rejects(directory.agentScope({ ...access, tenantId: "beta" }, scopes[0]!.agentId), {
     code: "NOT_FOUND",
   });
   await store.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
     userId,
   ]);
-  await assert.rejects(directory.createAgent(access, userId, input));
+  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet }));
 });
 
 test("studio authorization checks current ownership and never accepts an API key", async (t) => {
@@ -93,11 +119,11 @@ test("studio authorization checks current ownership and never accepts an API key
 });
 
 test("PostgreSQL budget coordinates independent executors and preserves idempotency after restart", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const { agentId } = await directory.createAgent(access, userId, input);
+  const { agentId } = await directory.createAgent(access, userId, { ...input, wallet });
   const ledger = new PostgresBudgetLedger(store.pool);
   const peer = new PostgresBudgetLedger(store.connectPeer().pool);
   await ledger.configure(agentId, { tokens: "1000" });
@@ -126,11 +152,11 @@ test("PostgreSQL budget coordinates independent executors and preserves idempote
 });
 
 test("revoking operator access blocks claims and writes from an active execution", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, input);
+  const scope = await directory.createAgent(access, userId, { ...input, wallet });
   const queued = await store.enqueue(scope, "first", null, Date.now());
   const running = await store.claim(Date.now());
   assert.equal(running!.id, queued.id);
@@ -149,11 +175,11 @@ test("revoking operator access blocks claims and writes from an active execution
 });
 
 test("global lab connection validation never enables a managed agent's schedule", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, input);
+  const scope = await directory.createAgent(access, userId, { ...input, wallet });
   await store.setConnectionsChecked(true);
   await assert.rejects(store.schedule(scope, true, Date.now()));
   await store.setAgentConnectionsChecked(scope, 1, true);
@@ -162,7 +188,7 @@ test("global lab connection validation never enables a managed agent's schedule"
 });
 
 test("creating an agent writes its profile in the same transaction", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
@@ -173,6 +199,7 @@ test("creating an agent writes its profile in the same transaction", async (t) =
     config,
     key: "profile",
     profile: { ...profile, vibe: "Reads the injury report before the tape.", xHandle: "@halftime" },
+    wallet,
   });
 
   const { rows } = await store.pool.query(
@@ -191,20 +218,24 @@ test("creating an agent writes its profile in the same transaction", async (t) =
 });
 
 test("a retry under the same key with a different profile is refused", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  await directory.createAgent(access, userId, input);
+  await directory.createAgent(access, userId, { ...input, wallet });
 
   await assert.rejects(
-    directory.createAgent(access, userId, { ...input, profile: { ...profile, accent: "blue" } }),
+    directory.createAgent(access, userId, {
+      ...input,
+      wallet,
+      profile: { ...profile, accent: "blue" },
+    }),
     { code: "CONFLICT" },
   );
 });
 
 test("a profile the database refuses rolls the agent back too", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
@@ -217,6 +248,7 @@ test("a profile the database refuses rolls the agent back too", async (t) => {
       key: "toolong",
       // 281 characters: violates agent_profiles_blurb_length inside the transaction
       profile: { ...profile, blurb: "x".repeat(281) },
+      wallet,
     }),
   );
 
@@ -225,22 +257,108 @@ test("a profile the database refuses rolls the agent back too", async (t) => {
 });
 
 test("a second agent with the same X handle is refused by name", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
+  const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
   await directory.createAgent(access, userId, {
     ...input,
+    wallet,
     profile: { ...profile, xHandle: "@Halftime" },
   });
 
   await assert.rejects(
     directory.createAgent(access, userId, {
       ...input,
+      wallet,
       handle: "agent_two",
       key: "second",
       profile: { ...profile, xHandle: "@halftime" },
     }),
     { code: "CONFLICT", message: "X handle already used" },
+  );
+});
+
+test("creating an agent links the wallet whose policies were approved", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const walletId = await seedWallet(store.pool, userId, { walletId: "w1", name: "halftime" });
+
+  const { agentId } = await directory.createAgent(access, userId, {
+    ...input,
+    wallet: { walletId, policyIds: ["p1", "p2", "p3"] },
+  });
+
+  const { rows } = await store.pool.query(
+    `SELECT wallet_id, policy_ids FROM wallets.agent_wallets WHERE agent_id = $1`,
+    [agentId],
+  );
+  assert.deepEqual(rows, [{ wallet_id: "w1", policy_ids: ["p1", "p2", "p3"] }]);
+});
+
+test("a wallet already linked to another agent is refused, and no second agent row survives", async (t) => {
+  const { store, directory, userId, access, wallet } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+
+  await directory.createAgent(access, userId, { ...input, wallet, key: "first" });
+
+  await assert.rejects(
+    directory.createAgent(access, userId, {
+      ...input,
+      wallet,
+      handle: "agent_two",
+      key: "second",
+    }),
+    { code: "CONFLICT", message: "That wallet already belongs to an agent" },
+  );
+
+  const { rows } = await store.pool.query(
+    `SELECT count(*)::int AS n FROM agents.agents WHERE workspace_id = $1`,
+    [access.workspaceId],
+  );
+  assert.equal(rows[0].n, 1, "the second agent must not survive a wallet already linked");
+});
+
+test("a wallet that is not the creator's is refused", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const strangerId = randomUUID();
+  const walletId = await seedWallet(store.pool, strangerId);
+
+  await assert.rejects(
+    directory.createAgent(access, userId, {
+      ...input,
+      wallet: { walletId, policyIds: ["p1", "p2"] },
+    }),
+  );
+
+  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
+  assert.equal(rows[0].n, 0, "no agent may be created against a wallet that is not the creator's");
+});
+
+test("the idempotent retry with the same wallet returns the same agent; a retry with a different wallet is a different request", async (t) => {
+  const { store, directory, userId, access, wallet } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+
+  const first = await directory.createAgent(access, userId, { ...input, wallet, key: "idem" });
+  const second = await directory.createAgent(access, userId, { ...input, wallet, key: "idem" });
+  assert.equal(second.agentId, first.agentId);
+
+  const otherWalletId = await seedWallet(store.pool, userId);
+  await assert.rejects(
+    directory.createAgent(access, userId, {
+      ...input,
+      key: "idem",
+      wallet: { walletId: otherWalletId, policyIds: ["p1", "p2"] },
+    }),
+    { code: "CONFLICT" },
   );
 });

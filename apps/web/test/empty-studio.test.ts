@@ -38,6 +38,10 @@ const defaults = {
   intervalHours: 6,
 } as unknown as Config;
 
+// `toCreate` never runs against a real wallet in this flow — its only caller throws before
+// reaching it (see empty-studio.tsx) — so a fixture stands in to pin the pass-through.
+const wallet = { walletId: "w1", policyIds: ["p1", "p2"] };
+
 test("a handle comes from the name, lower case and stripped", () => {
   assert.equal(suggestHandle("Half Time!"), "halftime");
 });
@@ -135,11 +139,15 @@ test("every step in the flow has a readiness rule of its own", () => {
 
 test("the ticker never reaches the API, because nothing stores one", () => {
   const draft = draftWith({ name: "Halftime", ticker: "$HALF", tickerTouched: true, why: "edge" });
-  assert.equal(JSON.stringify(toCreate(draft, defaults)).includes("$HALF"), false);
+  assert.equal(JSON.stringify(toCreate(draft, defaults, wallet)).includes("$HALF"), false);
 });
 
 test("the edge becomes the brief the agent carries into every run", () => {
-  const created = toCreate(draftWith({ name: "Halftime", why: "  reads injuries  " }), defaults);
+  const created = toCreate(
+    draftWith({ name: "Halftime", why: "  reads injuries  " }),
+    defaults,
+    wallet,
+  );
   assert.equal(created.config.profile, "reads injuries");
 });
 
@@ -147,6 +155,7 @@ test("the chosen markets become the scope the API enforces", () => {
   const created = toCreate(
     draftWith({ name: "Halftime", beat: "Sports", sports: ["tennis"], why: "edge" }),
     defaults,
+    wallet,
   );
   assert.deepEqual(created.config.marketScope, {
     version: 1,
@@ -156,7 +165,7 @@ test("the chosen markets become the scope the API enforces", () => {
 });
 
 test("the draft flow sends the profile the API requires, with the full form's defaults", () => {
-  const created = toCreate(draftWith({ name: "Halftime", why: "edge" }), defaults);
+  const created = toCreate(draftWith({ name: "Halftime", why: "edge" }), defaults, wallet);
   assert.equal(created.profile, DEFAULT_PROFILE);
   assert.deepEqual(created.profile, {
     accent: "lime",
@@ -170,8 +179,13 @@ test("the draft flow sends the profile the API requires, with the full form's de
   });
 });
 
+test("the wallet the caller passes travels through untouched", () => {
+  const created = toCreate(draftWith({ name: "Halftime", why: "edge" }), defaults, wallet);
+  assert.deepEqual(created.wallet, wallet);
+});
+
 test("a name over forty characters is cut to what the API accepts", () => {
-  assert.equal(toCreate(draftWith({ name: "N".repeat(60) }), defaults).name.length, 40);
+  assert.equal(toCreate(draftWith({ name: "N".repeat(60) }), defaults, wallet).name.length, 40);
 });
 
 test("every field the screen admits it cannot store says what it is waiting on", () => {

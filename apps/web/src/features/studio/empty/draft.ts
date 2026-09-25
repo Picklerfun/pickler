@@ -170,14 +170,22 @@ export function stepReachable(step: Step, draft: Draft): boolean {
   return STEPS.slice(0, STEPS.indexOf(step)).every((earlier) => stepReady(earlier, draft));
 }
 
+/** The wallet whose policies the person approved with their passkey, required on every create. */
+export type WalletLink = { walletId: string; policyIds: string[] };
+
 /**
  * The draft as the API takes it. Only the fields that have somewhere to go travel — the ticker does
  * not appear here because there is nothing to put it in, and the screen says so where it is typed.
+ *
+ * `wallet` is required because the API refuses to create an agent without one: this flow has no
+ * ceremony to produce it yet, so its only caller throws before ever reaching this function. It
+ * stays a parameter, not a hard-coded gap, so Task 11's real ceremony can pass one straight in.
  */
 export function toCreate(
   draft: Draft,
   defaults: Config,
-): { name: string; handle: string; config: Config; profile: Profile } {
+  wallet: WalletLink,
+): { name: string; handle: string; config: Config; profile: Profile; wallet: WalletLink } {
   return {
     name: draft.name.trim().slice(0, 40),
     handle: suggestHandle(draft.name),
@@ -189,5 +197,6 @@ export function toCreate(
     // The stepped flow asks for none of the profile: accent, venue and blurb are the full form's
     // questions, so it sends what that form opens on.
     profile: DEFAULT_PROFILE,
+    wallet,
   };
 }

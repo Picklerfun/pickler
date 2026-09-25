@@ -184,6 +184,13 @@ Abort on page hiding, agent changes and unmount. Mutations trigger an immediate 
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
 
+The API now requires a `wallet` (`walletId` plus its approved `policyIds`) on every create request,
+and neither existing creation screen has the passkey ceremony that produces one: `AgentForm`'s
+`submit` and `EmptyStudio`'s `createAndRun` both refuse with "Create agents from the new studio
+flow" before ever calling the API, rather than send a request the schema can only reject. `toCreate`
+in `empty/draft.ts` still takes a `wallet` parameter and passes it through untouched, ready for the
+real ceremony this replaces.
+
 ## Custody boundary
 
 No private key is ever derived or held in this app. Custody of the person's Pickler wallet belongs

@@ -10,6 +10,12 @@ export interface StudioAccess {
   role: string;
   enabled: boolean;
 }
+/** The wallet an agent is created with: its id and the policy ids the person approved for it. */
+export interface AgentWalletLink {
+  walletId: string;
+  policyIds: string[];
+}
+
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
@@ -22,6 +28,7 @@ export interface StudioDirectory {
       config: AgentConfig;
       key: string;
       profile: AgentProfileInput;
+      wallet: AgentWalletLink;
     },
   ): Promise<Scope>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
@@ -52,6 +59,7 @@ export function createStudioAccess(directory: StudioDirectory) {
         config: AgentConfig;
         key: string;
         profile: AgentProfileInput;
+        wallet: AgentWalletLink;
       },
     ) {
       const access = await this.authorize(principal, true);
