@@ -16,10 +16,13 @@ import {
 } from "../domain/passkey.js";
 import { agentWalletPolicies, delegatedSelfDeletePolicy } from "../domain/agent-wallet-policies.js";
 import {
+  DepositAlreadyRecordedError,
+  DepositFeeTooHighError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
   isDepositAmount,
   MAX_DEPOSIT_GAS,
+  MAX_FEE_MULTIPLE,
 } from "../domain/deposit.js";
 import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
@@ -188,6 +191,16 @@ export interface CustodyServiceDeps {
     userId: string;
     subOrganizationId: string;
     delegatedUserId: string;
+  }): void;
+  /**
+   * Called when a deposit was broadcast but could not be recorded: the AUSD moved and no row says
+   * so. Ids and amounts only. Same contract as `reportOrphan`: synchronous, and a failure in it
+   * never changes the outcome — the original error is rethrown either way.
+   */
+  reportUnrecordedDeposit?(deposit: {
+    agentId: string;
+    txHash: string;
+    amountMicroUsd: bigint;
   }): void;
 }
 
@@ -697,6 +710,15 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (transfer.amount !== context.baseUnits) {
         throw new InvalidSignedActivityError("The stamped transaction moves another amount");
       }
+      // Fees move between prepare and confirm, so they are checked against a fresh quote rather
+      // than rebuilt: a stamped fee far above it is one nobody prepared, and it burns MON.
+      const quote = await chain.quoteFees();
+      if (
+        transfer.maxFeePerGas > quote.maxFeePerGas * MAX_FEE_MULTIPLE ||
+        transfer.maxPriorityFeePerGas > quote.maxPriorityFeePerGas * MAX_FEE_MULTIPLE
+      ) {
+        throw new DepositFeeTooHighError();
+      }
       assertStampedAsPrepared(signed, (timestampMs) =>
         deps.agentActivities.signTransaction({
           subOrganizationId: account.subOrganizationId,
@@ -717,14 +739,27 @@ export function createCustodyService(deps: CustodyServiceDeps) {
           "Completed activity carried no signed transaction",
         );
       }
+      // A repeated confirm of the same stamp: already sent and recorded, so nothing is sent again.
+      if (await deps.agentWallets.depositRecorded(chain.transactionHash(signedTransaction))) {
+        throw new DepositAlreadyRecordedError();
+      }
       const txHash = await chain.broadcast(signedTransaction);
       // Sent: whatever happens to the record, the next balance read must see the chain.
       chain.forgetBalance(wallet.address);
-      await deps.agentWallets.saveDeposit({
-        agentId,
-        txHash,
-        amountMicroUsd: context.amountMicroUsd,
-      });
+      const deposit = { agentId, txHash, amountMicroUsd: context.amountMicroUsd };
+      try {
+        await deps.agentWallets.saveDeposit(deposit);
+      } catch (error) {
+        // The AUSD moved and no row says so. A duplicate is not that: its row exists.
+        if (!(error instanceof DepositAlreadyRecordedError)) {
+          try {
+            deps.reportUnrecordedDeposit?.(deposit);
+          } catch {
+            // A broken log sink changes nothing about the failure.
+          }
+        }
+        throw error;
+      }
       return { txHash };
     },
 

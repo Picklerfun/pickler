@@ -183,12 +183,21 @@ Confirm cannot rebuild the transaction, because its nonce and fees move. It read
 body's `parameters.unsignedTransaction` and has the port inspect it. It refuses with
 `InvalidSignedActivityError` before forwarding unless the chain id and token are the port's, the
 native value is zero, the gas limit is at most `MAX_DEPOSIT_GAS` (Monad charges the limit), and
-the recipient and amount are this agent's wallet and this deposit. It then rebuilds the whole
-activity around that transaction with the stamped timestamp and compares bytes. It forwards with
-only `ACTIVITY_TYPE_SIGN_TRANSACTION_V2` allowed and reads `signTransactionResult.signedTransaction`.
-It broadcasts through the port, forgets the agent's cached balance, then calls `saveDeposit`. A
-broadcast failure propagates and records nothing. `DepositNotSendableError` (a failed gas
-estimate) and `DepositAlreadyRecordedError` (a hash recorded twice) come from adapters.
+the recipient and amount are this agent's wallet and this deposit. It then asks the port for a
+fresh fee quote (`quoteFees`, the one prepare builds with) and refuses with
+`DepositFeeTooHighError` when the stamped `maxFeePerGas` or `maxPriorityFeePerGas` exceeds
+`MAX_FEE_MULTIPLE` (2) times the quote. It then rebuilds the whole activity around that
+transaction with the stamped timestamp and compares bytes. It forwards with only
+`ACTIVITY_TYPE_SIGN_TRANSACTION_V2` allowed and reads `signTransactionResult.signedTransaction`.
+
+Before broadcasting, confirm hashes the signed transaction locally (`transactionHash`). If
+`depositRecorded` already holds that hash, it refuses with `DepositAlreadyRecordedError` and sends
+nothing. It then broadcasts through the port, forgets the agent's cached balance, and calls
+`saveDeposit`. A broadcast failure propagates and records nothing. When `saveDeposit` fails after
+a broadcast for any reason other than a duplicate, confirm calls the optional
+`reportUnrecordedDeposit` dep with the agent id, hash and amount, then rethrows. The API logs that
+with `console.error`. `DepositNotSendableError` (a failed gas estimate) and
+`DepositAlreadyRecordedError` (a hash recorded twice) also come from adapters.
 
 ## Markets
 

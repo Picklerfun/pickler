@@ -19,6 +19,21 @@ export function isDepositAmount(value: number): value is DepositAmountAusd {
  */
 export const MAX_DEPOSIT_GAS = 250_000n;
 
+/**
+ * How far above a fresh quote a stamped fee may be. Fees move between prepare and confirm, so the
+ * stamped ones are not required to match; twice the current quote is room for that movement, and
+ * anything above it is a fee nobody prepared.
+ */
+export const MAX_FEE_MULTIPLE = 2n;
+
+/** The stamped transaction pays a fee far above the chain's current quote (HTTP 400). */
+export class DepositFeeTooHighError extends Error {
+  constructor() {
+    super("The stamped transaction pays more than twice the current fee");
+    this.name = "DepositFeeTooHighError";
+  }
+}
+
 /** A deposit amount outside the offered set (HTTP 400). */
 export class InvalidDepositAmountError extends Error {
   constructor() {

@@ -168,17 +168,23 @@ schedule and next due stay unchanged, so readiness for the current version survi
 
 `src/chain/deposit-tx.ts` is the chain side of a deposit and implements core's `DepositChain`. It
 uses the existing `viem` dependency only to serialize and parse transactions and to hash; the RPC
-stays `createJsonRpc`. `buildTransferTx` reads the pending nonce, `eth_maxPriorityFeePerGas`
-(1 gwei when the method fails), the latest block's base fee and a gas estimate. It builds an EIP-1559
-`transfer` with `maxFeePerGas = 2 × base + tip` and the estimate padded by a fifth, rounded up. A
+stays `createJsonRpc`. `quoteFees` reads `eth_maxPriorityFeePerGas` (1 gwei when the method fails)
+and the latest block's base fee, and answers `maxFeePerGas = 2 × base + tip`. Prepare builds with it
+and core's confirm caps stamped fees against it, so both go through this one function.
+`buildTransferTx` adds the pending nonce and a gas estimate. It builds an EIP-1559 `transfer` with
+the quoted fees and the estimate padded by a fifth, rounded up. A
 failed estimate is core's `DepositNotSendableError` with the RPC error as its cause, never a
 guessed limit. `inspectTransfer` answers null unless the input is an unsigned EIP-1559 call with no
-access list whose data is exactly `transfer(address,uint256)`. `broadcastTransaction` adds the `0x`
-Turnkey omits, sends it with `eth_sendRawTransaction` and requires the node's hash to equal the
-locally computed one. `createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these
+access list whose data is exactly `transfer(address,uint256)`; it also answers both fee caps.
+`transactionHash` is the lowercased keccak of the signed bytes, with or without `0x`.
+`broadcastTransaction` adds the `0x` Turnkey omits, sends it with `eth_sendRawTransaction` and
+requires the node's hash to equal the locally computed one. A refusal is not believed at once: it
+looks the hash up with `eth_getTransactionByHash`. If the node holds this very transaction (a
+repeated confirm answered "already known" or "nonce too low"), it answers the hash. Otherwise,
+including when the lookup fails, the original refusal propagates. `createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these
 for AUSD from `@pickler/chain` and forgets through the studio's balance reader.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
-`DepositAlreadyRecordedError`.
+`DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
 `updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
 `updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
 at that same version would otherwise drop them.

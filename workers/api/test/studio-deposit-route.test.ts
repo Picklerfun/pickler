@@ -20,6 +20,7 @@ import {
   type Rpc,
 } from "@pickler/infrastructure";
 import { studioRoutes } from "../src/routes/studio.js";
+import { reportUnrecordedDeposit } from "../src/container.js";
 
 const USER = "user";
 const AGENT = "11111111-1111-4111-8111-111111111111";
@@ -78,6 +79,8 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
       }
       deposits.push(input);
     },
+    depositRecorded: async (txHash: string) =>
+      deposits.some((deposit) => deposit.txHash === txHash.toLowerCase()),
   } as unknown as AgentWalletRepository;
   const forwarder: SignedActivityForwarder = {
     async forward(_request, expectations) {
@@ -249,8 +252,8 @@ test("a stamped transfer to another recipient is refused with 400 and nothing is
   assert.deepEqual(deposits, []);
 });
 
-test("confirming the same transaction twice is 409, recorded once", async () => {
-  const { app, deposits } = fixture();
+test("confirming the same transaction twice is 409, recorded and broadcast once", async () => {
+  const { app, deposits, sent } = fixture();
   const prepared = await prepare(app, 10);
   const confirm = () =>
     app.request(
@@ -264,6 +267,51 @@ test("confirming the same transaction twice is 409, recorded once", async () => 
   assert.equal(again.status, 409);
   assert.deepEqual(await again.json(), { error: "DEPOSIT_ALREADY_RECORDED" });
   assert.equal(deposits.length, 1);
+  assert.equal(sent.length, 1);
+});
+
+test("a stamped fee over twice the current quote is 400 and nothing is forwarded", async () => {
+  const { app, forwards, sent } = fixture();
+  const prepared = await prepare(app, 25);
+  // The same transfer, quoted when the base fee was ten times today's.
+  const rpc: Rpc = {
+    call: async (method) =>
+      method === "eth_getBlockByNumber" ? { baseFeePerGas: "0x746a528800" } : RPC_ANSWERS[method],
+  };
+  const pricey = await buildTransferTx({
+    rpc,
+    chainId: 10143,
+    token: "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+    from: MASTER,
+    to: AGENT_ADDRESS,
+    amount: 25_000_000n,
+  });
+  const body = JSON.parse(prepared.body);
+  body.parameters.unsignedTransaction = pricey.unsignedTransaction;
+
+  const response = await app.request(
+    `/agents/${AGENT}/deposit/confirm`,
+    post({ amountAusd: 25, signed: stamp(prepared, JSON.stringify(body)) }),
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "DEPOSIT_FEE_TOO_HIGH" });
+  assert.deepEqual(forwards, []);
+  assert.deepEqual(sent, []);
+});
+
+test("the unrecorded-deposit line names the request, hash, amount and agent", () => {
+  const lines: string[] = [];
+
+  reportUnrecordedDeposit("req-1", (line) => lines.push(line))({
+    agentId: AGENT,
+    txHash: HASH,
+    amountMicroUsd: 25_000_000n,
+  });
+
+  assert.deepEqual(lines, [
+    `[req-1] unrecorded deposit ${HASH} of 25000000 micro-USD to agent ${AGENT}; it was broadcast, record it out of band`,
+  ]);
 });
 
 test("an amount outside the offered set, or a body that is not the contract, is 400", async () => {

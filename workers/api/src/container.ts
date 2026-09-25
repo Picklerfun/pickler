@@ -107,6 +107,20 @@ export function delegatedPublicKeyFrom(
 }
 
 /**
+ * The log line for a deposit that was broadcast and could not be recorded: the AUSD moved and no
+ * row says so, and this line is how it is reconciled. Ids, hash and amount only.
+ */
+export function reportUnrecordedDeposit(
+  requestId: string,
+  log: (message: string) => void = console.error,
+) {
+  return (deposit: { agentId: string; txHash: string; amountMicroUsd: bigint }) =>
+    log(
+      `[${requestId}] unrecorded deposit ${deposit.txHash} of ${deposit.amountMicroUsd} micro-USD to agent ${deposit.agentId}; it was broadcast, record it out of band`,
+    );
+}
+
+/**
  * Composed only when every Turnkey binding is present, so a deployment without them serves the
  * rest of the API rather than failing to start. The parent API key lives here and nowhere near a
  * sub-organization: it creates them and reads activities back, and cannot sign inside one.
@@ -178,6 +192,7 @@ function custodyServices(
           console.error(
             `[${requestId}] unrecorded delegated user ${delegatedUserId} in Turnkey sub-organization ${subOrganizationId} for user ${userId}; delete it out of band`,
           ),
+        reportUnrecordedDeposit: reportUnrecordedDeposit(requestId),
       }),
   };
 }

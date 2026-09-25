@@ -16,6 +16,7 @@ import {
   SPEND_ENFORCED,
   AgentWalletNotFoundError,
   DepositAlreadyRecordedError,
+  DepositFeeTooHighError,
   DepositNotSendableError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
@@ -127,6 +128,9 @@ function custodyFailure(
   }
   if (error instanceof InvalidSignedActivityError) {
     return { code: "INVALID_SIGNED_ACTIVITY", status: 400 };
+  }
+  if (error instanceof DepositFeeTooHighError) {
+    return { code: "DEPOSIT_FEE_TOO_HIGH", status: 400 };
   }
   if (error instanceof SignedActivityRejectedError) {
     return { code: "SIGNED_ACTIVITY_REJECTED", status: 400 };

@@ -306,6 +306,14 @@ export class PostgresCustodyStore
     }
   }
 
+  async depositRecorded(txHash: string): Promise<boolean> {
+    const { rows } = await this.pool.query(
+      `SELECT 1 FROM wallets.deposits WHERE tx_hash = $1 LIMIT 1`,
+      [txHash.toLowerCase()],
+    );
+    return rows.length > 0;
+  }
+
   async put(challenge: string, record: StoredChallenge): Promise<void> {
     await this.pool.query(
       `INSERT INTO wallets.webauthn_challenges (challenge, user_id, expires_at)

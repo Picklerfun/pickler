@@ -6,6 +6,8 @@ import {
   NoCustodyAccountError,
 } from "../src/features/wallets/domain/passkey.js";
 import {
+  DepositAlreadyRecordedError,
+  DepositFeeTooHighError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
 } from "../src/features/wallets/domain/deposit.js";
@@ -65,6 +67,11 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
     prepared: [] as { from: string; to: string; amount: bigint }[],
     forwards: [] as ForwardExpectations[],
     broadcastFails: false,
+    /** Makes saveDeposit fail as a database outage would. */
+    saveFails: null as Error | null,
+    /** The chain's fee quote at confirm. */
+    quote: { maxFeePerGas: 102n, maxPriorityFeePerGas: 2n },
+    unrecorded: [] as { agentId: string; txHash: string; amountMicroUsd: bigint }[],
     activity: {
       id: "act-1",
       fingerprint: "f",
@@ -92,7 +99,13 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
         : null;
     },
     async saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }) {
+      if (state.saveFails) {
+        throw state.saveFails;
+      }
       state.deposits.push(input);
+    },
+    async depositRecorded(txHash: string) {
+      return state.deposits.some((deposit) => deposit.txHash === txHash.toLowerCase());
     },
   } as unknown as AgentWalletRepository;
 
@@ -140,11 +153,17 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
         to: TOKEN,
         value: 0n,
         gas: 60_000n,
+        maxFeePerGas: 102n,
+        maxPriorityFeePerGas: 2n,
         recipient: input.to,
         amount: input.amount,
       });
     },
     inspectTransfer: decode,
+    async quoteFees() {
+      return state.quote;
+    },
+    transactionHash: () => HASH,
     async broadcast(signed) {
       state.broadcasts.push(signed);
       if (state.broadcastFails) {
@@ -180,6 +199,7 @@ function service(f: ReturnType<typeof fakes>, withChain = true) {
     appName: "Pickler",
     now: () => new Date("2026-09-25T12:00:00Z"),
     randomId: () => "r",
+    reportUnrecordedDeposit: (deposit) => f.state.unrecorded.push(deposit),
   });
 }
 
@@ -342,4 +362,75 @@ test("an activity that completed without a signed transaction broadcasts nothing
 
   assert.equal(f.state.broadcasts.length, 0);
   assert.equal(f.state.deposits.length, 0);
+});
+
+test("a stamped fee over twice the fresh quote is refused before anything reaches Turnkey", async () => {
+  for (const edit of [
+    (t: TransferInspection) => (t.maxFeePerGas = 205n), // quote 102, cap 204
+    (t: TransferInspection) => (t.maxPriorityFeePerGas = 5n), // quote 2, cap 4
+  ]) {
+    const f = fakes();
+    const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+
+    await assert.rejects(
+      service(f).confirmDeposit(USER, AGENT, 25, withTransfer(unsigned, edit)),
+      DepositFeeTooHighError,
+    );
+
+    assert.equal(f.state.forwards.length, 0);
+    assert.equal(f.state.broadcasts.length, 0);
+  }
+});
+
+test("fees that moved within twice the fresh quote are accepted", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  // The chain got cheaper: the stamped 102 / 2 are now exactly twice the quote.
+  f.state.quote = { maxFeePerGas: 51n, maxPriorityFeePerGas: 1n };
+
+  const confirmed = await service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned));
+
+  assert.deepEqual(confirmed, { txHash: HASH });
+});
+
+test("a repeated confirm of a recorded deposit is refused without broadcasting again", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  await service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned));
+
+  await assert.rejects(
+    service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
+    DepositAlreadyRecordedError,
+  );
+
+  assert.equal(f.state.broadcasts.length, 1);
+  assert.equal(f.state.deposits.length, 1);
+});
+
+test("a broadcast deposit that cannot be recorded is reported for reconciliation and rethrown", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  const outage = new Error("connection terminated");
+  f.state.saveFails = outage;
+
+  await assert.rejects(service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)), outage);
+
+  assert.equal(f.state.broadcasts.length, 1);
+  assert.deepEqual(f.state.unrecorded, [
+    { agentId: AGENT, txHash: HASH, amountMicroUsd: 25_000_000n },
+  ]);
+  assert.deepEqual(f.state.forgotten, [AGENT_ADDRESS]);
+});
+
+test("a duplicate refused at save is not reported as unrecorded: its row exists", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  f.state.saveFails = new DepositAlreadyRecordedError();
+
+  await assert.rejects(
+    service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
+    DepositAlreadyRecordedError,
+  );
+
+  assert.deepEqual(f.state.unrecorded, []);
 });

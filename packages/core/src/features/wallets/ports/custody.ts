@@ -218,6 +218,8 @@ export interface AgentWalletRepository {
    */
   saveApprovedPolicies(userId: string, walletId: string, policyIds: string[]): Promise<void>;
   saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }): Promise<void>;
+  /** Whether a deposit with this transaction hash (any case) is recorded. */
+  depositRecorded(txHash: string): Promise<boolean>;
 }
 
 /** What an unsigned transaction does, read back so a confirm can check it against the request. */
@@ -228,6 +230,8 @@ export interface TransferInspection {
   /** Native value sent alongside; a deposit sends none. */
   value: bigint;
   gas: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
   /** The `transfer` recipient and amount in base units, decoded from the calldata. */
   recipient: string;
   amount: bigint;
@@ -248,9 +252,16 @@ export interface DepositChain {
    * failed gas estimate is `DepositNotSendableError`, never a guessed limit.
    */
   prepareTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
+  /** The chain's fees now, quoted exactly as `prepareTransfer` quotes them. */
+  quoteFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>;
   /** Null unless the transaction is an EIP-1559 call to an ERC-20 `transfer`, and nothing more. */
   inspectTransfer(unsignedTransaction: string): TransferInspection | null;
-  /** Sends a signed transaction and answers its hash. A refusal throws; nothing is invented. */
+  /** The hash a signed transaction will have on chain, lowercased, computed locally. */
+  transactionHash(signedTransaction: string): string;
+  /**
+   * Sends a signed transaction and answers its hash. A node that refuses it but already holds
+   * that very transaction (a repeated confirm) counts as sent; any other refusal throws.
+   */
   broadcast(signedTransaction: string): Promise<string>;
   /** Drops a cached balance, so the next read sees the deposit. */
   forgetBalance(address: string): void;

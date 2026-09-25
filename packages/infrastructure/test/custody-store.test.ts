@@ -583,3 +583,16 @@ test("recording the same deposit hash twice is DepositAlreadyRecordedError", asy
     DepositAlreadyRecordedError,
   );
 });
+
+test("a recorded deposit is found by its hash in any case, and only that one", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"ef".repeat(32)}`;
+  assert.equal(await custody.depositRecorded(hash), false);
+
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 10_000_000n });
+
+  assert.equal(await custody.depositRecorded(hash), true);
+  assert.equal(await custody.depositRecorded(`0x${"EF".repeat(32)}`), true);
+  assert.equal(await custody.depositRecorded(`0x${"ee".repeat(32)}`), false);
+});

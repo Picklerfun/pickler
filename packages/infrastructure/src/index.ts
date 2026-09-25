@@ -111,7 +111,10 @@ export {
   buildTransferTx,
   createAusdDepositChain,
   inspectTransfer,
+  quoteFees,
+  transactionHash,
   type AusdDepositChainConfig,
+  type FeeQuote,
   type TransferTx,
   type TransferTxInput,
 } from "./chain/deposit-tx.js";

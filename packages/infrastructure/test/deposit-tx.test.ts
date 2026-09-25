@@ -8,6 +8,8 @@ import {
   buildTransferTx,
   createAusdDepositChain,
   inspectTransfer,
+  quoteFees,
+  transactionHash,
   transferCalldata,
   type Rpc,
 } from "../src/index.js";
@@ -207,6 +209,8 @@ test("inspection reads chain, token, value, gas, recipient and amount back", () 
     to: TOKEN.toLowerCase(),
     value: 0n,
     gas: 60_000n,
+    maxFeePerGas: 100n,
+    maxPriorityFeePerGas: 1n,
     recipient: TO,
     amount: 10_000_000n,
   });
@@ -310,4 +314,62 @@ test("the AUSD deposit chain is AUSD on the configured network and forgets throu
   chain.forgetBalance(TO);
   assert.deepEqual(forgotten, [TO]);
   assert.throws(() => createAusdDepositChain({ chainId: 1, balances: { forget: () => {} } }));
+});
+
+test("the fee quote is the one prepare builds with", async () => {
+  const { rpc } = fakeRpc(healthy);
+
+  const quote = await quoteFees(rpc);
+  const built = await buildTransferTx({
+    rpc,
+    chainId: 10143,
+    token: TOKEN,
+    from: FROM,
+    to: TO,
+    amount: 1n,
+  });
+
+  assert.deepEqual(quote, { maxFeePerGas: 102n * GWEI, maxPriorityFeePerGas: 2n * GWEI });
+  assert.equal(built.maxFeePerGas, quote.maxFeePerGas);
+  assert.equal(built.maxPriorityFeePerGas, quote.maxPriorityFeePerGas);
+});
+
+test("the local hash is the keccak of the signed bytes, with or without the prefix", () => {
+  const signed = serializeTransaction(TRANSFER, SIGNATURE);
+
+  assert.equal(transactionHash(signed), keccak256(signed));
+  assert.equal(transactionHash(signed.slice(2)), keccak256(signed));
+});
+
+test("a refusal for a transaction the node already holds counts as sent", async () => {
+  const signed = serializeTransaction(TRANSFER, SIGNATURE);
+  const hash = keccak256(signed);
+  for (const message of ["already known", "nonce too low"]) {
+    const { rpc, calls } = fakeRpc({
+      eth_sendRawTransaction: () => {
+        throw new Error(message);
+      },
+      eth_getTransactionByHash: { hash: hash.toUpperCase().replace("0X", "0x") },
+    });
+
+    assert.equal(await broadcastTransaction(rpc, signed), hash);
+    assert.deepEqual(calls[1], { method: "eth_getTransactionByHash", params: [hash] });
+  }
+});
+
+test("a refusal the node cannot back with this transaction propagates", async () => {
+  const signed = serializeTransaction(TRANSFER, SIGNATURE);
+  const refuse = () => {
+    throw new Error("nonce too low");
+  };
+  for (const lookup of [
+    null,
+    { hash: `0x${"00".repeat(32)}` },
+    () => {
+      throw new Error("rpc down");
+    },
+  ]) {
+    const { rpc } = fakeRpc({ eth_sendRawTransaction: refuse, eth_getTransactionByHash: lookup });
+    await assert.rejects(broadcastTransaction(rpc, signed), /nonce too low/);
+  }
 });

@@ -177,11 +177,13 @@ export {
 export {
   DEPOSIT_AMOUNTS_AUSD,
   DepositAlreadyRecordedError,
+  DepositFeeTooHighError,
   DepositNotSendableError,
   DepositsUnavailableError,
   InvalidDepositAmountError,
   isDepositAmount,
   MAX_DEPOSIT_GAS,
+  MAX_FEE_MULTIPLE,
   type DepositAmountAusd,
 } from "./features/wallets/domain/deposit.js";
 export {
