@@ -109,16 +109,3 @@ export const RAIL_LABELS = {
   decides: "DECIDES",
   review: "REVIEW",
 } as const;
-
-export function initials(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    return "?";
-  }
-  return trimmed
-    .split(/\s+/)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}

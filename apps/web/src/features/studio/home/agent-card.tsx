@@ -1,15 +1,9 @@
 "use client";
 import type { AccentDto } from "@pickler/api-schema";
 import { accentVars } from "@/lib/accent";
+import { agentInitials } from "../lib/initials";
 import type { HomeStatus } from "./status";
 import styles from "./home.module.css";
-
-/** The mark's two letters: a word's first letter each, or a single word's first two ("HA"). */
-export const initials = (value: string): string => {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? words.map((word) => word[0] ?? "").join("") : (words[0] ?? "");
-  return letters.slice(0, 2).toUpperCase() || "AG";
-};
 
 /**
  * The agent itself: its mark (ringed while it works) in its own accent, painted from the agent
@@ -30,7 +24,7 @@ export function AgentCard({
       <div className={styles.moodRow}>
         <div className={styles.mark} style={accentVars(accent)} aria-hidden="true">
           {status.working && <span className={styles.ring} />}
-          <span className={styles.markFace}>{initials(name)}</span>
+          <span className={styles.markFace}>{agentInitials(name)}</span>
         </div>
         <div className={styles.bubble} data-tint={status.moodTint} role="status">
           <p className={styles.moodLabel}>

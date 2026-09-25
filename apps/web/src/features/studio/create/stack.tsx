@@ -1,6 +1,7 @@
 "use client";
 import { ORDER, reviewRows, type Draft, type OrderStep, type ReviewRow, type Step } from "./draft";
-import { beatTint, initials, type Tint } from "./map";
+import { agentInitials } from "../lib/initials";
+import { beatTint, type Tint } from "./map";
 import { shortAddress } from "./trace";
 import styles from "./create.module.css";
 
@@ -135,7 +136,7 @@ export function Stack({
     <aside className={styles.piece} aria-label="Your agent so far">
       <div className={styles.pieceHead}>
         <span className={styles.pieceMark} data-tint={markTint ?? undefined}>
-          {initials(name)}
+          {agentInitials(name)}
         </span>
         <span className={styles.pieceWho}>
           <b>{name || "Your agent"}</b>

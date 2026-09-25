@@ -15,9 +15,10 @@ import {
   type Run,
   type RunEvent,
 } from "../api";
+import { agentInitials } from "../lib/initials";
 import { startPolling } from "../lib/polling";
 import type { SectionKey } from "../sections/keys";
-import { AgentCard, initials } from "./agent-card";
+import { AgentCard } from "./agent-card";
 import { HomeMenu } from "./menu";
 import { NextUp } from "./next-up";
 import { Picks } from "./picks";
@@ -222,7 +223,7 @@ export function Home({
         </Link>
         <span className={styles.agentChip}>
           <span className={styles.chipMark} style={accentVars(agent.accent)} aria-hidden="true">
-            {initials(name)}
+            {agentInitials(name)}
           </span>
           <b>{name}</b>
           {agent.handle && <small>@{agent.handle}</small>}
