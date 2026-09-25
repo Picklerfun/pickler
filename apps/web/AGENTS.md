@@ -353,9 +353,12 @@ which creates the sub-organization with the passkey as its only root and the mas
 closed or failed prompt leaves the person on the step with "Try again"; there is no skip.
 
 Anyone who reaches a signed-in screen without a sub-organization is sent to `/passkey`: the studio
-shell (`studio.tsx`) and the create screen (`create/create.tsx`) read it through
-`hasSubOrganization` (a 404 is no; any other failure propagates) after the session and profile
-guards and `router.replace("/passkey")` before rendering anything else. `PasskeyFlow`'s `add` mode
+shell (`studio.tsx`), the create screen (`create/create.tsx`) and `/account` with every section
+(`features/account/account.tsx`, where the master wallet is shown) read it through
+`hasSubOrganization` (a 404 is no; any other failure propagates — to the studio's load error, or
+to the account's wallet card, which says the balances could not be read) after the session guard
+and `router.replace("/passkey")` before rendering anything else. `/portfolio` and the marketplace
+screens are wallet-connection surfaces, not custody, and do not redirect. `PasskeyFlow`'s `add` mode
 reads the same signal through `passkeyScreenFor` and shows either the create step, the same
 ceremony, or the add-passkey ceremony and a device list for an account that has one. `?state=create`
 (`features/auth/lib/passkey-preview.ts`, outside production only, gated on the build like `?stage=`)

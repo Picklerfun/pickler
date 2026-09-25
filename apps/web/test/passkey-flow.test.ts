@@ -73,10 +73,11 @@ test("signup, signin and /passkey render the enrolment step; nothing renders the
   assert.ok(page.includes('mode="add"'), "/passkey must open PasskeyAddFlow");
 });
 
-test("the studio shell and the create screen send a person without a sub-organization to /passkey", () => {
+test("the studio shell, the create screen and /account send a person without a sub-organization to /passkey", () => {
   for (const path of [
     "../src/features/studio/studio.tsx",
     "../src/features/studio/create/create.tsx",
+    "../src/features/account/account.tsx",
   ]) {
     const source = read(path);
     assert.ok(source.includes("hasSubOrganization("), `${path} must read the sub-organization`);

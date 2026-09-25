@@ -69,13 +69,12 @@ export function WalletSection({ state }: { state: WalletState }) {
         {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
         {state.kind === "none" && (
           <>
-            {/* The trigger moved. A wallet used to be made during sign-up, so this said it arrived
-                with your first passkey; it is now made when you build your first agent, or here,
-                whenever you decide to. Saying the old thing would describe a product that no
-                longer exists. */}
+            {/* Signed in, the account screen sends a person without a sub-organization to /passkey
+                before this renders (spec §4.1: the wallet is made at signup, with a passkey nobody
+                can skip). This stays for anything that reaches the state anyway. */}
             <p className={styles.cardNote}>
-              No wallet yet. One is made when you build your first agent — or now, if you would
-              rather have it ready. Its key never leaves the enclave it is made in.
+              No wallet yet. Create it with your passkey — it comes before anything else. Its key
+              never leaves the enclave it is made in.
             </p>
             <div className={styles.cardActions}>
               <ButtonLink as={Link} href="/passkey" variant="primary" arrow>
