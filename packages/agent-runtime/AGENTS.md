@@ -49,6 +49,8 @@ host that runs research through the runtime passes through it.
 - Off-list reads throw `INVALID_INPUT` "Outside the agent's site list" in the model's tool,
   before the runner's provider call, so a refusal is an answer rather than a provider failure.
   The reader refuses too, without calling Exa.
+- In `only` mode, off-list market resolution-rule URLs are refused too; the list has no exceptions.
+- `allowedHost` first requires a public http(s) URL without credentials (core's `publicSourceUrl`).
 - With the web off, search returns no sources without calling Exa and no page reader is
   offered. Search stays offered because core requires supporting and contradicting searches.
 - `plugins/odds.ts` keeps only chosen books. Books are core `SPORTSBOOKS` keys, which are The

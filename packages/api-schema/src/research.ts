@@ -45,7 +45,8 @@ export const SPORTSBOOKS = [
   { label: "BetMGM", key: "betmgm" },
   { label: "Caesars", key: "williamhill_us" },
 ] as const;
-const BOOK_KEYS = ["draftkings", "fanduel", "pinnacle", "betmgm", "williamhill_us"] as const;
+type BookKey = (typeof SPORTSBOOKS)[number]["key"];
+const BOOK_KEYS = SPORTSBOOKS.map((book) => book.key) as [BookKey, ...BookKey[]];
 
 export const skillSchema = z
   .object({ name: z.string().trim().min(1).max(40), prompt: z.string().trim().min(1).max(600) })

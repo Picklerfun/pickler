@@ -1,5 +1,6 @@
 import {
   PilotError,
+  publicSourceUrl,
   type PageReader,
   type ResearchTools,
   type SearchResult,
@@ -30,19 +31,21 @@ function bareHost(value: string): string {
   return value.toLowerCase().replace(/^www\./, "");
 }
 
-/** Only-mode keeps to the list: a listed site or one of its subdomains. Other modes allow any host. */
+/**
+ * Only-mode keeps to the list: a listed site or one of its subdomains. Other modes allow any host.
+ * The URL must first be a public source (core's `publicSourceUrl`): http(s), no credentials, a
+ * public DNS name. So the guard stands alone, whoever calls it.
+ */
 export function allowedHost(url: string, web: WebSites): boolean {
+  const normalized = publicSourceUrl(url);
+  if (!normalized) {
+    return false;
+  }
   if (web.mode !== "only") {
     return true;
   }
 
-  let host: string;
-  try {
-    host = bareHost(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-
+  const host = bareHost(new URL(normalized).hostname);
   return web.sites.some((site) => {
     const listed = bareHost(site);
     return host === listed || host.endsWith(`.${listed}`);
@@ -64,6 +67,9 @@ export function exaSearchBody(query: string, web: WebSites) {
 function refuseOutside(url: string, web: WebSites | null): void {
   if (!web) {
     throw new PilotError("INVALID_INPUT", "The web is off for this agent");
+  }
+  if (!publicSourceUrl(url)) {
+    throw new PilotError("INVALID_INPUT", "Invalid page URL");
   }
   if (!allowedHost(url, web)) {
     throw new PilotError("INVALID_INPUT", "Outside the agent's site list");

@@ -32,6 +32,25 @@ test("only mode refuses a host outside the list, prefer and anywhere do not", ()
   assert.equal(allowedHost("https://reddit.com/r/nfl", { mode: "anywhere", sites: [] }), true);
 });
 
+test("the site guard stands alone: it normalises the URL before judging the host", () => {
+  const only = { mode: "only" as const, sites: ["espn.com"] };
+
+  assert.equal(allowedHost("https://ESPN.COM/nfl", only), true, "hosts compare without case");
+  assert.equal(allowedHost("ftp://espn.com/file", only), false, "only http and https are read");
+  assert.equal(
+    allowedHost("https://evil.io@espn.com/x", only),
+    false,
+    "credentials in a URL are refused outright, though the host is espn.com",
+  );
+  assert.equal(
+    allowedHost("https://espn.com@evil.io/x", only),
+    false,
+    "the host decides, never the credentials",
+  );
+  assert.equal(allowedHost("not a url", only), false);
+  assert.equal(allowedHost("ftp://reddit.com/x", { mode: "anywhere", sites: [] }), false);
+});
+
 test("the search request carries the list as includeDomains for only and prefer, and nothing for anywhere", () => {
   const sites = ["espn.com"];
 
