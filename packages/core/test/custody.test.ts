@@ -145,6 +145,16 @@ export function service(f: ReturnType<typeof fakes>, extra: Partial<CustodyServi
     turnkey: f.turnkey,
     activities: f.activities,
     forwarder: f.forwarder,
+    // The agent wallet ceremony has its own suite (custody-agent-wallet.test.ts); nothing here
+    // reaches these, and a call that did would fail loudly.
+    agentActivities: new Proxy({} as CustodyServiceDeps["agentActivities"], {
+      get: () => () => assert.fail("agent wallet builder called from a passkey test"),
+    }),
+    agentWallets: new Proxy({} as CustodyServiceDeps["agentWallets"], {
+      get: () => () => assert.fail("agent wallet store called from a passkey test"),
+    }),
+    delegatedPublicKey: null,
+    venueContracts: [],
     rpId: "pickler.fun",
     appName: "Pickler",
     now: () => NOW,

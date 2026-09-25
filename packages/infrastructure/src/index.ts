@@ -84,6 +84,12 @@ export {
   type SubOrganizationCreatorConfig,
 } from "./turnkey/turnkey-sub-organization.js";
 
+export {
+  createActivityBuilders,
+  DELEGATED_API_KEY_NAME,
+  DELEGATED_USER_NAME,
+} from "./turnkey/turnkey-activities.js";
+
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
 export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
 export { PostgresAgentDirectory } from "./persistence/agent-directory.js";

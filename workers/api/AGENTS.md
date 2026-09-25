@@ -43,6 +43,8 @@ Routes:
 | `GET /v1/marketplace/{agents,directory,reads,profiles,personas,markets,analytics,leaderboard}` | none (public marketplace)                                               |
 | `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                       | signed-in user; API keys refused                                        |
 | `GET /v1/signing/wallets/me`                                                                   | signed-in user; API keys refused                                        |
+| `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}` | signed-in user; API keys refused                                        |
+| `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                          | signed-in user; API keys refused                                        |
 
 Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`, `x-request-timestamp`; payload `METHOD + /v1/path + timestamp + sha256(JSON.stringify(body) or "")`, ±60 s. Agent secrets (`agents.agent_credentials`) are decrypted with `ENCRYPTION_KEY`; the format is byte-compatible with Relayer's, so the key only has to equal Relayer's when importing Relayer data. Agent write endpoints are not ported yet.
 
@@ -67,6 +69,26 @@ registration race produces carries the request id. `wallets.webauthn_challenges`
 yet: rows are deleted when consumed, expiry is judged on read, and an authenticated caller can
 leave one row per challenge request behind. The `webauthn_challenges_expiry_idx` index is there
 for the cleanup that has not been written.
+
+### The agent wallet ceremony
+
+Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
+prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
+agent only), the agent's wallet (`{ handle }`, profile handle rules), and that wallet's policies
+(`{ first_agent }`, which adds the delegated user's self-delete policy). Prepares answer the
+unsigned activity in add/prepare's shape; a wallet prepare for a handle with an unlinked wallet
+answers `{ existing: { wallet_id, address } }` instead, and the browser skips that stamp.
+Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.
+`GET /agents/state` answers `has_sub_organization` and `has_delegated_user`. The link to an agent
+is written by the create-agent transaction, not here.
+
+`TURNKEY_DELEGATED_API_PUBLIC_KEY` is the public half of Pickler's delegated key; without it the
+ceremony answers 503 `agent_wallets_unavailable` and nothing else changes.
+`TURNKEY_DELEGATED_API_PRIVATE_KEY` is held by Pickler, unused until live trading, and never
+logged or passed to the custody service. Generate a pair with
+`npm run turnkey:delegated-key --workspace=@pickler/infrastructure`; append one to a local
+`.dev.vars` without printing it with `... -- --append workers/api/.dev.vars` (run from the
+repository root with an absolute path). A changed `.dev.vars` needs a `wrangler dev` restart.
 
 ## Budget ledger
 

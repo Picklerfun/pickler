@@ -9,6 +9,9 @@ import {
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   type AddPasskeyActivityBuilder,
+  type AgentWalletActivityBuilders,
+  type AgentWalletRepository,
+  type TurnkeyActivity,
   type ChallengeStore,
   type CustodyAccount,
   type CustodyRepository,
@@ -139,9 +142,14 @@ function harness(
   };
 
   const forwards: { request: unknown; expectations: unknown }[] = [];
+  /** Set by a ceremony test to the activity the next forward answers with. */
+  const nextActivity: { value: TurnkeyActivity | null } = { value: null };
   const forwarder: SignedActivityForwarder = {
     async forward(request, expectations) {
       forwards.push({ request, expectations });
+      if (nextActivity.value) {
+        return nextActivity.value;
+      }
       return {
         id: "act-1",
         fingerprint: "fingerprint-1",
@@ -153,6 +161,53 @@ function harness(
       };
     },
   };
+
+  // The agent wallet ceremony's collaborators: a store of what was saved and a builder that
+  // records the sub-organization it was asked to target.
+  const ceremony = {
+    delegated: null as string | null,
+    wallets: [] as Parameters<AgentWalletRepository["saveWallet"]>[0][],
+    builds: [] as { kind: string; input: unknown }[],
+  };
+  const agentWallets: AgentWalletRepository = {
+    async saveDelegatedUser(_userId, id) {
+      ceremony.delegated = id;
+    },
+    async delegatedUserId() {
+      return ceremony.delegated;
+    },
+    async saveWallet(input) {
+      ceremony.wallets.push(input);
+    },
+    async findOrphanWallet(userId, name) {
+      const found = ceremony.wallets.find((w) => w.userId === userId && w.name === name);
+      return found ? { walletId: found.walletId, address: found.address } : null;
+    },
+    async findOwnedAgentWallet(userId, walletId) {
+      const found = ceremony.wallets.find((w) => w.userId === userId && w.walletId === walletId);
+      return found ? { walletId: found.walletId, address: found.address } : null;
+    },
+    async findAgentWallet() {
+      return null;
+    },
+    async saveDeposit() {},
+  };
+  const unsignedFor = (kind: string, input: { subOrganizationId: string }) => {
+    ceremony.builds.push({ kind, input });
+    return {
+      url: `https://api.turnkey.com/public/v1/submit/${kind}`,
+      body: `{"kind":"${kind}"}`,
+      timestampMs: "1758542400000",
+      organizationId: input.subOrganizationId,
+    };
+  };
+  const agentActivities: AgentWalletActivityBuilders = {
+    createDelegatedUser: (input) => unsignedFor("create_users", input),
+    createAgentWallet: (input) => unsignedFor("create_wallet", input),
+    createPolicies: (input) => unsignedFor("create_policies", input),
+    signTransaction: (input) => unsignedFor("sign_transaction", input),
+  };
+  const delegatedKey: { value: string | null } = { value: "02delegated" };
 
   const reads: string[] = [];
   const balances = {
@@ -176,6 +231,10 @@ function harness(
       turnkey,
       activities,
       forwarder,
+      agentActivities,
+      agentWallets,
+      delegatedPublicKey: delegatedKey.value,
+      venueContracts: [],
       rpId: "pickler.fun",
       appName: "Pickler",
       now: () => NOW,
@@ -238,6 +297,9 @@ function harness(
     authOptions,
     repository,
     forwarder,
+    ceremony,
+    nextActivity,
+    delegatedKey,
   };
 }
 
@@ -854,4 +916,193 @@ test("a body larger than any passkey ceremony produces is refused unread", async
 
   assert.equal(res.status, 413);
   assert.deepEqual(h.creations, []);
+});
+
+// ─── The agent wallet ceremony ──────────────────────────────────────────────────────────────
+
+const get = (h: Harness, path: string) => h.app.request(path, { method: "GET" }, env);
+
+const CEREMONY_SIGNED = {
+  url: "https://api.turnkey.com/public/v1/submit/create_wallet",
+  body: '{"type":"ACTIVITY_TYPE_CREATE_WALLET"}',
+  stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "c3RhbXA" },
+};
+
+function completed(result: Record<string, Record<string, unknown>>): TurnkeyActivity {
+  return { id: "act-9", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED", result };
+}
+
+test("every ceremony route refuses a caller without a session", async () => {
+  const h = harness(null);
+  const calls: [string, "GET" | "POST"][] = [
+    ["/v1/signing/agents/state", "GET"],
+    ["/v1/signing/agents/delegated/prepare", "POST"],
+    ["/v1/signing/agents/delegated/confirm", "POST"],
+    ["/v1/signing/agents/wallet/prepare", "POST"],
+    ["/v1/signing/agents/wallet/confirm", "POST"],
+    ["/v1/signing/agents/wallet/w-1/policies/prepare", "POST"],
+    ["/v1/signing/agents/wallet/w-1/policies/confirm", "POST"],
+  ];
+
+  for (const [path, method] of calls) {
+    const res = method === "GET" ? await get(h, path) : await post(h, path, {});
+    assert.equal(res.status, 401, `${method} ${path}`);
+  }
+  assert.deepEqual(h.ceremony.builds, []);
+  assert.deepEqual(h.forwards, []);
+});
+
+test("the state tells the browser which steps remain", async () => {
+  const h = harness();
+  assert.deepEqual(await data(await get(h, "/v1/signing/agents/state")), {
+    has_sub_organization: false,
+    has_delegated_user: false,
+  });
+
+  await registered(h);
+  h.ceremony.delegated = "da-1";
+
+  assert.deepEqual(await data(await get(h, "/v1/signing/agents/state")), {
+    has_sub_organization: true,
+    has_delegated_user: true,
+  });
+});
+
+test("the delegated user is prepared like add/prepare and confirmed into the caller's sub-organization", async () => {
+  const h = harness();
+  await registered(h);
+
+  const prepared = await post(h, "/v1/signing/agents/delegated/prepare");
+
+  assert.equal(prepared.status, 200);
+  assert.deepEqual(await data(prepared), {
+    url: "https://api.turnkey.com/public/v1/submit/create_users",
+    body: '{"kind":"create_users"}',
+    timestampMs: "1758542400000",
+    organizationId: "sub-1",
+  });
+  assert.deepEqual(h.ceremony.builds, [
+    { kind: "create_users", input: { subOrganizationId: "sub-1", publicKey: "02delegated" } },
+  ]);
+
+  h.nextActivity.value = completed({ createUsersResult: { userIds: ["da-1"] } });
+  const confirmed = await post(h, "/v1/signing/agents/delegated/confirm", {
+    signed: CEREMONY_SIGNED,
+  });
+
+  assert.equal(confirmed.status, 200);
+  assert.deepEqual(await data(confirmed), { delegated_user_id: "da-1" });
+  assert.deepEqual(h.forwards.at(-1)?.expectations, {
+    organizationId: "sub-1",
+    allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_USERS_V4"],
+  });
+  assert.equal(h.ceremony.delegated, "da-1");
+
+  // Once set, a second prepare is a conflict rather than a second Pickler user.
+  const again = await post(h, "/v1/signing/agents/delegated/prepare");
+  assert.equal(again.status, 409);
+});
+
+test("without Pickler's delegated key the ceremony answers 503 and builds nothing", async () => {
+  const h = harness();
+  h.delegatedKey.value = null;
+  await registered(h);
+
+  const res = await post(h, "/v1/signing/agents/delegated/prepare");
+
+  assert.equal(res.status, 503);
+  assert.equal((await json(res))["error"], "agent_wallets_unavailable");
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("a wallet is prepared under a valid handle, confirmed, and a retry answers the existing one", async () => {
+  const h = harness();
+  await registered(h);
+
+  const bad = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "Half Time" });
+  assert.equal(bad.status, 400);
+
+  const prepared = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  assert.equal(prepared.status, 200);
+  assert.deepEqual(await data(prepared), {
+    url: "https://api.turnkey.com/public/v1/submit/create_wallet",
+    body: '{"kind":"create_wallet"}',
+    timestampMs: "1758542400000",
+    organizationId: "sub-1",
+  });
+
+  h.nextActivity.value = completed({
+    createWalletResult: { walletId: "w-1", addresses: [ADDRESS] },
+  });
+  const confirmed = await post(h, "/v1/signing/agents/wallet/confirm", {
+    handle: "halftime",
+    signed: CEREMONY_SIGNED,
+  });
+  assert.equal(confirmed.status, 200);
+  assert.deepEqual(await data(confirmed), { wallet_id: "w-1", address: ADDRESS });
+  assert.deepEqual(h.forwards.at(-1)?.expectations, {
+    organizationId: "sub-1",
+    allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_WALLET"],
+  });
+
+  const retry = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  assert.deepEqual(await data(retry), { existing: { wallet_id: "w-1", address: ADDRESS } });
+  assert.equal(h.ceremony.builds.filter((b) => b.kind === "create_wallet").length, 1);
+});
+
+test("policies are prepared for the caller's wallet and confirmed to their ids", async () => {
+  const h = harness();
+  await registered(h);
+  h.ceremony.delegated = "da-1";
+  h.ceremony.wallets.push({
+    userId: ANA,
+    walletId: "w-1",
+    subOrganizationId: "sub-1",
+    kind: "agent",
+    name: "halftime",
+    address: ADDRESS,
+    path: "m/44'/60'/0'/0/0",
+  });
+
+  const missingFlag = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {});
+  assert.equal(missingFlag.status, 400);
+  const notMine = await post(h, "/v1/signing/agents/wallet/w-2/policies/prepare", {
+    first_agent: true,
+  });
+  assert.equal(notMine.status, 404);
+
+  const prepared = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {
+    first_agent: true,
+  });
+  assert.equal(prepared.status, 200);
+  assert.equal((await data(prepared))["organizationId"], "sub-1");
+  const build = h.ceremony.builds.find((b) => b.kind === "create_policies");
+  const policies = (build?.input as { policies: { policyName: string }[] }).policies;
+  assert.deepEqual(
+    policies.map((p) => p.policyName),
+    ["Never a transfer out", "Only root changes the rules", "Pickler may remove itself"],
+  );
+
+  h.nextActivity.value = completed({ createPoliciesResult: { policyIds: ["p1", "p2", "p3"] } });
+  const confirmed = await post(h, "/v1/signing/agents/wallet/w-1/policies/confirm", {
+    signed: CEREMONY_SIGNED,
+  });
+  assert.equal(confirmed.status, 200);
+  assert.deepEqual(await data(confirmed), { policy_ids: ["p1", "p2", "p3"] });
+  assert.deepEqual(h.forwards.at(-1)?.expectations, {
+    organizationId: "sub-1",
+    allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_POLICIES"],
+  });
+});
+
+test("a wallet id that could not be a Turnkey id is refused before core sees it", async () => {
+  const h = harness();
+  await registered(h);
+
+  const res = await post(h, "/v1/signing/agents/wallet/w'1/policies/prepare", {
+    first_agent: true,
+  });
+
+  assert.equal(res.status, 400);
+  assert.deepEqual(h.ceremony.builds, []);
 });

@@ -24,6 +24,15 @@ export interface Env {
   TURNKEY_API_PUBLIC_KEY?: string;
   TURNKEY_API_PRIVATE_KEY?: string;
   TURNKEY_PARENT_ORG_ID?: string;
+  /**
+   * Pickler's delegated API key: the only credential of the non-root "Pickler" user each person
+   * creates inside their own sub-organization, with no rights beyond that wallet's policies. The
+   * public half (compressed P-256 hex) goes into the create_users activity; without it the agent
+   * wallet ceremony answers 503 and every other signing route is unaffected. The private half is
+   * held by Pickler, unused until live trading, and never logged.
+   */
+  TURNKEY_DELEGATED_API_PUBLIC_KEY?: string;
+  TURNKEY_DELEGATED_API_PRIVATE_KEY?: string;
   /** WebAuthn relying party: "localhost" in development, the site domain in production. */
   TURNKEY_RPID?: string;
   /** Shown in the operating system's passkey prompt. */

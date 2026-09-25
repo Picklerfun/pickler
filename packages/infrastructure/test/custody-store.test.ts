@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import type { RegistrationInput } from "@pickler/core";
+import { DelegatedUserExistsError, type RegistrationInput } from "@pickler/core";
 import { PostgresCustodyStore } from "../src/persistence/custody-store.js";
 import { createTestStore } from "./database.js";
 
@@ -419,4 +419,120 @@ test("a deposit with a malformed hash is refused", async (t) => {
     ),
     /deposits_tx_format/,
   );
+});
+
+/** A registered person, so turnkey_orgs has a row the delegated user can be written on. */
+async function registered(custody: PostgresCustodyStore) {
+  const input = registration();
+  await custody.saveRegistration(input);
+  return input;
+}
+
+function agentWallet(userId: string, subOrganizationId: string, name = "halftime") {
+  return {
+    userId,
+    walletId: `wallet-${hex(12)}`,
+    subOrganizationId,
+    kind: "agent" as const,
+    name,
+    address: `0x${hex(40)}`,
+    path: "m/44'/60'/0'/0/0",
+  };
+}
+
+test("the delegated user is written once; the same id again is fine, another is refused", async (t) => {
+  const { custody } = await setup(t);
+  const person = await registered(custody);
+  assert.equal(await custody.delegatedUserId(person.userId), null);
+
+  await custody.saveDelegatedUser(person.userId, "da-1");
+  await custody.saveDelegatedUser(person.userId, "da-1");
+
+  assert.equal(await custody.delegatedUserId(person.userId), "da-1");
+  await assert.rejects(custody.saveDelegatedUser(person.userId, "da-2"), DelegatedUserExistsError);
+  assert.equal(await custody.delegatedUserId(person.userId), "da-1");
+  // Nobody's row to write on: refused rather than silently ignored.
+  await assert.rejects(custody.saveDelegatedUser(randomUUID(), "da-1"), DelegatedUserExistsError);
+});
+
+test("an agent wallet lands with its account; the master lookup is unaffected", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+
+  await custody.saveWallet(wallet);
+
+  const { rows } = await store.pool.query(
+    `SELECT w.kind, w.name, a.address, a.path
+       FROM wallets.wallets w JOIN wallets.wallet_accounts a USING (wallet_id)
+      WHERE w.wallet_id = $1`,
+    [wallet.walletId],
+  );
+  assert.deepEqual(rows, [
+    { kind: "agent", name: "halftime", address: wallet.address, path: wallet.path },
+  ]);
+  assert.equal((await custody.findByUserId(person.userId))?.address, person.address);
+  assert.deepEqual(await custody.findOwnedAgentWallet(person.userId, wallet.walletId), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+  });
+  assert.equal(await custody.findOwnedAgentWallet(randomUUID(), wallet.walletId), null);
+  assert.equal(await custody.findOwnedAgentWallet(person.userId, person.walletId), null);
+});
+
+test("a wallet whose account is refused leaves no wallets row behind", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = { ...agentWallet(person.userId, person.subOrganizationId), address: "0xnope" };
+
+  await assert.rejects(custody.saveWallet(wallet));
+
+  const { rowCount } = await store.pool.query(
+    "SELECT 1 FROM wallets.wallets WHERE wallet_id = $1",
+    [wallet.walletId],
+  );
+  assert.equal(rowCount, 0);
+});
+
+test("an orphan wallet is found before its link and not after; findAgentWallet reads the link", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+  await custody.saveWallet(wallet);
+  // Someone else's wallet under the same name must never be offered.
+  const stranger = await registered(custody);
+  await custody.saveWallet(agentWallet(stranger.userId, stranger.subOrganizationId));
+
+  assert.deepEqual(await custody.findOrphanWallet(person.userId, "halftime"), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+  });
+  assert.equal(await custody.findOrphanWallet(person.userId, "another"), null);
+
+  const agentId = await seedAgent(store.pool);
+  assert.equal(await custody.findAgentWallet(agentId), null);
+  await store.pool.query(
+    `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+    [agentId, wallet.walletId, ["p1", "p2"]],
+  );
+
+  assert.equal(await custody.findOrphanWallet(person.userId, "halftime"), null);
+  assert.deepEqual(await custody.findAgentWallet(agentId), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+  });
+});
+
+test("a deposit hash is lowercased before it is stored", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"AB".repeat(32)}`;
+
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 2_500_000n });
+
+  const { rows } = await store.pool.query(
+    "SELECT tx_hash, amount_micro_usd FROM wallets.deposits WHERE agent_id = $1",
+    [agentId],
+  );
+  assert.deepEqual(rows, [{ tx_hash: hash.toLowerCase(), amount_micro_usd: "2500000" }]);
 });

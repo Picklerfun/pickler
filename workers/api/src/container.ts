@@ -1,4 +1,5 @@
 import {
+  VENUE_CONTRACTS,
   createAgentQueries,
   createCustodyService,
   createPaperService,
@@ -23,6 +24,7 @@ import {
   PostgresStudioDirectory,
   PostgresBudgetLedger,
   PostgresCustodyStore,
+  createActivityBuilders,
   createAddPasskeyActivityBuilder,
   createBalanceReader,
   createSubOrganizationCreator,
@@ -100,6 +102,10 @@ function custodyServices(
   const store = new PostgresCustodyStore(pool);
   const turnkey = createSubOrganizationCreator({ ...parentKey, parentOrganizationId });
   const activities = createAddPasskeyActivityBuilder();
+  const agentActivities = createActivityBuilders();
+  // Only the public half is read here. The private half stays in the environment, unused until
+  // live trading, and is never passed to anything that could log it.
+  const delegatedPublicKey = env.TURNKEY_DELEGATED_API_PUBLIC_KEY || null;
   const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
 
   return {
@@ -118,6 +124,10 @@ function custodyServices(
         turnkey,
         activities,
         forwarder,
+        agentActivities,
+        agentWallets: store,
+        delegatedPublicKey,
+        venueContracts: VENUE_CONTRACTS,
         rpId,
         appName,
         now: () => new Date(),

@@ -5,6 +5,10 @@ import {
   AccessDeniedError,
   AgentAuthenticationError,
   AgentNotFoundError,
+  AgentWalletNotFoundError,
+  DelegatedKeyNotConfiguredError,
+  DelegatedUserExistsError,
+  DelegatedUserMissingError,
   InvalidProfileError,
   ProfileAlreadyExistsError,
   ProfileHandleTakenError,
@@ -79,6 +83,22 @@ function classify(
   }
   if (error instanceof NoCustodyAccountError) {
     return { status: 409, message: error.message, extras: { error: "no_custody_account" } };
+  }
+  if (error instanceof DelegatedUserExistsError) {
+    return { status: 409, message: error.message, extras: { error: "delegated_user_exists" } };
+  }
+  if (error instanceof DelegatedUserMissingError) {
+    return { status: 409, message: error.message, extras: { error: "delegated_user_missing" } };
+  }
+  if (error instanceof AgentWalletNotFoundError) {
+    return { status: 404, message: error.message, extras: { error: "agent_wallet_not_found" } };
+  }
+  if (error instanceof DelegatedKeyNotConfiguredError) {
+    return {
+      status: 503,
+      message: error.message,
+      extras: { error: "agent_wallets_unavailable" },
+    };
   }
   if (error instanceof InvalidSignedActivityError) {
     // Our own check on what the browser stamped; the message says which rule it broke.

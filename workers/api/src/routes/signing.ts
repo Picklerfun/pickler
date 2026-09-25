@@ -8,8 +8,11 @@
 //   and learned about malformed ones from Turnkey, after the person's biometric ceremony.
 // - The register response omits the root user id, and confirm answers with the activity's id and
 //   status rather than the whole Turnkey activity.
+// - New: the agent wallet ceremony under /agents (docs/specs/studio-create-and-fund-v1.md §4.1).
+//   Relayer had no equivalent; each step is prepare → passkey stamp in the browser → confirm.
 
 import {
+  HANDLE_RULES,
   SUPPORTED_TRANSPORTS,
   type createCustodyService,
   type PasskeyAttestation,
@@ -61,6 +64,9 @@ const MAX = {
   stamp: 8192,
   transports: 8,
 };
+
+/** A Turnkey wallet id: letters, digits and hyphens, as core's policy writer requires. */
+const WALLET_ID = /^[A-Za-z0-9-]{1,128}$/;
 
 /** base64url with optional padding. Rejects the `+` and `/` of standard base64, and whitespace. */
 const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
@@ -139,6 +145,37 @@ function signedActivity(body: Body) {
       stampHeaderName: text(stamp, "stampHeaderName", 64),
       stampHeaderValue: text(stamp, "stampHeaderValue", MAX.stamp),
     },
+  };
+}
+
+/** An agent handle, by the same rule as a profile handle; the wallet is named after it. */
+function handle(body: Body): string {
+  const value = body["handle"];
+  if (
+    typeof value !== "string" ||
+    value.length < HANDLE_RULES.min ||
+    value.length > HANDLE_RULES.max ||
+    !HANDLE_RULES.pattern.test(value)
+  ) {
+    throw badRequest(
+      `Field 'handle' must be ${HANDLE_RULES.min} to ${HANDLE_RULES.max} lowercase letters, digits or underscores`,
+    );
+  }
+  return value;
+}
+
+/** The unsigned activity as the Turnkey stamper consumes it, exactly as add/prepare answers. */
+function unsignedDto(unsigned: {
+  url: string;
+  body: string;
+  timestampMs: string;
+  organizationId: string;
+}) {
+  return {
+    url: unsigned.url,
+    body: unsigned.body,
+    timestampMs: unsigned.timestampMs,
+    organizationId: unsigned.organizationId,
   };
 }
 
@@ -323,5 +360,117 @@ export function signingRoutes(services: SigningRouteServices) {
     );
   });
 
+  // ─── The agent wallet ceremony ────────────────────────────────────────────────────────────
+  // Three steps, each prepared here, stamped by the person's passkey and confirmed here: Pickler's
+  // delegated user (first agent only), the agent's wallet, and that wallet's policies. The link
+  // to an agent is written by the create-agent transaction, not by these routes.
+
+  /** Which steps the browser still has to run. */
+  api.get("/agents/state", async (c) => {
+    const user = person(c);
+    const state = await services.custody(c.get("requestId")).agentWalletState(user.id);
+    return c.json(
+      successEnvelope(
+        {
+          has_sub_organization: state.hasSubOrganization,
+          has_delegated_user: state.hasDelegatedUser,
+        },
+        c.req.path,
+        "Agent wallet state",
+      ),
+    );
+  });
+
+  api.post("/agents/delegated/prepare", async (c) => {
+    const user = person(c);
+    const unsigned = await services.custody(c.get("requestId")).prepareDelegatedUser(user.id);
+    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/delegated/confirm", async (c) => {
+    const user = person(c);
+    const signed = signedActivity(await jsonBody(c));
+    const saved = await services.custody(c.get("requestId")).confirmDelegatedUser(user.id, signed);
+    return c.json(
+      successEnvelope(
+        { delegated_user_id: saved.delegatedUserId },
+        c.req.path,
+        "Pickler has its seat",
+      ),
+    );
+  });
+
+  // A wallet already minted under this handle and never linked is answered as `existing`, and
+  // the browser skips the stamp: a retry never leaves a second wallet behind.
+  api.post("/agents/wallet/prepare", async (c) => {
+    const user = person(c);
+    const body = await jsonBody(c);
+    const prepared = await services
+      .custody(c.get("requestId"))
+      .prepareAgentWallet(user.id, handle(body));
+    if ("existing" in prepared) {
+      return c.json(
+        successEnvelope(
+          {
+            existing: {
+              wallet_id: prepared.existing.walletId,
+              address: prepared.existing.address,
+            },
+          },
+          c.req.path,
+          "Wallet already exists",
+        ),
+      );
+    }
+    return c.json(successEnvelope(unsignedDto(prepared.unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/wallet/confirm", async (c) => {
+    const user = person(c);
+    const body = await jsonBody(c);
+    const wallet = await services
+      .custody(c.get("requestId"))
+      .confirmAgentWallet(user.id, handle(body), signedActivity(body));
+    return c.json(
+      successEnvelope(
+        { wallet_id: wallet.walletId, address: wallet.address },
+        c.req.path,
+        "Wallet created",
+      ),
+    );
+  });
+
+  api.post("/agents/wallet/:walletId/policies/prepare", async (c) => {
+    const user = person(c);
+    const walletId = walletIdParam(c.req.param("walletId"));
+    const body = await jsonBody(c);
+    if (typeof body["first_agent"] !== "boolean") {
+      throw badRequest("Field 'first_agent' must be a boolean");
+    }
+    const unsigned = await services
+      .custody(c.get("requestId"))
+      .preparePolicies(user.id, walletId, { firstAgent: body["first_agent"] });
+    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/wallet/:walletId/policies/confirm", async (c) => {
+    const user = person(c);
+    const walletId = walletIdParam(c.req.param("walletId"));
+    const signed = signedActivity(await jsonBody(c));
+    const confirmed = await services
+      .custody(c.get("requestId"))
+      .confirmPolicies(user.id, walletId, signed);
+    return c.json(
+      successEnvelope({ policy_ids: confirmed.policyIds }, c.req.path, "Policies approved"),
+    );
+  });
+
   return api;
+}
+
+function walletIdParam(value: string): string {
+  if (!WALLET_ID.test(value)) {
+    throw badRequest("Invalid wallet id");
+  }
+  return value;
 }

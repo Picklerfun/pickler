@@ -4,7 +4,10 @@
 // DELETE ... RETURNING instead of a Redis get-then-delete.
 
 import type { Pool } from "pg";
+import { DelegatedUserExistsError } from "@pickler/core";
 import type {
+  AgentWallet,
+  AgentWalletRepository,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
@@ -13,7 +16,9 @@ import type {
   StoredChallenge,
 } from "@pickler/core";
 
-export class PostgresCustodyStore implements CustodyRepository, ChallengeStore {
+export class PostgresCustodyStore
+  implements CustodyRepository, ChallengeStore, AgentWalletRepository
+{
   constructor(private readonly pool: Pool) {}
 
   async findByUserId(userId: string): Promise<CustodyAccount | null> {
@@ -125,6 +130,121 @@ export class PostgresCustodyStore implements CustodyRepository, ChallengeStore {
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (credential_id) DO NOTHING`,
       [input.userId, input.credentialId, input.label, input.transports, input.deviceType],
+    );
+  }
+
+  /**
+   * Sets the delegated user once. The same id again is a no-op (a retried confirm); a different
+   * one is refused, because a second Pickler user in someone's sub-organization would be a key
+   * nobody records. No row at all means no sub-organization, which is refused too.
+   */
+  async saveDelegatedUser(userId: string, delegatedUserId: string): Promise<void> {
+    const { rows } = await this.pool.query<{ delegatedUserId: string | null }>(
+      `UPDATE wallets.turnkey_orgs
+          SET delegated_user_id = $2
+        WHERE user_id = $1
+          AND (delegated_user_id IS NULL OR delegated_user_id = $2)
+        RETURNING delegated_user_id AS "delegatedUserId"`,
+      [userId, delegatedUserId],
+    );
+    if (rows.length === 0) {
+      throw new DelegatedUserExistsError();
+    }
+  }
+
+  async delegatedUserId(userId: string): Promise<string | null> {
+    const { rows } = await this.pool.query<{ delegatedUserId: string | null }>(
+      `SELECT delegated_user_id AS "delegatedUserId"
+         FROM wallets.turnkey_orgs
+        WHERE user_id = $1`,
+      [userId],
+    );
+    return rows[0]?.delegatedUserId ?? null;
+  }
+
+  async saveWallet(input: {
+    userId: string;
+    walletId: string;
+    subOrganizationId: string;
+    kind: "agent";
+    name: string;
+    address: string;
+    path: string;
+  }): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [input.userId, input.walletId, input.subOrganizationId, input.kind, input.name],
+      );
+      await client.query(
+        `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
+         VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', $3)`,
+        [input.walletId, input.address, input.path],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** The newest unlinked agent wallet of this person's under this name, if a creation failed. */
+  async findOrphanWallet(userId: string, name: string): Promise<AgentWallet | null> {
+    const { rows } = await this.pool.query<AgentWallet>(
+      `SELECT w.wallet_id AS "walletId", a.address
+         FROM wallets.wallets w
+         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
+        WHERE w.user_id = $1
+          AND w.kind = 'agent'
+          AND w.name = $2
+          AND NOT EXISTS (SELECT 1 FROM wallets.agent_wallets l WHERE l.wallet_id = w.wallet_id)
+        ORDER BY w.created_at DESC
+        LIMIT 1`,
+      [userId, name],
+    );
+    return rows[0] ?? null;
+  }
+
+  async findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null> {
+    const { rows } = await this.pool.query<AgentWallet>(
+      `SELECT w.wallet_id AS "walletId", a.address
+         FROM wallets.wallets w
+         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
+        WHERE w.user_id = $1
+          AND w.wallet_id = $2
+          AND w.kind = 'agent'
+        LIMIT 1`,
+      [userId, walletId],
+    );
+    return rows[0] ?? null;
+  }
+
+  async findAgentWallet(agentId: string): Promise<AgentWallet | null> {
+    const { rows } = await this.pool.query<AgentWallet>(
+      `SELECT l.wallet_id AS "walletId", a.address
+         FROM wallets.agent_wallets l
+         JOIN wallets.wallet_accounts a ON a.wallet_id = l.wallet_id
+        WHERE l.agent_id = $1
+        LIMIT 1`,
+      [agentId],
+    );
+    return rows[0] ?? null;
+  }
+
+  /** The hash is lowercased: the column accepts only `^0x[0-9a-f]{64}$`, and wallets vary. */
+  async saveDeposit(input: {
+    agentId: string;
+    txHash: string;
+    amountMicroUsd: bigint;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO wallets.deposits (agent_id, tx_hash, amount_micro_usd) VALUES ($1, $2, $3)`,
+      [input.agentId, input.txHash.toLowerCase(), input.amountMicroUsd.toString()],
     );
   }
 

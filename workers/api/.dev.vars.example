@@ -18,6 +18,13 @@ TURNKEY_PARENT_ORG_ID=
 # See docs/specs/product-hosts-v1.md §3.
 TURNKEY_RPID=localhost
 TURNKEY_APP_NAME=Pickler
+# Pickler's delegated API key pair: the only credential of the non-root user a person creates in
+# their own sub-organization when they make their first agent. Generate a pair with
+# `npm run turnkey:delegated-key`. The public key is optional here — without it the agent wallet
+# ceremony answers 503 — and the private key is held by Pickler, unused until live trading, and
+# never logged. Both are secrets in deployed environments.
+TURNKEY_DELEGATED_API_PUBLIC_KEY=
+TURNKEY_DELEGATED_API_PRIVATE_KEY=
 # Balance reads. Absent CHAIN_ID means Monad testnet (10143).
 CHAIN_ID=10143
 MONAD_RPC_URL=

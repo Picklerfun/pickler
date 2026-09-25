@@ -4,13 +4,23 @@
 
 import {
   ADD_PASSKEY_ACTIVITY_TYPE,
+  AGENT_WALLET_ACTIVITY_TYPES,
+  AgentWalletNotFoundError,
   ChallengeNotUsableError,
+  DelegatedKeyNotConfiguredError,
+  DelegatedUserExistsError,
+  DelegatedUserMissingError,
+  MONAD_ACCOUNT_PATH,
   NoCustodyAccountError,
   deviceTypeFromTransports,
 } from "../domain/passkey.js";
+import { agentWalletPolicies, delegatedSelfDeletePolicy } from "../domain/agent-wallet-policies.js";
 import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
+  AgentWallet,
+  AgentWalletActivityBuilders,
+  AgentWalletRepository,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
@@ -18,10 +28,48 @@ import type {
   UnsignedActivity,
 } from "../ports/custody.js";
 import type { SignedActivityForwarder } from "../../signing/ports/signing.js";
-import { COMPLETED_ACTIVITY_STATUS } from "../../signing/domain/turnkey-activity.js";
-import type { SignedActivityRequest } from "../../signing/domain/turnkey-activity.js";
+import {
+  COMPLETED_ACTIVITY_STATUS,
+  isTerminalActivity,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+} from "../../signing/domain/turnkey-activity.js";
+import type {
+  SignedActivityRequest,
+  TurnkeyActivity,
+} from "../../signing/domain/turnkey-activity.js";
 
 const CHALLENGE_TTL_MS = 300_000;
+
+/**
+ * The activity's result under `key`, or a failure that says why there is none. Unlike
+ * add-passkey, every step of the agent ceremony has something to record from its result, so a
+ * status short of completed is an error rather than a response: a failed or rejected activity is
+ * Turnkey's refusal (400), and one still pending after the forwarder's polling is a service that
+ * did not finish in time (502) — the person retries and the orphan path picks the wallet up.
+ */
+function completedResult(activity: TurnkeyActivity, key: string): Record<string, unknown> {
+  if (activity.status !== COMPLETED_ACTIVITY_STATUS) {
+    if (isTerminalActivity(activity.status)) {
+      throw new SignedActivityRejectedError(
+        activity.failure?.message ?? `The activity did not complete (${activity.status})`,
+      );
+    }
+    throw new SigningServiceUnavailableError(`Activity ${activity.id} is still ${activity.status}`);
+  }
+  const result = activity.result?.[key];
+  if (!result) {
+    throw new SigningServiceUnavailableError(`Completed activity carried no ${key}`);
+  }
+  return result;
+}
+
+function strings(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string" && entry)) {
+    return [];
+  }
+  return value as string[];
+}
 
 export interface CustodyServiceDeps {
   challenges: ChallengeStore;
@@ -29,6 +77,16 @@ export interface CustodyServiceDeps {
   turnkey: SubOrganizationCreator;
   activities: AddPasskeyActivityBuilder;
   forwarder: SignedActivityForwarder;
+  /** The agent wallet ceremony: unsigned bodies and where their results are recorded. */
+  agentActivities: AgentWalletActivityBuilders;
+  agentWallets: AgentWalletRepository;
+  /**
+   * Pickler's delegated API public key (compressed P-256 hex), or null where it is not
+   * configured — then no delegated user can be created and the ceremony stops at its first step.
+   */
+  delegatedPublicKey: string | null;
+  /** Contracts the delegated user may sign to; core's VENUE_CONTRACTS, empty until trading. */
+  venueContracts: readonly string[];
   rpId: string;
   appName: string;
   now: () => Date;
@@ -227,6 +285,173 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         });
       }
       return activity;
+    },
+
+    /** What the browser needs to know to decide which steps of the ceremony to run. */
+    async agentWalletState(userId: string) {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        return { hasSubOrganization: false, hasDelegatedUser: false };
+      }
+      const delegated = await deps.agentWallets.delegatedUserId(userId);
+      return { hasSubOrganization: true, hasDelegatedUser: delegated !== null };
+    },
+
+    /** Step one, once per sub-organization: Pickler's non-root user, created by the person. */
+    async prepareDelegatedUser(userId: string): Promise<UnsignedActivity> {
+      if (!deps.delegatedPublicKey) {
+        throw new DelegatedKeyNotConfiguredError();
+      }
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      if ((await deps.agentWallets.delegatedUserId(userId)) !== null) {
+        throw new DelegatedUserExistsError();
+      }
+      return deps.agentActivities.createDelegatedUser({
+        subOrganizationId: account.subOrganizationId,
+        publicKey: deps.delegatedPublicKey,
+      });
+    },
+
+    async confirmDelegatedUser(
+      userId: string,
+      signed: SignedActivityRequest,
+    ): Promise<{ delegatedUserId: string }> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const activity = await deps.forwarder.forward(signed, {
+        organizationId: account.subOrganizationId,
+        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createDelegatedUser],
+      });
+      const [delegatedUserId, ...extra] = strings(
+        completedResult(activity, "createUsersResult").userIds,
+      );
+      if (!delegatedUserId || extra.length > 0) {
+        throw new SigningServiceUnavailableError("Expected exactly one user from create_users");
+      }
+      await deps.agentWallets.saveDelegatedUser(userId, delegatedUserId);
+      return { delegatedUserId };
+    },
+
+    /**
+     * Step two. A wallet already minted under this handle and never linked is the retry of a
+     * creation that failed before its link: it is returned as it is, so a second attempt never
+     * leaves a second wallet in the person's sub-organization.
+     */
+    async prepareAgentWallet(
+      userId: string,
+      handle: string,
+    ): Promise<{ existing: AgentWallet } | { unsigned: UnsignedActivity }> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const orphan = await deps.agentWallets.findOrphanWallet(userId, handle);
+      if (orphan) {
+        return { existing: orphan };
+      }
+      return {
+        unsigned: deps.agentActivities.createAgentWallet({
+          subOrganizationId: account.subOrganizationId,
+          handle,
+        }),
+      };
+    },
+
+    async confirmAgentWallet(
+      userId: string,
+      handle: string,
+      signed: SignedActivityRequest,
+    ): Promise<AgentWallet> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const activity = await deps.forwarder.forward(signed, {
+        organizationId: account.subOrganizationId,
+        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createAgentWallet],
+      });
+      const result = completedResult(activity, "createWalletResult");
+      const walletId = typeof result.walletId === "string" ? result.walletId : "";
+      const [address] = strings(result.addresses);
+      if (!walletId || !address) {
+        throw new SigningServiceUnavailableError("Agent wallet was not returned");
+      }
+      await deps.agentWallets.saveWallet({
+        userId,
+        walletId,
+        subOrganizationId: account.subOrganizationId,
+        kind: "agent",
+        name: handle,
+        address,
+        path: MONAD_ACCOUNT_PATH,
+      });
+      return { walletId, address };
+    },
+
+    /**
+     * Step three: the wallet's rules. `firstAgent` adds the delegated user's self-delete policy,
+     * which belongs to the sub-organization rather than to a wallet and is written once.
+     */
+    async preparePolicies(
+      userId: string,
+      walletId: string,
+      options: { firstAgent: boolean },
+    ): Promise<UnsignedActivity> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
+      if (!delegatedUserId) {
+        throw new DelegatedUserMissingError();
+      }
+      if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
+        throw new AgentWalletNotFoundError();
+      }
+      const policies = agentWalletPolicies({
+        delegatedUserId,
+        walletId,
+        venueContracts: deps.venueContracts,
+      });
+      if (options.firstAgent) {
+        policies.push(delegatedSelfDeletePolicy(delegatedUserId));
+      }
+      return deps.agentActivities.createPolicies({
+        subOrganizationId: account.subOrganizationId,
+        policies,
+      });
+    },
+
+    /**
+     * Returns the ids the link records. Fewer than two means the wallet's DENY rules did not all
+     * land, and a wallet without them is not one an agent may have.
+     */
+    async confirmPolicies(
+      userId: string,
+      walletId: string,
+      signed: SignedActivityRequest,
+    ): Promise<{ policyIds: string[] }> {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
+        throw new AgentWalletNotFoundError();
+      }
+      const activity = await deps.forwarder.forward(signed, {
+        organizationId: account.subOrganizationId,
+        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createPolicies],
+      });
+      const policyIds = strings(completedResult(activity, "createPoliciesResult").policyIds);
+      if (policyIds.length < 2) {
+        throw new SigningServiceUnavailableError("Expected at least two policies to be created");
+      }
+      return { policyIds };
     },
 
     getAccount: (userId: string) => deps.repository.findByUserId(userId),

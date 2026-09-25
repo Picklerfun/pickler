@@ -128,3 +128,23 @@ requires a hex-shaped `result`; `BigInt("")` is `0n`, so a looser check would pu
 value as a zero balance. Each balance settles independently: a failed token read never erases a
 successful native read. A balance that could not be read is `null`, never `"0"`. Preserve that
 distinction — the interface says "unavailable" rather than showing an empty wallet.
+
+## Agent wallet ceremony
+
+`src/turnkey/turnkey-activities.ts` exports `createActivityBuilders`: the unsigned
+`create_users` (one non-root user "Pickler" whose only credential is the delegated P-256 API key
+`pickler-delegated`), `create_wallet` (named after the handle, `MONAD_ACCOUNT`), `create_policies`
+and `sign_transaction` bodies, each typed against @turnkey/http with its `type` taken from core's
+`AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Nothing here is stamped by
+Pickler. `test/turnkey-activities.test.ts` also pins the result keys core reads.
+
+`PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
+same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
+(wallets + wallet_accounts in one transaction), `findOrphanWallet` (an agent wallet by name with
+no `agent_wallets` row), `findOwnedAgentWallet`, `findAgentWallet` and `saveDeposit` (lowercases
+the hash for the column check).
+
+`src/turnkey/delegated-key.ts` generates Pickler's delegated key pair in Turnkey's API key format
+(compressed P-256 public hex, raw 32-byte private hex; a test stamps with Turnkey's own stamper and
+verifies). `npm run turnkey:delegated-key --workspace=@pickler/infrastructure` prints a fresh
+pair for an operator; `-- --append <file>` appends it to a local `.dev.vars` without printing it.

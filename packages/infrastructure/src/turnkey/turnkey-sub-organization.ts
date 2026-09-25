@@ -10,6 +10,7 @@
 
 import {
   ADD_PASSKEY_ACTIVITY_TYPE,
+  MONAD_ACCOUNT_PATH,
   SigningServiceUnavailableError,
   toTurnkeyTransports,
   type PasskeyAttestation,
@@ -23,11 +24,14 @@ import {
   TURNKEY_API_BASE_URL,
 } from "./turnkey-transport.js";
 
-/** The single account every Master Wallet gets. Monad is EVM, so the Ethereum format applies. */
+/**
+ * The single account every Pickler wallet gets, master or agent. Monad is EVM, so the Ethereum
+ * format applies; the path is core's, so the store records the one Turnkey derived.
+ */
 export const MONAD_ACCOUNT: TurnkeyApiTypes["v1WalletAccountParams"] = {
   curve: "CURVE_SECP256K1",
   pathFormat: "PATH_FORMAT_BIP32",
-  path: "m/44'/60'/0'/0/0",
+  path: MONAD_ACCOUNT_PATH,
   addressFormat: "ADDRESS_FORMAT_ETHEREUM",
 };
 

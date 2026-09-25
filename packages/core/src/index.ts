@@ -166,9 +166,24 @@ export {
   type ChallengeOptions,
   type DeviceType,
   type PasskeyAttestation,
+  AGENT_WALLET_ACTIVITY_TYPES,
+  AgentWalletNotFoundError,
+  DelegatedKeyNotConfiguredError,
+  DelegatedUserExistsError,
+  DelegatedUserMissingError,
+  MONAD_ACCOUNT_PATH,
 } from "./features/wallets/domain/passkey.js";
+export {
+  agentWalletPolicies,
+  delegatedSelfDeletePolicy,
+  VENUE_CONTRACTS,
+  type TurnkeyPolicy,
+} from "./features/wallets/domain/agent-wallet-policies.js";
 export type {
   AddPasskeyActivityBuilder,
+  AgentWallet,
+  AgentWalletActivityBuilders,
+  AgentWalletRepository,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,

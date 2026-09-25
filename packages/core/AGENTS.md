@@ -90,6 +90,29 @@ terminal result; the existing lease recovery path remains authoritative.
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
 
+## Agent wallets
+
+`features/wallets` also owns the agent wallet ceremony (docs/specs/studio-create-and-fund-v1.md
+§4.1). `domain/agent-wallet-policies.ts` writes each agent wallet's Turnkey policies as plain
+strings: an ALLOW for the delegated user to sign from that wallet only to `VENUE_CONTRACTS` (left
+out while the list is empty, which it is until live trading — then the delegated user can sign
+nothing), a DENY on ERC-20 `transfer`/`approve` calldata from the wallet, and a DENY on any
+`POLICY` activity; `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
+else. Every id and address is checked against a strict alphabet before it is interpolated, and a
+malformed one throws. Turnkey has no policy order: the root quorum (the passkey) bypasses policies,
+and otherwise any matching DENY beats every ALLOW.
+
+`createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
+`AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
+`AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version
+@turnkey/http 6.5 lets that endpoint take) and the caller's own sub-organization, and treats any
+status short of completed as a failure. `prepareAgentWallet` answers `{ existing }` for an unlinked
+wallet already named after the handle, so a retry never mints a second one. The link to an agent
+(`agent_wallets`) is not written here. Ports: `AgentWalletActivityBuilders` and
+`AgentWalletRepository`; errors: `DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`,
+`DelegatedUserMissingError`, `AgentWalletNotFoundError`. `MONAD_ACCOUNT_PATH` is the one account
+path every Pickler wallet uses.
+
 ## Markets
 
 `features/markets` owns the perpetuals surface: a market is a grid of price levels away from the mark

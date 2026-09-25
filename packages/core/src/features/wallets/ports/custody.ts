@@ -1,4 +1,5 @@
 import type { PasskeyAttestation } from "../domain/passkey.js";
+import type { TurnkeyPolicy } from "../domain/agent-wallet-policies.js";
 
 export interface CustodyAccount {
   userId: string;
@@ -134,4 +135,61 @@ export interface AddPasskeyActivityBuilder {
     challenge: string;
     attestation: PasskeyAttestation;
   }): UnsignedActivity;
+}
+
+/**
+ * The unsigned bodies of an agent's wallet ceremony, each stamped by the person's passkey in the
+ * browser and forwarded unchanged. Nothing here is signed by Pickler: the parent key is not a
+ * voter inside a sub-organization, and the delegated user is only ever created by the person.
+ */
+export interface AgentWalletActivityBuilders {
+  /** One non-root user, "Pickler", whose only credential is Pickler's delegated API key. */
+  createDelegatedUser(input: { subOrganizationId: string; publicKey: string }): UnsignedActivity;
+  /** One wallet named after the agent's handle, with the single Monad account. */
+  createAgentWallet(input: { subOrganizationId: string; handle: string }): UnsignedActivity;
+  createPolicies(input: {
+    subOrganizationId: string;
+    policies: readonly TurnkeyPolicy[];
+  }): UnsignedActivity;
+  /** An Ethereum-format transaction signed by a wallet account the passkey controls. */
+  signTransaction(input: {
+    subOrganizationId: string;
+    signWith: string;
+    unsignedTransaction: string;
+  }): UnsignedActivity;
+}
+
+export interface AgentWallet {
+  walletId: string;
+  address: string;
+}
+
+export interface AgentWalletRepository {
+  /**
+   * Records Pickler's user inside the person's sub-organization. Idempotent for the same id;
+   * refuses (`DelegatedUserExistsError`) when a different one is already recorded, because two
+   * delegated users would mean one of them is a key nobody is watching.
+   */
+  saveDelegatedUser(userId: string, delegatedUserId: string): Promise<void>;
+  delegatedUserId(userId: string): Promise<string | null>;
+  /** The wallets row and its one account, in one transaction. */
+  saveWallet(input: {
+    userId: string;
+    walletId: string;
+    subOrganizationId: string;
+    kind: "agent";
+    name: string;
+    address: string;
+    path: string;
+  }): Promise<void>;
+  /**
+   * An agent wallet of this person's with this name that no agent is linked to: a creation that
+   * failed between the wallet and the link. Retrying finds it instead of minting a second one.
+   */
+  findOrphanWallet(userId: string, name: string): Promise<AgentWallet | null>;
+  /** This person's agent wallet with this id, linked or not; null for anyone else's. */
+  findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
+  /** The wallet linked to an agent through `agent_wallets`. */
+  findAgentWallet(agentId: string): Promise<AgentWallet | null>;
+  saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }): Promise<void>;
 }
