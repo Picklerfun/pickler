@@ -181,9 +181,11 @@ in order, each stamped by the passkey:
      calldata starts with the ERC-20 `transfer` selector (`eth.tx.data[0..10] == '0xa9059cbb'`)
      or `approve` (`0x095ea7b3`), from this wallet. DENY overrides ALLOW in Turnkey's engine, so
      this holds whatever the allow list says. "It can never withdraw on its own" is this line.
-   - **Only root changes the rules.** The protective policy at `order: 0`: no user but the root
-     may create, update or delete policies. Turnkey's guidance is explicit that this slot must be
-     taken first, because only the first matching policy applies.
+   - **Only root changes the rules.** A DENY on `activity.resource == 'POLICY'`: no user but the
+     root may create, update or delete policies. Signing and wallet policies have no order in
+     Turnkey — any matching DENY beats every ALLOW, and the root quorum is not bound by policies at
+     all, which is what lets the passkey recover funds. (An earlier draft said this policy had to
+     sit at `order: 0`; that ordering applies to MFA policies, not these.)
 3. **The link** — the API records the wallet, its account, and a row in
    **`wallets.agent_wallets (agent_id, wallet_id, policy_ids text[])`**, one wallet per agent, one
    agent per wallet. No policies, no link; no link, no agent.
