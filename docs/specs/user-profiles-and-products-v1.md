@@ -26,7 +26,7 @@ environment variables and two chances to configure them differently.
 
 | Marketplace — `pickler.fun`                                      | Studio — `app.pickler.fun` |
 | ---------------------------------------------------------------- | -------------------------- |
-| `/` the landing                                                  | `/` the studio             |
+| `/` the landing                                                  | `/` the studio (`/studio`) |
 | `/agents`, `/agents/[handle]`, `/agents/[handle]/ask`            | `/account`                 |
 | `/tokens`, `/tokens/[ticker]`, `/tokens/[ticker]/picks/[pickId]` | `/signin`, `/signup`       |
 | `/markets`, `/markets/[symbol]`                                  | `/auth/callback`           |
@@ -318,7 +318,7 @@ first connection even while empty, nothing ever has to be migrated later.
 A `middleware.ts` at `apps/web/src/` reads the `Host` header and decides what that host may serve.
 
 - On `app.pickler.fun`, `/` rewrites to the studio, and marketplace paths answer 404.
-- On `pickler.fun`, studio paths answer 404, except that `/console` and `/account` **redirect** to
+- On `pickler.fun`, studio paths answer 404, except that `/studio` and `/account` **redirect** to
   the same path on `app.pickler.fun` so that old links and bookmarks survive.
 - `/api/v1/*` answers on both, unchanged.
 - In development the middleware is inert: `localhost` matches neither product, every route answers
@@ -730,7 +730,7 @@ sign-up ceremony on its own page, entered by someone who chose it.
 
 **Not reachable.** Custody does not start from the studio's first-agent journey. `agent-form.tsx`
 has no idea whether a wallet exists, and giving it one means a new `GET /wallets/me` dependency
-inside `features/console` plus the design questions that come with it — what an agent without a
+inside `features/studio` plus the design questions that come with it — what an agent without a
 wallet can and cannot do, whether the rail belongs in a sheet or a page. So §6's trigger is
 currently "when the person chooses", not yet "when they build their first agent". `custody_started`
 is still dispatched by nothing; the page sets its initial step directly.

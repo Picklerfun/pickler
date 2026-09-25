@@ -13,13 +13,13 @@ import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes
 import { growthRoutes } from "./routes/growth";
 import { marketplaceRoutes } from "./routes/marketplace";
 import type { createGrowthServices } from "./growth/services";
-import { consoleRoutes, type ConsoleServices } from "./routes/console";
+import { studioRoutes, type StudioServices } from "./routes/studio";
 import { signingRoutes, type SigningRouteServices } from "./routes/signing";
 import { walletAuthRoutes, type WalletAuthServices } from "./routes/wallet-auth";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
-  console?: ConsoleServices;
+  studio?: StudioServices;
   growth?: ReturnType<typeof createGrowthServices>;
   /** Absent when the deployment has no Turnkey bindings; the rest of the API still serves. */
   custody?: SigningRouteServices;
@@ -42,8 +42,8 @@ export function createApp(services: Services) {
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
-  if (services.console) {
-    app.route("/v1/console", consoleRoutes(services.console));
+  if (services.studio) {
+    app.route("/v1/studio", studioRoutes(services.studio));
   }
   if (services.custody) {
     app.route("/v1/signing", signingRoutes(services.custody));

@@ -3,7 +3,7 @@
 // `task` is the plan task that builds each screen. A route that answers 404 has not been built yet
 // rather than broken, and naming the task turns "this is missing" into "this is not your turn".
 //
-// `proves` is the floor, and it is the most important field here. /console answered 200 and rendered
+// `proves` is the floor, and it is the most important field here. /studio answered 200 and rendered
 // a sign-in stub wherever Supabase was unconfigured — which is every environment these checks run
 // in — so all four checks walked 33 elements of the stub and reported green. A check that matches
 // nothing reports what a check that passes reports. So every route names something the real screen
@@ -25,7 +25,7 @@
 // so a state a person reaches by clicking needs nothing added to the product to reach here.
 //
 // `product` is which host owns the route, by the same first-segment rule
-// apps/web/src/server/hosts.ts applies: /console and /account are the studio, everything else here
+// apps/web/src/server/hosts.ts applies: /studio and /account are the studio, everything else here
 // is the marketplace. In development the middleware is inert and both answer on one origin, so this
 // field does nothing locally — it decides which base URL a check measures once the two products sit
 // on two. render.mjs refuses a route that has no `product` rather than falling back, for the same
@@ -322,7 +322,7 @@ export const ROUTES = [
   },
 
   {
-    path: "/console",
+    path: "/studio",
     name: "studio",
     product: "studio",
     surface: "dark",
@@ -331,7 +331,7 @@ export const ROUTES = [
     // being measured and reported green for the whole of this change until now.
     proves: 'nav[aria-label="Studio sections"]',
   },
-  // The studio keeps its section in state, so /console alone has only ever shown the overview —
+  // The studio keeps its section in state, so /studio alone has only ever shown the overview —
   // three screens' worth of composition behind a rail click that no check has ever read. The one
   // most affected by a token change is always the one nothing measures. `?section=` opens each,
   // outside production only. Picks carries the forecast, the policy codes and the report; activity
@@ -340,7 +340,7 @@ export const ROUTES = [
   // The panel carries the section it is showing, so each of these proves the query param put the
   // screen it named on the page rather than proving the shell loaded around the overview again.
   {
-    path: "/console?section=picks",
+    path: "/studio?section=picks",
     name: "studio-picks",
     product: "studio",
     surface: "dark",
@@ -348,7 +348,7 @@ export const ROUTES = [
     proves: "#studio-panel-picks",
   },
   {
-    path: "/console?section=activity",
+    path: "/studio?section=activity",
     name: "studio-activity",
     product: "studio",
     surface: "dark",
@@ -356,7 +356,7 @@ export const ROUTES = [
     proves: "#studio-panel-activity",
   },
   {
-    path: "/console?section=skills",
+    path: "/studio?section=skills",
     name: "studio-skills",
     product: "studio",
     surface: "dark",
@@ -364,20 +364,20 @@ export const ROUTES = [
     proves: "#studio-panel-skills",
   },
   {
-    path: "/console?section=token",
+    path: "/studio?section=token",
     name: "studio-token",
     product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-token",
   },
-  // The empty studio is a state, not a route: the console renders it when the signed-in person has
+  // The empty studio is a state, not a route: the studio renders it when the signed-in person has
   // no agents. ?state=empty reaches it without emptying a database, outside production only.
   //
   // It proves its own panel and not the rail: the rail is the one thing it shares with Studio v4,
   // so a rail selector would have gone on passing if the whole stepped flow had failed to render.
   {
-    path: "/console?state=empty",
+    path: "/studio?state=empty",
     name: "studio-empty",
     product: "studio",
     surface: "dark",
@@ -389,7 +389,7 @@ export const ROUTES = [
   // the half where every row is a thing the product cannot do yet, which is the copy most worth
   // measuring. It proves the checklist and not the panel, because the panel is the half it shares.
   {
-    path: "/console?state=empty&phase=draft",
+    path: "/studio?state=empty&phase=draft",
     name: "studio-draft",
     product: "studio",
     surface: "dark",
@@ -433,7 +433,7 @@ export const ROUTES = [
   // had looked. A claim that every colour any route can reach resolved to a token was withdrawn
   // over exactly this, and the first run here found nine violation classes waiting on each.
   //
-  // Both are the studio by the same rule as /console: apps/web/src/server/hosts.ts lists `signin`
+  // Both are the studio by the same rule as /studio: apps/web/src/server/hosts.ts lists `signin`
   // and `signup` among STUDIO_SEGMENTS. The (auth) layout pins data-surface="dark", so the ground
   // is the dark one on both.
   //
@@ -441,7 +441,7 @@ export const ROUTES = [
   // The board is the half a stub cannot have; the title is the half that says which rail rendered.
   // /signin and /signup are one component with one prop between them, so a selector that only
   // proved the composition would report green for a /signin that had quietly opened the sign-up
-  // rail — the same class of failure as measuring the console's sign-in stub, one prop smaller.
+  // rail — the same class of failure as measuring the studio's sign-in stub, one prop smaller.
   {
     path: "/signin",
     name: "signin",
@@ -473,8 +473,8 @@ export const HOLDS = {
   ALWAYS: ["packages/ui/src"],
   "Task 9": ["apps/web/src/features/landing"],
   "Task 10": ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
-  "Task 11": ["apps/web/src/features/console"],
-  "Task 12": ["apps/web/src/features/console"],
+  "Task 11": ["apps/web/src/features/studio"],
+  "Task 12": ["apps/web/src/features/studio"],
   "Task 13": ["apps/web/src/features/account"],
   // No task builds it; what it is made of is still someone's to edit.
   Inherited: ["apps/web/src/features/agents"],

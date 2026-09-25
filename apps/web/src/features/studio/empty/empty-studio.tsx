@@ -3,14 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { Icon, type IconName } from "@pickler/ui";
-import {
-  consoleApi,
-  errorCode,
-  type Agent,
-  type Catalog,
-  type Config,
-  type RunEvent,
-} from "../api";
+import { studioApi, errorCode, type Agent, type Catalog, type Config, type RunEvent } from "../api";
 import {
   BEATS,
   STEPS,
@@ -145,7 +138,7 @@ export function EmptyStudio({
     try {
       let id = agentId;
       if (!id) {
-        const created = await consoleApi<Agent>("/agents", {
+        const created = await studioApi<Agent>("/agents", {
           method: "POST",
           headers: { "Idempotency-Key": crypto.randomUUID() },
           body: JSON.stringify(toCreate(draft, defaults)),
@@ -153,12 +146,12 @@ export function EmptyStudio({
         id = created.productId ?? created.id;
         setAgentId(id);
       }
-      const run = await consoleApi<{ runId: string }>(`/agents/${id}/runs`, {
+      const run = await studioApi<{ runId: string }>(`/agents/${id}/runs`, {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({}),
       });
-      const trace = await consoleApi<{ events: RunEvent[] }>(`/runs/${run.runId}/events`);
+      const trace = await studioApi<{ events: RunEvent[] }>(`/runs/${run.runId}/events`);
       setEvents(trace.events);
       setRan(true);
     } catch (caught) {

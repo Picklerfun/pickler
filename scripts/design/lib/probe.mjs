@@ -123,7 +123,7 @@ export function surfaces(mustNest) {
     (node.id ? `#${node.id}` : "") +
     (node.classList.length ? `.${node.classList[0]}` : "");
 
-  // A surface is a property of a subtree, not of <html>: /console leaves <body> on the light
+  // A surface is a property of a subtree, not of <html>: /studio leaves <body> on the light
   // default and paints its ground on <main data-surface="dark">. So the ground of a screen is the
   // deepest element still covering the whole viewport — which is what the eye reads as the page —
   // and not the background of <body>, which here is white on a night-blue screen.

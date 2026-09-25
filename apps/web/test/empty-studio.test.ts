@@ -15,9 +15,9 @@ import {
   tickerOf,
   toCreate,
   type Draft,
-} from "../src/features/console/empty/draft";
-import type { Config } from "../src/features/console/api";
-import { DEFAULT_PROFILE } from "../src/features/console/profile";
+} from "../src/features/studio/empty/draft";
+import type { Config } from "../src/features/studio/api";
+import { DEFAULT_PROFILE } from "../src/features/studio/profile";
 
 /* One behaviour per test: an assert after a failing assert never runs, and these rules are the ones
    a person's first agent is built out of. */

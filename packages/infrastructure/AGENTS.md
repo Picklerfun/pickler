@@ -48,9 +48,9 @@ skipping older missing migrations. Use it from both the operator command and iso
 do not substitute the timestamp-only migrator. Unknown histories fail closed. See
 [the integration guide](../../docs/frontend-integration.md) before upgrading an existing database.
 
-## Unified console persistence
+## Unified studio persistence
 
-`src/console` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables. Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
+`src/studio` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables (the file keeps its old name; the tables it declares are not renamed). Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
 
 ## Invocation database connections
 

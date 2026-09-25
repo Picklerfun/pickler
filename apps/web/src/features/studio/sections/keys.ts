@@ -2,7 +2,7 @@
  * Every section the rail can reach, in the rail's own order.
  *
  * Deliberately not in `stub.tsx`, which is a client module: a `"use client"` file's exports reach a
- * server component as client references rather than as values, so `/console`'s page could import
+ * server component as client references rather than as values, so `/studio`'s page could import
  * this list and typecheck cleanly while `SECTIONS.find` threw at request time. The list is data, so
  * it lives where both sides can read it.
  */

@@ -158,7 +158,7 @@ const KINDS = {
     remedy:
       "The page answered 200 and rendered something other than the screen — a sign-in stub, a gate,\n" +
       "  a half-mounted client component. Measuring it would report green for a screen nobody looked\n" +
-      "  at, which is what happened to /console for the whole of this change. Not measured, not passed.",
+      "  at, which is what happened to /studio for the whole of this change. Not measured, not passed.",
   },
   "click-missed": {
     line: (route, detail) => `${route.path} — loaded and proved, but ${detail}`,

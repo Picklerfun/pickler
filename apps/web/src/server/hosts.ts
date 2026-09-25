@@ -42,7 +42,7 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
  * open for anyone to reach the other three.
  */
 const STUDIO_SEGMENTS = new Set([
-  "console",
+  "studio",
   "account",
   "signin",
   "signup",
@@ -93,9 +93,9 @@ export function ownerOf(pathname: string): Product {
  *
  * Three answers, because no single string is right on all three hosts:
  *
- * - On the studio host the studio IS `/`, and `/console` there is a second address `decide` refuses.
+ * - On the studio host the studio IS `/`, and `/studio` there is a second address `decide` refuses.
  * - On the marketplace the studio is on another origin, so the link has to be absolute. Nothing
- *   rewrites it any more: the cross-host redirect that used to carry `pickler.fun/console` was
+ *   rewrites it any more: the cross-host redirect that used to carry `pickler.fun/studio` was
  *   deleted, and a link that relied on it would 404.
  * - Anywhere else — localhost, a preview — both products are served together and `/` is the
  *   marketplace, so the studio is where its route actually is.
@@ -107,7 +107,7 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
   if (product === "studio") {
     return "/";
   }
-  return product === "marketplace" ? `https://${hosts.studio}/` : "/console";
+  return product === "marketplace" ? `https://${hosts.studio}/` : "/studio";
 }
 
 /**
@@ -118,7 +118,7 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
  * marketplace landing and sends whoever joins to a studio route, and `decide` now 404s studio paths
  * on the marketplace rather than forwarding them.
  *
- * The studio's home is not one of these, because its address is `/` on one host and `/console` on
+ * The studio's home is not one of these, because its address is `/` on one host and `/studio` on
  * another; `studioHref` above is the function for it.
  */
 export function studioUrl(product: Product, hosts: ProductHosts, path: string): string {

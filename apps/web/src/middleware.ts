@@ -26,7 +26,7 @@ export interface AuthState {
  *
  * Three rules, in this order, and the order is the point:
  *
- * 1. One screen, one URL, on the studio host. The studio lives at that host's root, so `/console`
+ * 1. One screen, one URL, on the studio host. The studio lives at that host's root, so `/studio`
  *    there is a second address for the screen `/` already renders, and it is refused.
  * 2. Which host owns this path, settled before the guard. The two hosts are symmetric: each 404s
  *    what it does not own, in both directions. Nothing has ever been deployed, so there is no link
@@ -46,11 +46,11 @@ export function decide(
 ): Decision {
   const product = productFor(host, hosts);
 
-  if (product === "studio" && pathname === "/console") {
+  if (product === "studio" && pathname === "/studio") {
     return { kind: "notFound" };
   }
 
-  // The studio has no landing page of its own, so its root IS the console. Settled before ownership
+  // The studio has no landing page of its own, so its root IS the studio page. Settled before ownership
   // rather than inside it: `/` is a marketplace path, so on the studio host it fails the ownership
   // check and would 404 the studio's own homepage before any rewrite could be reached.
   const studioRoot = product === "studio" && pathname === "/";
@@ -65,11 +65,11 @@ export function decide(
   // Against what the path resolves to, not what was typed: leaving `/` unguarded on the studio host
   // would leave the studio's own front door open. `pathname` is what goes into `next`, so whoever
   // comes back lands on the address they asked for.
-  if (auth.configured && !auth.session && requiresSession(studioRoot ? "/console" : pathname)) {
+  if (auth.configured && !auth.session && requiresSession(studioRoot ? "/studio" : pathname)) {
     return { kind: "signIn", to: signInPath(pathname) };
   }
 
-  return studioRoot ? { kind: "rewrite", to: "/console" } : { kind: "serve" };
+  return studioRoot ? { kind: "rewrite", to: "/studio" } : { kind: "serve" };
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";

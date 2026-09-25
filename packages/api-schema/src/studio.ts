@@ -32,18 +32,18 @@ export const createAgentSchema = z
   .strict();
 export const idempotencyKeySchema = z.string().min(1).max(200);
 
-export const consoleAccessSchema = z.object({
+export const studioAccessSchema = z.object({
   workspaceId: z.string().uuid(),
   enabled: z.boolean(),
   canManage: z.boolean(),
 });
 
-export const consoleAgentSchema = agentResponseSchema.extend({
+export const studioAgentSchema = agentResponseSchema.extend({
   productId: z.string().uuid().optional(),
   name: z.string().optional(),
   handle: z.string().optional(),
 });
-export const consoleOptionsSchema = z.object({
+export const studioOptionsSchema = z.object({
   defaults: z.object({
     profile: agentConfigSchema.shape.profile,
     tools: agentConfigSchema.shape.tools,

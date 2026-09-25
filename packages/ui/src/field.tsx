@@ -6,7 +6,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
  * `Field` is the frame: a mono micro label above, the control, and one line underneath that can
  * carry a hint, a validation note or an error. `Input` and `Textarea` are the controls. Colour,
  * radius and the focus ring come from the surface, so a field on the public site and a field in
- * the console are the same object in two tones.
+ * the studio are the same object in two tones.
  */
 
 export type FieldTone = "quiet" | "good" | "warn" | "bad";

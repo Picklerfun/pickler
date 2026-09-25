@@ -16,6 +16,6 @@ export type * from "./errors.js";
 export * from "./research.js";
 
 export * from "./paper.js";
-export * from "./console.js";
+export * from "./studio.js";
 export * from "./trading.js";
 export * from "./profiles.js";

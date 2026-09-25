@@ -2,7 +2,7 @@
 //
 // The API already refuses anonymous callers — every route behind it wants a bearer JWT — so no
 // *data* leaks without a session. What leaks without this file is the screens and the client
-// bundle: `/console` renders `<Console>` unconditionally, `Console` is a client component, and so
+// bundle: `/studio` renders `<Studio>` unconditionally, `Studio` is a client component, and so
 // the whole studio ships to anyone who asks for the URL before the browser thinks to look for a
 // session. This moves that check in front of the response.
 //
@@ -17,14 +17,14 @@ import { firstSegment } from "./hosts";
  * `/auth/callback`, `/apply` — has to stay open: you cannot sign in if signing in needs a session,
  * and applying for studio access is done by someone who has no account yet.
  *
- * `console` is here as the segment the studio root resolves to, not as a URL anyone can reach: on
- * the studio host `/console` is a 404 and `/` is the studio. On localhost, where both products are
+ * `studio` is here as the segment the studio root resolves to, not as a URL anyone can reach: on
+ * the studio host `/studio` is a 404 and `/` is the studio. On localhost, where both products are
  * served together, it is the studio's real address and is guarded as one.
  *
  * These are a subset of `STUDIO_SEGMENTS` in ./hosts.ts, and the matching is the same whole-segment
  * equality, so `/accounts-of-agents` is not `/account`.
  */
-const PROTECTED_SEGMENTS = new Set(["console", "account", "passkey"]);
+const PROTECTED_SEGMENTS = new Set(["studio", "account", "passkey"]);
 
 export function requiresSession(pathname: string): boolean {
   return PROTECTED_SEGMENTS.has(firstSegment(pathname));

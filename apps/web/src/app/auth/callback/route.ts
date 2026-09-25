@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   });
   const { error } = await client.auth.exchangeCodeForSession(code);
   // The studio's address depends on the host this callback came back to: `/` on the studio host,
-  // `/console` where both products share one. `/console` is no longer carried across by a redirect.
+  // `/studio` where both products share one. `/studio` is no longer carried across by a redirect.
   const studio = studioHref(productFor(request.headers.get("host"), PRODUCT_HOSTS), PRODUCT_HOSTS);
   const response = NextResponse.redirect(new URL(error ? "/signin" : studio, url.origin));
   response.headers.set("Cache-Control", "private, no-store");

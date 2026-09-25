@@ -54,9 +54,9 @@ the actual commit period and reset generation. A refund may reduce current spend
 match; legacy unknown-period charges cannot credit the active balance. This product ledger is not
 the research quota authority.
 
-## Unified console access
+## Unified studio access
 
-`features/console/access.ts` owns user-session-only research authorization and the console directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
 
 Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.ts`) beside the name,
 handle and configuration: the public profile is authored at birth and the directory adapter writes

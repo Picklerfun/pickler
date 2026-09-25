@@ -3,18 +3,18 @@ import type { Principal } from "../access/domain/principal.js";
 import type { AgentProfileInput } from "../agents/domain/agents.js";
 import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
 
-export interface ConsoleAccess {
+export interface StudioAccess {
   workspaceId: string;
   tenantId: string;
   ownerUserId: string;
   role: string;
   enabled: boolean;
 }
-export interface ConsoleDirectory {
+export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
-  access(userId: string, workspaceId: string | null): Promise<ConsoleAccess | null>;
+  access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
   createAgent(
-    access: ConsoleAccess,
+    access: StudioAccess,
     userId: string,
     input: {
       name: string;
@@ -24,16 +24,14 @@ export interface ConsoleDirectory {
       profile: AgentProfileInput;
     },
   ): Promise<Scope>;
-  agentScope(access: ConsoleAccess, productAgentId: string): Promise<Scope>;
+  agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
-  list(
-    access: ConsoleAccess,
-  ): Promise<{ id: string; name: string; handle: string; scope: Scope }[]>;
+  list(access: StudioAccess): Promise<{ id: string; name: string; handle: string; scope: Scope }[]>;
 }
 
-export function createConsoleAccess(directory: ConsoleDirectory) {
+export function createStudioAccess(directory: StudioDirectory) {
   return {
-    async authorize(principal: Principal, write = false): Promise<ConsoleAccess> {
+    async authorize(principal: Principal, write = false): Promise<StudioAccess> {
       if (principal.kind !== "user") {
         throw new AccessDeniedError("User session required");
       }

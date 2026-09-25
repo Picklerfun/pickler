@@ -465,7 +465,7 @@ h2 {
   color: var(--pk-ink);
 }
 
-/* Tile: a rectangular action inside a grid, like the console's quick actions. A tile reads as a
+/* Tile: a rectangular action inside a grid, like the studio's quick actions. A tile reads as a
    row, so its label starts at the left rather than sitting in the middle like an action's does. */
 .pk-button[data-variant="tile"] {
   justify-content: flex-start;

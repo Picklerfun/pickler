@@ -22,12 +22,12 @@ its §14. Everything else in that document stands.
 | -------------------- | ----------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `pickler.fun`        | landing     | `/` and static content: what Pickler is, the waitlist, documentation later | Nobody. There is nothing to sign into.                                  |
 | `app.pickler.fun`    | marketplace | agents, tokens, leaderboard, personas, picks, reads, portfolio, activity   | A wallet, by SIWE. On the web an injected EOA; on the phone Mera.       |
-| `studio.pickler.fun` | studio      | console, account, apply, signin, signup, auth, passkey                     | Email through Supabase, then a Turnkey passkey for the agent's signing. |
+| `studio.pickler.fun` | studio      | studio, account, apply, signin, signup, auth, passkey                      | Email through Supabase, then a Turnkey passkey for the agent's signing. |
 
 `/api/v1/*`, Next's assets and `public/` answer on all three, as they do today.
 
 The marketplace's `/` is the agents directory — the home of a marketplace is what is on sale. The
-studio's `/` is the console, as today. The landing's `/` is the landing.
+studio's `/` is the studio page (`/studio`), as today. The landing's `/` is the landing.
 
 **Reading the marketplace needs nothing.** A wallet is connected to hold a handle, to see a
 portfolio, and — when paid reads exist — to pay. That is unchanged from `user-profiles-and-products-v1.md` §8, "progressive, not a gate".
@@ -194,7 +194,7 @@ set holds what the landing owns — `/` and whatever static sections exist — a
 
 **`apps/web/src/middleware.ts`.** `decide` learns the third product with the same rules: a path
 whose owner is another product answers 404 on this host; `/` on the marketplace rewrites to
-`/agents`; `/` on the studio rewrites to the console as today; the AASA file answers only on the
+`/agents`; `/` on the studio rewrites to `/studio` as today; the AASA file answers only on the
 marketplace host (§4). `localhost` and any unconfigured host stay `"either"` and serve everything,
 so development and the design harness are untouched.
 

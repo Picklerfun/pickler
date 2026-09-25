@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
   DEFAULT_CONFIG,
-  createConsoleAccess,
+  createStudioAccess,
   type AgentConfig,
   type Principal,
 } from "@pickler/core";
-import { PostgresConsoleDirectory } from "../src/console/directory.js";
-import { PostgresBudgetLedger } from "../src/console/budget.js";
+import { PostgresStudioDirectory } from "../src/studio/directory.js";
+import { PostgresBudgetLedger } from "../src/studio/budget.js";
 import { createTestStore } from "./database.js";
 
 const base = { ...DEFAULT_CONFIG };
@@ -31,7 +31,7 @@ const input = { name: "Agent", handle: "agent_one", config, key: "create", profi
 
 async function setup(t: Parameters<typeof createTestStore>[0]) {
   const store = await createTestStore(t);
-  const directory = new PostgresConsoleDirectory(store.pool);
+  const directory = new PostgresStudioDirectory(store.pool);
   const userId = randomUUID();
   if ((await store.pool.query("SELECT to_regclass('auth.users') AS name")).rows[0].name) {
     await store.pool.query("INSERT INTO auth.users (id) VALUES ($1)", [userId]);
@@ -79,9 +79,9 @@ test("concurrent creation preserves one handle, config, mapping and disabled sch
   await assert.rejects(directory.createAgent(access, userId, input));
 });
 
-test("console authorization checks current ownership and never accepts an API key", async (t) => {
+test("studio authorization checks current ownership and never accepts an API key", async (t) => {
   const { store, directory, userId, access } = await setup(t);
-  const service = createConsoleAccess(directory);
+  const service = createStudioAccess(directory);
   const user = { id: userId, kind: "user", tenantId: access.workspaceId } as Principal;
   await assert.rejects(service.authorize(user, true));
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [

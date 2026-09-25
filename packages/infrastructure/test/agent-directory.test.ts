@@ -13,7 +13,7 @@ const hex = (length: number) =>
  * An agent row plus its profile, the way the studio writes them. Returns the id.
  *
  * The agent and its handle reference each other through deferrable foreign keys, so the two
- * inserts share one transaction, as `src/console/directory.ts` does. Handles must match
+ * inserts share one transaction, as `src/studio/directory.ts` does. Handles must match
  * `^[a-z0-9_]{3,15}$`.
  */
 async function seedAgent(

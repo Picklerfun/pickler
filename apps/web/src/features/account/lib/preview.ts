@@ -4,7 +4,7 @@
 // which is every environment scripts/design runs against — `/account` renders a sign-in stub, and a
 // contrast, token or type check that walks that stub reports the same green as one that walked the
 // whole screen. That is the failure the verification exists to catch, so the screen has to be
-// reachable. features/console/preview.ts stands in front of the studio for the same reason and in
+// reachable. features/studio/preview.ts stands in front of the studio for the same reason and in
 // the same shape.
 //
 // It is reachable only where it cannot be mistaken for the product: never in a production build,

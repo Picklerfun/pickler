@@ -70,8 +70,8 @@ export { PostgresResearchStore } from "./persistence/research-store.js";
 export { ExaResearch } from "./research/exa.js";
 export { PolymarketData } from "./polymarket/market-data.js";
 export { PostgresPaperStore } from "./persistence/paper-store.js";
-export { PostgresConsoleDirectory } from "./console/directory.js";
-export { PostgresBudgetLedger } from "./console/budget.js";
+export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";

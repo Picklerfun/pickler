@@ -3,7 +3,7 @@ import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type {
   agentConfigSchema,
   agentResponseSchema,
-  consoleOptionsSchema,
+  studioOptionsSchema,
   runResponseSchema,
   eventResponseSchema,
   marketCatalogSchema,
@@ -24,25 +24,25 @@ export type Plugin = {
   version: string;
   tools: Config["tools"];
 };
-export type Options = ReturnType<typeof consoleOptionsSchema.parse>;
+export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 
 /**
- * The console transport answers a failure with `{ error: CODE }`. The code is what the Studio
+ * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
  * branches on — it decides which blocked state to show and which control to lock — so it travels
  * with the error instead of being flattened into prose.
  */
-export class ConsoleError extends Error {
+export class StudioError extends Error {
   constructor(
     public readonly code: string,
     message: string,
   ) {
     super(message);
-    this.name = "ConsoleError";
+    this.name = "StudioError";
   }
 }
 export const errorCode = (caught: unknown): string =>
-  caught instanceof ConsoleError ? caught.code : "";
+  caught instanceof StudioError ? caught.code : "";
 
 const messages: Record<string, string> = {
   NOT_READY:
@@ -59,16 +59,16 @@ const messages: Record<string, string> = {
   UNAUTHORIZED: "Your session has expired. Sign in again.",
   INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
 };
-export async function consoleApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
   if (!supabase) {
     throw new Error("Authentication is not configured.");
   }
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) {
-    throw new ConsoleError("UNAUTHORIZED", messages.UNAUTHORIZED!);
+    throw new StudioError("UNAUTHORIZED", messages.UNAUTHORIZED!);
   }
-  const response = await fetch(`/api/v1/console${path}`, {
+  const response = await fetch(`/api/v1/studio${path}`, {
     ...init,
     cache: "no-store",
     headers: {
@@ -80,7 +80,7 @@ export async function consoleApi<T>(path: string, init: RequestInit = {}): Promi
   const body = await response.json();
   if (!response.ok) {
     const code = typeof body?.error === "string" ? body.error : String(response.status);
-    throw new ConsoleError(code, messages[code] ?? `Request failed: ${body?.message ?? code}`);
+    throw new StudioError(code, messages[code] ?? `Request failed: ${body?.message ?? code}`);
   }
   return body as T;
 }

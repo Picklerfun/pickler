@@ -74,21 +74,21 @@ test("the studio's own front door is guarded", () => {
   assert.equal(sentTo(middleware(request("/"))), "/signin");
 });
 
-test("/console is refused on the studio host, session or no session", () => {
+test("/studio is refused on the studio host, session or no session", () => {
   // Refused rather than redirected: nothing outside this repository has ever linked to it, and the
   // links inside resolve through `studioHref`. A 404 is a rewrite to /not-found, so it stays a 200
   // on the wire — `sentTo` is the check that it is not being sent anywhere.
-  assert.equal(sentTo(middleware(request("/console", { cookie: `${SESSION}=eyJhbGci` }))), null);
-  assert.equal(middleware(request("/console")).status, 404);
+  assert.equal(sentTo(middleware(request("/studio", { cookie: `${SESSION}=eyJhbGci` }))), null);
+  assert.equal(middleware(request("/studio")).status, 404);
 });
 
-test("refusing /console does not refuse the studio itself", () => {
-  // Next does not re-run middleware on its own rewrite, so `/` still reaches the console page.
+test("refusing /studio does not refuse the studio itself", () => {
+  // Next does not re-run middleware on its own rewrite, so `/` still reaches the studio page.
   // Getting this wrong 404s the studio homepage for every visitor while typecheck stays green.
   const home = middleware(request("/", { cookie: `${SESSION}=eyJhbGci` }));
   assert.equal(home.status, 200);
   assert.equal(sentTo(home), null);
-  assert.equal(home.headers.get("x-middleware-rewrite"), "https://app.pickler.fun/console");
+  assert.equal(home.headers.get("x-middleware-rewrite"), "https://app.pickler.fun/studio");
 });
 
 test("the marketplace refuses studio paths rather than forwarding them", () => {

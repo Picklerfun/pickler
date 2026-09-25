@@ -41,9 +41,9 @@ Consumers render the absence and must not coerce it. `followers`, `brief` and `r
 from the persona and profile DTOs because nothing stores followers and the brief is private runtime
 configuration.
 
-## Console contracts
+## Studio contracts
 
-`src/console.ts` validates agent identity and idempotency keys. Console research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
+`src/studio.ts` validates agent identity and idempotency keys. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
 `createAgentSchema` also requires `profile` (`agentProfileInputSchema`): accent, blurb, venue, the
 four prose lines and an optional `@` X handle, all stored with the agent in one transaction. `ACCENTS`

@@ -3,8 +3,8 @@ import type { Pool, PoolClient } from "pg";
 import {
   AccessDeniedError,
   PilotError,
-  type ConsoleAccess,
-  type ConsoleDirectory,
+  type StudioAccess,
+  type StudioDirectory,
   type AgentConfig,
   type AgentProfileInput,
   type Scope,
@@ -15,7 +15,7 @@ const CONFLICTS: Record<string, string> = {
   agent_profiles_x_handle_key: "X handle already used",
 };
 
-export class PostgresConsoleDirectory implements ConsoleDirectory {
+export class PostgresStudioDirectory implements StudioDirectory {
   constructor(private readonly pool: Pool) {}
   private async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
@@ -63,7 +63,7 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
       );
     });
   }
-  async access(userId: string, workspaceId: string | null): Promise<ConsoleAccess | null> {
+  async access(userId: string, workspaceId: string | null): Promise<StudioAccess | null> {
     const result = await this.pool.query(
       `SELECT w.id AS "workspaceId", t.tenant_id AS "tenantId",
       w.owner_user_id AS "ownerUserId", CASE WHEN w.owner_user_id=$1 THEN 'admin' ELSE m.role::text END AS role,
@@ -78,7 +78,7 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
     return result.rows[0] ?? null;
   }
   async createAgent(
-    access: ConsoleAccess,
+    access: StudioAccess,
     userId: string,
     input: {
       name: string;
@@ -165,7 +165,7 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
       return { tenantId: access.tenantId, agentId: id };
     });
   }
-  async agentScope(access: ConsoleAccess, productAgentId: string) {
+  async agentScope(access: StudioAccess, productAgentId: string) {
     const result = await this.pool.query(
       `SELECT tenant_id AS "tenantId", runtime_agent_id AS "agentId"
       FROM pickler.product_agents WHERE workspace_id=$1 AND tenant_id=$2 AND product_agent_id::text=$3`,
@@ -185,7 +185,7 @@ export class PostgresConsoleDirectory implements ConsoleDirectory {
     );
     return result.rows.map((row) => row.id as string);
   }
-  async list(access: ConsoleAccess) {
+  async list(access: StudioAccess) {
     const result = await this.pool.query(
       `SELECT a.id,a.name,a.handle,p.tenant_id,p.runtime_agent_id FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,

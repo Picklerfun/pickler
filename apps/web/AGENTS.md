@@ -12,13 +12,13 @@ Auth values are the exception: authentication uses its publishable key in the br
 ```text
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
-  auth/callback/route.ts    # Supabase code exchange, cookies, return to console
-  console/page.tsx          # Private research UI
+  auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
+  studio/page.tsx           # The studio (private research UI)
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
   markets/                  # The perpetuals board and one market's level × time surface
-src/features/console/      # Agent form, history, research result and API client
+src/features/studio/       # Agent form, history, research result and API client
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -131,7 +131,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator console lives at `/console` and calls the Hono API. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -143,7 +143,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Unified API transport and private console
+## Unified API transport and private studio
 
 `src/server/container.ts`
 is now a typed API client facade. No core or infrastructure dependency is permitted anywhere
@@ -152,17 +152,17 @@ Binding; the explicit loopback-only fallback is for local development. Cookies a
 are transported, never interpreted as workspace authority by the web Worker. Hono validates
 identity and owns business decisions. Only public Supabase Auth configuration reaches the web.
 
-`features/console` and `/console` provide private agent configuration, manual research, schedule
+`features/studio` and `/studio` provide private agent configuration, manual research, schedule
 and pause controls, history and evidence. Reuse the existing shared control system with
 `data-surface="dark"`. API mutation errors remain explicit; do not automatically retry paid
 research. Reuse an idempotency key after an uncertain admission response. Poll pending/active
 research every three seconds, stop at terminal status, suspend in hidden tabs and clean up
 requests/timers on navigation. Results are not added to the public sample directory.
 
-The auth callback exchanges a Supabase authorization code and returns to the console. Console
+The auth callback exchanges a Supabase authorization code and returns to the studio. Studio
 onboarding finishes missing profiles and idempotently provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
-the console; public wallet/token/read demonstrations retain their existing design and limits.
+^the studio; public wallet/token/read demonstrations retain their existing design and limits.
 
 ## Worker build
 
@@ -170,15 +170,15 @@ OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --w
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
 
-## Studio console integration
+## Studio integration
 
-The private console uses the Studio shell and sections under `features/console/sections`.
+The private studio uses the Studio shell and sections under `features/studio/sections`.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
 The create request carries the public profile: the full form asks for accent, venue, blurb and X
 handle; the stepped empty-studio flow sends the same defaults the form opens on (`DEFAULT_PROFILE` in `profile.ts`, re-exported by `api.ts`).
 Swatches paint from `accentVars`, never from a hue name typed into a token.
-`features/console/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
+`features/studio/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
 the selected trace every three seconds; stop when terminal unless scheduling needs discovery.
 Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;

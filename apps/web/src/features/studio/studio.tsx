@@ -7,7 +7,7 @@ import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
-  consoleApi,
+  studioApi,
   errorCode,
   type Agent,
   type Catalog,
@@ -132,7 +132,7 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Console({
+export function Studio({
   openSection,
   openPhase,
 }: {
@@ -166,8 +166,8 @@ export function Console({
 
   const loadAgents = useCallback(async () => {
     const [current, list] = await Promise.all([
-      consoleApi<Access>("/me"),
-      consoleApi<{ agents: Agent[] }>("/agents"),
+      studioApi<Access>("/me"),
+      studioApi<{ agents: Agent[] }>("/agents"),
     ]);
     setAccess(current);
     setAgents(list.agents);
@@ -221,11 +221,11 @@ export function Console({
           router.replace("/signup?complete=1");
           return;
         }
-        await consoleApi("/onboard", { method: "POST" });
+        await studioApi("/onboard", { method: "POST" });
         const [list, cat, opts] = await Promise.all([
           loadAgents(),
-          consoleApi<Catalog>("/market-categories"),
-          consoleApi<Options>("/options"),
+          studioApi<Catalog>("/market-categories"),
+          studioApi<Options>("/options"),
         ]);
         if (!active) {
           return;
@@ -254,7 +254,7 @@ export function Console({
     }
     return startPolling(
       async (signal) => {
-        const list = await consoleApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, { signal });
+        const list = await studioApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, { signal });
         if (signal.aborted) {
           return null;
         }
@@ -262,7 +262,7 @@ export function Console({
         const selected = runId ?? list.runs[0]?.id ?? null;
         setRunId(selected);
         if (selected) {
-          const body = await consoleApi<{ events: RunEvent[] }>(`/runs/${selected}/events`, {
+          const body = await studioApi<{ events: RunEvent[] }>(`/runs/${selected}/events`, {
             signal,
           });
           if (signal.aborted) {
@@ -308,7 +308,7 @@ export function Console({
         }
         const key = requestKeys.current.get(agentId) ?? crypto.randomUUID();
         requestKeys.current.set(agentId, key);
-        const result = await consoleApi<{ runId: string }>(`/agents/${agentId}/runs`, {
+        const result = await studioApi<{ runId: string }>(`/agents/${agentId}/runs`, {
           method: "POST",
           headers: { "Idempotency-Key": key },
           body: JSON.stringify(marketId ? { marketId } : {}),
@@ -326,7 +326,7 @@ export function Console({
         if (!agent) {
           return;
         }
-        await consoleApi(`/agents/${agent.productId ?? agent.id}/config`, {
+        await studioApi(`/agents/${agent.productId ?? agent.id}/config`, {
           method: "PUT",
           body: JSON.stringify({ expectedVersion: agent.version, config }),
         });
@@ -590,7 +590,7 @@ export function Console({
               title={agent?.paused ? "Resume agent" : "Pause agent"}
               onClick={() =>
                 void act(async () => {
-                  await consoleApi(`/agents/${agentId}/pause`, {
+                  await studioApi(`/agents/${agentId}/pause`, {
                     method: "PUT",
                     body: JSON.stringify({ paused: !agent?.paused }),
                   });
@@ -679,7 +679,7 @@ export function Console({
               onRun={runNow}
               onSchedule={() =>
                 void act(async () => {
-                  await consoleApi(`/agents/${agentId}/schedule`, {
+                  await studioApi(`/agents/${agentId}/schedule`, {
                     method: "PUT",
                     body: JSON.stringify({ enabled: !agent.scheduleEnabled }),
                   });

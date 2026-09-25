@@ -2,19 +2,19 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
-  createConsoleAccess,
+  createStudioAccess,
   MARKET_CATALOG,
   DEFAULT_CONFIG,
   PLUGINS,
   PilotError,
   AccessDeniedError,
   AuthenticationRequiredError,
-  type ConsoleDirectory,
+  type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
 import {
   createAgentSchema,
-  consoleOptionsSchema,
+  studioOptionsSchema,
   idempotencyKeySchema,
   agentResponseSchema,
   configUpdateSchema,
@@ -28,9 +28,9 @@ import {
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 
-export interface ConsoleServices {
+export interface StudioServices {
   authenticate: Authenticate;
-  directory: ConsoleDirectory;
+  directory: StudioDirectory;
   repository: ResearchRepository;
   admissionsEnabled?: boolean;
   notifyQueued(): Promise<void>;
@@ -41,9 +41,9 @@ export interface ConsoleServices {
 }
 
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
-export function consoleRoutes(services: ConsoleServices) {
+export function studioRoutes(services: StudioServices) {
   const api = new Hono<AppEnv>();
-  const access = createConsoleAccess(services.directory);
+  const access = createStudioAccess(services.directory);
   const repo = services.repository;
   api.use("*", bodyLimit({ maxSize: 16_384 }));
   api.use("*", async (c, next) => {
@@ -90,7 +90,7 @@ export function consoleRoutes(services: ConsoleServices) {
   api.get("/options", (c) => {
     const defaults = { ...DEFAULT_CONFIG };
     delete defaults.categoryIds;
-    return c.json(consoleOptionsSchema.parse({ defaults, plugins: PLUGINS }));
+    return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
   });
   api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
   api.get("/agents", async (c) => {

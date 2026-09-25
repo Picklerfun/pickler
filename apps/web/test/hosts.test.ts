@@ -34,7 +34,7 @@ test("a host that merely ends with the marketplace name is not the marketplace",
 });
 
 test("studio paths belong to the studio", () => {
-  assert.equal(ownerOf("/console"), "studio");
+  assert.equal(ownerOf("/studio"), "studio");
   assert.equal(ownerOf("/account"), "studio");
   assert.equal(ownerOf("/signin"), "studio");
   assert.equal(ownerOf("/signup"), "studio");
@@ -52,7 +52,7 @@ test("marketplace paths belong to the marketplace", () => {
 });
 
 test("a nested path belongs where its first segment does", () => {
-  assert.equal(ownerOf("/console?section=picks"), "studio");
+  assert.equal(ownerOf("/studio?section=picks"), "studio");
   assert.equal(ownerOf("/tokens/HALF/picks/9"), "marketplace");
 });
 
@@ -89,11 +89,11 @@ test("the old custody address is nobody's studio path any more", () => {
 
 test("the studio's home has a different address on each host", () => {
   // No one string is right everywhere, which is why this takes the product. On the marketplace it
-  // has to be absolute: the cross-host redirect that used to carry /console is gone.
+  // has to be absolute: the cross-host redirect that used to carry /studio is gone.
   const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
   assert.equal(studioHref("studio", hosts), "/");
   assert.equal(studioHref("marketplace", hosts), "https://app.pickler.fun/");
-  assert.equal(studioHref("either", hosts), "/console");
+  assert.equal(studioHref("either", hosts), "/studio");
 });
 
 test("a studio path gets an origin only where it has to cross one", () => {

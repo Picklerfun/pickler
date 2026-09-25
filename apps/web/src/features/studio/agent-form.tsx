@@ -5,7 +5,7 @@ import { ACCENTS, VENUES, type AccentDto, type VenueDto } from "@pickler/api-sch
 import { accentVars } from "@/lib/accent";
 import {
   DEFAULT_PROFILE,
-  consoleApi,
+  studioApi,
   type Agent,
   type Catalog,
   type Config,
@@ -75,7 +75,7 @@ export function AgentForm({
       if (!selected.length) {
         throw new Error("Choose at least one sport — the agent needs somewhere to look.");
       }
-      const created = await consoleApi<Agent>("/agents", {
+      const created = await studioApi<Agent>("/agents", {
         method: "POST",
         headers: { "Idempotency-Key": key },
         body: JSON.stringify({

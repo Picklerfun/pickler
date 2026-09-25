@@ -1,8 +1,8 @@
 /**
  * The Studio, rendered without a session, so the design checks have the screen to look at.
  *
- * Every section of this screen is behind Supabase auth and the console API. With neither present —
- * which is every environment `scripts/design` runs against — `/console` renders a sign-in stub, and
+ * Every section of this screen is behind Supabase auth and the studio API. With neither present —
+ * which is every environment `scripts/design` runs against — `/studio` renders a sign-in stub, and
  * a contrast, token or type check that walks thirty-three elements of that stub reports the same
  * green as a check that walked the whole studio. That is the failure the verification is meant to
  * catch, so the screen has to be reachable.

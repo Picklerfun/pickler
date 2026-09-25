@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Button, Icon } from "@pickler/ui";
-import { consoleApi, type PaperOrder, type Run, type RunEvent } from "../api";
+import { studioApi, type PaperOrder, type Run, type RunEvent } from "../api";
 import { clock, decisionView, percent, signed, two, type DecisionView } from "../decision";
 import styles from "../studio.module.css";
 
@@ -216,7 +216,7 @@ export function Picks({
     let active = true;
     void (async () => {
       try {
-        const order = await consoleApi<PaperOrder>(`/runs/${selectedId}/paper-order`);
+        const order = await studioApi<PaperOrder>(`/runs/${selectedId}/paper-order`);
         if (active) {
           setFetched({ runId: selectedId, order });
         }

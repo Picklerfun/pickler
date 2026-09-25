@@ -48,8 +48,8 @@ test("API composition allocates independent services without model credentials o
   const first = createServices(env);
   const second = createServices(env);
   try {
-    assert.notEqual(first.console!.repository, second.console!.repository);
-    assert.equal(first.console!.admissionsEnabled, false);
+    assert.notEqual(first.studio!.repository, second.studio!.repository);
+    assert.equal(first.studio!.admissionsEnabled, false);
   } finally {
     await Promise.all([first.close(), second.close()]);
   }

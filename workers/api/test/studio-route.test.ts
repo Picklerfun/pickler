@@ -6,14 +6,14 @@ import {
   buildApiKeyPrincipal,
   DEFAULT_CONFIG,
   PilotError,
-  type ConsoleDirectory,
+  type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
-import { consoleRoutes } from "../src/routes/console.js";
+import { studioRoutes } from "../src/routes/studio.js";
 
 function fixture({ enabled = true, owner = true, key = false } = {}) {
   let calls = 0;
-  const directory: ConsoleDirectory = {
+  const directory: StudioDirectory = {
     onboard: async () => {},
     access: async () => ({
       workspaceId: "workspace",
@@ -42,7 +42,7 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
       return { id: "run", status: "queued" };
     },
   } as unknown as ResearchRepository;
-  const app = consoleRoutes({
+  const app = studioRoutes({
     directory,
     repository,
     notifyQueued: async () => {},
@@ -69,7 +69,7 @@ const request = (body: unknown) => ({
   headers: { "Content-Type": "application/json", "Idempotency-Key": "request" },
   body: JSON.stringify(body),
 });
-test("console rejects API keys, disabled owners and read-only members before admission", async () => {
+test("studio rejects API keys, disabled owners and read-only members before admission", async () => {
   for (const mode of [{ key: true }, { enabled: false }, { owner: false }]) {
     const { app, calls } = fixture(mode);
     const response = await app.request("/agents/agent/runs", request({}));

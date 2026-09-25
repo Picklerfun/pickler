@@ -20,7 +20,7 @@ import {
   PostgresResearchStore,
   PostgresPaperStore,
   PolymarketData,
-  PostgresConsoleDirectory,
+  PostgresStudioDirectory,
   PostgresBudgetLedger,
   PostgresCustodyStore,
   createAddPasskeyActivityBuilder,
@@ -200,7 +200,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   required(env, "SUPABASE_SECRET_KEY");
   required(env, "JWT_ISSUER");
   const repository = new PostgresResearchStore(database.url, undefined, database.options);
-  const directory = new PostgresConsoleDirectory(repository.pool);
+  const directory = new PostgresStudioDirectory(repository.pool);
   const db = createSupabaseAdmin({
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -232,7 +232,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     growth: createGrowthServices(env, repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
-    console: {
+    studio: {
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       authenticate,
       directory,
