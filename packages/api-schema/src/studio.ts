@@ -1,11 +1,44 @@
 import { z } from "zod";
 import { VENUES } from "./agents.js";
 import { ACCENTS } from "./landing.js";
-import { agentConfigSchema, agentResponseSchema, spendLimitsSchema } from "./research.js";
+import {
+  agentConfigSchema,
+  agentResponseSchema,
+  skillSchema,
+  spendLimitsSchema,
+  uncertaintyPolicySchema,
+} from "./research.js";
 
 // Mirrors `STYLES` in core, which this package may not import; a drift test in workers/api pins it.
 export const STYLES = ["careful", "balanced", "bold"] as const;
 export type StyleDto = (typeof STYLES)[number];
+
+/**
+ * Mirrors `NUMBERS` behind core's `policyForStyle` in `features/research/style.ts`, which this
+ * package may not import. The web sends one of these, keyed by the style the creation form's
+ * decide step chose, as the created agent's `uncertaintyPolicy`. A drift test in workers/api pins
+ * each entry against `policyForStyle`.
+ */
+export const STYLE_POLICIES: Record<StyleDto, z.infer<typeof uncertaintyPolicySchema>> = {
+  careful: {
+    blockHighUncertainty: true,
+    requireCompleteInformation: true,
+    minProbabilityMargin: 0.08,
+    maxProbabilityRangeWidth: 0.15,
+  },
+  balanced: {
+    blockHighUncertainty: true,
+    requireCompleteInformation: true,
+    minProbabilityMargin: 0.04,
+    maxProbabilityRangeWidth: 0.2,
+  },
+  bold: {
+    blockHighUncertainty: true,
+    requireCompleteInformation: true,
+    minProbabilityMargin: 0.02,
+    maxProbabilityRangeWidth: 0.3,
+  },
+};
 
 /** The public profile the studio authors at creation. Every field travels; nothing is filled in. */
 export const agentProfileInputSchema = z
@@ -122,6 +155,45 @@ export const BEAT_SUBS: Record<BeatName, readonly string[]> = {
   Economics: ["Fed", "CPI", "Jobs"],
   Culture: ["Awards", "Box office", "Music"],
   Tech: ["AI", "Launches", "Space"],
+};
+
+/**
+ * The runtime's sport id behind each Sports subcategory label, mirroring the `id` on core's
+ * `BEATS[0].subs` (`features/studio/draft.ts`). Only Sports has ids: it is the one beat with a
+ * market catalog behind it, and `agentConfigSchema`'s `marketScope.subcategories` takes these ids,
+ * never the labels a beat is drawn with. A drift test in workers/api pins this against core.
+ */
+export const SPORT_SUB_IDS: Record<
+  string,
+  "american-football" | "basketball" | "soccer" | "tennis"
+> = {
+  NFL: "american-football",
+  NBA: "basketball",
+  Soccer: "soccer",
+  Tennis: "tennis",
+};
+
+/**
+ * Mirrors core's `SUGGESTED_SKILLS` in `features/studio/draft.ts`, which this package may not
+ * import: the skills a draft or the creation form's skills step may offer by beat, `other` serving
+ * every beat without its own list. A drift test in workers/api pins it.
+ */
+export const SUGGESTED_SKILLS: Record<string, z.infer<typeof skillSchema>[]> = {
+  Sports: [
+    { name: "Injury double-check", prompt: "Only count an injury if two sources confirm it." },
+    {
+      name: "Weather at kickoff",
+      prompt:
+        "Check the stadium forecast. Wind over 15 mph lowers the chance of a high-scoring game.",
+    },
+    {
+      name: "Late line moves",
+      prompt: "If the line moved more than 2 points in 24 hours, find out why before calling.",
+    },
+  ],
+  other: [
+    { name: "Two sources rule", prompt: "Never call on a single source. Find a second one first." },
+  ],
 };
 
 /** What the model proposes from one line. Parts the runtime cannot run travel as `unsupported`. */

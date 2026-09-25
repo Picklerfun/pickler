@@ -67,6 +67,16 @@ still allows 20) and
 `BEAT_NAMES`, `SOON_BEATS` and `BEAT_SUBS` mirror core's `features/studio/draft.ts` and are pinned
 by the same workers/api test.
 
+`SPORT_SUB_IDS` (the runtime sport id behind each Sports subcategory label — `marketScope`'s
+`subcategories` takes ids, never the labels a beat is drawn with), `STYLE_POLICIES` (the
+`uncertaintyPolicy` numbers behind each `StyleDto`, mirroring core's `policyForStyle`) and
+`SUGGESTED_SKILLS` (the skills a draft or the creation form's skills step may offer, by beat, with
+`other` serving every beat without its own list) mirror the same core module and are pinned by the
+same workers/api test. The web's own creation flow (`apps/web/src/features/studio/create/draft.ts`)
+keeps a further literal copy of all five — `apps/web` is CommonJS to node's module resolver and
+this package publishes only an `"import"` condition, so a module there that reads these values at
+load time cannot be required by a test; only types cross that boundary.
+
 `studioAgentSchema` is the studio's agent DTO: the runtime `agentResponseSchema` plus optional
 `productId`/`name`/`handle`, `wallet` (`{ walletId, address, balanceAusd }` or null for an agent
 without a linked wallet) and two decided locks, `canSchedule` and `canCreateAnother`

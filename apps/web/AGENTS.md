@@ -192,6 +192,39 @@ flow" before ever calling the API, rather than send a request the schema can onl
 in `empty/draft.ts` still takes a `wallet` parameter and passes it through untouched, ready for the
 real ceremony this replaces.
 
+## The new creation flow's pure logic
+
+`features/studio/create/draft.ts` is the "Pickler Create First Agent v2" canvas's rules with no
+React and no transport: the `Draft` the Describe screen and seven manual steps (`name, trades,
+looks, reads, skills, decides, review`, `ORDER`) build up, `ready(step, draft)` for each step's
+gate, `soonRows` for the Soon venue/beat rows that block Review, the six `reviewRows` and their
+text builders (`tradesText`, `callsText`, `readsText`, `skillsText`, `decidesText`), `fromApiDraft`
+to fill the form from `POST /v1/studio/agents/draft`, `addSite`/`toggleIn` for the reads and looks
+steps, and `toCreate(draft, walletId, defaults)` for the `POST /agents` body, following the same
+`{ ...defaults, ... }` shape as `empty/draft.ts`'s `toCreate` (`defaults` is `/options`'s answer).
+The web cannot be turned off in this plan, so there is no `webOn` field, only `webMode`.
+
+`SOON_VENUES`, `SOON_BEATS`, `SPORT_SUB_IDS`, `STYLE_POLICIES` and `SUGGESTED_SKILLS` inside this
+file are literal copies of the same-named exports in `@pickler/api-schema` (`src/studio.ts`), not
+imports of them: `apps/web` is CommonJS to node's module resolver and `@pickler/api-schema`
+publishes only an `"import"` condition, so a module that reads its values at load time cannot be
+required by a `node:test` here — the same constraint `features/wallet/lib/handles.ts` documents.
+Only types cross the boundary (`import type`), which cost nothing because they are erased before
+this ever runs. Core is the one authority for all five; api-schema's copies are pinned against it
+by `workers/api/test/accent-venue-mirror.test.ts`, and this file's copies are kept equal to
+api-schema's by the module's own comment rather than by a cross-package test, the same way every
+other apps/web mirror of an api-schema value is.
+
+`api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
+funding surface: `draftAgent`, `createAgent`, `startRun`, `runEvents`, `run`, `paperOrder`,
+`updateConfig`/`setInterval`, `saveLimits`, `setSchedule`, `depositPrepare`/`depositConfirm`, and
+the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
+`confirmDelegated`, `prepareWallet`/`confirmWallet`, `preparePolicies`/`confirmPolicies`) plus the
+public `handleAvailable`. The signing and handle routes answer Relayer's envelope
+(`{ success, message, data, ... }`); `envelopeApi` unwraps it into the same `StudioError` the
+plain-JSON studio routes throw through `studioApi`, so a caller branches on `errorCode` the same
+way regardless of which family a request belongs to.
+
 ## Custody boundary
 
 No private key is ever derived or held in this app. Custody of the person's Pickler wallet belongs

@@ -9,6 +9,8 @@ import {
   SOON_VENUES as CORE_SOON_VENUES,
   VENUES_ON_MAP as CORE_VENUES_ON_MAP,
   SPORTSBOOKS as CORE_SPORTSBOOKS,
+  SUGGESTED_SKILLS as CORE_SUGGESTED_SKILLS,
+  policyForStyle,
 } from "@pickler/core";
 import {
   ACCENTS,
@@ -20,6 +22,9 @@ import {
   SOON_VENUES,
   VENUES_ON_MAP,
   SPORTSBOOKS,
+  SPORT_SUB_IDS,
+  SUGGESTED_SKILLS,
+  STYLE_POLICIES,
   sourcesSchema,
 } from "@pickler/api-schema";
 
@@ -55,4 +60,21 @@ test("the sportsbooks in api-schema are core's, and the schema accepts exactly t
   }
   assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["DraftKings"] }));
   assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["bovada"] }));
+});
+test("the sport subcategory ids in api-schema are core's Sports beat's ids", () => {
+  const sports = CORE_BEATS.find((beat) => beat.name === "Sports");
+  assert.ok(sports);
+  const coreIds = Object.fromEntries(
+    sports.subs.filter((sub) => sub.id !== null).map((sub) => [sub.label, sub.id]),
+  );
+
+  assert.deepEqual(SPORT_SUB_IDS, coreIds);
+});
+test("the suggested skills in api-schema are core's", () => {
+  assert.deepEqual(SUGGESTED_SKILLS, CORE_SUGGESTED_SKILLS);
+});
+test("the style policies in api-schema match core's policyForStyle", () => {
+  for (const style of CORE_STYLES) {
+    assert.deepEqual(STYLE_POLICIES[style], policyForStyle(style));
+  }
 });
