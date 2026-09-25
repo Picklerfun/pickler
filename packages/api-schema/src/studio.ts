@@ -65,3 +65,47 @@ export const studioOptionsSchema = z.object({
     }),
   ),
 });
+
+// The draft vocabulary mirrors `features/studio/draft.ts` in core; workers/api pins each list.
+export const VENUES_ON_MAP = ["polymarket", "perpl"] as const;
+export const SOON_VENUES = ["perpl"] as const;
+export const BEAT_NAMES = ["Sports", "Crypto", "Politics", "Economics", "Culture", "Tech"] as const;
+export type BeatName = (typeof BEAT_NAMES)[number];
+export const SOON_BEATS = ["Crypto", "Politics", "Economics", "Culture", "Tech"] as const;
+/** The subcategory labels each beat offers, in core's order. */
+export const BEAT_SUBS: Record<BeatName, readonly string[]> = {
+  Sports: ["NFL", "NBA", "Soccer", "Tennis"],
+  Crypto: ["Bitcoin", "Ethereum", "New listings"],
+  Politics: ["US elections", "Congress", "World"],
+  Economics: ["Fed", "CPI", "Jobs"],
+  Culture: ["Awards", "Box office", "Music"],
+  Tech: ["AI", "Launches", "Space"],
+};
+
+/** What the model proposes from one line. Parts the runtime cannot run travel as `unsupported`. */
+export const agentDraftSchema = z
+  .object({
+    name: z.string().trim().min(1).max(40),
+    handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
+    venues: z.array(z.enum(VENUES_ON_MAP)).min(1),
+    beat: z.enum(BEAT_NAMES),
+    subcategories: z.array(z.string().max(40)).max(6),
+    sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(20),
+    skills: z.array(z.string().max(40)).max(8),
+    edge: z.string().trim().min(1).max(400),
+    style: z.enum(STYLES),
+    accent: z.enum(ACCENTS),
+  })
+  .strict();
+export type AgentDraftDto = z.infer<typeof agentDraftSchema>;
+
+export const draftRequestSchema = z
+  .object({
+    line: z.string().trim().min(3).max(280),
+  })
+  .strict();
+
+export const draftResponseSchema = z.object({
+  draft: agentDraftSchema,
+  unsupported: z.array(z.string()),
+});

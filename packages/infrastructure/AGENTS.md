@@ -104,6 +104,17 @@ written `market.candles` and `market.holders`. Nothing in the class catches: a f
 failure, never an empty marketplace. See `docs/specs/marketplace-real-data-v1.md` §3 and §7 before
 filling any of these in.
 
+## Agent drafting model
+
+`src/model/openai-compatible-drafter.ts` exports `createOpenAiCompatibleDrafter`, core's
+`AgentDrafter` over the same OpenAI-compatible endpoint the research runtime uses. It posts one
+JSON-mode chat completion (temperature 0.2, 20-second timeout, `redirect: "manual"`) whose system
+prompt is built from core's `BEATS`, `SUGGESTED_SKILLS`, `STYLES`, `ACCENTS` and `VENUES_ON_MAP`, and
+sends `enable_thinking: false` only to DashScope hosts, as the runtime does. This package cannot
+import api-schema, so the caller injects `validate`. Every failure — network, non-success status,
+empty content, invalid JSON, a refused answer — is `DraftUnavailableError`; nothing falls back to a
+guess.
+
 ## Chain balance reads
 
 `src/chain/balances.ts` exports `createBalanceReader`, the server-side reader behind the sign-in

@@ -96,3 +96,8 @@ export {
   parseSiweMessage,
   type SiweFields,
 } from "./chain/siwe.js";
+export {
+  createOpenAiCompatibleDrafter,
+  DraftUnavailableError,
+  type OpenAiCompatibleDrafterConfig,
+} from "./model/openai-compatible-drafter.js";

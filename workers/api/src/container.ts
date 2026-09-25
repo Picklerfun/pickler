@@ -33,7 +33,9 @@ import {
   buildSiweMessage,
   parseSiweMessage,
   PostgresWalletIdentityStore,
+  createOpenAiCompatibleDrafter,
 } from "@pickler/infrastructure";
+import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
 import type { Env } from "./env";
 import type { SigningRouteServices } from "./routes/signing";
@@ -192,7 +194,20 @@ function walletAuthServices(
   };
 }
 
-/** Request-scoped composition; no model, provider credentials or lab initialization. */
+/** The research worker's model, used to draft an agent from one line; null unless all three are set. */
+function drafter(env: Env) {
+  if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
+    return null;
+  }
+  return createOpenAiCompatibleDrafter({
+    baseUrl: env.MODEL_BASE_URL,
+    apiKey: env.MODEL_API_KEY,
+    modelId: env.MODEL_ID,
+    validate: (raw) => agentDraftSchema.parse(raw),
+  });
+}
+
+/** Request-scoped composition; no research model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
   const database = apiDatabase(env);
   // Validate all required bindings before allocating the invocation's pool.
@@ -235,6 +250,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     studio: {
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       authenticate,
+      drafter: drafter(env),
       directory,
       repository,
       paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),

@@ -116,7 +116,14 @@ not yet connected to research tenants; see [integration boundaries](../../docs/f
 
 ## Cloudflare unification update
 
-The request-scoped composition resolves the trusted DATABASE Hyperdrive binding through src/database.ts, using verified origin TLS and two connections per invocation. Direct DATABASE_URL is allowed only for explicit local loopback development. It does not import Mastra or require LLM credentials. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
+The request-scoped composition resolves the trusted DATABASE Hyperdrive binding through src/database.ts, using verified origin TLS and two connections per invocation. Direct DATABASE_URL is allowed only for explicit local loopback development. It does not import Mastra or require LLM credentials.
+
+`POST /v1/studio/agents/draft` (JWT, research access; registered before the `/agents/:id` routes)
+turns `{ line }` into `{ draft, unsupported }` with the drafter built in `container.ts` from the
+optional `MODEL_BASE_URL`, `MODEL_ID` and `MODEL_API_KEY` — the same model the research worker
+uses. Without all three, or when the model fails or answers outside `agentDraftSchema`, the route
+answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. What cannot run yet (Perpl, beats
+other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
 The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.
 

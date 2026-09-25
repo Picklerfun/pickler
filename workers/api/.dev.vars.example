@@ -33,6 +33,12 @@ SIWE_DOMAIN=
 # internal key and never a contact, so this domain must never be made to accept mail.
 WALLET_EMAIL_DOMAIN=
 
+# The same model the research worker uses; the studio drafts an agent from one line with it.
+# Without all three, POST /v1/studio/agents/draft answers 503 DRAFT_UNAVAILABLE.
+MODEL_BASE_URL=
+MODEL_ID=
+MODEL_API_KEY=
+
 # Comma-separated. Empty means nobody; this is not a fallback that opens up when unset.
 SUPER_ADMIN_EMAILS=
 

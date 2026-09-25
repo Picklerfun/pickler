@@ -9,6 +9,8 @@ import {
   PilotError,
   AccessDeniedError,
   AuthenticationRequiredError,
+  unsupported,
+  type AgentDrafter,
   type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
@@ -24,7 +26,10 @@ import {
   pauseSchema,
   paperOrderSchema,
   scheduleSchema,
+  draftRequestSchema,
+  draftResponseSchema,
 } from "@pickler/api-schema";
+import { DraftUnavailableError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 
@@ -34,10 +39,28 @@ export interface StudioServices {
   repository: ResearchRepository;
   admissionsEnabled?: boolean;
   notifyQueued(): Promise<void>;
+  /** Null when no model is configured; drafting then answers 503 rather than guessing. */
+  drafter?: AgentDrafter | null;
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
   };
+}
+
+function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
+  if (code === "NOT_FOUND") {
+    return 404;
+  }
+  if (code === "QUOTA") {
+    return 429;
+  }
+  if (code === "INVALID_INPUT") {
+    return 400;
+  }
+  if (code === "DRAFT_UNAVAILABLE") {
+    return 503;
+  }
+  return 409;
 }
 
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
@@ -62,15 +85,7 @@ export function studioRoutes(services: StudioServices) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
     }
     if (error instanceof PilotError) {
-      const status =
-        error.code === "NOT_FOUND"
-          ? 404
-          : error.code === "QUOTA"
-            ? 429
-            : error.code === "INVALID_INPUT"
-              ? 400
-              : 409;
-      return c.json({ error: error.code }, status);
+      return c.json({ error: error.code }, pilotStatus(error.code));
     }
     return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
   });
@@ -114,6 +129,23 @@ export function studioRoutes(services: StudioServices) {
       key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
     });
     return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
+  });
+  // Before the /agents/:id routes, so "draft" is never read as an agent id.
+  api.post("/agents/draft", async (c) => {
+    await access.authorize(c.get("principal"));
+    if (!services.drafter) {
+      throw new PilotError("DRAFT_UNAVAILABLE", "No model is configured for drafting");
+    }
+    const { line } = draftRequestSchema.parse(await c.req.json());
+    try {
+      const draft = await services.drafter.draft(line);
+      return c.json(draftResponseSchema.parse({ draft, unsupported: unsupported(draft) }));
+    } catch (caught) {
+      if (caught instanceof DraftUnavailableError) {
+        throw new PilotError("DRAFT_UNAVAILABLE", caught.message);
+      }
+      throw caught;
+    }
   });
   api.get("/agents/:id", async (c) => {
     const current = await access.authorize(c.get("principal"));

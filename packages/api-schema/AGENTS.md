@@ -50,6 +50,12 @@ four prose lines and an optional `@` X handle, all stored with the agent in one 
 (`src/landing.ts`) and `VENUES` (`src/agents.ts`) are the lists their DTO unions derive from, the way
 `CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
 
+Drafting from one line: `draftRequestSchema` (`line`, 3–280 characters), `agentDraftSchema` (the
+strict shape a model must answer with, also the validator the API injects into the drafter) and
+`draftResponseSchema` (`draft` plus `unsupported` reasons). `VENUES_ON_MAP`, `SOON_VENUES`,
+`BEAT_NAMES`, `SOON_BEATS` and `BEAT_SUBS` mirror core's `features/studio/draft.ts` and are pinned
+by the same workers/api test.
+
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
