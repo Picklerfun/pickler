@@ -212,11 +212,12 @@ shows their master wallet from the first visit, with or without agents — so it
   prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the
   sub-organization with the passkey as its only root and the `Master Wallet`. Nobody finishes
   signup without one.
-- **Anyone who reaches a signed-in screen without a sub-organization** — a signup closed at the
-  passkey step, an account from before this rule — is sent to the passkey step before anything
-  else: signin ends there when `GET /v1/signing/wallets/me` answers 404, and the studio shell
-  redirects to `/passkey`, which creates the sub-organization when there is none and otherwise adds
-  a device.
+- **Nobody without a master wallet gets in.** The Supabase session exists from the code step, so
+  a signup closed at the passkey step leaves a signed-in person with no wallet. Every signed-in
+  screen that finds `GET /v1/signing/wallets/me` answering 404 — the studio, creation, `/account`,
+  `/passkey` — sends them back to **the signup's passkey step**, which resumes with account and
+  handle already done, and they stay there until the wallet exists. Signin ends at the same step
+  for such an account. `/passkey` only adds devices to an account that has a wallet.
 - **First agent:** the sub-organization exists, so the ceremony stamps `create_users` for the
   delegated user (non-root, in `users`), `create_wallet` for the agent's wallet and
   `create_policies` for its rules — **three prompts**; Turnkey has no batch-activity endpoint.
@@ -236,10 +237,10 @@ The policies are three DENYs on every wallet — no ERC-20 `transfer`/`approve`,
 no new credentials for the delegated user — plus, on the first agent only, the delegated user's
 self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
 
-**Where the rule is enforced.** In the web: signup cannot complete without the passkey step, signin
-and the studio shell route a person without a sub-organization to it. The API does not refuse
-studio calls from a person without one; the studio's agent ceremony simply cannot run without a
-sub-organization (`prepareAgentWallet` needs it), and the screen sends them to `/passkey` first.
+**Where the rule is enforced.** In the web: signup cannot complete without the passkey step, and
+every signed-in screen routes a person without a sub-organization back to it. The API does not
+refuse studio calls from a person without one; the agent ceremony simply cannot run without a
+sub-organization (`prepareAgentWallet` needs it).
 
 **What this changes in the trust model, stated plainly.** Until now Pickler held no key that could
 sign anything in a person's sub-organization. After this, it holds one that can sign _trades from
