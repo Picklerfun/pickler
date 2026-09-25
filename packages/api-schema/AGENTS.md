@@ -75,7 +75,9 @@ by the same workers/api test.
 same workers/api test. The web's own creation flow (`apps/web/src/features/studio/create/draft.ts`)
 keeps a further literal copy of all five — `apps/web` is CommonJS to node's module resolver and
 this package publishes only an `"import"` condition, so a module there that reads these values at
-load time cannot be required by a test; only types cross that boundary.
+load time cannot be required by a test; only types cross that boundary statically. That file's test
+still pins its copies against this package's by reaching it with a dynamic `import()`, which
+resolves through node's ESM loader regardless of the importer's own module type.
 
 `studioAgentSchema` is the studio's agent DTO: the runtime `agentResponseSchema` plus optional
 `productId`/`name`/`handle`, `wallet` (`{ walletId, address, balanceAusd }` or null for an agent

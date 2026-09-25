@@ -211,9 +211,11 @@ publishes only an `"import"` condition, so a module that reads its values at loa
 required by a `node:test` here — the same constraint `features/wallet/lib/handles.ts` documents.
 Only types cross the boundary (`import type`), which cost nothing because they are erased before
 this ever runs. Core is the one authority for all five; api-schema's copies are pinned against it
-by `workers/api/test/accent-venue-mirror.test.ts`, and this file's copies are kept equal to
-api-schema's by the module's own comment rather than by a cross-package test, the same way every
-other apps/web mirror of an api-schema value is.
+by `workers/api/test/accent-venue-mirror.test.ts`, and this file's five copies are exported and
+pinned against api-schema's own values by a test in `studio-create-draft.test.ts` that reaches
+api-schema with a dynamic `import()` — the one way that test file can still resolve a package
+publishing only an `"import"` condition, since a dynamic import always goes through node's ESM
+loader even from a CommonJS file, unlike this module's own static `import`.
 
 `api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
 funding surface: `draftAgent`, `createAgent`, `startRun`, `runEvents`, `run`, `paperOrder`,

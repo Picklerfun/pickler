@@ -19,8 +19,11 @@
  * `apps/web/src/features/wallet/lib/handles.ts` for the same note on the same constraint. Only
  * types are imported, which cost nothing because they are erased before this ever runs. Core stays
  * the one authority; api-schema's copies are pinned against it by
- * `workers/api/test/accent-venue-mirror.test.ts`, and this file's copies are kept equal to
- * api-schema's by the module comment and by matching the draft body the pin test itself checks.
+ * `workers/api/test/accent-venue-mirror.test.ts`. This file's copies are exported and pinned
+ * against api-schema's own values by `apps/web/test/studio-create-draft.test.ts`, which reaches
+ * api-schema with a dynamic `import()` — the one way a `node:test` file here can still resolve a
+ * package that publishes only an "import" condition, since dynamic import always goes through
+ * node's ESM loader even from a CommonJS file, unlike the static `import` this module itself uses.
  */
 import type { AccentDto, AgentDraftDto, StyleDto, VenueDto } from "@pickler/api-schema";
 import type { Config, Options } from "../api";
@@ -36,13 +39,13 @@ export type WebMode = "anywhere" | "prefer" | "only";
 type SportId = "american-football" | "basketball" | "soccer" | "tennis";
 
 /** Mirrors `SOON_VENUES` in `@pickler/api-schema` — see the module comment for why it is a copy. */
-const SOON_VENUES: readonly VenueOnMap[] = ["perpl"];
+export const SOON_VENUES: readonly VenueOnMap[] = ["perpl"];
 
 /** Mirrors `SOON_BEATS` in `@pickler/api-schema`. */
-const SOON_BEATS: readonly string[] = ["Crypto", "Politics", "Economics", "Culture", "Tech"];
+export const SOON_BEATS: readonly string[] = ["Crypto", "Politics", "Economics", "Culture", "Tech"];
 
 /** Mirrors `SPORT_SUB_IDS` in `@pickler/api-schema`. */
-const SPORT_SUB_IDS: Record<string, SportId> = {
+export const SPORT_SUB_IDS: Record<string, SportId> = {
   NFL: "american-football",
   NBA: "basketball",
   Soccer: "soccer",
@@ -50,7 +53,7 @@ const SPORT_SUB_IDS: Record<string, SportId> = {
 };
 
 /** Mirrors `STYLE_POLICIES` in `@pickler/api-schema`. */
-const STYLE_POLICIES: Record<
+export const STYLE_POLICIES: Record<
   StyleDto,
   {
     blockHighUncertainty: boolean;
@@ -308,7 +311,7 @@ export function toggleIn<T>(list: readonly T[], value: T): T[] {
 }
 
 /** Mirrors `SUGGESTED_SKILLS` in `@pickler/api-schema`; `other` serves every beat without its own list. */
-const SUGGESTED_SKILLS: Record<string, CustomSkill[]> = {
+export const SUGGESTED_SKILLS: Record<string, CustomSkill[]> = {
   Sports: [
     { name: "Injury double-check", prompt: "Only count an injury if two sources confirm it." },
     {

@@ -10,6 +10,11 @@ import {
   soonRows,
   toCreate,
   toggleIn,
+  SOON_VENUES,
+  SOON_BEATS,
+  SPORT_SUB_IDS,
+  STYLE_POLICIES,
+  SUGGESTED_SKILLS,
   type Draft,
 } from "../src/features/studio/create/draft";
 import type { Options } from "../src/features/studio/api";
@@ -267,4 +272,19 @@ test("a ready NFL draft with books and a custom skill becomes a body the create 
 // Prove bite: `ready("reads")` ignoring `sites.length` should make this fail.
 test("reads is not ready in prefer or only mode without at least one site", () => {
   assert.equal(ready("reads", draftWith({ webMode: "prefer", sites: [] })), false);
+});
+
+// `draft.ts` cannot statically `import` values from `@pickler/api-schema` (see the module
+// comment): `apps/web` is CommonJS to node's module resolver and the package publishes only an
+// "import" condition. A dynamic `import()` still resolves through node's ESM loader even from a
+// CommonJS file, so it is what pins this file's literal copies to api-schema's own values — a
+// drift here fails `npm test` instead of relying on the comment alone.
+test("draft.ts's literal copies of the Soon lists, sport ids, style policies and suggested skills match api-schema's", async () => {
+  const schema = await import("@pickler/api-schema");
+
+  assert.deepEqual(SOON_VENUES, schema.SOON_VENUES);
+  assert.deepEqual(SOON_BEATS, schema.SOON_BEATS);
+  assert.deepEqual(SPORT_SUB_IDS, schema.SPORT_SUB_IDS);
+  assert.deepEqual(STYLE_POLICIES, schema.STYLE_POLICIES);
+  assert.deepEqual(SUGGESTED_SKILLS, schema.SUGGESTED_SKILLS);
 });
