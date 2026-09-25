@@ -41,7 +41,7 @@ test("signing up walks account, code, handle, passkey, welcome", () => {
   const { steps, state } = walk(INITIAL, [
     { type: "code_sent", email: "ana@pickler.xyz" },
     { type: "code_changed", code: "482913" },
-    { type: "code_verified" },
+    { type: "profile_missing" },
     { type: "handle_claimed", handle: "nightowl" },
     { type: "passkey_created" },
   ]);
@@ -62,7 +62,7 @@ test("signing up walks account, code, handle, passkey, welcome", () => {
 test("signing in walks account, code, welcome — the handle is never asked for", () => {
   const { steps, state } = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
+    { type: "account_found" },
   ]);
   assert.deepEqual(steps, ["code", "welcome"]);
   assert.equal(state.mode, "in");
@@ -70,7 +70,7 @@ test("signing in walks account, code, welcome — the handle is never asked for"
 });
 
 test("a new device walks signed in, approve, this device", () => {
-  // The landing check sends device_unknown in place of code_verified, from the code screen.
+  // The landing check sends device_unknown for an account this browser holds no passkey for.
   const signedIn = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
     { type: "code_sent", email: "ana@pickler.xyz" },
   ]).state;
@@ -178,7 +178,7 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
     phase("IN", "todo"),
   ]);
   assert.deepEqual(
-    at([{ type: "code_sent", email: "ana@pickler.xyz" }, { type: "code_verified" }]),
+    at([{ type: "code_sent", email: "ana@pickler.xyz" }, { type: "profile_missing" }]),
     [
       phase("ACCOUNT", "done"),
       phase("HANDLE", "active"),
@@ -189,7 +189,7 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
   assert.deepEqual(
     at([
       { type: "code_sent", email: "ana@pickler.xyz" },
-      { type: "code_verified" },
+      { type: "profile_missing" },
       { type: "handle_claimed", handle: "nightowl" },
     ]),
     [
@@ -202,7 +202,7 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
   assert.deepEqual(
     at([
       { type: "code_sent", email: "ana@pickler.xyz" },
-      { type: "code_verified" },
+      { type: "profile_missing" },
       { type: "handle_claimed", handle: "nightowl" },
       { type: "passkey_created" },
     ]),
@@ -220,7 +220,7 @@ test("the sign-in rail has two phases, not the sign-up rail's three", () => {
   assert.deepEqual(rail(signIn), [phase("ACCOUNT", "active"), phase("IN", "todo")]);
   const welcome = walk(signIn, [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
+    { type: "account_found" },
   ]).state;
   assert.deepEqual(rail(welcome), [phase("ACCOUNT", "done"), phase("IN", "active")]);
 });
@@ -260,7 +260,6 @@ const EVERY_EVENT: readonly FlowEvent[] = [
   { type: "mode_chosen", mode: "in" },
   { type: "code_sent", email: "ana@pickler.xyz" },
   { type: "code_changed", code: "482913" },
-  { type: "code_verified" },
   { type: "handle_claimed", handle: "nightowl" },
   { type: "profile_missing" },
   { type: "wallet_missing" },
@@ -434,7 +433,7 @@ test("sign-in without a sub-organization lands on the passkey step and leaves it
 test("sign-in with a sub-organization goes straight to welcome, with no passkey phase", () => {
   const { steps, state } = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
+    { type: "account_found" },
   ]);
   assert.deepEqual(steps, ["code", "welcome"]);
   assert.deepEqual(rail(state), [phase("ACCOUNT", "done"), phase("IN", "active")]);

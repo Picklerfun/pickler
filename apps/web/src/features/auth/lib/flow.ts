@@ -47,7 +47,6 @@ export type FlowEvent =
   | { type: "code_sent"; email: string }
   /** Typing in the six cells. The machine holds the code so `change_email` can forget it. */
   | { type: "code_changed"; code: string }
-  | { type: "code_verified" }
   | { type: "handle_claimed"; handle: string }
   /** The landing check: the account has no profile yet, so it finishes signing up. */
   | { type: "profile_missing" }
@@ -135,7 +134,6 @@ const ACCEPTS: Record<FlowEvent["type"], readonly Step[]> = {
   mode_chosen: ["auth"],
   code_sent: ["auth", "code"],
   code_changed: ["code"],
-  code_verified: ["code"],
   handle_claimed: ["handle"],
   // The landing check's answers come from the code screen after a verified code, or from the
   // account screen when /signup or /signin is opened with a session that already exists: nothing
@@ -172,9 +170,6 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       return { ...state, step: "code", email: event.email, code: "" };
     case "code_changed":
       return { ...state, code: event.code };
-    case "code_verified":
-      // The one place the two email rails part: a new account still has to pick a name.
-      return { ...state, step: state.mode === "up" ? "handle" : "welcome" };
     case "handle_claimed":
       // Not the end of sign-up: the master wallet is made next, and nobody skips it.
       return { ...state, step: "passkey", handle: event.handle };
