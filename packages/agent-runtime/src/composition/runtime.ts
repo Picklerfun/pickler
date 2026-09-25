@@ -4,6 +4,7 @@ import {
   effectivePlugins,
   PilotError,
   type PluginId,
+  type RunRecord,
 } from "@pickler/core";
 import {
   PostgresResearchStore,
@@ -17,6 +18,7 @@ import {
 } from "@pickler/infrastructure";
 import type { Environment } from "../environment.js";
 import { createModel } from "./model.js";
+import { scopeRun } from "./run-scope.js";
 
 export function createRuntime(env: Environment, databaseOptions?: DatabaseConnectionOptions) {
   const model = createModel(env);
@@ -44,16 +46,16 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
     repository,
     markets,
     paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
-    execute: createResearchRunner({
-      repository,
-      search,
-      reader: search,
-      markets,
-      model,
-      configured: { exa: Boolean(env.EXA_API_KEY) },
-      ...(sports ? { sports } : {}),
-      ...(odds ? { odds } : {}),
-    }),
+    execute(run: RunRecord, signal?: AbortSignal) {
+      const execute = createResearchRunner({
+        repository,
+        markets,
+        configured: { exa: Boolean(env.EXA_API_KEY) },
+        ...(sports ? { sports } : {}),
+        ...scopeRun({ repository, model, exa: search, ...(odds ? { odds } : {}) }, run),
+      });
+      return execute(run, signal);
+    },
     async checkPlugin(scope: { tenantId: string; agentId: string }, plugin: string) {
       const agent = await repository.agent(scope);
       if (!effectivePlugins(agent.config).enabled.includes(plugin as PluginId)) {

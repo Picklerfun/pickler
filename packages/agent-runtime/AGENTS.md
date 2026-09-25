@@ -33,3 +33,26 @@ operator connection. Admission controls remain independent of transport.
 `createRuntime` accepts optional trusted database connection options from its host. The research
 Worker supplies Hyperdrive options and its binding URL; local Node callers retain direct/session
 connections. Never derive the transport choice from model input or public agent configuration.
+
+## Sources and skills
+
+`AgentConfig` carries two person-authored fields. `sources.web` is `{ mode, sites }` or `null`
+(web off); `sources.books` lists sportsbooks, empty meaning all. `skills` are `{ name, prompt }`
+rules. `composition/run-scope.ts` binds them to each run inside `createRuntime().execute`; every
+host that runs research through the runtime passes through it.
+
+- The model reads `composeBrief(profile, skills)` in selection, research and the final decision.
+- `plugins/exa.ts` keeps the studio's promise. `only` sends `includeDomains`, drops any result
+  outside the list and never retries. `prefer` sends `includeDomains` and, when that finds
+  nothing, searches once without it and records a `sources.fallback` run event. `anywhere`
+  sends exactly the pre-existing request. A site matches itself and its subdomains.
+- Off-list reads throw `INVALID_INPUT` "Outside the agent's site list" in the model's tool,
+  before the runner's provider call, so a refusal is an answer rather than a provider failure.
+  The reader refuses too, without calling Exa.
+- With the web off, search returns no sources without calling Exa and no page reader is
+  offered. Search stays offered because core requires supporting and contradicting searches.
+- `plugins/odds.ts` keeps only chosen books, matched to The Odds API bookmaker key ignoring
+  case and punctuation; no match means `no_coverage`. An empty list leaves the adapter as is.
+
+Tests live in `test` and run with
+`node --import tsx --test packages/agent-runtime/test/*.test.ts` after `npm run build:shared`.

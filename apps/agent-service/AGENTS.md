@@ -60,3 +60,8 @@ configuration version. It does not initialize alpha/beta or change their global 
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+Person-authored `sources` and `skills` are honoured by `@pickler/agent-runtime`'s per-run scope
+inside `createRuntime().execute`; read that package's AGENTS.md. The Cloudflare probe and
+ephemeral-research entry points call core's runner directly on operator configuration and do not
+apply them. Composed skills reach the model inside the profile, which prompts treat as data.
