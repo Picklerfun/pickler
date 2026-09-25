@@ -37,6 +37,21 @@ export const marketScopeSchema = z
     ]),
   })
   .strict();
+export const skillSchema = z
+  .object({ name: z.string().trim().min(1).max(40), prompt: z.string().trim().min(1).max(600) })
+  .strict();
+export const sourcesSchema = z
+  .object({
+    web: z
+      .object({
+        mode: z.enum(["anywhere", "prefer", "only"]),
+        sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(20),
+      })
+      .strict()
+      .nullable(),
+    books: z.array(z.string().max(40)),
+  })
+  .strict();
 export const marketCatalogSchema = z.object({
   version: z.literal(1),
   categories: z.array(
@@ -94,6 +109,8 @@ export const agentConfigSchema = z
     intervalHours: z.number().int().min(1).max(168),
     uncertaintyPolicy: uncertaintyPolicySchema.optional(),
     discoveryPolicy: discoveryPolicySchema.optional(),
+    sources: sourcesSchema.optional(),
+    skills: z.array(skillSchema).max(8).optional(),
   })
   .strict()
   .refine(

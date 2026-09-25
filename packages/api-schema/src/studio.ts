@@ -3,6 +3,10 @@ import { VENUES } from "./agents.js";
 import { ACCENTS } from "./landing.js";
 import { agentConfigSchema, agentResponseSchema } from "./research.js";
 
+// Mirrors `STYLES` in core, which this package may not import; a drift test in workers/api pins it.
+export const STYLES = ["careful", "balanced", "bold"] as const;
+export type StyleDto = (typeof STYLES)[number];
+
 /** The public profile the studio authors at creation. Every field travels; nothing is filled in. */
 export const agentProfileInputSchema = z
   .object({

@@ -6,6 +6,7 @@ import {
 } from "./market-scope.js";
 import type { PluginConfig } from "./plugins.js";
 import type { ResearchReport, SportsContext, ResearchReference } from "./nfl.js";
+import type { Skill } from "./brief.js";
 export const TOOL_NAMES = [
   "searchWeb",
   "readPage",
@@ -30,6 +31,15 @@ export interface DiscoveryPolicy {
   minLeadMinutes: number;
   maxHorizonDays: number;
 }
+export type WebMode = "anywhere" | "prefer" | "only";
+export interface AgentSources {
+  web: { mode: WebMode; sites: string[] } | null;
+  /** Sportsbooks the odds plugin may quote; empty means all. */
+  books: string[];
+}
+export const MAX_SKILLS = 8;
+export const MAX_SKILL_PROMPT = 600;
+export const MAX_SITES = 20;
 export interface AgentConfig {
   trading?: import("../trading/types.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
@@ -42,6 +52,10 @@ export interface AgentConfig {
   tools: ToolName[];
   intervalHours: number;
   uncertaintyPolicy?: UncertaintyPolicy | undefined;
+  /** What it reads beyond market data. `web: null` means the web is off. */
+  sources?: AgentSources | undefined;
+  /** Routines the person added; appended to the brief at run time (see brief.ts). */
+  skills?: Skill[] | undefined;
 }
 
 export interface AgentRecord {
@@ -331,6 +345,8 @@ export const DEFAULT_CONFIG: AgentConfig = {
   intervalHours: 4,
   limits: { ...MAX_LIMITS },
   uncertaintyPolicy: { ...DEFAULT_UNCERTAINTY_POLICY },
+  sources: { web: { mode: "anywhere", sites: [] }, books: [] },
+  skills: [],
 };
 
 export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
@@ -406,6 +422,47 @@ export function assertConfig(config: AgentConfig): void {
     throw new PilotError("INVALID_INPUT", "Invalid plugin configuration");
   }
   assertUncertaintyPolicy(config.uncertaintyPolicy ?? DEFAULT_UNCERTAINTY_POLICY);
+  if (config.sources) {
+    const web = config.sources.web;
+    if (web) {
+      if (!["anywhere", "prefer", "only"].includes(web.mode)) {
+        throw new PilotError("INVALID_INPUT", "Invalid web mode");
+      }
+      if ((web.mode === "prefer" || web.mode === "only") && web.sites.length === 0) {
+        throw new PilotError("INVALID_INPUT", "Prefer and only need at least one site");
+      }
+      if (
+        web.sites.length > MAX_SITES ||
+        web.sites.some((site) => !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(site))
+      ) {
+        throw new PilotError("INVALID_INPUT", "Sites must be bare hostnames");
+      }
+    }
+    if (
+      !Array.isArray(config.sources.books) ||
+      config.sources.books.some((book) => typeof book !== "string" || book.length > 40)
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid sportsbook list");
+    }
+  }
+  if (config.skills) {
+    if (config.skills.length > MAX_SKILLS) {
+      throw new PilotError("INVALID_INPUT", `At most ${MAX_SKILLS} skills`);
+    }
+    for (const skill of config.skills) {
+      if (
+        !skill.name.trim() ||
+        skill.name.trim().length > 40 ||
+        !skill.prompt.trim() ||
+        skill.prompt.trim().length > MAX_SKILL_PROMPT
+      ) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          `A skill needs a name (≤ 40) and a prompt (≤ ${MAX_SKILL_PROMPT})`,
+        );
+      }
+    }
+  }
   if (
     !config.limits ||
     Object.entries(MAX_LIMITS).some(([key, cap]) => {

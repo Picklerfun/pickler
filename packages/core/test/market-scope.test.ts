@@ -186,3 +186,37 @@ test("a general v4 trade cannot enter manual paper trading", () => {
     { code: "PAPER_UNSUPPORTED_PROTOCOL" },
   );
 });
+test("sources and skills are validated", () => {
+  assertConfig({
+    ...config,
+    sources: { web: { mode: "only", sites: ["espn.com"] }, books: [] },
+    skills: [],
+  });
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: { mode: "only", sites: [] }, books: [] },
+        skills: [],
+      }),
+    /at least one site/,
+  );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: [] },
+        skills: Array.from({ length: 9 }, (_, i) => ({ name: `s${i}`, prompt: "p" })),
+      }),
+    /At most 8 skills/,
+  );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: [] },
+        skills: [{ name: "x", prompt: "p".repeat(601) }],
+      }),
+    /600/,
+  );
+});
