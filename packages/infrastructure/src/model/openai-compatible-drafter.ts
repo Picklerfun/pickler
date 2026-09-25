@@ -33,10 +33,12 @@ function systemPrompt(): string {
   const beats = BEATS.map(
     (beat) => `  - ${beat.name}: ${beat.subs.map((sub) => sub.label).join(", ")}`,
   ).join("\n");
-  const skills = Object.values(SUGGESTED_SKILLS)
-    .flat()
-    .map((skill) => `"${skill.name}"`)
-    .join(", ");
+  const skills = Object.entries(SUGGESTED_SKILLS)
+    .map(([beat, list]) => {
+      const names = list.map((skill) => `"${skill.name}"`).join(", ");
+      return `  - ${beat === "other" ? "Any other beat" : beat}: ${names}`;
+    })
+    .join("\n");
   return [
     "You turn one sentence describing a prediction-market research agent into a JSON object.",
     "Answer with exactly these keys and nothing else:",
@@ -47,7 +49,8 @@ function systemPrompt(): string {
     "- subcategories: labels from the chosen beat only, copied exactly:",
     beats,
     "- sites: up to 6 bare hostnames the agent should read first, such as espn.com.",
-    `- skills: names copied exactly from ${skills}; only ones that fit, possibly none.`,
+    "- skills: names copied exactly from the chosen beat's list; only ones that fit, possibly none:",
+    skills,
     "- edge: one sentence, at most 400 characters, rewriting the line as what the agent looks for.",
     `- style: one of ${STYLES.map((s) => `"${s}"`).join(", ")}.`,
     `- accent: one of ${ACCENTS.map((a) => `"${a}"`).join(", ")}.`,
@@ -68,13 +71,14 @@ function contentOf(body: unknown): string {
 export function createOpenAiCompatibleDrafter(config: OpenAiCompatibleDrafterConfig): AgentDrafter {
   const request = config.fetch ?? fetch;
   const base = config.baseUrl.replace(/\/+$/, "");
-  // DashScope's hybrid models need thinking off for a single structured answer, as in the runtime.
-  const dashScope = DASHSCOPE_HOSTS.includes(new URL(base).hostname);
   const prompt = systemPrompt();
 
   return {
     async draft(line) {
       try {
+        // Parsed here, not at construction, so a malformed base URL is an unavailable draft.
+        // DashScope's hybrid models need thinking off for a single structured answer, as in the runtime.
+        const dashScope = DASHSCOPE_HOSTS.includes(new URL(base).hostname);
         const response = await request(`${base}/chat/completions`, {
           method: "POST",
           redirect: "manual",

@@ -119,3 +119,20 @@ test("an answer the validator refuses is also unavailable", async () => {
 
   await assert.rejects(() => drafter.draft("x"), DraftUnavailableError);
 });
+
+test("a malformed base URL does not throw at construction; drafting is unavailable", async () => {
+  let asked = false;
+  const drafter = createOpenAiCompatibleDrafter({
+    baseUrl: "not a url",
+    apiKey: "k",
+    modelId: "m",
+    fetch: async () => {
+      asked = true;
+      return reply(JSON.stringify(answer));
+    },
+    validate: passThrough,
+  });
+
+  await assert.rejects(() => drafter.draft("x y z"), DraftUnavailableError);
+  assert.equal(asked, false);
+});

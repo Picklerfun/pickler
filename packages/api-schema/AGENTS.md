@@ -51,7 +51,9 @@ four prose lines and an optional `@` X handle, all stored with the agent in one 
 `CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
 
 Drafting from one line: `draftRequestSchema` (`line`, 3–280 characters), `agentDraftSchema` (the
-strict shape a model must answer with, also the validator the API injects into the drafter) and
+strict shape a model must answer with, also the validator the API injects into the drafter; every
+subcategory must be one of `BEAT_SUBS[beat]` and a draft proposes at most 6 sites, though a config
+still allows 20) and
 `draftResponseSchema` (`draft` plus `unsupported` reasons). `VENUES_ON_MAP`, `SOON_VENUES`,
 `BEAT_NAMES`, `SOON_BEATS` and `BEAT_SUBS` mirror core's `features/studio/draft.ts` and are pinned
 by the same workers/api test.

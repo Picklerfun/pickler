@@ -90,13 +90,26 @@ export const agentDraftSchema = z
     venues: z.array(z.enum(VENUES_ON_MAP)).min(1),
     beat: z.enum(BEAT_NAMES),
     subcategories: z.array(z.string().max(40)).max(6),
-    sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(20),
+    // A draft proposes a handful of sites; the config itself still allows 20.
+    sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(6),
     skills: z.array(z.string().max(40)).max(8),
     edge: z.string().trim().min(1).max(400),
     style: z.enum(STYLES),
     accent: z.enum(ACCENTS),
   })
-  .strict();
+  .strict()
+  .superRefine((draft, context) => {
+    const offered = BEAT_SUBS[draft.beat];
+    draft.subcategories.forEach((label, index) => {
+      if (!offered.includes(label)) {
+        context.addIssue({
+          code: "custom",
+          path: ["subcategories", index],
+          message: `${label} is not a ${draft.beat} subcategory`,
+        });
+      }
+    });
+  });
 export type AgentDraftDto = z.infer<typeof agentDraftSchema>;
 
 export const draftRequestSchema = z

@@ -10,7 +10,8 @@ import {
   type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
-import { DraftUnavailableError } from "@pickler/infrastructure";
+import { agentDraftSchema } from "@pickler/api-schema";
+import { DraftUnavailableError, createOpenAiCompatibleDrafter } from "@pickler/infrastructure";
 import type { AppEnv } from "../src/env.js";
 import { studioRoutes } from "../src/routes/studio.js";
 
@@ -119,6 +120,35 @@ test("a model failure is 503 DRAFT_UNAVAILABLE, with the cause logged server-sid
       },
     ],
   ]);
+});
+
+test("a model answer naming a subcategory outside its beat is 503 DRAFT_UNAVAILABLE", async () => {
+  for (const subcategories of [["Cricket"], ["NFL", "Fed"]]) {
+    const drafter = createOpenAiCompatibleDrafter({
+      baseUrl: "https://model.example/v1",
+      apiKey: "test-only",
+      modelId: "m",
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: JSON.stringify({ ...halftime, subcategories }) } }],
+          }),
+        ),
+      validate: (raw) => agentDraftSchema.parse(raw),
+    });
+    const original = console.error;
+    console.error = () => {};
+
+    let response: Response;
+    try {
+      response = await app(drafter).request("/agents/draft", post(line));
+    } finally {
+      console.error = original;
+    }
+
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: "DRAFT_UNAVAILABLE" });
+  }
 });
 
 test("no configured model is 503 DRAFT_UNAVAILABLE", async () => {

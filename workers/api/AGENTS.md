@@ -121,7 +121,8 @@ The request-scoped composition resolves the trusted DATABASE Hyperdrive binding 
 `POST /v1/studio/agents/draft` (JWT, manage rights as for creating an agent; registered before the `/agents/:id` routes)
 turns `{ line }` into `{ draft, unsupported }` with the drafter built in `container.ts` from the
 optional `MODEL_BASE_URL`, `MODEL_ID` and `MODEL_API_KEY` — the same model the research worker
-uses. Without all three, or when the model fails or answers outside `agentDraftSchema`, the route
+uses. Without all three, with a base URL that does not parse (the drafter is then null and every
+other route is unaffected), or when the model fails or answers outside `agentDraftSchema`, the route
 answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure is logged with
 the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
 other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.

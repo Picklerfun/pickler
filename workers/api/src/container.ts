@@ -194,9 +194,15 @@ function walletAuthServices(
   };
 }
 
-/** The research worker's model, used to draft an agent from one line; null unless all three are set. */
+/**
+ * The research worker's model, used to draft an agent from one line. Null unless all three are set
+ * and the base URL parses, so a bad value turns drafting off (503) and leaves every other route alone.
+ */
 function drafter(env: Env) {
   if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
+    return null;
+  }
+  if (!URL.canParse(env.MODEL_BASE_URL)) {
     return null;
   }
   return createOpenAiCompatibleDrafter({
