@@ -30,7 +30,7 @@ export function NameStep({
   const hint = handleHint(draft.handle, draft.handleAvailable, check);
   return (
     <section className={styles.step} id="create-name">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         NAME IT<span>.</span>
       </h1>
       <Input

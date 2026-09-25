@@ -18,8 +18,6 @@ export interface FlowState {
   editing: boolean;
   /** The draft as it was when Edit was pressed, restored by Cancel. */
   snapshot: Draft | null;
-  /** What the model proposed that cannot run yet, e.g. `venue:perpl`, flagged on the review. */
-  unsupported: string[];
   error: string;
   busy: boolean;
 }
@@ -29,7 +27,7 @@ export type FlowAction =
   | { type: "replace"; draft: Draft }
   | { type: "go"; step: Step }
   | { type: "manual" }
-  | { type: "drafted"; draft: Draft; unsupported: string[] }
+  | { type: "drafted"; draft: Draft }
   | { type: "next" }
   | { type: "back" }
   | { type: "edit"; step: OrderStep }
@@ -43,7 +41,6 @@ export function initialFlow(step: Step, draft: Draft = emptyDraft()): FlowState 
     mode: "auto",
     editing: false,
     snapshot: null,
-    unsupported: [],
     error: "",
     busy: false,
   };
@@ -86,7 +83,6 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return {
         ...state,
         draft: { ...action.draft, prompt: state.draft.prompt },
-        unsupported: action.unsupported,
         step: "reading",
         mode: "auto",
         editing: false,
@@ -178,4 +174,19 @@ export interface StepProps {
   draft: Draft;
   patch(patch: Partial<Draft>): void;
   replace(draft: Draft): void;
+}
+
+/**
+ * The state a URL opens on. Outside production a link past Describe opens on the canvas's example
+ * draft; in production there is no draft to show on those screens yet, so any of them opens on
+ * Describe instead of an empty review or a run with nothing behind it.
+ */
+export function openingFlow(step: Step, allowSample: boolean): FlowState {
+  if (step === "start") {
+    return initialFlow("start");
+  }
+  if (allowSample) {
+    return initialFlow(step, sampleDraft());
+  }
+  return initialFlow("start");
 }

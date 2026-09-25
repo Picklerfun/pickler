@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   runCeremony,
   type CeremonyDeps,
+  type CeremonyProgress,
   type SignedActivity,
   type UnsignedActivity,
 } from "../src/features/studio/create/ceremony";
@@ -22,11 +23,31 @@ type Options = {
   hasDelegatedUser?: boolean;
   existing?: boolean;
   failPolicies?: boolean;
+  /** How many times each fails before it succeeds. */
+  createFailures?: number;
+  runFailures?: number;
+  /** The prompt the person closes, by activity name. */
+  closeStamp?: string;
 };
 
 function fakes(options: Options = {}) {
   const log: string[] = [];
   let prompts = 0;
+  let createFailures = options.createFailures ?? 0;
+  let runFailures = options.runFailures ?? 0;
+  /* What each prepare handed out, so every confirm can hold the signed request against it. */
+  const prepared = new Map<string, UnsignedActivity>();
+  const handOut = (name: string) => {
+    const activity = unsigned(name);
+    prepared.set(name, activity);
+    return activity;
+  };
+  const sameBytes = (name: string, signed: SignedActivity) => {
+    const original = prepared.get(name);
+    assert.ok(original, `${name} was confirmed without being prepared`);
+    assert.equal(signed.body, original.body);
+    assert.equal(signed.url, original.url);
+  };
   const deps: CeremonyDeps = {
     state: async () => {
       log.push("state");
@@ -41,6 +62,9 @@ function fakes(options: Options = {}) {
     },
     stamp: async (activity): Promise<SignedActivity> => {
       prompts += 1;
+      if (options.closeStamp && activity.url.endsWith(options.closeStamp)) {
+        throw new DOMException("The prompt was closed", "NotAllowedError");
+      }
       log.push(`stamp ${activity.url.split("/").pop()}`);
       return {
         url: activity.url,
@@ -50,9 +74,10 @@ function fakes(options: Options = {}) {
     },
     prepareDelegated: async () => {
       log.push("prepareDelegated");
-      return unsigned("delegated");
+      return handOut("delegated");
     },
-    confirmDelegated: async () => {
+    confirmDelegated: async (signed) => {
+      sameBytes("delegated", signed);
       log.push("confirmDelegated");
     },
     prepareWallet: async (handle) => {
@@ -60,17 +85,19 @@ function fakes(options: Options = {}) {
       if (options.existing) {
         return { existing: { walletId: "w-old", address: "0xold" } };
       }
-      return unsigned("wallet");
+      return handOut("wallet");
     },
-    confirmWallet: async (handle) => {
+    confirmWallet: async (handle, signed) => {
+      sameBytes("wallet", signed);
       log.push(`confirmWallet ${handle}`);
       return { walletId: "w1", address: "0xabc" };
     },
     preparePolicies: async (walletId) => {
       log.push(`preparePolicies ${walletId}`);
-      return unsigned("policies");
+      return handOut("policies");
     },
-    confirmPolicies: async (walletId) => {
+    confirmPolicies: async (walletId, signed) => {
+      sameBytes("policies", signed);
       log.push(`confirmPolicies ${walletId}`);
       if (options.failPolicies) {
         throw new Error("policies refused");
@@ -79,17 +106,34 @@ function fakes(options: Options = {}) {
     },
     createAgent: async (walletId) => {
       log.push(`createAgent ${walletId}`);
+      if (createFailures > 0) {
+        createFailures -= 1;
+        throw new Error("UNFUNDED_AGENT");
+      }
       return { id: "agent-1" };
     },
     startRun: async (agentId) => {
       log.push(`startRun ${agentId}`);
+      if (runFailures > 0) {
+        runFailures -= 1;
+        throw new Error("ADMISSIONS_PAUSED");
+      }
       return { runId: "run-1" };
     },
     onStep: (step, state) => {
       log.push(`${step}:${state}`);
     },
   };
-  return { deps, log, prompts: () => prompts };
+  return {
+    deps,
+    log,
+    prompts: () => prompts,
+    /** Forgets the calls so far, so a retry's log reads on its own. */
+    reset: () => {
+      log.length = 0;
+      prompts = 0;
+    },
+  };
 }
 
 test("the four steps start and finish in order: wallet, rules, agent, run", async () => {
@@ -227,4 +271,84 @@ test("every later agent asks for two", async () => {
   await runCeremony(deps, "halftime");
 
   assert.equal(prompts(), 2);
+});
+
+const calls = (log: string[]) => log.filter((line) => !line.includes(":"));
+
+test("a run that failed to start is retried alone: no wallet, no rules, no prompts", async () => {
+  const { deps, log, prompts, reset } = fakes({ runFailures: 1 });
+  const progress: CeremonyProgress = {};
+  await assert.rejects(runCeremony(deps, "halftime", progress), /ADMISSIONS_PAUSED/);
+  reset();
+
+  await runCeremony(deps, "halftime", progress);
+
+  assert.deepEqual(calls(log), ["startRun agent-1"]);
+  assert.equal(prompts(), 0);
+});
+
+test("an agent that failed to be created is retried without the wallet or its rules", async () => {
+  const { deps, log, prompts, reset } = fakes({ createFailures: 1 });
+  const progress: CeremonyProgress = {};
+  await assert.rejects(runCeremony(deps, "halftime", progress), /UNFUNDED_AGENT/);
+  reset();
+
+  await runCeremony(deps, "halftime", progress);
+
+  assert.deepEqual(calls(log), ["createAgent w1", "startRun agent-1"]);
+  assert.equal(prompts(), 0);
+});
+
+test("a retry still reports every step done, in order, for the rail", async () => {
+  const { deps, log, reset } = fakes({ runFailures: 1 });
+  const progress: CeremonyProgress = {};
+  await assert.rejects(runCeremony(deps, "halftime", progress));
+  reset();
+
+  await runCeremony(deps, "halftime", progress);
+
+  assert.deepEqual(
+    log.filter((line) => line.endsWith(":done")),
+    ["wallet:done", "rules:done", "agent:done", "run:done"],
+  );
+});
+
+test("a closed prompt propagates and progress keeps what was already done", async () => {
+  const { deps } = fakes({
+    hasSubOrganization: true,
+    hasDelegatedUser: true,
+    closeStamp: "policies",
+  });
+  const progress: CeremonyProgress = {};
+
+  await assert.rejects(runCeremony(deps, "halftime", progress), { name: "NotAllowedError" });
+
+  assert.deepEqual(progress, { walletId: "w1", address: "0xabc" });
+});
+
+test("an aborted ceremony asks for no passkey at all", async () => {
+  const { deps, prompts } = fakes();
+  const controller = new AbortController();
+  controller.abort();
+
+  await assert.rejects(runCeremony(deps, "halftime", {}, controller.signal));
+
+  assert.equal(prompts(), 0);
+});
+
+test("an abort between steps stops before the next prompt", async () => {
+  const { deps, log, prompts } = fakes({ hasSubOrganization: true, hasDelegatedUser: true });
+  const controller = new AbortController();
+  const onStep = deps.onStep;
+  deps.onStep = (step, state) => {
+    onStep(step, state);
+    if (step === "wallet" && state === "done") {
+      controller.abort();
+    }
+  };
+
+  await assert.rejects(runCeremony(deps, "halftime", {}, controller.signal));
+
+  assert.equal(prompts(), 1);
+  assert.equal(log.includes("preparePolicies w1"), false);
 });

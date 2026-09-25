@@ -14,7 +14,7 @@ export function Describe({ line, onLine }: { line: string; onLine(line: string):
   return (
     <section className={styles.step} id="create-describe">
       <p className={styles.kicker}>YOUR FIRST AGENT</p>
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         DESCRIBE IT<span>.</span>
       </h1>
       <p className={styles.lead}>

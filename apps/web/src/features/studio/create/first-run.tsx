@@ -21,6 +21,7 @@ export interface CeremonyView {
   started: boolean;
   steps: Record<CeremonyStep, StepState>;
   address: string | null;
+  agentId: string | null;
   runId: string | null;
   /** What stopped the ceremony, already in words; empty while nothing has. */
   error: string;
@@ -30,6 +31,7 @@ export const idleCeremony = (): CeremonyView => ({
   started: false,
   steps: { wallet: "pending", rules: "pending", agent: "pending", run: "pending" },
   address: null,
+  agentId: null,
   runId: null,
   error: "",
 });
@@ -110,7 +112,7 @@ export function FirstRun({
   const [current, setCurrent] = useState<Run | null>(null);
   const [order, setOrder] = useState<PaperOrder | null>(null);
   const [orderError, setOrderError] = useState("");
-  const [pollError, setPollError] = useState("");
+  const [pollError, setPollError] = useState<string | null>(null);
   const [late, setLate] = useState(false);
   const ordered = useRef(false);
 
@@ -127,7 +129,7 @@ export function FirstRun({
         }
         setEvents(trace.events);
         setCurrent(latest);
-        setPollError("");
+        setPollError(null);
         if (!TERMINAL.includes(latest.status)) {
           return POLL_MS;
         }
@@ -146,7 +148,7 @@ export function FirstRun({
         return null;
       },
       (caught) => {
-        setPollError(caught instanceof Error ? caught.message : "Could not read the run.");
+        setPollError(caught instanceof Error ? caught.message : "");
       },
     );
     return () => {
@@ -163,7 +165,9 @@ export function FirstRun({
   const trade = view?.action === "TRADE";
   const title = trade ? `BUY ${outcome ?? "ITS PICK"}` : view ? "IT PASSED" : "";
   const block = callBlock(view, outcome);
-  const waiting = late && (current === null || current.status === "queued");
+  /* Only a run that was read and is still queued has nobody listening. One that could not be read
+     is a different problem, said differently below. */
+  const waiting = late && current !== null && current.status === "queued";
 
   useEffect(() => {
     onSettled(terminal && block ? { block } : null, terminal || waiting);
@@ -174,7 +178,7 @@ export function FirstRun({
 
   return (
     <section className={styles.step} id="create-run">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         WATCH IT THINK<span>.</span>
       </h1>
       <p className={styles.kicker}>PAPER MONEY · NOTHING POSTS</p>
@@ -235,10 +239,10 @@ export function FirstRun({
         </div>
       )}
 
-      {pollError && (
-        <p className={styles.alert} role="alert">
+      {pollError !== null && (
+        <p className={styles.banner} role="status">
           <Icon name="alert" size={13} />
-          {pollError}
+          Can&apos;t read the run right now — retrying.{pollError ? ` (${pollError})` : ""}
         </p>
       )}
 

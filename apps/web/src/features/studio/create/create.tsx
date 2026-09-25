@@ -10,7 +10,6 @@ import {
   CUSTODY_API,
   SessionExpired,
   createWallet,
-  describeCustodyFailure,
   markEnrolled,
   openChallenge,
   type CustodyDeps,
@@ -18,7 +17,6 @@ import {
 import { describeDevice } from "@/features/auth/lib/device";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
-  StudioError,
   agentState,
   confirmDelegated,
   confirmPolicies,
@@ -35,17 +33,9 @@ import {
   type Options,
 } from "../api";
 import { studioPreview } from "../preview";
-import { runCeremony, type CeremonyStep } from "./ceremony";
-import {
-  ORDER,
-  emptyDraft,
-  fromApiDraft,
-  ready,
-  toCreate,
-  type Draft,
-  type OrderStep,
-} from "./draft";
-import { flowReducer, initialFlow, paramFromStep, sampleDraft, type StepProps } from "./flow";
+import { runCeremony, type CeremonyProgress, type CeremonyStep } from "./ceremony";
+import { ORDER, fromApiDraft, ready, toCreate, type Draft, type OrderStep } from "./draft";
+import { flowReducer, initialFlow, openingFlow, paramFromStep, type StepProps } from "./flow";
 import { RAIL_LABELS } from "./map";
 import { Describe } from "./describe";
 import { Reading } from "./reading";
@@ -101,28 +91,26 @@ function localStore() {
   }
 }
 
+/** The two names a WebAuthn prompt fails with when the person closed it or it timed out. */
+const CLOSED_PROMPT = new Set(["NotAllowedError", "AbortError"]);
+
 /**
- * A ceremony failure in words: the API's own message for an API refusal, the authenticator's for
- * a passkey that failed, and a plain sentence for a prompt the person closed. Named by the step it
- * stopped on, because the answer to "did anything happen" is which lines above it are done.
+ * A ceremony failure in words, named by the step it stopped on, because the answer to "did
+ * anything happen" is which lines above it are done. A closed passkey prompt says so plainly;
+ * everything else — an API refusal, an expired session, any other failure — shows its own message.
  */
 function describeFailure(step: CeremonyStep | null, caught: unknown): string {
   const where = step ? `${CEREMONY_NAMES[step]}: ` : "";
-  if (caught instanceof StudioError) {
-    return `${where}${caught.message}`;
+  if (caught instanceof Error && CLOSED_PROMPT.has(caught.name)) {
+    return `${where}the passkey prompt was closed. Nothing after the last finished line was created.`;
   }
   if (caught instanceof SessionExpired) {
-    return `${where}${describeCustodyFailure(caught)}`;
+    return `${where}your sign-in expired. Sign in again; the lines marked done stay done.`;
   }
-  const passkey =
-    caught instanceof Error && caught.name.endsWith("Error") && caught.name !== "Error";
-  if (passkey) {
-    const described = describeCustodyFailure(caught);
-    return described
-      ? `${where}${described}`
-      : `${where}the passkey prompt was closed. Nothing after the last finished line was created.`;
+  if (caught instanceof Error && caught.message) {
+    return `${where}${caught.message}`;
   }
-  return `${where}${caught instanceof Error ? caught.message : "it did not finish."}`;
+  return `${where}it did not finish.`;
 }
 
 /**
@@ -143,8 +131,7 @@ export function CreateAgent({
   const [state, dispatch] = useReducer(
     flowReducer,
     initialStep,
-    (step): ReturnType<typeof initialFlow> =>
-      initialFlow(step, allowSample && step !== "start" ? sampleDraft() : emptyDraft()),
+    (step): ReturnType<typeof initialFlow> => openingFlow(step, allowSample),
   );
   const [options, setOptions] = useState<Options | null>(null);
   const [access, setAccess] = useState<Access | null>(null);
@@ -157,7 +144,14 @@ export function CreateAgent({
   const [ceremony, setCeremony] = useState<CeremonyView>(idleCeremony);
   const [call, setCall] = useState<FirstCall | null>(null);
   const [settled, setSettled] = useState(false);
-  const keys = useRef<{ create: string; run: string } | null>(null);
+  /* One attempt per draft: its idempotency keys, and what it has already done. A retry reuses both,
+     so it resumes after the last finished step instead of asking for the passkey again. */
+  const attempt = useRef<{
+    keys: { create: string; run: string };
+    progress: CeremonyProgress;
+  } | null>(null);
+  /* Aborted when the screen goes away, so leaving mid-ceremony never raises a later prompt. */
+  const leaving = useRef<AbortController | null>(null);
   const rpId = useRef<string | null>(null);
   const { draft, step } = state;
 
@@ -251,11 +245,28 @@ export function CreateAgent({
     };
   }, [draft.handle, draft.handleAvailable]);
 
-  /* A changed draft is a different request, so it gets new idempotency keys; a retry of the same
-     draft reuses them, which is what lets the API find the half-finished attempt (spec §4.2). */
+  /* A changed draft is a different request, so it gets a new attempt; a retry of the same draft
+     reuses it, which is what lets the API find the half-finished attempt (spec §4.2). */
   useEffect(() => {
-    keys.current = null;
+    attempt.current = null;
   }, [draft]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    leaving.current = controller;
+    return () => controller.abort();
+  }, []);
+
+  /* Each screen's heading takes focus when the screen changes, so a screen reader hears where it
+     is. Not on the first render: arriving on the page is not a change. */
+  const firstStep = useRef(true);
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    document.querySelector<HTMLElement>(`#create-${paramFromStep(step)} h1`)?.focus();
+  }, [step]);
 
   const patch = useCallback((next: Partial<Draft>) => dispatch({ type: "patch", patch: next }), []);
   const replace = useCallback((next: Draft) => dispatch({ type: "replace", draft: next }), []);
@@ -267,11 +278,7 @@ export function CreateAgent({
     try {
       const answer = await draftAgent(draft.prompt.trim());
       setRevealed(0);
-      dispatch({
-        type: "drafted",
-        draft: fromApiDraft(answer.draft),
-        unsupported: answer.unsupported,
-      });
+      dispatch({ type: "drafted", draft: fromApiDraft(answer.draft) });
     } catch (caught) {
       if (errorCode(caught) === "DRAFT_UNAVAILABLE") {
         dispatch({ type: "manual" });
@@ -289,8 +296,12 @@ export function CreateAgent({
     if (!options) {
       return;
     }
-    const current = keys.current ?? { create: crypto.randomUUID(), run: crypto.randomUUID() };
-    keys.current = current;
+    const current = attempt.current ?? {
+      keys: { create: crypto.randomUUID(), run: crypto.randomUUID() },
+      progress: {},
+    };
+    attempt.current = current;
+    const signal = leaving.current?.signal;
     const body = (walletId: string) => toCreate(draft, walletId, options.defaults);
 
     const progress: { at: CeremonyStep | null } = { at: null };
@@ -333,10 +344,10 @@ export function CreateAgent({
           preparePolicies,
           confirmPolicies,
           createAgent: async (walletId) => {
-            const agent = await createAgent(body(walletId), current.create);
+            const agent = await createAgent(body(walletId), current.keys.create);
             return { id: agent.productId ?? agent.id };
           },
-          startRun: (agentId) => startRun(agentId, current.run),
+          startRun: (agentId) => startRun(agentId, current.keys.run),
           onStep: (which, phase) => {
             progress.at = phase === "start" ? which : null;
             setCeremony((was) => ({ ...was, steps: { ...was.steps, [which]: phase } }));
@@ -344,9 +355,19 @@ export function CreateAgent({
           onWallet: (wallet) => setCeremony((was) => ({ ...was, address: wallet.address })),
         },
         draft.handle,
+        current.progress,
+        signal,
       );
-      setCeremony((was) => ({ ...was, runId: result.runId, address: result.address }));
+      setCeremony((was) => ({
+        ...was,
+        agentId: result.agentId,
+        runId: result.runId,
+        address: result.address,
+      }));
     } catch (caught) {
+      if (signal?.aborted) {
+        return;
+      }
       const failed = progress.at;
       setCeremony((was) => ({
         ...was,
@@ -520,7 +541,13 @@ export function CreateAgent({
         );
       }
       return (
-        <Button size="lg" disabled={!settled} onClick={() => router.push("/studio")}>
+        <Button
+          size="lg"
+          disabled={!settled}
+          onClick={() =>
+            router.push(ceremony.agentId ? `/studio?agent=${ceremony.agentId}` : "/studio")
+          }
+        >
           {settled ? "Open the studio" : "Thinking…"}
         </Button>
       );

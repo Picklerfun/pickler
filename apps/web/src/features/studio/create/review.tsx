@@ -57,7 +57,7 @@ export function Review({
 
   return (
     <section className={styles.step} id="create-review">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         MEET {name.toUpperCase()}
         <span>.</span>
       </h1>

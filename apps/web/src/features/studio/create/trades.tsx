@@ -9,7 +9,7 @@ import styles from "./create.module.css";
 export function TradesStep({ draft, patch }: StepProps) {
   return (
     <section className={styles.step} id="create-trades">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         WHERE IT TRADES<span>.</span>
       </h1>
       <p className={styles.lead}>Pick one or both. It depends on how you like to play.</p>

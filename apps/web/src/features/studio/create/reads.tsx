@@ -32,7 +32,7 @@ export function ReadsStep({ draft, patch, replace }: StepProps) {
 
   return (
     <section className={styles.step} id="create-reads">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         WHAT IT READS<span>.</span>
       </h1>
       <p className={styles.lead}>Exactly where it&apos;s allowed to look before it makes a call.</p>

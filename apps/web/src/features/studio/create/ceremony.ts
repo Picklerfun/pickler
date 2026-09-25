@@ -69,47 +69,100 @@ export interface CeremonyResult {
   address: string;
 }
 
+/**
+ * What an attempt has already done, carried across retries of the same draft. `runCeremony`
+ * writes each field the moment its step finishes, so a failure leaves behind exactly what exists,
+ * and a retry resumes after it: a created agent is never re-approved, an approved wallet never
+ * re-prompted.
+ */
+export interface CeremonyProgress {
+  walletId?: string;
+  address?: string;
+  policiesApproved?: boolean;
+  agentId?: string;
+  runId?: string;
+}
+
 const isExisting = (
   prepared: UnsignedActivity | { existing: AgentWallet },
 ): prepared is { existing: AgentWallet } => "existing" in prepared;
 
-async function wallet(deps: CeremonyDeps, handle: string): Promise<AgentWallet> {
+async function wallet(
+  deps: CeremonyDeps,
+  handle: string,
+  signal?: AbortSignal,
+): Promise<AgentWallet> {
   const state = await deps.state();
+  signal?.throwIfAborted();
 
   if (!state.hasSubOrganization) {
     await deps.register();
+    signal?.throwIfAborted();
   }
 
   if (!state.hasDelegatedUser) {
     const unsigned = await deps.prepareDelegated();
+    signal?.throwIfAborted();
     await deps.confirmDelegated(await deps.stamp(unsigned));
+    signal?.throwIfAborted();
   }
 
   const prepared = await deps.prepareWallet(handle);
   if (isExisting(prepared)) {
     return prepared.existing;
   }
+  signal?.throwIfAborted();
   return deps.confirmWallet(handle, await deps.stamp(prepared));
 }
 
-export async function runCeremony(deps: CeremonyDeps, handle: string): Promise<CeremonyResult> {
+/**
+ * Runs the ceremony from wherever `progress` says the last attempt stopped. A step already done is
+ * reported as done without calling anything. `signal` is checked between calls, so a screen that
+ * has gone away never raises another passkey prompt.
+ */
+export async function runCeremony(
+  deps: CeremonyDeps,
+  handle: string,
+  progress: CeremonyProgress = {},
+  signal?: AbortSignal,
+): Promise<CeremonyResult> {
+  signal?.throwIfAborted();
+
   deps.onStep("wallet", "start");
-  const created = await wallet(deps, handle);
-  deps.onWallet?.(created);
+  if (!progress.walletId || !progress.address) {
+    const created = await wallet(deps, handle, signal);
+    progress.walletId = created.walletId;
+    progress.address = created.address;
+  }
+  const walletId = progress.walletId;
+  const address = progress.address;
+  deps.onWallet?.({ walletId, address });
   deps.onStep("wallet", "done");
+  signal?.throwIfAborted();
 
   deps.onStep("rules", "start");
-  const policies = await deps.preparePolicies(created.walletId);
-  await deps.confirmPolicies(created.walletId, await deps.stamp(policies));
+  if (!progress.policiesApproved) {
+    const policies = await deps.preparePolicies(walletId);
+    signal?.throwIfAborted();
+    await deps.confirmPolicies(walletId, await deps.stamp(policies));
+    progress.policiesApproved = true;
+  }
   deps.onStep("rules", "done");
+  signal?.throwIfAborted();
 
   deps.onStep("agent", "start");
-  const agent = await deps.createAgent(created.walletId);
+  if (!progress.agentId) {
+    progress.agentId = (await deps.createAgent(walletId)).id;
+  }
+  const agentId = progress.agentId;
   deps.onStep("agent", "done");
+  signal?.throwIfAborted();
 
   deps.onStep("run", "start");
-  const run = await deps.startRun(agent.id);
+  if (!progress.runId) {
+    progress.runId = (await deps.startRun(agentId)).runId;
+  }
   deps.onStep("run", "done");
 
-  return { agentId: agent.id, runId: run.runId, address: created.address };
+  return { agentId, runId: progress.runId, address };
 }

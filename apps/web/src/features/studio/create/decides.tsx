@@ -9,7 +9,7 @@ export function DecidesStep({ draft, patch }: StepProps) {
   const style = STYLES.find((candidate) => candidate.value === draft.style) ?? STYLES[1]!;
   return (
     <section className={styles.step} id="create-decides">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         HOW IT DECIDES<span>.</span>
       </h1>
       <div className={styles.well}>

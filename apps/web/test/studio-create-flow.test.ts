@@ -4,6 +4,7 @@ import { emptyDraft, type Draft } from "../src/features/studio/create/draft";
 import {
   flowReducer,
   initialFlow,
+  openingFlow,
   paramFromStep,
   sampleDraft,
   stepFromParam,
@@ -38,11 +39,10 @@ test("step by step starts at the name, in manual mode", () => {
 test("a draft from the line goes to the reading screen and keeps the line", () => {
   const state = at({ draft: { ...emptyDraft(), prompt: "Calls NFL games" } });
 
-  const next = flowReducer(state, { type: "drafted", draft: ready, unsupported: ["venue:perpl"] });
+  const next = flowReducer(state, { type: "drafted", draft: ready });
 
   assert.equal(next.step, "reading");
   assert.equal(next.draft.prompt, "Calls NFL games");
-  assert.deepEqual(next.unsupported, ["venue:perpl"]);
 });
 
 test("Next does nothing while the step is not ready", () => {
@@ -104,4 +104,22 @@ test("a trace leaves out token counts and names a search by its query", () => {
 
 test("an address is shortened to its ends", () => {
   assert.equal(shortAddress("0x7a3f00000000000000000000000000000091c2"), "0x7a3f…91c2");
+});
+
+test("in production a link past Describe opens on Describe, with nothing to show there yet", () => {
+  const opened = openingFlow("review", false);
+
+  assert.equal(opened.step, "start");
+  assert.equal(opened.draft.name, "");
+});
+
+test("outside production the same link opens on the canvas's example draft", () => {
+  const opened = openingFlow("review", true);
+
+  assert.equal(opened.step, "review");
+  assert.equal(opened.draft.name, "Halftime");
+});
+
+test("Describe opens empty either way", () => {
+  assert.equal(openingFlow("start", true).draft.prompt, "");
 });

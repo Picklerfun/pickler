@@ -976,3 +976,6 @@ button.card:disabled .cardNote {
 .well .label {
   padding: 10px 12px 0;
 }
+.headline:focus:not(:focus-visible) {
+  outline: none;
+}

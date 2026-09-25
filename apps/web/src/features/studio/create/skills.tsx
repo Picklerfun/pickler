@@ -33,7 +33,7 @@ export function SkillsStep({ draft, patch, replace }: StepProps) {
 
   return (
     <section className={styles.step} id="create-skills">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         ITS SKILLS<span>.</span>
       </h1>
       <p className={styles.lead}>

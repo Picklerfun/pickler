@@ -22,7 +22,7 @@ export function LooksStep({ draft, patch, replace }: StepProps) {
 
   return (
     <section className={styles.step} id="create-looks">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         WHAT IT CALLS<span>.</span>
       </h1>
       {polymarket && (

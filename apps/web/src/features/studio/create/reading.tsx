@@ -43,7 +43,7 @@ export function Reading({
 
   return (
     <section className={styles.step} id="create-reading">
-      <h1 className={styles.headline}>
+      <h1 className={styles.headline} tabIndex={-1}>
         GOT IT<span>.</span>
       </h1>
       {draft.prompt.trim() && <p className={styles.quote}>“{draft.prompt.trim()}”</p>}
