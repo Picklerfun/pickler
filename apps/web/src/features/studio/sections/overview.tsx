@@ -238,7 +238,7 @@ export function Overview({
                 icon: "shield",
                 label: "See the policy",
                 note: "What it carries into every run",
-                to: "console",
+                to: "context",
               },
               {
                 icon: "wallet",

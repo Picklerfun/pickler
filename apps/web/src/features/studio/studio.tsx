@@ -41,7 +41,7 @@ const GROUPS: { title: string; items: { key: SectionKey; icon: IconName; label: 
     title: "RUN",
     items: [
       { key: "overview", icon: "grid", label: "Overview" },
-      { key: "console", icon: "chat", label: "Context" },
+      { key: "context", icon: "chat", label: "Context" },
       { key: "picks", icon: "target", label: "Picks" },
       { key: "activity", icon: "activity", label: "Activity" },
     ],
@@ -740,7 +740,7 @@ export function Studio({
               canManage={canManage}
               onSave={saveConfig}
             />
-          ) : section === "console" ? (
+          ) : section === "context" ? (
             <Context agent={agent} go={go} />
           ) : (
             <Stub section={section} agent={agent} />

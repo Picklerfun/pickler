@@ -8,7 +8,7 @@
  */
 export const SECTIONS = [
   "overview",
-  "console",
+  "context",
   "picks",
   "activity",
   "brief",

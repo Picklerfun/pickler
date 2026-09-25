@@ -52,7 +52,7 @@ notice.
 
 ### It is worse, and cheaper, than that: the two identities are already the same values
 
-Traced through `packages/infrastructure/src/console/directory.ts`, which is the only place either
+Traced through `packages/infrastructure/src/studio/directory.ts`, which is the only place either
 is created:
 
 ```sql
@@ -135,7 +135,7 @@ as the only root user. The screen says **"YOUR KEY. NOT OURS."**
 | `wallets`  | `signing`  | the apparatus a person signs with: Turnkey orgs, passkeys, accounts     |
 | `identity` | `identity` | who someone is, including wallets they proved and Pickler does not hold |
 | `market`   | `market`   | the curve: tokens, pools, trades, fees, candles                         |
-| `budget`   | `budget`   | spend and its ledger — **absorbs the console budget tables**            |
+| `budget`   | `budget`   | spend and its ledger — **absorbs the studio budget tables**             |
 | `audit`    | `audit`    | the immutable record and idempotency keys                               |
 | `growth`   | `growth`   | waitlist and applications                                               |
 
@@ -143,9 +143,9 @@ as the only root user. The screen says **"YOUR KEY. NOT OURS."**
 `execution` reads as order execution alone. `runtime.events` becomes `runtime.run_events`, which
 says whose events they are and stops colliding with `audit.events`.
 
-### The console tables go where their subject is
+### The studio tables go where their subject is
 
-`pickler` currently holds six tables that belong to the console rather than to the runtime. They do
+`pickler` currently holds six tables that belong to the studio rather than to the runtime. They do
 not need a schema of their own; they need to be filed.
 
 - `budget_reservations`, `budget_processed`, `budget_state` → `budget`, beside `budgets` and
@@ -165,16 +165,16 @@ them source and four tests.
 | File                                                        | References |
 | ----------------------------------------------------------- | ---------- |
 | `packages/infrastructure/src/persistence/trading-store.ts`  | 27         |
-| `packages/infrastructure/src/console/directory.ts`          | 11         |
+| `packages/infrastructure/src/studio/directory.ts`           | 11         |
 | `packages/infrastructure/src/persistence/paper-store.ts`    | 7          |
-| `packages/infrastructure/src/console/budget.ts`             | 7          |
+| `packages/infrastructure/src/studio/budget.ts`              | 7          |
 | `packages/infrastructure/src/persistence/research-store.ts` | 4          |
 | `packages/infrastructure/src/sports/cache.ts`               | 3          |
-| `packages/infrastructure/src/console/operator.ts`           | 1          |
+| `packages/infrastructure/src/studio/operator.ts`            | 1          |
 | `workers/research/test/*`                                   | 7          |
 
 The translation itself is narrower: `product_agents` and `runtimeAgentId` appear in **four source
-files** — `console-schema.ts`, `research-store.ts`, `console/directory.ts` and `console/budget.ts`.
+files** — `console-schema.ts`, `research-store.ts`, `studio/directory.ts` and `studio/budget.ts`.
 
 **Both are more mechanical than they first look.** Renaming a schema is a migration and a
 find-and-replace over 70 call sites, each verifiable by the type checker and the suite.

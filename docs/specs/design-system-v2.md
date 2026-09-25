@@ -219,13 +219,13 @@ from `-0.02em` to `-0.05em`. Small labels run 10–12px at weight 600 with `lett
 
 ## 5. The five screens
 
-| Canvas                     | Route                   | Surface                              |
-| -------------------------- | ----------------------- | ------------------------------------ |
-| `Pickler Landing Waitlist` | `/`                     | light                                |
-| `Portfolio Light`          | `/portfolio`            | light, with a dark total-value panel |
-| `Pickler Studio v4`        | `/console`              | dark                                 |
-| `Pickler Studio Empty`     | `/console`, empty state | dark                                 |
-| `Pickler Account`          | `/account`              | dark, with a light wallet card       |
+| Canvas                     | Route                  | Surface                              |
+| -------------------------- | ---------------------- | ------------------------------------ |
+| `Pickler Landing Waitlist` | `/`                    | light                                |
+| `Portfolio Light`          | `/portfolio`           | light, with a dark total-value panel |
+| `Pickler Studio v4`        | `/studio`              | dark                                 |
+| `Pickler Studio Empty`     | `/studio`, empty state | dark                                 |
+| `Pickler Account`          | `/account`             | dark, with a light wallet card       |
 
 The landing is shorter than the one it replaces: a ticker tape, a nav, a one-word hero, a three-part
 hero row, a "runs on" strip, four steps, the waitlist form and a footer. Sections present in the
@@ -293,7 +293,7 @@ colours and the ratio.
 routes and assert each one resolves to a value in §4. A colour that appears on screen and is in no
 token is a literal someone typed, wherever it lives.
 
-**Both surfaces, and inversion.** Assert `/` and `/portfolio` paint a white ground and `/console`
+**Both surfaces, and inversion.** Assert `/` and `/portfolio` paint a white ground and `/studio`
 and `/account` a night-blue one. Then assert the nested case, which is the mechanism the whole
 system rests on: the landing's "FOUR MOVES" panel must compute to the dark ground while its parent
 computes to white, and Account's wallet card the reverse. If nesting does not invert, the system is
