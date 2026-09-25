@@ -1,14 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Hono } from "hono";
 import {
   AuthenticationRequiredError,
   buildUserPrincipal,
+  draftToConfig,
   type AgentDraft,
   type AgentDrafter,
   type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
 import { DraftUnavailableError } from "@pickler/infrastructure";
+import type { AppEnv } from "../src/env.js";
 import { studioRoutes } from "../src/routes/studio.js";
 
 const halftime: AgentDraft = {
@@ -24,17 +27,17 @@ const halftime: AgentDraft = {
   accent: "lime",
 };
 
-function app(drafter: AgentDrafter | null, { signedIn = true } = {}) {
+function app(drafter: AgentDrafter | null, { signedIn = true, owner = true } = {}) {
   const directory = {
     access: async () => ({
       workspaceId: "workspace",
       tenantId: "trusted",
-      ownerUserId: "user",
+      ownerUserId: owner ? "user" : "other",
       role: "auditor",
       enabled: true,
     }),
   } as unknown as StudioDirectory;
-  return studioRoutes({
+  const studio = studioRoutes({
     directory,
     repository: {} as ResearchRepository,
     notifyQueued: async () => {},
@@ -53,6 +56,13 @@ function app(drafter: AgentDrafter | null, { signedIn = true } = {}) {
       };
     },
   });
+  const root = new Hono<AppEnv>();
+  root.use("*", async (c, next) => {
+    c.set("requestId", "request-1");
+    await next();
+  });
+  root.route("/", studio);
+  return root;
 }
 const post = (line: string) => ({
   method: "POST",
@@ -78,17 +88,37 @@ test("a draft that names perpl says so instead of dropping it", async () => {
   assert.deepEqual(body.unsupported, ["venue:perpl"]);
 });
 
-test("a model failure is 503 DRAFT_UNAVAILABLE", async () => {
+test("a model failure is 503 DRAFT_UNAVAILABLE, with the cause logged server-side only", async () => {
   const drafter = {
     draft: async () => {
-      throw new DraftUnavailableError(new Error("timeout"));
+      throw new DraftUnavailableError(new Error("The model answered 500"));
     },
   };
+  const logged: unknown[][] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    logged.push(args);
+  };
 
-  const response = await app(drafter).request("/agents/draft", post(line));
+  let response: Response;
+  try {
+    response = await app(drafter).request("/agents/draft", post(line));
+  } finally {
+    console.error = original;
+  }
 
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { error: "DRAFT_UNAVAILABLE" });
+  assert.deepEqual(logged, [
+    [
+      "Draft unavailable",
+      {
+        requestId: "request-1",
+        message: "The model could not draft this agent",
+        cause: "The model answered 500",
+      },
+    ],
+  ]);
 });
 
 test("no configured model is 503 DRAFT_UNAVAILABLE", async () => {
@@ -110,6 +140,48 @@ test("drafting needs a signed-in user", async () => {
   const response = await app(drafter, { signedIn: false }).request("/agents/draft", post(line));
 
   assert.equal(response.status, 401);
+  assert.equal(called, false);
+});
+
+test("a member without manage rights is refused the way creating an agent is", async () => {
+  let called = false;
+  const drafter = {
+    draft: async () => {
+      called = true;
+      return halftime;
+    },
+  };
+  const studio = app(drafter, { owner: false });
+  const create = {
+    name: "Halftime",
+    handle: "halftime",
+    config: draftToConfig(halftime),
+    profile: {
+      accent: "lime",
+      blurb: "",
+      venue: "predictions",
+      vibe: "",
+      voice: "",
+      decides: "",
+      wrong: "",
+      xHandle: null,
+    },
+  };
+
+  const drafted = await studio.request("/agents/draft", post(line));
+  const created = await studio.request("/agents", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer token",
+      "Idempotency-Key": "create",
+    },
+    body: JSON.stringify(create),
+  });
+
+  assert.equal(created.status, 403);
+  assert.equal(drafted.status, created.status);
+  assert.deepEqual(await drafted.json(), await created.json());
   assert.equal(called, false);
 });
 

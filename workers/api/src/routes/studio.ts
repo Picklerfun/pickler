@@ -131,8 +131,9 @@ export function studioRoutes(services: StudioServices) {
     return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
   });
   // Before the /agents/:id routes, so "draft" is never read as an agent id.
+  // Drafting spends a model call and exists only to create, so it needs the same rights as creating.
   api.post("/agents/draft", async (c) => {
-    await access.authorize(c.get("principal"));
+    await access.authorize(c.get("principal"), true);
     if (!services.drafter) {
       throw new PilotError("DRAFT_UNAVAILABLE", "No model is configured for drafting");
     }
@@ -142,6 +143,13 @@ export function studioRoutes(services: StudioServices) {
       return c.json(draftResponseSchema.parse({ draft, unsupported: unsupported(draft) }));
     } catch (caught) {
       if (caught instanceof DraftUnavailableError) {
+        // The cause stays server-side; it never carries the key or the request.
+        const cause = caught.cause instanceof Error ? caught.cause.message : String(caught.cause);
+        console.error("Draft unavailable", {
+          requestId: c.get("requestId"),
+          message: caught.message,
+          cause,
+        });
         throw new PilotError("DRAFT_UNAVAILABLE", caught.message);
       }
       throw caught;
