@@ -173,7 +173,8 @@ stays `createJsonRpc`, whose `error` payloads now throw `JsonRpcError` with the 
 `maxFeePerGas = 2 × base + tip`. The tip falls back to 1 gwei only when the node does not implement
 the method (code -32601 or "method not found"); any other failure propagates. Prepare builds with
 this quote and core's confirm caps stamped fees against it, so both go through this one function.
-`pendingNonce` reads `eth_getTransactionCount(address, "pending")`, likewise shared.
+`pendingNonce` reads `eth_getTransactionCount(address, "pending")`. Prepare builds with it and
+core's confirm refuses a stamped nonce above it.
 `buildTransferTx` adds the pending nonce and a gas estimate. It builds an EIP-1559 `transfer` with
 the quoted fees and the estimate padded by a fifth, rounded up. A
 failed estimate is core's `DepositNotSendableError` with the RPC error as its cause, never a

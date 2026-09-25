@@ -35,9 +35,9 @@ export class DepositFeeTooHighError extends Error {
 }
 
 /**
- * The stamped transaction's nonce is not the master wallet's pending nonce (HTTP 400). A lower one
- * can never be mined and a higher one would sit queued behind a gap; only the pending nonce sends.
- * The person prepares again.
+ * The stamped transaction's nonce is above the master wallet's pending nonce (HTTP 400): it would
+ * sit queued behind a gap. The person prepares again. A nonce at or below pending is not refused
+ * here, so a repeated confirm of a sent deposit still reaches its recorded-hash check.
  */
 export class DepositNonceError extends Error {
   constructor() {

@@ -187,6 +187,8 @@ function fakes(options: { walletOwner?: string; linked?: boolean } = {}) {
       if (state.broadcastFails) {
         throw new Error("nonce too low");
       }
+      // Like the chain: once sent, the master's pending nonce moves on.
+      state.pendingNonce += 1;
       return HASH;
     },
     forgetBalance(address) {
@@ -415,6 +417,7 @@ test("a repeated confirm of a recorded deposit is refused without broadcasting a
   const f = fakes();
   const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
   await service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned));
+  assert.equal(f.state.pendingNonce, 8);
 
   await assert.rejects(
     service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
@@ -453,21 +456,31 @@ test("a duplicate refused at save is not reported as unrecorded: its row exists"
   assert.deepEqual(f.state.unrecorded, []);
 });
 
-test("a stamped nonce other than the master's pending nonce is refused before Turnkey", async () => {
-  for (const pending of [6, 8]) {
-    const f = fakes();
-    const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
-    // Stamped with 7; the chain has moved on to 8, or (a dropped transaction) back to 6.
-    f.state.pendingNonce = pending;
+test("a stamped nonce above the master's pending nonce is refused before Turnkey", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  // Stamped with 7; the pending nonce fell back to 6 (a dropped transaction), so 7 is a gap.
+  f.state.pendingNonce = 6;
 
-    await assert.rejects(
-      service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
-      DepositNonceError,
-    );
+  await assert.rejects(
+    service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned)),
+    DepositNonceError,
+  );
 
-    assert.equal(f.state.forwards.length, 0, `pending ${pending}`);
-    assert.equal(f.state.broadcasts.length, 0);
-  }
+  assert.equal(f.state.forwards.length, 0);
+  assert.equal(f.state.broadcasts.length, 0);
+});
+
+test("a stamped nonce below the pending nonce is not refused for it; the node decides", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDeposit(USER, AGENT, 25);
+  // Stamped with 7; another transaction from the master took 7 meanwhile.
+  f.state.pendingNonce = 8;
+
+  const confirmed = await service(f).confirmDeposit(USER, AGENT, 25, stamped(unsigned));
+
+  assert.deepEqual(confirmed, { txHash: HASH });
+  assert.equal(f.state.broadcasts.length, 1);
 });
 
 test("the signed transaction is checked against the stamped one and the master before sending", async () => {

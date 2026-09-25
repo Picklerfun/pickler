@@ -44,6 +44,8 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
   const sent: unknown[] = [];
   /** What the RPC answers as the master's pending nonce; a test can move it on. */
   const chainState = { nonce: "0x7", signedMismatch: false };
+  /** Makes saveDeposit fail as a database outage would. */
+  const store = { saveFails: null as Error | null };
   const verified: { signedTransaction: string; unsignedTransaction: string; signer: string }[] = [];
   const forwards: ForwardExpectations[] = [];
   const deposits: { agentId: string; txHash: string; amountMicroUsd: bigint }[] = [];
@@ -55,7 +57,21 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
       params: unknown[];
     };
     if (method === "eth_sendRawTransaction") {
+      // Like a node: a transaction it already holds is refused as "already known", and a new one
+      // moves the master's pending nonce on.
+      if (sent.includes(params[0])) {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: 1,
+          error: { code: -32000, message: "already known" },
+        });
+      }
       sent.push(params[0]);
+      chainState.nonce = `0x${(Number(chainState.nonce) + 1).toString(16)}`;
+    }
+    if (method === "eth_getTransactionByHash") {
+      const known = sent.length > 0 && params[0] === HASH;
+      return Response.json({ jsonrpc: "2.0", id: 1, result: known ? { hash: HASH } : null });
     }
     if (method === "eth_getTransactionCount") {
       return Response.json({ jsonrpc: "2.0", id: 1, result: chainState.nonce });
@@ -81,6 +97,9 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
     findOwnedAgentWallet: async (userId: string, walletId: string) =>
       userId === USER && walletId === "wal-agent" ? { walletId, address: AGENT_ADDRESS } : null,
     saveDeposit: async (input: { agentId: string; txHash: string; amountMicroUsd: bigint }) => {
+      if (store.saveFails) {
+        throw store.saveFails;
+      }
       if (deposits.some((deposit) => deposit.txHash === input.txHash)) {
         throw new DepositAlreadyRecordedError();
       }
@@ -175,7 +194,7 @@ function fixture(options: { signedIn?: boolean; custody?: boolean } = {}) {
       };
     },
   });
-  return { app, sent, forwards, deposits, forgotten, chainState, verified };
+  return { app, sent, forwards, deposits, forgotten, chainState, verified, store };
 }
 
 const post = (body: unknown) => ({
@@ -250,10 +269,11 @@ test("confirm forwards, broadcasts, records the deposit and answers the hash", a
   ]);
 });
 
-test("a deposit prepared before the master's nonce moved is 400 and nothing is forwarded", async () => {
+test("a deposit whose nonce is above the master's pending nonce is 400 and nothing is forwarded", async () => {
   const { app, chainState, forwards, sent } = fixture();
   const prepared = await prepare(app, 25);
-  chainState.nonce = "0x8";
+  // Stamped with 7; the master's pending nonce fell back to 6, so 7 is a gap.
+  chainState.nonce = "0x6";
 
   const response = await app.request(
     `/agents/${AGENT}/deposit/confirm`,
@@ -374,6 +394,32 @@ test("the unrecorded-deposit line names the request, hash, amount and agent", ()
   assert.deepEqual(lines, [
     `[req-1] unrecorded deposit ${HASH} of 25000000 micro-USD to agent ${AGENT}; it was broadcast, record it out of band`,
   ]);
+});
+
+test("a confirm retried after the send succeeded but the record failed records the deposit", async (t) => {
+  const { app, sent, deposits, store } = fixture();
+  t.mock.method(console, "error", () => {});
+  const prepared = await prepare(app, 25);
+  const confirm = () =>
+    app.request(
+      `/agents/${AGENT}/deposit/confirm`,
+      post({ amountAusd: 25, signed: stamp(prepared) }),
+    );
+  store.saveFails = new Error("connection terminated");
+
+  const failed = await confirm();
+  assert.equal(failed.status, 500);
+  assert.deepEqual(deposits, []);
+  store.saveFails = null;
+
+  // The pending nonce has moved past the stamp; the node answers "already known" for it, and
+  // holds this very transaction, so the retry records it.
+  const retried = await confirm();
+
+  assert.equal(retried.status, 200);
+  assert.deepEqual(await retried.json(), { txHash: HASH });
+  assert.equal(sent.length, 1);
+  assert.deepEqual(deposits, [{ agentId: AGENT, txHash: HASH, amountMicroUsd: 25_000_000n }]);
 });
 
 test("an amount outside the offered set, or a body that is not the contract, is 400", async () => {

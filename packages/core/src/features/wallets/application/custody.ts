@@ -720,8 +720,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       ) {
         throw new DepositFeeTooHighError();
       }
-      // Exactly the pending nonce: a lower one can never be mined, a higher one waits on a gap.
-      if (transfer.nonce !== (await chain.pendingNonce(account.address))) {
+      // Above the pending nonce is a gap: it would sit queued behind a transaction nobody sent.
+      // At or below it flows on: a repeated confirm of a sent deposit is found by its hash below
+      // (409), or the node already holds it and it is recorded, or the node refuses it.
+      if (transfer.nonce > (await chain.pendingNonce(account.address))) {
         throw new DepositNonceError();
       }
       assertStampedAsPrepared(signed, (timestampMs) =>

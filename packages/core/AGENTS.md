@@ -186,9 +186,13 @@ native value is zero, the gas limit is at most `MAX_DEPOSIT_GAS` (Monad charges 
 the recipient and amount are this agent's wallet and this deposit. It then asks the port for a
 fresh fee quote (`quoteFees`, the one prepare builds with) and refuses with
 `DepositFeeTooHighError` when the stamped `maxFeePerGas` or `maxPriorityFeePerGas` exceeds
-`MAX_FEE_MULTIPLE` (2) times the quote. It refuses with `DepositNonceError` unless the stamped
-nonce equals the master's `pendingNonce` exactly: a lower one can never be mined and a higher one
-waits on a gap. It then rebuilds the whole activity around that
+`MAX_FEE_MULTIPLE` (2) times the quote. It refuses with `DepositNonceError` only when the stamped
+nonce is above the master's `pendingNonce`, a gap that would sit queued. A nonce at or below
+pending flows on. A repeated confirm of a sent deposit then meets the recorded-hash check (409). A
+retry after a failed record finds the node already holding the transaction and records it.
+Anything else is refused by the node. A nonce between the latest and the pending nonce could
+replace a master transaction still in the pool. The checks above still hold for it: it pays only
+this agent, only this amount. It then rebuilds the whole activity around that
 transaction with the stamped timestamp and compares bytes. It forwards with only
 `ACTIVITY_TYPE_SIGN_TRANSACTION_V2` allowed and reads `signTransactionResult.signedTransaction`.
 

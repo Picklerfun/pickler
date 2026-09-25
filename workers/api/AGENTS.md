@@ -190,7 +190,8 @@ answer 503 `DEPOSITS_UNAVAILABLE`. `container.ts` gives the service `createAusdD
 `CHAIN_ID` and `MONAD_RPC_URL`, forgetting through the per-isolate AUSD reader. Failures are bare
 codes: 400 `INVALID_INPUT`, 400 `INVALID_SIGNED_ACTIVITY` (the stamped transfer is not this amount
 to this agent, or the body differs), 400 `DEPOSIT_FEE_TOO_HIGH` (a stamped fee over twice a fresh
-quote), 400 `DEPOSIT_NONCE_MISMATCH` (the master's pending nonce moved; prepare again), 400
+quote), 400 `DEPOSIT_NONCE_MISMATCH` (the stamped nonce is above the master's pending
+nonce; prepare again), 400
 `SIGNED_ACTIVITY_REJECTED`, 404 `AGENT_WALLET_NOT_FOUND`, 409 `NO_CUSTODY_ACCOUNT`, 409
 `DEPOSIT_NOT_SENDABLE` (the gas estimate failed), 409 `DEPOSIT_ALREADY_RECORDED` (a repeated
 confirm; nothing is sent again) and 502 `SIGNING_UNAVAILABLE`. A refused broadcast is 500 and
