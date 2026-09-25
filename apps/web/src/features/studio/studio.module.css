@@ -152,6 +152,19 @@
   color: var(--pk-ink);
   background: var(--pk-surface);
 }
+.menuItem:disabled {
+  cursor: not-allowed;
+  color: var(--pk-ink-muted);
+  background: transparent;
+}
+.menuLabel {
+  display: grid;
+  gap: 3px;
+}
+.menuNote {
+  font: 500 11px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
 
 .status {
   display: inline-flex;

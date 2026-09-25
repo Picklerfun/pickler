@@ -34,7 +34,8 @@ const hex = (length: number) =>
 
 /**
  * A `wallets.wallets` row (with its account) an `agent_wallets` link can reference. Approved with
- * two policy ids by default, the way a real `confirmPolicies` would have left it; pass
+ * three policy ids by default (the fewest any wallet is written with), the way a real
+ * `confirmPolicies` would have left it; pass
  * `approvedPolicyIds: null` for a wallet whose rules were never confirmed.
  */
 async function seedWallet(
@@ -48,7 +49,7 @@ async function seedWallet(
 ) {
   const walletId = overrides.walletId ?? `wallet-${hex(12)}`;
   const approvedPolicyIds =
-    overrides.approvedPolicyIds === undefined ? ["p1", "p2"] : overrides.approvedPolicyIds;
+    overrides.approvedPolicyIds === undefined ? ["p1", "p2", "p3"] : overrides.approvedPolicyIds;
   await pool.query(
     `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
      VALUES ($1, $2, $3, 'agent', $4, $5)`,
@@ -385,6 +386,22 @@ test("a wallet with no approved policies is refused, and no agent row survives",
 
   const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
   assert.equal(rows[0].n, 0, "no agent may be created against a wallet with unapproved policies");
+});
+
+test("a wallet with fewer approved ids than every wallet is written with is refused", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const walletId = await seedWallet(store.pool, userId, { approvedPolicyIds: ["p1", "p2"] });
+
+  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }), {
+    code: "CONFLICT",
+    message: "Approve the wallet's rules first",
+  });
+
+  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
+  assert.equal(rows[0].n, 0);
 });
 
 test("the idempotent retry with the same wallet returns the same agent; a retry with a different wallet is a different request", async (t) => {

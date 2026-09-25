@@ -80,7 +80,8 @@ is linked to an agent yet, and a `first_agent` field is refused). Each confirm i
 `invalid_signed_activity` before anything reaches Turnkey unless the stamped request is exactly
 what its prepare built, apart from the timestamp. Prepares answer the
 unsigned activity in add/prepare's shape; a wallet prepare for a handle with an unlinked wallet
-answers `{ existing: { wallet_id, address } }` instead, and the browser skips that stamp.
+answers `{ existing: { wallet_id, address, policies_approved } }` instead, and the browser skips
+that stamp, and the policies' too when `policies_approved` is true.
 Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.
 `GET /agents/state` answers `has_sub_organization` and `has_delegated_user`. The link to an agent
 is written by the create-agent transaction, not here.
@@ -168,7 +169,9 @@ wallet, and nothing has launched. A balance read that fails fails the request (5
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
 `canCreateAnother` is closed, but a retry of an earlier create is looked up first with
-`directory.createdWithKey` and replays the original agent without meeting the lock. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
+`directory.createdWithKey` and replays the original agent without meeting the lock. The
+directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, message }` (409 and
+404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
 

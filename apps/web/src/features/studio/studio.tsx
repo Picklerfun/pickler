@@ -21,6 +21,7 @@ import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
+import { createGate, gateNote } from "./create/gate";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -169,6 +170,16 @@ export function Studio({
 
   const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
   const canManage = Boolean(access?.canManage);
+  /* The same lock the home's "+ New agent" honours, so neither entry reaches a passkey prompt the
+     API would refuse after it. */
+  const newAgentGate = useMemo(() => createGate(agents), [agents]);
+  const newAgentLock = useMemo(() => {
+    if (newAgentGate.open) {
+      return "";
+    }
+    const { title, note } = gateNote(newAgentGate.agent);
+    return `${title} ${note}`;
+  }, [newAgentGate]);
   const events = trace && trace.runId === runId ? trace.events : [];
   const now = useNow();
 
@@ -510,14 +521,18 @@ export function Studio({
                 type="button"
                 role="menuitem"
                 className={styles.menuItem}
-                disabled={!canManage}
+                disabled={!canManage || !newAgentGate.open}
+                title={newAgentLock || undefined}
                 onClick={() => {
                   setMenu(null);
                   router.push("/studio/new");
                 }}
               >
                 <Icon name="bolt" size={15} />
-                New agent
+                <span className={styles.menuLabel}>
+                  New agent
+                  {newAgentLock && <small className={styles.menuNote}>{newAgentLock}</small>}
+                </span>
               </button>
             </div>
           )}

@@ -298,7 +298,21 @@ export function studioRoutes(services: StudioServices) {
         throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
       }
     }
-    const scope = await access.create(c.get("principal"), { ...input, key });
+    let scope;
+    try {
+      scope = await access.create(c.get("principal"), { ...input, key });
+    } catch (error) {
+      // Creation's refusals share one code for different fixes ("Approve the wallet's rules
+      // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
+      // this route alone sends the directory's message along for the studio to show.
+      if (
+        error instanceof PilotError &&
+        (error.code === "CONFLICT" || error.code === "NOT_FOUND")
+      ) {
+        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
+      }
+      throw error;
+    }
     return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
   });
   // Before the /agents/:id routes, so "draft" is never read as an agent id.

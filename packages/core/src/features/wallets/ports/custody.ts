@@ -173,6 +173,20 @@ export interface AgentWallet {
   address: string;
 }
 
+/** An unlinked agent wallet as the store finds it, with the policy ids its owner approved. */
+export interface OrphanAgentWallet extends AgentWallet {
+  /** `wallets.wallets.approved_policy_ids`: null until `confirmPolicies` records them. */
+  approvedPolicyIds: string[] | null;
+}
+
+/**
+ * The wallet a retried creation resumes with. `policiesApproved` says its rules were already
+ * approved, so the retry skips that passkey prompt instead of writing the policies twice.
+ */
+export interface ExistingAgentWallet extends AgentWallet {
+  policiesApproved: boolean;
+}
+
 export interface AgentWalletRepository {
   /**
    * Records Pickler's user inside the person's sub-organization. Idempotent for the same id;
@@ -197,9 +211,10 @@ export interface AgentWalletRepository {
   }): Promise<void>;
   /**
    * An agent wallet of this person's with this name that no agent is linked to: a creation that
-   * failed between the wallet and the link. Retrying finds it instead of minting a second one.
+   * failed between the wallet and the link. Retrying finds it instead of minting a second one,
+   * and reads whether its rules were approved before the attempt stopped.
    */
-  findOrphanWallet(userId: string, name: string): Promise<AgentWallet | null>;
+  findOrphanWallet(userId: string, name: string): Promise<OrphanAgentWallet | null>;
   /** This person's agent wallet with this id, linked or not; null for anyone else's. */
   findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
   /**

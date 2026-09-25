@@ -533,8 +533,16 @@ test("an orphan wallet is found before its link and not after; the link decides 
   assert.deepEqual(await custody.findOrphanWallet(person.userId, "halftime"), {
     walletId: wallet.walletId,
     address: wallet.address,
+    approvedPolicyIds: null,
   });
   assert.equal(await custody.findOrphanWallet(person.userId, "another"), null);
+  // Rules approved before the attempt stopped travel with the orphan, so a retry can skip them.
+  await custody.saveApprovedPolicies(person.userId, wallet.walletId, ["p1", "p2", "p3"]);
+  assert.deepEqual((await custody.findOrphanWallet(person.userId, "halftime"))?.approvedPolicyIds, [
+    "p1",
+    "p2",
+    "p3",
+  ]);
 
   const agentId = await seedAgent(store.pool);
   assert.equal(await custody.findAgentWallet(agentId), null);

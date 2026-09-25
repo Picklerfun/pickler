@@ -27,12 +27,16 @@ import {
   preparePolicies,
   prepareWallet,
   startRun,
+  studioAgents,
   studioApi,
+  type Agent,
   type Options,
 } from "../api";
 import { custody, session } from "../lib/passkey";
 import { previewOptions, studioPreview } from "../preview";
 import { runCeremony, type CeremonyProgress, type CeremonyStep } from "./ceremony";
+import { createGate, startIfOpen, type CreateGate } from "./gate";
+import { Locked } from "./locked";
 import {
   ORDER,
   fromApiDraft,
@@ -127,6 +131,9 @@ export function CreateAgent({
   /** Why this screen is a design preview, if it is one: no authentication here, or no session. */
   const [preview, setPreview] = useState<"unconfigured" | "no-session" | null>(null);
   const [loadError, setLoadError] = useState("");
+  /* One unfunded agent at a time, decided before any passkey prompt. Open until the person's
+     agents are read, and always open on a preview, which has none. */
+  const [gate, setGate] = useState<CreateGate<Agent>>({ open: true });
   /* A held reading screen (a deep link, outside production) opens with every row already shown,
      since nothing is being revealed from a model answer; the live flow starts from none. */
   const [revealed, setRevealed] = useState(() => (state.held ? reviewRows(state.draft).length : 0));
@@ -188,14 +195,16 @@ export function CreateAgent({
           return;
         }
         await studioApi("/onboard", { method: "POST" });
-        const [current, opts] = await Promise.all([
+        const [current, opts, mine] = await Promise.all([
           studioApi<Access>("/me"),
           studioApi<Options>("/options"),
+          studioAgents(),
         ]);
         if (active) {
           setOwner(`@${account.profile.handle}`);
           setAccess(current);
           setOptions(opts);
+          setGate(createGate(mine.agents));
         }
       } catch (caught) {
         if (active) {
@@ -302,88 +311,111 @@ export function CreateAgent({
     if (!options) {
       return;
     }
+    const defaults = options.defaults;
     const current = attempt.current ?? {
       keys: { create: crypto.randomUUID(), run: crypto.randomUUID() },
       progress: {},
     };
     attempt.current = current;
-    const signal = leaving.current?.signal;
-    const body = (walletId: string) => toCreate(draft, walletId, options.defaults);
 
-    const progress: { at: CeremonyStep | null } = { at: null };
-    setCeremony({ ...idleCeremony(), started: true });
-    setCall(null);
-    setSettled(false);
-    dispatch({ type: "go", step: "run" });
-
-    const knownRp = async () => {
-      if (!rpId.current) {
-        rpId.current = (await openChallenge(custody())).rp.id;
-      }
-      return rpId.current;
-    };
-
-    try {
-      const result = await runCeremony(
-        {
-          state: agentState,
-          register: async () => {
-            const challenge = await openChallenge(custody());
-            rpId.current = challenge.rp.id;
-            await createWallet(custody(), {
-              options: challenge,
-              label: describeDevice(navigator.userAgent),
-            });
-            markEnrolled(localStore(), (await session()).userId);
-          },
-          stamp: async (unsigned) => ({
-            url: unsigned.url,
-            body: unsigned.body,
-            stamp: await new WebauthnStamper({ rpId: await knownRp() }).stamp(unsigned.body),
-          }),
-          prepareDelegated,
-          confirmDelegated: async (signed) => {
-            await confirmDelegated(signed);
-          },
-          prepareWallet,
-          confirmWallet,
-          preparePolicies,
-          confirmPolicies,
-          createAgent: async (walletId) => {
-            const agent = await createAgent(body(walletId), current.keys.create);
-            // `POST /agents` answers the runtime record, whose id is the product id it was
-            // created under (`product_agents.runtime_agent_id` is written from the same uuid).
-            return { id: agent.id };
-          },
-          startRun: (agentId) => startRun(agentId, current.keys.run),
-          onStep: (which, phase) => {
-            progress.at = phase === "start" ? which : null;
-            setCeremony((was) => ({ ...was, steps: { ...was.steps, [which]: phase } }));
-          },
-          onWallet: (wallet) => setCeremony((was) => ({ ...was, address: wallet.address })),
-        },
-        draft.handle,
-        current.progress,
-        signal,
-      );
-      setCeremony((was) => ({
-        ...was,
-        agentId: result.agentId,
-        runId: result.runId,
-        address: result.address,
-      }));
-    } catch (caught) {
-      if (signal?.aborted) {
-        return;
-      }
-      const failed = progress.at;
-      setCeremony((was) => ({
-        ...was,
-        steps: failed ? { ...was.steps, [failed]: "failed" } : was.steps,
-        error: describeFailure(failed, caught),
-      }));
+    /* An attempt that already created its agent is finishing that agent, not making another, and
+       a preview has no agents to read. Otherwise the lock is read again before the first prompt:
+       it may have closed since the screen loaded. */
+    if (preview || current.progress.agentId) {
+      await perform();
+      return;
     }
-  }, [draft, options]);
+    try {
+      const outcome = await startIfOpen(async () => (await studioAgents()).agents, perform);
+      if (!outcome.started) {
+        setGate({ open: false, agent: outcome.agent });
+      }
+    } catch (caught) {
+      dispatch({
+        type: "error",
+        error: caught instanceof Error ? caught.message : "Could not read your agents.",
+      });
+    }
+
+    async function perform() {
+      const signal = leaving.current?.signal;
+      const body = (walletId: string) => toCreate(draft, walletId, defaults);
+
+      const progress: { at: CeremonyStep | null } = { at: null };
+      setCeremony({ ...idleCeremony(), started: true });
+      setCall(null);
+      setSettled(false);
+      dispatch({ type: "go", step: "run" });
+
+      const knownRp = async () => {
+        if (!rpId.current) {
+          rpId.current = (await openChallenge(custody())).rp.id;
+        }
+        return rpId.current;
+      };
+
+      try {
+        const result = await runCeremony(
+          {
+            state: agentState,
+            register: async () => {
+              const challenge = await openChallenge(custody());
+              rpId.current = challenge.rp.id;
+              await createWallet(custody(), {
+                options: challenge,
+                label: describeDevice(navigator.userAgent),
+              });
+              markEnrolled(localStore(), (await session()).userId);
+            },
+            stamp: async (unsigned) => ({
+              url: unsigned.url,
+              body: unsigned.body,
+              stamp: await new WebauthnStamper({ rpId: await knownRp() }).stamp(unsigned.body),
+            }),
+            prepareDelegated,
+            confirmDelegated: async (signed) => {
+              await confirmDelegated(signed);
+            },
+            prepareWallet,
+            confirmWallet,
+            preparePolicies,
+            confirmPolicies,
+            createAgent: async (walletId) => {
+              const agent = await createAgent(body(walletId), current.keys.create);
+              // `POST /agents` answers the runtime record, whose id is the product id it was
+              // created under (`product_agents.runtime_agent_id` is written from the same uuid).
+              return { id: agent.id };
+            },
+            startRun: (agentId) => startRun(agentId, current.keys.run),
+            onStep: (which, phase) => {
+              progress.at = phase === "start" ? which : null;
+              setCeremony((was) => ({ ...was, steps: { ...was.steps, [which]: phase } }));
+            },
+            onWallet: (wallet) => setCeremony((was) => ({ ...was, address: wallet.address })),
+          },
+          draft.handle,
+          current.progress,
+          signal,
+        );
+        setCeremony((was) => ({
+          ...was,
+          agentId: result.agentId,
+          runId: result.runId,
+          address: result.address,
+        }));
+      } catch (caught) {
+        if (signal?.aborted) {
+          return;
+        }
+        const failed = progress.at;
+        setCeremony((was) => ({
+          ...was,
+          steps: failed ? { ...was.steps, [failed]: "failed" } : was.steps,
+          error: describeFailure(failed, caught),
+        }));
+      }
+    }
+  }, [draft, options, preview]);
 
   const onSettled = useCallback((next: FirstCall | null, done: boolean) => {
     setCall(next);
@@ -398,6 +430,8 @@ export function CreateAgent({
   const manualAt = ORDER.indexOf(step as OrderStep);
   const showRail = state.mode === "manual" && !state.editing && manualAt >= 0;
   const createDisabled = !ready("review", draft) || !options || !canManage || state.busy;
+  /* Locked before the ceremony starts only: an attempt already under way finishes its agent. */
+  const locked = !gate.open && !ceremony.started ? gate.agent : null;
 
   return (
     <main className={styles.page} data-surface="dark">
@@ -436,7 +470,9 @@ export function CreateAgent({
             </p>
           )}
 
-          {showRail && (
+          {locked && <Locked agent={locked} />}
+
+          {!locked && showRail && (
             <ol className={styles.rail} aria-label="Steps">
               {ORDER.map((key, index) => (
                 <li key={key}>
@@ -456,46 +492,50 @@ export function CreateAgent({
             </ol>
           )}
 
-          {state.mode === "auto" && step === "review" && (
+          {!locked && state.mode === "auto" && step === "review" && (
             <p className={styles.filled}>FILLED FROM YOUR LINE · CHECK IT</p>
           )}
 
-          {step === "start" && (
-            <Describe line={draft.prompt} onLine={(prompt) => patch({ prompt })} />
-          )}
-          {step === "reading" && (
-            <Reading draft={draft} shown={revealed} onShown={onShown} onDone={onRead} />
-          )}
-          {step === "name" && <NameStep {...stepProps} check={check} checkError={checkError} />}
-          {step === "trades" && <TradesStep {...stepProps} />}
-          {step === "looks" && <LooksStep {...stepProps} />}
-          {step === "reads" && <ReadsStep {...stepProps} />}
-          {step === "skills" && <SkillsStep {...stepProps} />}
-          {step === "decides" && <DecidesStep {...stepProps} />}
-          {step === "review" && (
-            <Review
-              draft={draft}
-              mode={state.mode}
-              onEdit={(which) => dispatch({ type: "edit", step: which })}
-            />
-          )}
-          {step === "run" && (
-            <FirstRun
-              ceremony={ceremony}
-              name={draft.name.trim() || "the agent"}
-              onSettled={onSettled}
-            />
-          )}
+          {!locked && (
+            <>
+              {step === "start" && (
+                <Describe line={draft.prompt} onLine={(prompt) => patch({ prompt })} />
+              )}
+              {step === "reading" && (
+                <Reading draft={draft} shown={revealed} onShown={onShown} onDone={onRead} />
+              )}
+              {step === "name" && <NameStep {...stepProps} check={check} checkError={checkError} />}
+              {step === "trades" && <TradesStep {...stepProps} />}
+              {step === "looks" && <LooksStep {...stepProps} />}
+              {step === "reads" && <ReadsStep {...stepProps} />}
+              {step === "skills" && <SkillsStep {...stepProps} />}
+              {step === "decides" && <DecidesStep {...stepProps} />}
+              {step === "review" && (
+                <Review
+                  draft={draft}
+                  mode={state.mode}
+                  onEdit={(which) => dispatch({ type: "edit", step: which })}
+                />
+              )}
+              {step === "run" && (
+                <FirstRun
+                  ceremony={ceremony}
+                  name={draft.name.trim() || "the agent"}
+                  onSettled={onSettled}
+                />
+              )}
 
-          {step !== "reading" && <div className={styles.nav}>{nav()}</div>}
-          {step === "start" && (
-            <button
-              type="button"
-              className={styles.quietLink}
-              onClick={() => dispatch({ type: "manual" })}
-            >
-              OR BUILD IT STEP BY STEP
-            </button>
+              {step !== "reading" && <div className={styles.nav}>{nav()}</div>}
+              {step === "start" && (
+                <button
+                  type="button"
+                  className={styles.quietLink}
+                  onClick={() => dispatch({ type: "manual" })}
+                >
+                  OR BUILD IT STEP BY STEP
+                </button>
+              )}
+            </>
           )}
           {state.error && (
             <p className={styles.alert} role="alert">

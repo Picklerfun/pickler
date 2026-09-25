@@ -44,6 +44,8 @@ interface Options {
   ready?: boolean;
   failRead?: boolean;
   signedIn?: boolean;
+  /** What the directory refuses a new creation with. */
+  createError?: Error;
 }
 
 function fixture({
@@ -52,6 +54,7 @@ function fixture({
   ready = true,
   failRead = false,
   signedIn = true,
+  createError,
 }: Options = {}) {
   let agents = initial;
   const scheduled: boolean[] = [];
@@ -76,6 +79,9 @@ function fixture({
       const earlier = keys.get(input.key);
       if (earlier) {
         return scope(earlier);
+      }
+      if (createError) {
+        throw createError;
       }
       created.push(input.handle);
       keys.set(input.key, SECOND);
@@ -325,6 +331,26 @@ test("the first agent, and a next one once every agent is funded, are created", 
 
     assert.equal(response.status, 201);
     assert.deepEqual(created, ["second"]);
+  }
+});
+
+test("the directory's wallet refusals reach the studio coded, with their message", async () => {
+  for (const [error, status] of [
+    [new PilotError("CONFLICT", "That wallet already belongs to an agent"), 409],
+    [new PilotError("CONFLICT", "Approve the wallet's rules first"), 409],
+    [new PilotError("NOT_FOUND", "Wallet not found"), 404],
+  ] as const) {
+    const { app, created } = fixture({ agents: [], createError: error });
+
+    const response = await app.request("/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
+      body: JSON.stringify(createBody),
+    });
+
+    assert.equal(response.status, status);
+    assert.deepEqual(await response.json(), { error: error.code, message: error.message });
+    assert.deepEqual(created, []);
   }
 });
 

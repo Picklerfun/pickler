@@ -132,7 +132,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
 }
 
 /** `?step=` spells the first screen `describe`; the draft rules call it `start`. */
-export const STEP_PARAMS = [
+const STEP_PARAMS = [
   "describe",
   "reading",
   "name",

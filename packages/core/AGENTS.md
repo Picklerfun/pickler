@@ -156,8 +156,12 @@ approval for rules nobody confirmed. `confirmDelegatedUser` refuses (`DelegatedU
 before forwarding when a delegated user is already recorded.
 Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
 from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
-confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` for an unlinked
-wallet already named after the handle, so a retry never mints a second one. The link to an agent
+confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` (`ExistingAgentWallet`) for an unlinked
+wallet already named after the handle, so a retry never mints a second one; its
+`policiesApproved` is true when the store's `approvedPolicyIds` (`OrphanAgentWallet`) hold at least
+`MIN_AGENT_WALLET_POLICIES` (3, the DENYs every wallet is written with, exported from
+`domain/agent-wallet-policies.ts` and also the link floor the studio directory requires), so a retry
+skips the rules prompt too. The link to an agent
 (`agent_wallets`) is not written here. Ports: `AgentWalletActivityBuilders` and
 `AgentWalletRepository` (which now also carries `saveApprovedPolicies`); errors:
 `DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`, `DelegatedUserMissingError`,

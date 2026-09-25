@@ -41,7 +41,7 @@ const RUNNER_WAIT_MS = 20_000;
 const TERMINAL: Run["status"][] = ["completed", "failed", "cancelled"];
 
 /** The command that starts a local runner: the Node executor that claims queued runs. */
-export const RUNNER_COMMAND = "npm run dev:agent";
+const RUNNER_COMMAND = "npm run dev:agent";
 
 function ceremonyLine(step: CeremonyStep, state: StepState, name: string, address: string | null) {
   const copy: Record<CeremonyStep, Record<StepState, string>> = {

@@ -184,7 +184,14 @@ function harness(
     },
     async findOrphanWallet(userId, name) {
       const found = ceremony.wallets.find((w) => w.userId === userId && w.name === name);
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      const approved = ceremony.approved.findLast((a) => a.walletId === found?.walletId);
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            approvedPolicyIds: approved?.policyIds ?? null,
+          }
+        : null;
     },
     async findOwnedAgentWallet(userId, walletId) {
       const found = ceremony.wallets.find((w) => w.userId === userId && w.walletId === walletId);
@@ -1140,8 +1147,17 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
   // The retry answers the unlinked wallet and builds no second create_wallet.
   const builtBefore = h.ceremony.builds.length;
   const retry = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
-  assert.deepEqual(await data(retry), { existing: { wallet_id: "w-1", address: ADDRESS } });
+  assert.deepEqual(await data(retry), {
+    existing: { wallet_id: "w-1", address: ADDRESS, policies_approved: false },
+  });
   assert.equal(h.ceremony.builds.length, builtBefore);
+
+  // Once its rules were approved, the retry says so, and the browser skips that prompt too.
+  h.ceremony.approved.push({ userId: "u", walletId: "w-1", policyIds: ["p1", "p2", "p3"] });
+  const approved = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  assert.deepEqual(await data(approved), {
+    existing: { wallet_id: "w-1", address: ADDRESS, policies_approved: true },
+  });
 });
 
 const policyNames = (prepared: Prepared) =>

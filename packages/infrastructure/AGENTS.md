@@ -59,7 +59,8 @@ claimed: an agent is created with its wallet, or not at all. It locks the caller
 the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. The
 `policy_ids` it writes come from that same locked row's `approved_policy_ids` column, never from
 the request: `wallet` on the create input carries only `walletId`, and a wallet whose
-`approved_policy_ids` is null or has fewer than two entries — nobody confirmed its rules yet — is
+`approved_policy_ids` is null or has fewer than core's `MIN_AGENT_WALLET_POLICIES` (three: every
+wallet is written with at least its three DENYs) — nobody confirmed its rules yet — is
 `PilotError("CONFLICT", "Approve the wallet's rules first")`, with no agent row surviving either. A
 wallet already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
 through `CONFLICTS` to `PilotError("CONFLICT", "That wallet already belongs to an agent")`. The
@@ -222,7 +223,7 @@ Pickler. The same test file pins core's `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` to
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
 (wallets + wallet_accounts in one transaction; the same wallet again for its owner is a no-op,
 another person's wallet id is refused), `findOrphanWallet` (an agent wallet by name with
-no `agent_wallets` row), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
+no `agent_wallets` row, with its `approved_policy_ids` as `approvedPolicyIds`), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
 `agent_wallets`), `findAgentWallet`, `saveApprovedPolicies` (see "Unified studio persistence" above)
 and `saveDeposit` (lowercases the hash for the column check).
 

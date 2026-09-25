@@ -111,6 +111,14 @@ const onlyDelegated = (delegatedUserId: string) =>
   `approvers.any(user, user.id == '${delegatedUserId}')`;
 
 /**
+ * The fewest policies an agent wallet is ever written with: the three DENYs below (no transfer
+ * out, only root changes the rules, no new credential for the delegated user), which are there
+ * whatever the venue list holds. A wallet with fewer approved ids has not had its rules approved,
+ * so it is neither linked to an agent nor treated as approved when a creation resumes.
+ */
+export const MIN_AGENT_WALLET_POLICIES = 3;
+
+/**
  * The wallet's rules, in this order: trade only to the venue (omitted when there is no venue),
  * never an ERC-20 transfer or approve, only root changes the rules, and the delegated user never
  * adds a credential or changes who it is. The last one is about the user, not the wallet, and is

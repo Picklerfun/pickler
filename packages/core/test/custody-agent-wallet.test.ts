@@ -9,14 +9,18 @@ import {
   MONAD_ACCOUNT_PATH,
   NoCustodyAccountError,
 } from "../src/features/wallets/domain/passkey.js";
-import type { TurnkeyPolicy } from "../src/features/wallets/domain/agent-wallet-policies.js";
+import {
+  agentWalletPolicies,
+  MIN_AGENT_WALLET_POLICIES,
+  type TurnkeyPolicy,
+} from "../src/features/wallets/domain/agent-wallet-policies.js";
 import type { UnsignedActivity } from "../src/features/wallets/ports/custody.js";
 import type {
-  AgentWallet,
   AgentWalletActivityBuilders,
   AgentWalletRepository,
   CustodyAccount,
   CustodyRepository,
+  ExistingAgentWallet,
 } from "../src/features/wallets/ports/custody.js";
 import type { SignedActivityForwarder } from "../src/features/signing/ports/signing.js";
 import {
@@ -63,6 +67,8 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     delegated: options.delegated ?? null,
     wallets: [] as Saved[],
     linked: new Set<string>(),
+    /** `approved_policy_ids` per wallet id, as `saveApprovedPolicies` would have left them. */
+    approvedIds: new Map<string, string[]>(),
     /** Whether any of this person's wallets is linked to an agent already. */
     hasLinked: false,
     /** What `saveApprovedPolicies` was called with, most recent last. */
@@ -101,7 +107,13 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
       const found = state.wallets.find(
         (w) => w.userId === userId && w.name === name && !state.linked.has(w.walletId),
       );
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            approvedPolicyIds: state.approvedIds.get(found.walletId) ?? null,
+          }
+        : null;
     },
     async findOwnedAgentWallet(userId, walletId) {
       const found = state.wallets.find((w) => w.userId === userId && w.walletId === walletId);
@@ -369,6 +381,21 @@ test("a wallet stamped under another name than the handle confirmed is refused u
 
 test("a retry finds the orphan wallet and builds nothing", async () => {
   const f = fakes();
+  orphan(f);
+
+  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+
+  assert.deepEqual(prepared, {
+    existing: {
+      walletId: "w-orphan",
+      address: ADDRESS,
+      policiesApproved: false,
+    } satisfies ExistingAgentWallet,
+  });
+  assert.deepEqual(f.builds, []);
+});
+
+function orphan(f: ReturnType<typeof fakes>, approvedIds?: string[]) {
   f.state.wallets.push({
     userId: USER,
     walletId: "w-orphan",
@@ -378,13 +405,38 @@ test("a retry finds the orphan wallet and builds nothing", async () => {
     address: ADDRESS,
     path: MONAD_ACCOUNT_PATH,
   });
+  if (approvedIds) {
+    f.state.approvedIds.set("w-orphan", approvedIds);
+  }
+}
+
+test("an orphan wallet whose rules were approved says so, so a retry skips that prompt", async () => {
+  const f = fakes();
+  orphan(f, ["p1", "p2", "p3"]);
 
   const prepared = await service(f).prepareAgentWallet(USER, "halftime");
 
   assert.deepEqual(prepared, {
-    existing: { walletId: "w-orphan", address: ADDRESS } satisfies AgentWallet,
+    existing: { walletId: "w-orphan", address: ADDRESS, policiesApproved: true },
   });
   assert.deepEqual(f.builds, []);
+});
+
+test("an orphan wallet with fewer approved ids than the floor is not approved", async () => {
+  const f = fakes();
+  orphan(f, ["p1", "p2"]);
+
+  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+
+  assert.ok("existing" in prepared);
+  assert.equal(prepared.existing.policiesApproved, false);
+});
+
+test("the floor is the policies every wallet is written with, whatever the venues", () => {
+  assert.equal(
+    agentWalletPolicies({ delegatedUserId: "da", walletId: "w-1", venueContracts: [] }).length,
+    MIN_AGENT_WALLET_POLICIES,
+  );
 });
 
 function withWallet(delegated: string | null = "da") {

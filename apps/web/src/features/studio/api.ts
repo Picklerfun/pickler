@@ -43,6 +43,8 @@ export class StudioError extends Error {
   constructor(
     public readonly code: string,
     message: string,
+    /** The server's own words, when it sent any; `message` is the studio's for the code. */
+    public readonly serverMessage?: string,
   ) {
     super(message);
     this.name = "StudioError";
@@ -89,7 +91,12 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
   const body = await response.json();
   if (!response.ok) {
     const code = typeof body?.error === "string" ? body.error : String(response.status);
-    throw new StudioError(code, messages[code] ?? `Request failed: ${body?.message ?? code}`);
+    const serverMessage = typeof body?.message === "string" ? body.message : undefined;
+    throw new StudioError(
+      code,
+      messages[code] ?? `Request failed: ${serverMessage ?? code}`,
+      serverMessage,
+    );
   }
   return body as T;
 }
@@ -103,12 +110,29 @@ export const draftAgent = (line: string) =>
     body: JSON.stringify({ line }),
   });
 
+/**
+ * `POST /agents`. Its CONFLICT and NOT_FOUND each cover several fixes — approve the wallet's rules,
+ * a wallet that already belongs to an agent, a wallet that is not found, a taken handle — so the
+ * server's message is shown for them instead of the studio's generic one.
+ */
 export const createAgent = (body: CreateAgentInput, key: string) =>
   studioApi<AgentRecord>("/agents", {
     method: "POST",
     headers: { "Idempotency-Key": key },
     body: JSON.stringify(body),
+  }).catch((caught: unknown) => {
+    if (
+      caught instanceof StudioError &&
+      (caught.code === "CONFLICT" || caught.code === "NOT_FOUND") &&
+      caught.serverMessage
+    ) {
+      throw new StudioError(caught.code, caught.serverMessage, caught.serverMessage);
+    }
+    throw caught;
   });
+
+/** `GET /agents`: every agent of the person's, each with its wallet, balance and locks. */
+export const studioAgents = () => studioApi<{ agents: Agent[] }>("/agents");
 
 export const startRun = (agentId: string, key: string) =>
   studioApi<{ runId: string; status: string }>(`/agents/${agentId}/runs`, {
@@ -255,15 +279,26 @@ export const confirmDelegated = (signed: SignedActivityDto) =>
   }).then((data) => ({ delegatedUserId: data.delegated_user_id }));
 
 export type PrepareWalletResult =
-  { existing: { walletId: string; address: string } } | UnsignedActivityDto;
+  | { existing: { walletId: string; address: string; policiesApproved: boolean } }
+  | UnsignedActivityDto;
 
+/** An unlinked wallet an earlier attempt left comes back as `existing`, with its rules' state. */
 export const prepareWallet = (handle: string) =>
-  envelopeApi<{ existing: { wallet_id: string; address: string } } | UnsignedActivityDto>(
-    "/v1/signing/agents/wallet/prepare",
-    { method: "POST", body: JSON.stringify({ handle }) },
-  ).then((data): PrepareWalletResult =>
+  envelopeApi<
+    | { existing: { wallet_id: string; address: string; policies_approved: boolean } }
+    | UnsignedActivityDto
+  >("/v1/signing/agents/wallet/prepare", {
+    method: "POST",
+    body: JSON.stringify({ handle }),
+  }).then((data): PrepareWalletResult =>
     "existing" in data
-      ? { existing: { walletId: data.existing.wallet_id, address: data.existing.address } }
+      ? {
+          existing: {
+            walletId: data.existing.wallet_id,
+            address: data.existing.address,
+            policiesApproved: data.existing.policies_approved === true,
+          },
+        }
       : data,
   );
 

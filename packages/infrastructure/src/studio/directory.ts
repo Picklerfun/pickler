@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import {
   ACCENTS,
   AccessDeniedError,
+  MIN_AGENT_WALLET_POLICIES,
   PilotError,
   type Accent,
   type StudioAccess,
@@ -170,7 +171,9 @@ export class PostgresStudioDirectory implements StudioDirectory {
         throw new PilotError("NOT_FOUND", "Wallet not found");
       }
       const approvedPolicyIds = owned.rows[0]!.approvedPolicyIds;
-      if (!approvedPolicyIds || approvedPolicyIds.length < 2) {
+      // Every wallet is written with at least the three DENYs, and `confirmPolicies` records
+      // exactly what was prepared, so fewer ids than that means the rules were never approved.
+      if (!approvedPolicyIds || approvedPolicyIds.length < MIN_AGENT_WALLET_POLICIES) {
         throw new PilotError("CONFLICT", "Approve the wallet's rules first");
       }
       await client.query(

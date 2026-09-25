@@ -423,7 +423,8 @@ export function signingRoutes(services: SigningRouteServices) {
   });
 
   // A wallet already minted under this handle and never linked is answered as `existing`, and
-  // the browser skips the stamp: a retry never leaves a second wallet behind.
+  // the browser skips the stamp: a retry never leaves a second wallet behind. `policies_approved`
+  // says its rules were approved too, so the browser skips that prompt as well.
   api.post("/agents/wallet/prepare", async (c) => {
     const user = person(c);
     const body = await jsonBody(c);
@@ -437,6 +438,7 @@ export function signingRoutes(services: SigningRouteServices) {
             existing: {
               wallet_id: prepared.existing.walletId,
               address: prepared.existing.address,
+              policies_approved: prepared.existing.policiesApproved,
             },
           },
           c.req.path,

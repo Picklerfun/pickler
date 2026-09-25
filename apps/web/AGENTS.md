@@ -194,7 +194,8 @@ run its controlled-clock regression tests with `node --import tsx --test apps/we
 React and no transport: the `Draft` the Describe screen and seven manual steps (`name, trades,
 looks, reads, skills, decides, review`, `ORDER`) build up, `ready(step, draft)` for each step's
 gate, `soonRows` for the Soon venue/beat rows that block Review, the six `reviewRows` and their
-text builders (`tradesText`, `callsText`, `readsText`, `skillsText`, `decidesText`), `fromApiDraft`
+text builders (`readsText` is exported; `tradesText`, `callsText`, `skillsText` and `decidesText`
+are private to the module), `fromApiDraft`
 to fill the form from `POST /v1/studio/agents/draft`, `addSite`/`toggleIn` for the reads and looks
 steps, and `toCreate(draft, walletId, defaults)` for the `POST /agents` body, following the same
 `{ ...defaults, ... }` shape core's `draftToConfig` builds (`defaults` is `/options`'s answer).
@@ -259,14 +260,27 @@ person to the manual steps with "The model is busy. Build it step by step instea
 `create/ceremony.ts` is "Create and run it once" as a sequence, pure and pinned in
 `studio-ceremony.test.ts`: `wallet` (register the sub-organization if there is none — the existing
 enrolment ceremony — add the delegated user if there is none, then the wallet named for the handle,
-or reuse the `existing` one an earlier attempt left), `rules` (policies), `agent`, `run`. A first
+or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped when that
+`existing` wallet comes back with `policiesApproved`, so a retry after a reload never writes the
+rules twice), `agent`, `run`. A first
 agent is four passkey prompts, a later one two; any failure propagates and stops the sequence. The
 screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
 Idempotency keys for the create and the run are kept per draft, and `runCeremony` carries a
 `CeremonyProgress` (wallet, approved policies, agent, run) across retries, so "Try again with your
 passkey" resumes where the attempt stopped: a failed run start retries only the start, a refused
 create retries only the create, and neither asks for the passkey again. Leaving the screen aborts
-the ceremony between prompts. `first-run.tsx` draws the four steps as the rail's first lines, then polls
+the ceremony between prompts. `create/gate.ts` is pure and pinned in `studio-create-gate.test.ts`:
+`createGate(agents)` answers `{ open: true }` or `{ open: false, agent }` (one unfunded agent at a
+time, from each agent's `canCreateAnother`, naming the first below 10 AUSD). The create screen
+reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx`
+(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to
+`/studio?agent=<id>`) instead of the flow; "Create and run it once" goes through
+`startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
+An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
+"New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
+message for `CONFLICT` and `NOT_FOUND` ("Approve the wallet's rules first", "That wallet already
+belongs to an agent", "Wallet not found"), which `StudioError.serverMessage` carries.
+`first-run.tsx` draws the four steps as the rail's first lines, then polls
 the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
 order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
 "Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.

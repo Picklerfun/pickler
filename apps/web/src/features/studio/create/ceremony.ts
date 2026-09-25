@@ -12,7 +12,9 @@
  *   its own passkey prompt), the delegated user when there is none, then the agent's wallet named
  *   for its handle. A wallet left behind by an earlier attempt that failed before its link comes
  *   back from `prepareWallet` as `existing` and is reused without another prompt.
- * - `rules` — the wallet's policies, approved by the passkey. No policies, no link.
+ * - `rules` — the wallet's policies, approved by the passkey. No policies, no link. Skipped when
+ *   the `existing` wallet's policies were already approved (a retry after a reload, which has lost
+ *   the in-memory progress), so the rules are never written twice.
  * - `agent` — the agent, created with the wallet whose policies were just approved.
  * - `run` — its first run.
  *
@@ -44,6 +46,11 @@ export interface AgentWallet {
   address: string;
 }
 
+/** A wallet an earlier attempt left unlinked, and whether its rules were already approved. */
+export interface ExistingWallet extends AgentWallet {
+  policiesApproved: boolean;
+}
+
 export interface CeremonyDeps {
   state(): Promise<{ hasSubOrganization: boolean; hasDelegatedUser: boolean }>;
   /** The sub-organization and its master wallet: the existing enrolment ceremony. */
@@ -51,7 +58,7 @@ export interface CeremonyDeps {
   stamp(unsigned: UnsignedActivity): Promise<SignedActivity>;
   prepareDelegated(): Promise<UnsignedActivity>;
   confirmDelegated(signed: SignedActivity): Promise<void>;
-  prepareWallet(handle: string): Promise<UnsignedActivity | { existing: AgentWallet }>;
+  prepareWallet(handle: string): Promise<UnsignedActivity | { existing: ExistingWallet }>;
   confirmWallet(handle: string, signed: SignedActivity): Promise<AgentWallet>;
   preparePolicies(walletId: string): Promise<UnsignedActivity>;
   confirmPolicies(walletId: string, signed: SignedActivity): Promise<{ policyIds: string[] }>;
@@ -84,14 +91,14 @@ export interface CeremonyProgress {
 }
 
 const isExisting = (
-  prepared: UnsignedActivity | { existing: AgentWallet },
-): prepared is { existing: AgentWallet } => "existing" in prepared;
+  prepared: UnsignedActivity | { existing: ExistingWallet },
+): prepared is { existing: ExistingWallet } => "existing" in prepared;
 
 async function wallet(
   deps: CeremonyDeps,
   handle: string,
   signal?: AbortSignal,
-): Promise<AgentWallet> {
+): Promise<AgentWallet & { policiesApproved?: boolean }> {
   const state = await deps.state();
   signal?.throwIfAborted();
 
@@ -133,6 +140,9 @@ export async function runCeremony(
     const created = await wallet(deps, handle, signal);
     progress.walletId = created.walletId;
     progress.address = created.address;
+    if (created.policiesApproved) {
+      progress.policiesApproved = true;
+    }
   }
   const walletId = progress.walletId;
   const address = progress.address;

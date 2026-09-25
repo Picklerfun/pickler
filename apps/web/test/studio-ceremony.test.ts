@@ -22,6 +22,8 @@ type Options = {
   hasSubOrganization?: boolean;
   hasDelegatedUser?: boolean;
   existing?: boolean;
+  /** Whether the existing wallet's rules were approved before the earlier attempt stopped. */
+  existingApproved?: boolean;
   failPolicies?: boolean;
   /** How many times each fails before it succeeds. */
   createFailures?: number;
@@ -83,7 +85,13 @@ function fakes(options: Options = {}) {
     prepareWallet: async (handle) => {
       log.push(`prepareWallet ${handle}`);
       if (options.existing) {
-        return { existing: { walletId: "w-old", address: "0xold" } };
+        return {
+          existing: {
+            walletId: "w-old",
+            address: "0xold",
+            policiesApproved: options.existingApproved ?? false,
+          },
+        };
       }
       return handOut("wallet");
     },
@@ -220,6 +228,44 @@ test("a wallet left by an earlier attempt is reused without a prompt", async () 
   assert.equal(log.includes("stamp wallet"), false);
   assert.equal(log.includes("confirmWallet halftime"), false);
   assert.equal(log.includes("preparePolicies w-old"), true);
+});
+
+test("a reused wallet whose rules were approved asks for no passkey and writes no rules again", async () => {
+  const { deps, log, prompts } = fakes({
+    hasSubOrganization: true,
+    hasDelegatedUser: true,
+    existing: true,
+    existingApproved: true,
+  });
+  const progress: CeremonyProgress = {};
+
+  await runCeremony(deps, "halftime", progress);
+
+  assert.equal(prompts(), 0);
+  assert.deepEqual(calls(log), [
+    "state",
+    "prepareWallet halftime",
+    "createAgent w-old",
+    "startRun agent-1",
+  ]);
+  assert.deepEqual(
+    log.filter((line) => line.endsWith(":done")),
+    ["wallet:done", "rules:done", "agent:done", "run:done"],
+  );
+  assert.equal(progress.policiesApproved, true);
+});
+
+test("a reused wallet whose rules were not approved still asks for them", async () => {
+  const { deps, prompts } = fakes({
+    hasSubOrganization: true,
+    hasDelegatedUser: true,
+    existing: true,
+    existingApproved: false,
+  });
+
+  await runCeremony(deps, "halftime");
+
+  assert.equal(prompts(), 1);
 });
 
 test("the reused wallet's address is the one the result names", async () => {

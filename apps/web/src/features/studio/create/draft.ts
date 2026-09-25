@@ -208,11 +208,11 @@ export function soonRows(d: Draft): SoonRow[] {
   return rows;
 }
 
-export function tradesText(d: Draft): string {
+function tradesText(d: Draft): string {
   return d.venues.map((venue) => VENUE_LABELS[venue]).join(" + ");
 }
 
-export function callsText(d: Draft): string {
+function callsText(d: Draft): string {
   const parts: string[] = [];
   if (d.venues.includes("polymarket")) {
     parts.push(d.subs.length > 0 ? `${d.beat} · ${d.subs.join(", ")}` : d.beat);
@@ -242,7 +242,7 @@ export function readsText(d: Draft): string {
   return parts.join(", ");
 }
 
-export function skillsText(d: Draft): string {
+function skillsText(d: Draft): string {
   const names = [...d.skills, ...d.custom.map((skill) => skill.name)];
   return names.length > 0 ? names.join(", ") : "None yet";
 }
@@ -253,7 +253,7 @@ const STYLE_LABELS: Record<StyleDto, string> = {
   bold: "Bold",
 };
 
-export function decidesText(d: Draft): string {
+function decidesText(d: Draft): string {
   return `${STYLE_LABELS[d.style]} · ${d.edge.trim()}`;
 }
 

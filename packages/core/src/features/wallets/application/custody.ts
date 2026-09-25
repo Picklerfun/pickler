@@ -14,7 +14,11 @@ import {
   NoCustodyAccountError,
   deviceTypeFromTransports,
 } from "../domain/passkey.js";
-import { agentWalletPolicies, delegatedSelfDeletePolicy } from "../domain/agent-wallet-policies.js";
+import {
+  agentWalletPolicies,
+  delegatedSelfDeletePolicy,
+  MIN_AGENT_WALLET_POLICIES,
+} from "../domain/agent-wallet-policies.js";
 import {
   DepositAlreadyRecordedError,
   DepositFeeTooHighError,
@@ -29,6 +33,7 @@ import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../d
 import type {
   AddPasskeyActivityBuilder,
   AgentWallet,
+  ExistingAgentWallet,
   AgentWalletActivityBuilders,
   AgentWalletRepository,
   ChallengeStore,
@@ -532,19 +537,27 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     /**
      * Step two. A wallet already minted under this handle and never linked is the retry of a
      * creation that failed before its link: it is returned as it is, so a second attempt never
-     * leaves a second wallet in the person's sub-organization.
+     * leaves a second wallet in the person's sub-organization. It says whether that wallet's
+     * rules were approved too — at least `MIN_AGENT_WALLET_POLICIES` recorded ids, the same floor
+     * the link requires — so a retry after a reload does not ask the passkey to write them again.
      */
     async prepareAgentWallet(
       userId: string,
       handle: string,
-    ): Promise<{ existing: AgentWallet } | { unsigned: UnsignedActivity }> {
+    ): Promise<{ existing: ExistingAgentWallet } | { unsigned: UnsignedActivity }> {
       const account = await deps.repository.findByUserId(userId);
       if (!account) {
         throw new NoCustodyAccountError();
       }
       const orphan = await deps.agentWallets.findOrphanWallet(userId, handle);
       if (orphan) {
-        return { existing: orphan };
+        return {
+          existing: {
+            walletId: orphan.walletId,
+            address: orphan.address,
+            policiesApproved: (orphan.approvedPolicyIds?.length ?? 0) >= MIN_AGENT_WALLET_POLICIES,
+          },
+        };
       }
       return {
         unsigned: deps.agentActivities.createAgentWallet({
