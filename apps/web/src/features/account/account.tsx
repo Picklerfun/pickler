@@ -144,7 +144,7 @@ export function Account({ opening }: { opening: SectionKey }) {
       }
       /* This is where the master wallet is shown, so it is the most visible place for the rule
          (spec §4.1): a signed-in person without a sub-organization creates it before anything
-         else, on /passkey. Every section redirects, not only the wallet. */
+         else, on the signup's passkey step. Every section redirects, not only the wallet. */
       const away = redirectFor(dto.kind === "none" ? null : dto);
       if (away) {
         router.replace(away);

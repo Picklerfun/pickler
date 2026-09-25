@@ -4,23 +4,16 @@ import { test } from "node:test";
 import {
   afterFailedCreate,
   enrolmentOutcome,
-  passkeyScreenFor,
   readSubOrganization,
   redirectFor,
+  SIGNUP_PASSKEY_STEP,
 } from "../src/features/auth/lib/custody";
+import { resumesSignup } from "../src/features/auth/lib/signup-entry";
 import { ApiError } from "../src/features/auth/lib/pickler-api";
 import { passkeyLine } from "../src/features/auth/lib/passkey-list";
 import type { PasskeyDto } from "../src/features/auth/lib/custody-api";
 
 const read = (relative: string) => readFileSync(new URL(relative, import.meta.url), "utf8");
-
-test("passkeyScreenFor sends an account with no sub-organization to create its wallet", () => {
-  assert.equal(passkeyScreenFor({ hasSubOrganization: false }), "create");
-});
-
-test("passkeyScreenFor sends an account with a sub-organization to add a passkey", () => {
-  assert.equal(passkeyScreenFor({ hasSubOrganization: true }), "add");
-});
 
 const PASSKEY: PasskeyDto = {
   id: "pk-1",
@@ -71,14 +64,23 @@ test("readSubOrganization propagates any other failure rather than calling it mi
 
 /* The redirect every signed-in custody screen asks — the studio shell, the create screen and
    /account — composed with the read it follows, so a 404 and an error are told apart end to end. */
-test("redirectFor sends a person with no sub-organization to /passkey, and nobody else", async () => {
+/* The redirect every signed-in screen asks — the studio shell, the create screen, /account and
+   /passkey — composed with the read it follows, so a 404 and an error are told apart end to end. */
+test("redirectFor sends a person with no sub-organization to the signup's passkey step", async () => {
   const missing = await readSubOrganization(async () => {
     throw new ApiError(404, "No wallet", "NOT_FOUND", undefined);
   });
-  assert.equal(redirectFor(missing), "/passkey");
+  assert.equal(redirectFor(missing), "/signup?step=passkey");
+  assert.equal(redirectFor(missing), SIGNUP_PASSKEY_STEP);
 
   const present = await readSubOrganization(async () => ({ address: "0xabc" }));
   assert.equal(redirectFor(present), null);
+});
+
+test("the redirect's target is a signup that resumes the session, not a fresh one", () => {
+  const target = new URL(SIGNUP_PASSKEY_STEP, "https://pickler.test");
+  assert.equal(target.pathname, "/signup");
+  assert.equal(resumesSignup(Object.fromEntries(target.searchParams)), true);
 });
 
 test("a failed create advances once the sub-organization exists, and otherwise offers a retry", () => {
@@ -99,11 +101,12 @@ test("enrolmentOutcome marks the browser only for a credential the account holds
   assert.equal(enrolmentOutcome("cred-mine", null), "unknown");
 });
 
-test("signup, signin and /passkey render the enrolment step; nothing renders the none-yet one", () => {
+test("the signup draws the passkey step; /passkey only adds a device", () => {
   const flow = read("../src/features/auth/components/passkey-flow.tsx");
   assert.ok(flow.includes("./steps/create-wallet-step"), "the passkey step must be rendered");
   assert.ok(flow.includes('state.step === "passkey"'), "the sign rails must draw the passkey step");
-  assert.ok(flow.includes('screen === "create"'), "/passkey must draw the create screen");
+  // /passkey's create screen is gone: the wallet is created on the signup step and nowhere else.
+  assert.ok(!flow.includes('screen === "create"'), "/passkey must not create a wallet");
   assert.ok(!flow.includes("none-yet"), "the screen pointing at the first agent is gone");
 
   const page = read("../src/app/(auth)/passkey/page.tsx");

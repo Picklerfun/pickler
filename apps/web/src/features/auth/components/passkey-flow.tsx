@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useEffectEvent, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
-import type { PasskeyPreview } from "../lib/passkey-preview";
+import type { SignupPreview } from "../lib/signup-entry";
 import {
   CUSTODY_API,
   SessionExpired,
@@ -19,11 +19,10 @@ import {
   isEnrolledHere,
   markEnrolled,
   openChallenge,
-  passkeyScreenFor,
   readSubOrganization,
+  redirectFor,
   verifiedEvent,
   type CustodyDeps,
-  type PasskeyScreen,
 } from "../lib/custody";
 import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
 import type { ChallengeOptionsDto, PasskeyDto, WalletDto } from "../lib/custody-api";
@@ -123,14 +122,16 @@ function absent<T>(error: unknown): T | null {
  *
  * `up` and `in` — /signup and /signin — run `lib/flow.ts`'s machine, whose sign-up rail ends on
  * the mandatory passkey step and whose sign-in rail passes through it when the account has no
- * sub-organization (spec §4.1). `add` — /passkey — is `PasskeyAddFlow`, a smaller component with
- * no rail: the same enrolment ceremony for a signed-in person who has no sub-organization yet
- * (the studio sends them there), and adding a device for one who has.
+ * sub-organization (spec §4.1). Every signed-in screen sends a person without a master wallet to
+ * the signup's passkey step (`?step=passkey`, which resumes their session), and nowhere else.
+ * `add` — /passkey — is `PasskeyAddFlow`, a smaller component with no rail, only for adding a
+ * device to a sub-organization that exists.
  */
 export function PasskeyFlow({
   board,
   mode,
   destination,
+  resume,
   preview,
 }: {
   board: AuthBoardData;
@@ -143,13 +144,26 @@ export function PasskeyFlow({
    * Undefined when nobody was turned away, and then the studio's own home is the destination.
    */
   destination?: string | undefined;
-  /** `add` only, outside production: open on this screen without reading the account. */
-  preview?: PasskeyPreview | undefined;
+  /**
+   * `up` only: a signed-in person was sent here (`?step=passkey`, `?complete=1`), so the flow reads
+   * the account and lands on the step it still needs instead of asking for an email.
+   */
+  resume?: boolean;
+  /** `up` only, outside production: open on this step without a session or any read. */
+  preview?: SignupPreview | undefined;
 }) {
   if (mode === "add") {
-    return <PasskeyAddFlow board={board} destination={destination} preview={preview} />;
+    return <PasskeyAddFlow board={board} destination={destination} />;
   }
-  return <SignFlow board={board} mode={mode} destination={destination} />;
+  return (
+    <SignFlow
+      board={board}
+      mode={mode}
+      destination={destination}
+      resume={mode === "up" && resume === true}
+      preview={mode === "up" ? preview : undefined}
+    />
+  );
 }
 
 /** Everything the sheet needs to draw itself, and the challenge the ceremony behind it will use. */
@@ -180,15 +194,26 @@ function SignFlow({
   board,
   mode,
   destination,
+  resume,
+  preview,
 }: {
   board: AuthBoardData;
   mode: "up" | "in";
   destination?: string | undefined;
+  resume: boolean;
+  preview: SignupPreview | undefined;
 }) {
   const router = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [state, dispatch] = useReducer(next, { ...INITIAL, mode });
+  // A preview opens on its step with nothing read; everything else starts on the account screen,
+  // and a resumed session moves on from there once the account has been read.
+  const [state, dispatch] = useReducer(
+    next,
+    preview === "passkey" ? { ...INITIAL, mode, step: "passkey" as const } : { ...INITIAL, mode },
+  );
+  /** Reading a resumed session's account; the form column waits rather than asking for an email. */
+  const [resuming, setResuming] = useState(resume && preview === undefined);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [profileHandle, setProfileHandle] = useState("");
   const [wallet, setWallet] = useState<WalletDto | null>(null);
@@ -348,10 +373,40 @@ function SignFlow({
    * so the code screen says the account could not be read and offers to read it again.
    */
   function verified() {
+    readAccount();
+  }
+
+  /* A resumed session reads its account once, on arrival. An effect event, so the read sees the
+     current state without the effect re-running as it changes. */
+  const resumeOnArrival = useEffectEvent(() => {
+    if (resuming) {
+      readAccount();
+    }
+  });
+  useEffect(() => {
+    resumeOnArrival();
+  }, []);
+
+  /**
+   * The landing check, shared by a verified code and a resumed session: the same reads, the same
+   * `verifiedEvent`. A resumed session with no session behind it after all starts at the account
+   * screen like any other signup.
+   */
+  function readAccount() {
     setReadFailed(false);
     void (async () => {
       try {
-        const { token, userId } = await session();
+        let signedIn: { token: string; userId: string };
+        try {
+          signedIn = await session();
+        } catch (caught) {
+          if (caught instanceof SessionExpired && resuming) {
+            setResuming(false);
+            return;
+          }
+          throw caught;
+        }
+        const { token, userId } = signedIn;
         const [handle, found] = await Promise.all([
           getProfile(token).then(
             (profile) => profile.handle,
@@ -367,6 +422,7 @@ function SignFlow({
         const enrolledHere = isEnrolledHere(enrolmentStore(), userId);
         const mode = state.mode === "in" ? "in" : "up";
         dispatch(verifiedEvent({ mode, handle, wallet: found, enrolledHere }));
+        setResuming(false);
       } catch {
         // Not a welcome: a wallet that could not be read may be a missing one, and guessing would
         // let a person without a sub-organization past the passkey step. The code is verified and
@@ -433,7 +489,18 @@ function SignFlow({
             ))}
           </ol>
 
-          {state.step === "auth" && (
+          {resuming && !readFailed && <p className={styles.flowLead}>READING YOUR ACCOUNT…</p>}
+          {resuming && readFailed && (
+            <div className={styles.flowActions}>
+              <p className={styles.alert} role="alert">
+                Your account could not be read just now. Nothing was created.
+              </p>
+              <Button className={styles.primary} onClick={readAccount}>
+                Try again
+              </Button>
+            </div>
+          )}
+          {!resuming && state.step === "auth" && (
             <AccountStep
               mode={state.mode === "in" ? "in" : "up"}
               email={state.email}
@@ -519,15 +586,11 @@ function SignFlow({
   );
 }
 
-/** What `PasskeyAddFlow` has read about the account, before it can choose a screen. */
-type AddFlowScreen = "loading" | "error" | PasskeyScreen;
+/** What `PasskeyAddFlow` has read about the account. */
+type AddFlowScreen = "loading" | "error" | "add";
 
-/**
- * The ceremony sheet `PasskeyAddFlow` runs: `create` on the create screen — the enrolment that
- * makes the sub-organization — and `backup`, adding another passkey to one that exists.
- */
+/** The ceremony sheet `PasskeyAddFlow` runs, always the same one: adding another passkey. */
 interface AddSheetState {
-  ceremony: "create" | "backup";
   phase: SheetPhase;
   error: string | null;
   options: ChallengeOptionsDto | null;
@@ -535,36 +598,28 @@ interface AddSheetState {
 }
 
 /**
- * `/passkey`, reached only by a signed-in person.
+ * `/passkey`, reached only by a signed-in person, and only ever for adding a device: another
+ * passkey on a sub-organization that exists, and the list of what is on it.
  *
- * The first read decides which of two screens to draw, via the same signal `landing` reads for
- * sign-in: GET /wallets/me, where a 404 means there is no sub-organization yet. Without one, this
- * is the mandatory "Create your wallet" step — the studio shell redirects here before rendering
- * anything else, so a sign-up closed at the passkey step and an account from before the passkey
- * was mandatory both land on it. With one, it adds another passkey and lists what is there.
+ * A person without a sub-organization does not get in here, or anywhere: the first read
+ * (GET /wallets/me, a 404 is none) sends them through `redirectFor` to the signup's own passkey
+ * step, which is where the master wallet is created and where they stay until it is.
  */
 function PasskeyAddFlow({
   board,
   destination,
-  preview,
 }: {
   board: AuthBoardData;
   destination?: string | undefined;
-  preview?: PasskeyPreview | undefined;
 }) {
+  const router = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [screen, setScreen] = useState<AddFlowScreen>(preview ?? "loading");
-  /** A `create` ceremony here ended without a wallet; the step offers it again. */
-  const [createFailed, setCreateFailed] = useState(false);
+  const [screen, setScreen] = useState<AddFlowScreen>("loading");
   const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
   const [sheet, setSheet] = useState<AddSheetState | null>(null);
 
   useEffect(() => {
-    // A preview draws its screen without an account behind it, so there is nothing to read.
-    if (preview) {
-      return;
-    }
     let live = true;
     void (async () => {
       try {
@@ -579,7 +634,12 @@ function PasskeyAddFlow({
         if (!live) {
           return;
         }
-        setScreen(passkeyScreenFor({ hasSubOrganization: found !== null }));
+        const away = redirectFor(found);
+        if (away) {
+          router.replace(away);
+          return;
+        }
+        setScreen("add");
         setPasskeysState(keys);
       } catch {
         if (live) {
@@ -590,58 +650,27 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, [preview]);
+  }, [router]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {
     void (async () => {
-      try {
-        const { token } = await session();
-        const keys = await readPasskeys(token);
-        setPasskeysState({ kind: "ready", passkeys: keys });
-      } catch {
-        setPasskeysState({ kind: "failed" });
-      }
+      const keys = await passkeyList();
+      setPasskeysState(keys ? { kind: "ready", passkeys: keys } : { kind: "failed" });
     })();
   }
 
   /** Opens the sheet and fetches its challenge first, so confirming reaches WebAuthn directly. */
-  function openSheet(ceremony: AddSheetState["ceremony"]) {
-    const opening: AddSheetState = { ceremony, phase: "busy", error: null, options: null };
+  function openSheet() {
+    const opening: AddSheetState = { phase: "busy", error: null, options: null };
     setSheet(opening);
     void (async () => {
       try {
         setSheet({ ...opening, phase: "idle", options: await openChallenge(custody()) });
       } catch (caught) {
-        if (ceremony === "create") {
-          setCreateFailed(true);
-        }
         setSheet({ ...opening, phase: "error", error: describeCustodyFailure(caught) });
       }
     })();
-  }
-
-  /**
-   * The enrolment ceremony: `credentials.create()` first, straight from the sheet's confirm, then
-   * `register`, which creates the sub-organization and its master wallet. The screen becomes the
-   * add-a-device one, where the new passkey is listed and a backup is one click away.
-   */
-  async function createHere(options: ChallengeOptionsDto) {
-    const created = await createWallet(custody(), { options, label: describeDevice(userAgent()) });
-    setCreateFailed(false);
-    // The list is read once and used twice: to decide whether this device's credential is the
-    // one the account holds (`register` answers another tab's account the same way — only a
-    // credential on the list marks this browser), and to draw the add-device screen that follows.
-    const list = await passkeyList();
-    if (enrolmentOutcome(created.credentialId, list) === "enrolled") {
-      try {
-        markEnrolled(enrolmentStore(), (await session()).userId);
-      } catch {
-        // The wallet exists; a session that expired on this last read changes nothing.
-      }
-    }
-    setPasskeysState(list ? { kind: "ready", passkeys: list } : { kind: "failed" });
-    setScreen(passkeyScreenFor({ hasSubOrganization: true }));
   }
 
   function confirm() {
@@ -654,11 +683,6 @@ function PasskeyAddFlow({
     setSheet(running);
     void (async () => {
       try {
-        if (current.ceremony === "create") {
-          await createHere(options);
-          setSheet({ ...running, phase: "ok" });
-          return;
-        }
         await addPasskey(custody(), {
           options,
           // A second key belongs on something other than the device in your hand, which is what
@@ -676,18 +700,6 @@ function PasskeyAddFlow({
         setSheet({ ...running, phase: "ok" });
         refreshPasskeys();
       } catch (caught) {
-        if (current.ceremony === "create") {
-          // The same loop the sign-up step guards against: this screen may have been opened
-          // before another tab created the wallet. If it exists now, this screen's job is done.
-          if (await walletAfterFailedCreate()) {
-            setCreateFailed(false);
-            setSheet(null);
-            setScreen(passkeyScreenFor({ hasSubOrganization: true }));
-            refreshPasskeys();
-            return;
-          }
-          setCreateFailed(true);
-        }
         setSheet({ ...running, phase: "error", error: describeCustodyFailure(caught) });
       }
     })();
@@ -702,18 +714,11 @@ function PasskeyAddFlow({
           {screen === "error" && (
             <p className={styles.flowLead}>YOUR ACCOUNT COULD NOT BE READ · RELOAD TO TRY AGAIN</p>
           )}
-          {screen === "create" && (
-            <CreateWalletStep
-              busy={sheet !== null}
-              retry={createFailed}
-              onCreate={() => openSheet("create")}
-            />
-          )}
           {screen === "add" && (
             <AddPasskeyStep
               passkeys={passkeysState}
               busy={sheet !== null}
-              onAdd={() => openSheet("backup")}
+              onAdd={openSheet}
               destination={target}
             />
           )}
@@ -724,19 +729,14 @@ function PasskeyAddFlow({
 
       <PasskeySheet
         open={sheet !== null}
-        ceremony={sheet?.ceremony ?? "backup"}
+        ceremony="backup"
         phase={sheet?.phase ?? "idle"}
         error={sheet?.error ?? null}
         rpId={sheet?.options?.rp.id ?? null}
         userAgent={userAgent()}
         onConfirm={confirm}
-        onRetry={() => sheet && openSheet(sheet.ceremony)}
-        onCancel={() => {
-          if (sheet?.ceremony === "create" && sheet.phase !== "ok") {
-            setCreateFailed(true);
-          }
-          setSheet(null);
-        }}
+        onRetry={openSheet}
+        onCancel={() => setSheet(null)}
       />
     </>
   );

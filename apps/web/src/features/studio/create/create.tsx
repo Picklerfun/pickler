@@ -7,6 +7,7 @@ import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { Button, Icon } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
 import {
+  SIGNUP_PASSKEY_STEP,
   SessionExpired,
   openChallenge,
   readSubOrganization,
@@ -193,7 +194,7 @@ export function CreateAgent({
         }
         /* The same door the studio shell has, before a draft is written: the agent ceremony needs a
            sub-organization, and a person without one would otherwise fill in every step only to be
-           sent to /passkey by "Create and run it once". */
+           sent away by "Create and run it once". */
         const token = data.session.access_token;
         const away = redirectFor(await readSubOrganization(() => readWallet(token)));
         if (away) {
@@ -408,9 +409,9 @@ export function CreateAgent({
           return;
         }
         /* No sub-organization: nothing was prompted and nothing created. The wallet is made on
-           /passkey, never from here (spec §4.1), so the person goes there. */
+           the signup's passkey step, never from here (spec §4.1), so the person goes there. */
         if (caught instanceof NoSubOrganization) {
-          router.replace("/passkey");
+          router.replace(SIGNUP_PASSKEY_STEP);
         }
         const failed = progress.at;
         setCeremony((was) => ({

@@ -11,7 +11,7 @@
  * - `wallet` — the delegated user when there is none, then the agent's wallet named for its handle.
  *   The sub-organization is not made here: it is born at signup (spec §4.1), and a person without
  *   one gets `NoSubOrganization` before any prompt, which the screen turns into a trip to
- *   `/passkey`. A wallet left behind by an earlier attempt that failed before its link comes back
+ *   the signup's passkey step. A wallet left behind by an earlier attempt that failed before its link comes back
  *   from `prepareWallet` as `existing` and is reused without another prompt.
  * - `rules` — the wallet's policies, approved by the passkey. No policies, no link. Skipped when
  *   the `existing` wallet's policies were already approved (a retry after a reload, which has lost
@@ -54,7 +54,7 @@ export interface ExistingWallet extends AgentWallet {
 
 /**
  * The person has no sub-organization, so there is nothing to put an agent's wallet in. Thrown
- * before any prompt; the screen sends them to `/passkey`, which creates it — this sequence never
+ * before any prompt; the screen sends them to the signup's passkey step, which creates it — this sequence never
  * does.
  */
 export class NoSubOrganization extends Error {

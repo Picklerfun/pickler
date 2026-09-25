@@ -19,8 +19,9 @@ const POINTS = [
 ] as const;
 
 /**
- * The mandatory passkey step (spec §4.1): its one prompt creates the sub-organization, with this
- * passkey as its only root, and the master wallet the studio's profile shows from the first visit.
+ * The signup's mandatory passkey step (spec §4.1): its one prompt creates the sub-organization,
+ * with this passkey as its only root, and the master wallet the studio's profile shows from the
+ * first visit. Every signed-in screen sends a person without that wallet back here.
  *
  * There is no skip and no "later". A prompt that was closed or failed leaves the person here, with
  * the same button to try again; `retry` only changes what it says.
@@ -37,7 +38,7 @@ export function CreateWalletStep({
   onCreate: () => void;
 }) {
   return (
-    <div className={styles.flowStep} id="passkey-create">
+    <div className={styles.flowStep} id="signup-passkey">
       <h1 className={styles.flowTitle}>
         CREATE YOUR
         <br />

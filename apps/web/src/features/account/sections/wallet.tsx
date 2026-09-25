@@ -6,6 +6,7 @@ import { Button, ButtonLink, Icon } from "@pickler/ui";
 import { MONAD_TESTNET } from "@pickler/chain";
 import { addressButtonLabel, type CopyState } from "../../auth/lib/address";
 import { formatBalance } from "../../auth/lib/balance";
+import { SIGNUP_PASSKEY_STEP } from "../../auth/lib/custody";
 import type { BalanceDto, WalletDto } from "../../auth/lib/custody-api";
 import { NotYet } from "../components/not-yet";
 import styles from "../account.module.css";
@@ -69,7 +70,7 @@ export function WalletSection({ state }: { state: WalletState }) {
         {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
         {state.kind === "none" && (
           <>
-            {/* Signed in, the account screen sends a person without a sub-organization to /passkey
+            {/* Signed in, the account screen sends a person without a sub-organization to the signup's passkey step
                 before this renders (spec §4.1: the wallet is made at signup, with a passkey nobody
                 can skip). This stays for anything that reaches the state anyway. */}
             <p className={styles.cardNote}>
@@ -77,7 +78,7 @@ export function WalletSection({ state }: { state: WalletState }) {
               never leaves the enclave it is made in.
             </p>
             <div className={styles.cardActions}>
-              <ButtonLink as={Link} href="/passkey" variant="primary" arrow>
+              <ButtonLink as={Link} href={SIGNUP_PASSKEY_STEP} variant="primary" arrow>
                 Create my wallet
               </ButtonLink>
             </div>

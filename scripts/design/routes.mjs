@@ -516,20 +516,19 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
-  // /passkey for a signed-in person with no sub-organization yet: the mandatory "Create your
-  // wallet" step, the enrolment ceremony that makes the sub-organization and its master wallet
-  // (the same step signup ends on). Which screen /passkey draws comes from GET /wallets/me, which
-  // the API answers only to a verified JWT — and the harness carries a cookie that passes the
-  // middleware's presence check and is not a session (render.mjs), so the honest read ends on
-  // "could not be read". `?state=create` opens the step without the read, outside production
-  // only. The studio by hosts.ts's segments, guarded like /studio, and the (auth) layout is dark.
+  // The signup's mandatory passkey step: its one prompt creates the sub-organization and the
+  // master wallet, and every signed-in screen sends a person without that wallet back to it. A
+  // real visit reaches it only with a session that has a profile and no wallet, which the harness
+  // cannot have — its cookie passes the middleware's presence check and is not a session
+  // (render.mjs). `?state=passkey` opens the signup on that step with no session and no reads,
+  // outside production only. The studio by hosts.ts's segments, and the (auth) layout is dark.
   {
-    path: "/passkey?state=create",
-    name: "passkey-create",
+    path: "/signup?state=passkey",
+    name: "signup-passkey",
     product: "studio",
     surface: "dark",
     task: "Auth",
-    proves: "#passkey-create",
+    proves: "#signup-passkey",
   },
   // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
   // not one of them was /signin or /signup, so those two screens were never unconverted — nobody

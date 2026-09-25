@@ -253,20 +253,12 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
   }
 }
 
-/** Which half of /passkey a signed-in person sees. */
-export type PasskeyScreen = "create" | "add";
-
 /**
- * `/passkey` is where anyone who reached a signed-in screen without a sub-organization is sent
- * (spec §4.1): a sign-up closed at the passkey step, or an account from before the passkey was
- * mandatory. So it reads the same signal `landing` reads (GET /wallets/me; a 404 is an account
- * with no sub-organization) and draws either the enrolment ceremony that creates one, or the
- * add-a-device screen for one that exists. There is no third answer: a sub-organization with no
- * wallet is not a state this reads, because `register` cannot return without one.
+ * Where a signed-in person without a master wallet is sent from every screen: the signup's own
+ * passkey step, which `/signup` resumes for an existing session (landing on the handle step first
+ * when there is no profile yet). Nobody gets in anywhere without the wallet.
  */
-export function passkeyScreenFor(account: { hasSubOrganization: boolean }): PasskeyScreen {
-  return account.hasSubOrganization ? "add" : "create";
-}
+export const SIGNUP_PASSKEY_STEP = "/signup?step=passkey";
 
 /**
  * The signed-in person's master wallet from GET /wallets/me, or null when there is no
@@ -286,17 +278,18 @@ export async function readSubOrganization<T>(read: () => Promise<T>): Promise<T 
 }
 
 /**
- * Where a signed-in screen sends a person, from `readSubOrganization`'s answer: `/passkey` when
- * there is no sub-organization (spec §4.1 — the master wallet comes before anything else), and
- * nowhere when there is one. The studio shell, the create screen and /account all ask this.
+ * Where a signed-in screen sends a person, from `readSubOrganization`'s answer: the signup's
+ * passkey step when there is no sub-organization (spec §4.1 — the master wallet comes before
+ * anything else), and nowhere when there is one. The studio shell, the create screen, /account and
+ * /passkey all ask this.
  */
-export function redirectFor(wallet: unknown): "/passkey" | null {
-  return wallet === null ? "/passkey" : null;
+export function redirectFor(wallet: unknown): typeof SIGNUP_PASSKEY_STEP | null {
+  return wallet === null ? SIGNUP_PASSKEY_STEP : null;
 }
 
 /**
  * A create ceremony failed; the sub-organization has been read again since. If it exists now —
- * another tab finished signup, or a /passkey screen was opened before one did, so the
+ * another tab finished signup before this one's step did, so the
  * authenticator refused a duplicate through `excludeCredentials` — the step is done and the
  * person moves on. Retrying would only fail the same way for ever.
  */

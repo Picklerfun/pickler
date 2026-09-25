@@ -49,9 +49,9 @@ export type FlowEvent =
   | { type: "code_changed"; code: string }
   | { type: "code_verified" }
   | { type: "handle_claimed"; handle: string }
-  /** Sign-in's landing check: the account has no profile yet, so it finishes signing up. */
+  /** The landing check: the account has no profile yet, so it finishes signing up. */
   | { type: "profile_missing" }
-  /** Sign-in's landing check: GET /wallets/me answered 404, so there is no sub-organization. */
+  /** The landing check: GET /wallets/me answered 404, so there is no sub-organization. */
   | { type: "wallet_missing" }
   /**
    * The landing check found a complete account — a profile and a sub-organization — behind a
@@ -137,11 +137,15 @@ const ACCEPTS: Record<FlowEvent["type"], readonly Step[]> = {
   code_changed: ["code"],
   code_verified: ["code"],
   handle_claimed: ["handle"],
-  profile_missing: ["code"],
-  wallet_missing: ["code"],
-  account_found: ["code"],
+  // The landing check's answers come from the code screen after a verified code, or from the
+  // account screen when /signup resumes a session that already exists (`?step=passkey`, where
+  // every signed-in screen sends a person without a master wallet): nothing to type, so the rail
+  // starts at whatever the account still needs.
+  profile_missing: ["auth", "code"],
+  wallet_missing: ["auth", "code"],
+  account_found: ["auth", "code"],
   passkey_created: ["passkey"],
-  device_unknown: ["code"],
+  device_unknown: ["auth", "code"],
   approve_started: ["recover"],
   device_added: ["approve"],
   device_skipped: ["recover", "approve"],

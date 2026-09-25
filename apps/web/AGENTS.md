@@ -262,7 +262,7 @@ person to the manual steps with "The model is busy. Build it step by step instea
 for the handle, or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped
 when that `existing` wallet comes back with `policiesApproved`, so a retry after a reload never
 writes the rules twice), `agent`, `run`. It never creates a sub-organization: without one it throws
-`NoSubOrganization` before any prompt and the screen sends the person to `/passkey`. A first agent
+`NoSubOrganization` before any prompt and the screen sends the person to the signup's passkey step. A first agent
 is three passkey prompts (delegated user, wallet, policies), a later one two; any failure
 propagates and stops the sequence. `onFirstAgent` tells the screen which, so the rail's Wallet line
 says it covers two prompts on a first agent. The screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
@@ -340,38 +340,47 @@ to be read as key material by anything else on the same host. A connected browse
 authenticated server identity either: connecting is a read that says which address to show.
 
 A sub-organization is born at signup, before any agent (spec §4.1): the studio's profile shows the
-master wallet from the first visit. `lib/flow.ts` is the pure machine, pinned in `flow.test.ts`:
-signup is `auth → code → handle → passkey → welcome`, and the only event that leaves `passkey` is
+master wallet from the first visit, and a signed-in person without one does not get in anywhere.
+`lib/flow.ts` is the pure machine, pinned in `flow.test.ts`: signup is
+`auth → code → handle → passkey → welcome`, and the only event that leaves `passkey` is
 `passkey_created`; signin is `auth → code → welcome`, or `auth → code → passkey → welcome` when the
 landing check (`landing` in `lib/custody.ts`, reading `GET /v1/signing/wallets/me`) finds no
-sub-organization and sends `wallet_missing`. What a verified code dispatches is `verifiedEvent`
+sub-organization and sends `wallet_missing`. What the landing check dispatches is `verifiedEvent`
 (pure, in `lib/custody.ts`, over `landing`); a read that fails other than with a 404 dispatches
-nothing, and the code screen says the account could not be read, with "Try again". Every event is
+nothing, and the screen says the account could not be read, with "Try again". Every event is
 accepted only on the steps whose screen can send it, and a walk from `INITIAL` through
 `verifiedEvent` for every account shape pins that welcome is reachable without `passkey_created`
 only for an account that already has a profile and a sub-organization.
-The step is `steps/create-wallet-step.tsx` (`#passkey-create`, recovered from the `PasskeyStep`
+
+The step is `steps/create-wallet-step.tsx` (`#signup-passkey`, recovered from the `PasskeyStep`
 commit c4383d2 deleted): one prompt, the enrolment ceremony (`createWallet`: challenge fetched as
 the sheet opens → WebAuthn from the sheet's confirm click → `POST /v1/signing/passkeys/register`),
-which creates the sub-organization with the passkey as its only root and the master wallet. A
-closed or failed prompt leaves the person on the step with "Try again"; there is no skip. A failed
-create first reads the sub-organization again (`afterFailedCreate`): if another tab created it
-meanwhile — this authenticator then refuses a duplicate through `excludeCredentials` — the step
-advances rather than looping. `register` is idempotent and core returns the winner of a two-tab
-race, so after a create the account's passkey list is read and `enrolmentOutcome` decides: the
-browser is marked enrolled only if the credential it just made is on the list; one that is not
-(`orphan`) goes to `/passkey`'s add-device screen, and an unreadable list marks nothing.
+which creates the sub-organization with the passkey as its only root and the master wallet. It is
+the only place a sub-organization is created. A closed or failed prompt leaves the person on the
+step with "Try again"; there is no skip. A failed create first reads the sub-organization again
+(`afterFailedCreate`): if another tab created it meanwhile — this authenticator then refuses a
+duplicate through `excludeCredentials` — the step advances rather than looping. `register` is
+idempotent and core returns the winner of a two-tab race, so after a create the account's passkey
+list is read and `enrolmentOutcome` decides: the browser is marked enrolled only if the credential
+it just made is on the list; one that is not (`orphan`) goes to `/passkey`'s add-device screen, and
+an unreadable list marks nothing.
 
-Anyone who reaches a signed-in screen without a sub-organization is sent to `/passkey`: the studio
-shell (`studio.tsx`), the create screen (`create/create.tsx`) and `/account` with every section
-(`features/account/account.tsx`, where the master wallet is shown) read it through
-`readSubOrganization` (the wallet, or null for a 404; any other failure propagates — to the
-studio's load error, or to the account's wallet card, which says the balances could not be read)
-and `redirectFor`, which answers `/passkey` for null, after the session guard, and
-`router.replace` there before rendering anything else. `/portfolio` and the marketplace
-screens are wallet-connection surfaces, not custody, and do not redirect. `PasskeyFlow`'s `add` mode
-reads the same signal through `passkeyScreenFor` and shows either the create step, the same
-ceremony, or the add-passkey ceremony and a device list for an account that has one. `?state=create`
-(`features/auth/lib/passkey-preview.ts`, outside production only, gated on the build like `?stage=`)
-opens the create step without the read, because the API answers the read only to a verified JWT and
-the design harness has none; `scripts/design/routes.mjs` measures it as `passkey-create`.
+Every signed-in custody screen sends a person without a sub-organization to the signup's passkey
+step: the studio shell (`studio.tsx`), the create screen (`create/create.tsx`, also when the agent
+ceremony throws `NoSubOrganization`), `/account` with every section (`features/account/account.tsx`,
+where the master wallet is shown) and `/passkey` read it through `readSubOrganization` (the wallet,
+or null for a 404; any other failure propagates — to the studio's load error, the account's wallet
+card, or /passkey's "could not be read") and `redirectFor`, which answers `SIGNUP_PASSKEY_STEP`
+(`/signup?step=passkey`) for null, after the session guard, and `router.replace` there before
+rendering anything else. `/portfolio` and the marketplace screens are wallet-connection surfaces,
+not custody, and do not redirect. `/signup?step=passkey`, and the studio's `/signup?complete=1` for a
+person without a profile, resume the session (`resumesSignup` in `features/auth/lib/signup-entry.ts`):
+the flow reads the account on arrival and sends the landing event from the account screen, so it
+lands on the handle step with no profile, on the passkey step with a profile and no wallet (the rail
+reads ACCOUNT and HANDLE done), or on welcome for a complete account; with no session it starts at
+the account screen. `/passkey` is add-device only: the add-passkey ceremony and the device list.
+
+`/signup?state=passkey` (`signupPreviewFromSearch`, outside production only, gated on the build like
+`?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit
+needs a session with a profile and no wallet and the design harness has none;
+`scripts/design/routes.mjs` measures it as `signup-passkey`.
