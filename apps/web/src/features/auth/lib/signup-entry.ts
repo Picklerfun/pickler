@@ -1,11 +1,10 @@
 /**
- * How `/signup` is entered, read from its search parameters on the server.
+ * How `/signup` and `/signin` are entered.
  *
- * `?step=passkey` is where every signed-in screen sends a person without a master wallet
- * (`redirectFor` in `custody.ts`), and `?complete=1` is where the studio sends one without a
- * profile. Both resume an existing session: the flow reads the account and lands on whatever it
- * still needs — the handle step, then the passkey step — instead of asking for an email again.
- * Without a session there is nothing to resume, and the flow starts at the account screen.
+ * With a session already there — whatever the URL, `?step=passkey` (where every signed-in screen
+ * sends a person without a master wallet), `?complete=1`, or neither — the flow reads the account
+ * and lands on whatever it still needs: the handle step, the passkey step, or welcome. The email
+ * form is only for someone with no session. `arrivalFor` is that decision.
  *
  * `?state=passkey` is a design preview of the signup at its passkey step, with no session and no
  * reads, so the design harness can measure the step. Outside production only, gated on the build
@@ -30,10 +29,17 @@ export function signupPreviewFromSearch(
   return SIGNUP_PREVIEWS.find((state): state is SignupPreview => state === value);
 }
 
-/** Whether `/signup` should resume an existing session rather than start at the account screen. */
-export function resumesSignup(search: {
-  step?: string | string[] | undefined;
-  complete?: string | string[] | undefined;
-}): boolean {
-  return first(search.step) === "passkey" || first(search.complete) === "1";
+/**
+ * What the sign flow does on arrival: a preview draws its step and reads nothing; a session is
+ * resumed (the account is read and the landing check decides the step); without one, the email
+ * form. The URL's other parameters do not enter into it.
+ */
+export function arrivalFor(input: {
+  preview: SignupPreview | undefined;
+  signedIn: boolean;
+}): "preview" | "resume" | "form" {
+  if (input.preview !== undefined) {
+    return "preview";
+  }
+  return input.signedIn ? "resume" : "form";
 }

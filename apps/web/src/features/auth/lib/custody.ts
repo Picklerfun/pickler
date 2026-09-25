@@ -322,12 +322,15 @@ export function enrolmentOutcome(
 }
 
 /**
- * What a verified code dispatches, from what the account holds. `handle` and `wallet` are null
- * for a 404; a read that failed any other way never reaches here — the code screen says so and
+ * What the landing check dispatches, from what the account holds — after a verified code, and on
+ * arriving at /signup or /signin with a session that already exists. `handle` and `wallet` are
+ * null for a 404; a read that failed any other way never reaches here — the screen says so and
  * offers to try again, rather than guessing at a welcome.
+ *
+ * A complete account answers `account_found` on either rail: it is accepted on the account screen
+ * (a resumed session) as well as the code screen, and it is a sign-in either way.
  */
 export function verifiedEvent(account: {
-  mode: "up" | "in";
   handle: string | null;
   wallet: WalletDto | null;
   enrolledHere: boolean;
@@ -340,6 +343,6 @@ export function verifiedEvent(account: {
     case "recover":
       return { type: "device_unknown" };
     case "welcome":
-      return account.mode === "in" ? { type: "code_verified" } : { type: "account_found" };
+      return { type: "account_found" };
   }
 }

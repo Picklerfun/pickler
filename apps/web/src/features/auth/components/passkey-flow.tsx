@@ -6,7 +6,7 @@ import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
-import type { SignupPreview } from "../lib/signup-entry";
+import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
 import {
   CUSTODY_API,
   SessionExpired,
@@ -131,7 +131,6 @@ export function PasskeyFlow({
   board,
   mode,
   destination,
-  resume,
   preview,
 }: {
   board: AuthBoardData;
@@ -144,11 +143,6 @@ export function PasskeyFlow({
    * Undefined when nobody was turned away, and then the studio's own home is the destination.
    */
   destination?: string | undefined;
-  /**
-   * `up` only: a signed-in person was sent here (`?step=passkey`, `?complete=1`), so the flow reads
-   * the account and lands on the step it still needs instead of asking for an email.
-   */
-  resume?: boolean;
   /** `up` only, outside production: open on this step without a session or any read. */
   preview?: SignupPreview | undefined;
 }) {
@@ -160,7 +154,6 @@ export function PasskeyFlow({
       board={board}
       mode={mode}
       destination={destination}
-      resume={mode === "up" && resume === true}
       preview={mode === "up" ? preview : undefined}
     />
   );
@@ -194,13 +187,11 @@ function SignFlow({
   board,
   mode,
   destination,
-  resume,
   preview,
 }: {
   board: AuthBoardData;
   mode: "up" | "in";
   destination?: string | undefined;
-  resume: boolean;
   preview: SignupPreview | undefined;
 }) {
   const router = useRouter();
@@ -212,8 +203,11 @@ function SignFlow({
     next,
     preview === "passkey" ? { ...INITIAL, mode, step: "passkey" as const } : { ...INITIAL, mode },
   );
-  /** Reading a resumed session's account; the form column waits rather than asking for an email. */
-  const [resuming, setResuming] = useState(resume && preview === undefined);
+  /**
+   * Until the session is known, the form column waits rather than asking for an email: a session
+   * that already exists is resumed (`arrivalFor`), and only without one does the form appear.
+   */
+  const [resuming, setResuming] = useState(preview === undefined);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [profileHandle, setProfileHandle] = useState("");
   const [wallet, setWallet] = useState<WalletDto | null>(null);
@@ -376,8 +370,9 @@ function SignFlow({
     readAccount();
   }
 
-  /* A resumed session reads its account once, on arrival. An effect event, so the read sees the
-     current state without the effect re-running as it changes. */
+  /* Every arrival without a preview reads the session once: `readAccount` resumes one that exists
+     and shows the email form otherwise. An effect event, so the read sees the current state
+     without the effect re-running as it changes. */
   const resumeOnArrival = useEffectEvent(() => {
     if (resuming) {
       readAccount();
@@ -396,15 +391,23 @@ function SignFlow({
     setReadFailed(false);
     void (async () => {
       try {
-        let signedIn: { token: string; userId: string };
+        let signedIn: { token: string; userId: string } | null;
         try {
           signedIn = await session();
         } catch (caught) {
-          if (caught instanceof SessionExpired && resuming) {
-            setResuming(false);
-            return;
+          if (!(caught instanceof SessionExpired)) {
+            throw caught;
           }
-          throw caught;
+          signedIn = null;
+        }
+        // Only an arrival turns "no session" into the email form. After a verified code there must
+        // be one, and its absence is a failure the screen reports like any other.
+        if (resuming && arrivalFor({ preview, signedIn: signedIn !== null }) === "form") {
+          setResuming(false);
+          return;
+        }
+        if (!signedIn) {
+          throw new SessionExpired();
         }
         const { token, userId } = signedIn;
         const [handle, found] = await Promise.all([
@@ -420,8 +423,7 @@ function SignFlow({
         setWallet(found);
         setProfileHandle(handle ?? "");
         const enrolledHere = isEnrolledHere(enrolmentStore(), userId);
-        const mode = state.mode === "in" ? "in" : "up";
-        dispatch(verifiedEvent({ mode, handle, wallet: found, enrolledHere }));
+        dispatch(verifiedEvent({ handle, wallet: found, enrolledHere }));
         setResuming(false);
       } catch {
         // Not a welcome: a wallet that could not be read may be a missing one, and guessing would

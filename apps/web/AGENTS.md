@@ -373,12 +373,14 @@ or null for a 404; any other failure propagates — to the studio's load error, 
 card, or /passkey's "could not be read") and `redirectFor`, which answers `SIGNUP_PASSKEY_STEP`
 (`/signup?step=passkey`) for null, after the session guard, and `router.replace` there before
 rendering anything else. `/portfolio` and the marketplace screens are wallet-connection surfaces,
-not custody, and do not redirect. `/signup?step=passkey`, and the studio's `/signup?complete=1` for a
-person without a profile, resume the session (`resumesSignup` in `features/auth/lib/signup-entry.ts`):
-the flow reads the account on arrival and sends the landing event from the account screen, so it
-lands on the handle step with no profile, on the passkey step with a profile and no wallet (the rail
-reads ACCOUNT and HANDLE done), or on welcome for a complete account; with no session it starts at
-the account screen. `/passkey` is add-device only: the add-passkey ceremony and the device list.
+not custody, and do not redirect. `/signup` and `/signin` resume any session they are opened with, whatever the URL
+(`arrivalFor` in `features/auth/lib/signup-entry.ts`; `/signup?step=passkey` is just the readable
+redirect target): the flow reads the account on arrival and sends the landing event from the
+account screen, so it lands on the handle step with no profile, on the passkey step with a profile
+and no wallet (the rail reads ACCOUNT and HANDLE done on signup, ACCOUNT done on signin), or on
+welcome for a complete account (`account_found`, a sign-in on either rail). The email form appears
+only when there is no session; the form column says "READING YOUR ACCOUNT…" until that is known,
+and a failed read offers "Try again" rather than a guess. `/passkey` is add-device only: the add-passkey ceremony and the device list.
 
 `/signup?state=passkey` (`signupPreviewFromSearch`, outside production only, gated on the build like
 `?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit

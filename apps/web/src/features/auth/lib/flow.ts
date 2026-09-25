@@ -54,8 +54,8 @@ export type FlowEvent =
   /** The landing check: GET /wallets/me answered 404, so there is no sub-organization. */
   | { type: "wallet_missing" }
   /**
-   * The landing check found a complete account — a profile and a sub-organization — behind a
-   * sign-up, so it is a sign-in after all.
+   * The landing check found a complete account — a profile and a sub-organization — so this is a
+   * sign-in, whichever rail it arrived on.
    */
   | { type: "account_found" }
   /** The enrolment ceremony finished: the sub-organization and its master wallet exist. */
@@ -138,9 +138,8 @@ const ACCEPTS: Record<FlowEvent["type"], readonly Step[]> = {
   code_verified: ["code"],
   handle_claimed: ["handle"],
   // The landing check's answers come from the code screen after a verified code, or from the
-  // account screen when /signup resumes a session that already exists (`?step=passkey`, where
-  // every signed-in screen sends a person without a master wallet): nothing to type, so the rail
-  // starts at whatever the account still needs.
+  // account screen when /signup or /signin is opened with a session that already exists: nothing
+  // to type, so the rail starts at whatever the account still needs.
   profile_missing: ["auth", "code"],
   wallet_missing: ["auth", "code"],
   account_found: ["auth", "code"],

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { resumesSignup, signupPreviewFromSearch } from "../src/features/auth/lib/signup-entry";
+import { arrivalFor, signupPreviewFromSearch } from "../src/features/auth/lib/signup-entry";
 
 /* `/signup?state=` draws a step without an account behind it, so it must be shut in production. */
 
@@ -21,9 +21,14 @@ test("a repeated parameter reads its first value", () => {
   assert.equal(signupPreviewFromSearch("test", ["passkey", "x"]), "passkey");
 });
 
-test("the passkey-step redirect and the studio's complete-your-profile link both resume", () => {
-  assert.equal(resumesSignup({ step: "passkey" }), true);
-  assert.equal(resumesSignup({ complete: "1" }), true);
-  assert.equal(resumesSignup({}), false);
-  assert.equal(resumesSignup({ step: "handle" }), false);
+test("a session is resumed on arrival, whatever the URL; the email form is only for no session", () => {
+  // Plain /signup, /signin, /signup?step=passkey and /signup?complete=1 all arrive the same way:
+  // the URL's parameters are not an input.
+  assert.equal(arrivalFor({ preview: undefined, signedIn: true }), "resume");
+  assert.equal(arrivalFor({ preview: undefined, signedIn: false }), "form");
+});
+
+test("a design preview draws its step and resumes nothing", () => {
+  assert.equal(arrivalFor({ preview: "passkey", signedIn: true }), "preview");
+  assert.equal(arrivalFor({ preview: "passkey", signedIn: false }), "preview");
 });

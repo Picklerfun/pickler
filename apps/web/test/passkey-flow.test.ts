@@ -8,7 +8,6 @@ import {
   redirectFor,
   SIGNUP_PASSKEY_STEP,
 } from "../src/features/auth/lib/custody";
-import { resumesSignup } from "../src/features/auth/lib/signup-entry";
 import { ApiError } from "../src/features/auth/lib/pickler-api";
 import { passkeyLine } from "../src/features/auth/lib/passkey-list";
 import type { PasskeyDto } from "../src/features/auth/lib/custody-api";
@@ -77,10 +76,9 @@ test("redirectFor sends a person with no sub-organization to the signup's passke
   assert.equal(redirectFor(present), null);
 });
 
-test("the redirect's target is a signup that resumes the session, not a fresh one", () => {
+test("the redirect's target is the signup, which resumes any session it is opened with", () => {
   const target = new URL(SIGNUP_PASSKEY_STEP, "https://pickler.test");
   assert.equal(target.pathname, "/signup");
-  assert.equal(resumesSignup(Object.fromEntries(target.searchParams)), true);
 });
 
 test("a failed create advances once the sub-organization exists, and otherwise offers a retry", () => {
