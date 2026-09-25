@@ -171,12 +171,13 @@ the wallet's policies are approved, and the agent is created only after the link
 in order, each stamped by the passkey:
 
 1. **`createWallet`** — the agent's wallet, `walletName: <handle>`, one Monad account.
-2. **`createPolicy` × 3** — the wallet's rules, which the person approves by signing them:
+2. **`createPolicies`** — the wallet's rules, which the person approves by signing them:
    - **Trade only, from this wallet, to the venue.** `EFFECT_ALLOW` for the delegated user,
      `activity.action == 'SIGN' && wallet.id == '<WALLET_ID>' && eth.tx.to in [<venue contracts>]`.
-     Today the list holds Polymarket's contracts; Perpl's are added when Perpl exists. An empty
-     list is a valid policy: the delegated user can then sign nothing, which is the paper-only
-     state this specification ships in.
+     The list is empty in this specification (`VENUE_CONTRACTS = []`), so this policy is **not
+     created**: with no ALLOW the non-root delegated user can sign nothing, which is the
+     paper-only state this specification ships in. Live trading fills the list — and must bound
+     it by function selector, not only by contract address.
    - **Never a transfer out.** `EFFECT_DENY` for the delegated user on any transaction whose
      calldata starts with the ERC-20 `transfer` selector (`eth.tx.data[0..10] == '0xa9059cbb'`)
      or `approve` (`0x095ea7b3`), from this wallet. DENY overrides ALLOW in Turnkey's engine, so
@@ -191,9 +192,16 @@ in order, each stamped by the passkey:
    agent per wallet. No policies, no link; no link, no agent.
 
 The delegated user itself is created **once per sub-organization**, in the first agent's ceremony,
-with Pickler's P-256 public key (`TURNKEY_API_PUBLIC_KEY`) as its API key, `userName: "Pickler"`,
-and one more policy: it may delete itself, and nothing else, so a compromised key can be cut fast
-without the person present. Its user id is stored on `wallets.turnkey_orgs`.
+with its own P-256 key pair (`TURNKEY_DELEGATED_API_PUBLIC_KEY`; the private half is held by Pickler,
+separate from the parent organization's key, and unused until live trading) as its API key,
+`userName: "Pickler"`, and one more policy: it may delete itself, so a compromised key can be cut
+fast without the person present. Every wallet's policies also **deny the delegated user adding or
+changing its own credentials** — Turnkey otherwise lets any user change its own credentials, and a
+leaked key could add a second one that outlives rotation.
+
+Confirms compare the stamped body **byte for byte** with the body the API rebuilds from the same
+inputs and the stamped timestamp, so the person signs exactly what Pickler records — a semantic
+comparison would let duplicate JSON keys through. Its user id is stored on `wallets.turnkey_orgs`.
 
 Two cases, and only two, because the sub-organization is born **only** here — there is no other
 screen that creates one:
