@@ -253,8 +253,10 @@ carries the `walletId` whose policies were just approved; the create transaction
 
 `POST /v1/studio/agents/:id/runs` (exists) with `Idempotency-Key`. The screen polls
 `GET /v1/studio/runs/:id/events` every 1.5 s until the run's status is terminal, and draws each
-event as a trace line. The first line — "Created its wallet with your passkey · 0x7a3f…" — is an
-event the **API** appends when it links the wallet, so the trace starts before the runtime does.
+event as a trace line. The first lines — the ceremony's four steps, ending "Created its wallet with
+your passkey · 0x7a3f…" — are drawn by the screen from the ceremony itself, before the run exists;
+the run's own trace follows. (An earlier draft had the API append the wallet line as a run event;
+the run does not exist yet when the wallet is made, so the screen owns it.)
 
 **Every run is on paper.** When a run completes with `decision.action === "TRADE"`, the studio
 creates the paper order for it (`POST /runs/:id/paper-order` exists and is idempotent by run; the
