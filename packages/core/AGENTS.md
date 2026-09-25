@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) first. Read the local instructions
 
 `@pickler/core` owns the business layer: domain entities and invariants, application use cases, authorization rules, and ports for external capabilities. It must remain usable without Next.js or any specific provider.
 
-Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,markets,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
+Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research,style,brief}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,markets,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
 
 The runner owns permission rechecks, evidence attribution, bounded capability use and final quote verification. It accepts trusted scope from persisted jobs. API, Studio and scheduling share the same queue/runner. Core never accepts a model-supplied tenant or grants permissions from external content. Research failures and valid abstentions remain separate states.
 
@@ -53,6 +53,15 @@ product agent access; legacy broad labels grant no implied permissions. Budget r
 the actual commit period and reset generation. A refund may reduce current spend only when both
 match; legacy unknown-period charges cannot credit the active balance. This product ledger is not
 the research quota authority.
+
+`features/research/style.ts` names three decision styles — careful, balanced and bold — each a fixed
+`minProbabilityMargin`/`maxProbabilityRangeWidth` pair layered onto `UncertaintyPolicy`;
+`policyForStyle` and `styleForPolicy` convert between a style and the policy, the latter by closest
+distance so a hand-edited policy still reads as a style. `AgentConfig` gained `sources` (what an
+agent reads beyond market data — web mode/sites and an allowed sportsbook list, validated in
+`assertConfig`) and `skills` (routines the person added, capped and length-checked the same way).
+Skills are stored apart from the brief text; `features/research/brief.ts`'s pure `composeBrief`
+appends them to the edge as numbered rules at run time.
 
 ## Unified studio access
 
