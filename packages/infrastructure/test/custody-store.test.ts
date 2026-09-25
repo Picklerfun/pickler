@@ -9,6 +9,58 @@ import { createTestStore } from "./database.js";
 const hex = (length: number) =>
   `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
 
+/**
+ * A minimal agent, the way the studio writes one: the agent and its handle reference each other
+ * through deferrable foreign keys, so both inserts share one transaction. Returns the agent id.
+ */
+async function seedAgent(pool: Pool) {
+  const id = randomUUID();
+  const userId = randomUUID();
+  const workspaceId = randomUUID();
+  const handle = `h${id.slice(0, 8)}`;
+
+  await pool.query(`SELECT identity.create_profile($1, 'Maker', $2)`, [
+    userId,
+    `maker_${id.slice(0, 6)}`,
+  ]);
+  await pool.query(
+    `INSERT INTO identity.workspaces (id, owner_user_id, name) VALUES ($1, $2, 'w')`,
+    [workspaceId, userId],
+  );
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by)
+       VALUES ($1, $2, 'Halftime', $3, 'active', $4)`,
+      [id, workspaceId, handle, userId],
+    );
+    await client.query(`INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)`, [
+      handle,
+      id,
+    ]);
+    await client.query("COMMIT");
+  } catch (cause) {
+    await client.query("ROLLBACK");
+    throw cause;
+  } finally {
+    client.release();
+  }
+  return id;
+}
+
+/** A `wallets.wallets` row an `agent_wallets` row can reference. Returns its wallet id. */
+async function seedWalletRecord(pool: Pool) {
+  const walletId = `wallet-${hex(12)}`;
+  await pool.query(
+    `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
+     VALUES ($1, $2, $3, 'agent', 'Agent Wallet')`,
+    [randomUUID(), walletId, `sub-${hex(12)}`],
+  );
+  return walletId;
+}
+
 /** masterWalletId equals walletId because registration mints exactly one wallet. */
 function registration(overrides: Partial<RegistrationInput> = {}): RegistrationInput {
   const walletId = `wallet-${hex(12)}`;
@@ -319,3 +371,52 @@ async function waitForLockWait(pool: Pool) {
   }
   assert.fail("the second delete never queued on the row lock");
 }
+
+test("an agent_wallets row with one policy id is refused", async (t) => {
+  const { store } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const walletId = await seedWalletRecord(store.pool);
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids)
+       VALUES ($1, $2, $3)`,
+      [agentId, walletId, ["policy-one"]],
+    ),
+    /agent_wallets_policies/,
+  );
+});
+
+test("two agent_wallets rows pointing at the same wallet_id are refused", async (t) => {
+  const { store } = await setup(t);
+  const firstAgentId = await seedAgent(store.pool);
+  const secondAgentId = await seedAgent(store.pool);
+  const walletId = await seedWalletRecord(store.pool);
+  const policyIds = ["policy-one", "policy-two"];
+
+  await store.pool.query(
+    `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+    [firstAgentId, walletId, policyIds],
+  );
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+      [secondAgentId, walletId, policyIds],
+    ),
+    /agent_wallets_wallet_key/,
+  );
+});
+
+test("a deposit with a malformed hash is refused", async (t) => {
+  const { store } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.deposits (agent_id, tx_hash, amount_micro_usd) VALUES ($1, $2, $3)`,
+      [agentId, "not-a-hash", 1_000_000],
+    ),
+    /deposits_tx_format/,
+  );
+});
