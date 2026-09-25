@@ -75,7 +75,8 @@ reason; it never re-derives the rule. `LOCK_REASONS` mirrors core's `features/st
 The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (false today).
 `spendLimitsSchema` is `agentConfigSchema.spend`, bounded like core's `SPEND_BOUNDS`, and requires
 that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of
-`PUT /v1/studio/agents/:id/limits`: `expectedVersion`, `perCallAusd` and `perDayAusd`.
+`PUT /v1/studio/agents/:id/limits`: `perCallAusd` and `perDayAusd`, with no version, because saving
+limits keeps the configuration version.
 
 ## Local trading integration
 

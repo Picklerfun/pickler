@@ -6,9 +6,11 @@ import {
   LOCK_REASONS as CORE_LOCK_REASONS,
   PilotError,
   assertConfig,
+  assertSpendLimits,
   type AgentConfig,
   type AgentRecord,
   type ScheduleReadiness,
+  type SpendLimits,
   type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
@@ -54,6 +56,7 @@ function fixture({
   const reads: string[] = [];
   const keys = new Map<string, string>();
   const updates: { expectedVersion: number; spend: unknown }[] = [];
+  const spends: SpendLimits[] = [];
   const scope = (id: string) => ({ tenantId: "trusted", agentId: id });
 
   const directory: StudioDirectory = {
@@ -106,10 +109,23 @@ function fixture({
       scheduleEnabled: false,
       nextDueAt: null,
     };
-  const readiness: ScheduleReadiness = { connectionsChecked: ready, manualSucceeded: ready };
+  // Like the store: the manual run (when `ready`) happened at version 1, and readiness is per
+  // configuration version, so any version bump clears it.
+  const readinessOf = (id: string): ScheduleReadiness => {
+    const current = ready && record(id).version === 1;
+    return { connectionsChecked: current, manualSucceeded: current };
+  };
   const repository = {
     agent: async (s: { agentId: string }) => record(s.agentId),
-    readiness: async () => readiness,
+    readiness: async (s: { agentId: string }) => readinessOf(s.agentId),
+    updateSpend: async (s: { agentId: string }, spend: SpendLimits) => {
+      assertSpendLimits(spend);
+      spends.push(spend);
+      const current = record(s.agentId);
+      const next = { ...current, config: { ...current.config, spend } };
+      records.set(s.agentId, next);
+      return next;
+    },
     updateConfig: async (s: { agentId: string }, expectedVersion: number, config: AgentConfig) => {
       const current = record(s.agentId);
       if (current.version !== expectedVersion) {
@@ -121,8 +137,8 @@ function fixture({
       records.set(s.agentId, next);
       return next;
     },
-    schedule: async (_scope: unknown, enabled: boolean) => {
-      if (enabled && !ready) {
+    schedule: async (s: { agentId: string }, enabled: boolean) => {
+      if (enabled && !readinessOf(s.agentId).manualSucceeded) {
         throw new PilotError("NOT_READY", "Run once by hand");
       }
       scheduled.push(enabled);
@@ -158,7 +174,7 @@ function fixture({
       workspace: null,
     }),
   });
-  return { app, scheduled, created, reads, updates };
+  return { app, scheduled, created, reads, updates, spends };
 }
 
 const put = (body: unknown) => ({
@@ -337,50 +353,67 @@ test("a retried create replays the original agent even though it is still unfund
   assert.deepEqual(await another.json(), { error: "UNFUNDED_AGENT" });
 });
 
-test("limits are written through the config update, with its version check", async () => {
-  const { app, updates } = fixture({ balances: { [FIRST]: 10 } });
+test("saving limits keeps the version, the schedule lock open and readiness", async () => {
+  const { app, spends, updates, scheduled } = fixture({ balances: { [FIRST]: 10 } });
 
   const response = await app.request(
     `/agents/${FIRST}/limits`,
-    put({ expectedVersion: 1, perCallAusd: 5, perDayAusd: 50 }),
+    put({ perCallAusd: 5, perDayAusd: 50 }),
   );
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(body.version, 2);
+  assert.equal(body.version, 1);
   assert.deepEqual(body.config.spend, { perCallAusd: 5, perDayAusd: 50 });
-  assert.deepEqual(updates, [{ expectedVersion: 1, spend: { perCallAusd: 5, perDayAusd: 50 } }]);
+  assert.deepEqual(spends, [{ perCallAusd: 5, perDayAusd: 50 }]);
+  assert.deepEqual(updates, []);
 
   const agent = await (await app.request(`/agents/${FIRST}`)).json();
 
+  assert.equal(agent.version, 1);
   assert.deepEqual(agent.spend, { perCallAusd: 5, perDayAusd: 50 });
   assert.equal(agent.spendEnforced, false);
+  assert.deepEqual(agent.canSchedule, { ok: true, reason: null });
 
-  const stale = await app.request(
-    `/agents/${FIRST}/limits`,
-    put({ expectedVersion: 1, perCallAusd: 6, perDayAusd: 60 }),
+  const on = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
+
+  assert.equal(on.status, 200);
+  assert.deepEqual(scheduled, [true]);
+});
+
+test("a config change after saving limits still bumps the version and needs a new run", async () => {
+  const { app } = fixture({ balances: { [FIRST]: 10 } });
+  await app.request(`/agents/${FIRST}/limits`, put({ perCallAusd: 5, perDayAusd: 50 }));
+  const { config } = await (await app.request(`/agents/${FIRST}`)).json();
+
+  const response = await app.request(
+    `/agents/${FIRST}/config`,
+    put({ expectedVersion: 1, config }),
   );
 
-  assert.equal(stale.status, 409);
-  assert.deepEqual(await stale.json(), { error: "CONFLICT" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).version, 2);
+  const agent = await (await app.request(`/agents/${FIRST}`)).json();
+  assert.deepEqual(agent.canSchedule, { ok: false, reason: "first_run" });
 });
 
 test("limits outside their bounds, or a day below a call, are refused before any write", async () => {
-  const { app, updates } = fixture();
+  const { app, spends } = fixture();
 
   for (const body of [
-    { expectedVersion: 1, perCallAusd: 0, perDayAusd: 10 },
-    { expectedVersion: 1, perCallAusd: 1_001, perDayAusd: 10_000 },
-    { expectedVersion: 1, perCallAusd: 5, perDayAusd: 10_001 },
-    { expectedVersion: 1, perCallAusd: 50, perDayAusd: 49 },
-    { perCallAusd: 5, perDayAusd: 50 },
-    { expectedVersion: 1, perCallAusd: 5, perDayAusd: 50, tenantId: "victim" },
+    { perCallAusd: 0, perDayAusd: 10 },
+    { perCallAusd: 1_001, perDayAusd: 10_000 },
+    { perCallAusd: 5, perDayAusd: 10_001 },
+    { perCallAusd: 50, perDayAusd: 49 },
+    { perCallAusd: 5 },
+    { perCallAusd: 5, perDayAusd: 50, expectedVersion: 1 },
+    { perCallAusd: 5, perDayAusd: 50, tenantId: "victim" },
   ]) {
     const response = await app.request(`/agents/${FIRST}/limits`, put(body));
 
     assert.equal(response.status, 400, JSON.stringify(body));
   }
-  assert.deepEqual(updates, []);
+  assert.deepEqual(spends, []);
 });
 
 test("an agent without limits says so, and that limits are not enforced", async () => {

@@ -203,3 +203,44 @@ test("policy config updates are versioned and do not rewrite historical decision
   const next = await store.enqueue(scope, "new-policy", null, 13);
   assert.deepEqual(next.config.uncertaintyPolicy, changed.uncertaintyPolicy);
 });
+
+test("saving spend limits keeps the version, the schedule and readiness; a config change does not", async (t) => {
+  const store = await setup(t);
+  await store.setConnectionsChecked(true);
+  await store.enqueue(scope, "manual", null, 0);
+  const manual = (await store.claim(1))!;
+  await store.finish(manual, abstention, null, 2);
+  await store.schedule(scope, true, 3);
+  const before = await store.agent(scope);
+
+  const saved = await store.updateSpend(scope, { perCallAusd: 5, perDayAusd: 50 });
+
+  assert.equal(saved.version, before.version);
+  assert.deepEqual(saved.config, { ...before.config, spend: { perCallAusd: 5, perDayAusd: 50 } });
+  const after = await store.agent(scope);
+  assert.equal(after.version, before.version);
+  assert.equal(after.scheduleEnabled, true);
+  assert.equal(after.nextDueAt, before.nextDueAt);
+  assert.deepEqual(await store.readiness(scope), {
+    connectionsChecked: true,
+    manualSucceeded: true,
+  });
+
+  await store.updateSpend(scope, { perCallAusd: 6, perDayAusd: 60 });
+  assert.deepEqual((await store.agent(scope)).config.spend, { perCallAusd: 6, perDayAusd: 60 });
+
+  await assert.rejects(store.updateSpend(scope, { perCallAusd: 50, perDayAusd: 49 }), {
+    code: "INVALID_INPUT",
+  });
+  await assert.rejects(
+    store.updateSpend({ ...scope, tenantId: "beta" }, { perCallAusd: 5, perDayAusd: 50 }),
+    { code: "NOT_FOUND" },
+  );
+
+  const changed = await store.updateConfig(scope, before.version, after.config);
+
+  assert.equal(changed.version, before.version + 1);
+  assert.equal(changed.scheduleEnabled, false);
+  // This runtime-only agent's connection check is global; the manual run is per version.
+  assert.equal((await store.readiness(scope)).manualSucceeded, false);
+});

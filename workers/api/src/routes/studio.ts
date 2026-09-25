@@ -249,20 +249,15 @@ export function studioRoutes(services: StudioServices) {
       agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, body.config)),
     );
   });
-  // Spend limits live on the config and go through its update, version check included. Stored and
-  // shown; not enforced until the trading work (`spendEnforced` says so).
+  // Spend limits write only `config.spend`: the version, the schedule and readiness stay, because
+  // the deposit sheet sets them right before the schedule is turned on. Stored and shown; not
+  // enforced until the trading work (`spendEnforced` says so).
   api.put("/agents/:id/limits", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
     const scope = await services.directory.agentScope(current, c.req.param("id"));
     const body = limitsUpdateSchema.parse(await c.req.json());
-    const record = await repo.agent(scope);
-    const config = {
-      ...record.config,
-      spend: { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd },
-    };
-    return c.json(
-      agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, config)),
-    );
+    const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
+    return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
   });
   api.get("/agents/:id/runs", async (c) => {
     const current = await access.authorize(c.get("principal"));

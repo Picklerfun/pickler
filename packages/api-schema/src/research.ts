@@ -166,10 +166,12 @@ export const runRequestSchema = z
   .object({ marketId: z.string().regex(/^\d+$/).optional() })
   .strict();
 export const scheduleSchema = z.object({ enabled: z.boolean() }).strict();
-/** `PUT /v1/studio/agents/:id/limits`: written through the config update, with its version check. */
+/**
+ * `PUT /v1/studio/agents/:id/limits`. No version: saving limits writes only `config.spend` and
+ * keeps the version, the schedule and readiness.
+ */
 export const limitsUpdateSchema = z
   .object({
-    expectedVersion: z.number().int().positive(),
     perCallAusd: z.number().min(1).max(1_000),
     perDayAusd: z.number().min(1).max(10_000),
   })

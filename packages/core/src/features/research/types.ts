@@ -79,7 +79,8 @@ export const SPEND_BOUNDS = {
 /** False until the trading work enforces `spend`; the DTO says so rather than implying a guard. */
 export const SPEND_ENFORCED = false;
 
-function assertSpend(spend: SpendLimits): void {
+/** Bounds and the day ≥ call rule; `assertConfig` and `updateSpend` both apply it. */
+export function assertSpendLimits(spend: SpendLimits): void {
   const within = (value: unknown, bounds: { min: number; max: number }) =>
     typeof value === "number" &&
     Number.isFinite(value) &&
@@ -334,6 +335,11 @@ export interface ResearchRepository {
   agents(tenantId: string): Promise<AgentRecord[]>;
   agent(scope: Scope): Promise<AgentRecord>;
   updateConfig(scope: Scope, expectedVersion: number, config: AgentConfig): Promise<AgentRecord>;
+  /**
+   * Writes only `config.spend`. Unlike `updateConfig` it keeps the version, the schedule and so
+   * readiness: spend limits do not change how the agent researches.
+   */
+  updateSpend(scope: Scope, spend: SpendLimits): Promise<AgentRecord>;
   pause(scope: Scope, paused: boolean): Promise<void>;
   schedule(scope: Scope, enabled: boolean, now: number): Promise<void>;
   /** The facts `isReadyToSchedule` reads, for the agent's current configuration version. */
@@ -492,7 +498,7 @@ export function assertConfig(config: AgentConfig): void {
     }
   }
   if (config.spend !== undefined) {
-    assertSpend(config.spend);
+    assertSpendLimits(config.spend);
   }
   if (config.skills) {
     if (config.skills.length > MAX_SKILLS) {

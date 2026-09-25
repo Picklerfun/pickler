@@ -102,6 +102,8 @@ call, 1–10000 a day, finite) and refuses a day below a call. It is stored and 
 `SPEND_ENFORCED` is false. The budget ledger is not used because its categories are monthly caps
 with no per-call ceiling and no daily period. The trading work enforces these limits, through a
 per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
+`ResearchRepository.updateSpend(scope, spend)` writes only `config.spend`, checked by
+`assertSpendLimits`. Unlike `updateConfig`, it keeps the version, the schedule and readiness.
 `StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
 idempotency key made, so a retry can be recognised before any lock is applied.
 

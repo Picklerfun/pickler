@@ -169,10 +169,10 @@ Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
 
-`PUT /agents/:id/limits { expectedVersion, perCallAusd, perDayAusd }` writes `config.spend`
-through `repository.updateConfig`. It has the same version check as `PUT /config` (409 `CONFLICT`
-on a stale version) and the same effects: the version goes up, the schedule turns off, and a new
-manual run is needed before it can be scheduled again. The agent DTO answers `spend` and
+`PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
+`repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,
+because the deposit sheet sets limits right before the schedule is turned on and limits do not
+change how the agent researches. `PUT /config` still bumps the version as before. The agent DTO answers `spend` and
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 

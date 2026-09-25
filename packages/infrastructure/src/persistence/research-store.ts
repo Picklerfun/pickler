@@ -9,12 +9,14 @@ import {
   effectivePlugins,
   PilotError,
   assertConfig,
+  assertSpendLimits,
   assertCanQueue,
   assertCanSchedule,
   nextOccurrence,
   type AgentConfig,
   type AgentRecord,
   type ScheduleReadiness,
+  type SpendLimits,
   type Scope,
   type RunRecord,
   type Decision,
@@ -226,6 +228,22 @@ export class PostgresResearchStore implements ResearchRepository {
       const [updated] = await tx
         .update(agents)
         .set({ config, version: agent.version + 1, scheduleEnabled: false, nextDueAt: null })
+        .where(agentScope(scope))
+        .returning();
+      return updated!;
+    });
+  }
+
+  async updateSpend(scope: Scope, spend: SpendLimits): Promise<AgentRecord> {
+    assertSpendLimits(spend);
+    const value = JSON.stringify({ perCallAusd: spend.perCallAusd, perDayAusd: spend.perDayAusd });
+    return this.db.transaction(async (tx) => {
+      await this.getAgent(scope, tx, true);
+      // Only the spend key: version, schedule and next due stay, so readiness for this
+      // configuration version survives.
+      const [updated] = await tx
+        .update(agents)
+        .set({ config: sql`jsonb_set(${agents.config}, '{spend}', ${value}::jsonb)` })
         .where(agentScope(scope))
         .returning();
       return updated!;
