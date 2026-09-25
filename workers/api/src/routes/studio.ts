@@ -14,6 +14,16 @@ import {
   canSchedule,
   isReadyToSchedule,
   SPEND_ENFORCED,
+  AgentWalletNotFoundError,
+  DepositAlreadyRecordedError,
+  DepositNotSendableError,
+  DepositsUnavailableError,
+  InvalidDepositAmountError,
+  InvalidSignedActivityError,
+  NoCustodyAccountError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+  type createCustodyService,
   type AgentDrafter,
   type AgentWallet,
   type Lock,
@@ -60,7 +70,35 @@ export interface StudioServices {
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
   /** The AUSD display balance of an address. A read that fails throws; it is never zero. */
   balances: { read(address: string): Promise<number> };
+  /**
+   * The passkey custody service, per request, for deposits. Absent where Turnkey is not
+   * configured; the deposit routes then answer 503 and nothing else changes.
+   */
+  custody?: (
+    requestId: string,
+  ) => Pick<ReturnType<typeof createCustodyService>, "prepareDeposit" | "confirmDeposit">;
 }
+
+/** The request the browser stamped, in the shape Turnkey's own stamper produces. */
+const signedActivitySchema = z
+  .object({
+    url: z.string().min(1).max(512),
+    body: z.string().min(1).max(8192),
+    stamp: z
+      .object({
+        stampHeaderName: z.string().min(1).max(64),
+        stampHeaderValue: z.string().min(1).max(8192),
+      })
+      .strict(),
+  })
+  .strict();
+
+/** Whole AUSD; core decides which amounts are offered. */
+const depositAmountSchema = z.number().int().positive();
+const depositPrepareSchema = z.object({ amountAusd: depositAmountSchema }).strict();
+const depositConfirmSchema = z
+  .object({ amountAusd: depositAmountSchema, signed: signedActivitySchema })
+  .strict();
 
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
@@ -78,6 +116,40 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
     return 503;
   }
   return 409;
+}
+
+/** The deposit ceremony's failures, as this route family's bare codes. */
+function custodyFailure(
+  error: unknown,
+): { code: string; status: 400 | 404 | 409 | 502 | 503 } | null {
+  if (error instanceof InvalidDepositAmountError) {
+    return { code: "INVALID_INPUT", status: 400 };
+  }
+  if (error instanceof InvalidSignedActivityError) {
+    return { code: "INVALID_SIGNED_ACTIVITY", status: 400 };
+  }
+  if (error instanceof SignedActivityRejectedError) {
+    return { code: "SIGNED_ACTIVITY_REJECTED", status: 400 };
+  }
+  if (error instanceof AgentWalletNotFoundError) {
+    return { code: "AGENT_WALLET_NOT_FOUND", status: 404 };
+  }
+  if (error instanceof NoCustodyAccountError) {
+    return { code: "NO_CUSTODY_ACCOUNT", status: 409 };
+  }
+  if (error instanceof DepositNotSendableError) {
+    return { code: "DEPOSIT_NOT_SENDABLE", status: 409 };
+  }
+  if (error instanceof DepositAlreadyRecordedError) {
+    return { code: "DEPOSIT_ALREADY_RECORDED", status: 409 };
+  }
+  if (error instanceof SigningServiceUnavailableError) {
+    return { code: "SIGNING_UNAVAILABLE", status: 502 };
+  }
+  if (error instanceof DepositsUnavailableError) {
+    return { code: "DEPOSITS_UNAVAILABLE", status: 503 };
+  }
+  return null;
 }
 
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
@@ -103,6 +175,10 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof PilotError) {
       return c.json({ error: error.code }, pilotStatus(error.code));
+    }
+    const custody = custodyFailure(error);
+    if (custody) {
+      return c.json({ error: custody.code }, custody.status);
     }
     return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
   });
@@ -258,6 +334,51 @@ export function studioRoutes(services: StudioServices) {
     const body = limitsUpdateSchema.parse(await c.req.json());
     const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
     return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
+  });
+  /** The custody service for this request, or 503 where Turnkey is not composed. */
+  function deposits(requestId: string) {
+    if (!services.custody) {
+      throw new DepositsUnavailableError();
+    }
+    return services.custody(requestId);
+  }
+
+  // Funding an agent (docs/specs/studio-create-and-fund-v1.md §6.2): prepare → passkey stamp in
+  // the browser → confirm, which forwards, broadcasts and records. The agent must be the caller's
+  // (agentScope); core checks again that its wallet is theirs and that the stamped transfer pays
+  // exactly this amount to it.
+  api.post("/agents/:id/deposit/prepare", async (c) => {
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const productId = c.req.param("id");
+    await services.directory.agentScope(current, productId);
+    const { amountAusd } = depositPrepareSchema.parse(await c.req.json());
+    const unsigned = await deposits(c.get("requestId")).prepareDeposit(
+      principal.id,
+      productId,
+      amountAusd,
+    );
+    return c.json({
+      url: unsigned.url,
+      body: unsigned.body,
+      timestampMs: unsigned.timestampMs,
+      organizationId: unsigned.organizationId,
+      amountMicroUsd: Number(unsigned.amountMicroUsd),
+    });
+  });
+  api.post("/agents/:id/deposit/confirm", async (c) => {
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const productId = c.req.param("id");
+    await services.directory.agentScope(current, productId);
+    const { amountAusd, signed } = depositConfirmSchema.parse(await c.req.json());
+    const { txHash } = await deposits(c.get("requestId")).confirmDeposit(
+      principal.id,
+      productId,
+      amountAusd,
+      signed,
+    );
+    return c.json({ txHash });
   });
   api.get("/agents/:id/runs", async (c) => {
     const current = await access.authorize(c.get("principal"));

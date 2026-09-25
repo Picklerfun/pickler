@@ -219,3 +219,39 @@ export interface AgentWalletRepository {
   saveApprovedPolicies(userId: string, walletId: string, policyIds: string[]): Promise<void>;
   saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }): Promise<void>;
 }
+
+/** What an unsigned transaction does, read back so a confirm can check it against the request. */
+export interface TransferInspection {
+  chainId: number;
+  /** The contract called — the token, for an ERC-20 transfer. */
+  to: string;
+  /** Native value sent alongside; a deposit sends none. */
+  value: bigint;
+  gas: bigint;
+  /** The `transfer` recipient and amount in base units, decoded from the calldata. */
+  recipient: string;
+  amount: bigint;
+}
+
+/**
+ * The chain side of a deposit: AUSD on the configured network. Core decides what may be sent and
+ * to whom; this port builds, reads back and broadcasts the transaction and knows nothing of the
+ * person or the agent.
+ */
+export interface DepositChain {
+  /** The network deposits move on and the token they move, from `@pickler/chain`. */
+  readonly chainId: number;
+  readonly token: string;
+  readonly decimals: number;
+  /**
+   * The unsigned EIP-1559 `transfer(to, amount)` from `from`, serialized with a `0x` prefix. A
+   * failed gas estimate is `DepositNotSendableError`, never a guessed limit.
+   */
+  prepareTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
+  /** Null unless the transaction is an EIP-1559 call to an ERC-20 `transfer`, and nothing more. */
+  inspectTransfer(unsignedTransaction: string): TransferInspection | null;
+  /** Sends a signed transaction and answers its hash. A refusal throws; nothing is invented. */
+  broadcast(signedTransaction: string): Promise<string>;
+  /** Drops a cached balance, so the next read sees the deposit. */
+  forgetBalance(address: string): void;
+}

@@ -107,6 +107,15 @@ export {
   type TokenBalanceReader,
 } from "./chain/erc20.js";
 export {
+  broadcastTransaction,
+  buildTransferTx,
+  createAusdDepositChain,
+  inspectTransfer,
+  type AusdDepositChainConfig,
+  type TransferTx,
+  type TransferTxInput,
+} from "./chain/deposit-tx.js";
+export {
   buildSiweMessage,
   createSignatureVerifier,
   MalformedMessageError,

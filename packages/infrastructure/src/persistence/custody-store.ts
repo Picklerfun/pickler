@@ -4,7 +4,11 @@
 // DELETE ... RETURNING instead of a Redis get-then-delete.
 
 import type { Pool } from "pg";
-import { AgentWalletNotFoundError, DelegatedUserExistsError } from "@pickler/core";
+import {
+  AgentWalletNotFoundError,
+  DelegatedUserExistsError,
+  DepositAlreadyRecordedError,
+} from "@pickler/core";
 import type {
   AgentWallet,
   AgentWalletRepository,
@@ -287,10 +291,19 @@ export class PostgresCustodyStore
     txHash: string;
     amountMicroUsd: bigint;
   }): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO wallets.deposits (agent_id, tx_hash, amount_micro_usd) VALUES ($1, $2, $3)`,
-      [input.agentId, input.txHash.toLowerCase(), input.amountMicroUsd.toString()],
-    );
+    try {
+      await this.pool.query(
+        `INSERT INTO wallets.deposits (agent_id, tx_hash, amount_micro_usd) VALUES ($1, $2, $3)`,
+        [input.agentId, input.txHash.toLowerCase(), input.amountMicroUsd.toString()],
+      );
+    } catch (error) {
+      // Only the hash's unique index: any other failure is not "already recorded".
+      const { code, constraint } = error as { code?: string; constraint?: string };
+      if (code === "23505" && constraint === "deposits_tx_key") {
+        throw new DepositAlreadyRecordedError();
+      }
+      throw error;
+    }
   }
 
   async put(challenge: string, record: StoredChallenge): Promise<void> {

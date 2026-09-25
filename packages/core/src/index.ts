@@ -175,6 +175,16 @@ export {
   MONAD_ACCOUNT_PATH,
 } from "./features/wallets/domain/passkey.js";
 export {
+  DEPOSIT_AMOUNTS_AUSD,
+  DepositAlreadyRecordedError,
+  DepositNotSendableError,
+  DepositsUnavailableError,
+  InvalidDepositAmountError,
+  isDepositAmount,
+  MAX_DEPOSIT_GAS,
+  type DepositAmountAusd,
+} from "./features/wallets/domain/deposit.js";
+export {
   agentWalletPolicies,
   delegatedSelfDeletePolicy,
   DELEGATED_CREDENTIAL_ACTIVITY_TYPES,
@@ -189,10 +199,12 @@ export type {
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
+  DepositChain,
   Passkey,
   RegistrationInput,
   StoredChallenge,
   SubOrganizationCreator,
+  TransferInspection,
   UnsignedActivity,
 } from "./features/wallets/ports/custody.js";
 export {

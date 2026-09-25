@@ -2,7 +2,11 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import { DelegatedUserExistsError, type RegistrationInput } from "@pickler/core";
+import {
+  DelegatedUserExistsError,
+  DepositAlreadyRecordedError,
+  type RegistrationInput,
+} from "@pickler/core";
 import { PostgresCustodyStore } from "../src/persistence/custody-store.js";
 import { createTestStore } from "./database.js";
 
@@ -562,4 +566,20 @@ test("a deposit hash is lowercased before it is stored", async (t) => {
     [agentId],
   );
   assert.deepEqual(rows, [{ tx_hash: hash.toLowerCase(), amount_micro_usd: "2500000" }]);
+});
+
+test("recording the same deposit hash twice is DepositAlreadyRecordedError", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"cd".repeat(32)}`;
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 10_000_000n });
+
+  await assert.rejects(
+    custody.saveDeposit({
+      agentId,
+      txHash: hash.toUpperCase().replace("0X", "0x"),
+      amountMicroUsd: 10_000_000n,
+    }),
+    DepositAlreadyRecordedError,
+  );
 });

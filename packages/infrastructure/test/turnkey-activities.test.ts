@@ -14,6 +14,7 @@ const _resultKeys: (keyof TurnkeyApiTypes["v1Result"])[] = [
   "createUsersResult",
   "createWalletResult",
   "createPoliciesResult",
+  "signTransactionResult",
 ];
 void _resultKeys;
 const _fields: [
@@ -21,7 +22,8 @@ const _fields: [
   TurnkeyApiTypes["v1CreateWalletResult"]["walletId"],
   TurnkeyApiTypes["v1CreateWalletResult"]["addresses"],
   TurnkeyApiTypes["v1CreatePoliciesResult"]["policyIds"],
-] = [[], "", [], []];
+  TurnkeyApiTypes["v1SignTransactionResult"]["signedTransaction"],
+] = [[], "", [], [], ""];
 void _fields;
 
 // Every activity type the delegated user's credential DENY names is one Turnkey defines: a

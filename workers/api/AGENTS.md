@@ -180,6 +180,20 @@ never writes `spend`: the store keeps the stored limits and ignores any `spend` 
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 
+`POST /agents/:id/deposit/prepare { amountAusd }` answers `{ url, body, timestampMs,
+organizationId, amountMicroUsd }`, the sign_transaction activity the passkey stamps.
+`POST /agents/:id/deposit/confirm { amountAusd, signed }` answers `{ txHash }`. Both need manage
+rights and the agent's `agentScope`. The decisions are core's `prepareDeposit` and
+`confirmDeposit`, reached through `services.studio.custody`. That is the same per-request custody
+service `/v1/signing` uses and is present only when Turnkey is composed; without it the routes
+answer 503 `DEPOSITS_UNAVAILABLE`. `container.ts` gives the service `createAusdDepositChain` on
+`CHAIN_ID` and `MONAD_RPC_URL`, forgetting through the per-isolate AUSD reader. Failures are bare
+codes: 400 `INVALID_INPUT`, 400 `INVALID_SIGNED_ACTIVITY` (the stamped transfer is not this amount
+to this agent, or the body differs), 400 `SIGNED_ACTIVITY_REJECTED`, 404 `AGENT_WALLET_NOT_FOUND`,
+409 `NO_CUSTODY_ACCOUNT`, 409 `DEPOSIT_NOT_SENDABLE` (the gas estimate failed), 409
+`DEPOSIT_ALREADY_RECORDED` and 502 `SIGNING_UNAVAILABLE`. A refused broadcast is 500 and records
+nothing.
+
 The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.
 
 Use `wrangler.staging.jsonc` for the unified staging API. It has no Durable Object binding or

@@ -165,6 +165,20 @@ private query `schedule` uses. `PostgresStudioDirectory.createdWithKey` is a rea
 the same workspace and request key `createAgent` replays from. `PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
+
+`src/chain/deposit-tx.ts` is the chain side of a deposit and implements core's `DepositChain`. It
+uses the existing `viem` dependency only to serialize and parse transactions and to hash; the RPC
+stays `createJsonRpc`. `buildTransferTx` reads the pending nonce, `eth_maxPriorityFeePerGas`
+(1 gwei when the method fails), the latest block's base fee and a gas estimate. It builds an EIP-1559
+`transfer` with `maxFeePerGas = 2 × base + tip` and the estimate padded by a fifth, rounded up. A
+failed estimate is core's `DepositNotSendableError` with the RPC error as its cause, never a
+guessed limit. `inspectTransfer` answers null unless the input is an unsigned EIP-1559 call with no
+access list whose data is exactly `transfer(address,uint256)`. `broadcastTransaction` adds the `0x`
+Turnkey omits, sends it with `eth_sendRawTransaction` and requires the node's hash to equal the
+locally computed one. `createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these
+for AUSD from `@pickler/chain` and forgets through the studio's balance reader.
+`PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
+`DepositAlreadyRecordedError`.
 `updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
 `updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
 at that same version would otherwise drop them.
@@ -178,7 +192,8 @@ and `sign_transaction` bodies, each typed against @turnkey/http with its `type` 
 `AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Each builder takes an optional
 `timestampMs` so a confirm can rebuild the prepared body byte for byte. Nothing here is stamped by
 Pickler. The same test file pins core's `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` to the SDK's
-`v1ActivityType` union. `test/turnkey-activities.test.ts` also pins the result keys core reads.
+`v1ActivityType` union. `test/turnkey-activities.test.ts` also pins the result keys core reads, including
+`signTransactionResult.signedTransaction`.
 
 `PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`

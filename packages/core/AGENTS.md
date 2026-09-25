@@ -168,6 +168,28 @@ and refuses the second (`DelegatedUserExistsError`); the confirm then calls
 refusing. The second user has no policy naming it, so it can sign nothing, but nothing removes it
 automatically.
 
+## Deposits
+
+`createCustodyService` also funds an agent (spec §6.2): `prepareDeposit(userId, agentId,
+amountAusd)` and `confirmDeposit(userId, agentId, amountAusd, signed)`. The amount must be one of
+`DEPOSIT_AMOUNTS_AUSD` (10, 25, 50, 100; else `InvalidDepositAmountError`). The agent's wallet
+comes from `findAgentWallet` and must also be the caller's own through `findOwnedAgentWallet`
+(else `AgentWalletNotFoundError`), whatever the route already checked. Prepare asks the
+`DepositChain` port (optional dep `deposits`; absent is `DepositsUnavailableError`) for the
+unsigned transfer from the master address and wraps it in `signTransaction` with the master as
+`signWith`. It answers the activity plus `amountMicroUsd`.
+
+Confirm cannot rebuild the transaction, because its nonce and fees move. It reads the stamped
+body's `parameters.unsignedTransaction` and has the port inspect it. It refuses with
+`InvalidSignedActivityError` before forwarding unless the chain id and token are the port's, the
+native value is zero, the gas limit is at most `MAX_DEPOSIT_GAS` (Monad charges the limit), and
+the recipient and amount are this agent's wallet and this deposit. It then rebuilds the whole
+activity around that transaction with the stamped timestamp and compares bytes. It forwards with
+only `ACTIVITY_TYPE_SIGN_TRANSACTION_V2` allowed and reads `signTransactionResult.signedTransaction`.
+It broadcasts through the port, forgets the agent's cached balance, then calls `saveDeposit`. A
+broadcast failure propagates and records nothing. `DepositNotSendableError` (a failed gas
+estimate) and `DepositAlreadyRecordedError` (a hash recorded twice) come from adapters.
+
 ## Markets
 
 `features/markets` owns the perpetuals surface: a market is a grid of price levels away from the mark

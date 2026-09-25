@@ -15,6 +15,12 @@ import {
   deviceTypeFromTransports,
 } from "../domain/passkey.js";
 import { agentWalletPolicies, delegatedSelfDeletePolicy } from "../domain/agent-wallet-policies.js";
+import {
+  DepositsUnavailableError,
+  InvalidDepositAmountError,
+  isDepositAmount,
+  MAX_DEPOSIT_GAS,
+} from "../domain/deposit.js";
 import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
@@ -24,6 +30,7 @@ import type {
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
+  DepositChain,
   SubOrganizationCreator,
   UnsignedActivity,
 } from "../ports/custody.js";
@@ -102,6 +109,33 @@ function assertStampedAsPrepared(
   }
 }
 
+/**
+ * The `unsignedTransaction` a stamped sign_transaction body carries. Only read to be checked:
+ * the byte comparison afterwards proves it is the one the rest of the body was built around.
+ */
+function stampedUnsignedTransaction(signed: SignedActivityRequest): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(signed.body);
+  } catch {
+    throw new InvalidSignedActivityError("Signed body is not valid JSON");
+  }
+  const parameters =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)["parameters"]
+      : undefined;
+  const unsignedTransaction =
+    parameters && typeof parameters === "object" && !Array.isArray(parameters)
+      ? (parameters as Record<string, unknown>)["unsignedTransaction"]
+      : undefined;
+  if (typeof unsignedTransaction !== "string" || !unsignedTransaction) {
+    throw new InvalidSignedActivityError("Signed body carries no unsignedTransaction");
+  }
+  return unsignedTransaction;
+}
+
+const sameAddress = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
 function strings(value: unknown): string[] {
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string" && entry)) {
     return [];
@@ -123,6 +157,11 @@ export interface CustodyServiceDeps {
    * configured — then no delegated user can be created and the ceremony stops at its first step.
    */
   delegatedPublicKey: string | null;
+  /**
+   * AUSD on the configured chain, for deposits from the master wallet to an agent's. Absent where
+   * the chain is not composed; deposits then answer `DepositsUnavailableError`.
+   */
+  deposits?: DepositChain;
   /** Contracts the delegated user may sign to; core's VENUE_CONTRACTS, empty until trading. */
   venueContracts: readonly string[];
   rpId: string;
@@ -205,6 +244,39 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       policies.push(delegatedSelfDeletePolicy(delegatedUserId));
     }
     return policies;
+  }
+
+  /**
+   * What every deposit step needs, refused in the same order for prepare and confirm: a listed
+   * amount, a composed chain, the person's master wallet, and the agent's wallet — which must be
+   * one of this person's own, whatever the caller already checked about the agent.
+   */
+  async function depositContext(userId: string, agentId: string, amountAusd: number) {
+    if (!isDepositAmount(amountAusd)) {
+      throw new InvalidDepositAmountError();
+    }
+    const chain = deps.deposits;
+    if (!chain) {
+      throw new DepositsUnavailableError();
+    }
+    const account = await deps.repository.findByUserId(userId);
+    if (!account) {
+      throw new NoCustodyAccountError();
+    }
+    const linked = await deps.agentWallets.findAgentWallet(agentId);
+    const wallet = linked
+      ? await deps.agentWallets.findOwnedAgentWallet(userId, linked.walletId)
+      : null;
+    if (!wallet) {
+      throw new AgentWalletNotFoundError();
+    }
+    return {
+      chain,
+      account,
+      wallet,
+      baseUnits: BigInt(amountAusd) * 10n ** BigInt(chain.decimals),
+      amountMicroUsd: BigInt(amountAusd) * 1_000_000n,
+    };
   }
 
   return {
@@ -559,6 +631,101 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       // the client sends.
       await deps.agentWallets.saveApprovedPolicies(userId, walletId, policyIds);
       return { policyIds };
+    },
+
+    /**
+     * Funding an agent, step one: the unsigned transfer from the master wallet to the agent's,
+     * wrapped in the sign_transaction activity the passkey stamps. The unsigned transaction
+     * travels inside the activity and comes back with the stamp; nothing is kept here, because
+     * its nonce and fees cannot be derived again at confirm.
+     */
+    async prepareDeposit(
+      userId: string,
+      agentId: string,
+      amountAusd: number,
+    ): Promise<UnsignedActivity & { amountMicroUsd: bigint }> {
+      const context = await depositContext(userId, agentId, amountAusd);
+      const unsignedTransaction = await context.chain.prepareTransfer({
+        from: context.account.address,
+        to: context.wallet.address,
+        amount: context.baseUnits,
+      });
+      const unsigned = deps.agentActivities.signTransaction({
+        subOrganizationId: context.account.subOrganizationId,
+        signWith: context.account.address,
+        unsignedTransaction,
+      });
+      return { ...unsigned, amountMicroUsd: context.amountMicroUsd };
+    },
+
+    /**
+     * Step two. The stamped transaction cannot be rebuilt (the nonce and fees have moved since
+     * prepare), so what it does is read back and checked instead — this chain, this token, no
+     * native value, a bounded gas limit, and exactly this amount to this agent's wallet — and
+     * then the whole activity is rebuilt around it and compared byte for byte, so nothing else in
+     * the body (the signer above all) differs from what prepare built. Only then is it forwarded,
+     * broadcast and recorded. A broadcast that fails records nothing.
+     */
+    async confirmDeposit(
+      userId: string,
+      agentId: string,
+      amountAusd: number,
+      signed: SignedActivityRequest,
+    ): Promise<{ txHash: string }> {
+      const context = await depositContext(userId, agentId, amountAusd);
+      const { chain, account, wallet } = context;
+      const unsignedTransaction = stampedUnsignedTransaction(signed);
+      const transfer = chain.inspectTransfer(unsignedTransaction);
+      if (!transfer) {
+        throw new InvalidSignedActivityError("The stamped transaction is not a token transfer");
+      }
+      if (transfer.chainId !== chain.chainId) {
+        throw new InvalidSignedActivityError("The stamped transaction is for another chain");
+      }
+      if (!sameAddress(transfer.to, chain.token)) {
+        throw new InvalidSignedActivityError("The stamped transaction moves another token");
+      }
+      if (transfer.value !== 0n) {
+        throw new InvalidSignedActivityError("The stamped transaction sends native value");
+      }
+      if (transfer.gas > MAX_DEPOSIT_GAS) {
+        throw new InvalidSignedActivityError("The stamped transaction reserves too much gas");
+      }
+      if (!sameAddress(transfer.recipient, wallet.address)) {
+        throw new InvalidSignedActivityError("The stamped transaction pays another wallet");
+      }
+      if (transfer.amount !== context.baseUnits) {
+        throw new InvalidSignedActivityError("The stamped transaction moves another amount");
+      }
+      assertStampedAsPrepared(signed, (timestampMs) =>
+        deps.agentActivities.signTransaction({
+          subOrganizationId: account.subOrganizationId,
+          signWith: account.address,
+          unsignedTransaction,
+          timestampMs,
+        }),
+      );
+      const activity = await deps.forwarder.forward(signed, {
+        organizationId: account.subOrganizationId,
+        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
+      });
+      const signedTransaction = completedResult(activity, "signTransactionResult")[
+        "signedTransaction"
+      ];
+      if (typeof signedTransaction !== "string" || !signedTransaction) {
+        throw new SigningServiceUnavailableError(
+          "Completed activity carried no signed transaction",
+        );
+      }
+      const txHash = await chain.broadcast(signedTransaction);
+      // Sent: whatever happens to the record, the next balance read must see the chain.
+      chain.forgetBalance(wallet.address);
+      await deps.agentWallets.saveDeposit({
+        agentId,
+        txHash,
+        amountMicroUsd: context.amountMicroUsd,
+      });
+      return { txHash };
     },
 
     getAccount: (userId: string) => deps.repository.findByUserId(userId),

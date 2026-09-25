@@ -28,6 +28,7 @@ import {
   createAddPasskeyActivityBuilder,
   createBalanceReader,
   createAusdBalanceReader,
+  createAusdDepositChain,
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
@@ -132,6 +133,13 @@ function custodyServices(
   const agentActivities = createActivityBuilders();
   const delegatedPublicKey = delegatedPublicKeyFrom(env);
   const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
+  // AUSD deposits from the master wallet, on the studio's chain and endpoint; a sent deposit
+  // drops the studio reader's cached balance for the agent's address.
+  const deposits = createAusdDepositChain({
+    chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
+    ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
+    balances: ausdBalances(env),
+  });
 
   return {
     authenticate,
@@ -151,6 +159,7 @@ function custodyServices(
         forwarder,
         agentActivities,
         agentWallets: store,
+        deposits,
         delegatedPublicKey,
         venueContracts: VENUE_CONTRACTS,
         rpId,
@@ -323,6 +332,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       repository,
       wallets: new PostgresCustodyStore(repository.pool),
       balances: ausdBalances(env),
+      ...(custody ? { custody: custody.custody } : {}),
       paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
