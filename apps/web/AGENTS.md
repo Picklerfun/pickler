@@ -382,6 +382,18 @@ welcome for a complete account (`account_found`, a sign-in on either rail). The 
 only when there is no session; the form column says "READING YOUR ACCOUNT…" until that is known,
 and a failed read offers "Try again" rather than a guess. `/passkey` is add-device only: the add-passkey ceremony and the device list.
 
+The account's passkey list, wherever a screen already has it, drives the second-passkey suggestion:
+`suggestSecondPasskey` (`features/auth/lib/second-passkey.ts`, pure, pinned in
+`second-passkey.test.ts`) is true only for a list that was read and holds exactly one — loading, a
+failed read and an empty list suggest nothing. `components/second-passkey.tsx` draws it ("You have
+one passkey…", a link to `/passkey`, and "Not now", which hides it for the browser session through
+`sessionStorage` and never for good). It shows on the signup's welcome right after the create step
+(`#welcome-second-passkey`, from the list the create step already reads for `enrolmentOutcome`),
+on the studio home (`#home-second-passkey`, from one read in the shell's load path, passed to
+`Home`; the staged home carries one fixture passkey so `studio-home-second-passkey` in
+`scripts/design/routes.mjs` measures it), and in `/account`'s security section next to the list
+(`#account-second-passkey`). No screen reads the list a second time for it.
+
 `/signup?state=passkey` (`signupPreviewFromSearch`, outside production only, gated on the build like
 `?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit
 needs a session with a profile and no wallet and the design harness has none;

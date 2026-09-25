@@ -218,6 +218,11 @@ shows their master wallet from the first visit, with or without agents — so it
   `/passkey` — sends them back to **the signup's passkey step**, which resumes with account and
   handle already done, and they stay there until the wallet exists. Signin ends at the same step
   for such an account. `/passkey` only adds devices to an account that has a wallet.
+- **One passkey is always a reason to add a second.** Wherever a screen already has the account's
+  passkey list (`GET /v1/signing/passkeys`) and it holds exactly one — the signup's welcome right
+  after the passkey is created, the studio home, `/account`'s passkeys — it suggests adding a second
+  one, linking to `/passkey`. A list still loading or not readable, or an empty one, suggests
+  nothing. It can be hidden for the browser session only, and stops for good at two passkeys.
 - **First agent:** the sub-organization exists, so the ceremony stamps `create_users` for the
   delegated user (non-root, in `users`), `create_wallet` for the agent's wallet and
   `create_policies` for its rules — **three prompts**; Turnkey has no batch-activity endpoint.

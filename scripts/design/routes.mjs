@@ -359,6 +359,16 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-schedule",
   },
+  // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
+  // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
+  {
+    path: "/studio?stage=live",
+    name: "studio-home-second-passkey",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: "#home-second-passkey",
+  },
   // The studio keeps its section in state, so /studio alone has only ever shown the overview —
   // three screens' worth of composition behind a rail click that no check has ever read. The one
   // most affected by a token change is always the one nothing measures. `?section=` opens each,

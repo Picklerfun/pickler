@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
 import { readSubOrganization, redirectFor } from "@/features/auth/lib/custody";
-import { wallet as readWallet } from "@/features/auth/lib/custody-api";
+import { passkeys as readPasskeys, wallet as readWallet } from "@/features/auth/lib/custody-api";
+import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
   studioApi,
@@ -168,6 +169,13 @@ export function Studio({
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
   const [preview, setPreview] = useState(staged !== null);
+  /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
+     read is `failed`, which suggests nothing and never fails the studio. */
+  const [passkeys, setPasskeys] = useState<PasskeysKnown>(
+    /* The staged home is the canvas's account: one passkey, so the design harness measures the
+       suggestion on a route it can reach. Nothing is read. */
+    staged ? { kind: "ready", passkeys: [{ id: "staged" }] } : { kind: "loading" },
+  );
   const requestKeys = useRef(new Map<string, string>());
 
   const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
@@ -261,14 +269,19 @@ export function Studio({
           return;
         }
         await studioApi("/onboard", { method: "POST" });
-        const [list, cat, opts] = await Promise.all([
+        const [list, cat, opts, keys] = await Promise.all([
           loadAgents(),
           studioApi<Catalog>("/market-categories"),
           studioApi<Options>("/options"),
+          readPasskeys(token).then(
+            (value): PasskeysKnown => ({ kind: "ready", passkeys: value }),
+            (): PasskeysKnown => ({ kind: "failed" }),
+          ),
         ]);
         if (!active) {
           return;
         }
+        setPasskeys(keys);
         if (list.length === 0) {
           router.replace("/studio/new");
           return;
@@ -439,6 +452,7 @@ export function Studio({
       <Home
         key={agentId}
         agent={agent}
+        passkeys={passkeys}
         agents={agents}
         canManage={canManage}
         preview={

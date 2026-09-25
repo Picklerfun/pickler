@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
+import { SecondPasskey } from "@/features/auth/components/second-passkey";
+import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
 import { accentVars } from "@/lib/accent";
 import { useNow } from "@/lib/now";
 import {
@@ -62,6 +64,7 @@ const PILL_TINT: Record<Pill, string> = {
  */
 export function Home({
   agent,
+  passkeys,
   agents,
   canManage,
   preview,
@@ -71,6 +74,8 @@ export function Home({
   onSwitch,
 }: {
   agent: Agent;
+  /** The shell's one read of the account's passkeys, for the second-passkey suggestion. */
+  passkeys: PasskeysKnown;
   agents: Agent[];
   canManage: boolean;
   /** Set for the design preview; nothing is read from or written to the API then. */
@@ -266,6 +271,10 @@ export function Home({
           {loadError || refreshError}
         </p>
       )}
+
+      <div className={styles.notice}>
+        <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
+      </div>
 
       <div className={styles.board}>
         <div className={styles.column}>

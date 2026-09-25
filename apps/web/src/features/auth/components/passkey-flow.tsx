@@ -35,6 +35,8 @@ import { useStudioHref } from "@/features/site/studio-href";
 import { getSupabase } from "../lib/supabase-browser";
 import { AuthHeader } from "./auth-header";
 import { PasskeySheet } from "./passkey-sheet";
+import { SecondPasskey } from "./second-passkey";
+import type { PasskeysKnown } from "../lib/second-passkey";
 import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
 import { AddPasskeyStep, type PasskeysRead } from "./steps/add-passkey-step";
@@ -215,6 +217,11 @@ function SignFlow({
   const [claimError, setClaimError] = useState<string | null>(null);
   /** A `create` ceremony on the passkey step ended without a wallet; the step offers it again. */
   const [createFailed, setCreateFailed] = useState(false);
+  /**
+   * The passkey list read right after the create ceremony, reused for the welcome screen's
+   * second-passkey suggestion. Loading everywhere else, which suggests nothing.
+   */
+  const [createdPasskeys, setCreatedPasskeys] = useState<PasskeysKnown>({ kind: "loading" });
   /** The account could not be read after a verified code; the code screen says so, with a retry. */
   const [readFailed, setReadFailed] = useState(false);
 
@@ -322,7 +329,9 @@ function SignFlow({
       // Only a credential the account actually holds marks this browser enrolled; one it does not
       // hold authorises nothing, so the person goes to /passkey, whose add-device screen lists
       // what the account really has and can add this device properly.
-      const outcome = enrolmentOutcome(created.credentialId, await passkeyList());
+      const list = await passkeyList();
+      setCreatedPasskeys(list ? { kind: "ready", passkeys: list } : { kind: "failed" });
+      const outcome = enrolmentOutcome(created.credentialId, list);
       if (outcome === "orphan") {
         router.push("/passkey");
         return true;
@@ -547,6 +556,9 @@ function SignFlow({
           )}
           {state.step === "welcome" && (
             <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
+          )}
+          {state.step === "welcome" && (
+            <SecondPasskey passkeys={createdPasskeys} id="welcome-second-passkey" />
           )}
           {/* One screen for both steps: `approve` is the same page with the rail moved on, and a
               form column that emptied itself behind the sheet would strand a failed ceremony. */}

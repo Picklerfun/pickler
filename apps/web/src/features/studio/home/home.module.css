@@ -344,6 +344,17 @@
   margin: 18px auto 0;
   padding: 0 22px;
 }
+/* The second-passkey suggestion's row, on the same measure as the wide alert above it. Empty when
+   there is nothing to suggest, so it takes no room then. */
+.notice {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 22px;
+}
+.notice:not(:empty) {
+  margin-top: 18px;
+}
 .board {
   flex: 1 1 auto;
   display: grid;
