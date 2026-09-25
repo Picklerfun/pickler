@@ -264,7 +264,10 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
 instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
-the rail has a Home item back. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
+the rail has a Home item back. `/studio?agent=<id>` opens on that agent (the creation flow's
+"Open the studio" links there); without it, or for an id that is not the person's, the studio opens
+on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
+is not a preview parameter, so it works in production. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
 `canSchedule`, `canCreateAnother`, `spend`, `spendEnforced`); the writes answer `AgentRecord`.
 
 `home/status.ts` is pure and pinned branch by branch in `studio-status.test.ts`: `homeStatus` turns

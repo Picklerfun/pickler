@@ -19,6 +19,7 @@ import {
 } from "./api";
 import { useNow } from "@/lib/now";
 import { startPolling } from "./lib/polling";
+import { selectAgent } from "./lib/select";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -139,8 +140,11 @@ type View = SectionKey | "home";
 export function Studio({
   openSection,
   stage,
+  openAgent,
 }: {
   openSection?: SectionKey | undefined;
+  /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
+  openAgent?: string | undefined;
   /** `?stage=`, outside production only: the home at one moment of the canvas's first run. */
   stage?: HomeStage | undefined;
 }) {
@@ -218,11 +222,8 @@ export function Studio({
           setOptions(fixture.options);
           /* The empty studio's fixture has neither, and indexing into it threw where the catch
              turned a crash into a blank screen with the catalog never set. */
-          const first = fixture.agents[0];
           const run = fixture.runs[0];
-          if (first) {
-            setAgentId(first.id);
-          }
+          setAgentId(selectAgent(fixture.agents, openAgent));
           if (run) {
             setRuns(fixture.runs);
             setRunId(run.id);
@@ -255,8 +256,7 @@ export function Studio({
         }
         setCatalog(cat);
         setOptions(opts);
-        const first = list[0];
-        setAgentId(first ? (first.productId ?? first.id) : null);
+        setAgentId(selectAgent(list, openAgent));
       } catch (caught) {
         if (active) {
           setBlocked(errorCode(caught) in BLOCKED ? errorCode(caught) : "");
@@ -267,7 +267,7 @@ export function Studio({
     return () => {
       active = false;
     };
-  }, [router, loadAgents, staged]);
+  }, [router, loadAgents, staged, openAgent]);
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
