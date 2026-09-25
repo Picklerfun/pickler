@@ -13,21 +13,24 @@ import {
   addPasskey,
   alreadyEnrolled,
   createWallet,
+  afterFailedCreate,
   describeCustodyFailure,
+  enrolmentOutcome,
   isEnrolledHere,
-  landing,
   markEnrolled,
-  hasSubOrganization,
   openChallenge,
   passkeyScreenFor,
+  readSubOrganization,
+  verifiedEvent,
   type CustodyDeps,
   type PasskeyScreen,
 } from "../lib/custody";
 import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
-import type { ChallengeOptionsDto, WalletDto } from "../lib/custody-api";
+import type { ChallengeOptionsDto, PasskeyDto, WalletDto } from "../lib/custody-api";
 import { describeDevice } from "../lib/device";
 import { INITIAL, next, rail } from "../lib/flow";
 import { ApiError, getProfile } from "../lib/pickler-api";
+import { Button } from "@pickler/ui";
 import type { Ceremony, SheetPhase } from "../lib/sheet";
 import { useStudioHref } from "@/features/site/studio-href";
 import { getSupabase } from "../lib/supabase-browser";
@@ -82,6 +85,29 @@ function custody(): CustodyDeps {
     api: CUSTODY_API,
     stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
   };
+}
+
+/** The account's passkeys, or null when the list could not be read — never `[]` for a failure. */
+async function passkeyList(): Promise<PasskeyDto[] | null> {
+  try {
+    return await readPasskeys((await session()).token);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * After a create ceremony failed: the wallet, if the sub-organization exists now anyway (another
+ * tab finished, and this one's authenticator refused a duplicate), else null. A read that fails is
+ * "no" here — the step stays, with its retry.
+ */
+async function walletAfterFailedCreate(): Promise<WalletDto | null> {
+  try {
+    const now = await readSubOrganization(async () => readWallet((await session()).token));
+    return afterFailedCreate(now !== null) === "advance" ? now : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A 404 from the profile or the wallet route is an ordinary state, not a failure. */
@@ -170,6 +196,8 @@ function SignFlow({
   const [claimError, setClaimError] = useState<string | null>(null);
   /** A `create` ceremony on the passkey step ended without a wallet; the step offers it again. */
   const [createFailed, setCreateFailed] = useState(false);
+  /** The account could not be read after a verified code; the code screen says so, with a retry. */
+  const [readFailed, setReadFailed] = useState(false);
 
   const device = describeDevice(userAgent());
 
@@ -217,9 +245,22 @@ function SignFlow({
     setSheet(running);
     void (async () => {
       try {
-        await runCeremony(current.ceremony, options);
-        setSheet({ ...running, phase: "ok" });
+        const orphan = await runCeremony(current.ceremony, options);
+        setSheet(orphan ? null : { ...running, phase: "ok" });
       } catch (caught) {
+        // A failed create is not always a missing wallet: another tab may have finished signup
+        // meanwhile, and this authenticator then refuses a duplicate through excludeCredentials.
+        // "Try again" would fail the same way for ever, so the account is read again first.
+        if (current.ceremony === "create") {
+          const now = await walletAfterFailedCreate();
+          if (now) {
+            setWallet(now);
+            setCreateFailed(false);
+            setSheet(null);
+            dispatch({ type: "passkey_created" });
+            return;
+          }
+        }
         // The new-device screen is shown on a hint that this browser holds no passkey. Refusing a
         // duplicate is the authenticator saying that hint was wrong, and it is the only thing in
         // reach that knows — so the mark is corrected and the person goes to the wallet they were
@@ -254,11 +295,22 @@ function SignFlow({
    * awaits: the challenge was fetched when the sheet opened, so the click on the sheet's confirm
    * is still the user activation Safari requires when the prompt is raised.
    */
-  async function runCeremony(ceremony: Ceremony, options: ChallengeOptionsDto) {
+  async function runCeremony(ceremony: Ceremony, options: ChallengeOptionsDto): Promise<boolean> {
     if (ceremony === "create") {
-      await createWallet(custody(), { options, label: device });
-      await remember();
+      const created = await createWallet(custody(), { options, label: device });
       setCreateFailed(false);
+      // `register` answers an account another tab created as readily as the one this call made.
+      // Only a credential the account actually holds marks this browser enrolled; one it does not
+      // hold authorises nothing, so the person goes to /passkey, whose add-device screen lists
+      // what the account really has and can add this device properly.
+      const outcome = enrolmentOutcome(created.credentialId, await passkeyList());
+      if (outcome === "orphan") {
+        router.push("/passkey");
+        return true;
+      }
+      if (outcome === "enrolled") {
+        await remember();
+      }
       dispatch({ type: "passkey_created" });
       // The welcome screen's balance. A read that fails leaves it saying so; the wallet exists.
       try {
@@ -266,7 +318,7 @@ function SignFlow({
       } catch {
         setWallet(null);
       }
-      return;
+      return false;
     }
     await addPasskey(custody(), {
       options,
@@ -282,6 +334,7 @@ function SignFlow({
     });
     await remember();
     dispatch({ type: "device_added" });
+    return false;
   }
 
   /**
@@ -291,12 +344,11 @@ function SignFlow({
    * that an account that is already complete is not asked to create a second passkey for a wallet
    * it has.
    *
-   * Anything that cannot be read falls through to the rail's own `code_verified`: the handle
-   * screen on sign-up, which still ends on the passkey step, or the welcome screen on sign-in,
-   * which says plainly that it could not read the balance — and the studio shell, which reads the
-   * sub-organization again, sends a person without one to /passkey.
+   * A 404 is an answer (`verifiedEvent` turns it into the next step). Any other failure is not,
+   * so the code screen says the account could not be read and offers to read it again.
    */
   function verified() {
+    setReadFailed(false);
     void (async () => {
       try {
         const { token, userId } = await session();
@@ -313,23 +365,13 @@ function SignFlow({
         setWallet(found);
         setProfileHandle(handle ?? "");
         const enrolledHere = isEnrolledHere(enrolmentStore(), userId);
-        switch (landing({ handle, wallet: found, enrolledHere })) {
-          case "handle":
-            dispatch({ type: "profile_missing" });
-            return;
-          case "passkey":
-            // A name and no sub-organization: the mandatory step, before anything else.
-            dispatch({ type: "wallet_missing" });
-            return;
-          case "recover":
-            dispatch({ type: "device_unknown" });
-            return;
-          case "welcome":
-            dispatch({ type: state.mode === "in" ? "code_verified" : "account_found" });
-            return;
-        }
+        const mode = state.mode === "in" ? "in" : "up";
+        dispatch(verifiedEvent({ mode, handle, wallet: found, enrolledHere }));
       } catch {
-        dispatch({ type: "code_verified" });
+        // Not a welcome: a wallet that could not be read may be a missing one, and guessing would
+        // let a person without a sub-organization past the passkey step. The code is verified and
+        // the session stands, so trying again only reads the account again.
+        setReadFailed(true);
       }
     })();
   }
@@ -407,6 +449,17 @@ function SignFlow({
               onVerified={verified}
               onChangeEmail={() => dispatch({ type: "change_email" })}
             />
+          )}
+          {state.step === "code" && readFailed && (
+            <div className={styles.flowActions}>
+              <p className={styles.alert} role="alert">
+                Your code is right, but your account could not be read just now. Nothing was
+                created.
+              </p>
+              <Button className={styles.primary} onClick={verified}>
+                Try again
+              </Button>
+            </div>
           )}
           {state.step === "handle" && (
             <HandleStep
@@ -516,8 +569,8 @@ function PasskeyAddFlow({
     void (async () => {
       try {
         const { token } = await session();
-        const [exists, keys] = await Promise.all([
-          hasSubOrganization(() => readWallet(token)),
+        const [found, keys] = await Promise.all([
+          readSubOrganization(() => readWallet(token)),
           readPasskeys(token).then(
             (value): PasskeysRead => ({ kind: "ready", passkeys: value }),
             (): PasskeysRead => ({ kind: "failed" }),
@@ -526,7 +579,7 @@ function PasskeyAddFlow({
         if (!live) {
           return;
         }
-        setScreen(passkeyScreenFor({ hasSubOrganization: exists }));
+        setScreen(passkeyScreenFor({ hasSubOrganization: found !== null }));
         setPasskeysState(keys);
       } catch {
         if (live) {
@@ -574,10 +627,21 @@ function PasskeyAddFlow({
    * add-a-device one, where the new passkey is listed and a backup is one click away.
    */
   async function createHere(options: ChallengeOptionsDto) {
-    await createWallet(custody(), { options, label: describeDevice(userAgent()) });
+    const created = await createWallet(custody(), { options, label: describeDevice(userAgent()) });
     setCreateFailed(false);
+    // The list is read once and used twice: to decide whether this device's credential is the
+    // one the account holds (`register` answers another tab's account the same way — only a
+    // credential on the list marks this browser), and to draw the add-device screen that follows.
+    const list = await passkeyList();
+    if (enrolmentOutcome(created.credentialId, list) === "enrolled") {
+      try {
+        markEnrolled(enrolmentStore(), (await session()).userId);
+      } catch {
+        // The wallet exists; a session that expired on this last read changes nothing.
+      }
+    }
+    setPasskeysState(list ? { kind: "ready", passkeys: list } : { kind: "failed" });
     setScreen(passkeyScreenFor({ hasSubOrganization: true }));
-    refreshPasskeys();
   }
 
   function confirm() {
@@ -592,11 +656,6 @@ function PasskeyAddFlow({
       try {
         if (current.ceremony === "create") {
           await createHere(options);
-          try {
-            markEnrolled(enrolmentStore(), (await session()).userId);
-          } catch {
-            // The wallet exists; a session that expired on this last read changes nothing.
-          }
           setSheet({ ...running, phase: "ok" });
           return;
         }
@@ -618,6 +677,15 @@ function PasskeyAddFlow({
         refreshPasskeys();
       } catch (caught) {
         if (current.ceremony === "create") {
+          // The same loop the sign-up step guards against: this screen may have been opened
+          // before another tab created the wallet. If it exists now, this screen's job is done.
+          if (await walletAfterFailedCreate()) {
+            setCreateFailed(false);
+            setSheet(null);
+            setScreen(passkeyScreenFor({ hasSubOrganization: true }));
+            refreshPasskeys();
+            return;
+          }
           setCreateFailed(true);
         }
         setSheet({ ...running, phase: "error", error: describeCustodyFailure(caught) });

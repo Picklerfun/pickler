@@ -6,7 +6,12 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { Button, Icon } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
-import { SessionExpired, hasSubOrganization, openChallenge } from "@/features/auth/lib/custody";
+import {
+  SessionExpired,
+  openChallenge,
+  readSubOrganization,
+  redirectFor,
+} from "@/features/auth/lib/custody";
 import { wallet as readWallet } from "@/features/auth/lib/custody-api";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
@@ -189,8 +194,12 @@ export function CreateAgent({
         /* The same door the studio shell has, before a draft is written: the agent ceremony needs a
            sub-organization, and a person without one would otherwise fill in every step only to be
            sent to /passkey by "Create and run it once". */
-        if (!(await hasSubOrganization(() => readWallet(data.session.access_token)))) {
-          router.replace("/passkey");
+        const token = data.session.access_token;
+        const away = redirectFor(await readSubOrganization(() => readWallet(token)));
+        if (away) {
+          if (active) {
+            router.replace(away);
+          }
           return;
         }
         await studioApi("/onboard", { method: "POST" });

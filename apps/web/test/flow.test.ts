@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL, next, rail, stepsFor } from "../src/features/auth/lib/flow";
 import type { FlowEvent, FlowState, RailPhase, Step } from "../src/features/auth/lib/flow";
+import { verifiedEvent } from "../src/features/auth/lib/custody";
+import type { WalletDto } from "../src/features/auth/lib/custody-api";
 
 /** Feeds the machine a script and returns the step after each event, plus the final state. */
 function walk(from: FlowState, events: readonly FlowEvent[]): { steps: Step[]; state: FlowState } {
@@ -292,33 +294,63 @@ function reachable(from: FlowState, events: readonly FlowEvent[], depth: number)
   return [...seen.values()];
 }
 
-test("sign-up cannot reach welcome without passkey_created, whatever else is sent", () => {
-  const claimed = walk(INITIAL, [
-    { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "code_verified" },
-    { type: "handle_claimed", handle: "nightowl" },
-  ]).state;
-  assert.equal(claimed.step, "passkey");
+const WALLET: WalletDto = {
+  address: "0xabc",
+  balances: {
+    native: { symbol: "MON", decimals: 18, raw: "0" },
+    token: { symbol: "AUSD", decimals: 6, raw: "0" },
+  },
+};
 
-  // Six events of anything but the ceremony finishing — the way out of the new-device rail, a
-  // changed email, the sign-in toggle — and the person is still on the passkey step.
+/**
+ * From INITIAL, through what the code screen really dispatches: `verifiedEvent` over every account
+ * a verified code can find — a profile or none, a sub-organization or none (a 404 is null), this
+ * browser marked or not — on both rails. Then every event any screen can send, except the
+ * ceremony finishing, as deep as the longest rail. Welcome is reachable that way exactly when the
+ * account already has both a profile and a sub-organization; otherwise only `passkey_created`
+ * gets there.
+ */
+test("from INITIAL, nobody reaches welcome without a sub-organization but through the passkey step", () => {
   const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
-  const states = reachable(claimed, without, 6);
-  assert.ok(
-    states.every((state) => state.step === "passkey"),
-    "a signed-up person reached another step without creating their wallet",
-  );
+  for (const mode of ["up", "in"] as const) {
+    for (const handle of [null, "nightowl"]) {
+      for (const wallet of [null, WALLET]) {
+        for (const enrolledHere of [false, true]) {
+          const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+          const landed = walk(start, [
+            { type: "code_sent", email: "ana@pickler.xyz" },
+            verifiedEvent({ mode, handle, wallet, enrolledHere }),
+          ]).state;
+          const label = `${mode}, profile ${handle !== null}, wallet ${wallet !== null}, marked ${enrolledHere}`;
+
+          const welcomeWithout = reachable(landed, without, 6).some((s) => s.step === "welcome");
+          assert.equal(welcomeWithout, handle !== null && wallet !== null, label);
+
+          if (wallet === null) {
+            // The passkey step is on the way, and the ceremony finishing is what leaves it.
+            const all = reachable(landed, EVERY_EVENT, 6);
+            assert.ok(
+              all.some((s) => s.step === "passkey"),
+              label,
+            );
+            assert.ok(
+              all.some((s) => s.step === "welcome"),
+              label,
+            );
+          }
+        }
+      }
+    }
+  }
 });
 
-test("sign-in without a sub-organization cannot reach welcome without passkey_created", () => {
-  const missing = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
+test("sign-in without a sub-organization lands on the passkey step and leaves it only by creating one", () => {
+  const signIn = next(INITIAL, { type: "mode_chosen", mode: "in" });
+  const missing = walk(signIn, [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "wallet_missing" },
+    verifiedEvent({ mode: "in", handle: "nightowl", wallet: null, enrolledHere: true }),
   ]).state;
   assert.equal(missing.step, "passkey");
-
-  const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
-  assert.ok(reachable(missing, without, 6).every((state) => state.step === "passkey"));
   assert.equal(next(missing, { type: "passkey_created" }).step, "welcome");
 });
 

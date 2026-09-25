@@ -167,7 +167,8 @@ test("the first passkey is created on this device and registered against its own
   const fake = new Recorder();
   const created = await createWallet(fake.deps, { options: OPTIONS, label: "Chrome on macOS" });
 
-  assert.deepEqual(created, WALLET);
+  // The account, plus the credential this device made: the caller checks the account holds it.
+  assert.deepEqual(created, { ...WALLET, credentialId: RAW_ID_WIRE });
   // The ceremony runs before the token is read, so nothing is awaited between the click and the
   // operating system's prompt: an await there costs the transient user activation Safari needs.
   assert.deepEqual(fake.calls, ["create", "token", "register"]);

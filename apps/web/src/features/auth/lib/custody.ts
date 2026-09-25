@@ -28,6 +28,7 @@ import type {
   WalletDto,
 } from "./custody-api";
 import { challenge, confirmAdd, prepareAdd, register } from "./custody-api";
+import type { FlowEvent } from "./flow";
 import { ApiError } from "./pickler-api";
 
 /** Thrown when there is no session to read a token from at all, rather than an expired one. */
@@ -95,13 +96,17 @@ export async function openChallenge(deps: CustodyDeps): Promise<ChallengeOptions
 export async function createWallet(
   deps: CustodyDeps,
   input: { options: ChallengeOptionsDto; label: string },
-): Promise<RegisteredWalletDto> {
+): Promise<RegisteredWalletDto & { credentialId: string }> {
   const attestation = await createPasskey(deps.credentials, input.options, "platform");
-  return deps.api.register(await deps.token(), {
+  const account = await deps.api.register(await deps.token(), {
     label: input.label,
     challenge: input.options.challenge,
     attestation,
   });
+  // The credential this device just made, so the caller can check it is the one the account
+  // holds: `register` is idempotent, and answers an account another tab created with a different
+  // passkey exactly as it answers the one this call made (see `enrolmentOutcome`).
+  return { ...account, credentialId: attestation.credentialId };
 }
 
 /**
@@ -264,18 +269,84 @@ export function passkeyScreenFor(account: { hasSubOrganization: boolean }): Pass
 }
 
 /**
- * Whether the signed-in person has a sub-organization, from GET /wallets/me. A 404 is "no";
- * any other failure propagates, because a wallet that could not be read is not a missing one, and
- * sending somebody with a wallet to create another would be the wrong door.
+ * The signed-in person's master wallet from GET /wallets/me, or null when there is no
+ * sub-organization (a 404). Any other failure propagates, because a wallet that could not be read
+ * is not a missing one, and sending somebody with a wallet to create another would be the wrong
+ * door.
  */
-export async function hasSubOrganization(readWallet: () => Promise<unknown>): Promise<boolean> {
+export async function readSubOrganization<T>(read: () => Promise<T>): Promise<T | null> {
   try {
-    await readWallet();
-    return true;
+    return await read();
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return false;
+      return null;
     }
     throw error;
+  }
+}
+
+/**
+ * Where a signed-in screen sends a person, from `readSubOrganization`'s answer: `/passkey` when
+ * there is no sub-organization (spec §4.1 — the master wallet comes before anything else), and
+ * nowhere when there is one. The studio shell, the create screen and /account all ask this.
+ */
+export function redirectFor(wallet: unknown): "/passkey" | null {
+  return wallet === null ? "/passkey" : null;
+}
+
+/**
+ * A create ceremony failed; the sub-organization has been read again since. If it exists now —
+ * another tab finished signup, or a /passkey screen was opened before one did, so the
+ * authenticator refused a duplicate through `excludeCredentials` — the step is done and the
+ * person moves on. Retrying would only fail the same way for ever.
+ */
+export function afterFailedCreate(subOrganizationNow: boolean): "advance" | "retry" {
+  return subOrganizationNow ? "advance" : "retry";
+}
+
+/**
+ * Whether the passkey this device just created is the one the account holds.
+ *
+ * `register` returns the existing account when there already is one, and core returns the
+ * winner's when two tabs race (reporting the loser's sub-organization as an orphan). Either way
+ * this device's credential authorises nothing, and marking the browser enrolled would be a lie the
+ * sign-in screen then trusts. So the account's passkey list is read after the ceremony:
+ *
+ * - `enrolled` — the credential is on the account; mark the browser.
+ * - `orphan` — the list was read and the credential is not on it; do not mark, and show the
+ *   add-device screen, which lists what the account really holds.
+ * - `unknown` — the list could not be read; do not mark (the mark is a hint, and "no" is its
+ *   safe direction), and carry on.
+ */
+export function enrolmentOutcome(
+  credentialId: string,
+  passkeys: readonly { credential_id: string }[] | null,
+): "enrolled" | "orphan" | "unknown" {
+  if (passkeys === null) {
+    return "unknown";
+  }
+  return passkeys.some((passkey) => passkey.credential_id === credentialId) ? "enrolled" : "orphan";
+}
+
+/**
+ * What a verified code dispatches, from what the account holds. `handle` and `wallet` are null
+ * for a 404; a read that failed any other way never reaches here — the code screen says so and
+ * offers to try again, rather than guessing at a welcome.
+ */
+export function verifiedEvent(account: {
+  mode: "up" | "in";
+  handle: string | null;
+  wallet: WalletDto | null;
+  enrolledHere: boolean;
+}): FlowEvent {
+  switch (landing(account)) {
+    case "handle":
+      return { type: "profile_missing" };
+    case "passkey":
+      return { type: "wallet_missing" };
+    case "recover":
+      return { type: "device_unknown" };
+    case "welcome":
+      return account.mode === "in" ? { type: "code_verified" } : { type: "account_found" };
   }
 }

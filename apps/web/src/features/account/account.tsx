@@ -13,7 +13,8 @@ import {
   SessionExpired,
   addPasskey,
   describeCustodyFailure,
-  hasSubOrganization,
+  readSubOrganization,
+  redirectFor,
   openChallenge,
   type CustodyDeps,
 } from "../auth/lib/custody";
@@ -24,7 +25,6 @@ import {
 } from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
 import { getProfile, type ProfileDto } from "../auth/lib/pickler-api";
-import type { WalletDto } from "../auth/lib/custody-api";
 import type { SheetPhase } from "../auth/lib/sheet";
 import { getSupabase } from "../auth/lib/supabase-browser";
 import { coverage } from "./lib/coverage";
@@ -116,17 +116,13 @@ export function Account({ opening }: { opening: SectionKey }) {
       setSignedIn(true);
       setSession(describeDevice(userAgent()));
       const token = data.session.access_token;
-      let read: WalletDto | null = null;
       const [found, dto, keys] = await Promise.all([
         getProfile(token).then(
           (value) => value,
           () => null,
         ),
-        hasSubOrganization(async () => {
-          read = await readWallet(token);
-        }).then(
-          (exists): WalletState =>
-            exists && read ? { kind: "ready", wallet: read } : { kind: "none" },
+        readSubOrganization(() => readWallet(token)).then(
+          (read): WalletState => (read ? { kind: "ready", wallet: read } : { kind: "none" }),
           // Only a 404 is "no sub-organization". Anything else is a fault, and says so rather than
           // drawing an empty wallet card that reads as broke — or sending somebody who has a
           // wallet to create another.
@@ -149,8 +145,9 @@ export function Account({ opening }: { opening: SectionKey }) {
       /* This is where the master wallet is shown, so it is the most visible place for the rule
          (spec §4.1): a signed-in person without a sub-organization creates it before anything
          else, on /passkey. Every section redirects, not only the wallet. */
-      if (dto.kind === "none") {
-        router.replace("/passkey");
+      const away = redirectFor(dto.kind === "none" ? null : dto);
+      if (away) {
+        router.replace(away);
         return;
       }
       setProfile(found);
