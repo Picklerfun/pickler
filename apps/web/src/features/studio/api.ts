@@ -9,15 +9,18 @@ import type {
   marketCatalogSchema,
   paperOrderSchema,
   createAgentSchema,
+  studioAgentSchema,
   AgentDraftDto,
 } from "@pickler/api-schema";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export { DEFAULT_PROFILE, type Profile } from "./profile";
-export type Agent = ReturnType<typeof agentResponseSchema.parse> & {
-  productId?: string;
-  name?: string;
-  handle?: string;
-};
+/**
+ * The studio agent DTO: the runtime record plus its product identity, its wallet and balance, both
+ * locks and its spend limits. `GET /agents` and `GET /agents/:id` answer it.
+ */
+export type Agent = ReturnType<typeof studioAgentSchema.parse>;
+/** The bare runtime record the writes answer (`POST /agents`, `PUT /config|limits|interval`). */
+export type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
 export type Run = ReturnType<typeof runResponseSchema.parse>;
 export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
@@ -61,6 +64,8 @@ const messages: Record<string, string> = {
   PLUGIN_NOT_CONFIGURED: "An enabled plugin needs operator credentials before it can run.",
   PLUGIN_DISABLED: "A capability required for this action is disabled.",
   UNAUTHORIZED: "Your session has expired. Sign in again.",
+  NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
+  UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
   INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
 };
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -99,7 +104,7 @@ export const draftAgent = (line: string) =>
   });
 
 export const createAgent = (body: CreateAgentInput, key: string) =>
-  studioApi<Agent>("/agents", {
+  studioApi<AgentRecord>("/agents", {
     method: "POST",
     headers: { "Idempotency-Key": key },
     body: JSON.stringify(body),
@@ -112,10 +117,21 @@ export const startRun = (agentId: string, key: string) =>
     body: JSON.stringify({}),
   });
 
-export const runEvents = (runId: string) =>
-  studioApi<{ events: RunEvent[] }>(`/runs/${runId}/events`);
+/** `GET /agents/:id`: one agent with its wallet, balance and locks, read fresh. */
+export const studioAgent = (agentId: string) => studioApi<Agent>(`/agents/${agentId}`);
+
+/** `GET /agents/:id/runs`: newest first. */
+export const agentRuns = (agentId: string, signal?: AbortSignal) =>
+  studioApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, signal ? { signal } : {});
+
+export const runEvents = (runId: string, signal?: AbortSignal) =>
+  studioApi<{ events: RunEvent[] }>(`/runs/${runId}/events`, signal ? { signal } : {});
 
 export const run = (runId: string) => studioApi<Run>(`/runs/${runId}`);
+
+/** `GET /runs/:id/paper-order`: the order a TRADE was tracked with, or 404 NOT_FOUND. */
+export const readPaperOrder = (runId: string) =>
+  studioApi<PaperOrder>(`/runs/${runId}/paper-order`);
 
 export const paperOrder = (runId: string, key: string) =>
   studioApi<PaperOrder>(`/runs/${runId}/paper-order`, {
@@ -123,23 +139,28 @@ export const paperOrder = (runId: string, key: string) =>
     headers: { "Idempotency-Key": key },
   });
 
-/** `PUT /agents/:id/config`: the only writer of anything but `spend` or `schedule.enabled`. */
+/**
+ * `PUT /agents/:id/config`: a new version, which turns the schedule off and asks for another
+ * manual run. It never writes `spend`; the interval has its own route below.
+ */
 export const updateConfig = (agentId: string, expectedVersion: number, config: Config) =>
-  studioApi<Agent>(`/agents/${agentId}/config`, {
+  studioApi<AgentRecord>(`/agents/${agentId}/config`, {
     method: "PUT",
     body: JSON.stringify({ expectedVersion, config }),
   });
 
-/** A convenience over `updateConfig`: the API has no route for the interval alone. */
-export const setInterval = (
-  agentId: string,
-  expectedVersion: number,
-  config: Config,
-  hours: number,
-) => updateConfig(agentId, expectedVersion, { ...config, intervalHours: hours });
+/**
+ * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the
+ * version, the schedule and readiness, so it can be tuned right before the schedule is turned on.
+ */
+export const setIntervalHours = (agentId: string, hours: 3 | 6 | 12 | 24) =>
+  studioApi<AgentRecord>(`/agents/${agentId}/interval`, {
+    method: "PUT",
+    body: JSON.stringify({ hours }),
+  });
 
 export const saveLimits = (agentId: string, perCallAusd: number, perDayAusd: number) =>
-  studioApi<Agent>(`/agents/${agentId}/limits`, {
+  studioApi<AgentRecord>(`/agents/${agentId}/limits`, {
     method: "PUT",
     body: JSON.stringify({ perCallAusd, perDayAusd }),
   });

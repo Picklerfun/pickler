@@ -29,7 +29,8 @@ export type PreviewState = {
 /** Fixed offsets from a caller-supplied clock, so the countdown and the stamps stay coherent. */
 const MINUTE = 60_000;
 
-const config: Agent["config"] = {
+/** The canvas agent's configuration; the home's `?stage=` fixture starts from it too. */
+export const previewConfig: Agent["config"] = {
   limits: {
     searches: 3,
     pageReads: 4,
@@ -140,7 +141,7 @@ function decision(now: number) {
     coverage: assessment.report.sections,
     policyEvaluation: {
       version: "1.0.0" as const,
-      config: config.uncertaintyPolicy!,
+      config: previewConfig.uncertaintyPolicy!,
       finalAction: "TRADE" as const,
       reasonCodes: [],
       evaluatedAt: new Date(now - 94 * MINUTE).toISOString(),
@@ -160,7 +161,7 @@ function run(now: number, index: number, over: Partial<Run>): Run {
     startedAt: now - index * 94 * MINUTE,
     finishedAt: now - index * 94 * MINUTE + 2 * MINUTE,
     configVersion: 7,
-    config,
+    config: previewConfig,
     decision: null,
     error: null,
     ...over,
@@ -170,11 +171,11 @@ function run(now: number, index: number, over: Partial<Run>): Run {
 /** The plugin roster and its tools, as `/options` answers it. Skills draws its rows from this. */
 const options: Options = {
   defaults: {
-    profile: config.profile,
-    tools: config.tools,
-    limits: config.limits,
-    intervalHours: config.intervalHours,
-    uncertaintyPolicy: config.uncertaintyPolicy,
+    profile: previewConfig.profile,
+    tools: previewConfig.tools,
+    limits: previewConfig.limits,
+    intervalHours: previewConfig.intervalHours,
+    uncertaintyPolicy: previewConfig.uncertaintyPolicy,
   },
   plugins: [
     { id: "polymarket", version: "v1.4.0", tools: ["getMarketRules", "getOrderBook"] },
@@ -228,11 +229,20 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       name: "Halftime",
       handle: "halftime",
       version: 7,
-      config,
+      config: previewConfig,
       paused: false,
       scheduleEnabled: true,
       nextDueAt: now + 134 * MINUTE,
-    } as Agent,
+      wallet: {
+        walletId: "preview-wallet",
+        address: "0x7a3f5c1e9b2d4a6f8e0c3b5d7f9a1c2e4b6d91c2",
+        balanceAusd: 40,
+      },
+      canSchedule: { ok: true, reason: null },
+      canCreateAnother: { ok: true, reason: null },
+      spend: { perCallAusd: 5, perDayAusd: 20 },
+      spendEnforced: false,
+    },
   ];
   const runs: Run[] = [
     run(now, 1, {

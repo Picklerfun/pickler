@@ -326,10 +326,38 @@ export const ROUTES = [
     name: "studio",
     product: "studio",
     surface: "dark",
-    task: "Task 11",
-    // The rail. A sign-in stub has no sections to navigate, which is exactly the screen that was
-    // being measured and reported green for the whole of this change until now.
-    proves: 'nav[aria-label="Studio sections"]',
+    task: "Task 12",
+    // The home, which is where /studio opens once an agent exists. It was the rail until the home
+    // replaced the overview as the first screen; a sign-in stub has neither, which is the screen
+    // this was measuring and reporting green before either existed.
+    proves: "#home-agent",
+  },
+  // The home at the three moments of the canvas's first run, outside production only (`?stage=`):
+  // still choosing a market, researching the one it chose, and decided. Each proves the part of
+  // the home that stage changes most, so a stage that fell back to another is not reported green.
+  {
+    path: "/studio?stage=live",
+    name: "studio-home-live",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-wallet",
+  },
+  {
+    path: "/studio?stage=researching",
+    name: "studio-home-researching",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-picks",
+  },
+  {
+    path: "/studio?stage=decided",
+    name: "studio-home-decided",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-schedule",
   },
   // The studio keeps its section in state, so /studio alone has only ever shown the overview —
   // three screens' worth of composition behind a rail click that no check has ever read. The one

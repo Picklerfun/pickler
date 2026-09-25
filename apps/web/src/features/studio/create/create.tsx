@@ -7,12 +7,10 @@ import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { Button, Icon } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
 import {
-  CUSTODY_API,
   SessionExpired,
   createWallet,
   markEnrolled,
   openChallenge,
-  type CustodyDeps,
 } from "@/features/auth/lib/custody";
 import { describeDevice } from "@/features/auth/lib/device";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
@@ -32,6 +30,7 @@ import {
   studioApi,
   type Options,
 } from "../api";
+import { custody, session } from "../lib/passkey";
 import { studioPreview } from "../preview";
 import { runCeremony, type CeremonyProgress, type CeremonyStep } from "./ceremony";
 import { ORDER, fromApiDraft, ready, toCreate, type Draft, type OrderStep } from "./draft";
@@ -63,25 +62,6 @@ const CEREMONY_NAMES: Record<CeremonyStep, string> = {
   agent: "The agent",
   run: "Its first run",
 };
-
-/** The access token, read again after every prompt: a prompt can outlive a session. */
-async function session() {
-  const supabase = getSupabase();
-  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-  if (!data.session) {
-    throw new SessionExpired();
-  }
-  return { token: data.session.access_token, userId: data.session.user.id };
-}
-
-function custody(): CustodyDeps {
-  return {
-    token: async () => (await session()).token,
-    credentials: navigator.credentials,
-    api: CUSTODY_API,
-    stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
-  };
-}
 
 function localStore() {
   try {
@@ -345,7 +325,9 @@ export function CreateAgent({
           confirmPolicies,
           createAgent: async (walletId) => {
             const agent = await createAgent(body(walletId), current.keys.create);
-            return { id: agent.productId ?? agent.id };
+            // `POST /agents` answers the runtime record, whose id is the product id it was
+            // created under (`product_agents.runtime_agent_id` is written from the same uuid).
+            return { id: agent.id };
           },
           startRun: (agentId) => startRun(agentId, current.keys.run),
           onStep: (which, phase) => {

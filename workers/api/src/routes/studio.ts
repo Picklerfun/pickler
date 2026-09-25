@@ -103,6 +103,11 @@ const depositConfirmSchema = z
   .object({ amountAusd: depositAmountSchema, signed: signedActivitySchema })
   .strict();
 
+/** The intervals "Run on its own" offers: every 3h, 6h, 12h, or daily. */
+const intervalUpdateSchema = z
+  .object({ hours: z.union([z.literal(3), z.literal(6), z.literal(12), z.literal(24)]) })
+  .strict();
+
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
@@ -352,6 +357,15 @@ export function studioRoutes(services: StudioServices) {
     const body = limitsUpdateSchema.parse(await c.req.json());
     const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
     return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
+  });
+  // The interval writes only `config.intervalHours`, like the limits and for the same reason: the
+  // person picks it right before turning the schedule on, and a new version would lock the
+  // schedule again until another manual run. `PUT /config` may still change it with a new version.
+  api.put("/agents/:id/interval", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    const { hours } = intervalUpdateSchema.parse(await c.req.json());
+    return c.json(agentResponseSchema.parse(await repo.updateInterval(scope, hours, Date.now())));
   });
   /** The custody service for this request, or 503 where Turnkey is not composed. */
   function deposits(requestId: string) {

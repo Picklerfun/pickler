@@ -104,6 +104,10 @@ with no per-call ceiling and no daily period. The trading work enforces these li
 per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
 `ResearchRepository.updateSpend(scope, spend)` writes only `config.spend`, checked by
 `assertSpendLimits`. Unlike `updateConfig`, it keeps the version, the schedule and readiness.
+`ResearchRepository.updateInterval(scope, hours, now)` does the same for `config.intervalHours`,
+checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
+person picks it right before turning the schedule on. With the schedule on, the next run moves to
+`nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
 `StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
 idempotency key made, so a retry can be recognised before any lock is applied.
 

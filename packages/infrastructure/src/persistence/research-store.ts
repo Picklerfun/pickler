@@ -10,6 +10,7 @@ import {
   PilotError,
   assertConfig,
   assertSpendLimits,
+  assertIntervalHours,
   assertCanQueue,
   assertCanSchedule,
   nextOccurrence,
@@ -255,6 +256,29 @@ export class PostgresResearchStore implements ResearchRepository {
       const [updated] = await tx
         .update(agents)
         .set({ config: sql`jsonb_set(${agents.config}, '{spend}', ${value}::jsonb)` })
+        .where(agentScope(scope))
+        .returning();
+      return updated!;
+    });
+  }
+
+  async updateInterval(scope: Scope, hours: number, now: number): Promise<AgentRecord> {
+    assertIntervalHours(hours);
+    return this.db.transaction(async (tx) => {
+      // Same lock order as `schedule`, which also writes next_due_at.
+      await tx.execute(sql`select pg_advisory_xact_lock(761204, 2)`);
+      const agent = await this.getAgent(scope, tx, true);
+      // Only the interval key and, when the schedule is on, the next due time: the version stays,
+      // so readiness for this configuration version survives.
+      const nextDueAt = agent.scheduleEnabled
+        ? nextOccurrence({ ...agent, config: { ...agent.config, intervalHours: hours } }, now)
+        : agent.nextDueAt;
+      const [updated] = await tx
+        .update(agents)
+        .set({
+          config: sql`jsonb_set(${agents.config}, '{intervalHours}', ${JSON.stringify(hours)}::jsonb)`,
+          nextDueAt,
+        })
         .where(agentScope(scope))
         .returning();
       return updated!;

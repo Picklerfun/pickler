@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  AuthenticationRequiredError,
   buildUserPrincipal,
   DEFAULT_CONFIG,
   LOCK_REASONS as CORE_LOCK_REASONS,
@@ -42,6 +43,7 @@ interface Options {
   balances?: Record<string, number>;
   ready?: boolean;
   failRead?: boolean;
+  signedIn?: boolean;
 }
 
 function fixture({
@@ -49,6 +51,7 @@ function fixture({
   balances = {},
   ready = true,
   failRead = false,
+  signedIn = true,
 }: Options = {}) {
   let agents = initial;
   const scheduled: boolean[] = [];
@@ -57,6 +60,7 @@ function fixture({
   const keys = new Map<string, string>();
   const updates: { expectedVersion: number; spend: unknown }[] = [];
   const spends: SpendLimits[] = [];
+  const intervals: { hours: number; now: number }[] = [];
   const scope = (id: string) => ({ tenantId: "trusted", agentId: id });
 
   const directory: StudioDirectory = {
@@ -126,6 +130,14 @@ function fixture({
       records.set(s.agentId, next);
       return next;
     },
+    // Like the store: only `config.intervalHours`, no version bump.
+    updateInterval: async (s: { agentId: string }, hours: number, now: number) => {
+      intervals.push({ hours, now });
+      const current = record(s.agentId);
+      const next = { ...current, config: { ...current.config, intervalHours: hours } };
+      records.set(s.agentId, next);
+      return next;
+    },
     updateConfig: async (s: { agentId: string }, expectedVersion: number, config: AgentConfig) => {
       const current = record(s.agentId);
       if (current.version !== expectedVersion) {
@@ -165,16 +177,21 @@ function fixture({
         return balances[id] ?? 0;
       },
     },
-    authenticate: async () => ({
-      principal: buildUserPrincipal({
-        user: { id: "user" },
-        integrator: { id: "workspace" },
-        memberRole: "admin",
-      }),
-      workspace: null,
-    }),
+    authenticate: async () => {
+      if (!signedIn) {
+        throw new AuthenticationRequiredError();
+      }
+      return {
+        principal: buildUserPrincipal({
+          user: { id: "user" },
+          integrator: { id: "workspace" },
+          memberRole: "admin",
+        }),
+        workspace: null,
+      };
+    },
   });
-  return { app, scheduled, created, reads, updates, spends };
+  return { app, scheduled, created, reads, updates, spends, intervals };
 }
 
 const put = (body: unknown) => ({
@@ -423,4 +440,76 @@ test("an agent without limits says so, and that limits are not enforced", async 
 
   assert.equal(agent.spend, null);
   assert.equal(agent.spendEnforced, false);
+});
+
+test("changing the interval keeps the version, the schedule lock open and readiness", async () => {
+  const { app, intervals, updates, scheduled } = fixture({ balances: { [FIRST]: 10 } });
+  const started = Date.now();
+
+  const response = await app.request(`/agents/${FIRST}/interval`, put({ hours: 12 }));
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.version, 1);
+  assert.equal(body.config.intervalHours, 12);
+  assert.deepEqual(
+    intervals.map((write) => write.hours),
+    [12],
+  );
+  assert.ok(intervals[0]!.now >= started);
+  assert.deepEqual(updates, []);
+
+  const agent = await (await app.request(`/agents/${FIRST}`)).json();
+
+  assert.equal(agent.version, 1);
+  assert.equal(agent.config.intervalHours, 12);
+  assert.deepEqual(agent.canSchedule, { ok: true, reason: null });
+
+  const on = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
+
+  assert.equal(on.status, 200);
+  assert.deepEqual(scheduled, [true]);
+});
+
+test("every offered interval is accepted, and nothing else reaches the store", async () => {
+  const { app, intervals } = fixture();
+
+  for (const hours of [3, 6, 12, 24]) {
+    const response = await app.request(`/agents/${FIRST}/interval`, put({ hours }));
+
+    assert.equal(response.status, 200, String(hours));
+  }
+  for (const body of [
+    { hours: 0 },
+    { hours: 4 },
+    { hours: 48 },
+    { hours: "6" },
+    {},
+    { hours: 6, expectedVersion: 1 },
+    { hours: 6, tenantId: "victim" },
+  ]) {
+    const response = await app.request(`/agents/${FIRST}/interval`, put(body));
+
+    assert.equal(response.status, 400, JSON.stringify(body));
+  }
+  assert.deepEqual(
+    intervals.map((write) => write.hours),
+    [3, 6, 12, 24],
+  );
+});
+
+test("the interval of someone else's agent, or without a session, is refused", async () => {
+  const signedOut = fixture({ signedIn: false });
+
+  const refused = await signedOut.app.request(`/agents/${FIRST}/interval`, put({ hours: 6 }));
+
+  assert.equal(refused.status, 401);
+  assert.deepEqual(signedOut.intervals, []);
+
+  const { app, intervals } = fixture();
+
+  const missing = await app.request(`/agents/${SECOND}/interval`, put({ hours: 6 }));
+
+  assert.equal(missing.status, 404);
+  assert.deepEqual(intervals, []);
 });

@@ -165,6 +165,11 @@ private query `schedule` uses. `PostgresStudioDirectory.createdWithKey` is a rea
 the same workspace and request key `createAgent` replays from. `PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
+`PostgresResearchStore.updateInterval(scope, hours, now)` sets only the `intervalHours` key the same
+way, under the schedule's advisory lock and the agent row lock, and keeps the version, the schedule
+and readiness. When the schedule is on it also moves `next_due_at` to `now` plus the new interval,
+through core's `nextOccurrence`, as `schedule()` does; when it is off `next_due_at` stays null.
+`updateConfig` may still change the interval, with a new version, as before.
 
 `src/chain/deposit-tx.ts` is the chain side of a deposit and implements core's `DepositChain`. It
 uses the existing `viem` dependency only to serialize and parse transactions and to hash; the RPC

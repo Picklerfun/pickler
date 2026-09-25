@@ -245,6 +245,47 @@ test("saving spend limits keeps the version, the schedule and readiness; a confi
   assert.equal((await store.readiness(scope)).manualSucceeded, false);
 });
 
+test("changing the interval keeps the version, the schedule and readiness, and moves the next run", async (t) => {
+  const store = await setup(t);
+  await store.setConnectionsChecked(true);
+  await store.enqueue(scope, "manual", null, 0);
+  const manual = (await store.claim(1))!;
+  await store.finish(manual, abstention, null, 2);
+  await store.updateSpend(scope, { perCallAusd: 5, perDayAusd: 50 });
+  await store.schedule(scope, true, 3);
+  const before = await store.agent(scope);
+
+  const saved = await store.updateInterval(scope, 12, 1_000);
+
+  assert.equal(saved.version, before.version);
+  assert.deepEqual(saved.config, { ...before.config, intervalHours: 12 });
+  const after = await store.agent(scope);
+  assert.equal(after.version, before.version);
+  assert.equal(after.scheduleEnabled, true);
+  assert.equal(after.nextDueAt, 1_000 + 12 * 3_600_000);
+  assert.deepEqual(after.config.spend, { perCallAusd: 5, perDayAusd: 50 });
+  assert.deepEqual(await store.readiness(scope), {
+    connectionsChecked: true,
+    manualSucceeded: true,
+  });
+
+  await store.schedule(scope, false, 2_000);
+  const off = await store.updateInterval(scope, 24, 3_000);
+
+  assert.equal(off.config.intervalHours, 24);
+  assert.equal(off.scheduleEnabled, false);
+  assert.equal(off.nextDueAt, null);
+  assert.equal(off.version, before.version);
+
+  for (const hours of [0, 169, 2.5]) {
+    await assert.rejects(store.updateInterval(scope, hours, 4_000), { code: "INVALID_INPUT" });
+  }
+  await assert.rejects(store.updateInterval({ ...scope, tenantId: "beta" }, 6, 4_000), {
+    code: "NOT_FOUND",
+  });
+  assert.equal((await store.agent(scope)).config.intervalHours, 24);
+});
+
 test("a config save keeps the stored spend limits; only updateSpend writes them", async (t) => {
   const store = await setup(t);
   const limits = { perCallAusd: 5, perDayAusd: 50 };

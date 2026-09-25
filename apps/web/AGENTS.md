@@ -13,7 +13,7 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio (private research UI); no agents sends you to /studio/new
+  studio/page.tsx           # The studio: opens on the home; no agents sends you to /studio/new
   studio/new/page.tsx       # Creating an agent: `?step=` names the screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
@@ -21,6 +21,7 @@ src/app/
   markets/                  # The perpetuals board and one market's level × time surface
 src/features/studio/       # Studio sections, history, research result and API client
 src/features/studio/create # Creating an agent: describe, seven steps, review, passkey ceremony, first run
+src/features/studio/home   # The home after the first run: status, wallet and deposit, schedule, picks
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -174,7 +175,8 @@ compiled Worker and same-origin auth/cookies before deployment. See ../../docs/c
 
 ## Studio integration
 
-The private studio uses the Studio shell and sections under `features/studio/sections`.
+The private studio uses the Studio shell and sections under `features/studio/sections`, reached
+from the home's Menu.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
 The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
@@ -212,8 +214,10 @@ publishing only an `"import"` condition, since a dynamic import always goes thro
 loader even from a CommonJS file, unlike this module's own static `import`.
 
 `api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
-funding surface: `draftAgent`, `createAgent`, `startRun`, `runEvents`, `run`, `paperOrder`,
-`updateConfig`/`setInterval`, `saveLimits`, `setSchedule`, `depositPrepare`/`depositConfirm`, and
+funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
+`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`), `updateConfig`,
+`setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
+`depositPrepare`/`depositConfirm`, and
 the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
 `confirmDelegated`, `prepareWallet`/`confirmWallet`, `preparePolicies`/`confirmPolicies`) plus the
 public `handleAvailable`. The signing and handle routes answer Relayer's envelope
@@ -254,6 +258,48 @@ replays the same attempt. `first-run.tsx` draws the four steps as the rail's fir
 the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
 order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
 "Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
+
+## The studio home
+
+`/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
+docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
+instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
+the rail has a Home item back. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
+`canSchedule`, `canCreateAnother`, `spend`, `spendEnforced`); the writes answer `AgentRecord`.
+
+`home/status.ts` is pure and pinned branch by branch in `studio-status.test.ts`: `homeStatus` turns
+the latest run, its events and the agent into the pill (WORKING, FIRST CALL IN, LIVE, or NO CALL
+YET before any call), the mood (THINKING until a `selection` or `market_classification` event,
+RESEARCHING after, then PICKED for a TRADE, PASSED for an abstention, WAITING while the schedule is
+on, STOPPED for a failed or empty run), the first-person "say" line and the strip ("First run
+finished in 2m 11s · 8 steps, 6 sources"). `pickCard` builds the decided card (range, market,
+reason, "TRACKED ON PAPER · size AT price"), `scheduleView` the switch's lock and note from
+`canSchedule.reason`, `nextUp` the one item ("Fund its wallet" until 10 AUSD), and `depositFailure`
+the deposit's errors in the person's terms. Market names come from the `eligible_candidates` and
+`selection` events, never invented. It imports only types from `api.ts`.
+
+The home polls its own latest run through `startPolling`: every 3 s while it is queued or running,
+every 20 s while the schedule is on, not at all once terminal, and it reads the agent again when a
+run finishes. The shell's own loop pauses while the home is showing. A TRADE's paper order is read
+with `readPaperOrder`; a missing one says "NOT TRACKED ON PAPER" rather than a fill. One component
+per part, each with a harness id: `strip.tsx` (`home-strip`), `agent-card.tsx` (`home-agent`),
+`wallet-card.tsx` and `deposit-sheet.tsx` (`home-wallet`), `schedule.tsx` (`home-schedule`),
+`picks.tsx` (`home-picks`), `next-up.tsx` (`home-next`) and `menu.tsx` (`home-menu`).
+
+The deposit prepares, stamps the exact body the API returned with `WebauthnStamper` (the relying
+party from a custody challenge fetched as the sheet opens) and confirms, then reads the balance now
+and twice more while the transfer lands. `lib/passkey.ts` holds that stamper, `session()` and
+`custody()`, shared with the creation ceremony. The limits save themselves 700 ms after a change
+through `PUT /limits` and say "Applies when it trades for real". The interval picker calls
+`setIntervalHours`, so choosing it never turns the schedule off. The DTO carries no accent yet, so
+the mark is lime.
+
+`?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
+`home/fixture.ts`, the canvas's run built from real event types on a fixed clock so the server's
+HTML matches the browser's. It is gated on the build alone, like the creation flow's sample, because
+`previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
+nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id
+per stage.
 
 ## Custody boundary
 

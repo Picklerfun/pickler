@@ -8,6 +8,7 @@ import { ensureProfile } from "@/features/auth/lib/account";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
   studioApi,
+  studioAgent,
   errorCode,
   type Agent,
   type Catalog,
@@ -29,6 +30,9 @@ import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
+import { Home } from "./home/home";
+import { homeFixture } from "./home/fixture";
+import type { HomeStage } from "./home/stage";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -129,24 +133,40 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Studio({ openSection }: { openSection?: SectionKey | undefined }) {
+/** The home, or one of the sections the rail and the home's Menu reach. */
+type View = SectionKey | "home";
+
+export function Studio({
+  openSection,
+  stage,
+}: {
+  openSection?: SectionKey | undefined;
+  /** `?stage=`, outside production only: the home at one moment of the canvas's first run. */
+  stage?: HomeStage | undefined;
+}) {
   const router = useRouter();
-  const [section, setSection] = useState<SectionKey>(openSection ?? "overview");
+  /* Built once, during the first render, so the server's HTML already carries the staged home. */
+  const [staged] = useState(() => (stage ? homeFixture(stage) : null));
+  const [section, setSection] = useState<View>(openSection ?? "home");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
-  const [access, setAccess] = useState<Access | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [agentId, setAgentId] = useState<string | null>(null);
+  const [access, setAccess] = useState<Access | null>(
+    staged ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
+  );
+  const [agents, setAgents] = useState<Agent[]>(staged ? [staged.agent] : []);
+  const [agentId, setAgentId] = useState<string | null>(staged ? staged.agent.id : null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [options, setOptions] = useState<Options | null>(null);
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [runId, setRunId] = useState<string | null>(null);
-  const [trace, setTrace] = useState<{ runId: string; events: RunEvent[] } | null>(null);
+  const [runs, setRuns] = useState<Run[]>(staged?.runs ?? []);
+  const [runId, setRunId] = useState<string | null>(staged?.runs[0]?.id ?? null);
+  const [trace, setTrace] = useState<{ runId: string; events: RunEvent[] } | null>(
+    staged?.runs[0] ? { runId: staged.runs[0].id, events: staged.events } : null,
+  );
   const [refresh, setRefresh] = useState(0);
   const [blocked, setBlocked] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(staged !== null);
   const requestKeys = useRef(new Map<string, string>());
 
   const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
@@ -166,6 +186,10 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
   }, []);
 
   useEffect(() => {
+    if (staged) {
+      // The staged home stands alone: no session is read and nothing is fetched.
+      return;
+    }
     let active = true;
     void (async () => {
       try {
@@ -243,11 +267,12 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
     return () => {
       active = false;
     };
-  }, [router, loadAgents]);
+  }, [router, loadAgents, staged]);
 
-  /* One cancellable read loop owns both the run list and the selected trace. */
+  /* One cancellable read loop owns both the run list and the selected trace. The home reads its
+     own latest run, so the loop only runs while a section is showing. */
   useEffect(() => {
-    if (!agentId || preview) {
+    if (!agentId || preview || section === "home") {
       return;
     }
     return startPolling(
@@ -275,7 +300,20 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
         setError(caught instanceof Error ? caught.message : "Could not refresh research.");
       },
     );
-  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview]);
+  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section]);
+
+  /* The home's reads of one agent: its wallet balance and both locks, fresh from the API. */
+  const refreshAgent = useCallback(async () => {
+    if (!agentId || preview) {
+      return;
+    }
+    const fresh = await studioAgent(agentId);
+    setAgents((list) =>
+      list.map((candidate) =>
+        (candidate.productId ?? candidate.id) === agentId ? fresh : candidate,
+      ),
+    );
+  }, [agentId, preview]);
 
   const act = useCallback(
     async (operation: () => Promise<void>) => {
@@ -364,12 +402,46 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
     token: { text: "PLANNED", tint: "grey" },
   };
 
-  function go(next: SectionKey) {
+  function go(next: View) {
     if (next === "picks" && !runs.find((run) => run.id === runId)?.decision) {
       setRunId(runs.find((run) => run.decision)?.id ?? null);
     }
     setSection(next);
     setMenu(null);
+  }
+
+  if (section === "home" && agent) {
+    return (
+      <Home
+        key={agentId}
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        preview={
+          preview
+            ? {
+                now: staged?.now ?? now,
+                runs,
+                events: trace?.events ?? [],
+                order: staged?.order ?? null,
+              }
+            : null
+        }
+        onRefreshAgent={refreshAgent}
+        onSection={go}
+        onPick={(id) => {
+          setRunId(id);
+          setSection("picks");
+        }}
+        onSwitch={(id) => {
+          setAgentId(id);
+          setRunId(null);
+          setRuns([]);
+          setTrace(null);
+          setError("");
+        }}
+      />
+    );
   }
 
   return (
@@ -512,6 +584,17 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
       <div className={styles.body}>
         <nav className={styles.rail} data-wide={wide} aria-label="Studio sections">
           <div className={styles.railGroups}>
+            <div className={styles.railItems}>
+              <button
+                type="button"
+                className={styles.railItem}
+                title="Home"
+                onClick={() => go("home")}
+              >
+                <Icon name="arrowLeft" size={17} />
+                {wide && <span className={styles.railLabel}>Home</span>}
+              </button>
+            </div>
             {GROUPS.map((group) => (
               <div key={group.title}>
                 {wide && <p className={styles.railTitle}>{group.title}</p>}
@@ -700,7 +783,7 @@ export function Studio({ openSection }: { openSection?: SectionKey | undefined }
             />
           ) : section === "context" ? (
             <Context agent={agent} go={go} />
-          ) : (
+          ) : section === "home" ? null : (
             <Stub section={section} agent={agent} />
           )}
 

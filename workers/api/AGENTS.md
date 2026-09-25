@@ -180,6 +180,15 @@ never writes `spend`: the store keeps the stored limits and ignores any `spend` 
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 
+`PUT /agents/:id/interval { hours }` accepts only 3, 6, 12 or 24 (the home's "every 3h / 6h / 12h /
+daily") and writes only `config.intervalHours` through `repository.updateInterval`, with manage
+rights and the agent's `agentScope`. Like the limits it takes no version and keeps the version, the
+schedule and readiness, because the person tunes it right before turning the schedule on and a new
+version would lock the schedule again until another manual run. With the schedule on, the next run
+moves to now plus the new interval. It answers the runtime record (`agentResponseSchema`); any
+other body is 400 `INVALID_INPUT` before any write. `PUT /config` may still change the interval,
+with a new version.
+
 `POST /agents/:id/deposit/prepare { amountAusd }` answers `{ url, body, timestampMs,
 organizationId, amountMicroUsd }`, the sign_transaction activity the passkey stamps.
 `POST /agents/:id/deposit/confirm { amountAusd, signed }` answers `{ txHash }`. Both need manage

@@ -100,6 +100,13 @@ export function assertSpendLimits(spend: SpendLimits): void {
   }
 }
 
+/** How often a scheduled agent runs: whole hours, 1–168, the same bounds `assertConfig` applies. */
+export function assertIntervalHours(hours: number): void {
+  if (!Number.isInteger(hours) || hours < 1 || hours > 168) {
+    throw new PilotError("INVALID_INPUT", "The interval must be 1–168 whole hours");
+  }
+}
+
 export interface AgentRecord {
   id: string;
   tenantId: string;
@@ -340,6 +347,12 @@ export interface ResearchRepository {
    * readiness: spend limits do not change how the agent researches.
    */
   updateSpend(scope: Scope, spend: SpendLimits): Promise<AgentRecord>;
+  /**
+   * Writes only `config.intervalHours`. Like `updateSpend` it keeps the version, the schedule and
+   * readiness: the person tunes it right before turning the schedule on. When the schedule is on,
+   * the next run moves to `now` plus the new interval, as turning the schedule on computes it.
+   */
+  updateInterval(scope: Scope, hours: number, now: number): Promise<AgentRecord>;
   pause(scope: Scope, paused: boolean): Promise<void>;
   schedule(scope: Scope, enabled: boolean, now: number): Promise<void>;
   /** The facts `isReadyToSchedule` reads, for the agent's current configuration version. */
