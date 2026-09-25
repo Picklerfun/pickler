@@ -301,12 +301,17 @@ balance is a display figure in AUSD; the ledger's micro-USD is separate and unch
 
 Master wallet → agent wallet, an ERC-20 `transfer` on Monad:
 
-1. `POST /v1/studio/agents/:id/deposit/prepare { amount }` — the API builds the unsigned
-   transaction (nonce, gas, calldata) from the master account and returns it with the master's
-   `walletId`.
-2. The browser signs it with the passkey (`signTransaction` in the sub-organization).
-3. `POST /v1/studio/agents/:id/deposit/broadcast { signed }` — the API broadcasts, records the
-   hash, and the balance cache is invalidated.
+1. `POST /v1/studio/agents/:id/deposit/prepare { amountAusd }` — the API builds the unsigned
+   EIP-1559 transfer (nonce, fees, gas estimate, calldata) from the master account and returns the
+   unsigned `SIGN_TRANSACTION_V2` activity. A gas estimate that fails — usually too little AUSD in
+   the master — answers `409 DEPOSIT_NOT_SENDABLE` before the person is asked to sign.
+2. The browser stamps it with the passkey.
+3. `POST /v1/studio/agents/:id/deposit/confirm { amountAusd, signed }` — before forwarding, the API
+   inspects the stamped transaction: chain 10143, the AUSD contract, a plain `transfer` to **this
+   agent's** address for exactly that amount, value 0, gas ≤ 250k, and fees no more than twice a
+   fresh quote; then byte-compares the whole activity. It forwards, broadcasts, records the hash and
+   invalidates the balance cache. A hash already recorded answers `409 DEPOSIT_ALREADY_RECORDED`
+   without broadcasting again.
 
 Amounts 10 / 25 / 50 / 100 AUSD, as the canvas. "Or send AUSD on Monad to the address above" is
 also true and needs nothing: the balance read sees it.
