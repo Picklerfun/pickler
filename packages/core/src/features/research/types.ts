@@ -57,6 +57,46 @@ export interface AgentConfig {
   sources?: AgentSources | undefined;
   /** Routines the person added; appended to the brief at run time (see brief.ts). */
   skills?: Skill[] | undefined;
+  /**
+   * What the person allows it to spend, in AUSD. Stored and shown, not enforced yet: nothing spends
+   * today, and the trading work enforces it (a per-call and daily ledger period, or a Turnkey
+   * value cap). Absent until the person sets it.
+   */
+  spend?: SpendLimits | undefined;
+}
+
+export interface SpendLimits {
+  perCallAusd: number;
+  perDayAusd: number;
+}
+
+/** Bounds of `SpendLimits`, in AUSD. A day's cap is never below one call's. */
+export const SPEND_BOUNDS = {
+  perCallAusd: { min: 1, max: 1_000 },
+  perDayAusd: { min: 1, max: 10_000 },
+} as const;
+
+/** False until the trading work enforces `spend`; the DTO says so rather than implying a guard. */
+export const SPEND_ENFORCED = false;
+
+function assertSpend(spend: SpendLimits): void {
+  const within = (value: unknown, bounds: { min: number; max: number }) =>
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= bounds.min &&
+    value <= bounds.max;
+  if (
+    !within(spend.perCallAusd, SPEND_BOUNDS.perCallAusd) ||
+    !within(spend.perDayAusd, SPEND_BOUNDS.perDayAusd)
+  ) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Spend limits must stay within 1–1000 a call and 1–10000 a day",
+    );
+  }
+  if (spend.perDayAusd < spend.perCallAusd) {
+    throw new PilotError("INVALID_INPUT", "A day's spend cannot be below one call's");
+  }
 }
 
 export interface AgentRecord {
@@ -450,6 +490,9 @@ export function assertConfig(config: AgentConfig): void {
     if (!Array.isArray(config.sources.books) || !config.sources.books.every(isBookKey)) {
       throw new PilotError("INVALID_INPUT", "Invalid sportsbook list");
     }
+  }
+  if (config.spend !== undefined) {
+    assertSpend(config.spend);
   }
   if (config.skills) {
     if (config.skills.length > MAX_SKILLS) {

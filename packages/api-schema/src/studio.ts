@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { VENUES } from "./agents.js";
 import { ACCENTS } from "./landing.js";
-import { agentConfigSchema, agentResponseSchema } from "./research.js";
+import { agentConfigSchema, agentResponseSchema, spendLimitsSchema } from "./research.js";
 
 // Mirrors `STYLES` in core, which this package may not import; a drift test in workers/api pins it.
 export const STYLES = ["careful", "balanced", "bold"] as const;
@@ -83,6 +83,10 @@ export const studioAgentSchema = agentResponseSchema.extend({
   canSchedule: lockSchema,
   /** "+ New agent": every agent the person owns holds at least 10 AUSD. */
   canCreateAnother: lockSchema,
+  /** The config's spend limits, or null when the person has not set them. */
+  spend: spendLimitsSchema.nullable(),
+  /** False until the trading work enforces `spend`: "Applies when it trades for real". */
+  spendEnforced: z.boolean(),
 });
 export type StudioAgentDto = z.infer<typeof studioAgentSchema>;
 export const studioOptionsSchema = z.object({

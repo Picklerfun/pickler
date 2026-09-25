@@ -72,6 +72,10 @@ by the same workers/api test.
 without a linked wallet) and two decided locks, `canSchedule` and `canCreateAnother`
 (`lockSchema`: `ok` and a `reason` from `LOCK_REASONS`, null when open). The screen shows the
 reason; it never re-derives the rule. `LOCK_REASONS` mirrors core's `features/studio/locks.ts`.
+The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (false today).
+`spendLimitsSchema` is `agentConfigSchema.spend`, bounded like core's `SPEND_BOUNDS`, and requires
+that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of
+`PUT /v1/studio/agents/:id/limits`: `expectedVersion`, `perCallAusd` and `perDayAusd`.
 
 ## Local trading integration
 

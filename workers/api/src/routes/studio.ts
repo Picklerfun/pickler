@@ -13,6 +13,7 @@ import {
   canCreateAnother,
   canSchedule,
   isReadyToSchedule,
+  SPEND_ENFORCED,
   type AgentDrafter,
   type AgentWallet,
   type Lock,
@@ -36,6 +37,7 @@ import {
   draftRequestSchema,
   draftResponseSchema,
   studioAgentSchema,
+  limitsUpdateSchema,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
@@ -162,6 +164,8 @@ export function studioRoutes(services: StudioServices) {
       },
       canSchedule: canSchedule({ ready, balanceAusd: wallet?.balanceAusd ?? 0 }),
       canCreateAnother: another,
+      spend: record.config.spend ?? null,
+      spendEnforced: SPEND_ENFORCED,
     });
   }
 
@@ -182,15 +186,18 @@ export function studioRoutes(services: StudioServices) {
   });
   api.post("/agents", async (c) => {
     const input = createAgentSchema.parse(await c.req.json());
+    const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
     const current = await access.authorize(c.get("principal"), true);
-    const { another } = await fleet(current);
-    if (!another.ok) {
-      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+    // A retry of a create that already happened replays through `create` (which still refuses
+    // different terms under the key); only a genuinely new agent meets the funding lock.
+    const replay = await services.directory.createdWithKey(current, key);
+    if (!replay) {
+      const { another } = await fleet(current);
+      if (!another.ok) {
+        throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+      }
     }
-    const scope = await access.create(c.get("principal"), {
-      ...input,
-      key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
-    });
+    const scope = await access.create(c.get("principal"), { ...input, key });
     return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
   });
   // Before the /agents/:id routes, so "draft" is never read as an agent id.
@@ -240,6 +247,21 @@ export function studioRoutes(services: StudioServices) {
     }
     return c.json(
       agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, body.config)),
+    );
+  });
+  // Spend limits live on the config and go through its update, version check included. Stored and
+  // shown; not enforced until the trading work (`spendEnforced` says so).
+  api.put("/agents/:id/limits", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    const body = limitsUpdateSchema.parse(await c.req.json());
+    const record = await repo.agent(scope);
+    const config = {
+      ...record.config,
+      spend: { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd },
+    };
+    return c.json(
+      agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, config)),
     );
   });
   api.get("/agents/:id/runs", async (c) => {

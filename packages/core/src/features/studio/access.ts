@@ -35,6 +35,11 @@ export interface StudioDirectory {
     },
   ): Promise<Scope>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
+  /**
+   * The agent an earlier create with this idempotency key made, or null for a new key. Read-only:
+   * a retry replays through `createAgent`, which still refuses different terms under the same key.
+   */
+  createdWithKey(access: StudioAccess, key: string): Promise<Scope | null>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
   list(access: StudioAccess): Promise<{ id: string; name: string; handle: string; scope: Scope }[]>;
 }

@@ -161,7 +161,8 @@ successful reads per lowercased address, never caches a failure, lets failures p
 sign-in reader above.) `createAusdBalanceReader({ chainId, rpcUrl?, fetch? })` builds one for AUSD
 from `@pickler/chain`, defaulting to the network's first public endpoint and refusing unsupported
 chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
-private query `schedule` uses.
+private query `schedule` uses. `PostgresStudioDirectory.createdWithKey` is a read-only lookup on
+the same workspace and request key `createAgent` replays from.
 
 ## Agent wallet ceremony
 

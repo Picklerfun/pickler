@@ -191,6 +191,15 @@ export class PostgresStudioDirectory implements StudioDirectory {
       return { tenantId: access.tenantId, agentId: id };
     });
   }
+  /** The same lookup `createAgent` replays from: workspace and key. */
+  async createdWithKey(access: StudioAccess, key: string): Promise<Scope | null> {
+    const result = await this.pool.query(
+      `SELECT tenant_id AS "tenantId", runtime_agent_id AS "agentId"
+      FROM pickler.product_agents WHERE workspace_id=$1 AND request_key=$2`,
+      [access.workspaceId, key],
+    );
+    return (result.rows[0] as Scope | undefined) ?? null;
+  }
   async agentScope(access: StudioAccess, productAgentId: string) {
     const result = await this.pool.query(
       `SELECT tenant_id AS "tenantId", runtime_agent_id AS "agentId"

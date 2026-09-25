@@ -5,6 +5,8 @@ import {
   DEFAULT_CONFIG,
   LOCK_REASONS as CORE_LOCK_REASONS,
   PilotError,
+  assertConfig,
+  type AgentConfig,
   type AgentRecord,
   type ScheduleReadiness,
   type StudioDirectory,
@@ -41,14 +43,17 @@ interface Options {
 }
 
 function fixture({
-  agents = [FIRST],
+  agents: initial = [FIRST],
   balances = {},
   ready = true,
   failRead = false,
 }: Options = {}) {
+  let agents = initial;
   const scheduled: boolean[] = [];
   const created: string[] = [];
   const reads: string[] = [];
+  const keys = new Map<string, string>();
+  const updates: { expectedVersion: number; spend: unknown }[] = [];
   const scope = (id: string) => ({ tenantId: "trusted", agentId: id });
 
   const directory: StudioDirectory = {
@@ -61,8 +66,18 @@ function fixture({
       enabled: true,
     }),
     createAgent: async (_access, _user, input) => {
+      const earlier = keys.get(input.key);
+      if (earlier) {
+        return scope(earlier);
+      }
       created.push(input.handle);
+      keys.set(input.key, SECOND);
+      agents = [...agents, SECOND];
       return scope(SECOND);
+    },
+    createdWithKey: async (_access, key) => {
+      const earlier = keys.get(key);
+      return earlier ? scope(earlier) : null;
     },
     agentScope: async (_access, id) => {
       if (!agents.includes(id)) {
@@ -80,19 +95,32 @@ function fixture({
     runs: async () => [],
   };
 
-  const record = (id: string): AgentRecord => ({
-    id,
-    tenantId: "trusted",
-    version: 1,
-    config: scopedConfig,
-    paused: false,
-    scheduleEnabled: false,
-    nextDueAt: null,
-  });
+  const records = new Map<string, AgentRecord>();
+  const record = (id: string): AgentRecord =>
+    records.get(id) ?? {
+      id,
+      tenantId: "trusted",
+      version: 1,
+      config: scopedConfig,
+      paused: false,
+      scheduleEnabled: false,
+      nextDueAt: null,
+    };
   const readiness: ScheduleReadiness = { connectionsChecked: ready, manualSucceeded: ready };
   const repository = {
     agent: async (s: { agentId: string }) => record(s.agentId),
     readiness: async () => readiness,
+    updateConfig: async (s: { agentId: string }, expectedVersion: number, config: AgentConfig) => {
+      const current = record(s.agentId);
+      if (current.version !== expectedVersion) {
+        throw new PilotError("CONFLICT", "Configuration version changed");
+      }
+      assertConfig(config);
+      updates.push({ expectedVersion, spend: config.spend });
+      const next = { ...current, config, version: current.version + 1 };
+      records.set(s.agentId, next);
+      return next;
+    },
     schedule: async (_scope: unknown, enabled: boolean) => {
       if (enabled && !ready) {
         throw new PilotError("NOT_READY", "Run once by hand");
@@ -130,7 +158,7 @@ function fixture({
       workspace: null,
     }),
   });
-  return { app, scheduled, created, reads };
+  return { app, scheduled, created, reads, updates };
 }
 
 const put = (body: unknown) => ({
@@ -286,4 +314,80 @@ test("an agent without a wallet reads as unfunded and does not block creation", 
   assert.equal(body.wallet, null);
   assert.deepEqual(body.canSchedule, { ok: false, reason: "unfunded" });
   assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
+});
+
+const create = (key: string) => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+  body: JSON.stringify(createBody),
+});
+
+test("a retried create replays the original agent even though it is still unfunded", async () => {
+  const { app, created } = fixture({ agents: [] });
+
+  const first = await app.request("/agents", create("same"));
+  const retry = await app.request("/agents", create("same"));
+  const another = await app.request("/agents", create("new"));
+
+  assert.equal(first.status, 201);
+  assert.equal(retry.status, 201);
+  assert.deepEqual(await retry.json(), await first.json());
+  assert.deepEqual(created, ["second"]);
+  assert.equal(another.status, 409);
+  assert.deepEqual(await another.json(), { error: "UNFUNDED_AGENT" });
+});
+
+test("limits are written through the config update, with its version check", async () => {
+  const { app, updates } = fixture({ balances: { [FIRST]: 10 } });
+
+  const response = await app.request(
+    `/agents/${FIRST}/limits`,
+    put({ expectedVersion: 1, perCallAusd: 5, perDayAusd: 50 }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.version, 2);
+  assert.deepEqual(body.config.spend, { perCallAusd: 5, perDayAusd: 50 });
+  assert.deepEqual(updates, [{ expectedVersion: 1, spend: { perCallAusd: 5, perDayAusd: 50 } }]);
+
+  const agent = await (await app.request(`/agents/${FIRST}`)).json();
+
+  assert.deepEqual(agent.spend, { perCallAusd: 5, perDayAusd: 50 });
+  assert.equal(agent.spendEnforced, false);
+
+  const stale = await app.request(
+    `/agents/${FIRST}/limits`,
+    put({ expectedVersion: 1, perCallAusd: 6, perDayAusd: 60 }),
+  );
+
+  assert.equal(stale.status, 409);
+  assert.deepEqual(await stale.json(), { error: "CONFLICT" });
+});
+
+test("limits outside their bounds, or a day below a call, are refused before any write", async () => {
+  const { app, updates } = fixture();
+
+  for (const body of [
+    { expectedVersion: 1, perCallAusd: 0, perDayAusd: 10 },
+    { expectedVersion: 1, perCallAusd: 1_001, perDayAusd: 10_000 },
+    { expectedVersion: 1, perCallAusd: 5, perDayAusd: 10_001 },
+    { expectedVersion: 1, perCallAusd: 50, perDayAusd: 49 },
+    { perCallAusd: 5, perDayAusd: 50 },
+    { expectedVersion: 1, perCallAusd: 5, perDayAusd: 50, tenantId: "victim" },
+  ]) {
+    const response = await app.request(`/agents/${FIRST}/limits`, put(body));
+
+    assert.equal(response.status, 400, JSON.stringify(body));
+  }
+  assert.deepEqual(updates, []);
+});
+
+test("an agent without limits says so, and that limits are not enforced", async () => {
+  const { app } = fixture({ balances: { [FIRST]: 10 } });
+
+  const agent = await (await app.request(`/agents/${FIRST}`)).json();
+
+  assert.equal(agent.spend, null);
+  assert.equal(agent.spendEnforced, false);
 });

@@ -87,6 +87,22 @@ export const marketCatalogSchema = z.object({
     }),
   ),
 });
+/**
+ * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Stored and shown; not enforced until the
+ * trading work does it, which `spendEnforced` on the studio agent DTO states.
+ */
+export const spendLimitsSchema = z
+  .object({
+    perCallAusd: z.number().min(1).max(1_000),
+    perDayAusd: z.number().min(1).max(10_000),
+  })
+  .strict()
+  .refine((spend) => spend.perDayAusd >= spend.perCallAusd, {
+    message: "A day's spend cannot be below one call's",
+    path: ["perDayAusd"],
+  });
+export type SpendLimitsDto = z.infer<typeof spendLimitsSchema>;
+
 export const agentConfigSchema = z
   .object({
     limits: z
@@ -131,6 +147,7 @@ export const agentConfigSchema = z
     discoveryPolicy: discoveryPolicySchema.optional(),
     sources: sourcesSchema.optional(),
     skills: z.array(skillSchema).max(8).optional(),
+    spend: spendLimitsSchema.optional(),
   })
   .strict()
   .refine(
@@ -149,6 +166,18 @@ export const runRequestSchema = z
   .object({ marketId: z.string().regex(/^\d+$/).optional() })
   .strict();
 export const scheduleSchema = z.object({ enabled: z.boolean() }).strict();
+/** `PUT /v1/studio/agents/:id/limits`: written through the config update, with its version check. */
+export const limitsUpdateSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    perCallAusd: z.number().min(1).max(1_000),
+    perDayAusd: z.number().min(1).max(10_000),
+  })
+  .strict()
+  .refine((limits) => limits.perDayAusd >= limits.perCallAusd, {
+    message: "A day's spend cannot be below one call's",
+    path: ["perDayAusd"],
+  });
 const price = z.string().regex(/^(0(\.\d{1,8})?|1(\.0{1,8})?)$/);
 export const legacyDecisionSchema = z
   .object({

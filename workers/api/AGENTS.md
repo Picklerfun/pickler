@@ -164,10 +164,17 @@ not counted). A balance read that fails fails the request (500); it is never sho
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
-`canCreateAnother` is closed. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
+`canCreateAnother` is closed, but a retry of an earlier create is looked up first with
+`directory.createdWithKey` and replays the original agent without meeting the lock. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
-isolate in `container.ts` so its 15 s cache outlives one request. There is no limits route yet:
-the budget ledger has monthly per-category caps only, with no per-call or per-day notion.
+isolate in `container.ts` so its 15 s cache outlives one request.
+
+`PUT /agents/:id/limits { expectedVersion, perCallAusd, perDayAusd }` writes `config.spend`
+through `repository.updateConfig`. It has the same version check as `PUT /config` (409 `CONFLICT`
+on a stale version) and the same effects: the version goes up, the schedule turns off, and a new
+manual run is needed before it can be scheduled again. The agent DTO answers `spend` and
+`spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
+per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 
 The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.
 

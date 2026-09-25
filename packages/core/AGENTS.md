@@ -96,6 +96,15 @@ and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances)` a
 and a completed manual run, both for the current config version) come from the new
 `ResearchRepository.readiness(scope)`. api-schema mirrors `LOCK_REASONS`; a workers/api test pins it.
 
+`AgentConfig.spend` (`SpendLimits { perCallAusd, perDayAusd }`, absent by default) holds the
+person's "max per call / max a day" in AUSD. `assertConfig` bounds it by `SPEND_BOUNDS` (1–1000 a
+call, 1–10000 a day, finite) and refuses a day below a call. It is stored and shown, not enforced:
+`SPEND_ENFORCED` is false. The budget ledger is not used because its categories are monthly caps
+with no per-call ceiling and no daily period. The trading work enforces these limits, through a
+per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
+`StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
+idempotency key made, so a retry can be recognised before any lock is applied.
+
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
 and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a
