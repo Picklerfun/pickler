@@ -8,6 +8,7 @@ import {
   SOON_BEATS as CORE_SOON_BEATS,
   SOON_VENUES as CORE_SOON_VENUES,
   VENUES_ON_MAP as CORE_VENUES_ON_MAP,
+  SPORTSBOOKS as CORE_SPORTSBOOKS,
 } from "@pickler/core";
 import {
   ACCENTS,
@@ -18,6 +19,8 @@ import {
   SOON_BEATS,
   SOON_VENUES,
   VENUES_ON_MAP,
+  SPORTSBOOKS,
+  sourcesSchema,
 } from "@pickler/api-schema";
 
 /* api-schema may not import core, so it carries its own copy of each list. This is the one place
@@ -42,4 +45,14 @@ test("the draft's beats, subcategory labels and soon lists in api-schema are cor
   assert.deepEqual(SOON_BEATS, CORE_SOON_BEATS);
   assert.deepEqual(SOON_VENUES, CORE_SOON_VENUES);
   assert.deepEqual(VENUES_ON_MAP, CORE_VENUES_ON_MAP);
+});
+test("the sportsbooks in api-schema are core's, and the schema accepts exactly their keys", () => {
+  const anywhere = { mode: "anywhere", sites: [] };
+
+  assert.deepEqual(SPORTSBOOKS, CORE_SPORTSBOOKS);
+  for (const book of CORE_SPORTSBOOKS) {
+    assert.doesNotThrow(() => sourcesSchema.parse({ web: anywhere, books: [book.key] }));
+  }
+  assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["DraftKings"] }));
+  assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["bovada"] }));
 });

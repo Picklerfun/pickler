@@ -59,7 +59,8 @@ the research quota authority.
 `policyForStyle` and `styleForPolicy` convert between a style and the policy, the latter by closest
 distance so a hand-edited policy still reads as a style. `AgentConfig` gained `sources` (what an
 agent reads beyond market data — web mode/sites and an allowed sportsbook list, validated in
-`assertConfig`) and `skills` (routines the person added, capped and length-checked the same way).
+`assertConfig`; books are keys of `SPORTSBOOKS` in `features/research/books.ts`, which are The Odds
+API bookmaker keys, and anything else is rejected) and `skills` (routines the person added, capped and length-checked the same way).
 Skills are stored apart from the brief text; `features/research/brief.ts`'s pure `composeBrief`
 appends them to the edge as numbered rules at run time.
 

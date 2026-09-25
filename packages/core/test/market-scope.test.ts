@@ -219,4 +219,20 @@ test("sources and skills are validated", () => {
       }),
     /600/,
   );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: ["DraftKings" as never] },
+        skills: [],
+      }),
+    /Invalid sportsbook list/,
+  );
+  assert.doesNotThrow(() =>
+    assertConfig({
+      ...config,
+      sources: { web: null, books: ["draftkings", "williamhill_us"] },
+      skills: [],
+    }),
+  );
 });

@@ -2,10 +2,6 @@ import type { Source, SportsData } from "@pickler/core";
 
 const FRESH_MS = 120_000;
 
-function normalizeBook(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 /** The Odds API source ids end in the bookmaker key, for example `event:draftkings`. */
 function bookmakerKey(source: Source): string {
   const id = source.externalId ?? "";
@@ -20,8 +16,8 @@ function fresh(source: Source, now: number): boolean {
 }
 
 /**
- * Quotes only the sportsbooks the person chose, matched to The Odds API bookmaker key ignoring
- * case and punctuation. An empty list returns the adapter itself, so every book is quoted.
+ * Quotes only the sportsbooks the person chose. Books are `SPORTSBOOKS` keys, which are The Odds
+ * API bookmaker keys, compared exactly. An empty list returns the adapter itself: every book.
  */
 export function booksOnly(
   odds: SportsData,
@@ -32,7 +28,7 @@ export function booksOnly(
     return odds;
   }
 
-  const chosen = new Set(books.map(normalizeBook));
+  const chosen = new Set(books);
   return {
     async context(market, signal, beforeRequest) {
       const context = await odds.context(market, signal, beforeRequest);
@@ -40,9 +36,7 @@ export function booksOnly(
         return context;
       }
 
-      const sources = context.sources.filter((source) =>
-        chosen.has(normalizeBook(bookmakerKey(source))),
-      );
+      const sources = context.sources.filter((source) => chosen.has(bookmakerKey(source)));
       if (sources.length === 0) {
         return { ...context, status: "no_coverage", sources };
       }

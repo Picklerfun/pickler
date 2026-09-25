@@ -51,8 +51,8 @@ host that runs research through the runtime passes through it.
   The reader refuses too, without calling Exa.
 - With the web off, search returns no sources without calling Exa and no page reader is
   offered. Search stays offered because core requires supporting and contradicting searches.
-- `plugins/odds.ts` keeps only chosen books, matched to The Odds API bookmaker key ignoring
-  case and punctuation; no match means `no_coverage`. An empty list leaves the adapter as is.
+- `plugins/odds.ts` keeps only chosen books. Books are core `SPORTSBOOKS` keys, which are The
+  Odds API bookmaker keys, compared exactly; no match means `no_coverage`. An empty list leaves
+  the adapter as is.
 
-Tests live in `test` and run with
-`node --import tsx --test packages/agent-runtime/test/*.test.ts` after `npm run build:shared`.
+Tests live in `test`; the root `npm test` discovers them after building shared packages.

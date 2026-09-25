@@ -7,6 +7,7 @@ import {
 import type { PluginConfig } from "./plugins.js";
 import type { ResearchReport, SportsContext, ResearchReference } from "./nfl.js";
 import type { Skill } from "./brief.js";
+import { isBookKey, type BookKey } from "./books.js";
 export const TOOL_NAMES = [
   "searchWeb",
   "readPage",
@@ -34,8 +35,8 @@ export interface DiscoveryPolicy {
 export type WebMode = "anywhere" | "prefer" | "only";
 export interface AgentSources {
   web: { mode: WebMode; sites: string[] } | null;
-  /** Sportsbooks the odds plugin may quote; empty means all. */
-  books: string[];
+  /** `SPORTSBOOKS` keys the odds plugin may quote; empty means all. */
+  books: BookKey[];
 }
 export const MAX_SKILLS = 8;
 export const MAX_SKILL_PROMPT = 600;
@@ -438,10 +439,7 @@ export function assertConfig(config: AgentConfig): void {
         throw new PilotError("INVALID_INPUT", "Sites must be bare hostnames");
       }
     }
-    if (
-      !Array.isArray(config.sources.books) ||
-      config.sources.books.some((book) => typeof book !== "string" || book.length > 40)
-    ) {
+    if (!Array.isArray(config.sources.books) || !config.sources.books.every(isBookKey)) {
       throw new PilotError("INVALID_INPUT", "Invalid sportsbook list");
     }
   }

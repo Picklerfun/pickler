@@ -37,6 +37,16 @@ export const marketScopeSchema = z
     ]),
   })
   .strict();
+/** Mirror of core's `SPORTSBOOKS`; `workers/api/test/accent-venue-mirror.test.ts` pins it. */
+export const SPORTSBOOKS = [
+  { label: "DraftKings", key: "draftkings" },
+  { label: "FanDuel", key: "fanduel" },
+  { label: "Pinnacle", key: "pinnacle" },
+  { label: "BetMGM", key: "betmgm" },
+  { label: "Caesars", key: "williamhill_us" },
+] as const;
+const BOOK_KEYS = ["draftkings", "fanduel", "pinnacle", "betmgm", "williamhill_us"] as const;
+
 export const skillSchema = z
   .object({ name: z.string().trim().min(1).max(40), prompt: z.string().trim().min(1).max(600) })
   .strict();
@@ -49,7 +59,7 @@ export const sourcesSchema = z
       })
       .strict()
       .nullable(),
-    books: z.array(z.string().max(40)),
+    books: z.array(z.enum(BOOK_KEYS)),
   })
   .strict()
   .superRefine((sources, ctx) => {

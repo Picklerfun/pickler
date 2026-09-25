@@ -73,3 +73,6 @@ Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` 
 signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries
 the read's sentence with `{level}` where the chosen price goes, so a page fills in a number and
 never rewrites the wording.
+
+`SPORTSBOOKS` in `research.ts` mirrors core's list, labels included, for the web. `sourcesSchema`
+accepts only its keys. `workers/api/test/accent-venue-mirror.test.ts` pins the mirror.

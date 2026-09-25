@@ -153,26 +153,37 @@ test("a prefer fallback is recorded as a run event", async () => {
 
 test("the odds plugin quotes only the books the person chose, and every book when none", async () => {
   const fresh = new Date().toISOString();
-  const all = [bookSource("draftkings", fresh), bookSource("fanduel", fresh)];
+  const all = [
+    bookSource("draftkings", fresh),
+    bookSource("fanduel", fresh),
+    bookSource("williamhill_us", fresh),
+  ];
   const odds = fakeOdds(all);
   const guard = async () => {};
+  const anywhere = { mode: "anywhere" as const, sites: [] };
 
   const chosen = scopeRun(
     base(recordingModel().model, odds),
-    runWith({ sources: { web: { mode: "anywhere", sites: [] }, books: ["DraftKings"] } }),
+    runWith({ sources: { web: anywhere, books: ["draftkings", "williamhill_us"] } }),
   );
   const every = scopeRun(base(recordingModel().model, odds), runWith({}));
-  const none = scopeRun(
+  const labelNotKey = scopeRun(
     base(recordingModel().model, odds),
-    runWith({ sources: { web: { mode: "anywhere", sites: [] }, books: ["Pinnacle"] } }),
+    runWith({ sources: { web: anywhere, books: ["DraftKings" as never] } }),
+  );
+  const absent = scopeRun(
+    base(recordingModel().model, odds),
+    runWith({ sources: { web: anywhere, books: ["pinnacle"] } }),
   );
 
   const picked = await chosen.odds!.context(market, signal(), guard);
   assert.deepEqual(
     picked.sources.map((s) => s.externalId),
-    ["g1:draftkings"],
+    ["g1:draftkings", "g1:williamhill_us"],
   );
   assert.equal(picked.status, "available");
   assert.equal(every.odds, odds, "an empty list leaves the plugin untouched");
-  assert.equal((await none.odds!.context(market, signal(), guard)).status, "no_coverage");
+  const byLabel = await labelNotKey.odds!.context(market, signal(), guard);
+  assert.equal(byLabel.status, "no_coverage", "keys are compared exactly, never labels");
+  assert.equal((await absent.odds!.context(market, signal(), guard)).status, "no_coverage");
 });
