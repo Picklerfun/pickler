@@ -253,8 +253,11 @@ enrolment ceremony — add the delegated user if there is none, then the wallet 
 or reuse the `existing` one an earlier attempt left), `rules` (policies), `agent`, `run`. A first
 agent is four passkey prompts, a later one two; any failure propagates and stops the sequence. The
 screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
-Idempotency keys for the create and the run are kept per draft, so "Try again with your passkey"
-replays the same attempt. `first-run.tsx` draws the four steps as the rail's first lines, then polls
+Idempotency keys for the create and the run are kept per draft, and `runCeremony` carries a
+`CeremonyProgress` (wallet, approved policies, agent, run) across retries, so "Try again with your
+passkey" resumes where the attempt stopped: a failed run start retries only the start, a refused
+create retries only the create, and neither asks for the passkey again. Leaving the screen aborts
+the ceremony between prompts. `first-run.tsx` draws the four steps as the rail's first lines, then polls
 the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
 order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
 "Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
@@ -310,3 +313,11 @@ No private key is ever derived or held in this app. Custody of the person's Pick
 to Turnkey, and a passkey registered against `TURNKEY_RPID` exists to authorise activities — never
 to be read as key material by anything else on the same host. A connected browser wallet is not
 authenticated server identity either: connecting is a read that says which address to show.
+
+A sub-organization is created in exactly one place: the studio's "Create and run it once" ceremony
+(`features/studio/create/ceremony.ts`), the first time somebody builds an agent. `/passkey` cannot
+create one. `PasskeyFlow`'s `add` mode reads `GET /v1/signing/wallets/me` through
+`passkeyScreenFor` (`features/auth/lib/custody.ts`) and shows either the add-passkey ceremony and a
+device list for an account that already has a sub-organization, or a single screen pointing at
+`/studio/new` (`#passkey-none-yet`) for one that does not. Signup and signin never render an
+enrolment screen — `lib/flow.ts` has no step left that could reach one.
