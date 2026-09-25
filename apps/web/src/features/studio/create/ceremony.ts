@@ -8,18 +8,19 @@
  *
  * Four steps, drawn as the first run's four-line rail (spec §4):
  *
- * - `wallet` — the sub-organization when there is none (the existing enrolment ceremony, which is
- *   its own passkey prompt), the delegated user when there is none, then the agent's wallet named
- *   for its handle. A wallet left behind by an earlier attempt that failed before its link comes
- *   back from `prepareWallet` as `existing` and is reused without another prompt.
+ * - `wallet` — the delegated user when there is none, then the agent's wallet named for its handle.
+ *   The sub-organization is not made here: it is born at signup (spec §4.1), and a person without
+ *   one gets `NoSubOrganization` before any prompt, which the screen turns into a trip to
+ *   `/passkey`. A wallet left behind by an earlier attempt that failed before its link comes back
+ *   from `prepareWallet` as `existing` and is reused without another prompt.
  * - `rules` — the wallet's policies, approved by the passkey. No policies, no link. Skipped when
  *   the `existing` wallet's policies were already approved (a retry after a reload, which has lost
  *   the in-memory progress), so the rules are never written twice.
  * - `agent` — the agent, created with the wallet whose policies were just approved.
  * - `run` — its first run.
  *
- * A first agent is four prompts (register, delegated user, wallet, policies); every later one is
- * two (wallet, policies). Any failure propagates, and nothing after the failed step runs.
+ * A first agent is three prompts (delegated user, wallet, policies); every later one is two
+ * (wallet, policies). Any failure propagates, and nothing after the failed step runs.
  */
 
 export type CeremonyStep = "wallet" | "rules" | "agent" | "run";
@@ -51,10 +52,20 @@ export interface ExistingWallet extends AgentWallet {
   policiesApproved: boolean;
 }
 
+/**
+ * The person has no sub-organization, so there is nothing to put an agent's wallet in. Thrown
+ * before any prompt; the screen sends them to `/passkey`, which creates it — this sequence never
+ * does.
+ */
+export class NoSubOrganization extends Error {
+  constructor() {
+    super("Your wallet has not been created yet. Create it with your passkey first.");
+    this.name = "NoSubOrganization";
+  }
+}
+
 export interface CeremonyDeps {
   state(): Promise<{ hasSubOrganization: boolean; hasDelegatedUser: boolean }>;
-  /** The sub-organization and its master wallet: the existing enrolment ceremony. */
-  register(): Promise<void>;
   stamp(unsigned: UnsignedActivity): Promise<SignedActivity>;
   prepareDelegated(): Promise<UnsignedActivity>;
   confirmDelegated(signed: SignedActivity): Promise<void>;
@@ -68,6 +79,11 @@ export interface CeremonyDeps {
   onStep(step: CeremonyStep, state: "start" | "done"): void;
   /** Called once the wallet exists, so the screen can name its address before the run does. */
   onWallet?(wallet: AgentWallet): void;
+  /**
+   * Called once the custody state is read, before any prompt: whether this is the first agent,
+   * whose Wallet line covers two prompts (Pickler's delegated key, then the wallet).
+   */
+  onFirstAgent?(first: boolean): void;
 }
 
 export interface CeremonyResult {
@@ -103,9 +119,9 @@ async function wallet(
   signal?.throwIfAborted();
 
   if (!state.hasSubOrganization) {
-    await deps.register();
-    signal?.throwIfAborted();
+    throw new NoSubOrganization();
   }
+  deps.onFirstAgent?.(!state.hasDelegatedUser);
 
   if (!state.hasDelegatedUser) {
     const unsigned = await deps.prepareDelegated();

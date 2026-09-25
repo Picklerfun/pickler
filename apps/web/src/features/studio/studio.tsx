@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
+import { hasSubOrganization } from "@/features/auth/lib/custody";
+import { wallet as readWallet } from "@/features/auth/lib/custody-api";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
   studioApi,
@@ -244,6 +246,14 @@ export function Studio({
         const account = await ensureProfile(supabase);
         if (account.kind !== "ready") {
           router.replace("/signup?complete=1");
+          return;
+        }
+        /* The master wallet exists before any agent (spec §4.1): the profile, top right, shows it
+           from the first visit. A person without a sub-organization — a sign-up closed at the
+           passkey step, an account from before it was mandatory — creates it before anything else
+           renders. A read that fails for another reason propagates like every other load error. */
+        if (!(await hasSubOrganization(() => readWallet(data.session.access_token)))) {
+          router.replace("/passkey");
           return;
         }
         await studioApi("/onboard", { method: "POST" });

@@ -6,13 +6,8 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { Button, Icon } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
-import {
-  SessionExpired,
-  createWallet,
-  markEnrolled,
-  openChallenge,
-} from "@/features/auth/lib/custody";
-import { describeDevice } from "@/features/auth/lib/device";
+import { SessionExpired, hasSubOrganization, openChallenge } from "@/features/auth/lib/custody";
+import { wallet as readWallet } from "@/features/auth/lib/custody-api";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import {
   agentState,
@@ -32,9 +27,14 @@ import {
   type Agent,
   type Options,
 } from "../api";
-import { custody, session } from "../lib/passkey";
+import { custody } from "../lib/passkey";
 import { previewOptions, studioPreview } from "../preview";
-import { runCeremony, type CeremonyProgress, type CeremonyStep } from "./ceremony";
+import {
+  NoSubOrganization,
+  runCeremony,
+  type CeremonyProgress,
+  type CeremonyStep,
+} from "./ceremony";
 import { createGate, startIfOpen, type CreateGate } from "./gate";
 import { Locked } from "./locked";
 import {
@@ -75,14 +75,6 @@ const CEREMONY_NAMES: Record<CeremonyStep, string> = {
   run: "Its first run",
 };
 
-function localStore() {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
 /** The two names a WebAuthn prompt fails with when the person closed it or it timed out. */
 const CLOSED_PROMPT = new Set(["NotAllowedError", "AbortError"]);
 
@@ -108,8 +100,8 @@ function describeFailure(step: CeremonyStep | null, caught: unknown): string {
 /**
  * Creating an agent, as the "Pickler Create First Agent v2" canvas draws it: Describe, then either
  * the model's draft revealed on "Got it" or seven manual steps, the review they both end at, and
- * the first run — whose first four lines are the passkey ceremony that creates the wallet, approves
- * its rules and creates the agent. `?step=` mirrors the screen so each one is reachable by URL.
+ * the first run — whose first four lines are the passkey ceremony that creates the agent's wallet,
+ * approves its rules and creates the agent. `?step=` mirrors the screen so each one is reachable by URL.
  */
 export function CreateAgent({
   initialStep,
@@ -192,6 +184,13 @@ export function CreateAgent({
         const account = await ensureProfile(supabase);
         if (account.kind !== "ready") {
           router.replace("/signup?complete=1");
+          return;
+        }
+        /* The same door the studio shell has, before a draft is written: the agent ceremony needs a
+           sub-organization, and a person without one would otherwise fill in every step only to be
+           sent to /passkey by "Create and run it once". */
+        if (!(await hasSubOrganization(() => readWallet(data.session.access_token)))) {
+          router.replace("/passkey");
           return;
         }
         await studioApi("/onboard", { method: "POST" });
@@ -358,15 +357,6 @@ export function CreateAgent({
         const result = await runCeremony(
           {
             state: agentState,
-            register: async () => {
-              const challenge = await openChallenge(custody());
-              rpId.current = challenge.rp.id;
-              await createWallet(custody(), {
-                options: challenge,
-                label: describeDevice(navigator.userAgent),
-              });
-              markEnrolled(localStore(), (await session()).userId);
-            },
             stamp: async (unsigned) => ({
               url: unsigned.url,
               body: unsigned.body,
@@ -392,6 +382,7 @@ export function CreateAgent({
               setCeremony((was) => ({ ...was, steps: { ...was.steps, [which]: phase } }));
             },
             onWallet: (wallet) => setCeremony((was) => ({ ...was, address: wallet.address })),
+            onFirstAgent: (first) => setCeremony((was) => ({ ...was, firstAgent: first })),
           },
           draft.handle,
           current.progress,
@@ -407,6 +398,11 @@ export function CreateAgent({
         if (signal?.aborted) {
           return;
         }
+        /* No sub-organization: nothing was prompted and nothing created. The wallet is made on
+           /passkey, never from here (spec §4.1), so the person goes there. */
+        if (caught instanceof NoSubOrganization) {
+          router.replace("/passkey");
+        }
         const failed = progress.at;
         setCeremony((was) => ({
           ...was,
@@ -415,7 +411,7 @@ export function CreateAgent({
         }));
       }
     }
-  }, [draft, options, preview]);
+  }, [draft, options, preview, router]);
 
   const onSettled = useCallback((next: FirstCall | null, done: boolean) => {
     setCall(next);

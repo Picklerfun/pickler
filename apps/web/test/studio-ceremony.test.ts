@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  NoSubOrganization,
   runCeremony,
   type CeremonyDeps,
   type CeremonyProgress,
@@ -19,6 +20,7 @@ const unsigned = (name: string): UnsignedActivity => ({
 });
 
 type Options = {
+  /** True by default: the sub-organization is born at signup, so every agent finds one. */
   hasSubOrganization?: boolean;
   hasDelegatedUser?: boolean;
   existing?: boolean;
@@ -54,13 +56,9 @@ function fakes(options: Options = {}) {
     state: async () => {
       log.push("state");
       return {
-        hasSubOrganization: options.hasSubOrganization ?? false,
+        hasSubOrganization: options.hasSubOrganization ?? true,
         hasDelegatedUser: options.hasDelegatedUser ?? false,
       };
-    },
-    register: async () => {
-      prompts += 1;
-      log.push("register");
     },
     stamp: async (activity): Promise<SignedActivity> => {
       prompts += 1;
@@ -164,15 +162,15 @@ test("the four steps start and finish in order: wallet, rules, agent, run", asyn
   );
 });
 
-test("a first agent registers, adds the delegated user, then stamps the wallet and its rules", async () => {
+test("a first agent adds the delegated user, then stamps the wallet and its rules", async () => {
   const { deps, log } = fakes();
 
   await runCeremony(deps, "halftime");
 
+  // No enrolment here: the sub-organization was born at signup.
   assert.deepEqual(log, [
     "wallet:start",
     "state",
-    "register",
     "prepareDelegated",
     "stamp delegated",
     "confirmDelegated",
@@ -202,26 +200,47 @@ test("the result carries the agent, its run and the wallet's address", async () 
   assert.deepEqual(result, { agentId: "agent-1", runId: "run-1", address: "0xabc" });
 });
 
-test("with a sub-organization and a delegated user, neither is created again", async () => {
-  const { deps, log } = fakes({ hasSubOrganization: true, hasDelegatedUser: true });
+test("with a delegated user already there, it is not created again", async () => {
+  const { deps, log } = fakes({ hasDelegatedUser: true });
 
   await runCeremony(deps, "halftime");
 
-  assert.equal(log.includes("register"), false);
   assert.equal(log.includes("prepareDelegated"), false);
 });
 
 test("a sub-organization without its delegated user still gets one", async () => {
-  const { deps, log } = fakes({ hasSubOrganization: true, hasDelegatedUser: false });
+  const { deps, log } = fakes({ hasDelegatedUser: false });
 
   await runCeremony(deps, "halftime");
 
-  assert.equal(log.includes("register"), false);
   assert.equal(log.includes("confirmDelegated"), true);
 });
 
+test("without a sub-organization it stops before any prompt and names the reason", async () => {
+  const { deps, log, prompts } = fakes({ hasSubOrganization: false });
+
+  await assert.rejects(runCeremony(deps, "halftime"), NoSubOrganization);
+
+  assert.equal(prompts(), 0);
+  // Nothing past the read: no delegated user, no wallet, and nothing that could enrol one here.
+  assert.deepEqual(calls(log), ["state"]);
+  assert.equal(log.includes("wallet:done"), false);
+});
+
+test("the screen hears whether this is a first agent before the first prompt", async () => {
+  const first = fakes({ hasDelegatedUser: false });
+  first.deps.onFirstAgent = (value) => first.log.push(`first ${value}`);
+  await runCeremony(first.deps, "halftime");
+  assert.ok(first.log.indexOf("first true") < first.log.indexOf("stamp delegated"));
+
+  const later = fakes({ hasDelegatedUser: true });
+  later.deps.onFirstAgent = (value) => later.log.push(`first ${value}`);
+  await runCeremony(later.deps, "halftime");
+  assert.ok(later.log.includes("first false"));
+});
+
 test("a wallet left by an earlier attempt is reused without a prompt", async () => {
-  const { deps, log } = fakes({ hasSubOrganization: true, hasDelegatedUser: true, existing: true });
+  const { deps, log } = fakes({ hasDelegatedUser: true, existing: true });
 
   await runCeremony(deps, "halftime");
 
@@ -232,7 +251,6 @@ test("a wallet left by an earlier attempt is reused without a prompt", async () 
 
 test("a reused wallet whose rules were approved asks for no passkey and writes no rules again", async () => {
   const { deps, log, prompts } = fakes({
-    hasSubOrganization: true,
     hasDelegatedUser: true,
     existing: true,
     existingApproved: true,
@@ -257,7 +275,6 @@ test("a reused wallet whose rules were approved asks for no passkey and writes n
 
 test("a reused wallet whose rules were not approved still asks for them", async () => {
   const { deps, prompts } = fakes({
-    hasSubOrganization: true,
     hasDelegatedUser: true,
     existing: true,
     existingApproved: false,
@@ -269,7 +286,7 @@ test("a reused wallet whose rules were not approved still asks for them", async 
 });
 
 test("the reused wallet's address is the one the result names", async () => {
-  const { deps } = fakes({ hasSubOrganization: true, hasDelegatedUser: true, existing: true });
+  const { deps } = fakes({ hasDelegatedUser: true, existing: true });
 
   const result = await runCeremony(deps, "halftime");
 
@@ -303,16 +320,16 @@ test("refused policies propagate and nothing is created after them", async () =>
   );
 });
 
-test("a first agent asks for four passkey prompts", async () => {
+test("a first agent asks for three passkey prompts", async () => {
   const { deps, prompts } = fakes();
 
   await runCeremony(deps, "halftime");
 
-  assert.equal(prompts(), 4);
+  assert.equal(prompts(), 3);
 });
 
 test("every later agent asks for two", async () => {
-  const { deps, prompts } = fakes({ hasSubOrganization: true, hasDelegatedUser: true });
+  const { deps, prompts } = fakes({ hasDelegatedUser: true });
 
   await runCeremony(deps, "halftime");
 
@@ -361,7 +378,6 @@ test("a retry still reports every step done, in order, for the rail", async () =
 
 test("a closed prompt propagates and progress keeps what was already done", async () => {
   const { deps } = fakes({
-    hasSubOrganization: true,
     hasDelegatedUser: true,
     closeStamp: "policies",
   });
@@ -383,7 +399,7 @@ test("an aborted ceremony asks for no passkey at all", async () => {
 });
 
 test("an abort between steps stops before the next prompt", async () => {
-  const { deps, log, prompts } = fakes({ hasSubOrganization: true, hasDelegatedUser: true });
+  const { deps, log, prompts } = fakes({ hasDelegatedUser: true });
   const controller = new AbortController();
   const onStep = deps.onStep;
   deps.onStep = (step, state) => {

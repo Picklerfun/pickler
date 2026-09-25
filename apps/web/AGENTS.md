@@ -258,13 +258,14 @@ suggestion is checked too. "Set it up from my line" calls `draftAgent`; `DRAFT_U
 person to the manual steps with "The model is busy. Build it step by step instead."
 
 `create/ceremony.ts` is "Create and run it once" as a sequence, pure and pinned in
-`studio-ceremony.test.ts`: `wallet` (register the sub-organization if there is none — the existing
-enrolment ceremony — add the delegated user if there is none, then the wallet named for the handle,
-or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped when that
-`existing` wallet comes back with `policiesApproved`, so a retry after a reload never writes the
-rules twice), `agent`, `run`. A first
-agent is four passkey prompts, a later one two; any failure propagates and stops the sequence. The
-screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
+`studio-ceremony.test.ts`: `wallet` (add the delegated user if there is none, then the wallet named
+for the handle, or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped
+when that `existing` wallet comes back with `policiesApproved`, so a retry after a reload never
+writes the rules twice), `agent`, `run`. It never creates a sub-organization: without one it throws
+`NoSubOrganization` before any prompt and the screen sends the person to `/passkey`. A first agent
+is three passkey prompts (delegated user, wallet, policies), a later one two; any failure
+propagates and stops the sequence. `onFirstAgent` tells the screen which, so the rail's Wallet line
+says it covers two prompts on a first agent. The screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
 Idempotency keys for the create and the run are kept per draft, and `runCeremony` carries a
 `CeremonyProgress` (wallet, approved policies, agent, run) across retries, so "Try again with your
 passkey" resumes where the attempt stopped: a failed run start retries only the start, a refused
@@ -338,13 +339,25 @@ to Turnkey, and a passkey registered against `TURNKEY_RPID` exists to authorise 
 to be read as key material by anything else on the same host. A connected browser wallet is not
 authenticated server identity either: connecting is a read that says which address to show.
 
-A sub-organization is created in exactly one place: the studio's "Create and run it once" ceremony
-(`features/studio/create/ceremony.ts`), the first time somebody builds an agent. `/passkey` cannot
-create one. `PasskeyFlow`'s `add` mode reads `GET /v1/signing/wallets/me` through
-`passkeyScreenFor` (`features/auth/lib/custody.ts`) and shows either the add-passkey ceremony and a
-device list for an account that already has a sub-organization, or a single screen pointing at
-`/studio/new` (`#passkey-none-yet`) for one that does not. `?state=none-yet`
+A sub-organization is born at signup, before any agent (spec §4.1): the studio's profile shows the
+master wallet from the first visit. `lib/flow.ts` is the pure machine, pinned in `flow.test.ts`:
+signup is `auth → code → handle → passkey → welcome`, and the only event that leaves `passkey` is
+`passkey_created`; signin is `auth → code → welcome`, or `auth → code → passkey → welcome` when the
+landing check (`landing` in `lib/custody.ts`, reading `GET /v1/signing/wallets/me`) finds no
+sub-organization and sends `wallet_missing`. Every event is accepted only on the steps whose screen
+can send it, and an exhaustive walk pins that nothing but `passkey_created` leaves the passkey step.
+The step is `steps/create-wallet-step.tsx` (`#passkey-create`, recovered from the `PasskeyStep`
+commit c4383d2 deleted): one prompt, the enrolment ceremony (`createWallet`: challenge fetched as
+the sheet opens → WebAuthn from the sheet's confirm click → `POST /v1/signing/passkeys/register`),
+which creates the sub-organization with the passkey as its only root and the master wallet. A
+closed or failed prompt leaves the person on the step with "Try again"; there is no skip.
+
+Anyone who reaches a signed-in screen without a sub-organization is sent to `/passkey`: the studio
+shell (`studio.tsx`) and the create screen (`create/create.tsx`) read it through
+`hasSubOrganization` (a 404 is no; any other failure propagates) after the session and profile
+guards and `router.replace("/passkey")` before rendering anything else. `PasskeyFlow`'s `add` mode
+reads the same signal through `passkeyScreenFor` and shows either the create step, the same
+ceremony, or the add-passkey ceremony and a device list for an account that has one. `?state=create`
 (`features/auth/lib/passkey-preview.ts`, outside production only, gated on the build like `?stage=`)
-opens that screen without the read, because the API answers the read only to a verified JWT and the
-design harness has none; `scripts/design/routes.mjs` measures it as `passkey-none-yet`. Signup and signin never render an
-enrolment screen — `lib/flow.ts` has no step left that could reach one.
+opens the create step without the read, because the API answers the read only to a verified JWT and
+the design harness has none; `scripts/design/routes.mjs` measures it as `passkey-create`.

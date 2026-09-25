@@ -249,15 +249,33 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
 }
 
 /** Which half of /passkey a signed-in person sees. */
-export type PasskeyScreen = "add" | "none-yet";
+export type PasskeyScreen = "create" | "add";
 
 /**
- * `/passkey` never creates a sub-organization — only the studio's "Create and run it once"
- * ceremony does that, in `features/studio/create/ceremony.ts` — so this reads the same signal
- * `landing` reads (GET /wallets/me; a 404 is an account with no wallet yet) and turns it into
- * which of the two screens the page draws. There is no third answer: a sub-organization with no
+ * `/passkey` is where anyone who reached a signed-in screen without a sub-organization is sent
+ * (spec §4.1): a sign-up closed at the passkey step, or an account from before the passkey was
+ * mandatory. So it reads the same signal `landing` reads (GET /wallets/me; a 404 is an account
+ * with no sub-organization) and draws either the enrolment ceremony that creates one, or the
+ * add-a-device screen for one that exists. There is no third answer: a sub-organization with no
  * wallet is not a state this reads, because `register` cannot return without one.
  */
 export function passkeyScreenFor(account: { hasSubOrganization: boolean }): PasskeyScreen {
-  return account.hasSubOrganization ? "add" : "none-yet";
+  return account.hasSubOrganization ? "add" : "create";
+}
+
+/**
+ * Whether the signed-in person has a sub-organization, from GET /wallets/me. A 404 is "no";
+ * any other failure propagates, because a wallet that could not be read is not a missing one, and
+ * sending somebody with a wallet to create another would be the wrong door.
+ */
+export async function hasSubOrganization(readWallet: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await readWallet();
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return false;
+    }
+    throw error;
+  }
 }

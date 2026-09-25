@@ -5,18 +5,21 @@
 // each flow end to end.
 //
 // The names are the canvas's own — `STEPS` and `RAILS` below are the same words, in the same
-// order, as the constants in the canvas's logic half. The canvas also has an `agent` rail —
-// `{ LIMITS: ['agent'], LIVE: ['done'] }`, whose two steps are titled NEW AGENT and AGENT LIVE —
-// for creating an agent, and it once drew a `custody` rail hanging off it — a passkey step and a
-// backup step, mounted at /passkey. That rail is gone from here: the studio's own "Create and run
-// it once" ceremony (`features/studio/create/ceremony.ts`) is a second, independent sequence that
-// was built to do the same job and never called into this one, so the custody rail sat in this
-// file unreachable from any page. Under the studio-create-and-fund specification the
-// sub-organization is born in exactly one place — that ceremony — so the rail that could also
-// have made one is deleted rather than left to rot. `/passkey` now renders outside this machine
-// entirely; see `PasskeyAddFlow` in `components/passkey-flow.tsx`.
+// order, as the constants in the canvas's logic half.
+//
+// The passkey step is mandatory (studio-create-and-fund §4.1, decided 2026-09-25): the master
+// wallet exists before any agent, so the person's profile can show it from the first studio visit.
+// Sign-up is account → code → handle → passkey → welcome, and the only event that leaves the
+// passkey step is `passkey_created` — the enrolment ceremony that creates the sub-organization and
+// its master wallet. Sign-in passes through the same step when the landing check finds no
+// sub-organization (`wallet_missing`), and goes straight to welcome when there is one.
+//
+// Every event is accepted only on the steps whose screen can send it (`ACCEPTS` below). That is
+// what makes the rule hold for the machine rather than for today's screens: from the passkey step
+// no stray `device_skipped`, `change_email` or `mode_chosen` can walk round the ceremony.
 
-export type Step = "auth" | "code" | "handle" | "welcome" | "recover" | "approve" | "recovered";
+export type Step =
+  "auth" | "code" | "handle" | "passkey" | "welcome" | "recover" | "approve" | "recovered";
 
 /** Which rail is on screen: creating an account, returning to one, or adding a device to one. */
 export type Mode = "up" | "in" | "recover";
@@ -27,6 +30,11 @@ export interface FlowState {
   email: string;
   code: string;
   handle: string;
+  /**
+   * Sign-in found no sub-organization, so its rail carries the PASSKEY phase. Sign-up always does;
+   * a sign-in with a wallet never shows it.
+   */
+  needsWallet: boolean;
 }
 
 /**
@@ -41,6 +49,17 @@ export type FlowEvent =
   | { type: "code_changed"; code: string }
   | { type: "code_verified" }
   | { type: "handle_claimed"; handle: string }
+  /** Sign-in's landing check: the account has no profile yet, so it finishes signing up. */
+  | { type: "profile_missing" }
+  /** Sign-in's landing check: GET /wallets/me answered 404, so there is no sub-organization. */
+  | { type: "wallet_missing" }
+  /**
+   * The landing check found a complete account — a profile and a sub-organization — behind a
+   * sign-up, so it is a sign-in after all.
+   */
+  | { type: "account_found" }
+  /** The enrolment ceremony finished: the sub-organization and its master wallet exist. */
+  | { type: "passkey_created" }
   /** Signed in, but this browser holds no passkey for the account. */
   | { type: "device_unknown" }
   | { type: "approve_started" }
@@ -68,15 +87,22 @@ export interface RailPhase {
   done: boolean;
 }
 
-const RAILS: Record<Mode, readonly Phase[]> = {
+const RAILS: Record<Mode | "inWithoutWallet", readonly Phase[]> = {
   up: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
     { label: "HANDLE", steps: ["handle"] },
+    { label: "PASSKEY", steps: ["passkey"] },
     // Sign-up ends where signing in ends, under the label the `in` rail already gives `welcome`.
     { label: "IN", steps: ["welcome"] },
   ],
   in: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
+    { label: "IN", steps: ["welcome"] },
+  ],
+  // Sign-in without a sub-organization: the same mandatory step, between the code and welcome.
+  inWithoutWallet: [
+    { label: "ACCOUNT", steps: ["auth", "code"] },
+    { label: "PASSKEY", steps: ["passkey"] },
     { label: "IN", steps: ["welcome"] },
   ],
   recover: [
@@ -91,8 +117,8 @@ const RAILS: Record<Mode, readonly Phase[]> = {
  * the list to assert against when the question is what a flow demands — not `next`, which will
  * happily walk into a step no rail mentions.
  */
-export function stepsFor(mode: Mode): Step[] {
-  return RAILS[mode].flatMap((phase) => [...phase.steps]);
+export function stepsFor(mode: Mode, needsWallet = false): Step[] {
+  return railOf({ ...INITIAL, mode, needsWallet }).flatMap((phase) => [...phase.steps]);
 }
 
 export const INITIAL: FlowState = {
@@ -101,9 +127,39 @@ export const INITIAL: FlowState = {
   email: "",
   code: "",
   handle: "",
+  needsWallet: false,
 };
 
+/** The steps whose screen can send each event. Anything else is ignored, not obeyed. */
+const ACCEPTS: Record<FlowEvent["type"], readonly Step[]> = {
+  mode_chosen: ["auth"],
+  code_sent: ["auth", "code"],
+  code_changed: ["code"],
+  code_verified: ["code"],
+  handle_claimed: ["handle"],
+  profile_missing: ["code"],
+  wallet_missing: ["code"],
+  account_found: ["code"],
+  passkey_created: ["passkey"],
+  device_unknown: ["code"],
+  approve_started: ["recover"],
+  device_added: ["approve"],
+  device_skipped: ["recover", "approve"],
+  change_email: ["code"],
+};
+
+/** The rail a state is drawn on: sign-in without a wallet carries the passkey phase. */
+function railOf(state: FlowState): readonly Phase[] {
+  if (state.mode === "in" && state.needsWallet) {
+    return RAILS.inWithoutWallet;
+  }
+  return RAILS[state.mode];
+}
+
 export function next(state: FlowState, event: FlowEvent): FlowState {
+  if (!ACCEPTS[event.type].includes(state.step)) {
+    return state;
+  }
   switch (event.type) {
     case "mode_chosen":
       // The toggle only exists on the account screen, so the step does not move. The code is
@@ -117,9 +173,17 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
       // The one place the two email rails part: a new account still has to pick a name.
       return { ...state, step: state.mode === "up" ? "handle" : "welcome" };
     case "handle_claimed":
-      // Sign-up is over here. It used to fall through to `passkey`, which is what made every new
-      // account create custody it had no use for yet.
-      return { ...state, step: "welcome", handle: event.handle };
+      // Not the end of sign-up: the master wallet is made next, and nobody skips it.
+      return { ...state, step: "passkey", handle: event.handle };
+    case "profile_missing":
+      // No profile yet: finish signing up rather than welcoming somebody to an empty account.
+      return { ...state, mode: "up", step: "handle" };
+    case "wallet_missing":
+      return { ...state, step: "passkey", needsWallet: true };
+    case "account_found":
+      return { ...state, mode: "in", step: "welcome" };
+    case "passkey_created":
+      return { ...state, step: "welcome" };
     case "device_unknown":
       // Not just another screen — the rail above the form becomes the three-phase recovery one.
       return { ...state, mode: "recover", step: "recover" };
@@ -142,7 +206,7 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
 
 /** The rail for the current mode: every phase, which one you are on, and which are behind you. */
 export function rail(state: FlowState): RailPhase[] {
-  const phases = RAILS[state.mode];
+  const phases = railOf(state);
   const at = phases.findIndex((current) => current.steps.includes(state.step));
   return phases.map((current, index) => ({
     label: current.label,

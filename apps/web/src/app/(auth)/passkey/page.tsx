@@ -8,22 +8,18 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Passkey — Pickler" };
 
 /**
- * Passkeys, as their own page — and, since the studio-create-and-fund specification, only that.
+ * Passkeys, as their own page: where a sub-organization is born for anyone who reached a signed-in
+ * screen without one (spec §4.1), and where one that exists gets another passkey.
  *
- * This used to be where a sub-organization was born: the enrolment ceremony that creates it,
- * mounted on the same rail signup once used. That moved. A sub-organization is now created in
- * exactly one place — the first agent's "Create and run it once", in
- * `features/studio/create/ceremony.ts` — so this page can no longer start one, and does not try
- * to. What is left is real work of its own: adding a second passkey to a sub-organization that
- * already exists, and showing which ones are on it. `PasskeyFlow`'s `add` mode reads which of the
- * two applies (`passkeyScreenFor` in `lib/custody.ts`) and draws the right screen; a person with no
- * sub-organization yet is sent to `/studio/new`, not offered a button that would make one here.
+ * Sign-up's mandatory passkey step creates the sub-organization and its master wallet for almost
+ * everybody. This page catches the rest: a sign-up closed at that step, and an account from before
+ * the step was mandatory. The studio shell redirects a person with no sub-organization here before
+ * rendering anything else. `PasskeyFlow`'s `add` mode reads which applies (`passkeyScreenFor` in
+ * `lib/custody.ts`) and draws either "Create your wallet" — the same enrolment ceremony, with no
+ * way past it but a wallet — or the add-a-device screen.
  *
- * It is reached, never redirected to: `/account` offers it where it already says there is no
- * wallet, and the screen it lands on for that person says so and points at the studio instead.
- *
- * `?state=none-yet` opens that screen without reading the account, outside production only, for
- * the design harness: see `passkeyPreviewFromSearch`.
+ * `?state=create` opens the create screen without reading the account, outside production only,
+ * for the design harness: see `passkeyPreviewFromSearch`.
  */
 export default async function PasskeyPage({
   searchParams,

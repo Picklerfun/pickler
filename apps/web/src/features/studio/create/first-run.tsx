@@ -21,6 +21,11 @@ export interface CeremonyView {
   started: boolean;
   steps: Record<CeremonyStep, StepState>;
   address: string | null;
+  /**
+   * Whether this is the person's first agent, from the ceremony's custody read: its Wallet line
+   * covers two prompts, Pickler's delegated key and then the wallet. Null until it is read.
+   */
+  firstAgent: boolean | null;
   agentId: string | null;
   runId: string | null;
   /** What stopped the ceremony, already in words; empty while nothing has. */
@@ -31,6 +36,7 @@ export const idleCeremony = (): CeremonyView => ({
   started: false,
   steps: { wallet: "pending", rules: "pending", agent: "pending", run: "pending" },
   address: null,
+  firstAgent: null,
   agentId: null,
   runId: null,
   error: "",
@@ -43,11 +49,19 @@ const TERMINAL: Run["status"][] = ["completed", "failed", "cancelled"];
 /** The command that starts a local runner: the Node executor that claims queued runs. */
 const RUNNER_COMMAND = "npm run dev:agent";
 
-function ceremonyLine(step: CeremonyStep, state: StepState, name: string, address: string | null) {
+function ceremonyLine(
+  step: CeremonyStep,
+  state: StepState,
+  name: string,
+  address: string | null,
+  firstAgent: boolean | null,
+) {
   const copy: Record<CeremonyStep, Record<StepState, string>> = {
     wallet: {
       pending: "Its wallet",
-      start: "Creating its wallet · confirm with your passkey",
+      start: firstAgent
+        ? "Adding Pickler's key, then creating its wallet · confirm with your passkey twice"
+        : "Creating its wallet · confirm with your passkey",
       done: `Created its wallet with your passkey${address ? ` · ${shortAddress(address)}` : ""}`,
       failed: "Its wallet was not created",
     },
@@ -193,7 +207,7 @@ export function FirstRun({
                 data-tint={state === "pending" ? undefined : TINT[step]}
               />
               <span className={styles.lineText}>
-                {ceremonyLine(step, state, name, ceremony.address)}
+                {ceremonyLine(step, state, name, ceremony.address, ceremony.firstAgent)}
               </span>
               <span className={styles.lineMeta}>{META[state]}</span>
             </li>
@@ -217,7 +231,7 @@ export function FirstRun({
       {!ceremony.started && (
         <p className={styles.note}>
           Nothing has been created yet. Creating it asks for your passkey: once for its wallet, once
-          for its rules, and twice more the very first time.
+          for its rules, and once more the very first time, to add Pickler&apos;s key.
         </p>
       )}
 
