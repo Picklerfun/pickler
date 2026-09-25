@@ -81,6 +81,28 @@ async function jsonBody(c: Context<AppEnv>): Promise<Body> {
   return parsed as Body;
 }
 
+/** No body, or `{}`. Anything else is a caller passing something this route does not take. */
+async function emptyBody(c: Context<AppEnv>): Promise<void> {
+  const raw = await c.req.text();
+  if (raw.trim() === "") {
+    return;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw badRequest("This request takes no body");
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    Object.keys(parsed).length > 0
+  ) {
+    throw badRequest("This request takes no body");
+  }
+}
+
 function text(body: Body, field: string, max: number): string {
   const value = body[field];
   if (typeof value !== "string" || value.length === 0 || value.length > max) {
@@ -440,16 +462,14 @@ export function signingRoutes(services: SigningRouteServices) {
     );
   });
 
+  // Whether this is the person's first agent — and so whether Pickler's self-delete policy rides
+  // along — is decided by core from what is linked, never by the caller. The body must be empty
+  // or `{}`: a field here (the old `first_agent` included) is refused rather than ignored.
   api.post("/agents/wallet/:walletId/policies/prepare", async (c) => {
     const user = person(c);
     const walletId = walletIdParam(c.req.param("walletId"));
-    const body = await jsonBody(c);
-    if (typeof body["first_agent"] !== "boolean") {
-      throw badRequest("Field 'first_agent' must be a boolean");
-    }
-    const unsigned = await services
-      .custody(c.get("requestId"))
-      .preparePolicies(user.id, walletId, { firstAgent: body["first_agent"] });
+    await emptyBody(c);
+    const unsigned = await services.custody(c.get("requestId")).preparePolicies(user.id, walletId);
     return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
   });
 

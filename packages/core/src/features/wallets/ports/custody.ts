@@ -189,6 +189,12 @@ export interface AgentWalletRepository {
   findOrphanWallet(userId: string, name: string): Promise<AgentWallet | null>;
   /** This person's agent wallet with this id, linked or not; null for anyone else's. */
   findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
+  /**
+   * Whether any wallet of this person's is linked to an agent. False means the ceremony in
+   * progress is their first agent's, which is when the delegated user's self-delete policy is
+   * written.
+   */
+  hasLinkedAgentWallet(userId: string): Promise<boolean>;
   /** The wallet linked to an agent through `agent_wallets`. */
   findAgentWallet(agentId: string): Promise<AgentWallet | null>;
   saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }): Promise<void>;

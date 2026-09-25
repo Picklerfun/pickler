@@ -224,6 +224,19 @@ export class PostgresCustodyStore
     return rows[0] ?? null;
   }
 
+  async hasLinkedAgentWallet(userId: string): Promise<boolean> {
+    const { rows } = await this.pool.query<{ linked: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+           FROM wallets.agent_wallets l
+           JOIN wallets.wallets w ON w.wallet_id = l.wallet_id
+          WHERE w.user_id = $1
+       ) AS linked`,
+      [userId],
+    );
+    return rows[0]?.linked === true;
+  }
+
   async findAgentWallet(agentId: string): Promise<AgentWallet | null> {
     const { rows } = await this.pool.query<AgentWallet>(
       `SELECT l.wallet_id AS "walletId", a.address

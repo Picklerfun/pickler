@@ -494,7 +494,7 @@ test("a wallet whose account is refused leaves no wallets row behind", async (t)
   assert.equal(rowCount, 0);
 });
 
-test("an orphan wallet is found before its link and not after; findAgentWallet reads the link", async (t) => {
+test("an orphan wallet is found before its link and not after; the link decides first agent and findAgentWallet", async (t) => {
   const { store, custody } = await setup(t);
   const person = await registered(custody);
   const wallet = agentWallet(person.userId, person.subOrganizationId);
@@ -511,12 +511,16 @@ test("an orphan wallet is found before its link and not after; findAgentWallet r
 
   const agentId = await seedAgent(store.pool);
   assert.equal(await custody.findAgentWallet(agentId), null);
+  // Not linked yet: the ceremony in progress is this person's first agent's.
+  assert.equal(await custody.hasLinkedAgentWallet(person.userId), false);
   await store.pool.query(
     `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
     [agentId, wallet.walletId, ["p1", "p2"]],
   );
 
   assert.equal(await custody.findOrphanWallet(person.userId, "halftime"), null);
+  assert.equal(await custody.hasLinkedAgentWallet(person.userId), true);
+  assert.equal(await custody.hasLinkedAgentWallet(stranger.userId), false);
   assert.deepEqual(await custody.findAgentWallet(agentId), {
     walletId: wallet.walletId,
     address: wallet.address,

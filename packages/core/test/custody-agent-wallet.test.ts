@@ -10,6 +10,7 @@ import {
   NoCustodyAccountError,
 } from "../src/features/wallets/domain/passkey.js";
 import type { TurnkeyPolicy } from "../src/features/wallets/domain/agent-wallet-policies.js";
+import type { UnsignedActivity } from "../src/features/wallets/ports/custody.js";
 import type {
   AgentWallet,
   AgentWalletActivityBuilders,
@@ -19,6 +20,7 @@ import type {
 } from "../src/features/wallets/ports/custody.js";
 import type { SignedActivityForwarder } from "../src/features/signing/ports/signing.js";
 import {
+  InvalidSignedActivityError,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   type ForwardExpectations,
@@ -34,11 +36,24 @@ const ACCOUNT: CustodyAccount = {
   rootUserId: "root-ana",
   address: "0x1111111111111111111111111111111111111111",
 };
-const SIGNED = {
-  url: "https://api.turnkey.com/public/v1/submit/create_wallet",
-  body: "{}",
-  stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "s" },
-};
+/** What the browser sends back after the passkey stamps an unsigned activity, unchanged. */
+function stamped(unsigned: UnsignedActivity, body: string = unsigned.body) {
+  return {
+    url: unsigned.url,
+    body,
+    stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "s" },
+  };
+}
+
+/** The same activity with its parameters edited, as a tampering browser would stamp it. */
+function tampered(
+  unsigned: UnsignedActivity,
+  edit: (parameters: { [key: string]: unknown; policies: unknown[] }) => void,
+) {
+  const body = JSON.parse(unsigned.body);
+  edit(body.parameters);
+  return stamped(unsigned, JSON.stringify(body));
+}
 
 type Saved = Parameters<AgentWalletRepository["saveWallet"]>[0];
 
@@ -48,6 +63,8 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     delegated: options.delegated ?? null,
     wallets: [] as Saved[],
     linked: new Set<string>(),
+    /** Whether any of this person's wallets is linked to an agent already. */
+    hasLinked: false,
     /** What the forwarder answers next. */
     activity: {
       id: "act-1",
@@ -85,6 +102,9 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
       const found = state.wallets.find((w) => w.userId === userId && w.walletId === walletId);
       return found ? { walletId: found.walletId, address: found.address } : null;
     },
+    async hasLinkedAgentWallet() {
+      return state.hasLinked;
+    },
     async findAgentWallet() {
       return null;
     },
@@ -92,13 +112,23 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
   };
 
   const builds: { kind: string; input: unknown }[] = [];
+  // A real JSON body carrying everything the builder was given, and a fresh timestamp each time,
+  // so the confirm-side comparison is exercised the way the Turnkey builder exercises it.
+  let clock = 0;
   const unsigned = (kind: string, input: { subOrganizationId: string }) => {
     builds.push({ kind, input });
+    const { subOrganizationId, ...parameters } = input;
+    clock += 1;
     return {
-      url: `u/${kind}`,
-      body: "b",
-      timestampMs: "1",
-      organizationId: input.subOrganizationId,
+      url: `https://api.turnkey.com/public/v1/submit/${kind}`,
+      body: JSON.stringify({
+        type: kind,
+        timestampMs: String(clock),
+        organizationId: subOrganizationId,
+        parameters,
+      }),
+      timestampMs: String(clock),
+      organizationId: subOrganizationId,
     };
   };
   const agentActivities: AgentWalletActivityBuilders = {
@@ -195,9 +225,10 @@ test("prepareDelegatedUser refuses when one is already set, when the key is miss
 
 test("confirmDelegatedUser forwards only create_users into the person's sub-organization and saves the id", async () => {
   const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
   f.state.activity = completed({ createUsersResult: { userIds: ["da-1"] } });
 
-  assert.deepEqual(await service(f).confirmDelegatedUser(USER, SIGNED), {
+  assert.deepEqual(await service(f).confirmDelegatedUser(USER, stamped(unsigned)), {
     delegatedUserId: "da-1",
   });
 
@@ -207,14 +238,76 @@ test("confirmDelegatedUser forwards only create_users into the person's sub-orga
   assert.equal(f.state.delegated, "da-1");
 });
 
+test("a delegated user stamped with another key, or beside another user, is refused unforwarded", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+  f.state.activity = completed({ createUsersResult: { userIds: ["da-1"] } });
+
+  await assert.rejects(
+    service(f).confirmDelegatedUser(
+      USER,
+      tampered(unsigned, (p) => {
+        p.publicKey = "02attacker";
+      }),
+    ),
+    InvalidSignedActivityError,
+  );
+  await assert.rejects(
+    service(f).confirmDelegatedUser(
+      USER,
+      tampered(unsigned, (p) => {
+        p.extraUser = { userName: "Mallory" };
+      }),
+    ),
+    InvalidSignedActivityError,
+  );
+  // Another organization, or another endpoint, is not the prepared activity either.
+  const elsewhere = JSON.parse(unsigned.body);
+  elsewhere.organizationId = "sub-other";
+  await assert.rejects(
+    service(f).confirmDelegatedUser(USER, stamped(unsigned, JSON.stringify(elsewhere))),
+    InvalidSignedActivityError,
+  );
+  await assert.rejects(
+    service(f).confirmDelegatedUser(USER, {
+      ...stamped(unsigned),
+      url: "https://api.turnkey.com/public/v1/submit/create_wallet",
+    }),
+    InvalidSignedActivityError,
+  );
+  await assert.rejects(
+    service(f).confirmDelegatedUser(USER, stamped(unsigned, "not json")),
+    InvalidSignedActivityError,
+  );
+
+  assert.deepEqual(f.forwards, []);
+  assert.equal(f.state.delegated, null);
+});
+
+test("confirming a delegated user without the configured key is refused", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+
+  await assert.rejects(
+    service(f, { delegatedPublicKey: null }).confirmDelegatedUser(USER, stamped(unsigned)),
+    DelegatedKeyNotConfiguredError,
+  );
+  assert.deepEqual(f.forwards, []);
+});
+
 test("a delegated user that did not complete is not saved", async () => {
   const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+
   f.state.activity = { id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_FAILED" };
-  await assert.rejects(service(f).confirmDelegatedUser(USER, SIGNED), SignedActivityRejectedError);
+  await assert.rejects(
+    service(f).confirmDelegatedUser(USER, stamped(unsigned)),
+    SignedActivityRejectedError,
+  );
 
   f.state.activity = { id: "a", fingerprint: "f", status: "ACTIVITY_STATUS_PENDING" };
   await assert.rejects(
-    service(f).confirmDelegatedUser(USER, SIGNED),
+    service(f).confirmDelegatedUser(USER, stamped(unsigned)),
     SigningServiceUnavailableError,
   );
   assert.equal(f.state.delegated, null);
@@ -230,7 +323,7 @@ test("a wallet is built under the handle, confirmed with create_wallet only, and
   ]);
 
   f.state.activity = completed({ createWalletResult: { walletId: "w-1", addresses: [ADDRESS] } });
-  const wallet = await service(f).confirmAgentWallet(USER, "halftime", SIGNED);
+  const wallet = await service(f).confirmAgentWallet(USER, "halftime", stamped(prepared.unsigned));
 
   assert.deepEqual(wallet, { walletId: "w-1", address: ADDRESS });
   assert.deepEqual(f.forwards, [
@@ -247,6 +340,19 @@ test("a wallet is built under the handle, confirmed with create_wallet only, and
       path: MONAD_ACCOUNT_PATH,
     },
   ]);
+});
+
+test("a wallet stamped under another name than the handle confirmed is refused unforwarded", async () => {
+  const f = fakes();
+  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  assert.ok("unsigned" in prepared);
+
+  await assert.rejects(
+    service(f).confirmAgentWallet(USER, "otherbot", stamped(prepared.unsigned)),
+    InvalidSignedActivityError,
+  );
+  assert.deepEqual(f.forwards, []);
+  assert.deepEqual(f.state.wallets, []);
 });
 
 test("a retry finds the orphan wallet and builds nothing", async () => {
@@ -289,11 +395,12 @@ function builtPolicies(f: ReturnType<typeof fakes>): TurnkeyPolicy[] {
   return (build.input as { policies: TurnkeyPolicy[] }).policies;
 }
 
-test("the self-delete policy is added only for the first agent", async () => {
+test("the self-delete policy is added only while no wallet of the person's is linked", async () => {
   const first = withWallet();
-  await service(first).preparePolicies(USER, "w-1", { firstAgent: true });
+  await service(first).preparePolicies(USER, "w-1");
   const later = withWallet();
-  await service(later).preparePolicies(USER, "w-1", { firstAgent: false });
+  later.state.hasLinked = true;
+  await service(later).preparePolicies(USER, "w-1");
 
   const names = (f: ReturnType<typeof fakes>) => builtPolicies(f).map((p) => p.policyName);
   assert.deepEqual(names(first), [
@@ -307,9 +414,7 @@ test("the self-delete policy is added only for the first agent", async () => {
 test("the venue list reaches the policies", async () => {
   const f = withWallet();
 
-  await service(f, { venueContracts: ["0xabc"] }).preparePolicies(USER, "w-1", {
-    firstAgent: false,
-  });
+  await service(f, { venueContracts: ["0xabc"] }).preparePolicies(USER, "w-1");
 
   const [allow] = builtPolicies(f);
   assert.equal(allow?.effect, "EFFECT_ALLOW");
@@ -319,24 +424,27 @@ test("the venue list reaches the policies", async () => {
 
 test("policies need the delegated user and a wallet of the caller's", async () => {
   await assert.rejects(
-    service(withWallet(null)).preparePolicies(USER, "w-1", { firstAgent: true }),
+    service(withWallet(null)).preparePolicies(USER, "w-1"),
     DelegatedUserMissingError,
   );
   await assert.rejects(
-    service(withWallet()).preparePolicies(USER, "someone-elses", { firstAgent: true }),
+    service(withWallet()).preparePolicies(USER, "someone-elses"),
     AgentWalletNotFoundError,
   );
+  const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
   await assert.rejects(
-    service(withWallet()).confirmPolicies(USER, "someone-elses", SIGNED),
+    service(f).confirmPolicies(USER, "someone-elses", stamped(unsigned)),
     AgentWalletNotFoundError,
   );
 });
 
 test("confirmPolicies forwards only create_policies and returns the ids", async () => {
   const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
   f.state.activity = completed({ createPoliciesResult: { policyIds: ["p1", "p2", "p3"] } });
 
-  assert.deepEqual(await service(f).confirmPolicies(USER, "w-1", SIGNED), {
+  assert.deepEqual(await service(f).confirmPolicies(USER, "w-1", stamped(unsigned)), {
     policyIds: ["p1", "p2", "p3"],
   });
   assert.deepEqual(f.forwards, [
@@ -344,12 +452,58 @@ test("confirmPolicies forwards only create_policies and returns the ids", async 
   ]);
 });
 
+test("policies with an extra ALLOW, or one missing, are refused unforwarded", async () => {
+  const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+
+  await assert.rejects(
+    service(f).confirmPolicies(
+      USER,
+      "w-1",
+      tampered(unsigned, (p) => {
+        p.policies.push({
+          policyName: "Anything",
+          effect: "EFFECT_ALLOW",
+          consensus: "approvers.any(user, user.id == 'da')",
+          condition: "true",
+          notes: "",
+        });
+      }),
+    ),
+    InvalidSignedActivityError,
+  );
+  await assert.rejects(
+    service(f).confirmPolicies(
+      USER,
+      "w-1",
+      tampered(unsigned, (p) => {
+        p.policies.shift();
+      }),
+    ),
+    InvalidSignedActivityError,
+  );
+  assert.deepEqual(f.forwards, []);
+});
+
+test("policies prepared for a first agent no longer confirm once another wallet is linked", async () => {
+  const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+  f.state.hasLinked = true;
+
+  await assert.rejects(
+    service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
+    InvalidSignedActivityError,
+  );
+  assert.deepEqual(f.forwards, []);
+});
+
 test("confirmPolicies with a single id throws", async () => {
   const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
   f.state.activity = completed({ createPoliciesResult: { policyIds: ["p1"] } });
 
   await assert.rejects(
-    service(f).confirmPolicies(USER, "w-1", SIGNED),
+    service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
     SigningServiceUnavailableError,
   );
 });

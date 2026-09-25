@@ -75,7 +75,10 @@ for the cleanup that has not been written.
 Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
 prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
 agent only), the agent's wallet (`{ handle }`, profile handle rules), and that wallet's policies
-(`{ first_agent }`, which adds the delegated user's self-delete policy). Prepares answer the
+(no body; core adds the delegated user's self-delete policy when none of the person's wallets
+is linked to an agent yet, and a `first_agent` field is refused). Each confirm is refused with 400
+`invalid_signed_activity` before anything reaches Turnkey unless the stamped request is exactly
+what its prepare built, apart from the timestamp. Prepares answer the
 unsigned activity in add/prepare's shape; a wallet prepare for a handle with an unlinked wallet
 answers `{ existing: { wallet_id, address } }` instead, and the browser skips that stamp.
 Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.

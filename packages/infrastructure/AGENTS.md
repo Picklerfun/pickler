@@ -141,7 +141,8 @@ Pickler. `test/turnkey-activities.test.ts` also pins the result keys core reads.
 `PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
 (wallets + wallet_accounts in one transaction), `findOrphanWallet` (an agent wallet by name with
-no `agent_wallets` row), `findOwnedAgentWallet`, `findAgentWallet` and `saveDeposit` (lowercases
+no `agent_wallets` row), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
+`agent_wallets`), `findAgentWallet` and `saveDeposit` (lowercases
 the hash for the column check).
 
 `src/turnkey/delegated-key.ts` generates Pickler's delegated key pair in Turnkey's API key format

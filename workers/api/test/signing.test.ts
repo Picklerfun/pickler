@@ -20,6 +20,7 @@ import {
   type SubOrganizationCreator,
   createProfileService,
 } from "@pickler/core";
+import { createActivityBuilders } from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
 
 const NOW = new Date("2026-09-22T12:00:00Z");
@@ -168,6 +169,7 @@ function harness(
     delegated: null as string | null,
     wallets: [] as Parameters<AgentWalletRepository["saveWallet"]>[0][],
     builds: [] as { kind: string; input: unknown }[],
+    hasLinked: false,
   };
   const agentWallets: AgentWalletRepository = {
     async saveDelegatedUser(_userId, id) {
@@ -187,25 +189,29 @@ function harness(
       const found = ceremony.wallets.find((w) => w.userId === userId && w.walletId === walletId);
       return found ? { walletId: found.walletId, address: found.address } : null;
     },
+    async hasLinkedAgentWallet() {
+      return ceremony.hasLinked;
+    },
     async findAgentWallet() {
       return null;
     },
     async saveDeposit() {},
   };
-  const unsignedFor = (kind: string, input: { subOrganizationId: string }) => {
-    ceremony.builds.push({ kind, input });
-    return {
-      url: `https://api.turnkey.com/public/v1/submit/${kind}`,
-      body: `{"kind":"${kind}"}`,
-      timestampMs: "1758542400000",
-      organizationId: input.subOrganizationId,
+  // The real Turnkey builders, recorded: the confirm routes compare what was stamped against a
+  // rebuild, so the tamper tests below have to edit the bodies Turnkey would really receive.
+  let clock = 1_758_542_400_000;
+  const real = createActivityBuilders({ now: () => (clock += 1) });
+  const recorded =
+    <K extends keyof AgentWalletActivityBuilders>(kind: K) =>
+    (input: Parameters<AgentWalletActivityBuilders[K]>[0]) => {
+      ceremony.builds.push({ kind, input });
+      return (real[kind] as (i: typeof input) => ReturnType<AgentWalletActivityBuilders[K]>)(input);
     };
-  };
   const agentActivities: AgentWalletActivityBuilders = {
-    createDelegatedUser: (input) => unsignedFor("create_users", input),
-    createAgentWallet: (input) => unsignedFor("create_wallet", input),
-    createPolicies: (input) => unsignedFor("create_policies", input),
-    signTransaction: (input) => unsignedFor("sign_transaction", input),
+    createDelegatedUser: recorded("createDelegatedUser"),
+    createAgentWallet: recorded("createAgentWallet"),
+    createPolicies: recorded("createPolicies"),
+    signTransaction: recorded("signTransaction"),
   };
   const delegatedKey: { value: string | null } = { value: "02delegated" };
 
@@ -922,14 +928,50 @@ test("a body larger than any passkey ceremony produces is refused unread", async
 
 const get = (h: Harness, path: string) => h.app.request(path, { method: "GET" }, env);
 
-const CEREMONY_SIGNED = {
-  url: "https://api.turnkey.com/public/v1/submit/create_wallet",
-  body: '{"type":"ACTIVITY_TYPE_CREATE_WALLET"}',
-  stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "c3RhbXA" },
-};
+interface Prepared {
+  url: string;
+  body: string;
+  timestampMs: string;
+  organizationId: string;
+}
+
+/** What the browser posts back after the passkey stamps a prepared activity. */
+function stamp(prepared: Prepared, body: string = prepared.body) {
+  return {
+    url: prepared.url,
+    body,
+    stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "c3RhbXA" },
+  };
+}
+
+/** The prepared activity with its parameters edited before stamping, as a tampering page would. */
+/** The parts of the create_users and create_policies parameters the tamper tests reach into. */
+interface StampedParameters {
+  users: { userName: string; apiKeys: { publicKey: string }[]; authenticators: unknown[] }[];
+  policies: unknown[];
+}
+
+function tamper(prepared: Prepared, edit: (parameters: StampedParameters) => void) {
+  const body = JSON.parse(prepared.body);
+  edit(body.parameters);
+  return stamp(prepared, JSON.stringify(body));
+}
 
 function completed(result: Record<string, Record<string, unknown>>): TurnkeyActivity {
   return { id: "act-9", fingerprint: "f", status: "ACTIVITY_STATUS_COMPLETED", result };
+}
+
+function withAgentWallet(h: Harness) {
+  h.ceremony.delegated = "da-1";
+  h.ceremony.wallets.push({
+    userId: ANA,
+    walletId: "w-1",
+    subOrganizationId: "sub-1",
+    kind: "agent",
+    name: "halftime",
+    address: ADDRESS,
+    path: "m/44'/60'/0'/0/0",
+  });
 }
 
 test("every ceremony route refuses a caller without a session", async () => {
@@ -972,22 +1014,20 @@ test("the delegated user is prepared like add/prepare and confirmed into the cal
   const h = harness();
   await registered(h);
 
-  const prepared = await post(h, "/v1/signing/agents/delegated/prepare");
+  const res = await post(h, "/v1/signing/agents/delegated/prepare");
 
-  assert.equal(prepared.status, 200);
-  assert.deepEqual(await data(prepared), {
-    url: "https://api.turnkey.com/public/v1/submit/create_users",
-    body: '{"kind":"create_users"}',
-    timestampMs: "1758542400000",
-    organizationId: "sub-1",
-  });
-  assert.deepEqual(h.ceremony.builds, [
-    { kind: "create_users", input: { subOrganizationId: "sub-1", publicKey: "02delegated" } },
-  ]);
+  assert.equal(res.status, 200);
+  const prepared = (await data(res)) as unknown as Prepared;
+  assert.deepEqual(Object.keys(prepared), ["url", "body", "timestampMs", "organizationId"]);
+  assert.equal(prepared.url, "https://api.turnkey.com/public/v1/submit/create_users");
+  assert.equal(prepared.organizationId, "sub-1");
+  const body = JSON.parse(prepared.body);
+  assert.equal(body.type, "ACTIVITY_TYPE_CREATE_USERS_V4");
+  assert.equal(body.parameters.users[0].apiKeys[0].publicKey, "02delegated");
 
   h.nextActivity.value = completed({ createUsersResult: { userIds: ["da-1"] } });
   const confirmed = await post(h, "/v1/signing/agents/delegated/confirm", {
-    signed: CEREMONY_SIGNED,
+    signed: stamp(prepared),
   });
 
   assert.equal(confirmed.status, 200);
@@ -1001,6 +1041,37 @@ test("the delegated user is prepared like add/prepare and confirmed into the cal
   // Once set, a second prepare is a conflict rather than a second Pickler user.
   const again = await post(h, "/v1/signing/agents/delegated/prepare");
   assert.equal(again.status, 409);
+});
+
+test("a delegated user stamped with another public key or an extra user is refused before Turnkey", async () => {
+  const h = harness();
+  await registered(h);
+  const prepared = (await data(
+    await post(h, "/v1/signing/agents/delegated/prepare"),
+  )) as unknown as Prepared;
+
+  const otherKey = await post(h, "/v1/signing/agents/delegated/confirm", {
+    signed: tamper(prepared, (p) => {
+      p.users[0].apiKeys[0].publicKey = "02attacker";
+    }),
+  });
+  const extraUser = await post(h, "/v1/signing/agents/delegated/confirm", {
+    signed: tamper(prepared, (p) => {
+      p.users.push({ ...p.users[0], userName: "Mallory" });
+    }),
+  });
+  const withPasskey = await post(h, "/v1/signing/agents/delegated/confirm", {
+    signed: tamper(prepared, (p) => {
+      p.users[0].authenticators.push({ authenticatorName: "x" });
+    }),
+  });
+
+  for (const res of [otherKey, extraUser, withPasskey]) {
+    assert.equal(res.status, 400);
+    assert.equal((await json(res))["error"], "invalid_signed_activity");
+  }
+  assert.deepEqual(h.forwards, []);
+  assert.equal(h.ceremony.delegated, null);
 });
 
 test("without Pickler's delegated key the ceremony answers 503 and builds nothing", async () => {
@@ -1022,21 +1093,27 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
   const bad = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "Half Time" });
   assert.equal(bad.status, 400);
 
-  const prepared = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
-  assert.equal(prepared.status, 200);
-  assert.deepEqual(await data(prepared), {
-    url: "https://api.turnkey.com/public/v1/submit/create_wallet",
-    body: '{"kind":"create_wallet"}',
-    timestampMs: "1758542400000",
-    organizationId: "sub-1",
+  const res = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  assert.equal(res.status, 200);
+  const prepared = (await data(res)) as unknown as Prepared;
+  assert.equal(prepared.url, "https://api.turnkey.com/public/v1/submit/create_wallet");
+  assert.equal(prepared.organizationId, "sub-1");
+  assert.equal(JSON.parse(prepared.body).parameters.walletName, "halftime");
+
+  // Stamped as prepared but confirmed under another handle: not the activity Pickler built.
+  const renamed = await post(h, "/v1/signing/agents/wallet/confirm", {
+    handle: "otherbot",
+    signed: stamp(prepared),
   });
+  assert.equal(renamed.status, 400);
+  assert.deepEqual(h.forwards, []);
 
   h.nextActivity.value = completed({
     createWalletResult: { walletId: "w-1", addresses: [ADDRESS] },
   });
   const confirmed = await post(h, "/v1/signing/agents/wallet/confirm", {
     handle: "halftime",
-    signed: CEREMONY_SIGNED,
+    signed: stamp(prepared),
   });
   assert.equal(confirmed.status, 200);
   assert.deepEqual(await data(confirmed), { wallet_id: "w-1", address: ADDRESS });
@@ -1045,47 +1122,68 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
     allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_WALLET"],
   });
 
+  // The retry answers the unlinked wallet and builds no second create_wallet.
+  const builtBefore = h.ceremony.builds.length;
   const retry = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
   assert.deepEqual(await data(retry), { existing: { wallet_id: "w-1", address: ADDRESS } });
-  assert.equal(h.ceremony.builds.filter((b) => b.kind === "create_wallet").length, 1);
+  assert.equal(h.ceremony.builds.length, builtBefore);
+});
+
+const policyNames = (prepared: Prepared) =>
+  (JSON.parse(prepared.body).parameters.policies as { policyName: string }[]).map(
+    (p) => p.policyName,
+  );
+
+test("the first agent's policies carry the self-delete policy; a later agent's do not", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+
+  const first = (await data(
+    await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare"),
+  )) as unknown as Prepared;
+  h.ceremony.hasLinked = true;
+  const later = (await data(
+    await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {}),
+  )) as unknown as Prepared;
+
+  assert.deepEqual(policyNames(first), [
+    "Never a transfer out",
+    "Only root changes the rules",
+    "Pickler may remove itself",
+  ]);
+  assert.deepEqual(policyNames(later), ["Never a transfer out", "Only root changes the rules"]);
+});
+
+test("policies prepare takes no body: first_agent is the server's decision", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {
+    first_agent: false,
+  });
+
+  assert.equal(res.status, 400);
+  assert.deepEqual(h.ceremony.builds, []);
 });
 
 test("policies are prepared for the caller's wallet and confirmed to their ids", async () => {
   const h = harness();
   await registered(h);
-  h.ceremony.delegated = "da-1";
-  h.ceremony.wallets.push({
-    userId: ANA,
-    walletId: "w-1",
-    subOrganizationId: "sub-1",
-    kind: "agent",
-    name: "halftime",
-    address: ADDRESS,
-    path: "m/44'/60'/0'/0/0",
-  });
+  withAgentWallet(h);
 
-  const missingFlag = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {});
-  assert.equal(missingFlag.status, 400);
-  const notMine = await post(h, "/v1/signing/agents/wallet/w-2/policies/prepare", {
-    first_agent: true,
-  });
+  const notMine = await post(h, "/v1/signing/agents/wallet/w-2/policies/prepare");
   assert.equal(notMine.status, 404);
 
-  const prepared = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare", {
-    first_agent: true,
-  });
-  assert.equal(prepared.status, 200);
-  assert.equal((await data(prepared))["organizationId"], "sub-1");
-  const build = h.ceremony.builds.find((b) => b.kind === "create_policies");
-  const policies = (build?.input as { policies: { policyName: string }[] }).policies;
-  assert.deepEqual(
-    policies.map((p) => p.policyName),
-    ["Never a transfer out", "Only root changes the rules", "Pickler may remove itself"],
-  );
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+  assert.equal(res.status, 200);
+  const prepared = (await data(res)) as unknown as Prepared;
+  assert.equal(prepared.organizationId, "sub-1");
 
   h.nextActivity.value = completed({ createPoliciesResult: { policyIds: ["p1", "p2", "p3"] } });
   const confirmed = await post(h, "/v1/signing/agents/wallet/w-1/policies/confirm", {
-    signed: CEREMONY_SIGNED,
+    signed: stamp(prepared),
   });
   assert.equal(confirmed.status, 200);
   assert.deepEqual(await data(confirmed), { policy_ids: ["p1", "p2", "p3"] });
@@ -1095,13 +1193,36 @@ test("policies are prepared for the caller's wallet and confirmed to their ids",
   });
 });
 
+test("policies stamped with an extra ALLOW are refused before Turnkey", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  const prepared = (await data(
+    await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare"),
+  )) as unknown as Prepared;
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/confirm", {
+    signed: tamper(prepared, (p) => {
+      p.policies.push({
+        policyName: "Anything goes",
+        effect: "EFFECT_ALLOW",
+        consensus: "approvers.any(user, user.id == 'da-1')",
+        condition: "activity.action == 'SIGN'",
+        notes: "",
+      });
+    }),
+  });
+
+  assert.equal(res.status, 400);
+  assert.equal((await json(res))["error"], "invalid_signed_activity");
+  assert.deepEqual(h.forwards, []);
+});
+
 test("a wallet id that could not be a Turnkey id is refused before core sees it", async () => {
   const h = harness();
   await registered(h);
 
-  const res = await post(h, "/v1/signing/agents/wallet/w'1/policies/prepare", {
-    first_agent: true,
-  });
+  const res = await post(h, "/v1/signing/agents/wallet/w'1/policies/prepare");
 
   assert.equal(res.status, 400);
   assert.deepEqual(h.ceremony.builds, []);

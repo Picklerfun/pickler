@@ -30,6 +30,7 @@ import type {
 import type { SignedActivityForwarder } from "../../signing/ports/signing.js";
 import {
   COMPLETED_ACTIVITY_STATUS,
+  InvalidSignedActivityError,
   isTerminalActivity,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
@@ -62,6 +63,59 @@ function completedResult(activity: TurnkeyActivity, key: string): Record<string,
     throw new SigningServiceUnavailableError(`Completed activity carried no ${key}`);
   }
   return result;
+}
+
+/** Structural equality over parsed JSON: key order does not matter, everything else does. */
+function sameJson(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((entry, index) => sameJson(entry, b[index]))
+    );
+  }
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const left = a as Record<string, unknown>;
+    const right = b as Record<string, unknown>;
+    const keys = Object.keys(left);
+    return (
+      keys.length === Object.keys(right).length &&
+      keys.every((key) => Object.hasOwn(right, key) && sameJson(left[key], right[key]))
+    );
+  }
+  return a === b;
+}
+
+function withoutTimestamp(body: string): unknown {
+  const parsed: unknown = JSON.parse(body);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+  const rest: Record<string, unknown> = { ...(parsed as Record<string, unknown>) };
+  delete rest["timestampMs"];
+  return rest;
+}
+
+/**
+ * Refuses a stamped request that is not the one Pickler would have prepared. Confirm is
+ * stateless, so the expectation is rebuilt from the same inputs through the same builder and the
+ * two bodies compared whole — type, organization and parameters — with only `timestampMs` left
+ * out, since it is the one field that legitimately differs between the two builds.
+ *
+ * Without this, a person's browser could stamp different parameters (another public key, a second
+ * user, an extra ALLOW) and Pickler would record the ids it got back as the ones it prepared.
+ */
+function assertStampedAsPrepared(signed: SignedActivityRequest, expected: UnsignedActivity) {
+  let stamped: unknown;
+  try {
+    stamped = withoutTimestamp(signed.body);
+  } catch {
+    throw new InvalidSignedActivityError("Signed body is not valid JSON");
+  }
+  if (signed.url !== expected.url || !sameJson(stamped, withoutTimestamp(expected.body))) {
+    throw new InvalidSignedActivityError("The signed activity is not the one Pickler prepared");
+  }
 }
 
 function strings(value: unknown): string[] {
@@ -132,6 +186,30 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       // Swallows a bug in the adapter as readily as a transient outage; registering is worth more.
       return undefined;
     }
+  }
+
+  function delegatedUserActivity(subOrganizationId: string, publicKey: string) {
+    return deps.agentActivities.createDelegatedUser({ subOrganizationId, publicKey });
+  }
+
+  /** The create_policies body for a wallet, built the same way for prepare and for confirm. */
+  async function policiesActivity(userId: string, subOrganizationId: string, walletId: string) {
+    const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
+    if (!delegatedUserId) {
+      throw new DelegatedUserMissingError();
+    }
+    if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
+      throw new AgentWalletNotFoundError();
+    }
+    const policies = agentWalletPolicies({
+      delegatedUserId,
+      walletId,
+      venueContracts: deps.venueContracts,
+    });
+    if (!(await deps.agentWallets.hasLinkedAgentWallet(userId))) {
+      policies.push(delegatedSelfDeletePolicy(delegatedUserId));
+    }
+    return deps.agentActivities.createPolicies({ subOrganizationId, policies });
   }
 
   return {
@@ -309,10 +387,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if ((await deps.agentWallets.delegatedUserId(userId)) !== null) {
         throw new DelegatedUserExistsError();
       }
-      return deps.agentActivities.createDelegatedUser({
-        subOrganizationId: account.subOrganizationId,
-        publicKey: deps.delegatedPublicKey,
-      });
+      return delegatedUserActivity(account.subOrganizationId, deps.delegatedPublicKey);
     },
 
     async confirmDelegatedUser(
@@ -323,6 +398,13 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
+      if (!deps.delegatedPublicKey) {
+        throw new DelegatedKeyNotConfiguredError();
+      }
+      assertStampedAsPrepared(
+        signed,
+        delegatedUserActivity(account.subOrganizationId, deps.delegatedPublicKey),
+      );
       const activity = await deps.forwarder.forward(signed, {
         organizationId: account.subOrganizationId,
         allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createDelegatedUser],
@@ -371,6 +453,13 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
+      assertStampedAsPrepared(
+        signed,
+        deps.agentActivities.createAgentWallet({
+          subOrganizationId: account.subOrganizationId,
+          handle,
+        }),
+      );
       const activity = await deps.forwarder.forward(signed, {
         organizationId: account.subOrganizationId,
         allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createAgentWallet],
@@ -394,37 +483,16 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     /**
-     * Step three: the wallet's rules. `firstAgent` adds the delegated user's self-delete policy,
-     * which belongs to the sub-organization rather than to a wallet and is written once.
+     * Step three: the wallet's rules. For the person's first agent — no wallet of theirs linked
+     * to any agent yet, decided here and never by the caller — the delegated user's self-delete
+     * policy rides along; it belongs to the sub-organization and is written once.
      */
-    async preparePolicies(
-      userId: string,
-      walletId: string,
-      options: { firstAgent: boolean },
-    ): Promise<UnsignedActivity> {
+    async preparePolicies(userId: string, walletId: string): Promise<UnsignedActivity> {
       const account = await deps.repository.findByUserId(userId);
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
-      if (!delegatedUserId) {
-        throw new DelegatedUserMissingError();
-      }
-      if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
-        throw new AgentWalletNotFoundError();
-      }
-      const policies = agentWalletPolicies({
-        delegatedUserId,
-        walletId,
-        venueContracts: deps.venueContracts,
-      });
-      if (options.firstAgent) {
-        policies.push(delegatedSelfDeletePolicy(delegatedUserId));
-      }
-      return deps.agentActivities.createPolicies({
-        subOrganizationId: account.subOrganizationId,
-        policies,
-      });
+      return policiesActivity(userId, account.subOrganizationId, walletId);
     },
 
     /**
@@ -440,9 +508,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
-        throw new AgentWalletNotFoundError();
-      }
+      assertStampedAsPrepared(
+        signed,
+        await policiesActivity(userId, account.subOrganizationId, walletId),
+      );
       const activity = await deps.forwarder.forward(signed, {
         organizationId: account.subOrganizationId,
         allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createPolicies],

@@ -106,12 +106,23 @@ and otherwise any matching DENY beats every ALLOW.
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version
 @turnkey/http 6.5 lets that endpoint take) and the caller's own sub-organization, and treats any
-status short of completed as a failure. `prepareAgentWallet` answers `{ existing }` for an unlinked
+status short of completed as a failure. Before forwarding, each confirm rebuilds the activity
+its prepare would have built — through the same builder, from the same inputs — and refuses
+(`InvalidSignedActivityError`, 400) a stamped request whose URL or body differs in anything but
+`timestampMs`, so another public key, an extra user or an extra policy never reaches Turnkey.
+Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
+from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
+confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` for an unlinked
 wallet already named after the handle, so a retry never mints a second one. The link to an agent
 (`agent_wallets`) is not written here. Ports: `AgentWalletActivityBuilders` and
 `AgentWalletRepository`; errors: `DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`,
 `DelegatedUserMissingError`, `AgentWalletNotFoundError`. `MONAD_ACCOUNT_PATH` is the one account
 path every Pickler wallet uses.
+
+Known limitation: two confirms of the delegated user racing can both complete in Turnkey, leaving
+two "Pickler" users in the person's sub-organization. The store records the first and refuses the
+second (`DelegatedUserExistsError`); the second user exists in Turnkey with no policy naming it,
+so it can sign nothing, but nothing removes it automatically.
 
 ## Markets
 
