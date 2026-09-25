@@ -6,6 +6,7 @@ import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
+import type { PasskeyPreview } from "../lib/passkey-preview";
 import {
   CUSTODY_API,
   SessionExpired,
@@ -105,6 +106,7 @@ export function PasskeyFlow({
   board,
   mode,
   destination,
+  preview,
 }: {
   board: AuthBoardData;
   /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
@@ -116,9 +118,11 @@ export function PasskeyFlow({
    * Undefined when nobody was turned away, and then the studio's own home is the destination.
    */
   destination?: string | undefined;
+  /** `add` only, outside production: open on this screen without reading the account. */
+  preview?: PasskeyPreview | undefined;
 }) {
   if (mode === "add") {
-    return <PasskeyAddFlow board={board} destination={destination} />;
+    return <PasskeyAddFlow board={board} destination={destination} preview={preview} />;
   }
   return <SignFlow board={board} mode={mode} destination={destination} />;
 }
@@ -456,17 +460,23 @@ interface AddSheetState {
 function PasskeyAddFlow({
   board,
   destination,
+  preview,
 }: {
   board: AuthBoardData;
   destination?: string | undefined;
+  preview?: PasskeyPreview | undefined;
 }) {
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [screen, setScreen] = useState<AddFlowScreen>("loading");
+  const [screen, setScreen] = useState<AddFlowScreen>(preview ?? "loading");
   const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
   const [sheet, setSheet] = useState<AddSheetState | null>(null);
 
   useEffect(() => {
+    // A preview draws its screen without an account behind it, so there is nothing to read.
+    if (preview) {
+      return;
+    }
     let live = true;
     void (async () => {
       try {
@@ -495,7 +505,7 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, []);
+  }, [preview]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {

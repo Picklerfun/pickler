@@ -203,6 +203,15 @@ const catalog: Catalog = {
 };
 
 /**
+ * The fixture's `/options`, for a creation screen shown as a preview where authentication *is*
+ * configured but there is no session behind the screen — outside production only, and the caller
+ * checks that. `studioPreview` cannot serve it: its gate also requires Supabase to be unconfigured.
+ */
+export function previewOptions(): Options {
+  return options;
+}
+
+/**
  * Whether the fixture may stand in for the studio. Both inputs are arguments rather than reads so
  * each condition can be pinned on its own: a gate tested only through the environment it happens to
  * run in is a gate tested in one position.

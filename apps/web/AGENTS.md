@@ -235,7 +235,16 @@ snapshot that Cancel restores. `?step=` mirrors the screen through `router.repla
 the first screen's URL name. Outside production a link past Describe opens on the canvas's example
 draft (`sampleDraft`) so the design harness has every screen to measure — one route per step in
 `scripts/design/routes.mjs`, each proving `#create-<step>`. Without Supabase configured it renders
-from the preview options and says so; nothing can be drafted, checked or created there.
+from the preview options and says so; nothing can be drafted, checked or created there. Outside
+production, a browser that reached the screen with no Supabase session (the middleware lets a
+request through on the cookie's name alone) renders the same labelled preview on `previewOptions()`
+instead of redirecting to `/signin`; in production it still redirects. That is what the design
+harness sees: `scripts/design/lib/render.mjs` adds a dummy `sb-<project-ref>-auth-token` cookie,
+named from `NEXT_PUBLIC_SUPABASE_URL` (or `DESIGN_SESSION_COOKIE`), to studio routes on a loopback
+base URL only. It passes the middleware's presence check and is not a session: the API still
+refuses every call behind it. The reading screen opened by a deep link on the sample draft is held
+(`FlowState.held`): every row shows at once and it does not run on to the review, so it can be
+measured. Reached from Describe with a real draft, it reveals and advances as before.
 
 One component per screen, each with its own id: `describe.tsx`, `reading.tsx` (reveals
 `reviewRows` one per 620 ms, then review), `name.tsx`, `trades.tsx`, `looks.tsx`, `reads.tsx`,
@@ -320,5 +329,8 @@ A sub-organization is created in exactly one place: the studio's "Create and run
 create one. `PasskeyFlow`'s `add` mode reads `GET /v1/signing/wallets/me` through
 `passkeyScreenFor` (`features/auth/lib/custody.ts`) and shows either the add-passkey ceremony and a
 device list for an account that already has a sub-organization, or a single screen pointing at
-`/studio/new` (`#passkey-none-yet`) for one that does not. Signup and signin never render an
+`/studio/new` (`#passkey-none-yet`) for one that does not. `?state=none-yet`
+(`features/auth/lib/passkey-preview.ts`, outside production only, gated on the build like `?stage=`)
+opens that screen without the read, because the API answers the read only to a verified JWT and the
+design harness has none; `scripts/design/routes.mjs` measures it as `passkey-none-yet`. Signup and signin never render an
 enrolment screen — `lib/flow.ts` has no step left that could reach one.

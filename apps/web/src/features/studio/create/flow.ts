@@ -20,12 +20,20 @@ export interface FlowState {
   snapshot: Draft | null;
   error: string;
   busy: boolean;
+  /**
+   * True only when a link opened the reading screen on the sample draft outside production. That
+   * screen has no model answer behind it, so it holds where it is instead of running on to the
+   * review: a deep link is someone asking to look at it. A draft arriving from Describe clears it.
+   */
+  held: boolean;
 }
 
 export type FlowAction =
   | { type: "patch"; patch: Partial<Draft> }
   | { type: "replace"; draft: Draft }
   | { type: "go"; step: Step }
+  /** The reading screen has revealed every row: on to the review, unless it is held. */
+  | { type: "read" }
   | { type: "manual" }
   | { type: "drafted"; draft: Draft }
   | { type: "next" }
@@ -43,6 +51,7 @@ export function initialFlow(step: Step, draft: Draft = emptyDraft()): FlowState 
     snapshot: null,
     error: "",
     busy: false,
+    held: false,
   };
 }
 
@@ -76,7 +85,9 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
     case "replace":
       return { ...state, draft: action.draft };
     case "go":
-      return { ...state, step: action.step, error: "" };
+      return { ...state, step: action.step, error: "", held: false };
+    case "read":
+      return state.held || state.step !== "reading" ? state : { ...state, step: "review" };
     case "manual":
       return { ...state, step: "name", mode: "manual", editing: false, error: "" };
     case "drafted":
@@ -88,6 +99,7 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         editing: false,
         busy: false,
         error: "",
+        held: false,
       };
     case "next": {
       if (!ready(state.step, state.draft)) {
@@ -179,14 +191,15 @@ export interface StepProps {
 /**
  * The state a URL opens on. Outside production a link past Describe opens on the canvas's example
  * draft; in production there is no draft to show on those screens yet, so any of them opens on
- * Describe instead of an empty review or a run with nothing behind it.
+ * Describe instead of an empty review or a run with nothing behind it. The reading screen opened
+ * this way holds rather than advancing on its own; the live flow reaches it from Describe.
  */
 export function openingFlow(step: Step, allowSample: boolean): FlowState {
   if (step === "start") {
     return initialFlow("start");
   }
   if (allowSample) {
-    return initialFlow(step, sampleDraft());
+    return { ...initialFlow(step, sampleDraft()), held: step === "reading" };
   }
   return initialFlow("start");
 }

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -35,6 +35,82 @@ const BASE_FOR = {
   studio: process.env.DESIGN_STUDIO_URL ?? BASE,
 };
 const baseFor = (route) => BASE_FOR[route.product] ?? BASE;
+
+/* The studio's session guard, and why a design check passes it with a cookie that is not a session.
+ *
+ * With Supabase configured, apps/web/src/middleware.ts answers every /studio, /account and /passkey
+ * request that carries no `sb-<project-ref>-auth-token` cookie with a 307 to /signin. It checks the
+ * cookie's *name* only (apps/web/src/server/guard.ts): authentication itself happens in the browser
+ * and in the API, on a JWT the API verifies. So a cookie with that name and a dummy value passes the
+ * middleware's presence check and nothing else — it is not a session, it signs nobody in, and every
+ * API call behind it is still refused. What it buys is the screen, which is all a design check reads.
+ *
+ * Only on a loopback base URL, and only for routes whose `product` is the studio. A deployed origin
+ * is never sent a forged cookie by this harness, whatever it is pointed at.
+ *
+ * The name is derived the way the guard derives it — the first label of NEXT_PUBLIC_SUPABASE_URL's
+ * hostname — read from the environment or apps/web/.env.local. DESIGN_SESSION_COOKIE overrides it.
+ * With neither, no cookie is added and a guarded route reports as the sign-in stub it then renders. */
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const isLoopback = (base) => {
+  try {
+    return LOOPBACK.has(new URL(base).hostname);
+  } catch {
+    return false;
+  }
+};
+
+function supabaseUrl() {
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL;
+  }
+  try {
+    const file = fileURLToPath(new URL("../../../apps/web/.env.local", import.meta.url));
+    const line = readFileSync(file, "utf8")
+      .split("\n")
+      .find((l) => /^\s*NEXT_PUBLIC_SUPABASE_URL\s*=/.test(l));
+    return line
+      ? line
+          .split("=")
+          .slice(1)
+          .join("=")
+          .trim()
+          .replace(/^["']|["']$/g, "")
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function sessionCookieName() {
+  if (process.env.DESIGN_SESSION_COOKIE) {
+    return process.env.DESIGN_SESSION_COOKIE;
+  }
+  const url = supabaseUrl();
+  if (!url) {
+    return null;
+  }
+  try {
+    const ref = new URL(url).hostname.split(".")[0];
+    return ref ? `sb-${ref}-auth-token` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Adds the presence-check cookie to this page's context when the route is the studio's and the
+ *  host is this machine. See the comment above: this is not a session. */
+async function passGuard(page, route) {
+  const base = baseFor(route);
+  if (route.product !== "studio" || !isLoopback(base)) {
+    return;
+  }
+  const name = sessionCookieName();
+  if (!name) {
+    return;
+  }
+  await page.context().addCookies([{ name, value: "design-harness-not-a-session", url: base }]);
+}
 
 /* Playwright is installed globally and deliberately not a repository dependency, so `playwright`
  * does not resolve from here. Node ignores NODE_PATH for ESM, so the global install has to be
@@ -303,6 +379,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
       }
       const page = await browser.newPage({ viewport: { width, height } });
       try {
+        await passGuard(page, route);
         let response;
         try {
           response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });

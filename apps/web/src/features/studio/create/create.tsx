@@ -31,9 +31,17 @@ import {
   type Options,
 } from "../api";
 import { custody, session } from "../lib/passkey";
-import { studioPreview } from "../preview";
+import { previewOptions, studioPreview } from "../preview";
 import { runCeremony, type CeremonyProgress, type CeremonyStep } from "./ceremony";
-import { ORDER, fromApiDraft, ready, toCreate, type Draft, type OrderStep } from "./draft";
+import {
+  ORDER,
+  fromApiDraft,
+  ready,
+  reviewRows,
+  toCreate,
+  type Draft,
+  type OrderStep,
+} from "./draft";
 import { flowReducer, initialFlow, openingFlow, paramFromStep, type StepProps } from "./flow";
 import { RAIL_LABELS } from "./map";
 import { Describe } from "./describe";
@@ -116,9 +124,12 @@ export function CreateAgent({
   const [options, setOptions] = useState<Options | null>(null);
   const [access, setAccess] = useState<Access | null>(null);
   const [owner, setOwner] = useState("@you");
-  const [preview, setPreview] = useState(false);
+  /** Why this screen is a design preview, if it is one: no authentication here, or no session. */
+  const [preview, setPreview] = useState<"unconfigured" | "no-session" | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [revealed, setRevealed] = useState(0);
+  /* A held reading screen (a deep link, outside production) opens with every row already shown,
+     since nothing is being revealed from a model answer; the live flow starts from none. */
+  const [revealed, setRevealed] = useState(() => (state.held ? reviewRows(state.draft).length : 0));
   const [check, setCheck] = useState<HandleCheck>("idle");
   const [checkError, setCheckError] = useState("");
   const [ceremony, setCeremony] = useState<CeremonyView>(idleCeremony);
@@ -147,7 +158,7 @@ export function CreateAgent({
             throw new Error("Authentication is not configured for this environment.");
           }
           if (active) {
-            setPreview(true);
+            setPreview("unconfigured");
             setOptions(fixture.options);
             setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
           }
@@ -155,6 +166,19 @@ export function CreateAgent({
         }
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
+          /* The middleware let this request through on a cookie's name alone, so a browser with no
+             session here carries a cookie that is not one — which is what the design harness sends
+             (scripts/design/lib/render.mjs). Outside production the screen renders as a labelled
+             preview on the fixture's options rather than a redirect, so every step can be
+             measured; nothing on it can be created. In production it is a redirect, as it was. */
+          if (allowSample) {
+            if (active) {
+              setPreview("no-session");
+              setOptions(previewOptions());
+              setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
+            }
+            return;
+          }
           router.replace("/signin");
           return;
         }
@@ -182,7 +206,7 @@ export function CreateAgent({
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, allowSample]);
 
   /* `?step=` follows the screen, so a reload or a shared link opens where it was. */
   const shownParam = useRef(paramFromStep(initialStep));
@@ -238,13 +262,15 @@ export function CreateAgent({
   }, []);
 
   /* Each screen's heading takes focus when the screen changes, so a screen reader hears where it
-     is. Not on the first render: arriving on the page is not a change. */
-  const firstStep = useRef(true);
+     is. Not on arrival: arriving on the page is not a change. Compared against the step last
+     focused rather than counted as a first run, because development runs every effect twice on
+     mount, and a first-run flag spent on the first pass focused the heading on the second. */
+  const focusedStep = useRef(step);
   useEffect(() => {
-    if (firstStep.current) {
-      firstStep.current = false;
+    if (focusedStep.current === step) {
       return;
     }
+    focusedStep.current = step;
     document.querySelector<HTMLElement>(`#create-${paramFromStep(step)} h1`)?.focus();
   }, [step]);
 
@@ -365,7 +391,7 @@ export function CreateAgent({
   }, []);
 
   const onShown = useCallback((count: number) => setRevealed(count), []);
-  const onRead = useCallback(() => dispatch({ type: "go", step: "review" }), []);
+  const onRead = useCallback(() => dispatch({ type: "read" }), []);
 
   const canManage = Boolean(access?.canManage);
   const agentMade = ceremony.steps.agent === "done";
@@ -392,8 +418,9 @@ export function CreateAgent({
           {preview && (
             <p className={styles.banner} role="status">
               <Icon name="alert" size={13} />
-              Design preview. This build has no authentication configured, so nothing here can be
-              drafted, checked or created.
+              {preview === "unconfigured"
+                ? "Design preview. This build has no authentication configured, so nothing here can be drafted, checked or created."
+                : "Design preview. There is no session behind this screen, so nothing here can be drafted or created."}
             </p>
           )}
           {access && !canManage && (

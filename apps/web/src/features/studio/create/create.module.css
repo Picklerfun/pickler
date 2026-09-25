@@ -813,6 +813,11 @@ button.card:disabled .cardNote {
   color: var(--pk-bg);
   transition: background 240ms;
 }
+/* Before a beat is chosen the mark has no tint and sits on --pk-panel-3, where the ground-coloured
+   letter read at 1.35:1. Until then it is a placeholder, so it is written in the muted ink. */
+.pieceMark:not([data-tint]) {
+  color: var(--pk-ink-muted);
+}
 .pieceWho {
   flex: 1;
   min-width: 0;

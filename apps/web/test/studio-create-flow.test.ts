@@ -123,3 +123,30 @@ test("outside production the same link opens on the canvas's example draft", () 
 test("Describe opens empty either way", () => {
   assert.equal(openingFlow("start", true).draft.prompt, "");
 });
+
+test("a link to the reading screen on the sample draft holds there instead of running on", () => {
+  const opened = openingFlow("reading", true);
+
+  assert.equal(opened.held, true);
+  assert.equal(flowReducer(opened, { type: "read" }).step, "reading");
+});
+
+test("the reading screen reached from Describe runs on to the review", () => {
+  const drafted = flowReducer(at({ step: "start" }), { type: "drafted", draft: ready });
+
+  assert.equal(drafted.step, "reading");
+  assert.equal(drafted.held, false);
+  assert.equal(flowReducer(drafted, { type: "read" }).step, "review");
+});
+
+test("a held reading screen runs on again once a real draft arrives", () => {
+  const held = openingFlow("reading", true);
+  const drafted = flowReducer(held, { type: "drafted", draft: ready });
+
+  assert.equal(flowReducer(drafted, { type: "read" }).step, "review");
+});
+
+test("only the reading screen is held; other deep links are not", () => {
+  assert.equal(openingFlow("review", true).held, false);
+  assert.equal(openingFlow("reading", false).held, false);
+});

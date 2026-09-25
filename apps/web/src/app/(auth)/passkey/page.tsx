@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PasskeyFlow } from "@/features/auth/components/passkey-flow";
+import { passkeyPreviewFromSearch } from "@/features/auth/lib/passkey-preview";
 import { services } from "@/server/container";
 import { toAuthBoardData } from "@/server/http/auth-board";
 
@@ -20,7 +21,21 @@ export const metadata: Metadata = { title: "Passkey — Pickler" };
  *
  * It is reached, never redirected to: `/account` offers it where it already says there is no
  * wallet, and the screen it lands on for that person says so and points at the studio instead.
+ *
+ * `?state=none-yet` opens that screen without reading the account, outside production only, for
+ * the design harness: see `passkeyPreviewFromSearch`.
  */
-export default async function PasskeyPage() {
-  return <PasskeyFlow board={toAuthBoardData(await services.getLanding())} mode="add" />;
+export default async function PasskeyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string | string[] }>;
+}) {
+  const search = await searchParams;
+  return (
+    <PasskeyFlow
+      board={toAuthBoardData(await services.getLanding())}
+      mode="add"
+      preview={passkeyPreviewFromSearch(process.env.NODE_ENV, search.state)}
+    />
+  );
 }

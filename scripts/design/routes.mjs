@@ -516,6 +516,20 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
+  // /passkey for a signed-in person with no sub-organization yet: the screen that points at the
+  // first agent instead of offering a ceremony. Which screen it draws comes from GET /wallets/me,
+  // which the API answers only to a verified JWT — and the harness carries a cookie that passes the
+  // middleware's presence check and is not a session (render.mjs), so the honest read ends on
+  // "could not be read". `?state=none-yet` opens the screen without the read, outside production
+  // only. The studio by hosts.ts's segments, guarded like /studio, and the (auth) layout is dark.
+  {
+    path: "/passkey?state=none-yet",
+    name: "passkey-none-yet",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: "#passkey-none-yet",
+  },
   // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
   // not one of them was /signin or /signup, so those two screens were never unconverted — nobody
   // had looked. A claim that every colour any route can reach resolved to a token was withdrawn
