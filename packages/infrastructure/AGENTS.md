@@ -52,6 +52,16 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 
 `src/studio` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables (the file keeps its old name; the tables it declares are not renamed). Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
 
+`PostgresStudioDirectory.createAgent` links `wallets.agent_wallets (agent_id, wallet_id, policy_ids)`
+inside the same transaction as the agent and profile inserts, after them and before the handle is
+claimed: an agent is created with its wallet, or not at all. It locks the caller's own
+`wallets.wallets` row (`kind='agent'`) with `FOR UPDATE` before linking it, so a wallet that is not
+the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. A wallet
+already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
+through `CONFLICTS` to `PilotError("CONFLICT", "That wallet already belongs to an agent")`. The
+wallet travels inside the idempotency `request` JSON, so retrying the same key with a different
+wallet is "different terms", not the same creation.
+
 ## Invocation database connections
 
 Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass
