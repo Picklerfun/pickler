@@ -15,12 +15,13 @@ ceremony as the agent, and the canvas is right to draw them together.
 
 ## 1. The name
 
-The studio is called `console` in the code and the URL, and `studio` everywhere a person reads:
-the host (`studio.pickler.fun`, `product-hosts-v1.md`), the middleware (`STUDIO_SEGMENTS`,
-`studioHref`), the design canvases. `console` is the Relayer wireframe's name for it.
+The studio was called `console` in the code and the URL — the Relayer wireframe's name — and
+`studio` everywhere a person reads: the host (`studio.pickler.fun`, `product-hosts-v1.md`), the
+middleware (`STUDIO_SEGMENTS`, `studioHref`), the design canvases.
 
-**Rename first, in all three layers**, before any of the flow below is built, so the new work is
-born with the right name:
+**Done first, in all three layers** (2026-09-25), so the new work was born with the right name. No
+redirect from the old path is kept. One name stays on purpose: the Drizzle source
+`console-schema.ts`, a database file rather than the product. The mapping:
 
 | Layer | Now                                                                                             | After                                                                                      |
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -49,7 +50,7 @@ design harness can measure each one, and by the Tweaks-panel equivalent the canv
 One sentence, three example prompts. "Set it up from my line" calls a new endpoint:
 
 ```
-POST /v1/studio/agents/draft   { line: string }   →   AgentDraft
+POST /v1/studio/agents/draft   { line: string }   →   { draft: AgentDraft, unsupported: string[] }
 ```
 
 The endpoint asks **the runtime's own model** (same `MODEL_*` configuration the research worker
@@ -88,7 +89,8 @@ Each step's "ready" rule is a pure function, ported from the canvas's `ok(step)`
   (`GET /v1/handles/:handle/availability`, exists).
 - trades: at least one venue that is not "Soon".
 - looks: a beat with ≥ 1 subcategory; Perpl pairs when Perpl is on.
-- reads: web off, or mode `anywhere`, or ≥ 1 site.
+- reads: mode `anywhere`, or ≥ 1 site. (The web cannot be turned off in this specification: a
+  general run with no sources to cite fails, so the form offers no switch.)
 - decides: edge non-empty.
 
 ### 2.3 What is on the map, and what can run
@@ -97,7 +99,7 @@ The runtime decides on **Polymarket, sports, and in depth only NFL** (`nfl-winne
 shows the whole map the canvas draws, and marks what cannot run yet as **Soon**, not selectable:
 
 - Venues: Polymarket live; **Perpl — Soon**.
-- Beats: **Sports** live (NFL, NBA, MLB, Soccer, NHL, Tennis as the catalogue lists them);
+- Beats: **Sports** live (NFL, NBA, Soccer, Tennis — the four sports the runtime has ids for);
   Crypto, Politics, Economics, Culture, Tech — **Soon**.
 
 A draft from the model that lands on a Soon item arrives at the review with that row flagged, and
@@ -111,19 +113,18 @@ decide.
 Every field the canvas asks for, traced to its destination. "New" means a column or config field
 that does not exist today.
 
-| Field (canvas)                                     | Destination                                                                                                                            | Status |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Name, handle                                       | `agents.agents.name / handle`                                                                                                          | exists |
-| Trades on                                          | `agent_profiles.venue` (public). Perpl is Soon, so today always `predictions`                                                          | exists |
-| Calls: beat + subcategories                        | `config.marketScope { category: "sports", subcategories }`                                                                             | exists |
-| Reads: web on/off, anywhere / prefer / only, sites | **new** `config.sources.web: { mode, sites: string[] } \| null`; `searchWeb`/`readPage` in `tools` follow `web on`                     | new    |
-| Reads: open full pages                             | `readPage` in `tools`                                                                                                                  | exists |
-| Reads: sports data, odds + books (NFL only)        | plugins `balldontlie`, `the-odds-api`; **new** `config.sources.books: string[]`                                                        | partly |
-| Skills, suggested and written                      | **new** `config.skills: { name: string; prompt: string }[]` (≤ 8, prompt ≤ 600)                                                        | new    |
-| Decides: edge                                      | `config.profile` — the brief **is** the edge; skills are appended to it at run time, not stored in it                                  | exists |
-| Decides: Careful / Balanced / Bold                 | `config.uncertaintyPolicy`, three presets (§3.1)                                                                                       | exists |
-| Accent, blurb, X handle                            | `agent_profiles` (written at creation since Task 3 of the marketplace plan). Accent defaults from the beat; blurb defaults to the edge | exists |
-| Interval                                           | not asked; `intervalHours` default 6, set when the schedule is turned on                                                               | exists |
+| Field (canvas)                              | Destination                                                                                                                             | Status |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Name, handle                                | `agents.agents.name / handle`                                                                                                           | exists |
+| Trades on                                   | `agent_profiles.venue` (public). Perpl is Soon, so today always `predictions`                                                           | exists |
+| Calls: beat + subcategories                 | `config.marketScope { category: "sports", subcategories }`                                                                              | exists |
+| Reads: anywhere / prefer / only, sites      | **new** `config.sources.web: { mode, sites: string[] }` (always on from the studio; `null` is accepted by the runtime and means no web) | new    |
+| Reads: sports data, odds + books (NFL only) | plugins `balldontlie`, `the-odds-api`; **new** `config.sources.books` — The Odds API keys from `SPORTSBOOKS`, sent only for NFL         | partly |
+| Skills, suggested and written               | **new** `config.skills: { name: string; prompt: string }[]` (≤ 8, prompt ≤ 600)                                                         | new    |
+| Decides: edge                               | `config.profile` — the brief **is** the edge; skills are appended to it at run time, not stored in it                                   | exists |
+| Decides: Careful / Balanced / Bold          | `config.uncertaintyPolicy`, three presets (§3.1)                                                                                        | exists |
+| Accent, blurb, X handle                     | `agent_profiles` (written at creation since Task 3 of the marketplace plan). Accent defaults from the beat; blurb defaults to the edge  | exists |
+| Interval                                    | not asked; `intervalHours` default 6, set when the schedule is turned on                                                                | exists |
 
 ### 3.1 The three styles
 
@@ -208,19 +209,32 @@ screen that creates one:
 
 - **First agent.** The passkey ceremony that exists
   (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the sub-organization
-  with the root user (the passkey), the delegated user (non-root, in `users`, not `rootUsers`),
-  and **two wallets** — `Master Wallet` and the agent's. Then the policy activities of step 2 are
-  stamped. **Four prompts** on the first agent — register, delegated user, wallet, policies — because
-  `createSubOrganization` takes one wallet and only root users, and Turnkey has no batch-activity
-  endpoint. The screen draws them as a four-step rail so none reads as a repeat.
-- **Every later agent.** The sub-organization and the delegated user exist. Steps 1–3 run as
-  above: two prompts.
+  with the root user (the passkey) and the `Master Wallet` only — `createSubOrganization` takes one
+  wallet and only root users. Then three more stamped activities: `create_users` for the delegated
+  user (non-root, in `users`), `create_wallet` for the agent's wallet, `create_policies` for its
+  rules. **Four prompts**; Turnkey has no batch-activity endpoint.
+- **Every later agent.** The sub-organization and the delegated user exist: `create_wallet` and
+  `create_policies`, **two prompts**.
+
+The screen's rail has four lines — Wallet · Rules · Agent · Run — so on a first agent the Wallet
+line covers three prompts (sub-organization, delegated user, wallet) and says so while it waits.
 
 A sub-organization with no linked agent is therefore never a state a person arrives at on purpose:
-it is a first creation that failed between the wallet and the link, and §4.2's retry is what
-resolves it — it finds the wallet by name, checks which of the three policies exist by their
-intent (Turnkey's `fetchOrCreatePolicies` compares the full intent, so re-approving is
-idempotent), asks for the missing ones, and links.
+it is a first creation that failed between the wallet and the link, and the retry resolves it:
+`prepareAgentWallet` finds the orphan wallet by name and reports whether its policies were already
+approved (`wallets.wallets.approved_policy_ids`); the ceremony skips whatever is done — no second
+wallet, no second approval of the same rules — and goes on to create and link the agent. Within one
+visit the screen also carries its progress, so a failed run start retries only the start.
+
+The policies are three DENYs on every wallet — no ERC-20 `transfer`/`approve`, no policy changes,
+no new credentials for the delegated user — plus, on the first agent only, the delegated user's
+self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
+
+**Where the rule is enforced.** The web calls `register` only from the studio's ceremony, and
+`/passkey`, signup and signin can no longer reach it. `POST /v1/signing/passkeys/register` itself
+still answers any signed-in person without a sub-organization; the API cannot tell which screen
+called it. A sub-organization created that way has a master wallet, no delegated user and no agent
+— harmless, and the next agent's ceremony proceeds from it.
 
 **This is a change.** Today the enrolment ceremony (`register`) is reachable from `/passkey`, and
 `PasskeyFlow` is rendered by the signup and signin pages as well, so a person can create a
@@ -346,9 +360,13 @@ delegated user's policies; that screen belongs to the account work, not here.
 
 ## 7. The runtime, locally
 
-`workers/research` runs with `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`, `EXA_API_KEY`,
-`BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY` in its `.dev.vars` (names in `.dev.vars.example`; values
-never in a chat or a commit). The draft endpoint (§2.1) uses the same `MODEL_*` on the API worker.
+The runner is `npm run dev:agent` (the agent service claims queued runs); it and
+`workers/research` read `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`, `EXA_API_KEY`,
+`BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY` (names in the `.env`/`.dev.vars` examples; values never in
+a chat or a commit). The API worker needs the same `MODEL_*` for the draft endpoint (§2.1), plus
+`TURNKEY_DELEGATED_API_PUBLIC_KEY` for the ceremony (generate a pair with
+`npm run turnkey:delegated-key --workspace=@pickler/infrastructure`) and optionally `CHAIN_ID` and
+`MONAD_RPC_URL` for balances and deposits.
 Without them the studio still builds and every screen still renders; the draft returns
 `DRAFT_UNAVAILABLE` and runs wait for a runner, and both say so.
 
@@ -361,6 +379,7 @@ Without them the studio still builds and every screen still renders; the draft r
   `assertConfig`, mirrored in `api-schema`.
 - `wallets.agent_wallets (agent_id uuid pk → agents.agents, wallet_id text unique → wallets.wallets.wallet_id, policy_ids text[] not null, created_at)`.
 - `wallets.turnkey_orgs.delegated_user_id text null` — the Pickler user inside the person's sub-organization, set in the first agent's ceremony.
+- `wallets.wallets.approved_policy_ids text[] null` — written only by `confirmPolicies`; the create transaction reads the policy ids from here, never from the request.
 - `wallets.deposits (id, agent_id, tx_hash unique, amount_micro_usd, created_at)` — the record of
   what the person sent, for the strip and for support.
 - No settlement, no follows, no token: unchanged from the marketplace specification.
