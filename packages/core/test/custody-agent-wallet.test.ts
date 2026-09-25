@@ -65,6 +65,8 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     linked: new Set<string>(),
     /** Whether any of this person's wallets is linked to an agent already. */
     hasLinked: false,
+    /** What `saveApprovedPolicies` was called with, most recent last. */
+    approved: [] as { userId: string; walletId: string; policyIds: string[] }[],
     /** Makes the save refuse as if another confirm had recorded its user first. */
     raceOnSave: false,
     unrecorded: [] as { userId: string; subOrganizationId: string; delegatedUserId: string }[],
@@ -110,6 +112,9 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     },
     async findAgentWallet() {
       return null;
+    },
+    async saveApprovedPolicies(userId, walletId, policyIds) {
+      state.approved.push({ userId, walletId, policyIds });
     },
     async saveDeposit() {},
   };
@@ -463,6 +468,20 @@ test("confirmPolicies forwards only create_policies and returns the ids", async 
   });
   assert.deepEqual(f.forwards, [
     { organizationId: "sub-ana", allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_POLICIES"] },
+  ]);
+});
+
+test("confirmPolicies records the ids Turnkey actually created as this wallet's approved ones", async () => {
+  const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+  f.state.activity = completed({
+    createPoliciesResult: { policyIds: ["p1", "p2", "p3", "p4"] },
+  });
+
+  await service(f).confirmPolicies(USER, "w-1", stamped(unsigned));
+
+  assert.deepEqual(f.state.approved, [
+    { userId: USER, walletId: "w-1", policyIds: ["p1", "p2", "p3", "p4"] },
   ]);
 });
 

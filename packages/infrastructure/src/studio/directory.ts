@@ -154,18 +154,26 @@ export class PostgresStudioDirectory implements StudioDirectory {
         ],
       );
       // The wallet must be this person's own agent wallet, locked so a concurrent creation
-      // cannot race the check. An agent is created with its wallet, or not at all: this rejects
-      // (rolling the agent and its profile back) before anything else is written.
-      const owned = await client.query(
-        `SELECT 1 FROM wallets.wallets WHERE wallet_id=$1 AND user_id=$2 AND kind='agent' FOR UPDATE`,
+      // cannot race the check. Its policy ids come from this row, never from the caller: the
+      // server is the only source of which rules a wallet carries, because `confirmPolicies` is
+      // the only writer of `approved_policy_ids`. An agent is created with its wallet, or not at
+      // all: this rejects (rolling the agent and its profile back) before anything else is
+      // written.
+      const owned = await client.query<{ approvedPolicyIds: string[] | null }>(
+        `SELECT approved_policy_ids AS "approvedPolicyIds"
+        FROM wallets.wallets WHERE wallet_id=$1 AND user_id=$2 AND kind='agent' FOR UPDATE`,
         [input.wallet.walletId, userId],
       );
       if (!owned.rows.length) {
         throw new PilotError("NOT_FOUND", "Wallet not found");
       }
+      const approvedPolicyIds = owned.rows[0]!.approvedPolicyIds;
+      if (!approvedPolicyIds || approvedPolicyIds.length < 2) {
+        throw new PilotError("CONFLICT", "Approve the wallet's rules first");
+      }
       await client.query(
         "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,$3)",
-        [id, input.wallet.walletId, input.wallet.policyIds],
+        [id, input.wallet.walletId, approvedPolicyIds],
       );
       await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
         input.handle,

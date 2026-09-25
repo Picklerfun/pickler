@@ -51,10 +51,13 @@ four prose lines and an optional `@` X handle, all stored with the agent in one 
 `CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
 
 `createAgentSchema` also requires `wallet` (`agentWalletLinkSchema`): the `walletId` of the agent
-wallet whose policies the person already approved with their passkey, and the `policyIds` (2–8)
-that ceremony returned. An agent is created only with a wallet; the field is not optional. The
-infrastructure layer links it inside the same transaction that creates the agent, so a wallet not
-owned by the creator, or already linked to another agent, rejects the whole creation.
+wallet whose policies the person already approved with their passkey. An agent is created only
+with a wallet; the field is not optional. The schema is `.strict()` and carries only `walletId` —
+a request that also sends `policyIds` is refused (400) rather than having that field silently
+ignored: the policy ids a wallet links are read server-side, from what core's `confirmPolicies`
+already recorded, never from the client. The infrastructure layer links it inside the same
+transaction that creates the agent, so a wallet not owned by the creator, one whose rules were
+never approved, or one already linked to another agent, rejects the whole creation.
 
 Drafting from one line: `draftRequestSchema` (`line`, 3–280 characters), `agentDraftSchema` (the
 strict shape a model must answer with, also the validator the API injects into the drafter; every

@@ -24,12 +24,16 @@ export const agentProfileInputSchema = z
   })
   .strict();
 
-/** The wallet whose policies the person already approved with their passkey, linked to the agent
- * in the same transaction that creates it: "an agent is created with its wallet, or not at all." */
+/**
+ * The wallet linked to the agent in the same transaction that creates it: "an agent is created
+ * with its wallet, or not at all." Only `walletId` travels — the policy ids it links are read
+ * server-side from what `confirmPolicies` already recorded, never from the client, so a request
+ * cannot claim approval for rules nobody's passkey confirmed. `.strict()` rejects a `policyIds`
+ * sent alongside it rather than silently ignoring it.
+ */
 export const agentWalletLinkSchema = z
   .object({
     walletId: z.string().regex(/^[A-Za-z0-9-]{1,128}$/),
-    policyIds: z.array(z.string().min(1).max(128)).min(2).max(8),
   })
   .strict();
 

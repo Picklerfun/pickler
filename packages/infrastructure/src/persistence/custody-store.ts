@@ -4,7 +4,7 @@
 // DELETE ... RETURNING instead of a Redis get-then-delete.
 
 import type { Pool } from "pg";
-import { DelegatedUserExistsError } from "@pickler/core";
+import { AgentWalletNotFoundError, DelegatedUserExistsError } from "@pickler/core";
 import type {
   AgentWallet,
   AgentWalletRepository,
@@ -260,6 +260,25 @@ export class PostgresCustodyStore
       [agentId],
     );
     return rows[0] ?? null;
+  }
+
+  /**
+   * Updates only the caller's own `kind='agent'` wallet, so the ids a stranger's confirm produced
+   * can never land on someone else's wallet. No matching row is `AgentWalletNotFoundError`, the
+   * same refusal `findOwnedAgentWallet`'s absence maps to elsewhere.
+   */
+  async saveApprovedPolicies(userId: string, walletId: string, policyIds: string[]): Promise<void> {
+    const { rowCount } = await this.pool.query(
+      `UPDATE wallets.wallets
+          SET approved_policy_ids = $3
+        WHERE wallet_id = $1
+          AND user_id = $2
+          AND kind = 'agent'`,
+      [walletId, userId, policyIds],
+    );
+    if (rowCount === 0) {
+      throw new AgentWalletNotFoundError();
+    }
   }
 
   /** The hash is lowercased: the column accepts only `^0x[0-9a-f]{64}$`, and wallets vary. */

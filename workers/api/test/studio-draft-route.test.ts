@@ -198,7 +198,7 @@ test("a member without manage rights is refused the way creating an agent is", a
     },
     // Schema-valid so the request reaches authorization rather than failing input validation
     // first; this fake directory is never asked to create anything either way.
-    wallet: { walletId: "wallet-1", policyIds: ["p1", "p2"] },
+    wallet: { walletId: "wallet-1" },
   };
 
   const drafted = await studio.request("/agents/draft", post(line));

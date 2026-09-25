@@ -32,17 +32,27 @@ const input = { name: "Agent", handle: "agent_one", config, key: "create", profi
 const hex = (length: number) =>
   `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
 
-/** A `wallets.wallets` row (with its account) an `agent_wallets` link can reference. */
+/**
+ * A `wallets.wallets` row (with its account) an `agent_wallets` link can reference. Approved with
+ * two policy ids by default, the way a real `confirmPolicies` would have left it; pass
+ * `approvedPolicyIds: null` for a wallet whose rules were never confirmed.
+ */
 async function seedWallet(
   pool: Pool,
   userId: string,
-  overrides: { walletId?: string; name?: string } = {},
+  overrides: {
+    walletId?: string;
+    name?: string;
+    approvedPolicyIds?: string[] | null;
+  } = {},
 ) {
   const walletId = overrides.walletId ?? `wallet-${hex(12)}`;
+  const approvedPolicyIds =
+    overrides.approvedPolicyIds === undefined ? ["p1", "p2"] : overrides.approvedPolicyIds;
   await pool.query(
-    `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
-     VALUES ($1, $2, $3, 'agent', $4)`,
-    [userId, walletId, `sub-${hex(12)}`, overrides.name ?? "halftime"],
+    `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
+     VALUES ($1, $2, $3, 'agent', $4, $5)`,
+    [userId, walletId, `sub-${hex(12)}`, overrides.name ?? "halftime", approvedPolicyIds],
   );
   await pool.query(
     `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
@@ -63,7 +73,7 @@ async function setup(t: Parameters<typeof createTestStore>[0]) {
   await Promise.all([directory.onboard(userId), directory.onboard(userId)]);
   const access = (await directory.access(userId, null))!;
   const walletId = await seedWallet(store.pool, userId);
-  const wallet = { walletId, policyIds: ["p1", "p2"] };
+  const wallet = { walletId };
   return { store, directory, userId, access, wallet };
 }
 
@@ -284,11 +294,15 @@ test("creating an agent links the wallet whose policies were approved", async (t
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const walletId = await seedWallet(store.pool, userId, { walletId: "w1", name: "halftime" });
+  const walletId = await seedWallet(store.pool, userId, {
+    walletId: "w1",
+    name: "halftime",
+    approvedPolicyIds: ["p1", "p2", "p3"],
+  });
 
   const { agentId } = await directory.createAgent(access, userId, {
     ...input,
-    wallet: { walletId, policyIds: ["p1", "p2", "p3"] },
+    wallet: { walletId },
   });
 
   const { rows } = await store.pool.query(
@@ -331,15 +345,26 @@ test("a wallet that is not the creator's is refused", async (t) => {
   const strangerId = randomUUID();
   const walletId = await seedWallet(store.pool, strangerId);
 
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      ...input,
-      wallet: { walletId, policyIds: ["p1", "p2"] },
-    }),
-  );
+  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }));
 
   const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
   assert.equal(rows[0].n, 0, "no agent may be created against a wallet that is not the creator's");
+});
+
+test("a wallet with no approved policies is refused, and no agent row survives", async (t) => {
+  const { store, directory, userId, access } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const walletId = await seedWallet(store.pool, userId, { approvedPolicyIds: null });
+
+  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }), {
+    code: "CONFLICT",
+    message: "Approve the wallet's rules first",
+  });
+
+  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
+  assert.equal(rows[0].n, 0, "no agent may be created against a wallet with unapproved policies");
 });
 
 test("the idempotent retry with the same wallet returns the same agent; a retry with a different wallet is a different request", async (t) => {
@@ -357,7 +382,7 @@ test("the idempotent retry with the same wallet returns the same agent; a retry 
     directory.createAgent(access, userId, {
       ...input,
       key: "idem",
-      wallet: { walletId: otherWalletId, policyIds: ["p1", "p2"] },
+      wallet: { walletId: otherWalletId },
     }),
     { code: "CONFLICT" },
   );

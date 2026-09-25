@@ -56,11 +56,22 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 inside the same transaction as the agent and profile inserts, after them and before the handle is
 claimed: an agent is created with its wallet, or not at all. It locks the caller's own
 `wallets.wallets` row (`kind='agent'`) with `FOR UPDATE` before linking it, so a wallet that is not
-the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. A wallet
-already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
+the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. The
+`policy_ids` it writes come from that same locked row's `approved_policy_ids` column, never from
+the request: `wallet` on the create input carries only `walletId`, and a wallet whose
+`approved_policy_ids` is null or has fewer than two entries — nobody confirmed its rules yet — is
+`PilotError("CONFLICT", "Approve the wallet's rules first")`, with no agent row surviving either. A
+wallet already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
 through `CONFLICTS` to `PilotError("CONFLICT", "That wallet already belongs to an agent")`. The
-wallet travels inside the idempotency `request` JSON, so retrying the same key with a different
-wallet is "different terms", not the same creation.
+wallet travels inside the idempotency `request` JSON (its id only), so retrying the same key with a
+different wallet is "different terms", not the same creation.
+
+`wallets.wallets.approved_policy_ids` (migration 0014, nullable `text[]`) is written only by
+`PostgresCustodyStore.saveApprovedPolicies(userId, walletId, policyIds)`, called from core's
+`confirmPolicies` once Turnkey's count matches what was prepared. It `UPDATE`s only the caller's
+own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, so the ids one
+confirm produced can never land on someone else's wallet. This is the only path that sets the
+column — the studio's create-agent transaction only ever reads it.
 
 ## Invocation database connections
 
@@ -155,8 +166,8 @@ same id; a different id, or no sub-organization, is `DelegatedUserExistsError`),
 (wallets + wallet_accounts in one transaction; the same wallet again for its owner is a no-op,
 another person's wallet id is refused), `findOrphanWallet` (an agent wallet by name with
 no `agent_wallets` row), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
-`agent_wallets`), `findAgentWallet` and `saveDeposit` (lowercases
-the hash for the column check).
+`agent_wallets`), `findAgentWallet`, `saveApprovedPolicies` (see "Unified studio persistence" above)
+and `saveDeposit` (lowercases the hash for the column check).
 
 `src/turnkey/delegated-key.ts` generates Pickler's delegated key pair in Turnkey's API key format
 (compressed P-256 public hex, raw 32-byte private hex; a test stamps with Turnkey's own stamper and

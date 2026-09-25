@@ -554,6 +554,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
           `Expected ${policies.length} policies to be created, got ${policyIds.length}`,
         );
       }
+      // The server is the only source of which rules a wallet carries: record what Turnkey
+      // actually created here, so a later agent creation reads this instead of trusting whatever
+      // the client sends.
+      await deps.agentWallets.saveApprovedPolicies(userId, walletId, policyIds);
       return { policyIds };
     },
 

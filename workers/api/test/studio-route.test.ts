@@ -107,3 +107,33 @@ test("new agent configuration cannot omit category and subcategories", async () 
   assert.equal(response.status, 400);
   assert.equal(calls(), 0);
 });
+test("a client-sent policyIds is refused before anything is created; the server is the only source of approved policies", async () => {
+  const { app, calls } = fixture();
+  const config = { ...DEFAULT_CONFIG };
+  delete config.categoryIds;
+  Object.assign(config, {
+    marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
+  });
+  const profile = {
+    accent: "lime",
+    blurb: "",
+    venue: "predictions",
+    vibe: "",
+    voice: "",
+    decides: "",
+    wrong: "",
+    xHandle: null,
+  };
+  const response = await app.request(
+    "/agents",
+    request({
+      name: "New",
+      handle: "new_agent",
+      config,
+      profile,
+      wallet: { walletId: "wallet-1", policyIds: ["p1", "p2"] },
+    }),
+  );
+  assert.equal(response.status, 400);
+  assert.equal(calls(), 0);
+});

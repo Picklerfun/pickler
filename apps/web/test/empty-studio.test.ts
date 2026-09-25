@@ -40,7 +40,7 @@ const defaults = {
 
 // `toCreate` never runs against a real wallet in this flow — its only caller throws before
 // reaching it (see empty-studio.tsx) — so a fixture stands in to pin the pass-through.
-const wallet = { walletId: "w1", policyIds: ["p1", "p2"] };
+const wallet = { walletId: "w1" };
 
 test("a handle comes from the name, lower case and stripped", () => {
   assert.equal(suggestHandle("Half Time!"), "halftime");

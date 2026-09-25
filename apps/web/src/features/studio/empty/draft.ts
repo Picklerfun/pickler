@@ -170,8 +170,12 @@ export function stepReachable(step: Step, draft: Draft): boolean {
   return STEPS.slice(0, STEPS.indexOf(step)).every((earlier) => stepReady(earlier, draft));
 }
 
-/** The wallet whose policies the person approved with their passkey, required on every create. */
-export type WalletLink = { walletId: string; policyIds: string[] };
+/**
+ * The wallet an agent is created with, required on every create. Only `walletId` travels — the
+ * policy ids it links are read server-side from what `confirmPolicies` already recorded, never
+ * sent by the client.
+ */
+export type WalletLink = { walletId: string };
 
 /**
  * The draft as the API takes it. Only the fields that have somewhere to go travel — the ticker does

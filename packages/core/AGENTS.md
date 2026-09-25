@@ -72,6 +72,11 @@ Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.t
 handle and configuration: the public profile is authored at birth and the directory adapter writes
 it in the same transaction as the agent, with the beat taken from `marketScope.category`.
 
+Creating an agent also takes a required `wallet: AgentWalletLink` (`{ walletId }` — no policy ids:
+those are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
+`features/wallets` already recorded on the wallet's row, never from the caller). An agent is
+created with its wallet, or not at all.
+
 `features/studio/draft.ts` owns the vocabulary of drafting an agent from one line: `VENUES_ON_MAP`
 and `BEATS` (each beat's accent and subcategory labels, with the runtime `SportId` a label maps to,
 or `null`), `SOON_VENUES`/`SOON_BEATS` for what is drawn but cannot run yet (Perpl; every beat but
@@ -118,16 +123,22 @@ status short of completed as a failure. Before forwarding, each confirm reads th
 that timestamp — and refuses (`InvalidSignedActivityError`, 400) unless the URL and body are
 byte-identical. Bytes, not parsed JSON: a body with a key given twice parses to Pickler's value
 here and may be read as the other by Turnkey. `confirmPolicies` requires exactly one id per
-prepared policy. `confirmDelegatedUser` refuses (`DelegatedUserExistsError`) before forwarding
-when a delegated user is already recorded.
+prepared policy, and — once Turnkey's count matches — calls `agentWallets.saveApprovedPolicies`
+before returning them, so the wallet's row in `wallets.wallets` carries the ids the person's
+passkey actually confirmed. This is the only writer of that column: the studio's create-agent
+transaction reads it rather than trusting a client-supplied list, so a request can never claim
+approval for rules nobody confirmed. `confirmDelegatedUser` refuses (`DelegatedUserExistsError`)
+before forwarding when a delegated user is already recorded.
 Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
 from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
 confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` for an unlinked
 wallet already named after the handle, so a retry never mints a second one. The link to an agent
 (`agent_wallets`) is not written here. Ports: `AgentWalletActivityBuilders` and
-`AgentWalletRepository`; errors: `DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`,
-`DelegatedUserMissingError`, `AgentWalletNotFoundError`. `MONAD_ACCOUNT_PATH` is the one account
-path every Pickler wallet uses.
+`AgentWalletRepository` (which now also carries `saveApprovedPolicies`); errors:
+`DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`, `DelegatedUserMissingError`,
+`AgentWalletNotFoundError` (also thrown by `saveApprovedPolicies` when no row of the caller's own
+`kind='agent'` wallet matched). `MONAD_ACCOUNT_PATH` is the one account path every Pickler wallet
+uses.
 
 Known limitation: two confirms of the delegated user racing past that check can both complete in
 Turnkey, leaving two "Pickler" users in the person's sub-organization. The store records the first

@@ -10,10 +10,13 @@ export interface StudioAccess {
   role: string;
   enabled: boolean;
 }
-/** The wallet an agent is created with: its id and the policy ids the person approved for it. */
+/**
+ * The wallet an agent is created with, named by id only. The policy ids it links are read
+ * server-side from what the wallet's owner already had `confirmPolicies` record — never from the
+ * caller — so a request can only ever link the rules that were actually approved.
+ */
 export interface AgentWalletLink {
   walletId: string;
-  policyIds: string[];
 }
 
 export interface StudioDirectory {

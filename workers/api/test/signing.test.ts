@@ -170,6 +170,7 @@ function harness(
     wallets: [] as Parameters<AgentWalletRepository["saveWallet"]>[0][],
     builds: [] as { kind: string; input: unknown }[],
     hasLinked: false,
+    approved: [] as { userId: string; walletId: string; policyIds: string[] }[],
   };
   const agentWallets: AgentWalletRepository = {
     async saveDelegatedUser(_userId, id) {
@@ -194,6 +195,9 @@ function harness(
     },
     async findAgentWallet() {
       return null;
+    },
+    async saveApprovedPolicies(userId, walletId, policyIds) {
+      ceremony.approved.push({ userId, walletId, policyIds });
     },
     async saveDeposit() {},
   };
@@ -1208,6 +1212,11 @@ test("policies are prepared for the caller's wallet and confirmed to their ids",
   assert.deepEqual(h.forwards.at(-1)?.expectations, {
     organizationId: "sub-1",
     allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_POLICIES"],
+  });
+  assert.deepEqual(h.ceremony.approved.at(-1), {
+    userId: ANA,
+    walletId: "w-1",
+    policyIds: ["p1", "p2", "p3", "p4"],
   });
 });
 

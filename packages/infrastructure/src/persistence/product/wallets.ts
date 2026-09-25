@@ -48,6 +48,12 @@ export const walletRecords = wallets
       subOrganizationId: text("sub_organization_id").notNull(),
       kind: text("kind").notNull(),
       name: text("name").notNull(),
+      /**
+       * The policy ids Turnkey actually created after the person's passkey confirmed them, set
+       * once by `confirmPolicies`. Null until then. An agent's creation reads this column, never
+       * a client-supplied list, so the server is the only source of which rules a wallet carries.
+       */
+      approvedPolicyIds: text("approved_policy_ids").array(),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [

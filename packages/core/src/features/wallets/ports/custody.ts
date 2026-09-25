@@ -210,5 +210,12 @@ export interface AgentWalletRepository {
   hasLinkedAgentWallet(userId: string): Promise<boolean>;
   /** The wallet linked to an agent through `agent_wallets`. */
   findAgentWallet(agentId: string): Promise<AgentWallet | null>;
+  /**
+   * Records the policy ids Turnkey actually created for this wallet, once its owner's passkey
+   * confirmed them. Updates only the caller's own `kind='agent'` wallet; refuses when no row
+   * matched, so the ids a stranger's confirm produced can never land on someone else's wallet.
+   * This is what `createAgent` reads later — never a client-supplied list.
+   */
+  saveApprovedPolicies(userId: string, walletId: string, policyIds: string[]): Promise<void>;
   saveDeposit(input: { agentId: string; txHash: string; amountMicroUsd: bigint }): Promise<void>;
 }
