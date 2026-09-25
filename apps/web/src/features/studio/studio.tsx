@@ -18,6 +18,7 @@ import {
   type RunEvent,
 } from "./api";
 import { useNow } from "@/lib/now";
+import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
 import { studioPreview } from "./preview";
@@ -126,13 +127,6 @@ const BLOCKED: Record<
     to: null,
   },
 };
-
-const initials = (value: string) =>
-  value
-    .split(/\s+/)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .slice(0, 2) || "AG";
 
 /** The home, or one of the sections the rail and the home's Menu reach. */
 type View = SectionKey | "home";
@@ -473,7 +467,7 @@ export function Studio({
             onClick={() => setMenu(menu === "agent" ? null : "agent")}
           >
             <span className={styles.avatar} data-tint="lime">
-              {initials(name)}
+              {agentInitials(name)}
             </span>
             <span>
               <b>{name}</b>
