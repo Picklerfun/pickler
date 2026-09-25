@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  addCustomSkill,
   addSite,
   emptyDraft,
   fromApiDraft,
@@ -192,6 +193,77 @@ test("the books do not show up in the reads row for a non-NFL subcategory", () =
   const d = draftWith({ beat: "Sports", subs: ["NBA"], books: ["draftkings"] });
 
   assert.equal(readsText(d), "Market data, Web · anywhere, Sports data");
+});
+
+test("toCreate sends no books once the subcategory switches away from NFL", () => {
+  const withNfl = draftWith({
+    beat: "Sports",
+    subs: ["NFL"],
+    venues: ["polymarket"],
+    books: ["draftkings", "fanduel"],
+    edge: "Reads injury reports before the market does.",
+  });
+
+  assert.deepEqual(toCreate(withNfl, "wallet-123", defaults).config.sources?.books, [
+    "draftkings",
+    "fanduel",
+  ]);
+
+  const switchedToNba = { ...withNfl, subs: ["NBA"] };
+
+  assert.deepEqual(toCreate(switchedToNba, "wallet-123", defaults).config.sources?.books, []);
+});
+
+test("decides is ready up to the canvas's 400-character cap on the edge, and not past it", () => {
+  assert.equal(ready("decides", draftWith({ edge: "x".repeat(400) })), true);
+  assert.equal(ready("decides", draftWith({ edge: "x".repeat(401) })), false);
+});
+
+test("skills is ready with at most 8 resolved skills, suggested and custom together", () => {
+  const eightCustom = Array.from({ length: 8 }, (_, i) => ({
+    name: `Skill ${i}`,
+    prompt: `Prompt ${i}`,
+  }));
+  const nineCustom = [...eightCustom, { name: "Skill 8", prompt: "Prompt 8" }];
+
+  assert.equal(ready("skills", draftWith({ custom: eightCustom })), true);
+  assert.equal(ready("skills", draftWith({ custom: nineCustom })), false);
+  assert.equal(
+    ready(
+      "skills",
+      draftWith({ beat: "Sports", skills: ["Injury double-check"], custom: eightCustom }),
+    ),
+    false,
+  );
+});
+
+test("addCustomSkill refuses a name or prompt outside skillSchema's bounds, and an empty one", () => {
+  const d = emptyDraft();
+
+  assert.deepEqual(addCustomSkill(d, "x".repeat(41), "A prompt."), d);
+  assert.deepEqual(addCustomSkill(d, "A skill", "x".repeat(601)), d);
+  assert.deepEqual(addCustomSkill(d, "  ", "A prompt."), d);
+  assert.deepEqual(addCustomSkill(d, "A skill", "  "), d);
+});
+
+test("addCustomSkill trims and adds a valid skill within bounds", () => {
+  const d = addCustomSkill(
+    emptyDraft(),
+    "  Late scratch check  ",
+    "  Check an hour before kickoff.  ",
+  );
+
+  assert.deepEqual(d.custom, [
+    { name: "Late scratch check", prompt: "Check an hour before kickoff." },
+  ]);
+});
+
+test("addCustomSkill refuses once the resolved total is already at the cap of 8", () => {
+  const atCap = draftWith({
+    custom: Array.from({ length: 8 }, (_, i) => ({ name: `Skill ${i}`, prompt: `Prompt ${i}` })),
+  });
+
+  assert.deepEqual(addCustomSkill(atCap, "One more", "Over the cap."), atCap);
 });
 
 test("the six review rows read what the draft holds", () => {

@@ -136,6 +136,10 @@ export function emptyDraft(): Draft {
 }
 
 const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
+/** The canvas's own cap on the edge, matching `agentDraftSchema`'s; the profile field's own max
+ * is 4000, but the decides step never lets a person type past what a draft could have proposed. */
+const EDGE_MAX = 400;
+const SKILLS_MAX = 8;
 
 /** Whether this Sports subcategory is the only one with real market data today. */
 export function isNfl(d: Draft): boolean {
@@ -167,9 +171,11 @@ export function ready(step: Step, d: Draft): boolean {
     case "reads":
       return d.webMode === "anywhere" || d.sites.length > 0;
     case "skills":
-      return true;
-    case "decides":
-      return d.edge.trim().length > 0;
+      return resolvedSkills(d).length <= SKILLS_MAX;
+    case "decides": {
+      const edge = d.edge.trim();
+      return edge.length > 0 && edge.length <= EDGE_MAX;
+    }
     case "review":
       return (
         ORDER.filter((s): s is Exclude<OrderStep, "review"> => s !== "review").every((s) =>
@@ -341,6 +347,29 @@ function resolvedSkills(d: Draft): CustomSkill[] {
   return [...chosen, ...d.custom];
 }
 
+const CUSTOM_NAME_MAX = 40;
+const CUSTOM_PROMPT_MAX = 600;
+
+/**
+ * Adds a custom skill within `skillSchema`'s bounds (name ≤ 40, prompt ≤ 600) and the resolved
+ * total's cap of 8; an empty, over-length or over-cap skill is refused with the draft unchanged,
+ * the same way `addSite` refuses rather than trims.
+ */
+export function addCustomSkill(d: Draft, name: string, prompt: string): Draft {
+  const trimmedName = name.trim();
+  const trimmedPrompt = prompt.trim();
+  if (
+    trimmedName.length === 0 ||
+    trimmedName.length > CUSTOM_NAME_MAX ||
+    trimmedPrompt.length === 0 ||
+    trimmedPrompt.length > CUSTOM_PROMPT_MAX ||
+    resolvedSkills(d).length >= SKILLS_MAX
+  ) {
+    return d;
+  }
+  return { ...d, custom: [...d.custom, { name: trimmedName, prompt: trimmedPrompt }] };
+}
+
 function sportIds(d: Draft): SportId[] {
   return d.subs
     .map((label) => SPORT_SUB_IDS[label])
@@ -378,7 +407,7 @@ export function toCreate(
     ...defaults,
     profile: d.edge.trim(),
     marketScope: { version: 1, category: "sports", subcategories: sportIds(d) },
-    sources: { web: { mode: d.webMode, sites: [...d.sites] }, books: [...d.books] },
+    sources: { web: { mode: d.webMode, sites: [...d.sites] }, books: isNfl(d) ? [...d.books] : [] },
     skills: resolvedSkills(d),
     uncertaintyPolicy: STYLE_POLICIES[d.style],
     intervalHours: 6,
