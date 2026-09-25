@@ -138,25 +138,34 @@ export interface AddPasskeyActivityBuilder {
 }
 
 /**
+ * A confirm rebuilds the body its prepare built, with the timestamp the stamped body carries, and
+ * compares bytes; every builder is deterministic given this. Absent means "now".
+ */
+interface Rebuild {
+  timestampMs?: string;
+}
+
+/**
  * The unsigned bodies of an agent's wallet ceremony, each stamped by the person's passkey in the
  * browser and forwarded unchanged. Nothing here is signed by Pickler: the parent key is not a
  * voter inside a sub-organization, and the delegated user is only ever created by the person.
  */
 export interface AgentWalletActivityBuilders {
   /** One non-root user, "Pickler", whose only credential is Pickler's delegated API key. */
-  createDelegatedUser(input: { subOrganizationId: string; publicKey: string }): UnsignedActivity;
+  createDelegatedUser(
+    input: { subOrganizationId: string; publicKey: string } & Rebuild,
+  ): UnsignedActivity;
   /** One wallet named after the agent's handle, with the single Monad account. */
-  createAgentWallet(input: { subOrganizationId: string; handle: string }): UnsignedActivity;
-  createPolicies(input: {
-    subOrganizationId: string;
-    policies: readonly TurnkeyPolicy[];
-  }): UnsignedActivity;
+  createAgentWallet(
+    input: { subOrganizationId: string; handle: string } & Rebuild,
+  ): UnsignedActivity;
+  createPolicies(
+    input: { subOrganizationId: string; policies: readonly TurnkeyPolicy[] } & Rebuild,
+  ): UnsignedActivity;
   /** An Ethereum-format transaction signed by a wallet account the passkey controls. */
-  signTransaction(input: {
-    subOrganizationId: string;
-    signWith: string;
-    unsignedTransaction: string;
-  }): UnsignedActivity;
+  signTransaction(
+    input: { subOrganizationId: string; signWith: string; unsignedTransaction: string } & Rebuild,
+  ): UnsignedActivity;
 }
 
 export interface AgentWallet {
@@ -172,7 +181,11 @@ export interface AgentWalletRepository {
    */
   saveDelegatedUser(userId: string, delegatedUserId: string): Promise<void>;
   delegatedUserId(userId: string): Promise<string | null>;
-  /** The wallets row and its one account, in one transaction. */
+  /**
+   * The wallets row and its one account, in one transaction. Saving the same wallet again for the
+   * same person is a no-op (a re-forwarded stamp); a wallet id already recorded for someone else
+   * is refused.
+   */
   saveWallet(input: {
     userId: string;
     walletId: string;

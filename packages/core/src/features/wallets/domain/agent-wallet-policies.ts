@@ -27,6 +27,53 @@ export interface TurnkeyPolicy {
  */
 export const VENUE_CONTRACTS: readonly string[] = [];
 
+/**
+ * Every activity that would give a user a new way in, or change who it is: new API keys,
+ * passkeys and OAuth providers, user updates, email recovery, and the OTP, OAuth, email and
+ * stamp logins that mint session keys. Turnkey lets every user change its own credentials unless
+ * a policy says otherwise, so without this a leaked delegated key could add a second key for
+ * itself and outlive its rotation. Deleting credentials, and the delegated user deleting itself,
+ * stay possible: none of the DELETE_* types is here.
+ *
+ * Matched by exact `activity.type`, every version listed, because Turnkey's documentation does
+ * not publish the `activity.resource` names for API keys and authenticators; these literals are
+ * checked against @turnkey/http's `v1ActivityType` union in @pickler/infrastructure's tests.
+ */
+export const DELEGATED_CREDENTIAL_ACTIVITY_TYPES = [
+  "ACTIVITY_TYPE_CREATE_API_KEYS",
+  "ACTIVITY_TYPE_CREATE_API_KEYS_V2",
+  "ACTIVITY_TYPE_CREATE_AUTHENTICATORS",
+  "ACTIVITY_TYPE_CREATE_AUTHENTICATORS_V2",
+  "ACTIVITY_TYPE_CREATE_OAUTH_PROVIDERS",
+  "ACTIVITY_TYPE_CREATE_OAUTH_PROVIDERS_V2",
+  "ACTIVITY_TYPE_UPDATE_USER",
+  "ACTIVITY_TYPE_UPDATE_USER_NAME",
+  "ACTIVITY_TYPE_UPDATE_USER_EMAIL",
+  "ACTIVITY_TYPE_UPDATE_USER_PHONE_NUMBER",
+  "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY",
+  "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY_V2",
+  "ACTIVITY_TYPE_RECOVER_USER",
+  "ACTIVITY_TYPE_EMAIL_AUTH",
+  "ACTIVITY_TYPE_EMAIL_AUTH_V2",
+  "ACTIVITY_TYPE_EMAIL_AUTH_V3",
+  "ACTIVITY_TYPE_INIT_OTP_AUTH",
+  "ACTIVITY_TYPE_INIT_OTP_AUTH_V2",
+  "ACTIVITY_TYPE_INIT_OTP_AUTH_V3",
+  "ACTIVITY_TYPE_OTP_AUTH",
+  "ACTIVITY_TYPE_INIT_OTP",
+  "ACTIVITY_TYPE_INIT_OTP_V2",
+  "ACTIVITY_TYPE_INIT_OTP_V3",
+  "ACTIVITY_TYPE_VERIFY_OTP",
+  "ACTIVITY_TYPE_VERIFY_OTP_V2",
+  "ACTIVITY_TYPE_OTP_LOGIN",
+  "ACTIVITY_TYPE_OTP_LOGIN_V2",
+  "ACTIVITY_TYPE_OAUTH",
+  "ACTIVITY_TYPE_OAUTH_LOGIN",
+  "ACTIVITY_TYPE_STAMP_LOGIN",
+  "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION",
+  "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+] as const;
+
 /** ERC-20 `transfer(address,uint256)` and `approve(address,uint256)`, as `eth.tx.data[0..10]`. */
 const TRANSFER_SELECTOR = "0xa9059cbb";
 const APPROVE_SELECTOR = "0x095ea7b3";
@@ -59,7 +106,10 @@ const onlyDelegated = (delegatedUserId: string) =>
 
 /**
  * The wallet's rules, in this order: trade only to the venue (omitted when there is no venue),
- * never an ERC-20 transfer or approve, and only root changes the rules.
+ * never an ERC-20 transfer or approve, only root changes the rules, and the delegated user never
+ * adds a credential or changes who it is. The last one is about the user, not the wallet, and is
+ * written with every wallet anyway: a duplicate DENY changes nothing, and it means no wallet ever
+ * exists in a sub-organization where the delegated user could still give itself a new key.
  */
 export function agentWalletPolicies(input: {
   delegatedUserId: string;
@@ -95,6 +145,16 @@ export function agentWalletPolicies(input: {
     effect: "EFFECT_DENY",
     condition: "activity.resource == 'POLICY'",
     notes: "The delegated user may not create, update or delete policies.",
+  });
+
+  const credentialTypes = DELEGATED_CREDENTIAL_ACTIVITY_TYPES.map((type) => `'${type}'`).join(", ");
+  policies.push({
+    policyName: "Pickler never gives itself a new way in",
+    effect: "EFFECT_DENY",
+    consensus: onlyDelegated(delegatedUserId),
+    condition: `activity.type in [${credentialTypes}]`,
+    notes:
+      "Pickler's delegated user may not add API keys, passkeys or login methods, or change its user; it may still delete credentials and itself.",
   });
 
   return policies;

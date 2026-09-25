@@ -65,6 +65,9 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     linked: new Set<string>(),
     /** Whether any of this person's wallets is linked to an agent already. */
     hasLinked: false,
+    /** Makes the save refuse as if another confirm had recorded its user first. */
+    raceOnSave: false,
+    unrecorded: [] as { userId: string; subOrganizationId: string; delegatedUserId: string }[],
     /** What the forwarder answers next. */
     activity: {
       id: "act-1",
@@ -81,7 +84,7 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
 
   const agentWallets: AgentWalletRepository = {
     async saveDelegatedUser(_userId, id) {
-      if (state.delegated && state.delegated !== id) {
+      if (state.raceOnSave || (state.delegated && state.delegated !== id)) {
         throw new DelegatedUserExistsError();
       }
       state.delegated = id;
@@ -112,22 +115,25 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
   };
 
   const builds: { kind: string; input: unknown }[] = [];
-  // A real JSON body carrying everything the builder was given, and a fresh timestamp each time,
-  // so the confirm-side comparison is exercised the way the Turnkey builder exercises it.
+  // A real JSON body carrying everything the builder was given, and a fresh timestamp unless a
+  // confirm asks for one, as the Turnkey builder does; the confirm-side byte comparison depends on
+  // exactly that. Only prepares (no timestamp asked) are recorded as builds.
   let clock = 0;
-  const unsigned = (kind: string, input: { subOrganizationId: string }) => {
-    builds.push({ kind, input });
-    const { subOrganizationId, ...parameters } = input;
-    clock += 1;
+  const unsigned = (kind: string, input: { subOrganizationId: string; timestampMs?: string }) => {
+    const { subOrganizationId, timestampMs: asked, ...parameters } = input;
+    if (asked === undefined) {
+      builds.push({ kind, input });
+    }
+    const timestampMs = asked ?? String((clock += 1));
     return {
       url: `https://api.turnkey.com/public/v1/submit/${kind}`,
       body: JSON.stringify({
         type: kind,
-        timestampMs: String(clock),
+        timestampMs,
         organizationId: subOrganizationId,
         parameters,
       }),
-      timestampMs: String(clock),
+      timestampMs,
       organizationId: subOrganizationId,
     };
   };
@@ -175,6 +181,7 @@ function service(
     appName: "Pickler",
     now: () => new Date("2026-09-25T12:00:00Z"),
     randomId: () => "r",
+    reportUnrecordedDelegatedUser: (user) => f.state.unrecorded.push(user),
   });
 }
 
@@ -406,9 +413,14 @@ test("the self-delete policy is added only while no wallet of the person's is li
   assert.deepEqual(names(first), [
     "Never a transfer out",
     "Only root changes the rules",
+    "Pickler never gives itself a new way in",
     "Pickler may remove itself",
   ]);
-  assert.deepEqual(names(later), ["Never a transfer out", "Only root changes the rules"]);
+  assert.deepEqual(names(later), [
+    "Never a transfer out",
+    "Only root changes the rules",
+    "Pickler never gives itself a new way in",
+  ]);
 });
 
 test("the venue list reaches the policies", async () => {
@@ -442,10 +454,12 @@ test("policies need the delegated user and a wallet of the caller's", async () =
 test("confirmPolicies forwards only create_policies and returns the ids", async () => {
   const f = withWallet();
   const unsigned = await service(f).preparePolicies(USER, "w-1");
-  f.state.activity = completed({ createPoliciesResult: { policyIds: ["p1", "p2", "p3"] } });
+  f.state.activity = completed({
+    createPoliciesResult: { policyIds: ["p1", "p2", "p3", "p4"] },
+  });
 
   assert.deepEqual(await service(f).confirmPolicies(USER, "w-1", stamped(unsigned)), {
-    policyIds: ["p1", "p2", "p3"],
+    policyIds: ["p1", "p2", "p3", "p4"],
   });
   assert.deepEqual(f.forwards, [
     { organizationId: "sub-ana", allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_POLICIES"] },
@@ -497,13 +511,74 @@ test("policies prepared for a first agent no longer confirm once another wallet 
   assert.deepEqual(f.forwards, []);
 });
 
-test("confirmPolicies with a single id throws", async () => {
+test("confirmPolicies needs exactly one id per prepared policy", async () => {
   const f = withWallet();
   const unsigned = await service(f).preparePolicies(USER, "w-1");
-  f.state.activity = completed({ createPoliciesResult: { policyIds: ["p1"] } });
+
+  for (const policyIds of [["p1"], ["p1", "p2", "p3"], ["p1", "p2", "p3", "p4", "p5"]]) {
+    f.state.activity = completed({ createPoliciesResult: { policyIds } });
+    await assert.rejects(
+      service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
+      SigningServiceUnavailableError,
+      `${policyIds.length} ids`,
+    );
+  }
+});
+
+test("a stamped body is compared byte for byte, with its own timestamp", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+  const body = JSON.parse(unsigned.body);
+
+  // The same content with the keys in another order is not the prepared body.
+  const reordered = JSON.stringify({
+    parameters: body.parameters,
+    organizationId: body.organizationId,
+    timestampMs: body.timestampMs,
+    type: body.type,
+  });
+  // No timestamp, or one that is not digits, cannot be rebuilt at all.
+  const { timestampMs: _dropped, ...untimed } = body;
+  void _dropped;
+
+  for (const tampered of [
+    reordered,
+    JSON.stringify(untimed),
+    JSON.stringify({ ...body, timestampMs: "12a" }),
+    `${unsigned.body} `,
+  ]) {
+    await assert.rejects(
+      service(f).confirmDelegatedUser(USER, stamped(unsigned, tampered)),
+      InvalidSignedActivityError,
+    );
+  }
+  assert.deepEqual(f.forwards, []);
+});
+
+test("a delegated user already recorded is refused before anything reaches Turnkey", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+  f.state.delegated = "da-0";
 
   await assert.rejects(
-    service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
-    SigningServiceUnavailableError,
+    service(f).confirmDelegatedUser(USER, stamped(unsigned)),
+    DelegatedUserExistsError,
   );
+  assert.deepEqual(f.forwards, []);
+});
+
+test("a delegated user Turnkey created but a racing confirm beat to the record is reported", async () => {
+  const f = fakes();
+  const unsigned = await service(f).prepareDelegatedUser(USER);
+  f.state.activity = completed({ createUsersResult: { userIds: ["da-late"] } });
+  f.state.raceOnSave = true;
+
+  await assert.rejects(
+    service(f).confirmDelegatedUser(USER, stamped(unsigned)),
+    DelegatedUserExistsError,
+  );
+  assert.equal(f.forwards.length, 1);
+  assert.deepEqual(f.state.unrecorded, [
+    { userId: USER, subOrganizationId: "sub-ana", delegatedUserId: "da-late" },
+  ]);
 });

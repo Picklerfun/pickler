@@ -65,55 +65,39 @@ function completedResult(activity: TurnkeyActivity, key: string): Record<string,
   return result;
 }
 
-/** Structural equality over parsed JSON: key order does not matter, everything else does. */
-function sameJson(a: unknown, b: unknown): boolean {
-  if (Array.isArray(a) || Array.isArray(b)) {
-    return (
-      Array.isArray(a) &&
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every((entry, index) => sameJson(entry, b[index]))
-    );
-  }
-  if (a && b && typeof a === "object" && typeof b === "object") {
-    const left = a as Record<string, unknown>;
-    const right = b as Record<string, unknown>;
-    const keys = Object.keys(left);
-    return (
-      keys.length === Object.keys(right).length &&
-      keys.every((key) => Object.hasOwn(right, key) && sameJson(left[key], right[key]))
-    );
-  }
-  return a === b;
-}
-
-function withoutTimestamp(body: string): unknown {
-  const parsed: unknown = JSON.parse(body);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return parsed;
-  }
-  const rest: Record<string, unknown> = { ...(parsed as Record<string, unknown>) };
-  delete rest["timestampMs"];
-  return rest;
-}
+const TIMESTAMP = /^\d+$/;
 
 /**
- * Refuses a stamped request that is not the one Pickler would have prepared. Confirm is
- * stateless, so the expectation is rebuilt from the same inputs through the same builder and the
- * two bodies compared whole — type, organization and parameters — with only `timestampMs` left
- * out, since it is the one field that legitimately differs between the two builds.
+ * Refuses a stamped request that is not, byte for byte, the one Pickler would have prepared.
+ *
+ * Confirm is stateless, so the expectation is rebuilt: the stamped body's own `timestampMs` is
+ * read (it must be digits), the same builder is called with the same inputs and that timestamp,
+ * and the URL and body must then be identical strings. Comparing bytes rather than parsed JSON is
+ * the point: a body with a key twice (`"publicKey": ours, "publicKey": theirs`) parses to one
+ * value here and may be read as the other by Turnkey, and only an exact comparison closes that.
  *
  * Without this, a person's browser could stamp different parameters (another public key, a second
  * user, an extra ALLOW) and Pickler would record the ids it got back as the ones it prepared.
  */
-function assertStampedAsPrepared(signed: SignedActivityRequest, expected: UnsignedActivity) {
-  let stamped: unknown;
+function assertStampedAsPrepared(
+  signed: SignedActivityRequest,
+  rebuild: (timestampMs: string) => UnsignedActivity,
+) {
+  let parsed: unknown;
   try {
-    stamped = withoutTimestamp(signed.body);
+    parsed = JSON.parse(signed.body);
   } catch {
     throw new InvalidSignedActivityError("Signed body is not valid JSON");
   }
-  if (signed.url !== expected.url || !sameJson(stamped, withoutTimestamp(expected.body))) {
+  const timestampMs =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)["timestampMs"]
+      : undefined;
+  if (typeof timestampMs !== "string" || !TIMESTAMP.test(timestampMs)) {
+    throw new InvalidSignedActivityError("Signed body carries no valid timestampMs");
+  }
+  const expected = rebuild(timestampMs);
+  if (signed.url !== expected.url || signed.body !== expected.body) {
     throw new InvalidSignedActivityError("The signed activity is not the one Pickler prepared");
   }
 }
@@ -155,6 +139,17 @@ export interface CustodyServiceDeps {
    * the registration it is reporting on.
    */
   reportOrphan?(orphan: { userId: string; subOrganizationId: string }): void;
+  /**
+   * Called when Turnkey created a delegated user that Pickler then could not record — two
+   * confirms raced and the other one's user was saved first. The user exists in the person's
+   * sub-organization with no policy naming it; this is the only record of it. Same contract as
+   * `reportOrphan`: synchronous, and a failure in it never changes the outcome.
+   */
+  reportUnrecordedDelegatedUser?(user: {
+    userId: string;
+    subOrganizationId: string;
+    delegatedUserId: string;
+  }): void;
 }
 
 export function createCustodyService(deps: CustodyServiceDeps) {
@@ -188,12 +183,12 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     }
   }
 
-  function delegatedUserActivity(subOrganizationId: string, publicKey: string) {
-    return deps.agentActivities.createDelegatedUser({ subOrganizationId, publicKey });
-  }
-
-  /** The create_policies body for a wallet, built the same way for prepare and for confirm. */
-  async function policiesActivity(userId: string, subOrganizationId: string, walletId: string) {
+  /**
+   * The policies a wallet gets, decided the same way for prepare and for confirm. For the
+   * person's first agent — no wallet of theirs linked to any agent yet, decided here and never by
+   * the caller — the delegated user's self-delete policy rides along.
+   */
+  async function policiesFor(userId: string, walletId: string) {
     const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
     if (!delegatedUserId) {
       throw new DelegatedUserMissingError();
@@ -209,7 +204,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     if (!(await deps.agentWallets.hasLinkedAgentWallet(userId))) {
       policies.push(delegatedSelfDeletePolicy(delegatedUserId));
     }
-    return deps.agentActivities.createPolicies({ subOrganizationId, policies });
+    return policies;
   }
 
   return {
@@ -387,7 +382,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if ((await deps.agentWallets.delegatedUserId(userId)) !== null) {
         throw new DelegatedUserExistsError();
       }
-      return delegatedUserActivity(account.subOrganizationId, deps.delegatedPublicKey);
+      return deps.agentActivities.createDelegatedUser({
+        subOrganizationId: account.subOrganizationId,
+        publicKey: deps.delegatedPublicKey,
+      });
     },
 
     async confirmDelegatedUser(
@@ -398,12 +396,21 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      if (!deps.delegatedPublicKey) {
+      const publicKey = deps.delegatedPublicKey;
+      if (!publicKey) {
         throw new DelegatedKeyNotConfiguredError();
       }
-      assertStampedAsPrepared(
-        signed,
-        delegatedUserActivity(account.subOrganizationId, deps.delegatedPublicKey),
+      // Refused before anything reaches Turnkey: a second create_users would leave a second
+      // Pickler user in the person's sub-organization that nothing records.
+      if ((await deps.agentWallets.delegatedUserId(userId)) !== null) {
+        throw new DelegatedUserExistsError();
+      }
+      assertStampedAsPrepared(signed, (timestampMs) =>
+        deps.agentActivities.createDelegatedUser({
+          subOrganizationId: account.subOrganizationId,
+          publicKey,
+          timestampMs,
+        }),
       );
       const activity = await deps.forwarder.forward(signed, {
         organizationId: account.subOrganizationId,
@@ -415,7 +422,24 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!delegatedUserId || extra.length > 0) {
         throw new SigningServiceUnavailableError("Expected exactly one user from create_users");
       }
-      await deps.agentWallets.saveDelegatedUser(userId, delegatedUserId);
+      try {
+        await deps.agentWallets.saveDelegatedUser(userId, delegatedUserId);
+      } catch (error) {
+        if (error instanceof DelegatedUserExistsError) {
+          // Lost a race after the check above: Turnkey has this user and Pickler cannot record
+          // it. Say so before refusing, or its only trace is in Turnkey's dashboard.
+          try {
+            deps.reportUnrecordedDelegatedUser?.({
+              userId,
+              subOrganizationId: account.subOrganizationId,
+              delegatedUserId,
+            });
+          } catch {
+            // A broken log sink changes nothing about the refusal.
+          }
+        }
+        throw error;
+      }
       return { delegatedUserId };
     },
 
@@ -453,11 +477,11 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      assertStampedAsPrepared(
-        signed,
+      assertStampedAsPrepared(signed, (timestampMs) =>
         deps.agentActivities.createAgentWallet({
           subOrganizationId: account.subOrganizationId,
           handle,
+          timestampMs,
         }),
       );
       const activity = await deps.forwarder.forward(signed, {
@@ -492,12 +516,16 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      return policiesActivity(userId, account.subOrganizationId, walletId);
+      return deps.agentActivities.createPolicies({
+        subOrganizationId: account.subOrganizationId,
+        policies: await policiesFor(userId, walletId),
+      });
     },
 
     /**
-     * Returns the ids the link records. Fewer than two means the wallet's DENY rules did not all
-     * land, and a wallet without them is not one an agent may have.
+     * Returns the ids the link records: exactly one per policy prepared. Any other count means
+     * Turnkey created something other than what the person approved, and a wallet whose rules
+     * cannot be accounted for is not one an agent may have.
      */
     async confirmPolicies(
       userId: string,
@@ -508,17 +536,23 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      assertStampedAsPrepared(
-        signed,
-        await policiesActivity(userId, account.subOrganizationId, walletId),
+      const policies = await policiesFor(userId, walletId);
+      assertStampedAsPrepared(signed, (timestampMs) =>
+        deps.agentActivities.createPolicies({
+          subOrganizationId: account.subOrganizationId,
+          policies,
+          timestampMs,
+        }),
       );
       const activity = await deps.forwarder.forward(signed, {
         organizationId: account.subOrganizationId,
         allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.createPolicies],
       });
       const policyIds = strings(completedResult(activity, "createPoliciesResult").policyIds);
-      if (policyIds.length < 2) {
-        throw new SigningServiceUnavailableError("Expected at least two policies to be created");
+      if (policyIds.length !== policies.length) {
+        throw new SigningServiceUnavailableError(
+          `Expected ${policies.length} policies to be created, got ${policyIds.length}`,
+        );
       }
       return { policyIds };
     },

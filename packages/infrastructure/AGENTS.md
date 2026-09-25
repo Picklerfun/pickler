@@ -135,17 +135,21 @@ distinction — the interface says "unavailable" rather than showing an empty wa
 `create_users` (one non-root user "Pickler" whose only credential is the delegated P-256 API key
 `pickler-delegated`), `create_wallet` (named after the handle, `MONAD_ACCOUNT`), `create_policies`
 and `sign_transaction` bodies, each typed against @turnkey/http with its `type` taken from core's
-`AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Nothing here is stamped by
-Pickler. `test/turnkey-activities.test.ts` also pins the result keys core reads.
+`AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Each builder takes an optional
+`timestampMs` so a confirm can rebuild the prepared body byte for byte. Nothing here is stamped by
+Pickler. The same test file pins core's `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` to the SDK's
+`v1ActivityType` union. `test/turnkey-activities.test.ts` also pins the result keys core reads.
 
 `PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
-(wallets + wallet_accounts in one transaction), `findOrphanWallet` (an agent wallet by name with
+(wallets + wallet_accounts in one transaction; the same wallet again for its owner is a no-op,
+another person's wallet id is refused), `findOrphanWallet` (an agent wallet by name with
 no `agent_wallets` row), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
 `agent_wallets`), `findAgentWallet` and `saveDeposit` (lowercases
 the hash for the column check).
 
 `src/turnkey/delegated-key.ts` generates Pickler's delegated key pair in Turnkey's API key format
 (compressed P-256 public hex, raw 32-byte private hex; a test stamps with Turnkey's own stamper and
-verifies). `npm run turnkey:delegated-key --workspace=@pickler/infrastructure` prints a fresh
-pair for an operator; `-- --append <file>` appends it to a local `.dev.vars` without printing it.
+verifies). `npm run turnkey:delegated-key --workspace=@pickler/infrastructure` prints only the
+public key of a fresh pair; `-- --append <file>` appends a pair to a local `.dev.vars` without
+printing it, and `-- --print-private` prints both halves for an operator's `wrangler secret put`.

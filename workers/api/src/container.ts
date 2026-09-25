@@ -78,6 +78,32 @@ function required<
 /** Monad testnet, the same default the web carries in NEXT_PUBLIC_SIWE_CHAIN_ID. */
 const DEFAULT_CHAIN_ID = 10143;
 
+/** A compressed P-256 public key in hex, the format Turnkey API keys use. */
+const COMPRESSED_P256 = /^0[23][0-9a-f]{64}$/i;
+
+/**
+ * Pickler's delegated public key, or null when it is absent or malformed. A malformed one is
+ * treated as not configured — the ceremony answers 503 rather than asking a person to approve a
+ * user whose key Turnkey would reject — and says so by variable name, never by value. Only the
+ * public half is read; the private half stays in the environment, unused until live trading.
+ */
+export function delegatedPublicKeyFrom(
+  env: Pick<Env, "TURNKEY_DELEGATED_API_PUBLIC_KEY">,
+  log: (message: string) => void = console.error,
+): string | null {
+  const value = env.TURNKEY_DELEGATED_API_PUBLIC_KEY;
+  if (!value) {
+    return null;
+  }
+  if (!COMPRESSED_P256.test(value)) {
+    log(
+      "TURNKEY_DELEGATED_API_PUBLIC_KEY is not a compressed P-256 public key in hex; agent wallets are off",
+    );
+    return null;
+  }
+  return value;
+}
+
 /**
  * Composed only when every Turnkey binding is present, so a deployment without them serves the
  * rest of the API rather than failing to start. The parent API key lives here and nowhere near a
@@ -103,9 +129,7 @@ function custodyServices(
   const turnkey = createSubOrganizationCreator({ ...parentKey, parentOrganizationId });
   const activities = createAddPasskeyActivityBuilder();
   const agentActivities = createActivityBuilders();
-  // Only the public half is read here. The private half stays in the environment, unused until
-  // live trading, and is never passed to anything that could log it.
-  const delegatedPublicKey = env.TURNKEY_DELEGATED_API_PUBLIC_KEY || null;
+  const delegatedPublicKey = delegatedPublicKeyFrom(env);
   const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
 
   return {
@@ -137,6 +161,12 @@ function custodyServices(
         reportOrphan: ({ userId, subOrganizationId }) =>
           console.warn(
             `[${requestId}] orphaned Turnkey sub-organization ${subOrganizationId} from a lost registration race for user ${userId}; reconcile out of band`,
+          ),
+        // A Pickler user Turnkey created and Pickler could not record, from two delegated-user
+        // confirms racing. Ids only: nothing here carries key material.
+        reportUnrecordedDelegatedUser: ({ userId, subOrganizationId, delegatedUserId }) =>
+          console.error(
+            `[${requestId}] unrecorded delegated user ${delegatedUserId} in Turnkey sub-organization ${subOrganizationId} for user ${userId}; delete it out of band`,
           ),
       }),
   };

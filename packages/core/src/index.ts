@@ -176,6 +176,7 @@ export {
 export {
   agentWalletPolicies,
   delegatedSelfDeletePolicy,
+  DELEGATED_CREDENTIAL_ACTIVITY_TYPES,
   VENUE_CONTRACTS,
   type TurnkeyPolicy,
 } from "./features/wallets/domain/agent-wallet-policies.js";

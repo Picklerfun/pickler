@@ -96,8 +96,12 @@ The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-
 §4.1). `domain/agent-wallet-policies.ts` writes each agent wallet's Turnkey policies as plain
 strings: an ALLOW for the delegated user to sign from that wallet only to `VENUE_CONTRACTS` (left
 out while the list is empty, which it is until live trading — then the delegated user can sign
-nothing), a DENY on ERC-20 `transfer`/`approve` calldata from the wallet, and a DENY on any
-`POLICY` activity; `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
+nothing), a DENY on ERC-20 `transfer`/`approve` calldata from the wallet, a DENY on any
+`POLICY` activity, and a DENY for the delegated user on every `activity.type` in
+`DELEGATED_CREDENTIAL_ACTIVITY_TYPES` (new API keys, passkeys and OAuth providers, user updates,
+email recovery, and the logins that mint session keys; every version listed, since Turnkey does
+not document the `activity.resource` names for keys and authenticators; deletions are not
+listed, so the delegated user can still remove credentials and itself). `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
 else. Every id and address is checked against a strict alphabet before it is interpolated, and a
 malformed one throws. Turnkey has no policy order: the root quorum (the passkey) bypasses policies,
 and otherwise any matching DENY beats every ALLOW.
@@ -106,10 +110,13 @@ and otherwise any matching DENY beats every ALLOW.
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version
 @turnkey/http 6.5 lets that endpoint take) and the caller's own sub-organization, and treats any
-status short of completed as a failure. Before forwarding, each confirm rebuilds the activity
-its prepare would have built — through the same builder, from the same inputs — and refuses
-(`InvalidSignedActivityError`, 400) a stamped request whose URL or body differs in anything but
-`timestampMs`, so another public key, an extra user or an extra policy never reaches Turnkey.
+status short of completed as a failure. Before forwarding, each confirm reads the stamped body's
+`timestampMs` (digits only), rebuilds the activity its prepare built — same builder, same inputs,
+that timestamp — and refuses (`InvalidSignedActivityError`, 400) unless the URL and body are
+byte-identical. Bytes, not parsed JSON: a body with a key given twice parses to Pickler's value
+here and may be read as the other by Turnkey. `confirmPolicies` requires exactly one id per
+prepared policy. `confirmDelegatedUser` refuses (`DelegatedUserExistsError`) before forwarding
+when a delegated user is already recorded.
 Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
 from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
 confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` for an unlinked
@@ -119,10 +126,12 @@ wallet already named after the handle, so a retry never mints a second one. The 
 `DelegatedUserMissingError`, `AgentWalletNotFoundError`. `MONAD_ACCOUNT_PATH` is the one account
 path every Pickler wallet uses.
 
-Known limitation: two confirms of the delegated user racing can both complete in Turnkey, leaving
-two "Pickler" users in the person's sub-organization. The store records the first and refuses the
-second (`DelegatedUserExistsError`); the second user exists in Turnkey with no policy naming it,
-so it can sign nothing, but nothing removes it automatically.
+Known limitation: two confirms of the delegated user racing past that check can both complete in
+Turnkey, leaving two "Pickler" users in the person's sub-organization. The store records the first
+and refuses the second (`DelegatedUserExistsError`); the confirm then calls
+`reportUnrecordedDelegatedUser` with the ids (the API logs it with `console.error`) before
+refusing. The second user has no policy naming it, so it can sign nothing, but nothing removes it
+automatically.
 
 ## Markets
 

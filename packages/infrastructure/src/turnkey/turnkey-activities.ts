@@ -38,7 +38,7 @@ export function createActivityBuilders(
 
   return {
     createDelegatedUser(input) {
-      const timestampMs = String(now());
+      const timestampMs = input.timestampMs ?? String(now());
       // Non-root by construction: create_users adds to `users`, never to the root quorum, so
       // there is no moment at which Pickler's key could act as the person. No email, phone or
       // authenticator either: the API key is its only way in.
@@ -68,7 +68,7 @@ export function createActivityBuilders(
     },
 
     createAgentWallet(input) {
-      const timestampMs = String(now());
+      const timestampMs = input.timestampMs ?? String(now());
       const request: TurnkeyApiTypes["v1CreateWalletRequest"] = {
         type: AGENT_WALLET_ACTIVITY_TYPES.createAgentWallet,
         timestampMs,
@@ -79,7 +79,7 @@ export function createActivityBuilders(
     },
 
     createPolicies(input) {
-      const timestampMs = String(now());
+      const timestampMs = input.timestampMs ?? String(now());
       const request: TurnkeyApiTypes["v1CreatePoliciesRequest"] = {
         type: AGENT_WALLET_ACTIVITY_TYPES.createPolicies,
         timestampMs,
@@ -98,7 +98,7 @@ export function createActivityBuilders(
     },
 
     signTransaction(input) {
-      const timestampMs = String(now());
+      const timestampMs = input.timestampMs ?? String(now());
       const request: TurnkeyApiTypes["v1SignTransactionRequest"] = {
         type: AGENT_WALLET_ACTIVITY_TYPES.signTransaction,
         timestampMs,

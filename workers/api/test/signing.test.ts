@@ -1066,7 +1066,18 @@ test("a delegated user stamped with another public key or an extra user is refus
     }),
   });
 
-  for (const res of [otherKey, extraUser, withPasskey]) {
+  // The same key twice, the attacker's first: JavaScript's JSON.parse keeps the last, so this
+  // body parses to exactly what Pickler built, while a parser that keeps the first reads the
+  // attacker's key. Only the exact bytes Pickler built are accepted, so neither reading counts.
+  const ours = JSON.stringify(JSON.parse(prepared.body).parameters.users[0].apiKeys[0].publicKey);
+  const duplicateKey = await post(h, "/v1/signing/agents/delegated/confirm", {
+    signed: stamp(
+      prepared,
+      prepared.body.replace(`"publicKey":${ours}`, `"publicKey":"02attacker","publicKey":${ours}`),
+    ),
+  });
+
+  for (const res of [otherKey, extraUser, withPasskey, duplicateKey]) {
     assert.equal(res.status, 400);
     assert.equal((await json(res))["error"], "invalid_signed_activity");
   }
@@ -1150,9 +1161,14 @@ test("the first agent's policies carry the self-delete policy; a later agent's d
   assert.deepEqual(policyNames(first), [
     "Never a transfer out",
     "Only root changes the rules",
+    "Pickler never gives itself a new way in",
     "Pickler may remove itself",
   ]);
-  assert.deepEqual(policyNames(later), ["Never a transfer out", "Only root changes the rules"]);
+  assert.deepEqual(policyNames(later), [
+    "Never a transfer out",
+    "Only root changes the rules",
+    "Pickler never gives itself a new way in",
+  ]);
 });
 
 test("policies prepare takes no body: first_agent is the server's decision", async () => {
@@ -1181,12 +1197,14 @@ test("policies are prepared for the caller's wallet and confirmed to their ids",
   const prepared = (await data(res)) as unknown as Prepared;
   assert.equal(prepared.organizationId, "sub-1");
 
-  h.nextActivity.value = completed({ createPoliciesResult: { policyIds: ["p1", "p2", "p3"] } });
+  h.nextActivity.value = completed({
+    createPoliciesResult: { policyIds: ["p1", "p2", "p3", "p4"] },
+  });
   const confirmed = await post(h, "/v1/signing/agents/wallet/w-1/policies/confirm", {
     signed: stamp(prepared),
   });
   assert.equal(confirmed.status, 200);
-  assert.deepEqual(await data(confirmed), { policy_ids: ["p1", "p2", "p3"] });
+  assert.deepEqual(await data(confirmed), { policy_ids: ["p1", "p2", "p3", "p4"] });
   assert.deepEqual(h.forwards.at(-1)?.expectations, {
     organizationId: "sub-1",
     allowedActivityTypes: ["ACTIVITY_TYPE_CREATE_POLICIES"],
@@ -1215,6 +1233,23 @@ test("policies stamped with an extra ALLOW are refused before Turnkey", async ()
 
   assert.equal(res.status, 400);
   assert.equal((await json(res))["error"], "invalid_signed_activity");
+
+  // A condition given twice in one policy, a harmless "true" first: parsed last-wins it is the
+  // DENY Pickler built; parsed first-wins it denies nothing. The bytes decide, not the parser.
+  const firstCondition = JSON.stringify(
+    (JSON.parse(prepared.body).parameters.policies as { condition: string }[])[0]!.condition,
+  );
+  const duplicate = await post(h, "/v1/signing/agents/wallet/w-1/policies/confirm", {
+    signed: stamp(
+      prepared,
+      prepared.body.replace(
+        `"condition":${firstCondition}`,
+        `"condition":"true","condition":${firstCondition}`,
+      ),
+    ),
+  });
+  assert.equal(duplicate.status, 400);
+  assert.equal((await json(duplicate))["error"], "invalid_signed_activity");
   assert.deepEqual(h.forwards, []);
 });
 

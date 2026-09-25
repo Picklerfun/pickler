@@ -86,12 +86,15 @@ Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.
 is written by the create-agent transaction, not here.
 
 `TURNKEY_DELEGATED_API_PUBLIC_KEY` is the public half of Pickler's delegated key; without it the
-ceremony answers 503 `agent_wallets_unavailable` and nothing else changes.
+ceremony answers 503 `agent_wallets_unavailable` and nothing else changes. `delegatedPublicKeyFrom`
+in `container.ts` accepts only a compressed P-256 key (`0[23]` plus 64 hex); anything else is
+treated as absent, with a `console.error` naming the variable, never its value. A delegated user
+Turnkey created but Pickler could not record (a lost race) is logged with `console.error`: ids only.
 `TURNKEY_DELEGATED_API_PRIVATE_KEY` is held by Pickler, unused until live trading, and never
 logged or passed to the custody service. Generate a pair with
-`npm run turnkey:delegated-key --workspace=@pickler/infrastructure`; append one to a local
-`.dev.vars` without printing it with `... -- --append workers/api/.dev.vars` (run from the
-repository root with an absolute path). A changed `.dev.vars` needs a `wrangler dev` restart.
+`npm run turnkey:delegated-key --workspace=@pickler/infrastructure -- --print-private` (without
+the flag only the public key is printed); append one to a local `.dev.vars` without printing it
+with `... -- --append <absolute path to workers/api/.dev.vars>`. A changed `.dev.vars` needs a `wrangler dev` restart.
 
 ## Budget ledger
 

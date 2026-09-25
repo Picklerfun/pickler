@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { agentWalletPolicies, delegatedSelfDeletePolicy } from "@pickler/core";
+import {
+  agentWalletPolicies,
+  DELEGATED_CREDENTIAL_ACTIVITY_TYPES,
+  delegatedSelfDeletePolicy,
+} from "@pickler/core";
 import type { TurnkeyApiTypes } from "@turnkey/http";
 import { createActivityBuilders, MONAD_ACCOUNT } from "../src/index.js";
 
@@ -19,6 +23,12 @@ const _fields: [
   TurnkeyApiTypes["v1CreatePoliciesResult"]["policyIds"],
 ] = [[], "", [], []];
 void _fields;
+
+// Every activity type the delegated user's credential DENY names is one Turnkey defines: a
+// misspelt or retired literal would compile in core and silently deny nothing.
+const _credentialTypesAreSdkTypes: readonly TurnkeyApiTypes["v1ActivityType"][] =
+  DELEGATED_CREDENTIAL_ACTIVITY_TYPES;
+void _credentialTypesAreSdkTypes;
 
 const builders = createActivityBuilders({
   baseUrl: "https://tk.test",
@@ -103,4 +113,19 @@ test("a transaction is signed as Ethereum by the named account", () => {
     unsignedTransaction: "02ef",
     type: "TRANSACTION_TYPE_ETHEREUM",
   });
+});
+
+test("a builder given a timestamp rebuilds the prepared body byte for byte", () => {
+  const prepared = builders.createAgentWallet({ subOrganizationId: "sub-1", handle: "halftime" });
+  const later = createActivityBuilders({ baseUrl: "https://tk.test", now: () => 1 });
+
+  const rebuilt = later.createAgentWallet({
+    subOrganizationId: "sub-1",
+    handle: "halftime",
+    timestampMs: prepared.timestampMs,
+  });
+
+  assert.equal(rebuilt.body, prepared.body);
+  assert.equal(rebuilt.url, prepared.url);
+  assert.equal(rebuilt.timestampMs, prepared.timestampMs);
 });

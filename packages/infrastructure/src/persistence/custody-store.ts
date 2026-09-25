@@ -174,14 +174,27 @@ export class PostgresCustodyStore
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query(
+      const inserted = await client.query(
         `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
-         VALUES ($1, $2, $3, $4, $5)`,
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (wallet_id) DO NOTHING`,
         [input.userId, input.walletId, input.subOrganizationId, input.kind, input.name],
       );
+      if (inserted.rowCount === 0) {
+        // A re-forwarded stamp: Turnkey answers the same wallet again. Idempotent when the row
+        // is this person's; anyone else's wallet id is never adopted.
+        const { rows } = await client.query<{ userId: string }>(
+          `SELECT user_id AS "userId" FROM wallets.wallets WHERE wallet_id = $1 FOR UPDATE`,
+          [input.walletId],
+        );
+        if (rows[0]?.userId !== input.userId) {
+          throw new Error(`Wallet ${input.walletId} is already recorded for another person`);
+        }
+      }
       await client.query(
         `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
-         VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', $3)`,
+         VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', $3)
+         ON CONFLICT (wallet_id, path) DO NOTHING`,
         [input.walletId, input.address, input.path],
       );
       await client.query("COMMIT");

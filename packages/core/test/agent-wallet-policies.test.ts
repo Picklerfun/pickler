@@ -1,25 +1,52 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  DELEGATED_CREDENTIAL_ACTIVITY_TYPES,
   agentWalletPolicies,
   delegatedSelfDeletePolicy,
   VENUE_CONTRACTS,
 } from "../src/features/wallets/domain/agent-wallet-policies.js";
 
-test("three policies when the venue list is non-empty, two when it is empty", () => {
+test("four policies when the venue list is non-empty, three when it is empty", () => {
   assert.equal(
     agentWalletPolicies({
       delegatedUserId: "da",
       walletId: "w1",
       venueContracts: ["0x1111111111111111111111111111111111111111"],
     }).length,
-    3,
+    4,
   );
 
   const none = agentWalletPolicies({ delegatedUserId: "da", walletId: "w1", venueContracts: [] });
 
-  assert.equal(none.length, 2);
+  assert.equal(none.length, 3);
   assert.ok(none.every((p) => p.effect === "EFFECT_DENY"));
+});
+
+test("the delegated user may not give itself a credential, and may still delete one", () => {
+  const policies = agentWalletPolicies({
+    delegatedUserId: "da",
+    walletId: "w1",
+    venueContracts: [],
+  });
+  const credentials = policies.at(-1)!;
+
+  assert.equal(credentials.effect, "EFFECT_DENY");
+  assert.equal(credentials.consensus, "approvers.any(user, user.id == 'da')");
+  for (const type of [
+    "ACTIVITY_TYPE_CREATE_API_KEYS_V2",
+    "ACTIVITY_TYPE_CREATE_AUTHENTICATORS_V2",
+    "ACTIVITY_TYPE_UPDATE_USER",
+    "ACTIVITY_TYPE_UPDATE_USER_EMAIL",
+    "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY_V2",
+    "ACTIVITY_TYPE_OTP_LOGIN_V2",
+    "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+  ]) {
+    assert.ok(credentials.condition.includes(`'${type}'`), type);
+  }
+  assert.match(credentials.condition, /^activity\.type in \[/);
+  assert.equal(credentials.condition.includes("DELETE"), false);
+  assert.ok(DELEGATED_CREDENTIAL_ACTIVITY_TYPES.every((t) => !t.includes("DELETE")));
 });
 
 test("the allow policy names the wallet and every venue address, the deny names both selectors, the guard fences policies", () => {

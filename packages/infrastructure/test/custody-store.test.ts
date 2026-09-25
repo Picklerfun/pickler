@@ -480,6 +480,29 @@ test("an agent wallet lands with its account; the master lookup is unaffected", 
   assert.equal(await custody.findOwnedAgentWallet(person.userId, person.walletId), null);
 });
 
+test("saving the same wallet twice for its owner is a no-op; for someone else it is refused", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+
+  await custody.saveWallet(wallet);
+  await custody.saveWallet(wallet);
+
+  const { rows } = await store.pool.query(
+    `SELECT (SELECT count(*) FROM wallets.wallets WHERE wallet_id = $1) AS wallets,
+            (SELECT count(*) FROM wallets.wallet_accounts WHERE wallet_id = $1) AS accounts`,
+    [wallet.walletId],
+  );
+  assert.deepEqual(rows, [{ wallets: "1", accounts: "1" }]);
+
+  const stranger = await registered(custody);
+  await assert.rejects(
+    custody.saveWallet({ ...wallet, userId: stranger.userId }),
+    /another person/,
+  );
+  assert.equal(await custody.findOwnedAgentWallet(stranger.userId, wallet.walletId), null);
+});
+
 test("a wallet whose account is refused leaves no wallets row behind", async (t) => {
   const { store, custody } = await setup(t);
   const person = await registered(custody);
