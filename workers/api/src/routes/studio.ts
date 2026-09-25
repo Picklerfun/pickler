@@ -10,7 +10,14 @@ import {
   AccessDeniedError,
   AuthenticationRequiredError,
   unsupported,
+  canCreateAnother,
+  canSchedule,
+  isReadyToSchedule,
   type AgentDrafter,
+  type AgentWallet,
+  type Lock,
+  type Scope,
+  type StudioAccess,
   type StudioDirectory,
   type ResearchRepository,
 } from "@pickler/core";
@@ -28,6 +35,8 @@ import {
   scheduleSchema,
   draftRequestSchema,
   draftResponseSchema,
+  studioAgentSchema,
+  type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
@@ -45,7 +54,13 @@ export interface StudioServices {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
   };
+  /** The wallet linked to an agent at creation, by product agent id. */
+  wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
+  /** The AUSD display balance of an address. A read that fails throws; it is never zero. */
+  balances: { read(address: string): Promise<number> };
 }
+
+type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "NOT_FOUND") {
@@ -108,22 +123,70 @@ export function studioRoutes(services: StudioServices) {
     return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
   });
   api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
+  /** The linked wallet and its balance. A failed balance read propagates as an error. */
+  async function fundedWallet(productId: string): Promise<FundedWallet | null> {
+    const wallet = await services.wallets.findAgentWallet(productId);
+    if (!wallet) {
+      return null;
+    }
+    return { ...wallet, balanceAusd: await services.balances.read(wallet.address) };
+  }
+
+  /**
+   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. An agent
+   * without a linked wallet (created before wallets existed) cannot be funded and is not counted.
+   */
+  async function fleet(current: StudioAccess) {
+    const listed = await services.directory.list(current);
+    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
+    const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
+    return { listed, wallets, another: canCreateAnother(balances) };
+  }
+
+  /** The single place the agent DTO, its wallet and both locks are composed. */
+  async function studioAgent(
+    scope: Scope,
+    wallet: FundedWallet | null,
+    another: Lock,
+    identity: { productId?: string; name?: string; handle?: string },
+  ): Promise<StudioAgentDto> {
+    const record = await repo.agent(scope);
+    const ready = isReadyToSchedule(record, await repo.readiness(scope));
+    return studioAgentSchema.parse({
+      ...agentResponseSchema.parse(record),
+      ...identity,
+      wallet: wallet && {
+        walletId: wallet.walletId,
+        address: wallet.address,
+        balanceAusd: wallet.balanceAusd,
+      },
+      canSchedule: canSchedule({ ready, balanceAusd: wallet?.balanceAusd ?? 0 }),
+      canCreateAnother: another,
+    });
+  }
+
   api.get("/agents", async (c) => {
     const current = await access.authorize(c.get("principal"));
-    const agents = await services.directory.list(current);
+    const { listed, wallets, another } = await fleet(current);
     return c.json({
       agents: await Promise.all(
-        agents.map(async (agent) => ({
-          ...agentResponseSchema.parse(await repo.agent(agent.scope)),
-          productId: agent.id,
-          name: agent.name,
-          handle: agent.handle,
-        })),
+        listed.map((agent, index) =>
+          studioAgent(agent.scope, wallets[index] ?? null, another, {
+            productId: agent.id,
+            name: agent.name,
+            handle: agent.handle,
+          }),
+        ),
       ),
     });
   });
   api.post("/agents", async (c) => {
     const input = createAgentSchema.parse(await c.req.json());
+    const current = await access.authorize(c.get("principal"), true);
+    const { another } = await fleet(current);
+    if (!another.ok) {
+      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+    }
     const scope = await access.create(c.get("principal"), {
       ...input,
       key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
@@ -157,8 +220,16 @@ export function studioRoutes(services: StudioServices) {
   });
   api.get("/agents/:id", async (c) => {
     const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    return c.json(agentResponseSchema.parse(await repo.agent(scope)));
+    const productId = c.req.param("id");
+    const scope = await services.directory.agentScope(current, productId);
+    const { listed, wallets, another } = await fleet(current);
+    const index = listed.findIndex((agent) => agent.id === productId);
+    const listedAgent = listed[index];
+    const wallet = listedAgent ? (wallets[index] ?? null) : await fundedWallet(productId);
+    const identity = listedAgent
+      ? { productId, name: listedAgent.name, handle: listedAgent.handle }
+      : {};
+    return c.json(await studioAgent(scope, wallet, another, identity));
   });
   api.put("/agents/:id/config", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
@@ -253,8 +324,21 @@ export function studioRoutes(services: StudioServices) {
   });
   api.put("/agents/:id/schedule", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    await repo.schedule(scope, scheduleSchema.parse(await c.req.json()).enabled, Date.now());
+    const productId = c.req.param("id");
+    const scope = await services.directory.agentScope(current, productId);
+    const { enabled } = scheduleSchema.parse(await c.req.json());
+    if (enabled) {
+      // NOT_READY (first run) stays the repository's refusal, inside its transaction; the
+      // funding lock is checked here because the balance lives on chain, not in the database.
+      const record = await repo.agent(scope);
+      const ready = isReadyToSchedule(record, await repo.readiness(scope));
+      const wallet = await fundedWallet(productId);
+      const lock = canSchedule({ ready, balanceAusd: wallet?.balanceAusd ?? 0 });
+      if (lock.reason === "unfunded") {
+        throw new PilotError("NOT_FUNDED", "Fund its wallet · min. 10 AUSD");
+      }
+    }
+    await repo.schedule(scope, enabled, Date.now());
     return c.json({ ok: true });
   });
   return api;

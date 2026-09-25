@@ -284,12 +284,20 @@ export interface ResearchModel {
   };
 }
 
+/** What persistence knows about an agent's readiness for its current configuration version. */
+export interface ScheduleReadiness {
+  connectionsChecked: boolean;
+  manualSucceeded: boolean;
+}
+
 export interface ResearchRepository {
   agents(tenantId: string): Promise<AgentRecord[]>;
   agent(scope: Scope): Promise<AgentRecord>;
   updateConfig(scope: Scope, expectedVersion: number, config: AgentConfig): Promise<AgentRecord>;
   pause(scope: Scope, paused: boolean): Promise<void>;
   schedule(scope: Scope, enabled: boolean, now: number): Promise<void>;
+  /** The facts `isReadyToSchedule` reads, for the agent's current configuration version. */
+  readiness(scope: Scope): Promise<ScheduleReadiness>;
   enqueue(scope: Scope, key: string, marketId: string | null, now: number): Promise<RunRecord>;
   run(tenantId: string, runId: string): Promise<RunRecord>;
   events(tenantId: string, runId: string): Promise<RunEvent[]>;

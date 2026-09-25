@@ -67,6 +67,12 @@ still allows 20) and
 `BEAT_NAMES`, `SOON_BEATS` and `BEAT_SUBS` mirror core's `features/studio/draft.ts` and are pinned
 by the same workers/api test.
 
+`studioAgentSchema` is the studio's agent DTO: the runtime `agentResponseSchema` plus optional
+`productId`/`name`/`handle`, `wallet` (`{ walletId, address, balanceAusd }` or null for an agent
+without a linked wallet) and two decided locks, `canSchedule` and `canCreateAnother`
+(`lockSchema`: `ok` and a `reason` from `LOCK_REASONS`, null when open). The screen shows the
+reason; it never re-derives the rule. `LOCK_REASONS` mirrors core's `features/studio/locks.ts`.
+
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

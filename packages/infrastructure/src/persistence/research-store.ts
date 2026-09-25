@@ -14,6 +14,7 @@ import {
   nextOccurrence,
   type AgentConfig,
   type AgentRecord,
+  type ScheduleReadiness,
   type Scope,
   type RunRecord,
   type Decision,
@@ -250,25 +251,8 @@ export class PostgresResearchStore implements ResearchRepository {
       await tx.execute(sql`select pg_advisory_xact_lock(761204, 2)`);
       const agent = await this.getAgent(scope, tx, true);
       if (enabled) {
-        const managed = await tx.execute(sql`select 1 from pickler.product_agents
-          where tenant_id=${scope.tenantId} and runtime_agent_id=${scope.agentId}`);
-        const readinessKey = managed.rows.length
-          ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
-          : "connections_checked";
-        const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
-        const success = await tx
-          .select({ id: runs.id })
-          .from(runs)
-          .where(
-            and(
-              runScope(scope),
-              eq(runs.configVersion, agent.version),
-              eq(runs.trigger, "manual"),
-              eq(runs.status, "completed"),
-            ),
-          )
-          .limit(1);
-        assertCanSchedule(agent, checked?.value === "true", success.length > 0);
+        const readiness = await this.readinessOf(tx, scope, agent);
+        assertCanSchedule(agent, readiness.connectionsChecked, readiness.manualSucceeded);
       }
       await tx
         .update(agents)
@@ -281,6 +265,41 @@ export class PostgresResearchStore implements ResearchRepository {
           .where(and(runScope(scope), eq(runs.status, "queued"), eq(runs.trigger, "schedule")));
       }
     });
+  }
+
+  async readiness(scope: Scope): Promise<ScheduleReadiness> {
+    return this.db.transaction(async (tx) => {
+      const agent = await this.getAgent(scope, tx, false);
+      return this.readinessOf(tx, scope, agent);
+    });
+  }
+
+  /** Connections validated and one completed manual run, both for the current config version. */
+  private async readinessOf(
+    tx: Transaction,
+    scope: Scope,
+    agent: AgentRecord,
+  ): Promise<ScheduleReadiness> {
+    const managed = await tx.execute(sql`select 1 from pickler.product_agents
+      where tenant_id=${scope.tenantId} and runtime_agent_id=${scope.agentId}`);
+    const readinessKey = managed.rows.length
+      ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
+      : "connections_checked";
+    const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
+    const success = await tx
+      .select({ id: runs.id })
+      .from(runs)
+      .where(
+        and(
+          runScope(scope),
+          eq(runs.configVersion, agent.version),
+          eq(runs.trigger, "manual"),
+          eq(runs.status, "completed"),
+        ),
+      )
+      .limit(1);
+
+    return { connectionsChecked: checked?.value === "true", manualSucceeded: success.length > 0 };
   }
 
   /** Caller holds the agent row lock: admission and rolling quotas serialize per agent. */

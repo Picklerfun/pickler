@@ -150,6 +150,19 @@ value as a zero balance. Each balance settles independently: a failed token read
 successful native read. A balance that could not be read is `null`, never `"0"`. Preserve that
 distinction — the interface says "unavailable" rather than showing an empty wallet.
 
+`src/chain/erc20.ts` is the studio's ERC-20 layer over plain JSON-RPC. `createJsonRpc(url, fetch?)`
+posts `{jsonrpc:"2.0",id:1,method,params}` with `redirect: "manual"` and a 10 s timeout and throws
+on a non-ok response or an `error` payload. `erc20Balance` sends `balanceOf` through `eth_call` and
+throws unless the result is a hex quantity, so an empty `0x` is never a zero balance.
+`transferCalldata(to, amount)` encodes `transfer`; `toDisplay(units, decimals)` floors base units
+to a display number. `createTokenBalanceReader(rpc, token, decimals, ttlMs = 15_000, clock)` caches
+successful reads per lowercased address, never caches a failure, lets failures propagate and has
+`forget(address)` for after a deposit. (It is not named `createBalanceReader`: that name is the
+sign-in reader above.) `createAusdBalanceReader({ chainId, rpcUrl?, fetch? })` builds one for AUSD
+from `@pickler/chain`, defaulting to the network's first public endpoint and refusing unsupported
+chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
+private query `schedule` uses.
+
 ## Agent wallet ceremony
 
 `src/turnkey/turnkey-activities.ts` exports `createActivityBuilders`: the unsigned

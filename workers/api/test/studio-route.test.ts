@@ -46,6 +46,12 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
     directory,
     repository,
     notifyQueued: async () => {},
+    wallets: { findAgentWallet: async () => null },
+    balances: {
+      read: async () => {
+        throw new Error("no balance read expected");
+      },
+    },
     authenticate: async (_credentials, options) => {
       if (key && options?.userOnly) {
         throw new AuthenticationRequiredError();

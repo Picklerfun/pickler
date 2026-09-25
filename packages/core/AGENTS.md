@@ -86,6 +86,16 @@ lists what a draft names that cannot run (`venue:<x>`, `beat:<x>`) so nothing is
 suggested skills and builds a scoped config that passes `assertConfig` (no legacy `categoryIds`,
 web on, style policy, six-hour interval). api-schema mirrors these lists; a workers/api test pins them.
 
+`features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
+§6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
+reasons in `LOCK_REASONS`). `canSchedule({ ready, balanceAusd })` answers `first_run` until `ready`
+and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances)` answers
+`unfunded_agent` unless every balance reaches the minimum; no agents is open. `ready` is
+`isReadyToSchedule(agent, readiness)` in `features/research/policy.ts`, the same predicate
+`assertCanSchedule` refuses with `NOT_READY`; its facts (`ScheduleReadiness`: connections checked
+and a completed manual run, both for the current config version) come from the new
+`ResearchRepository.readiness(scope)`. api-schema mirrors `LOCK_REASONS`; a workers/api test pins it.
+
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
 and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a

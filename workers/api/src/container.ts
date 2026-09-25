@@ -27,6 +27,7 @@ import {
   createActivityBuilders,
   createAddPasskeyActivityBuilder,
   createBalanceReader,
+  createAusdBalanceReader,
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
@@ -253,6 +254,27 @@ function drafter(env: Env) {
   });
 }
 
+const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>();
+
+/**
+ * AUSD balances for the studio, cached 15 s per address. Services are composed per request, so the
+ * reader is kept per isolate (per chain and endpoint) or its cache would never be hit. A failed
+ * read fails the request; it is never reported as a zero balance.
+ */
+function ausdBalances(env: Env) {
+  const chainId = Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID);
+  const key = `${chainId}|${env.MONAD_RPC_URL ?? ""}`;
+  let reader = ausdReaders.get(key);
+  if (!reader) {
+    reader = createAusdBalanceReader({
+      chainId,
+      ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
+    });
+    ausdReaders.set(key, reader);
+  }
+  return reader;
+}
+
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
   const database = apiDatabase(env);
@@ -299,6 +321,8 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       drafter: drafter(env),
       directory,
       repository,
+      wallets: new PostgresCustodyStore(repository.pool),
+      balances: ausdBalances(env),
       paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {

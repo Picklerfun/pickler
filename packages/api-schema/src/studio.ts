@@ -56,11 +56,35 @@ export const studioAccessSchema = z.object({
   canManage: z.boolean(),
 });
 
+// Mirrors `LockReason` in core's `features/studio/locks.ts`; a workers/api test pins it.
+export const LOCK_REASONS = ["first_run", "unfunded", "unfunded_agent"] as const;
+export type LockReasonDto = (typeof LOCK_REASONS)[number];
+
+/** A lock the API has already decided; the screen shows `reason` and never re-derives it. */
+export const lockSchema = z.object({
+  ok: z.boolean(),
+  reason: z.enum(LOCK_REASONS).nullable(),
+});
+export type LockDto = z.infer<typeof lockSchema>;
+
+/** The agent's own wallet and its AUSD balance on Monad; null for an agent without a wallet. */
+export const studioAgentWalletSchema = z.object({
+  walletId: z.string(),
+  address: z.string(),
+  balanceAusd: z.number(),
+});
+
 export const studioAgentSchema = agentResponseSchema.extend({
   productId: z.string().uuid().optional(),
   name: z.string().optional(),
   handle: z.string().optional(),
+  wallet: studioAgentWalletSchema.nullable(),
+  /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
+  canSchedule: lockSchema,
+  /** "+ New agent": every agent the person owns holds at least 10 AUSD. */
+  canCreateAnother: lockSchema,
 });
+export type StudioAgentDto = z.infer<typeof studioAgentSchema>;
 export const studioOptionsSchema = z.object({
   defaults: z.object({
     profile: agentConfigSchema.shape.profile,

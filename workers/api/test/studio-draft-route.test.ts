@@ -43,6 +43,12 @@ function app(drafter: AgentDrafter | null, { signedIn = true, owner = true } = {
     repository: {} as ResearchRepository,
     notifyQueued: async () => {},
     drafter,
+    wallets: { findAgentWallet: async () => null },
+    balances: {
+      read: async () => {
+        throw new Error("no balance read expected");
+      },
+    },
     authenticate: async () => {
       if (!signedIn) {
         throw new AuthenticationRequiredError();

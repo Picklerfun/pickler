@@ -1,5 +1,5 @@
 import { hasMarketSelection } from "./market-scope.js";
-import { PilotError, type AgentRecord } from "./types.js";
+import { PilotError, type AgentRecord, type ScheduleReadiness } from "./types.js";
 export function assertCanQueue(agent: AgentRecord, recentRuns: number): void {
   if (agent.paused) {
     throw new PilotError("PAUSED", "Agent is paused");
@@ -12,17 +12,22 @@ export function assertCanQueue(agent: AgentRecord, recentRuns: number): void {
   }
 }
 
+/** The predicate behind NOT_READY: connections validated and one completed manual run. */
+export function isReadyToSchedule(agent: AgentRecord, readiness: ScheduleReadiness): boolean {
+  return (
+    readiness.connectionsChecked &&
+    readiness.manualSucceeded &&
+    !agent.paused &&
+    hasMarketSelection(agent.config)
+  );
+}
+
 export function assertCanSchedule(
   agent: AgentRecord,
   connectionsChecked: boolean,
   manualSucceeded: boolean,
 ): void {
-  if (
-    !connectionsChecked ||
-    !manualSucceeded ||
-    agent.paused ||
-    !hasMarketSelection(agent.config)
-  ) {
+  if (!isReadyToSchedule(agent, { connectionsChecked, manualSucceeded })) {
     throw new PilotError(
       "NOT_READY",
       "Validate connections and complete manual research for this configuration first",

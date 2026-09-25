@@ -67,10 +67,18 @@ test("schedule readiness, coalescing, deduplication, pause and recovery use a co
   const store = await setup(t);
 
   await assert.rejects(store.schedule(scope, true, 0), { code: "NOT_READY" });
+  assert.deepEqual(await store.readiness(scope), {
+    connectionsChecked: false,
+    manualSucceeded: false,
+  });
   await store.setConnectionsChecked(true);
   await store.enqueue(scope, "manual", null, 0);
   const manual = (await store.claim(1))!;
   await store.finish(manual, abstention, null, 2);
+  assert.deepEqual(await store.readiness(scope), {
+    connectionsChecked: true,
+    manualSucceeded: true,
+  });
   await store.schedule(scope, true, 3);
   const due = (await store.agent(scope)).nextDueAt!;
   await store.tick(due + 9 * 3_600_000);

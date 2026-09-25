@@ -155,6 +155,20 @@ answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure i
 the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
 other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
+`GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
+helper in `src/routes/studio.ts`: the wallet linked to the agent (`wallets.findAgentWallet`, the
+`PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
+`isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
+balances of every listed agent that has a wallet (agents created before wallets have none and are
+not counted). A balance read that fails fails the request (500); it is never shown as zero.
+`PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
+`unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
+Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
+`canCreateAnother` is closed. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
+(default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
+isolate in `container.ts` so its 15 s cache outlives one request. There is no limits route yet:
+the budget ledger has monthly per-category caps only, with no per-call or per-day notion.
+
 The earlier Durable Object budget description is legacy: new mapped agents use PostgresBudgetLedger. Keep the exported legacy class/data intact; do not bind it in staging. PostgreSQL drivers use Workers nodejs_compat; no standalone Node server is deployed. Current migration boundaries and operator commands are documented in ../../docs/cloudflare-unification.md.
 
 Use `wrangler.staging.jsonc` for the unified staging API. It has no Durable Object binding or

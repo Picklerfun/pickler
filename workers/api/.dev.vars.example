@@ -25,7 +25,9 @@ TURNKEY_APP_NAME=Pickler
 # never logged. Both are secrets in deployed environments.
 TURNKEY_DELEGATED_API_PUBLIC_KEY=
 TURNKEY_DELEGATED_API_PRIVATE_KEY=
-# Balance reads. Absent CHAIN_ID means Monad testnet (10143).
+# Balance reads: the signing routes' wallet balances and each studio agent's AUSD balance, which
+# decides its schedule and "+ New agent" locks. Absent CHAIN_ID means Monad testnet (10143).
+# Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
 CHAIN_ID=10143
 MONAD_RPC_URL=
 

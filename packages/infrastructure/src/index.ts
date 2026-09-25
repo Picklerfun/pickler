@@ -96,6 +96,17 @@ export { PostgresAgentDirectory } from "./persistence/agent-directory.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
 export {
+  createAusdBalanceReader,
+  createJsonRpc,
+  createTokenBalanceReader,
+  erc20Balance,
+  toDisplay,
+  transferCalldata,
+  type AusdBalanceReaderConfig,
+  type Rpc,
+  type TokenBalanceReader,
+} from "./chain/erc20.js";
+export {
   buildSiweMessage,
   createSignatureVerifier,
   MalformedMessageError,
