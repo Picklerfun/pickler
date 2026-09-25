@@ -101,7 +101,10 @@ nothing), a DENY on ERC-20 `transfer`/`approve` calldata from the wallet, a DENY
 `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` (new API keys, passkeys and OAuth providers, user updates,
 email recovery, and the logins that mint session keys; every version listed, since Turnkey does
 not document the `activity.resource` names for keys and authenticators; deletions are not
-listed, so the delegated user can still remove credentials and itself). `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
+listed, so the delegated user can still remove credentials and itself). When @turnkey/http is bumped,
+review new credential/login activity types — the DENY list is explicit and the SDK pin only
+catches removals. Between the delegated user's creation and the first policies' approval that user has no
+credential DENY; it can still sign nothing, and the studio's retry resumes at the policies step. `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
 else. Every id and address is checked against a strict alphabet before it is interpolated, and a
 malformed one throws. Turnkey has no policy order: the root quorum (the passkey) bypasses policies,
 and otherwise any matching DENY beats every ALLOW.

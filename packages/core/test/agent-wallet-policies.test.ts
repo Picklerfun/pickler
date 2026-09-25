@@ -41,6 +41,8 @@ test("the delegated user may not give itself a credential, and may still delete 
     "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY_V2",
     "ACTIVITY_TYPE_OTP_LOGIN_V2",
     "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+    "ACTIVITY_TYPE_OAUTH2_AUTHENTICATE",
+    "ACTIVITY_TYPE_UPDATE_USER_TAG",
   ]) {
     assert.ok(credentials.condition.includes(`'${type}'`), type);
   }

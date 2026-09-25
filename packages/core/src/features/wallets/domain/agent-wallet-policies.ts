@@ -39,6 +39,10 @@ export const VENUE_CONTRACTS: readonly string[] = [];
  * not publish the `activity.resource` names for API keys and authenticators; these literals are
  * checked against @turnkey/http's `v1ActivityType` union in @pickler/infrastructure's tests.
  */
+// This DENY is written with a wallet's policies, not with the delegated user. A person who stops
+// after the user is created and before the first policies are approved leaves it without this
+// rule until the next ceremony; it can still sign nothing (non-root, no ALLOW), and the studio's
+// retry resumes at the policies step.
 export const DELEGATED_CREDENTIAL_ACTIVITY_TYPES = [
   "ACTIVITY_TYPE_CREATE_API_KEYS",
   "ACTIVITY_TYPE_CREATE_API_KEYS_V2",
@@ -50,6 +54,7 @@ export const DELEGATED_CREDENTIAL_ACTIVITY_TYPES = [
   "ACTIVITY_TYPE_UPDATE_USER_NAME",
   "ACTIVITY_TYPE_UPDATE_USER_EMAIL",
   "ACTIVITY_TYPE_UPDATE_USER_PHONE_NUMBER",
+  "ACTIVITY_TYPE_UPDATE_USER_TAG",
   "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY",
   "ACTIVITY_TYPE_INIT_USER_EMAIL_RECOVERY_V2",
   "ACTIVITY_TYPE_RECOVER_USER",
@@ -69,6 +74,7 @@ export const DELEGATED_CREDENTIAL_ACTIVITY_TYPES = [
   "ACTIVITY_TYPE_OTP_LOGIN_V2",
   "ACTIVITY_TYPE_OAUTH",
   "ACTIVITY_TYPE_OAUTH_LOGIN",
+  "ACTIVITY_TYPE_OAUTH2_AUTHENTICATE",
   "ACTIVITY_TYPE_STAMP_LOGIN",
   "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION",
   "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
