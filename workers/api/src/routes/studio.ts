@@ -28,6 +28,7 @@ import {
   SignedTransactionMismatchError,
   type createCustodyService,
   type AgentDrafter,
+  type Accent,
   type AgentWallet,
   type Lock,
   type Scope,
@@ -249,7 +250,7 @@ export function studioRoutes(services: StudioServices) {
     scope: Scope,
     wallet: FundedWallet | null,
     another: Lock,
-    identity: { productId?: string; name?: string; handle?: string },
+    identity: { productId?: string; name?: string; handle?: string; accent: Accent },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
     const ready = isReadyToSchedule(record, await repo.readiness(scope));
@@ -278,6 +279,7 @@ export function studioRoutes(services: StudioServices) {
             productId: agent.id,
             name: agent.name,
             handle: agent.handle,
+            accent: agent.accent,
           }),
         ),
       ),
@@ -333,8 +335,13 @@ export function studioRoutes(services: StudioServices) {
     const listedAgent = listed[index];
     const wallet = listedAgent ? (wallets[index] ?? null) : await fundedWallet(productId);
     const identity = listedAgent
-      ? { productId, name: listedAgent.name, handle: listedAgent.handle }
-      : {};
+      ? {
+          productId,
+          name: listedAgent.name,
+          handle: listedAgent.handle,
+          accent: listedAgent.accent,
+        }
+      : { accent: "lime" as const };
     return c.json(await studioAgent(scope, wallet, another, identity));
   });
   api.put("/agents/:id/config", async (c) => {

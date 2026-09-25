@@ -111,6 +111,8 @@ export const studioAgentSchema = agentResponseSchema.extend({
   productId: z.string().uuid().optional(),
   name: z.string().optional(),
   handle: z.string().optional(),
+  /** The profile's accent; "lime" for an agent without a profile row. */
+  accent: z.enum(ACCENTS),
   wallet: studioAgentWalletSchema.nullable(),
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
   canSchedule: lockSchema,

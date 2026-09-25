@@ -156,7 +156,8 @@ the request id and the cause's message, never the key or the request; the body s
 other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
 `GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
-helper in `src/routes/studio.ts`: the wallet linked to the agent (`wallets.findAgentWallet`, the
+helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` ("lime" without a
+profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
 balances of every listed agent that has a wallet (agents created before wallets have none and are

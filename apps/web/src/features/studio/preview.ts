@@ -228,6 +228,7 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       tenantId: "preview",
       name: "Halftime",
       handle: "halftime",
+      accent: "lime",
       version: 7,
       config: previewConfig,
       paused: false,

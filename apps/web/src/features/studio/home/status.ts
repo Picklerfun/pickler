@@ -536,6 +536,11 @@ export function depositFailure(code: string, message: string): { done: boolean; 
       return { done: false, message: "Your master wallet can't cover this. Add AUSD to it first." };
     case "DEPOSIT_FEE_TOO_HIGH":
       return { done: false, message: "Network fees jumped. Try again." };
+    case "DEPOSIT_NONCE_MISMATCH":
+      return {
+        done: false,
+        message: "Your master wallet sent another transaction. Try again.",
+      };
     case "DEPOSIT_ALREADY_RECORDED":
       return { done: true, message: "" };
     default:

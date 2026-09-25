@@ -221,7 +221,7 @@ export function Home({
           <small>TESTNET</small>
         </Link>
         <span className={styles.agentChip}>
-          <span className={styles.chipMark} style={accentVars("lime")} aria-hidden="true">
+          <span className={styles.chipMark} style={accentVars(agent.accent)} aria-hidden="true">
             {initials(name)}
           </span>
           <b>{name}</b>
@@ -268,7 +268,7 @@ export function Home({
 
       <div className={styles.board}>
         <div className={styles.column}>
-          <AgentCard name={name} status={status} />
+          <AgentCard name={name} accent={agent.accent} status={status} />
           <WalletCard
             agent={agent}
             preview={preview !== null}

@@ -317,6 +317,11 @@ export function Studio({
 
   const act = useCallback(
     async (operation: () => Promise<void>) => {
+      /* A preview has no workspace behind it: every write stops here, as the home's do. */
+      if (preview) {
+        setError("Preview · fixture data, nothing is saved.");
+        return;
+      }
       setBusy(true);
       setError("");
       try {
@@ -333,7 +338,7 @@ export function Studio({
         setBusy(false);
       }
     },
-    [loadAgents],
+    [loadAgents, preview],
   );
 
   const runNow = useCallback(
@@ -666,8 +671,9 @@ export function Studio({
           {preview && (
             <p className={styles.preview} role="status">
               <Icon name="alert" size={13} />
-              Design preview. This build has no authentication configured, so the studio is drawn
-              from a fixture — every number below is from the canvas, not from a workspace.
+              {staged
+                ? "Preview · fixture data, nothing is saved."
+                : "Design preview. This build has no authentication configured, so the studio is drawn from a fixture — every number below is from the canvas, not from a workspace."}
             </p>
           )}
           {blockedState && (

@@ -11,7 +11,8 @@ import {
   stripLog,
   type StatusAgent,
 } from "../src/features/studio/home/status";
-import { stageFromSearch } from "../src/features/studio/home/stage";
+import { stageFromSearch, STAGES } from "../src/features/studio/home/stage";
+import { homeFixture } from "../src/features/studio/home/fixture";
 
 /* The home's words, one state per test: the pill, the mood, the "say" line, the strip, the picks
    card, the schedule note, the next-up list and the deposit failures. No React, no transport. */
@@ -616,6 +617,10 @@ test("deposit failures are said in the person's terms, and a repeat counts as do
     done: false,
     message: "Network fees jumped. Try again.",
   });
+  assert.deepEqual(depositFailure("DEPOSIT_NONCE_MISMATCH", "x"), {
+    done: false,
+    message: "Your master wallet sent another transaction. Try again.",
+  });
   assert.deepEqual(depositFailure("DEPOSIT_ALREADY_RECORDED", "x"), { done: true, message: "" });
   assert.deepEqual(depositFailure("SIGNING_UNAVAILABLE", "Request failed: SIGNING_UNAVAILABLE"), {
     done: false,
@@ -631,4 +636,10 @@ test("?stage= opens a staged home outside production only, and only for a known 
   assert.equal(stageFromSearch("development", "nonsense"), undefined);
   assert.equal(stageFromSearch("development", undefined), undefined);
   assert.equal(stageFromSearch("production", "decided"), undefined);
+});
+
+test("every staged agent carries an accent from the palette", () => {
+  for (const stage of STAGES) {
+    assert.equal(homeFixture(stage).agent.accent, "lime");
+  }
 });

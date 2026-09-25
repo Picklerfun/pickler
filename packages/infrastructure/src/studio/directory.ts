@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
+  ACCENTS,
   AccessDeniedError,
   PilotError,
+  type Accent,
   type StudioAccess,
   type StudioDirectory,
   type AgentConfig,
@@ -222,14 +224,20 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,p.tenant_id,p.runtime_agent_id FROM agents.agents a
-      JOIN pickler.product_agents p ON p.product_agent_id=a.id WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
+      `SELECT a.id,a.name,a.handle,pr.accent,p.tenant_id,p.runtime_agent_id FROM agents.agents a
+      JOIN pickler.product_agents p ON p.product_agent_id=a.id
+      LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
+      WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
       [access.workspaceId, access.tenantId],
     );
     return result.rows.map((row) => ({
       id: row.id as string,
       name: row.name as string,
       handle: row.handle as string,
+      // An agent created before profiles existed has no row; one outside the palette reads lime.
+      accent: (ACCENTS as readonly string[]).includes(row.accent)
+        ? (row.accent as Accent)
+        : ("lime" as const),
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
   }

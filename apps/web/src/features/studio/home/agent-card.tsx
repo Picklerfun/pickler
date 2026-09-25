@@ -1,4 +1,5 @@
 "use client";
+import type { AccentDto } from "@pickler/api-schema";
 import { accentVars } from "@/lib/accent";
 import type { HomeStatus } from "./status";
 import styles from "./home.module.css";
@@ -11,15 +12,23 @@ export const initials = (value: string): string => {
 };
 
 /**
- * The agent itself: its mark (ringed while it works), the mood bubble and the line it says. The
- * DTO carries no accent yet, so the mark takes the studio's lime, as the canvas draws it.
+ * The agent itself: its mark (ringed while it works) in its own accent, painted from the agent
+ * palette through `accentVars` as everywhere else on the site, the mood bubble and the line it says.
  */
-export function AgentCard({ name, status }: { name: string; status: HomeStatus }) {
+export function AgentCard({
+  name,
+  accent,
+  status,
+}: {
+  name: string;
+  accent: AccentDto;
+  status: HomeStatus;
+}) {
   return (
     <section className={styles.agent} id="home-agent" aria-label={name}>
       <h2 className={styles.colHead}>{name}</h2>
       <div className={styles.moodRow}>
-        <div className={styles.mark} style={accentVars("lime")} aria-hidden="true">
+        <div className={styles.mark} style={accentVars(accent)} aria-hidden="true">
           {status.working && <span className={styles.ring} />}
           <span className={styles.markFace}>{initials(name)}</span>
         </div>

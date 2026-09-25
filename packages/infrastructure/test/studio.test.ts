@@ -230,6 +230,23 @@ test("creating an agent writes its profile in the same transaction", async (t) =
   });
 });
 
+test("the agent list carries each agent's accent, and lime for an agent without a profile", async (t) => {
+  const { store, directory, userId, access, wallet } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const { agentId } = await directory.createAgent(access, userId, { ...input, wallet });
+
+  const listed = await directory.list(access);
+
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0]!.accent, "amber");
+
+  await store.pool.query("DELETE FROM agents.agent_profiles WHERE agent_id = $1", [agentId]);
+
+  assert.equal((await directory.list(access))[0]!.accent, "lime");
+});
+
 test("a retry under the same key with a different profile is refused", async (t) => {
   const { store, directory, userId, access, wallet } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [

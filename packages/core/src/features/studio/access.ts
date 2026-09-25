@@ -1,6 +1,7 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
 import type { AgentProfileInput } from "../agents/domain/agents.js";
+import type { Accent } from "../landing/domain/landing.js";
 import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
 
 export interface StudioAccess {
@@ -41,7 +42,10 @@ export interface StudioDirectory {
    */
   createdWithKey(access: StudioAccess, key: string): Promise<Scope | null>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
-  list(access: StudioAccess): Promise<{ id: string; name: string; handle: string; scope: Scope }[]>;
+  /** The person's agents, oldest first, with the accent their profile was created with ("lime" without one). */
+  list(
+    access: StudioAccess,
+  ): Promise<{ id: string; name: string; handle: string; accent: Accent; scope: Scope }[]>;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {

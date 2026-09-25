@@ -135,6 +135,7 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     tenantId: "preview",
     name: "Halftime",
     handle: "halftime",
+    accent: "lime",
     version: 1,
     config: { ...previewConfig, intervalHours: 6 },
     paused: false,

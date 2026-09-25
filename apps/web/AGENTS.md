@@ -297,8 +297,9 @@ party from a custody challenge fetched as the sheet opens) and confirms, then re
 and twice more while the transfer lands. `lib/passkey.ts` holds that stamper, `session()` and
 `custody()`, shared with the creation ceremony. The limits save themselves 700 ms after a change
 through `PUT /limits` and say "Applies when it trades for real". The interval picker calls
-`setIntervalHours`, so choosing it never turns the schedule off. The DTO carries no accent yet, so
-the mark is lime.
+`setIntervalHours`, so choosing it never turns the schedule off. The mark and the top-bar chip paint
+from the DTO's `accent` through `accentVars`, like every other agent on the site (`cyan` renders
+indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, the canvas's run built from real event types on a fixed clock so the server's

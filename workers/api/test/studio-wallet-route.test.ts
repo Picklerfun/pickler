@@ -97,6 +97,7 @@ function fixture({
         id,
         name: `Agent ${id.slice(0, 1)}`,
         handle: `h${id.slice(0, 4)}`,
+        accent: id === FIRST ? ("magenta" as const) : ("lime" as const),
         scope: scope(id),
       })),
     runs: async () => [],
@@ -512,4 +513,17 @@ test("the interval of someone else's agent, or without a session, is refused", a
 
   assert.equal(missing.status, 404);
   assert.deepEqual(intervals, []);
+});
+
+test("the agent DTO carries its profile's accent, in the list and on its own", async () => {
+  const { app } = fixture({ agents: [FIRST, SECOND], balances: { [FIRST]: 10, [SECOND]: 10 } });
+
+  const list = await (await app.request("/agents")).json();
+  const one = await (await app.request(`/agents/${FIRST}`)).json();
+
+  assert.deepEqual(
+    list.agents.map((agent: { accent: string }) => agent.accent),
+    ["magenta", "lime"],
+  );
+  assert.equal(one.accent, "magenta");
 });
