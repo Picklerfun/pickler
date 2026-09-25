@@ -165,6 +165,9 @@ private query `schedule` uses. `PostgresStudioDirectory.createdWithKey` is a rea
 the same workspace and request key `createAgent` replays from. `PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
+`updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
+`updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
+at that same version would otherwise drop them.
 
 ## Agent wallet ceremony
 

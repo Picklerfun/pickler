@@ -244,3 +244,38 @@ test("saving spend limits keeps the version, the schedule and readiness; a confi
   // This runtime-only agent's connection check is global; the manual run is per version.
   assert.equal((await store.readiness(scope)).manualSucceeded, false);
 });
+
+test("a config save keeps the stored spend limits; only updateSpend writes them", async (t) => {
+  const store = await setup(t);
+  const limits = { perCallAusd: 5, perDayAusd: 50 };
+  await store.updateSpend(scope, limits);
+  const before = await store.agent(scope);
+  const withoutSpend = { ...before.config };
+  delete withoutSpend.spend;
+
+  const saved = await store.updateConfig(scope, before.version, withoutSpend);
+
+  assert.deepEqual(saved.config.spend, limits);
+  assert.deepEqual((await store.agent(scope)).config.spend, limits);
+
+  const other = await store.updateConfig(scope, saved.version, {
+    ...withoutSpend,
+    spend: { perCallAusd: 900, perDayAusd: 9_000 },
+  });
+
+  assert.deepEqual(other.config.spend, limits);
+  assert.deepEqual((await store.agent(scope)).config.spend, limits);
+});
+
+test("a config save on an agent without spend limits does not add them", async (t) => {
+  const store = await setup(t);
+  const before = await store.agent(scope);
+
+  const saved = await store.updateConfig(scope, before.version, {
+    ...before.config,
+    spend: { perCallAusd: 5, perDayAusd: 50 },
+  });
+
+  assert.equal(saved.config.spend, undefined);
+  assert.equal("spend" in saved.config, false);
+});

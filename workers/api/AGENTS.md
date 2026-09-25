@@ -160,7 +160,9 @@ helper in `src/routes/studio.ts`: the wallet linked to the agent (`wallets.findA
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
 balances of every listed agent that has a wallet (agents created before wallets have none and are
-not counted). A balance read that fails fails the request (500); it is never shown as zero.
+not counted). An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
+turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
+wallet, and nothing has launched. A balance read that fails fails the request (500); it is never shown as zero.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
@@ -172,7 +174,9 @@ isolate in `container.ts` so its 15 s cache outlives one request.
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,
 because the deposit sheet sets limits right before the schedule is turned on and limits do not
-change how the agent researches. `PUT /config` still bumps the version as before. The agent DTO answers `spend` and
+change how the agent researches. `PUT /config` still bumps the version as before, and it
+never writes `spend`: the store keeps the stored limits and ignores any `spend` in the body, so
+`PUT /limits` is their only writer. The agent DTO answers `spend` and
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 

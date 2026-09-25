@@ -218,16 +218,27 @@ export class PostgresResearchStore implements ResearchRepository {
     expectedVersion: number,
     config: AgentConfig,
   ): Promise<AgentRecord> {
-    assertConfig(config);
-    config = { ...config, plugins: effectivePlugins(config) };
+    // `spend` is not this method's to write: `updateSpend` is its only writer, and it does not
+    // bump the version, so a config saved at that same version must not drop or replace it.
+    const rest: AgentConfig = { ...config };
+    delete rest.spend;
+    assertConfig(rest);
+    const incoming: AgentConfig = { ...rest, plugins: effectivePlugins(rest) };
     return this.db.transaction(async (tx) => {
       const agent = await this.getAgent(scope, tx, true);
       if (agent.version !== expectedVersion) {
         throw new PilotError("CONFLICT", "Configuration version changed");
       }
+      const stored = agent.config.spend;
+      const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;
       const [updated] = await tx
         .update(agents)
-        .set({ config, version: agent.version + 1, scheduleEnabled: false, nextDueAt: null })
+        .set({
+          config: next,
+          version: agent.version + 1,
+          scheduleEnabled: false,
+          nextDueAt: null,
+        })
         .where(agentScope(scope))
         .returning();
       return updated!;
