@@ -204,20 +204,26 @@ Confirms compare the stamped body **byte for byte** with the body the API rebuil
 inputs and the stamped timestamp, so the person signs exactly what Pickler records — a semantic
 comparison would let duplicate JSON keys through. Its user id is stored on `wallets.turnkey_orgs`.
 
-Two cases, and only two, because the sub-organization is born **only** here — there is no other
-screen that creates one:
+**The master wallet exists before any agent** (decided 2026-09-25, reversing an earlier draft
+that had it born with the first agent). The person's profile, top right of every studio screen,
+shows their master wallet from the first visit, with or without agents — so it has to exist then.
 
-- **First agent.** The passkey ceremony that exists
-  (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the sub-organization
-  with the root user (the passkey) and the `Master Wallet` only — `createSubOrganization` takes one
-  wallet and only root users. Then three more stamped activities: `create_users` for the delegated
-  user (non-root, in `users`), `create_wallet` for the agent's wallet, `create_policies` for its
-  rules. **Four prompts**; Turnkey has no batch-activity endpoint.
-- **Every later agent.** The sub-organization and the delegated user exist: `create_wallet` and
-  `create_policies`, **two prompts**.
+- **Signup** is email → code → handle → **passkey**, and the passkey step is **mandatory**: its one
+  prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the
+  sub-organization with the passkey as its only root and the `Master Wallet`. Nobody finishes
+  signup without one.
+- **Anyone who reaches a signed-in screen without a sub-organization** — a signup closed at the
+  passkey step, an account from before this rule — is sent to the passkey step before anything
+  else: signin ends there when `GET /v1/signing/wallets/me` answers 404, and the studio shell
+  redirects to `/passkey`, which creates the sub-organization when there is none and otherwise adds
+  a device.
+- **First agent:** the sub-organization exists, so the ceremony stamps `create_users` for the
+  delegated user (non-root, in `users`), `create_wallet` for the agent's wallet and
+  `create_policies` for its rules — **three prompts**; Turnkey has no batch-activity endpoint.
+- **Every later agent:** `create_wallet` and `create_policies`, **two prompts**.
 
-The screen's rail has four lines — Wallet · Rules · Agent · Run — so on a first agent the Wallet
-line covers three prompts (sub-organization, delegated user, wallet) and says so while it waits.
+The ceremony's rail has four lines — Wallet · Rules · Agent · Run — so on a first agent the Wallet
+line covers two prompts (delegated user, wallet) and says so while it waits.
 
 A sub-organization with no linked agent is therefore never a state a person arrives at on purpose:
 it is a first creation that failed between the wallet and the link, and the retry resolves it:
@@ -230,19 +236,10 @@ The policies are three DENYs on every wallet — no ERC-20 `transfer`/`approve`,
 no new credentials for the delegated user — plus, on the first agent only, the delegated user's
 self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
 
-**Where the rule is enforced.** The web calls `register` only from the studio's ceremony, and
-`/passkey`, signup and signin can no longer reach it. `POST /v1/signing/passkeys/register` itself
-still answers any signed-in person without a sub-organization; the API cannot tell which screen
-called it. A sub-organization created that way has a master wallet, no delegated user and no agent
-— harmless, and the next agent's ceremony proceeds from it.
-
-**This is a change.** Today the enrolment ceremony (`register`) is reachable from `/passkey`, and
-`PasskeyFlow` is rendered by the signup and signin pages as well, so a person can create a
-sub-organization with a master wallet and no agent. Under this specification `register` is called
-from exactly one place — the first agent's "Create and run it once" — and `/passkey` keeps only
-what it should have: adding a passkey to a sub-organization that exists (`prepareAddPasskey` /
-`confirmAddPasskey`) and listing devices. The signup and signin pages stop rendering the
-enrolment half of `PasskeyFlow`. Everything begins from zero, in one place.
+**Where the rule is enforced.** In the web: signup cannot complete without the passkey step, signin
+and the studio shell route a person without a sub-organization to it. The API does not refuse
+studio calls from a person without one; the studio's agent ceremony simply cannot run without a
+sub-organization (`prepareAgentWallet` needs it), and the screen sends them to `/passkey` first.
 
 **What this changes in the trust model, stated plainly.** Until now Pickler held no key that could
 sign anything in a person's sub-organization. After this, it holds one that can sign _trades from
