@@ -200,10 +200,11 @@ screen that creates one:
   (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the sub-organization
   with the root user (the passkey), the delegated user (non-root, in `users`, not `rootUsers`),
   and **two wallets** — `Master Wallet` and the agent's. Then the policy activities of step 2 are
-  stamped. Two prompts at most: one to create, one to approve the policies; the SDK batches the
-  policies into one stamp where it can.
+  stamped. **Four prompts** on the first agent — register, delegated user, wallet, policies — because
+  `createSubOrganization` takes one wallet and only root users, and Turnkey has no batch-activity
+  endpoint. The screen draws them as a four-step rail so none reads as a repeat.
 - **Every later agent.** The sub-organization and the delegated user exist. Steps 1–3 run as
-  above.
+  above: two prompts.
 
 A sub-organization with no linked agent is therefore never a state a person arrives at on purpose:
 it is a first creation that failed between the wallet and the link, and §4.2's retry is what
@@ -245,9 +246,10 @@ carries the `walletId` whose policies were just approved; the create transaction
 event as a trace line. The first line — "Created its wallet with your passkey · 0x7a3f…" — is an
 event the **API** appends when it links the wallet, so the trace starts before the runtime does.
 
-**Every run is on paper.** When a run completes with `decision.action === "TRADE"`, the API creates
-the paper order for it (`POST /runs/:id/paper-order` exists; it becomes automatic at run
-completion, not a separate click). The pick card shows the range against the market price and
+**Every run is on paper.** When a run completes with `decision.action === "TRADE"`, the studio
+creates the paper order for it (`POST /runs/:id/paper-order` exists and is idempotent by run; the
+person is watching the first run, so the client trigger covers it — a runtime hook for scheduled
+runs is a follow-up). The pick card shows the range against the market price and
 "TRACKED ON PAPER · size AT price".
 
 **When no runner is listening.** In development the research worker may not be running; the run
