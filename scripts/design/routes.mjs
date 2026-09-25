@@ -371,30 +371,90 @@ export const ROUTES = [
     task: "Task 11",
     proves: "#studio-panel-token",
   },
-  // The empty studio is a state, not a route: the studio renders it when the signed-in person has
-  // no agents. ?state=empty reaches it without emptying a database, outside production only.
-  //
-  // It proves its own panel and not the rail: the rail is the one thing it shares with Studio v4,
-  // so a rail selector would have gone on passing if the whole stepped flow had failed to render.
+  // A person with no agents is sent from /studio to the creation flow, and each of its screens is
+  // a URL of its own (`?step=`). Outside production a link past Describe opens on the canvas's
+  // example draft, so every screen has something to show without a model or a database. Each route
+  // proves its own screen's id rather than the flow's frame, so a step that failed to render is not
+  // reported green because the column around it did.
   {
-    path: "/studio?state=empty",
-    name: "studio-empty",
+    path: "/studio/new?step=describe",
+    name: "create-describe",
     product: "studio",
     surface: "dark",
-    task: "Task 12",
-    proves: "#studio-panel-empty",
+    task: "Task 11",
+    proves: "#create-describe",
   },
-  // The second half of that screen: the checklist between a draft agent and a public one. It is
-  // only reachable by finishing the first half, so without ?phase= no check ever saw it — and it is
-  // the half where every row is a thing the product cannot do yet, which is the copy most worth
-  // measuring. It proves the checklist and not the panel, because the panel is the half it shares.
   {
-    path: "/studio?state=empty&phase=draft",
-    name: "studio-draft",
+    path: "/studio/new?step=reading",
+    name: "create-reading",
     product: "studio",
     surface: "dark",
-    task: "Task 12",
-    proves: "#go-public",
+    task: "Task 11",
+    proves: "#create-reading",
+  },
+  {
+    path: "/studio/new?step=name",
+    name: "create-name",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-name",
+  },
+  {
+    path: "/studio/new?step=trades",
+    name: "create-trades",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-trades",
+  },
+  {
+    path: "/studio/new?step=looks",
+    name: "create-looks",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-looks",
+  },
+  {
+    path: "/studio/new?step=reads",
+    name: "create-reads",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-reads",
+  },
+  {
+    path: "/studio/new?step=skills",
+    name: "create-skills",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-skills",
+  },
+  {
+    path: "/studio/new?step=decides",
+    name: "create-decides",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-decides",
+  },
+  {
+    path: "/studio/new?step=review",
+    name: "create-review",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-review",
+  },
+  {
+    path: "/studio/new?step=run",
+    name: "create-run",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#create-run",
   },
   // The account sits behind the same auth gate the studio did, so it needs the same floor for the
   // same reason. These three selectors are a contract with Task 13 rather than an observation: the

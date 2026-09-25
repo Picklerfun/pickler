@@ -33,26 +33,6 @@ export type SectionKey = (typeof SECTIONS)[number];
  *
  * `nodeEnv` is an argument rather than a read so the guard can be pinned in both positions.
  */
-/** The empty studio's two phases. The canvas has a `startPhase` prop for the same reason. */
-export const PHASES = ["create", "draft"] as const;
-export type Phase = (typeof PHASES)[number];
-
-/**
- * Which phase the empty studio opens in. `draft` is the second half of that screen — the checklist
- * between a draft agent and a public one — and it is only reachable by finishing the first half,
- * so without this no check ever sees it. Outside production only, as with the section.
- */
-export function phaseFromSearch(
-  nodeEnv: string | undefined,
-  asked: string | string[] | undefined,
-): Phase | undefined {
-  if (nodeEnv === "production") {
-    return undefined;
-  }
-  const value = Array.isArray(asked) ? asked[0] : asked;
-  return PHASES.find((key): key is Phase => key === value);
-}
-
 export function sectionFromSearch(
   nodeEnv: string | undefined,
   asked: string | string[] | undefined,

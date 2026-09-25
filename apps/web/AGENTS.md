@@ -13,12 +13,14 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio (private research UI)
+  studio/page.tsx           # The studio (private research UI); no agents sends you to /studio/new
+  studio/new/page.tsx       # Creating an agent: `?step=` names the screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
   markets/                  # The perpetuals board and one market's level × time surface
-src/features/studio/       # Agent form, history, research result and API client
+src/features/studio/       # Studio sections, history, research result and API client
+src/features/studio/create # Creating an agent: describe, seven steps, review, passkey ceremony, first run
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -175,22 +177,14 @@ compiled Worker and same-origin auth/cookies before deployment. See ../../docs/c
 The private studio uses the Studio shell and sections under `features/studio/sections`.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
-The create request carries the public profile: the full form asks for accent, venue, blurb and X
-handle; the stepped empty-studio flow sends the same defaults the form opens on (`DEFAULT_PROFILE` in `profile.ts`, re-exported by `api.ts`).
+The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
+the draft, the edge as the blurb, the venue from where it trades).
 Swatches paint from `accentVars`, never from a hue name typed into a token.
 `features/studio/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
 the selected trace every three seconds; stop when terminal unless scheduling needs discovery.
 Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
-
-The API now requires a `wallet` (`{ walletId }` — the approved `policyIds` are read server-side,
-never sent by the client) on every create request, and neither existing creation screen has the
-passkey ceremony that produces one: `AgentForm`'s
-`submit` and `EmptyStudio`'s `createAndRun` both refuse with "Create agents from the new studio
-flow" before ever calling the API, rather than send a request the schema can only reject. `toCreate`
-in `empty/draft.ts` still takes a `wallet` parameter and passes it through untouched, ready for the
-real ceremony this replaces.
 
 ## The new creation flow's pure logic
 
@@ -201,7 +195,7 @@ gate, `soonRows` for the Soon venue/beat rows that block Review, the six `review
 text builders (`tradesText`, `callsText`, `readsText`, `skillsText`, `decidesText`), `fromApiDraft`
 to fill the form from `POST /v1/studio/agents/draft`, `addSite`/`toggleIn` for the reads and looks
 steps, and `toCreate(draft, walletId, defaults)` for the `POST /agents` body, following the same
-`{ ...defaults, ... }` shape as `empty/draft.ts`'s `toCreate` (`defaults` is `/options`'s answer).
+`{ ...defaults, ... }` shape core's `draftToConfig` builds (`defaults` is `/options`'s answer).
 The web cannot be turned off in this plan, so there is no `webOn` field, only `webMode`.
 
 `SOON_VENUES`, `SOON_BEATS`, `SPORT_SUB_IDS`, `STYLE_POLICIES` and `SUGGESTED_SKILLS` inside this
@@ -226,6 +220,40 @@ public `handleAvailable`. The signing and handle routes answer Relayer's envelop
 (`{ success, message, data, ... }`); `envelopeApi` unwraps it into the same `StudioError` the
 plain-JSON studio routes throw through `studioApi`, so a caller branches on `errorCode` the same
 way regardless of which family a request belongs to.
+
+## Creating an agent
+
+`/studio/new` is the only place an agent is created, and `/studio` sends a person with no agents
+there (the old empty studio, its stepped flow and `AgentForm` are gone). `create/create.tsx` owns the
+screen: a `useReducer` over `flowReducer` (`create/flow.ts`, pure and tested in
+`studio-create-flow.test.ts`) holding the `Draft`, the screen, `auto`/`manual` mode and the Edit
+snapshot that Cancel restores. `?step=` mirrors the screen through `router.replace`; `describe` is
+the first screen's URL name. Outside production a link past Describe opens on the canvas's example
+draft (`sampleDraft`) so the design harness has every screen to measure — one route per step in
+`scripts/design/routes.mjs`, each proving `#create-<step>`. Without Supabase configured it renders
+from the preview options and says so; nothing can be drafted, checked or created there.
+
+One component per screen, each with its own id: `describe.tsx`, `reading.tsx` (reveals
+`reviewRows` one per 620 ms, then review), `name.tsx`, `trades.tsx`, `looks.tsx`, `reads.tsx`,
+`skills.tsx`, `decides.tsx`, `review.tsx`, `first-run.tsx`, and `stack.tsx` for the block stack
+beside them. `map.ts` holds the canvas's copy and lists and may read `@pickler/api-schema` values,
+because only bundled screens import it. Soon venues and beats are drawn and cannot be chosen; a
+model draft that chose one reaches the review with the row flagged and creation off. The handle is
+checked against `/v1/handles/:handle/availability` wherever it changes, debounced, so a model's
+suggestion is checked too. "Set it up from my line" calls `draftAgent`; `DRAFT_UNAVAILABLE` sends the
+person to the manual steps with "The model is busy. Build it step by step instead."
+
+`create/ceremony.ts` is "Create and run it once" as a sequence, pure and pinned in
+`studio-ceremony.test.ts`: `wallet` (register the sub-organization if there is none — the existing
+enrolment ceremony — add the delegated user if there is none, then the wallet named for the handle,
+or reuse the `existing` one an earlier attempt left), `rules` (policies), `agent`, `run`. A first
+agent is four passkey prompts, a later one two; any failure propagates and stops the sequence. The
+screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
+Idempotency keys for the create and the run are kept per draft, so "Try again with your passkey"
+replays the same attempt. `first-run.tsx` draws the four steps as the rail's first lines, then polls
+the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
+order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
+"Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
 
 ## Custody boundary
 

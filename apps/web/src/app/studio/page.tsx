@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Studio } from "@/features/studio/studio";
-import { phaseFromSearch, sectionFromSearch } from "@/features/studio/sections/keys";
+import { sectionFromSearch } from "@/features/studio/sections/keys";
 
 export const metadata: Metadata = {
   title: "Studio — Pickler",
@@ -11,13 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function StudioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string | string[]; phase?: string | string[] }>;
+  searchParams: Promise<{ section?: string | string[] }>;
 }) {
   const search = await searchParams;
-  return (
-    <Studio
-      openSection={sectionFromSearch(process.env.NODE_ENV, search.section)}
-      openPhase={phaseFromSearch(process.env.NODE_ENV, search.phase)}
-    />
-  );
+  return <Studio openSection={sectionFromSearch(process.env.NODE_ENV, search.section)} />;
 }

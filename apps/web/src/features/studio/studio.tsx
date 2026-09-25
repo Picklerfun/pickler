@@ -18,8 +18,6 @@ import {
 } from "./api";
 import { useNow } from "@/lib/now";
 import { startPolling } from "./lib/polling";
-import { AgentForm } from "./agent-form";
-import { EmptyStudio } from "./empty/empty-studio";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -31,7 +29,6 @@ import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
-import type { Phase } from "./sections/keys";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -132,13 +129,7 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Studio({
-  openSection,
-  openPhase,
-}: {
-  openSection?: SectionKey | undefined;
-  openPhase?: Phase | undefined;
-}) {
+export function Studio({ openSection }: { openSection?: SectionKey | undefined }) {
   const router = useRouter();
   const [section, setSection] = useState<SectionKey>(openSection ?? "overview");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
@@ -150,7 +141,6 @@ export function Studio({
   const [runs, setRuns] = useState<Run[]>([]);
   const [runId, setRunId] = useState<string | null>(null);
   const [trace, setTrace] = useState<{ runId: string; events: RunEvent[] } | null>(null);
-  const [creating, setCreating] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [blocked, setBlocked] = useState("");
   const [error, setError] = useState("");
@@ -192,6 +182,11 @@ export function Studio({
           if (!active) {
             return;
           }
+          /* No agents is not an empty studio: it is the creation flow, which has its own route. */
+          if (fixture.agents.length === 0) {
+            router.replace("/studio/new");
+            return;
+          }
           setPreview(true);
           setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
           setAgents(fixture.agents);
@@ -230,11 +225,14 @@ export function Studio({
         if (!active) {
           return;
         }
+        if (list.length === 0) {
+          router.replace("/studio/new");
+          return;
+        }
         setCatalog(cat);
         setOptions(opts);
         const first = list[0];
         setAgentId(first ? (first.productId ?? first.id) : null);
-        setCreating(list.length === 0);
       } catch (caught) {
         if (active) {
           setBlocked(errorCode(caught) in BLOCKED ? errorCode(caught) : "");
@@ -371,29 +369,7 @@ export function Studio({
       setRunId(runs.find((run) => run.decision)?.id ?? null);
     }
     setSection(next);
-    setCreating(false);
     setMenu(null);
-  }
-
-  /* No agents is not an empty studio, it is a different screen: the journey to a first one. It
-     brings its own shell, so it replaces this one rather than sitting inside it. */
-  if (access && !agents.length && !creating) {
-    return (
-      <EmptyStudio
-        openPhase={openPhase}
-        catalog={catalog}
-        defaults={options?.defaults ? ({ ...options.defaults } as Config) : null}
-        canManage={canManage}
-        owner="@you"
-        onCreated={(id) => {
-          void act(async () => {
-            await loadAgents();
-            setAgentId(id);
-            setSection("overview");
-          });
-        }}
-      />
-    );
   }
 
   return (
@@ -465,8 +441,8 @@ export function Studio({
                 className={styles.menuItem}
                 disabled={!canManage}
                 onClick={() => {
-                  setCreating(true);
                   setMenu(null);
+                  router.push("/studio/new");
                 }}
               >
                 <Icon name="bolt" size={15} />
@@ -632,25 +608,7 @@ export function Studio({
             </section>
           )}
 
-          {creating && canManage && catalog && options ? (
-            <div className={styles.section} data-narrow="true">
-              <AgentForm
-                catalog={catalog}
-                options={options}
-                onCancel={() => setCreating(false)}
-                onSaved={(id) => {
-                  setCreating(false);
-                  void act(async () => {
-                    await loadAgents();
-                    setAgentId(id);
-                    setRunId(null);
-                    setRuns([]);
-                    setTrace(null);
-                  });
-                }}
-              />
-            </div>
-          ) : !agent ? (
+          {!agent ? (
             <div className={styles.section} data-narrow="true">
               <div className={styles.sectionHead}>
                 <h1>No agent yet</h1>
@@ -660,7 +618,7 @@ export function Studio({
                 studio fills in around it: its runs, its decisions and the trace behind each.
               </p>
               <div className={styles.row}>
-                <Button disabled={!canManage} onClick={() => setCreating(true)}>
+                <Button disabled={!canManage} onClick={() => router.push("/studio/new")}>
                   Create an agent
                 </Button>
               </div>
