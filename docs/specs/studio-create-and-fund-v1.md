@@ -418,3 +418,52 @@ it public: face, voice presets (a model call), the X account, publishing. The to
 delegated user exists after this work, with an empty venue list; filling it is the trading work. Withdrawing an agent's funds back to the master.
 Chain and quote-asset questions the handoff lists as open (Polymarket settles in USDC on Polygon;
 paper trading sidesteps it for now).
+
+---
+
+## Validation
+
+**2026-09-25.** Built task by task from `docs/superpowers/plans/2026-09-25-studio-create-and-fund.md`,
+each task reviewed twice (specification, then quality — custody tasks by the most capable model),
+then the whole branch reviewed end to end.
+
+### What is verified
+
+| Gate                                             | Result                                                                                                                                                                                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run build:shared`                           | exit 0                                                                                                                                                                                                                               |
+| `npm run typecheck`                              | exit 0                                                                                                                                                                                                                               |
+| `npm run lint`                                   | exit 0, no problems                                                                                                                                                                                                                  |
+| `npx prettier --check .`                         | exit 0                                                                                                                                                                                                                               |
+| `npm test`                                       | exit 0 — 1053 tests, 1052 pass, 1 skipped (the Supabase-only suite, as before)                                                                                                                                                       |
+| Design checks (surfaces, tokens, contrast, type) | 0 failures; all 14 new routes measured (ten creation steps, three home stages, `/passkey` none-yet). 13 routes BLOCKED, none new: five marketplace pages not built yet, eight studio/account sections whose client reads the session |
+
+Tested against real Postgres: the wallet tables and their constraints, creation linking a wallet
+only from server-approved policy ids, spend limits and the interval kept apart from the config
+version, deposit receipts. Tested with real viem serialisation and real signatures from throwaway
+keys: the deposit's inspection, canonical encoding, signer recovery and duplicate handling. Every
+test that guards a rule was made to fail by breaking that rule, then restored.
+
+### What is not verified, and needs the person
+
+Nothing here has touched Turnkey, the model, the data providers or the chain with real credentials.
+Four things close that gap, in order:
+
+1. **Keys.** In `apps/agent-service/.env` (read by `npm run dev:agent`) and in
+   `workers/api/.dev.vars`: `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`; in the agent service also
+   `EXA_API_KEY`, `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY`. The delegated key pair is already in the
+   local `.dev.vars`. Restart the API worker after editing it.
+2. **A real passkey ceremony.** Sign in at `http://localhost:3001`, open `/studio/new`, describe an
+   agent, and create it. Expect four prompts. Then confirm in the Turnkey dashboard that the
+   sub-organization has the passkey as its only root, a non-root "Pickler" user, a master wallet and
+   the agent's wallet, and three DENY policies plus the self-delete ALLOW.
+3. **The policy engine.** From the delegated key, try to sign an ERC-20 `transfer` from the agent's
+   wallet and to create a policy: both must be refused. This is §9's policy test; the code pins the
+   policy text, only Turnkey can prove what it enforces.
+4. **A deposit.** Send testnet AUSD (chain 10143) to the master wallet's address, then deposit 10
+   from the home. Expect one prompt, the balance to read 10.00 within 15 s, and the schedule switch
+   to unlock.
+
+With the runner up, the first run should show its real trace, its decision, and a paper order when
+the decision is TRADE. Record here what each step showed and anything that differed from this
+specification.
