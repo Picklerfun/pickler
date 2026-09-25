@@ -313,8 +313,13 @@ also true and needs nothing: the balance read sees it.
 
 ### 6.3 Limits and locks
 
-- **Max per call / max a day** → `BudgetLedger.configure(agentId, limits)` (exists), amounts
-  converted to micro-USD. Shown in the deposit sheet as the canvas draws them.
+- **Max per call / max a day** → stored on the config as `spend { perCallAusd, perDayAusd }` and
+  shown in the deposit sheet as the canvas draws them, with "Applies when it trades for real".
+  **Not enforced yet, on purpose:** the budget ledger's categories are monthly caps with no
+  per-call ceiling and no daily period, so writing these numbers into it would store something
+  that means something else. Nothing spends in this specification (paper runs; the delegated user
+  can sign nothing). The trading work enforces them — a per-call and daily ledger period, or a
+  value cap in the wallet's Turnkey policy.
 - **Schedule lock:** the switch turns on only when the runtime's `NOT_READY` is clear (one
   successful manual run — exists) **and** the agent's balance ≥ 10 AUSD. Below that, the switch is
   locked with "Fund its wallet · min. 10 AUSD".
