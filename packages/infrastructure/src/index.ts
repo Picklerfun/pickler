@@ -76,3 +76,5 @@ export {
   tradingOrderHash,
   type TradingCredentials,
 } from "./polymarket/trading.js";
+
+export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
