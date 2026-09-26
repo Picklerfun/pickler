@@ -3,6 +3,11 @@ import { setupTradingAccount } from "@pickler/infrastructure/trading-operator";
 import { PostgresResearchStore, PostgresTradingStore } from "@pickler/infrastructure";
 import { readEnv } from "./config/env";
 const env = readEnv();
+const tenantId = process.env.TRADING_TENANT_ID;
+const agentId = process.env.TRADING_AGENT_ID;
+if (!tenantId || !agentId) {
+  throw new Error("Explicit TRADING_TENANT_ID and TRADING_AGENT_ID required");
+}
 try {
   for (const value of [
     env.POLYMARKET_SIGNER_PRIVATE_KEY,
@@ -27,10 +32,7 @@ try {
   });
   const research = new PostgresResearchStore(env.DATABASE_URL);
   try {
-    await new PostgresTradingStore(research.pool).bind(
-      { tenantId: "alpha", agentId: "pickle-alpha" },
-      identity,
-    );
+    await new PostgresTradingStore(research.pool).bind({ tenantId, agentId }, identity);
   } finally {
     await research.close();
   }

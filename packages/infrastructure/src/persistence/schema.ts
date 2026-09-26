@@ -194,12 +194,25 @@ export const paperOrders = pickler
   )
   .enableRLS();
 
+export const tradingAttempts = pickler
+  .table("trading_attempts", {
+    runId: text("run_id")
+      .primaryKey()
+      .references(() => runs.id),
+    tenantId: text("tenant_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    reason: text("reason"),
+    createdAt: milliseconds("created_at").notNull(),
+  })
+  .enableRLS();
+
 export const tradingAccounts = pickler
   .table(
     "trading_accounts",
     {
       tenantId: text("tenant_id").notNull(),
       agentId: text("agent_id").notNull(),
+      enabled: boolean("enabled").notNull().default(false),
       wallet: text("wallet").notNull(),
       signer: text("signer").notNull(),
       createdAt: milliseconds("created_at").notNull(),

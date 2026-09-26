@@ -1,6 +1,14 @@
 # Local Polymarket trading pilot
 
-## Delivery status
+## Current Cloudflare extension
+
+Read [the Worker guide](../../docs/polymarket-worker-pilot.md) for current delivery, staging and
+acceptance boundaries. The current implementation replaces the alpha-only restriction with an
+operator-bound account and adds reviewed soccer match winners. Setup requires explicit tenant
+and agent IDs. Accounts default disabled after migration 0010. The following original delivery
+record describes the earlier local-only implementation; it is not current deployment evidence.
+
+## Original delivery status
 
 This delivery implements the integration software and controlled tests. No pilot wallet was generated, funded or operated during implementation. No live order, approval transaction, paid research or deployment was performed. Real-provider acceptance remains an operator-run step; passing fixtures is not evidence of a successful live bet.
 

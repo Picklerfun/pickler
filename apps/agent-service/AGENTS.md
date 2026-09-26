@@ -60,3 +60,14 @@ configuration version. It does not initialize alpha/beta or change their global 
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Cloudflare trading pilot
+
+Trading setup requires explicit TRADING_TENANT_ID/TRADING_AGENT_ID; it no longer assigns alpha. Node trading uses the same wallet-filtered claims and operator enablement as Cloudflare. See ../../docs/polymarket-worker-pilot.md.
+
+## International Polymarket preproduction
+
+The explicit `polymarket:preproduction` agent-service command only probes fixed public GET
+routes. It loads no environment file, credentials, signer or database. The official environment
+inherits chain 137; never equate its availability with Amoy or dummy-fund order acceptance.
+See apps/agent-service/POLYMARKET-PREPRODUCTION.md from the repository root.

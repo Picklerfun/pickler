@@ -45,6 +45,16 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
   const app = consoleRoutes({
     directory,
     repository,
+    trading: {
+      repository: {} as import("@pickler/core").TradingRepository,
+      admissionsEnabled: true,
+      notify: async () => {},
+      invoke: async (_path, input) => {
+        calls++;
+        assert.equal((input as { scope: { tenantId: string } }).scope.tenantId, "trusted");
+        return Response.json({ ok: true });
+      },
+    },
     notifyQueued: async () => {},
     authenticate: async (_credentials, options) => {
       if (key && options?.userOnly) {
@@ -96,4 +106,21 @@ test("new agent configuration cannot omit category and subcategories", async () 
   );
   assert.equal(response.status, 400);
   assert.equal(calls(), 0);
+});
+
+test("trading requires a user owner and rejects tenant or credential injection before the executor", async () => {
+  for (const mode of [{ key: true }, { enabled: false }, { owner: false }]) {
+    const { app, calls } = fixture(mode);
+    const response = await app.request("/agents/agent/trading/check", request({}));
+    assert.equal(response.status, mode.key ? 401 : 403);
+    assert.equal(calls(), 0);
+  }
+  const { app, calls } = fixture();
+  for (const body of [{ tenantId: "victim" }, { privateKey: "secret" }]) {
+    assert.equal((await app.request("/agents/agent/trading/check", request(body))).status, 400);
+  }
+  assert.equal((await app.request("/agents/other/trading/check", request({}))).status, 404);
+  assert.equal(calls(), 0);
+  assert.equal((await app.request("/agents/agent/trading/check", request({}))).status, 200);
+  assert.equal(calls(), 1);
 });

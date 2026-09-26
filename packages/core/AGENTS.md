@@ -83,3 +83,7 @@ market stay comparable. `readQuestionAtLevel` in `features/agents` writes that s
 The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
 today, so it lives in the web feature that draws it against the mirrored limits in
 `@pickler/api-schema`. It belongs here the day an order is placed, because then it decides money.
+
+## Cloudflare trading pilot
+
+Trading uses operator-enabled immutable accounts and provider-neutral NFL/soccer winner eligibility. The sign port accepts a final ownership guard. Automatic attempts are durably admitted once; confirmed autonomous purchases close the pilot. See ../../docs/polymarket-worker-pilot.md.

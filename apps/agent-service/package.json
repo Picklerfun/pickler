@@ -16,7 +16,8 @@
     "configure:categories": "node --import tsx src/configure-categories.ts",
     "validate:agent": "node --import tsx src/validate-agent.ts",
     "wallet:init": "node --import tsx src/wallet-init.ts",
-    "trading:setup": "node --import tsx src/trading-setup.ts"
+    "trading:setup": "node --import tsx src/trading-setup.ts",
+    "polymarket:preproduction": "node --import tsx src/polymarket-preproduction.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
