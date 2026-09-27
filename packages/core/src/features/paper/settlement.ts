@@ -180,3 +180,12 @@ export function createPaperSettlementService(
     },
   };
 }
+
+/** Immutable public identity, also usable for forecasts without a purchase. */
+export interface PaperResolutionIdentity {
+  marketId: string;
+  outcomeId: string;
+  conditionId: string;
+  outcomeIndex: number;
+  outcomeCount: number;
+}
