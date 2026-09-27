@@ -95,3 +95,7 @@ The explicit `polymarket:preproduction` agent-service command only probes fixed 
 routes. It loads no environment file, credentials, signer or database. The official environment
 inherits chain 137; never equate its availability with Amoy or dummy-fund order acceptance.
 See apps/agent-service/POLYMARKET-PREPRODUCTION.md from the repository root.
+
+## Paper resolution
+
+Migration 0011 adds nullable paper settlement snapshots and releases the open-position constraint after virtual resolution. PostgresPaperStore serializes settlement under agent/position locks and rechecks current plugin permissions/version. PolymarketPaperResolution reads only finalized CTF payout data via public Polygon RPC; it never loads signer credentials. Buy-time condition/outcome identity is mandatory for resolution; never infer legacy identities or winners from prices. Gamma orderMinSize is a share quantity, exposed separately from legacy minimumNotional.
