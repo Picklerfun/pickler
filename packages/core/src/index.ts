@@ -155,3 +155,7 @@ export * from "./features/paper/settlement.js";
 export * from "./features/paper/sports.js";
 
 export * from "./features/paper-study/study.js";
+
+export * from "./features/paper-study/quant.js";
+
+export * from "./features/paper-study/quant-session.js";
