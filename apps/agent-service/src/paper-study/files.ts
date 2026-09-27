@@ -17,6 +17,7 @@ export const studyConfigSchema = z
         inputPerMillion: z.number().positive(),
         outputPerMillion: z.number().positive(),
         exaPerSearch: z.number().positive(),
+        jevInputPerMillion: z.number().positive().optional(),
       })
       .strict()
       .nullable(),
@@ -85,8 +86,14 @@ export function renderStudy(state: StudyState) {
     "Payout virtual",
     "PnL virtual",
     "Resolution",
-    "Input tokens",
+    "Routing",
+    "Jev calls",
+    "DeepSeek calls",
+    "Jev input tokens",
+    "Jev estimated USD",
+    "DeepSeek input tokens",
     "Output tokens",
+    "DeepSeek estimated USD",
     "API reservation USD",
     "Exa reported USD",
     "Reason",
@@ -110,8 +117,20 @@ export function renderStudy(state: StudyState) {
       paper?.settlement?.payout ?? "",
       paper?.settlement?.realizedPnl ?? "",
       paper ? (paper.settlement ? "settled" : "pending") : "—",
+      row.usage.routing?.outcome ?? "legacy-deepseek",
+      row.usage.routing ? 1 : "unknown",
+      row.usage.routing ? (row.usage.routing.deepseek.status === "not_called" ? 0 : 1) : "unknown",
+      row.usage.routing?.jev.inputTokens ?? "unknown",
+      row.usage.routing?.jev.inputTokens != null && state.config.pricing?.jevInputPerMillion
+        ? (row.usage.routing.jev.inputTokens * state.config.pricing.jevInputPerMillion) / 1e6
+        : "unknown",
       row.usage.inputTokens ?? "unknown",
       row.usage.outputTokens ?? "unknown",
+      row.usage.inputTokens !== null && row.usage.outputTokens !== null && state.config.pricing
+        ? (row.usage.inputTokens * state.config.pricing.inputPerMillion +
+            row.usage.outputTokens * state.config.pricing.outputPerMillion) /
+          1e6
+        : "unknown",
       row.reservedApiUsd,
       row.usage.exaReportedUsd ?? "unknown",
       row.reason ?? row.resolutionError ?? "",

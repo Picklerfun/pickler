@@ -16,6 +16,7 @@ import { paperStudyPrompt } from "../prompts/paper-study-system.js";
 export function createStudyModel(
   env: { MODEL_BASE_URL: string; MODEL_API_KEY: string; MODEL_ID: string },
   guard: (kind: StudyKind) => Promise<void>,
+  options: { researchSummary?: boolean } = {},
 ) {
   const provider = createOpenAICompatible({
     name: "pickler-study",
@@ -94,7 +95,7 @@ export function createStudyModel(
       };
       try {
         let summary: string | null = null;
-        if (item.kind === "sports") {
+        if (item.kind === "sports" && options.researchSummary !== false) {
           await guard(item.kind);
           signal.throwIfAborted();
           const research = await agent.generate(

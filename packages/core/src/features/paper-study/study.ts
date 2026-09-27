@@ -31,7 +31,12 @@ export interface StudyConfig {
   settlementGraceHours: number;
   maxCases: number;
   maxApiUsd: number;
-  pricing: { inputPerMillion: number; outputPerMillion: number; exaPerSearch: number } | null;
+  pricing: {
+    inputPerMillion: number;
+    outputPerMillion: number;
+    exaPerSearch: number;
+    jevInputPerMillion?: number | undefined;
+  } | null;
   agents: { kind: StudyKind; enabled: boolean; plugins: StudyPlugin[] }[];
 }
 export interface StudyMarket {
@@ -46,7 +51,23 @@ export interface StudyEvidence {
   books: OrderBook[];
   limitations: string[];
 }
+export interface StudyRouting {
+  version: string;
+  jev: {
+    model: string;
+    status: "started" | "completed" | "failed";
+    inputTokens: number | null;
+    outputTokens: number | null;
+    answers?: Record<
+      string,
+      { type: "choice"; choice: string; confidence: number; probabilities: Record<string, number> }
+    >;
+  };
+  deepseek: { model: string; status: "not_called" | "started" | "completed" | "failed" };
+  outcome: "pending" | "jev_abstained" | "deepseek_forecast";
+}
 export interface StudyUsage {
+  routing?: StudyRouting;
   inputTokens: number | null;
   outputTokens: number | null;
   exaReportedUsd: number | null;
@@ -112,10 +133,15 @@ export function caseReservation(config: StudyConfig, kind: StudyKind): number {
     throw new PilotError("STUDY_PRICING_REQUIRED", "Set provider rates before paid execution");
   }
   const { inputPerMillion, outputPerMillion, exaPerSearch } = config.pricing;
-  const calls = kind === "sports" ? 2 : 1;
+  const jevRate = config.pricing.jevInputPerMillion;
+  if (jevRate === undefined || !Number.isFinite(jevRate) || jevRate <= 0) {
+    throw new PilotError("STUDY_JEV_PRICING_REQUIRED", "Set verified Jev pricing before execution");
+  }
+  const calls = 1; // One conditional full forecast, no redundant sports summary.
+
   // Input is byte-bounded by the runtime; reserve extra space for SDK formatting/schema.
   return (
-    (calls * (65536 * inputPerMillion + 4096 * outputPerMillion)) / 1e6 +
+    (65536 * jevRate + calls * (65536 * inputPerMillion + 4096 * outputPerMillion)) / 1e6 +
     (kind === "sports" ? 2 * exaPerSearch : 0)
   );
 }
@@ -178,11 +204,33 @@ export function recoverStudy(state: StudyState, now: number): void {
 function code(error: unknown): string {
   return error instanceof PilotError ? error.code : "STUDY_PROVIDER_FAILURE";
 }
+export function hasUnsettledStudyRouting(state: StudyState): boolean {
+  return state.cases.some(({ usage }) => {
+    const route = usage.routing;
+    return Boolean(
+      route &&
+      (route.outcome === "pending" ||
+        route.jev.status !== "completed" ||
+        route.jev.inputTokens === null ||
+        route.jev.outputTokens === null ||
+        (route.deepseek.status !== "not_called" &&
+          (route.deepseek.status !== "completed" ||
+            usage.inputTokens === null ||
+            usage.outputTokens === null))),
+    );
+  });
+}
 export async function runStudyCase(
   state: StudyState,
   item: StudyMarket,
   ports: StudyPorts,
 ): Promise<void> {
+  if (hasUnsettledStudyRouting(state)) {
+    throw new PilotError(
+      "STUDY_ROUTING_REVIEW_REQUIRED",
+      "Previous model attempt needs operator review",
+    );
+  }
   const now = ports.now();
   assertStudyMarket(item, now);
   if (state.cases.some((row) => row.marketId === item.market.id)) {
@@ -232,6 +280,9 @@ export async function runStudyCase(
     const assessment = await ports.forecast(item, row.evidence, signal, async (usage) => {
       row.usage.inputTokens = usage.inputTokens;
       row.usage.outputTokens = usage.outputTokens;
+      if (usage.routing) {
+        row.usage.routing = structuredClone(usage.routing);
+      }
       await ports.save();
     });
     if (

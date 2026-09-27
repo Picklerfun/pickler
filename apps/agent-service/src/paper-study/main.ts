@@ -6,6 +6,7 @@ import {
   PilotError,
   STUDY_PLUGINS,
   recoverStudy,
+  hasUnsettledStudyRouting,
   runStudyCase,
   settleStudy,
   type StudyState,
@@ -14,8 +15,8 @@ import {
   type StudyPorts,
 } from "@pickler/core";
 import { PolymarketStudyData, PolymarketPaperResolution } from "@pickler/infrastructure";
-import { createStudyModel } from "@pickler/agent-runtime/composition/paper-study-model";
-import { readConfig, lockStudy, saveStudy } from "./files.js";
+import { createJevStudyModel } from "@pickler/agent-runtime/composition/jev-study-model";
+import { readConfig, lockStudy, saveStudy, atomicWrite } from "./files.js";
 
 const [command, configArgument, approval] = process.argv.slice(2);
 if (!configArgument || !["preflight", "run", "report"].includes(command ?? "")) {
@@ -77,13 +78,14 @@ if (command === "report") {
     }
   }
 } else {
-  if (approval !== "--allow-paid" || !configuration.pricing) {
+  if (approval !== "--allow-paid" || !configuration.pricing?.jevInputPerMillion) {
     throw new Error(
-      "Explicit --allow-paid and current provider pricing are required; no calls made",
+      "Explicit --allow-paid and current DeepSeek/Jev/Exa pricing are required; no calls made",
     );
   }
   dotenv({ path: resolve(".env"), quiet: true });
   for (const key of [
+    "TYPESAFE_API_KEY",
     "MODEL_BASE_URL",
     "MODEL_ID",
     "MODEL_API_KEY",
@@ -95,8 +97,9 @@ if (command === "report") {
   }
   const release = await lockStudy(directory);
   try {
-    const model = createStudyModel(
+    const model = createJevStudyModel(
       {
+        TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY!,
         MODEL_BASE_URL: process.env.MODEL_BASE_URL!,
         MODEL_ID: process.env.MODEL_ID!,
         MODEL_API_KEY: process.env.MODEL_API_KEY!,
@@ -186,6 +189,11 @@ if (command === "report") {
             if (candidate) {
               currentKind = agent.kind;
               await runStudyCase(state, candidate, ports);
+              if (hasUnsettledStudyRouting(state)) {
+                await atomicWrite(join(directory, "STOP"), "STUDY_ROUTING_REVIEW_REQUIRED");
+                stop();
+                break;
+              }
             } else {
               state.events.push({
                 time: Date.now(),
@@ -201,6 +209,9 @@ if (command === "report") {
             });
           }
           await save();
+        }
+        if (stopping) {
+          break;
         }
         await settleStudy(state, ports);
         await save();

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   assertStudyMarket,
   caseReservation,
+  hasUnsettledStudyRouting,
   recoverStudy,
   runStudyCase,
   settleStudy,
@@ -44,7 +45,12 @@ function fixture() {
       settlementGraceHours: 2,
       maxCases: 10,
       maxApiUsd: 5,
-      pricing: { inputPerMillion: 1, outputPerMillion: 1, exaPerSearch: 0.01 },
+      pricing: {
+        inputPerMillion: 1,
+        outputPerMillion: 1,
+        exaPerSearch: 0.01,
+        jevInputPerMillion: 0.042,
+      },
       agents: [{ kind: "btc-5m", enabled: true, plugins: ["polymarket", "coinbase"] }],
     },
     createdAt: now,
@@ -219,4 +225,40 @@ test("provider errors are failures, not abstentions", async () => {
   await runStudyCase(f.state, f.item, f.ports);
   assert.equal(f.state.cases[0]?.status, "failed");
   assert.equal(f.state.cases[0]?.reason, "MODEL_EMPTY_OUTPUT");
+});
+
+test("active routing reserves Jev plus one fallback and requires known Jev pricing", () => {
+  const { state } = fixture();
+  assert.equal(caseReservation(state.config, "btc-5m"), (65536 * 0.042 + 65536 + 4096) / 1e6);
+  assert.equal(
+    caseReservation(state.config, "sports"),
+    caseReservation(state.config, "btc-5m") + 0.02,
+  );
+  delete state.config.pricing!.jevInputPerMillion;
+  assert.throws(() => caseReservation(state.config, "btc-5m"), /verified Jev pricing/);
+});
+
+test("routing usage persists separately and unknown paid attempts block further admission", async () => {
+  const f = fixture();
+  f.ports.forecast = async (_item, _evidence, _signal, report) => {
+    await report({
+      inputTokens: null,
+      outputTokens: null,
+      exaReportedUsd: null,
+      routing: {
+        version: "1.0.0",
+        jev: { model: "jev-1.13.0", status: "failed", inputTokens: null, outputTokens: null },
+        deepseek: { model: "fixture", status: "not_called" },
+        outcome: "pending",
+      },
+    });
+    throw new Error("provider failed");
+  };
+  await runStudyCase(f.state, f.item, f.ports);
+  assert.equal(f.state.cases[0]!.usage.routing?.jev.status, "failed");
+  assert.equal(hasUnsettledStudyRouting(f.state), true);
+  const reserved = f.state.cases[0]!.reservedApiUsd;
+  await assert.rejects(runStudyCase(f.state, f.item, f.ports), /operator review/);
+  assert.equal(f.state.cases.length, 1);
+  assert.equal(f.state.cases[0]!.reservedApiUsd, reserved);
 });

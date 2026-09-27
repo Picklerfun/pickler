@@ -157,3 +157,8 @@ Paper CLI adds `paper-settle alpha|beta RUN_ID` and `paper-summary alpha|beta`. 
 ## Continuous paper laboratory
 
 Read [PAPER-STUDY.md](PAPER-STUDY.md) before changing `src/paper-study`. `paper:study` runs an explicit local operator session with atomic JSON persistence, a single-writer lock and HTML/CSV reports. It is separate from production tenant research, never uses signer credentials, and requires explicit paid approval plus configured rates. No paid calls on import or preflight. Preserve interrupted attempts and original budget/time windows on resume.
+
+`paper:study run` now uses active Jev-first routing automatically, with explicit paid admission and
+both credentials. Require verified `jevInputPerMillion`; no hidden activation flag. Preserve separate
+Jev/DeepSeek usage, stop after unknown routed charges and retain all old study snapshots. See
+PAPER-STUDY.md for the readiness gate, full-forecast fallback and historical resume boundary.

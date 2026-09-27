@@ -63,6 +63,10 @@
     "./composition/paper-study-model": {
       "types": "./src/composition/paper-study-model.ts",
       "import": "./dist/composition/paper-study-model.js"
+    },
+    "./composition/jev-study-model": {
+      "types": "./src/composition/jev-study-model.ts",
+      "import": "./dist/composition/jev-study-model.js"
     }
   },
   "scripts": {
