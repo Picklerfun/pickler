@@ -243,3 +243,22 @@ Deploy the consumer and then API using their explicit configs. Until this operat
 merged, deploying older main configs requires `--var ADMISSIONS_ENABLED:true` to preserve manual
 access. Emergency closure uses `--var ADMISSIONS_ENABLED:false` on both hosts and must be recorded
 so an ordinary deployment does not accidentally reopen admissions. No migration is required.
+
+## Web Worker Builds configuration
+
+The `pickler-web-staging` Git integration has separate production and preview build settings.
+Both should build only the API schema and OpenNext web bundle from the repository root:
+
+```sh
+npm run build --workspace=@pickler/api-schema && npm run build:worker --workspace=@pickler/web
+```
+
+Production uses `npx wrangler deploy --config apps/web/wrangler.jsonc`; previews use
+`npx wrangler preview --config apps/web/wrangler.jsonc`. Keep the existing branch controls,
+secrets, bindings and access policies. Do not use the root `npm run build` for this web-only
+pipeline: it also builds the local Mastra host, which is not deployed by this integration.
+
+The PR #45 preview failed during Mastra workspace packaging with `HOME: unbound variable` in
+Cloudflare's npm shim. Production already had the web-only command; preview settings were
+corrected separately. Retrying an old build can retain its original command snapshot; verify the
+commands on the newly triggered build rather than assuming a retry uses updated settings.
