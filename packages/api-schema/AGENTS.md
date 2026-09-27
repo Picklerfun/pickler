@@ -54,3 +54,7 @@ never rewrites the wording.
 ## Cloudflare trading pilot
 
 Trading account DTOs include operator enablement; order previews optionally include outcome labels for historical compatibility. Public responses never contain lease tokens, signed payloads or secrets. See ../../docs/polymarket-worker-pilot.md.
+
+## Paper resolution
+
+Paper DTOs now include optional nullable settlement evidence, buy-time resolution identity and minimumShares. `paperSummarySchema` reports virtual costs, payouts, realized P&L and net cash flow; it is not a wallet balance. Existing orders without settlement remain readable. Scoped paper market snapshots include their classification.
