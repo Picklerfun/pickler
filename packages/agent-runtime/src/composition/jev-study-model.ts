@@ -17,7 +17,7 @@ const MAX_BYTES = 30_000;
 const THRESHOLD = 0.98;
 export const jevStudyRouting = {
   mode: "jev-first",
-  version: "1.0.0",
+  version: "1.0.1",
   model: MODEL,
   promptHash: jevStudyPrompt.sha256,
   abstentionConfidence: THRESHOLD,
@@ -123,7 +123,13 @@ export function createJevStudyModel(
       let usage: StudyUsage = { inputTokens: 0, outputTokens: 0, exaReportedUsd: null };
       const routing: StudyRouting = {
         version: jevStudyRouting.version,
-        jev: { model: MODEL, status: "started", inputTokens: null, outputTokens: null },
+        jev: {
+          model: MODEL,
+          status: "started",
+          inputTokens: null,
+          outputTokens: null,
+          validationStage: "response",
+        },
         deepseek: { model: env.MODEL_ID, status: "not_called" },
         outcome: "pending",
       };
@@ -164,19 +170,30 @@ export function createJevStudyModel(
         if (!response.ok) {
           throw new PilotError("JEV_HTTP_FAILURE", "Jev rejected the request");
         }
-        const result = responseSchema.safeParse(await response.json());
-        if (
-          !result.success ||
-          result.data.usage.output_tokens !== 0 ||
-          result.data.usage.input_tokens > 65536
-        ) {
-          throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev response or usage");
+        const raw: unknown = await response.json();
+        routing.jev.validationStage = "usage";
+        const envelope = responseSchema.pick({ model: true, usage: true }).safeParse(raw);
+        if (!envelope.success) {
+          throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev model or token usage");
+        }
+        routing.jev.inputTokens = envelope.data.usage.input_tokens;
+        routing.jev.outputTokens = envelope.data.usage.output_tokens;
+        await persist(); // Preserve known consumption even if answer validation fails.
+        routing.jev.validationStage = "reservation";
+        if (envelope.data.usage.input_tokens > 65536) {
+          throw new PilotError("JEV_INVALID_RESPONSE", "Jev input usage exceeds its reservation");
+        }
+        routing.jev.validationStage = "answers";
+        const result = responseSchema.safeParse(raw);
+        if (!result.success) {
+          throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev answers");
         }
         routing.jev = {
           model: MODEL,
           status: "completed",
+          validationStage: "complete",
           inputTokens: result.data.usage.input_tokens,
-          outputTokens: 0,
+          outputTokens: result.data.usage.output_tokens,
           answers: result.data.answers,
         };
         await persist();

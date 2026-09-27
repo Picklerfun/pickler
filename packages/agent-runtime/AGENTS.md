@@ -58,3 +58,7 @@ material-insufficiency abstentions; a single blind DeepSeek fallback handles ful
 skips the old sports summary, validates provider response/probabilities, persists started usage
 through the caller and makes no automatic retries. Prompt/routing version 1.0.0 is a new readiness
 task, distinct from laboratory claim-classification accuracy. No provider failures become abstentions.
+
+Paper-study routing adapter 1.0.1 preserves Jev output token counts even though their tariff is zero.
+Validate and persist pinned-model usage before answers; preserve only allowlisted validation stages
+on failure, and never store raw rejected response fields. No automatic retry or old-study resume.

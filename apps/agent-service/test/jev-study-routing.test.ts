@@ -71,7 +71,7 @@ function response(
   };
   return {
     model: "jev-1.13.0",
-    usage: { input_tokens: 100, output_tokens: 0 },
+    usage: { input_tokens: 100, output_tokens: 34 },
     answers: Object.fromEntries(
       Object.entries(labels).map(([key, values]) => [
         key,
@@ -143,6 +143,8 @@ test("active Jev abstention avoids DeepSeek and returns a complete non-direction
   assert.deepEqual(result.sourceIds, ["s"]);
   assert.deepEqual(f.counts(), { calls: 1, fallbackCalls: 0 });
   assert.equal(f.records.at(-1)?.routing?.outcome, "jev_abstained");
+  assert.equal(f.records.at(-1)?.routing?.jev.outputTokens, 34);
+  assert.equal(f.records.at(-1)?.routing?.jev.validationStage, "complete");
 });
 test("ready, uncertain, mismatched and low-confidence screens delegate exactly once without Jev labels", async () => {
   for (const raw of [
@@ -250,4 +252,31 @@ test("revocation after Jev completion prevents the conditional forecast", async 
     /revoked/,
   );
   assert.equal(f.counts().fallbackCalls, 0);
+});
+
+test("valid token usage survives invalid answers without storing raw response fields", async () => {
+  const raw = { ...response(), answers: { unknownPrivateField: "private-data" } };
+  const f = fixture(raw);
+  await assert.rejects(
+    f.model.forecast(item, evidence, new AbortController().signal, f.report),
+    /Invalid Jev answers/,
+  );
+  const jev = f.records.at(-1)!.routing!.jev;
+  assert.equal(jev.inputTokens, 100);
+  assert.equal(jev.outputTokens, 34);
+  assert.equal(jev.status, "failed");
+  assert.equal(jev.validationStage, "answers");
+  assert.equal(JSON.stringify(f.records).includes("private-data"), false);
+  assert.equal(JSON.stringify(f.records).includes("unknownPrivateField"), false);
+  assert.deepEqual(f.counts(), { calls: 1, fallbackCalls: 0 });
+});
+
+test("invalid token counts remain unknown and report the usage validation stage", async () => {
+  for (const output_tokens of [-1, 0.5, null]) {
+    const f = fixture({ ...response(), usage: { input_tokens: 100, output_tokens } });
+    await assert.rejects(f.model.forecast(item, evidence, new AbortController().signal, f.report));
+    assert.equal(f.records.at(-1)?.routing?.jev.inputTokens, null);
+    assert.equal(f.records.at(-1)?.routing?.jev.validationStage, "usage");
+    assert.equal(f.counts().fallbackCalls, 0);
+  }
 });

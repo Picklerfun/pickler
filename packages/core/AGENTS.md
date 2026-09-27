@@ -112,3 +112,6 @@ Paper study reservations include one Jev screen and one possible full forecast p
 costs. Jev pricing must be supplied explicitly for new runs. `StudyUsage.routing` attributes providers
 separately; `hasUnsettledStudyRouting` blocks further admission after incomplete/unknown routed
 calls. Keep historical cases/configuration readable without rewriting their reservations.
+
+Study routing records may carry an allowlisted Jev validation stage. Token counts and prices are
+distinct: free output can have nonzero tokens, and known usage survives rejected answers.
