@@ -87,6 +87,14 @@ if (command === "init") {
       method = "POST";
       body = args[1] ? { marketId: args[1] } : {};
       break;
+    case "paper-settle":
+      path = `/runs/${encodeURIComponent(args[1] ?? "")}/paper-order/settle`;
+      method = "POST";
+      body = {};
+      break;
+    case "paper-summary":
+      path = `/agents/${agent}/paper-summary`;
+      break;
     case "paper-buy":
       path = `/runs/${encodeURIComponent(args[1] ?? "")}/paper-order`;
       method = "POST";
@@ -117,7 +125,7 @@ if (command === "init") {
       break;
     default:
       throw new Error(
-        "Commands: init, agents, categories, market-categories, check, configure, run, result, events, paper-buy, paper-result, trading-account, trading-orders, trading-positions, trading-prepare, trading-submit, trading-result, trading-run, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
+        "Commands: init, agents, categories, market-categories, check, configure, run, result, events, paper-buy, paper-result, paper-settle, paper-summary, trading-account, trading-orders, trading-positions, trading-prepare, trading-submit, trading-result, trading-run, schedule, pause, resume. Each accepts alpha|beta (default alpha).",
       );
   }
   const response = await fetch(`http://127.0.0.1:4111/pilot${path}`, {
