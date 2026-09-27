@@ -24,6 +24,7 @@ import {
   eventResponseSchema,
   pauseSchema,
   paperOrderSchema,
+  paperSummarySchema,
   scheduleSchema,
   liveBuySchema,
   liveOrderSchema,
@@ -47,6 +48,8 @@ export interface ConsoleServices {
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
+    settle?(tenantId: string, runId: string): Promise<unknown>;
+    summary?(scope: { tenantId: string; agentId: string }): Promise<unknown>;
   };
 }
 
@@ -199,6 +202,27 @@ export function consoleRoutes(services: ConsoleServices) {
         .array()
         .parse(await repo.events(current.tenantId, c.req.param("id"))),
     });
+  });
+  api.post("/runs/:id/paper-order/settle", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    if (!services.paper?.settle) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper settlement unavailable");
+    }
+    const raw = await c.req.text();
+    if (raw) {
+      z.object({}).strict().parse(JSON.parse(raw));
+    }
+    return c.json(
+      paperOrderSchema.parse(await services.paper.settle(current.tenantId, c.req.param("id"))),
+    );
+  });
+  api.get("/agents/:id/paper-summary", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    if (!services.paper?.summary) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper summary unavailable");
+    }
+    return c.json(paperSummarySchema.parse(await services.paper.summary(scope)));
   });
   api.post("/runs/:id/paper-order", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
