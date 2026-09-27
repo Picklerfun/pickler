@@ -1,6 +1,41 @@
 import { join } from "node:path";
-import type { QuantState } from "@pickler/core";
+import { simulatePaperBuy, type QuantState, type QuantCase } from "@pickler/core";
 import { atomicWrite } from "./files.js";
+/** Replay the saved book only for reporting, never to authorize a purchase. */
+function quotedEdge(c: QuantCase, label: "Up" | "Down") {
+  const input = c.input,
+    probability = c.forecast?.probabilities.find((p) => p.label === label);
+  if (!input || !probability || !c.forecast) {
+    return { cost: null, edge: null };
+  }
+  const book = input.books.find((b) => b.outcomeId === probability.outcomeId),
+    conditions = input.conditions.find((v) => v.outcomeId === probability.outcomeId);
+  if (!book || !conditions) {
+    return { cost: null, edge: null };
+  }
+  const tick = Number(conditions.tickSize);
+  if (!(tick > 0 && tick < 1)) {
+    return { cost: null, edge: null };
+  }
+  const limit = (Math.floor((1 - 1e-10) / tick) * tick).toFixed(8);
+  try {
+    const result = simulatePaperBuy(
+      input.item.market,
+      book,
+      conditions,
+      limit,
+      c.forecast.observedAt,
+    );
+    if (!result.fill) {
+      return { cost: null, edge: null };
+    }
+    const cost = Number(result.fill.totalCost) / Number(result.fill.quantity);
+    return { cost, edge: probability.lower - cost };
+  } catch {
+    // Failed cases may retain invalid provider inputs; keep their original failure visible.
+    return { cost: null, edge: null };
+  }
+}
 export function quantRows(state: QuantState) {
   return state.cases.map((c) => {
     const f = c.forecast,
@@ -16,6 +51,8 @@ export function quantRows(state: QuantState) {
     const bid = Number(upBook?.bids[0]?.price),
       ask = Number(upBook?.asks[0]?.price);
     const reference = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : null;
+    const upQuote = quotedEdge(c, "Up"),
+      downQuote = quotedEdge(c, "Down");
     return {
       market: c.marketId,
       kind: c.kind,
@@ -35,6 +72,10 @@ export function quantRows(state: QuantState) {
       downAsk: downBook?.asks[0]?.price ?? null,
       lowerDown: p ? 1 - p.upper : null,
       upperDown: p ? 1 - p.lower : null,
+      quotedEffectiveCostUp: upQuote.cost,
+      quotedEffectiveCostDown: downQuote.cost,
+      quotedConservativeEdgeUp: upQuote.edge,
+      quotedConservativeEdgeDown: downQuote.edge,
       proposedOutcome: c.proposal?.outcomeId ?? null,
       limitPrice: c.proposal?.limitPrice ?? null,
       edge: c.proposal?.conservativeEdge ?? null,
