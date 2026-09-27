@@ -13,11 +13,18 @@
     "diagnose": "node --import tsx src/diagnose.ts",
     "configure:nfl": "node --import tsx src/configure-nfl.ts",
     "evaluate:nfl": "node --import tsx src/evaluate-nfl.ts",
+    "evaluate:decisions": "node --import tsx src/evaluate-decisions.ts",
+    "prepare:decision-evidence": "node --import tsx src/prepare-decision-evidence.ts",
     "configure:categories": "node --import tsx src/configure-categories.ts",
     "validate:agent": "node --import tsx src/validate-agent.ts",
     "wallet:init": "node --import tsx src/wallet-init.ts",
     "trading:setup": "node --import tsx src/trading-setup.ts",
-    "polymarket:preproduction": "node --import tsx src/polymarket-preproduction.ts"
+    "polymarket:preproduction": "node --import tsx src/polymarket-preproduction.ts",
+    "compare:decisions": "node --import tsx src/compare-decisions.ts",
+    "evaluate:decisions:v2": "node --import tsx src/evaluate-decisions-v2.ts",
+    "prepare:decisions:v2": "node --import tsx src/prepare-decisions-v2.ts",
+    "evaluate:decisions:v3": "node --import tsx src/evaluate-decisions-v3.ts",
+    "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
