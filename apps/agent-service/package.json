@@ -25,7 +25,8 @@
     "evaluate:decisions:v2": "node --import tsx src/evaluate-decisions-v2.ts",
     "prepare:decisions:v2": "node --import tsx src/prepare-decisions-v2.ts",
     "evaluate:decisions:v3": "node --import tsx src/evaluate-decisions-v3.ts",
-    "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts"
+    "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts",
+    "paper:study": "node --import tsx src/paper-study/main.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",

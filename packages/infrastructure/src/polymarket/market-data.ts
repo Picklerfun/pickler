@@ -225,6 +225,7 @@ export class PolymarketData implements MarketData, PaperMarketData {
       throw new PilotError("INVALID_INPUT", "Invalid market or outcome");
     }
     const schema = wireMarket.extend({
+      conditionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
       feesEnabled: z.boolean(),
       feeSchedule: z
         .object({
@@ -253,7 +254,14 @@ export class PolymarketData implements MarketData, PaperMarketData {
       marketId,
       outcomeId,
       observedAt: new Date().toISOString(),
-      minimumNotional: String(row.orderMinSize),
+      // orderMinSize is a share quantity, not a currency amount.
+      minimumNotional: "0",
+      minimumShares: String(row.orderMinSize),
+      resolution: {
+        conditionId: row.conditionId.toLowerCase(),
+        outcomeIndex: market.outcomes.findIndex((outcome) => outcome.id === outcomeId),
+        outcomeCount: market.outcomes.length,
+      },
       tickSize: String(row.orderPriceMinTickSize),
       feeRate: row.feesEnabled ? String(row.feeSchedule!.rate) : "0",
       feeExponent: 1,

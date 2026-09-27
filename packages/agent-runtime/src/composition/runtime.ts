@@ -1,6 +1,7 @@
 import {
   createResearchRunner,
   createPaperService,
+  createPaperSettlementService,
   effectivePlugins,
   PilotError,
   type PluginId,
@@ -12,6 +13,7 @@ import {
   PostgresPaperStore,
   ExaResearch,
   PolymarketData,
+  PolymarketPaperResolution,
   BallDontLieSports,
   OddsApiSports,
   PostgresPublicDataCache,
@@ -48,7 +50,13 @@ export function createRuntime(
     env,
     repository,
     markets,
-    paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
+    paper: {
+      ...createPaperService(new PostgresPaperStore(repository.pool), markets),
+      ...createPaperSettlementService(
+        new PostgresPaperStore(repository.pool),
+        new PolymarketPaperResolution(),
+      ),
+    },
     execute: createResearchRunner({
       ...(options?.observer ? { observer: options.observer } : {}),
       repository,

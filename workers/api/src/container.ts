@@ -1,6 +1,7 @@
 import {
   createAgentQueries,
   createPaperService,
+  createPaperSettlementService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
@@ -18,6 +19,7 @@ import {
   PostgresResearchStore,
   PostgresPaperStore,
   PolymarketData,
+  PolymarketPaperResolution,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
   PostgresTradingStore,
@@ -116,7 +118,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       authenticate,
       directory,
       repository,
-      paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
+      paper: {
+        ...createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
+        ...createPaperSettlementService(
+          new PostgresPaperStore(repository.pool),
+          new PolymarketPaperResolution(),
+        ),
+      },
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");

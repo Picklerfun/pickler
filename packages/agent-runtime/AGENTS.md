@@ -42,3 +42,19 @@ core publishes the completed decision separately after persistence. Neither prov
 prompt versions change. The default and deployed composition remain uninstrumented. Local hosts
 may inject a private file capture; never import that filesystem implementation into this package
 or run paid observer calls inside the primary model/lease/budget path.
+
+## Paper resolution
+
+Runtime paper composition includes explicit settlement and summary operations using the same PostgreSQL pool and a read-only Polygon resolution adapter. Startup and research execution do not settle positions automatically or place real orders.
+
+## Paper study model
+
+`./composition/paper-study-model` exports the separate bounded local laboratory model adapter. Its versioned prompt lives in `src/prompts/paper-study-system.ts`. The base adapter uses one structured call for BTC and can produce a sports summary; the active Jev wrapper disables that redundant summary. Calls are byte/output bounded and guarded, with no retries or trading tools. Do not describe this protocol as the deployed production agent.
+
+Paper-study prompt 1.1.0 consumes `btc-opening` as the Polymarket-published threshold and keeps current Coinbase reference prices distinct from live Chainlink TWAP. Never assert an opening threshold is missing when validated evidence supplies it.
+
+`./composition/jev-study-model` is the active paper-study composition. Jev can resolve only clear
+material-insufficiency abstentions; a single blind DeepSeek fallback handles full forecasts. It
+skips the old sports summary, validates provider response/probabilities, persists started usage
+through the caller and makes no automatic retries. Prompt/routing version 1.0.0 is a new readiness
+task, distinct from laboratory claim-classification accuracy. No provider failures become abstentions.
