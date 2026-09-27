@@ -55,6 +55,7 @@ export interface StudyRouting {
   version: string;
   jev: {
     model: string;
+    validationStage?: "response" | "usage" | "reservation" | "answers" | "complete";
     status: "started" | "completed" | "failed";
     inputTokens: number | null;
     outputTokens: number | null;

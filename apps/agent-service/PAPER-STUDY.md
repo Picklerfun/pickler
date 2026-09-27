@@ -102,3 +102,13 @@ The new routing metadata deliberately rejects silently resuming an old model sna
 session must explicitly handle its study configuration and budget; this code change does not revive
 an expired study or turn earlier fixed-side virtual controls into Jev results. Hosted tenant research
 remains a separate protocol; this activation applies to the paper-study entry point in main.
+
+### Jev response accounting correction
+
+Routing adapter 1.0.1 accepts and preserves nonnegative output token counts. Jev output is free,
+not necessarily zero tokens ([API response contract](https://docs.typesafe.ai/api)). Input-only
+pricing remains unchanged. A valid pinned-model usage envelope is saved before answer validation;
+invalid answers stop the study but do not erase known consumption. Invalid usage remains unknown.
+`validationStage` stores only an allowlisted stage, never raw rejected responses or unknown fields.
+The first real 1.0.0 attempt stopped with JEV_INVALID_RESPONSE; its discarded response prevents
+attributing that historical rejection conclusively to this defect. Its reservation and STOP remain.
