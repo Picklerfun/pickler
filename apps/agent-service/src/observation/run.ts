@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { readdir } from "node:fs/promises";
+import { z } from "zod";
 import { makePlanV3, instructions } from "../evaluation/v3/provider";
 import { callV2, type Variant, type ResultV2 } from "../evaluation/v2/provider";
 import { applyPolicy, policy } from "../evaluation/v4/policy";
@@ -20,6 +21,9 @@ export async function runObservation(
   return withCampaign(directory, async (campaign) => {
     if (keys.MODEL_ID !== campaign.llmModel || keys.MODEL_BASE_URL !== campaign.llmBaseUrl) {
       throw new EvaluationFailure("OBSERVATION_PROVIDER_CONFIGURATION_CHANGED");
+    }
+    if (!keys.MODEL_API_KEY?.trim() || !keys.TYPESAFE_API_KEY?.trim()) {
+      throw new EvaluationFailure("API_KEY_MISSING");
     }
     const version = {
       context: "2.0.0",
@@ -155,6 +159,14 @@ export async function observationReport(
   campaign: Campaign,
 ) {
   const totals = await accounting(directory, campaign);
+  const requests = await readdir(resolve(directory, "requests"));
+  const started = await Promise.all(
+    requests.map(async (id) =>
+      z
+        .object({ caseId: z.string(), variant: z.string() })
+        .parse(await readOptional(resolve(directory, "requests", id, "started.json"))),
+    ),
+  );
   const rows = await Promise.all(
     cases.map(async (item) => {
       const row = (await readOptional(resolve(directory, "results", `${item.id}.json`))) as
@@ -167,6 +179,7 @@ export async function observationReport(
     totals.unknownCharges === 0 &&
     !(await readOptional(resolve(directory, "STOP.json")));
   const group = (selected: typeof rows) => {
+    const caseIds = new Set(selected.map((r) => r.item.id));
     const paired = selected.flatMap((r) => (r.row ? [r.row] : []));
     const controlUsd = paired.reduce((sum, r) => sum + r.control.cost, 0);
     const strategyUsd = paired.reduce((sum, r) => sum + r.strategyEstimatedUsd, 0);
@@ -177,7 +190,9 @@ export async function observationReport(
       controlClosures: paired.filter((r) => r.control.result.assessment.next === "FINALIZE").length,
       strategyClosures: paired.filter((r) => r.routed.assessment.next === "FINALIZE").length,
       unresolved: paired.filter((r) => r.routed.assessment.next !== "FINALIZE").length,
-      backupCalls: paired.filter((r) => r.backup).length,
+      backupCalls: started.filter(
+        (request) => request.variant === "llm-backup" && caseIds.has(request.caseId),
+      ).length,
       pairedControlEstimatedUsd: controlUsd,
       pairedStrategyEstimatedUsd: strategyUsd,
       estimatedSavingsPercent:
@@ -189,7 +204,6 @@ export async function observationReport(
       correctClosures: null,
     };
   };
-  const requests = await readdir(resolve(directory, "requests"));
   const failures = (
     await Promise.all(
       requests.map((id) => readOptional(resolve(directory, "requests", id, "failed.json"))),

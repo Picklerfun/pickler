@@ -108,7 +108,9 @@ npm run observe:decisions -- run --directory .data/decision-observations \
 ```
 
 Only `run` loads `.env`. It needs `TYPESAFE_API_KEY` and `MODEL_API_KEY`; configured `MODEL_ID`
-and `MODEL_BASE_URL` must exactly match the immutable campaign. No keys are persisted in requests.
+and `MODEL_BASE_URL` must exactly match the immutable campaign. Both provider keys are checked
+before creating cases or making any request. Missing/blank keys leave the campaign unstarted so
+configuration can be corrected without a paid retry. No keys are persisted in requests.
 Each claim makes one control classification with the current model and one Jev classification.
 The Jev answer is reused by v4 policy. At most one blind DeepSeek backup is made, conditionally,
 with the same evidence and claim but without the primary decision, control result, Jev response
@@ -132,7 +134,9 @@ npm run observe:decisions -- report --directory .data/decision-observations \
 
 Reports preserve per-case answers, chosen original fragments, versions, per-event paired agreement,
 closures/unresolved cases, failures, backup calls, latency and estimated costs. Experimental spend
-includes control + Jev + actual backup. Strategy cost includes Jev + backup only. Primary research
+includes control + Jev + actual backup. Backup-call counts use started request records, including
+failed/interrupted attempts, scoped to the selected cases and events; paired metrics still require
+completed comparisons. Strategy cost includes Jev + backup only. Primary research
 cost and extra research cost remain unmeasured, never zero. Pending/incomplete comparisons suppress
 savings claims. Agreement is not correctness: accuracy, correct/premature closure counts and the
 original acceptance gate remain unscored until independently reviewed references exist.

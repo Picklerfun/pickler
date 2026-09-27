@@ -312,6 +312,9 @@ test("invalid backup citation stops without retry and retains unknown charge res
   assert.equal(bodies.length, 3);
   const report = await observationReport(directory, cases, campaign);
   assert.equal(report.complete, false);
+  assert.equal(report.overall.backupCalls, 1);
+  assert.equal(report.events["game-one"]!.backupCalls, 1);
+  assert.equal(report.overall.completePairs, 0);
   assert.equal(report.overall.estimatedSavingsPercent, null);
   assert.equal(report.experimentalEstimatedUsd, null);
 });
@@ -414,4 +417,72 @@ test("runtime captures retain all sources beyond the old ten-document laboratory
   });
   assert.equal(cases[0]!.state.documents.length, 13);
   assert.equal(cases[0]!.state.fragments.length, 13);
+});
+
+test("missing or blank provider keys fail before creating cases or spending", async (t) => {
+  for (const key of ["MODEL_API_KEY", "TYPESAFE_API_KEY"] as const) {
+    for (const value of [undefined, "", "   "]) {
+      const directory = await setup(t);
+      const { cases } = fixture();
+      let calls = 0;
+      await assert.rejects(
+        runObservation(
+          directory,
+          cases,
+          { ...keys, [key]: value },
+          new AbortController().signal,
+          async () => {
+            calls++;
+            throw new Error("Unexpected provider call");
+          },
+        ),
+        /API_KEY_MISSING/,
+      );
+      assert.equal(calls, 0);
+      assert.deepEqual(await readdir(resolve(directory, "requests")), []);
+      assert.deepEqual((await readdir(directory)).sort(), ["campaign.json", "requests"]);
+      const bodies: string[] = [];
+      const result = await runObservation(
+        directory,
+        cases,
+        keys,
+        new AbortController().signal,
+        transport(
+          {
+            evidence: "INSUFFICIENT",
+            next: "ABSTAIN",
+            scope: "MATCH",
+            conflict: "NONE",
+            fragmentId: "NONE",
+          },
+          bodies,
+        ),
+      );
+      assert.equal(result.stopCode, null);
+      assert.equal(bodies.length, 2);
+    }
+  }
+});
+
+test("reports count interrupted backups by selected case and event without completed pairs", async (t) => {
+  const directory = await setup(t);
+  const { cases } = fixture();
+  const { writeImmutable } = await import("../src/observation/capture");
+  for (const caseId of [cases[0]!.id, "unselected-case"]) {
+    await writeImmutable(resolve(directory, "requests", fingerprint(caseId), "started.json"), {
+      caseId,
+      variant: "llm-backup",
+      reservedUsd: 0.01,
+    });
+  }
+  const other = { ...cases[0]!, id: "other-case", eventId: "other-event" };
+  const report = await observationReport(directory, [...cases, other], campaign);
+  assert.equal(report.accounting.calls, 2);
+  assert.equal(report.accounting.unknownCharges, 2);
+  assert.equal(report.overall.backupCalls, 1);
+  assert.equal(report.events["game-one"]!.backupCalls, 1);
+  assert.equal(report.events["other-event"]!.backupCalls, 0);
+  assert.equal(report.overall.completePairs, 0);
+  assert.equal(report.complete, false);
+  assert.equal(report.overall.estimatedSavingsPercent, null);
 });
