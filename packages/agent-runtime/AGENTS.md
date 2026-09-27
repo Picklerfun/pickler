@@ -33,3 +33,7 @@ operator connection. Admission controls remain independent of transport.
 `createRuntime` accepts optional trusted database connection options from its host. The research
 Worker supplies Hyperdrive options and its binding URL; local Node callers retain direct/session
 connections. Never derive the transport choice from model input or public agent configuration.
+
+## Paper resolution
+
+Runtime paper composition includes explicit settlement and summary operations using the same PostgreSQL pool and a read-only Polygon resolution adapter. Startup and research execution do not settle positions automatically or place real orders.
