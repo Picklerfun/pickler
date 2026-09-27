@@ -115,3 +115,5 @@ calls. Keep historical cases/configuration readable without rewriting their rese
 
 Study routing records may carry an allowlisted Jev validation stage. Token counts and prices are
 distinct: free output can have nonzero tokens, and known usage survives rejected answers.
+
+Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.

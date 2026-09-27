@@ -2,6 +2,7 @@ import { z } from "zod";
 import { modelAssessmentSchema } from "@pickler/api-schema";
 import { PilotError, type StudyUsage, type StudyRouting } from "@pickler/core";
 import { definePrompt } from "../prompts/define-prompt.js";
+import { answerDiagnostics } from "./jev-answer-diagnostics.js";
 import { createStudyModel } from "./paper-study-model.js";
 
 export const jevStudyPrompt = definePrompt({
@@ -17,7 +18,7 @@ const MAX_BYTES = 30_000;
 const THRESHOLD = 0.98;
 export const jevStudyRouting = {
   mode: "jev-first",
-  version: "1.0.1",
+  version: "1.0.2",
   model: MODEL,
   promptHash: jevStudyPrompt.sha256,
   abstentionConfidence: THRESHOLD,
@@ -186,6 +187,7 @@ export function createJevStudyModel(
         routing.jev.validationStage = "answers";
         const result = responseSchema.safeParse(raw);
         if (!result.success) {
+          routing.jev.answerDiagnostics = answerDiagnostics(raw, result.error.issues);
           throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev answers");
         }
         routing.jev = {

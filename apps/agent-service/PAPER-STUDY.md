@@ -112,3 +112,5 @@ invalid answers stop the study but do not erase known consumption. Invalid usage
 `validationStage` stores only an allowlisted stage, never raw rejected responses or unknown fields.
 The first real 1.0.0 attempt stopped with JEV_INVALID_RESPONSE; its discarded response prevents
 attributing that historical rejection conclusively to this defect. Its reservation and STOP remain.
+
+Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.

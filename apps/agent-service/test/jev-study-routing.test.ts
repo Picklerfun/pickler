@@ -280,3 +280,61 @@ test("invalid token counts remain unknown and report the usage validation stage"
     assert.equal(f.counts().fallbackCalls, 0);
   }
 });
+
+test("answer diagnostics identify rejected fields without leaking unknown keys or values", async () => {
+  const raw = response();
+  Object.assign(raw.answers.readiness!, {
+    confidence: "private-value",
+    secretField: "private-value",
+    probabilities: { secretProbability: 1 },
+  });
+  const f = fixture(raw);
+  await assert.rejects(f.model.forecast(item, evidence, new AbortController().signal, f.report));
+  const diagnostics = f.records.at(-1)!.routing!.jev.answerDiagnostics!;
+  assert.equal(diagnostics.questions.readiness.fields.confidence, "string");
+  assert.equal(diagnostics.questions.readiness.unknownFieldCount, 1);
+  assert.equal(diagnostics.questions.readiness.unknownProbabilityKeyCount, 1);
+  assert.ok(
+    diagnostics.issues.some(
+      (issue) =>
+        issue.question === "readiness" &&
+        issue.field === "confidence" &&
+        issue.code === "invalid_type",
+    ),
+  );
+  for (const secret of ["private-value", "secretField", "secretProbability"]) {
+    assert.equal(JSON.stringify(f.records).includes(secret), false);
+  }
+  assert.deepEqual(f.counts(), { calls: 1, fallbackCalls: 0 });
+});
+
+test("answer diagnostics preserve strict probability checks and cap issue details", async () => {
+  const raw = response();
+  raw.answers.readiness!.probabilities = { READY: 0.9, INSUFFICIENT: 0.1, UNKNOWN: 0 };
+  const f = fixture(raw);
+  await assert.rejects(f.model.forecast(item, evidence, new AbortController().signal, f.report));
+  assert.ok(
+    f.records
+      .at(-1)!
+      .routing!.jev.answerDiagnostics!.issues.some((issue) => issue.code === "custom"),
+  );
+  const invalid = response();
+  for (const answer of Object.values(invalid.answers)) {
+    Object.assign(answer, {
+      type: null,
+      choice: null,
+      confidence: null,
+      probabilities: Object.fromEntries(
+        Object.keys(answer.probabilities).map((key) => [key, null]),
+      ),
+    });
+  }
+  const many = fixture(invalid);
+  await assert.rejects(
+    many.model.forecast(item, evidence, new AbortController().signal, many.report),
+  );
+  const diagnostics = many.records.at(-1)!.routing!.jev.answerDiagnostics!;
+  assert.equal(diagnostics.issues.length, 16);
+  assert.equal(diagnostics.issuesTruncated, true);
+  assert.ok(diagnostics.issueCount > 16);
+});

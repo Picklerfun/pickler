@@ -51,11 +51,45 @@ export interface StudyEvidence {
   books: OrderBook[];
   limitations: string[];
 }
+type DiagnosticShape =
+  "missing" | "null" | "array" | "object" | "string" | "number" | "boolean" | "other";
+type DiagnosticQuestion = "readiness" | "gap" | "scope";
+type DiagnosticField = "type" | "choice" | "confidence" | "probabilities";
 export interface StudyRouting {
   version: string;
   jev: {
     model: string;
     validationStage?: "response" | "usage" | "reservation" | "answers" | "complete";
+    answerDiagnostics?: {
+      version: 1;
+      answersShape: DiagnosticShape;
+      unknownQuestionCount: number;
+      issueCount: number;
+      issuesTruncated: boolean;
+      issues: Array<{
+        question: DiagnosticQuestion | "unknown";
+        field: DiagnosticField | "object" | "unknown";
+        code:
+          | "invalid_type"
+          | "invalid_value"
+          | "unrecognized_keys"
+          | "too_small"
+          | "too_big"
+          | "custom"
+          | "invalid_key"
+          | "other";
+      }>;
+      questions: Record<
+        DiagnosticQuestion,
+        {
+          shape: DiagnosticShape;
+          fields: Record<DiagnosticField, DiagnosticShape>;
+          unknownFieldCount: number;
+          probabilityKeyCount: number;
+          unknownProbabilityKeyCount: number;
+        }
+      >;
+    };
     status: "started" | "completed" | "failed";
     inputTokens: number | null;
     outputTokens: number | null;
