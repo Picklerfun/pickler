@@ -204,3 +204,53 @@ test("depth and minimum are respected", () => {
   f.input.books[0]!.asks = [{ price: "0.4", size: "1" }];
   assert.equal(quantProposal(f.input, quantForecast(f.input, f.now), f.now).proposal, null);
 });
+
+test("sixty complete returns and fresh closed candles are mandatory", () => {
+  const missing = fixture();
+  missing.input.candles.shift();
+  assert.throws(() => quantForecast(missing.input, missing.now), /QUANT_CANDLE_GAP/);
+
+  const stale = fixture();
+  stale.input.candles.forEach((c) => (c.time -= 120000));
+  assert.throws(() => quantForecast(stale.input, stale.now), /QUANT_CANDLE_GAP/);
+
+  const future = fixture();
+  future.input.candles.forEach((c) => (c.time += 60000));
+  assert.throws(() => quantForecast(future.input, future.now), /QUANT_CANDLE_GAP/);
+});
+
+test("higher fee rates cannot increase the approved tick-aligned price limit", () => {
+  const f = fixture();
+  const forecast = quantForecast(f.input, f.now);
+  const first = quantProposal(f.input, forecast, f.now).proposal!;
+  f.input.conditions.forEach((c) => (c.feeRate = "0.5"));
+  const second = quantProposal(f.input, forecast, f.now).proposal!;
+  assert.ok(Number(second.limitPrice) < Number(first.limitPrice));
+  assert.ok(second.conservativeEdge > 0.03);
+  assert.ok(
+    Math.abs(Number(second.limitPrice) * 100 - Math.round(Number(second.limitPrice) * 100)) < 1e-8,
+  );
+});
+
+test("paused paid admissions, closed windows and exhausted horizons do not start cases", async () => {
+  for (const mutate of [
+    (f: ReturnType<typeof fixture>) => {
+      f.state.paidStopped = true;
+    },
+    (f: ReturnType<typeof fixture>) => {
+      f.state.deadline = f.now;
+    },
+    (f: ReturnType<typeof fixture>) => {
+      f.input.item.windowEnd = f.now + 89999;
+    },
+    (f: ReturnType<typeof fixture>) => {
+      f.input.item.windowStart = f.now - 59999;
+    },
+  ]) {
+    const f = fixture();
+    mutate(f);
+    await runQuantCase(f.state, f.input.item, f.ports);
+    assert.equal(f.state.cases.length, 0);
+    assert.equal(f.reviews(), 0);
+  }
+});
