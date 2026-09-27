@@ -74,3 +74,13 @@ test("reject stale or future observations, invalid ticks, mismatched outcomes an
     simulatePaperBuy(market, book, { ...conditions, feeRate: "NaN" }, "0.45", now),
   );
 });
+
+test("share minimum is independent of the currency notional", () => {
+  assert.equal(
+    simulatePaperBuy(market, book, { ...conditions, minimumShares: "100" }, "0.45", now).reason,
+    "BELOW_MINIMUM_ORDER",
+  );
+  assert.ok(
+    simulatePaperBuy(market, book, { ...conditions, minimumShares: "5" }, "0.45", now).fill,
+  );
+});
