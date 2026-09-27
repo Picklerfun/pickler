@@ -130,6 +130,47 @@ export class PolymarketStudyData {
       },
     ];
     if (item.kind !== "sports") {
+      await this.guard(item.kind, "polymarket");
+      const parameters = new URLSearchParams({
+        symbol: "BTC",
+        eventStartTime: new Date(item.windowStart!).toISOString(),
+        variant: item.kind === "btc-5m" ? "fiveminute" : "fifteen",
+        endDate: new Date(item.windowEnd).toISOString(),
+        twapEnabled: "true",
+        twapLookbackSeconds: "60",
+      });
+      const openingUrl = `https://polymarket.com/api/crypto/crypto-price?${parameters}`;
+      const result = z
+        .object({ openPrice: z.number().positive(), timestamp: z.number().int().positive() })
+        .safeParse(await providerJson(openingUrl, {}, signal, this.request.bind(this)));
+      if (
+        !result.success ||
+        result.data.timestamp < item.windowStart! ||
+        result.data.timestamp > this.now() + 5000
+      ) {
+        throw new PilotError(
+          "STUDY_OPENING_UNAVAILABLE",
+          "Current-window TWAP opening reference missing or invalid",
+        );
+      }
+      const opening = { price: result.data.openPrice, updatedAt: result.data.timestamp };
+      sources.push({
+        id: "btc-opening",
+        title: "Polymarket-published Chainlink 60s TWAP opening reference",
+        url: openingUrl,
+        provider: "polymarket",
+        pluginVersion: "1.1.0",
+        retrievedAt: new Date(this.now()).toISOString(),
+        publishedAt: new Date(opening.updatedAt).toISOString(),
+        truncated: false,
+        content: JSON.stringify({
+          windowStart: item.windowStart,
+          windowEnd: item.windowEnd,
+          openPrice: opening.price,
+          provenance:
+            "Polymarket public crypto-price endpoint with twapEnabled=true and twapLookbackSeconds=60; not independently verified against a signed Chainlink report",
+        }),
+      });
       await this.guard(item.kind, "coinbase");
       const start = new Date(now - 3600000).toISOString();
       const end = new Date(now).toISOString();
@@ -185,7 +226,7 @@ export class PolymarketStudyData {
         }),
       });
       limitations.push(
-        "Coinbase prices are a reference, not the market's Chainlink resolution feed. Exact Chainlink opening price is unavailable; do not treat a Coinbase candle as the official price to beat.",
+        "Coinbase prices are a reference, not the market's Chainlink resolution feed. The separately cited Polymarket page supplies the opening threshold; the current Chainlink TWAP is still unavailable. Allow for differences between spot and TWAP and do not treat Coinbase as the resolution feed.",
       );
     } else {
       const search = new ExaResearch(this.exaKey, async (input, init) => {
