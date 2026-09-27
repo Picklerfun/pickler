@@ -174,6 +174,11 @@ OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --w
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
 
+Worker branch previews use the explicit `previews` block in `wrangler.jsonc`. They retain the
+production Next.js runtime mode but deliberately have no service bindings, including API and
+self-reference. They validate the web build and presentation only; backend routes and features
+requiring those bindings are unavailable. A successful preview is not full-stack acceptance.
+
 ## Studio console integration
 
 The private console uses the Studio shell and sections under `features/console/sections`.

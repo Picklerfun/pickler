@@ -263,3 +263,9 @@ Cloudflare's npm shim. Production already had the web-only command. The Previews
 and the existing `codex/jev-deepseek-evaluation` preview were corrected separately: existing
 previews retain their own build settings after the base changes, including on new pushes.
 Check the specific preview's settings and verify the commands on the newly triggered build.
+
+The web configuration includes the required `previews` block with `NEXTJS_ENV=production`
+for the compiled Next.js runtime and an empty service-binding list. Branch previews are
+presentation-only: they do not connect to the staging API or the main web Worker's self-reference.
+Backend-dependent routes remain unavailable, and a successful preview does not verify research,
+authentication or trading end to end. See the [Cloudflare preview configuration documentation](https://developers.cloudflare.com/workers/previews/configuration/).

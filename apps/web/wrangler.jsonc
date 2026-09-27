@@ -13,4 +13,9 @@
   ],
   "observability": { "enabled": true },
   "vars": { "NEXTJS_ENV": "production" },
+  "previews": {
+    "vars": { "NEXTJS_ENV": "production" },
+    // Branch previews are presentation-only; do not inherit live backend access.
+    "services": [],
+  },
 }
