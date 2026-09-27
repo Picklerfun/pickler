@@ -37,3 +37,7 @@ connections. Never derive the transport choice from model input or public agent 
 ## Paper resolution
 
 Runtime paper composition includes explicit settlement and summary operations using the same PostgreSQL pool and a read-only Polygon resolution adapter. Startup and research execution do not settle positions automatically or place real orders.
+
+## Paper study model
+
+`./composition/paper-study-model` exports the separate bounded local laboratory model adapter. Its versioned prompt lives in `src/prompts/paper-study-system.ts`. BTC uses one structured call; sports uses research plus final decision. Calls are byte/output bounded and guarded, with no retries or trading tools. Do not describe this protocol as the deployed production agent.
