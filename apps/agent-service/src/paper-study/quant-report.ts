@@ -82,7 +82,8 @@ export async function saveQuant(directory: string, state: QuantState) {
   );
   const summaries = ["btc-5m", "btc-15m"].map((kind) => {
     const group = rows.filter((r) => r.kind === kind),
-      scored = group.filter((r) => r.brier !== null);
+      scored = group.filter((r) => r.brier !== null),
+      comparable = scored.filter((r) => r.brierBook !== null);
     const mean = (key: "brier" | "brier50" | "brierBook") => {
       const v = scored.map((r) => r[key]).filter((x): x is number => x !== null);
       return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
@@ -95,6 +96,10 @@ export async function saveQuant(directory: string, state: QuantState) {
       brier: mean("brier"),
       brier50: mean("brier50"),
       brierBook: mean("brierBook"),
+      bookComparisonCount: comparable.length,
+      modelBrierOnBookSubset: comparable.length
+        ? comparable.reduce((sum, r) => sum + r.brier!, 0) / comparable.length
+        : null,
     };
   });
   await atomicWrite(
