@@ -85,3 +85,87 @@ test("failed inputs without forecast render safely and HTML escapes external tex
     await rm(dir, { recursive: true });
   }
 });
+
+test("saved-book costs explain abstention without creating a fill", async () => {
+  const s = state();
+  s.cases[0]!.input = {
+    item: {
+      kind: "btc-5m",
+      slug: "fixture",
+      windowStart: 0,
+      windowEnd: 300000,
+      market: {
+        id: "1",
+        question: "fixture",
+        rules: "fixture",
+        active: true,
+        categoryIds: [],
+        liquidity: 100,
+        closesAt: new Date(300000).toISOString(),
+        outcomes: [
+          { id: "up", label: "Up" },
+          { id: "down", label: "Down" },
+        ],
+      },
+    },
+    rule: { version: 1, lookbackSeconds: 60, provenance: "fixture", tie: "up" },
+    opening: { price: 100, observedAt: 0, url: "fixture" },
+    ticker: { price: 101, bid: 100.99, ask: 101.01, observedAt: 0, url: "fixture" },
+    candles: [],
+    books: ["up", "down"].map((outcomeId) => ({
+      outcomeId,
+      observedAt: new Date(0).toISOString(),
+      asks: [{ price: "0.4", size: "100" }],
+      bids: [{ price: "0.39", size: "100" }],
+    })),
+    conditions: ["up", "down"].map((outcomeId) => ({
+      marketId: "1",
+      outcomeId,
+      observedAt: new Date(0).toISOString(),
+      minimumNotional: "1",
+      minimumShares: "1",
+      tickSize: "0.01",
+      feeRate: "0.07",
+      feeExponent: 1,
+      provenance: "fixture",
+    })),
+    observedAt: 0,
+  };
+  const before = structuredClone(s);
+  const row = quantRows(s)[0]!;
+  assert.ok(row.quotedEffectiveCostUp! > 0.4);
+  assert.ok(row.quotedConservativeEdgeUp! > 0.17 && row.quotedConservativeEdgeUp! < 0.19);
+  assert.equal(row.cost, null);
+  assert.equal(row.pnl, null);
+  assert.deepEqual(s, before);
+
+  s.cases[0]!.resolution = {
+    marketId: "1",
+    outcomeId: "up",
+    conditionId: "fixture",
+    outcomeIndex: 0,
+    numerator: "1",
+    denominator: "1",
+    observedAt: new Date(0).toISOString(),
+    chainId: 137,
+    contract: "fixture",
+    blockNumber: "1",
+    blockHash: "fixture",
+  };
+  const other = structuredClone(s.cases[0]!);
+  other.id = "other";
+  delete other.input;
+  other.forecast!.probabilities[0]!.estimate = 0.2;
+  s.cases.push(other);
+  const dir = await mkdtemp(join(tmpdir(), "quant-coverage-"));
+  try {
+    await saveQuant(dir, s);
+    const summary = JSON.parse(await readFile(join(dir, "summary.json"), "utf8")).summaries[0];
+    assert.equal(summary.resolved, 2);
+    assert.equal(summary.bookComparisonCount, 1);
+    assert.ok(Math.abs(summary.modelBrierOnBookSubset - 0.09) < 1e-10);
+    assert.ok(Math.abs(summary.brier - 0.365) < 1e-10);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
