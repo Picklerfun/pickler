@@ -67,6 +67,10 @@
     "./composition/jev-study-model": {
       "types": "./src/composition/jev-study-model.ts",
       "import": "./dist/composition/jev-study-model.js"
+    },
+    "./composition/quant-review": {
+      "types": "./src/composition/quant-review.ts",
+      "import": "./dist/composition/quant-review.js"
     }
   },
   "scripts": {
