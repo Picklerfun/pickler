@@ -11,6 +11,8 @@ export function quantRows(state: QuantState) {
     const y = binary ? (settled!.numerator === settled!.denominator ? 1 : 0) : null;
     const input = c.input;
     const upBook = input?.books.find((b) => b.outcomeId === p?.outcomeId);
+    const downId = f?.probabilities.find((p) => p.label === "Down")?.outcomeId;
+    const downBook = input?.books.find((b) => b.outcomeId === downId);
     const bid = Number(upBook?.bids[0]?.price),
       ask = Number(upBook?.asks[0]?.price);
     const reference = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : null;
@@ -27,9 +29,18 @@ export function quantRows(state: QuantState) {
       spot: input?.ticker.price ?? null,
       seconds: f?.horizonSeconds ?? null,
       tickerAgeSeconds: input && f ? (f.observedAt - input.ticker.observedAt) / 1000 : null,
+      upBid: upBook?.bids[0]?.price ?? null,
+      upAsk: upBook?.asks[0]?.price ?? null,
+      downBid: downBook?.bids[0]?.price ?? null,
+      downAsk: downBook?.asks[0]?.price ?? null,
+      lowerDown: p ? 1 - p.upper : null,
+      upperDown: p ? 1 - p.lower : null,
+      proposedOutcome: c.proposal?.outcomeId ?? null,
+      limitPrice: c.proposal?.limitPrice ?? null,
       edge: c.proposal?.conservativeEdge ?? null,
       jev: c.review?.status ?? "not_called",
       veto: c.review?.veto ?? null,
+      jevDurationMs: c.review?.durationMs ?? null,
       quantity: c.fill?.quantity ?? null,
       averagePrice: c.fill?.averagePrice ?? null,
       fees: c.fill?.fees ?? null,
