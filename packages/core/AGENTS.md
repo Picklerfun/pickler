@@ -46,7 +46,7 @@ NFL research adds provider-neutral `SportsData`, versioned plugin permissions an
 
 `researchReferences` produces citable market, quote and plugin-availability context, distinct from external `Source` evidence. `validateReport` accepts these only in their declared sections; context cannot substantiate injuries or sporting advantage. The runner persists these references and retains the original provider events. Top-level decision source IDs still require retrieved sources. Keep historical reports readable without requiring a context-reference backfill.
 
-`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization remains NFL-only.
+`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization supports reviewed NFL/soccer full-game winners through `features/paper/sports.ts`; general reports do not authorize arbitrary market types.
 
 Product API-key authorization is deny-by-default for every key kind. `read:agents` grants read-only
 product agent access; legacy broad labels grant no implied permissions. Budget reservations record
@@ -87,3 +87,7 @@ today, so it lives in the web feature that draws it against the mirrored limits 
 ## Cloudflare trading pilot
 
 Trading uses operator-enabled immutable accounts and provider-neutral NFL/soccer winner eligibility. The sign port accepts a final ownership guard. Automatic attempts are durably admitted once; confirmed autonomous purchases close the pilot. See ../../docs/polymarket-worker-pilot.md.
+
+## Paper resolution
+
+Paper settlement lives in `features/paper/settlement.ts`; it applies finalized payout fractions to immutable fills, calculates virtual P&L with integer arithmetic and never signs or sends orders. `features/paper/sports.ts` restricts new scoped buys to reviewed NFL/soccer game winners. Settlement is explicit, idempotent and permission-checked; open costs are not realized losses.
