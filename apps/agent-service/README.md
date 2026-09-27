@@ -7,6 +7,10 @@ Local Mastra Studio and a tenant-scoped HTTP API for research-only decisions. Po
 For isolated Jev/model comparisons on frozen synthetic evidence, see
 [the decision evaluation laboratory](DECISION-EVALUATION.md). Its default command is offline.
 
+For opt-in capture from completed local research and separate Jev/DeepSeek observation, see
+[decision observation](DECISION-OBSERVATION.md). Capture makes no additional provider calls and
+does not change the primary decision. Paid replay requires its own explicit admission.
+
 Use Node **22.22+** (Node 24 also works) and npm 10.9.3. From the repository root:
 
 ```sh

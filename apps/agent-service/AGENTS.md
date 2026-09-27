@@ -133,3 +133,19 @@ existing evidence checks. Coherent uncertainty skips backup. One synthetic diagn
 allowlisted metadata distinguishes failure stages; never persist raw diagnostic output. V4 reads
 both v2 and v3 ledgers under their shared lock before admission. All revisions share the original
 176-call/USD 0.50 ceilings and historical reservations. Any v4 failure stops further v4 calls.
+
+## Runtime decision observation
+
+`src/observation` and `observe:decisions` implement the separate opt-in local observation flow;
+read [DECISION-OBSERVATION.md](DECISION-OBSERVATION.md). `createContainer` injects a file observer
+only for explicit capture mode with a tenant/agent allowlist. It writes after the primary decision
+is persisted and never calls providers, changes outcomes or grants trading access. Default is off.
+Hosted Workers do not inject this observer. Keep exact original evidence hashes and unknown scope.
+
+Paid observation is an explicit offline consumer of real runtime captures, with pinned campaign
+configuration, carried-forward accounting, one control call, one Jev call and at most one blind
+backup. It uses v3 questions/v4 policy without changing historical evaluator files. Persist started
+calls before transport; unknown usage retains reservations and stops further work. Never auto-remove
+STOP/LOCK, retry a started case, or initialize new ledgers to reset existing authorizations. Local
+capture and paid replay are distinct modes, not autonomous production routing. No reference labels
+are sent to providers and no accuracy/acceptance claim is made from paired agreement alone.
