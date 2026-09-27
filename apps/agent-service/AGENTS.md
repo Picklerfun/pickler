@@ -162,3 +162,5 @@ Read [PAPER-STUDY.md](PAPER-STUDY.md) before changing `src/paper-study`. `paper:
 both credentials. Require verified `jevInputPerMillion`; no hidden activation flag. Preserve separate
 Jev/DeepSeek usage, stop after unknown routed charges and retain all old study snapshots. See
 PAPER-STUDY.md for the readiness gate, full-forecast fallback and historical resume boundary.
+
+Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
