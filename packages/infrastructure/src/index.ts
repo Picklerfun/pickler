@@ -78,3 +78,5 @@ export {
 } from "./polymarket/trading.js";
 
 export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
+
+export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
