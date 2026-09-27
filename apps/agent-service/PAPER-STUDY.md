@@ -44,7 +44,7 @@ Resolution checks continue for the configured grace period after admissions stop
 ## Data quality and limits
 
 - BTC requires the exact current interval slug, two Up/Down outcomes, a matching end time, reviewed Chainlink/tie language, and at least 90 seconds remaining before admission and fill.
-- Coinbase is **not** the official Chainlink opening price. The exact price to beat is unavailable in this initial adapter; that limitation is passed to the model. Missing edge can correctly produce abstention. No buy is forced to populate the table.
+- Coinbase is **not** the official Chainlink opening price. The Polymarket page now supplies the exact-window opening TWAP reference. The live Chainlink TWAP remains unavailable; that limitation is passed to the model. Missing edge can correctly produce abstention. No buy is forced to populate the table.
 - Sports requires verified soccer/NFL full-game winner metadata, a start at least 15 minutes away and within seven days. External sports APIs are not silently invoked.
 - Books and fees must be available and fresh. The shared simulator supports its existing fee curve only; unsupported or missing conditions fail explicitly.
 - Virtual fills assume the observed displayed liquidity could be consumed, without competing orders or network latency. This is a simulation limitation.
@@ -60,3 +60,7 @@ The controlled repository suite passed 337 tests with zero failures and one exis
 The public discovery preflight did **not** pass. Direct Node requests to both Gamma and CLOB ended in `ECONNRESET` before receiving HTTP responses in this environment. The study adapter now distinguishes transport failure as `PROVIDER_CONNECTION_FAILED`. No live study or profitable strategy is claimed. Resolve public connectivity and explicitly approve session duration/provider spending before starting the real-data session.
 
 References: [Coinbase candles](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-candles), [Polymarket market data](https://docs.polymarket.com/market-data/overview), and [conditional-token contracts](https://docs.polymarket.com/resources/contracts). A five-minute market can take longer than five minutes to finalize on-chain.
+
+### Opening-reference correction
+
+Prompt 1.1.0 accepts the `btc-opening` citation rather than asserting that the threshold is always missing. The Polymarket plugin calls the public crypto-price endpoint with explicit BTC/window/variant/60-second-TWAP parameters from Polymarket’s client and rejects absent or invalid opening values/timestamps before a model call. This frontend endpoint can change; fail closed on response changes. It is Polymarket-published evidence, not an independently verified signed Chainlink report. Coinbase remains reference-only. The live September 27 study preserves its previous prompt snapshots and API reservations during explicit operator validation; it is not automatically restarted.
