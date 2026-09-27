@@ -164,3 +164,7 @@ Jev/DeepSeek usage, stop after unknown routed charges and retain all old study s
 PAPER-STUDY.md for the readiness gate, full-forecast fallback and historical resume boundary.
 
 Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
+
+## Quantitative BTC paper pilot
+
+`paper:quant` implements the separate version-2 local BTC quantitative laboratory. Read QUANT-PAPER.md. It has explicit preflight/history/run/settle/report commands, a shared campaign lock and carried-forward $5 accounting. New paid reservations are capped at $0.10. Settle cannot discover, forecast or purchase. Preserve historical STOP files and snapshots; do not describe Coinbase proxy history as official Polymarket performance.
