@@ -259,6 +259,7 @@ secrets, bindings and access policies. Do not use the root `npm run build` for t
 pipeline: it also builds the local Mastra host, which is not deployed by this integration.
 
 The PR #45 preview failed during Mastra workspace packaging with `HOME: unbound variable` in
-Cloudflare's npm shim. Production already had the web-only command; preview settings were
-corrected separately. Retrying an old build can retain its original command snapshot; verify the
-commands on the newly triggered build rather than assuming a retry uses updated settings.
+Cloudflare's npm shim. Production already had the web-only command. The Previews Base settings
+and the existing `codex/jev-deepseek-evaluation` preview were corrected separately: existing
+previews retain their own build settings after the base changes, including on new pushes.
+Check the specific preview's settings and verify the commands on the newly triggered build.
