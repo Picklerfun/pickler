@@ -52,6 +52,7 @@ export interface StudyUsage {
   exaReportedUsd: number | null;
 }
 export interface StudyCase {
+  modelSnapshot?: StudyState["model"];
   id: string;
   kind: StudyKind;
   marketId: string;
@@ -202,6 +203,7 @@ export async function runStudyCase(
   await ports.guard(item.kind, "polymarket");
   await ports.guard(item.kind, item.kind === "sports" ? "exa" : "coinbase");
   const row: StudyCase = {
+    modelSnapshot: structuredClone(state.model),
     id: `${state.config.id}:${item.market.id}`,
     kind: item.kind,
     marketId: item.market.id,
