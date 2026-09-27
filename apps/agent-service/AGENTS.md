@@ -71,3 +71,7 @@ The explicit `polymarket:preproduction` agent-service command only probes fixed 
 routes. It loads no environment file, credentials, signer or database. The official environment
 inherits chain 137; never equate its availability with Amoy or dummy-fund order acceptance.
 See apps/agent-service/POLYMARKET-PREPRODUCTION.md from the repository root.
+
+## Paper resolution
+
+Paper CLI adds `paper-settle alpha|beta RUN_ID` and `paper-summary alpha|beta`. Settlement is explicit, reads finalized public contract state and persists only virtual results. No wallet or real trading key is needed. See PAPER-TRADING.md for historical compatibility and current sports-only scope.
