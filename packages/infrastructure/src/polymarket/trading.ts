@@ -174,7 +174,11 @@ export class PolymarketTrading implements TradingProvider {
         break;
       }
     }
-    if (remaining > 0.00001 || !shares || shares < Number(conditions.minimumNotional)) {
+    if (
+      remaining > 0.00001 ||
+      !shares ||
+      shares < Number(conditions.minimumShares ?? conditions.minimumNotional)
+    ) {
       throw new PilotError("TRADING_DEPTH", "Insufficient full-fill depth at the price limit");
     }
     return {

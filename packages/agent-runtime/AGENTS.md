@@ -42,3 +42,13 @@ core publishes the completed decision separately after persistence. Neither prov
 prompt versions change. The default and deployed composition remain uninstrumented. Local hosts
 may inject a private file capture; never import that filesystem implementation into this package
 or run paid observer calls inside the primary model/lease/budget path.
+
+## Paper resolution
+
+Runtime paper composition includes explicit settlement and summary operations using the same PostgreSQL pool and a read-only Polygon resolution adapter. Startup and research execution do not settle positions automatically or place real orders.
+
+## Paper study model
+
+`./composition/paper-study-model` exports the separate bounded local laboratory model adapter. Its versioned prompt lives in `src/prompts/paper-study-system.ts`. BTC uses one structured call; sports uses research plus final decision. Calls are byte/output bounded and guarded, with no retries or trading tools. Do not describe this protocol as the deployed production agent.
+
+Paper-study prompt 1.1.0 consumes `btc-opening` as the Polymarket-published threshold and keeps current Coinbase reference prices distinct from live Chainlink TWAP. Never assert an opening threshold is missing when validated evidence supplies it.

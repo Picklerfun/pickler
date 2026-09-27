@@ -286,3 +286,7 @@ its remaining budget/call ceiling; its replay is not independent holdout validat
 
 See [Evaluator v4](DECISION-EVALUATION-V4.md) for the isolated selective-backup revision,
 metadata-only provider diagnostic and bounded fresh-case experiment.
+
+## Continuous local paper studies
+
+See [PAPER-STUDY.md](PAPER-STUDY.md) for bounded BTC 5m/15m and sports sessions, explicit paid-call approval, virtual fills, finalized resolution and local HTML/CSV tracking. This operator laboratory is separate from production tenant research.

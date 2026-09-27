@@ -78,6 +78,13 @@
       "when": 1790279778608,
       "tag": "0010_far_vengeance",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790501686335,
+      "tag": "0011_cuddly_shocker",
+      "breakpoints": true
     }
   ]
 }
