@@ -267,3 +267,7 @@ See [MARKET-CATEGORIES.md](MARKET-CATEGORIES.md) for category/subcategory config
 ## Optional local trading integration
 
 See [LIVE-TRADING.md](LIVE-TRADING.md) for the separately disabled Node pilot, explicit operator wallet/setup commands, API/CLI contracts and controlled-test status. This does not enable trading for existing agents or establish live-provider acceptance.
+
+## Continuous local paper studies
+
+See [PAPER-STUDY.md](PAPER-STUDY.md) for bounded BTC 5m/15m and sports sessions, explicit paid-call approval, virtual fills, finalized resolution and local HTML/CSV tracking. This operator laboratory is separate from production tenant research.
