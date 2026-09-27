@@ -33,3 +33,12 @@ operator connection. Admission controls remain independent of transport.
 `createRuntime` accepts optional trusted database connection options from its host. The research
 Worker supplies Hyperdrive options and its binding URL; local Node callers retain direct/session
 connections. Never derive the transport choice from model input or public agent configuration.
+
+## Optional decision observation
+
+`createRuntime` accepts a third options argument with an optional core `ResearchObserver`.
+The model adapter emits an exact `DecisionInputSnapshot` immediately before the finalizer request;
+core publishes the completed decision separately after persistence. Neither provider payloads nor
+prompt versions change. The default and deployed composition remain uninstrumented. Local hosts
+may inject a private file capture; never import that filesystem implementation into this package
+or run paid observer calls inside the primary model/lease/budget path.

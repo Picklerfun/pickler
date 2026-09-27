@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "observe:decisions": "node --import tsx src/observe-decisions.ts",
     "dev": "node launch.mjs dev",
     "build": "mastra build",
     "start": "node launch.mjs start",

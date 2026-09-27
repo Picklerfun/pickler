@@ -87,3 +87,13 @@ today, so it lives in the web feature that draws it against the mirrored limits 
 ## Cloudflare trading pilot
 
 Trading uses operator-enabled immutable accounts and provider-neutral NFL/soccer winner eligibility. The sign port accepts a final ownership guard. Automatic attempts are durably admitted once; confirmed autonomous purchases close the pilot. See ../../docs/polymarket-worker-pilot.md.
+
+## Optional research observation
+
+The model port may report `DecisionInputSnapshot` for the exact tool-free finalizer evidence.
+The runner clones it and publishes `ResearchObservation` through an injected `ResearchObserver`
+only after a successful final decision write. Observer failure and diagnostics cannot re-enter
+research failure handling, mutate the primary result or create an abstention. Missing snapshots
+are diagnostic gaps, never reconstructed from later evidence. Host observers must remain bounded
+capture-only operations; paid comparison is a separately admitted operation. Core owns no files,
+provider credentials or observer pricing, and the observer is not a decision-policy input.

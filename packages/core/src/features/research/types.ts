@@ -254,6 +254,8 @@ export interface ResearchModel {
     beforeStep?(): Promise<void>;
     onDiagnostic?(data: unknown): Promise<void>;
     evidence?(): { sources: Source[]; quotes: OrderBook[]; references?: ResearchReference[] };
+    /** Trusted host capture of the exact tool-free finalizer evidence, never model input. */
+    onDecisionInput?(input: DecisionInputSnapshot): void;
     selectionSteps?: number;
   }): Promise<{ decision: ModelAssessment; usage: unknown }>;
   metadata(): {
@@ -267,6 +269,28 @@ export interface ResearchModel {
       generalDecision?: PromptSnapshot;
     };
   };
+}
+
+export interface DecisionInputSnapshot {
+  observedAt: string;
+  market: Market;
+  evidence: { sources: Source[]; quotes: OrderBook[]; references?: ResearchReference[] };
+}
+
+/** Observation only: the primary decision has already been durably completed. */
+export interface ResearchObservation extends DecisionInputSnapshot {
+  schemaVersion: 1;
+  scope: Scope & { runId: string; configVersion: number };
+  primary: {
+    decision: Decision;
+    usage: unknown;
+    metadata: ReturnType<ResearchModel["metadata"]>;
+  };
+}
+
+export interface ResearchObserver {
+  completed(snapshot: ResearchObservation): Promise<void>;
+  failed?(): void | Promise<void>;
 }
 
 export interface ResearchRepository {

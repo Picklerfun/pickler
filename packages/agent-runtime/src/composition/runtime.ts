@@ -4,6 +4,7 @@ import {
   effectivePlugins,
   PilotError,
   type PluginId,
+  type ResearchObserver,
 } from "@pickler/core";
 import {
   PostgresResearchStore,
@@ -18,7 +19,11 @@ import {
 import type { Environment } from "../environment.js";
 import { createModel } from "./model.js";
 
-export function createRuntime(env: Environment, databaseOptions?: DatabaseConnectionOptions) {
+export function createRuntime(
+  env: Environment,
+  databaseOptions?: DatabaseConnectionOptions,
+  options?: { observer?: ResearchObserver },
+) {
   const model = createModel(env);
   const repository = new PostgresResearchStore(
     env.DATABASE_URL,
@@ -45,6 +50,7 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
     markets,
     paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
     execute: createResearchRunner({
+      ...(options?.observer ? { observer: options.observer } : {}),
       repository,
       search,
       reader: search,
