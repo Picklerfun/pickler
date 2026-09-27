@@ -17,7 +17,8 @@
     "validate:agent": "node --import tsx src/validate-agent.ts",
     "wallet:init": "node --import tsx src/wallet-init.ts",
     "trading:setup": "node --import tsx src/trading-setup.ts",
-    "polymarket:preproduction": "node --import tsx src/polymarket-preproduction.ts"
+    "polymarket:preproduction": "node --import tsx src/polymarket-preproduction.ts",
+    "paper:study": "node --import tsx src/paper-study/main.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
