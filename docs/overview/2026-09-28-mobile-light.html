@@ -101,7 +101,7 @@
         <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
       </div>
 
-      <article class="phase-card" data-phase="1" data-status="plan_ready">
+      <article class="phase-card" data-phase="1" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F1</span>
@@ -110,9 +110,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 1 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -125,26 +125,42 @@
           <details class="tasks">
             <summary>
               <span>Tasks del plan · <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html">plan F1</a></span>
-              <span class="progress-pill" data-tasks-counter>0/16</span>
+              <span class="progress-pill" data-tasks-counter>16/16</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> T0 · Bootstrap, dependencias y fuente display</label></li>
-              <li><label><input type="checkbox"> T1 · ui/theme.ts — tokens claros, fuentes y reasignación de texto lima (D3, D4, D5)</label></li>
-              <li><label><input type="checkbox"> T2 · Primitivas re-vestidas (D5, D6)</label></li>
-              <li><label><input type="checkbox"> T3 · Navegación — 4 pestañas visibles, pilas nuevas y destino de los pushes (D1, D13, D19, D22, D23)</label></li>
-              <li><label><input type="checkbox"> T4 · Tab bar de 4 botones fijos (D2)</label></li>
-              <li><label><input type="checkbox"> T5 · Cabecera de página clara (D5)</label></li>
-              <li><label><input type="checkbox"> T6 · Cableado de datos — reads sin filtro, sockets por pantalla, fetchOne (D26)</label></li>
-              <li><label><input type="checkbox"> T7 · Sign in (D20)</label></li>
-              <li><label><input type="checkbox"> T8 · Wallet, Deposit (QR), Withdraw y Trading funds (D7, D18, D19)</label></li>
-              <li><label><input type="checkbox"> T9 · Markets — búsqueda y tarjetas; el gate sale a tradingGate.tsx (D7, D8, D9)</label></li>
-              <li><label><input type="checkbox"> T10 · Market — segmentado Trade it / Ask an agent, Enable dentro de Trade, ticket y Ask re-vestidos (D7, D8, D10 parcial, D11, D12)</label></li>
-              <li><label><input type="checkbox"> T11 · Pestaña Agents (D13, D15)</label></li>
-              <li><label><input type="checkbox"> T12 · Portfolio — totales, Positions, Reads y Backed (D7, D8, D17)</label></li>
-              <li><label><input type="checkbox"> T13 · Pantalla Read (D14)</label></li>
-              <li><label><input type="checkbox"> T14 · Barrido de restos oscuros y copy</label></li>
-              <li><label><input type="checkbox"> T15 · Rebuild nativo, verificación en el simulador, README, overview y audit</label></li>
+              <li><label><input type="checkbox" checked> T0 · Bootstrap, dependencias y fuente display · <code>1d490b1</code></label></li>
+              <li><label><input type="checkbox" checked> T1 · ui/theme.ts — tokens claros, fuentes y reasignación de texto lima (D3, D4, D5) · <code>3018bfc</code></label></li>
+              <li><label><input type="checkbox" checked> T2 · Primitivas re-vestidas (D5, D6) · <code>1e0f19a</code></label></li>
+              <li><label><input type="checkbox" checked> T3 · Navegación — 4 pestañas visibles, pilas nuevas y destino de los pushes (D1, D13, D19, D22, D23) · <code>0e7fd84</code></label></li>
+              <li><label><input type="checkbox" checked> T4 · Tab bar de 4 botones fijos (D2) · <code>8fdb5aa</code></label></li>
+              <li><label><input type="checkbox" checked> T5 · Cabecera de página clara (D5) · <code>e0c1431</code></label></li>
+              <li><label><input type="checkbox" checked> T6 · Cableado de datos — reads sin filtro, sockets por pantalla, fetchOne (D26) · <code>63e26a3</code></label></li>
+              <li><label><input type="checkbox" checked> T7 · Sign in (D20) · <code>2bfd49e</code></label></li>
+              <li><label><input type="checkbox" checked> T8 · Wallet, Deposit (QR), Withdraw y Trading funds (D7, D18, D19) · <code>4a9ea60</code></label></li>
+              <li><label><input type="checkbox" checked> T9 · Markets — búsqueda y tarjetas; el gate sale a tradingGate.tsx (D7, D8, D9) · <code>bfe2a83</code></label></li>
+              <li><label><input type="checkbox" checked> T10 · Market — segmentado Trade it / Ask an agent, Enable dentro de Trade, ticket y Ask re-vestidos (D7, D8, D10 parcial, D11, D12) · <code>e1c6168</code></label></li>
+              <li><label><input type="checkbox" checked> T11 · Pestaña Agents (D13, D15) · <code>f3aeec7 · e91e7d2</code></label></li>
+              <li><label><input type="checkbox" checked> T12 · Portfolio — totales, Positions, Reads y Backed (D7, D8, D17) · <code>10b826c</code></label></li>
+              <li><label><input type="checkbox" checked> T13 · Pantalla Read (D14) · <code>ba9eb46 · da295fc</code></label></li>
+              <li><label><input type="checkbox" checked> T14 · Barrido de restos oscuros y copy · <code>d5dfc53 · 670d2e4</code></label></li>
+              <li><label><input type="checkbox" checked> T15 · Rebuild nativo, verificación en el simulador, README, overview y audit · <code>f3f3aa8 · 353eb51</code></label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>
+              <span>Pendientes (audit F1)</span>
+              <span class="progress-pill">8</span>
+            </summary>
+            <ul>
+              <li><b>Sin evidencia en simulador</b> (wallet nueva sin AUSD ni MON, sin trading key): ticket con key, book plegado/desplegado, LevelCard de «Trade this level», recorrido de dinero (long 2 AUSD → «See it in Portfolio» → Close) y Positions en LIVE. Los hace Jesús con #620 en su iPhone o con MON de faucet.</li>
+              <li>Barras fijas de D14 («Trade this market») y D11 («Long to X within 4H · Review») van al final del contenido; se fijan en F2 con el board.</li>
+              <li>Matriz de Ask: la sparkline vive en su columna, no cruza las celdas como en el Handoff; celdas grises en vez de blancas.</li>
+              <li>Read: bloque THE QUESTION en violeta sólido con texto blanco; el Handoff usa lavanda con la cifra violeta. Cabecera «READ» + fila del agente en vez de atrás + avatar en una línea.</li>
+              <li>Precios sin separador de miles (<code>83556.0</code> vs <code>63,584.2</code> del Handoff): es <code>formatPrice</code>, lógica existente.</li>
+              <li>Dynamic Type XXXL: etiquetas de las baldosas de Portfolio parten a media palabra («POSITION S»); las cifras se leen. Agents: «BRIER · LOWER IS BETTER» en dos líneas desalinea las baldosas.</li>
+              <li>Accesibilidad: Ask/Trade dentro de <code>TouchCard</code> (Markets, Agents) no se exponen como botones propios; el toque funciona.</li>
+              <li>Minors diferidos del ledger (DevControls con Launchpad/Activity/«Coming soon · Portfolio», comentario «Chakra Petch» en <code>primitives.tsx</code>, <code>archivo-instance.sh</code> sin pin, carrera de <code>loadReads</code> al cambiar de cuenta): detalle en el audit.</li>
+            </ul>
           </details>
         </div>
       </article>
@@ -224,7 +240,8 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <a href="../superpowers/specs/2026-09-28-mobile-light-design.html"><code>docs/superpowers/specs/2026-09-28-mobile-light-design.md</code></a> ·
-       planes en <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f1.md</code></a></p>
+       planes en <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f1.md</code></a> ·
+       audit en <code>docs/superpowers/audits/2026-09-28-mobile-light-f1-rulings.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>

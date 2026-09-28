@@ -1,12 +1,27 @@
 # Pickler mobile
 
-App Expo/iOS de Pickler. UI portada del diseño hi-fi `Pickler Mobile App.dc.html` vía
-[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) (commit `a0e353e`):
-tema azul con Chakra Petch, tab bar MARKETS · LAUNCHPAD · ACTIVITY · PORTFOLIO · WALLET.
-Reales: Wallet (passkey, AUSD/MON, deposit, withdraw, movimientos), Markets (Perpl), Ask (lecturas de
-agente sobre la matriz nivel × horizonte, créditos simulados) y Agents (récord real).
-Launchpad, Activity y Portfolio son *coming soon*.
+App Expo/iOS de Pickler. UI del sistema **light** del Handoff de Claude Design, en
+[`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) commit `1808d5b`, carpeta `design/`
+(`Pickler Mobile Handoff.dc.html` y las pantallas `* Mobile Light.dc.html`; se ven con
+`python3 -m http.server 8765 --directory design`). Spec: `docs/superpowers/specs/2026-09-28-mobile-light-design.md`.
+Tab bar de 4 botones fijos: MARKETS · AGENTS · PORTFOLIO · WALLET, cada uno con su tinte (`TAB_TINT`).
+Reales: Wallet (passkey, AUSD/MON, deposit con QR, withdraw, movimientos), Markets (Perpl, búsqueda local),
+Market (Trade it / Ask an agent), Agents (récord real), Portfolio (Positions, Reads; Backed es *coming soon*)
+y la pantalla Read. Launchpad y Activity siguen registradas en el navegador, pero **no se pintan** en la barra.
 El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado de la sesión.
+
+### Fuentes
+
+- Display: `ArchivoPickler-Bold` (`assets/fonts/ArchivoPickler-Bold.ttf`), Archivo instanciado a `wdth 112` /
+  `wght 700` — el `font-variation-settings:'wdth' 112` del Handoff; RN no garantiza ejes variables en iOS, así
+  que se genera un TTF estático con `scripts/archivo-instance.sh <dir-temporal>` (fonttools en un venv; baja
+  Archivo de `google/fonts@main`, sin pin).
+- Cuerpo: Instrument Sans 400/500/600/700 (`@expo-google-fonts/instrument-sans`).
+- Mono (cifras, etiquetas): JetBrains Mono 400/500/700 (`@expo-google-fonts/jetbrains-mono`).
+
+**Trampa: la lima no se lee como texto sobre blanco.** `C.lime` (`#C8F03A`) es sólo relleno (botón primario,
+punto, barra); como texto o borde va `C.limeInk` (`#3F6B00`) o `C.limeBd`, y sobre ink `C.limeOnInk`. Lo mismo
+con el ámbar: `C.pending` es relleno y punto, `C.warn` (`#8A6200`) es texto. `__tests__/theme.test.ts` lo vigila.
 
 ## Correr en simulador
 
@@ -25,8 +40,9 @@ Ojo: el UDID que hay que pasar es el de `hardwareProperties.udid` en
 `00008140-...`), **no** el `Identifier` que imprime la tabla de
 `xcrun devicectl list devices` (ese es un UUID de emparejamiento distinto).
 
-`react-native-svg` y `expo-linear-gradient` son módulos nativos: tras cambiar
-dependencias, `npx expo prebuild --platform ios --clean` antes de `run:ios`.
+`react-native-svg` y las fuentes son nativas: tras cambiar dependencias o `assets/fonts`,
+`npx expo prebuild --platform ios --clean` antes de `run:ios`. `expo-linear-gradient` y
+`expo-haptics` salieron con el rediseño light.
 
 ## Navegación
 
@@ -37,11 +53,12 @@ animado y el botón `←` son los de iOS:
 
 ```
 Tabs
-├── MarketsTab   (native-stack) markets → market → perpsFunds
-├── LaunchpadTab (native-stack) launchpad
-├── ActivityTab  (native-stack) activity
-├── PortfolioTab (native-stack) portfolio
-└── WalletTab    (native-stack) wallet → deposit → withdraw
+├── MarketsTab   (native-stack) markets → market
+├── AgentsTab    (native-stack) agents → agent (perfil: stub hasta F2)
+├── PortfolioTab (native-stack) portfolio → read
+├── WalletTab    (native-stack) wallet → deposit → withdraw → perpsFunds
+├── LaunchpadTab (native-stack) launchpad   (registrada, no se pinta en la barra)
+└── ActivityTab  (native-stack) activity    (registrada, no se pinta en la barra)
 signin  (RootStack, encima de Tabs cuando hace falta cuenta; raíz si no hay ninguna)
 ```
 
@@ -67,19 +84,15 @@ signin  (RootStack, encima de Tabs cuando hace falta cuenta; raíz si no hay nin
 
 La geometría pura vive en `src/ui/tabBarLayout.ts` — no `tabbar.ts`: ese nombre choca en
 mayúsculas/minúsculas con `TabBar.tsx` en macOS y rompía la resolución de módulos de
-`./TabBar` (`itemWidth`, `tabIndexAt`, `pillX`, `pillWidth`, `tabBarHeight`, con tests en
-`__tests__/tabBarLayout.test.ts`). `itemWidth`/`tabIndexAt`/`pillX` llevan la directiva
-`"worklet"` porque el `Pan` de gesture-handler las llama desde el hilo de UI de reanimated,
-no desde JS; sin ella, worklets lanza `Tried to synchronously call a Remote Function`.
+`./TabBar` (`ROW_TOP`, `ROW_H`, `ROW_BOTTOM`, `tabBarHeight`, con tests en `__tests__/tabBarLayout.test.ts`).
 
-`TabBar.tsx` pinta una pastilla lima (`C.limeBg14`) detrás de la pestaña activa
-(`state.index`) que se puede arrastrar sin despegar el dedo: mientras el `Pan` está activo
-la pastilla sigue al dedo (`tabIndexAt`) con haptic al cruzar de ítem, y **sólo al soltar**
-cambia de pestaña llamando a `switchTab` (nunca gatea: `requireAccount` sigue siendo el
-camino para el resto de la app). La barra queda siempre montada y absoluta; en pantallas
-no-raíz se esconde deslizando hacia abajo (`translateY` con `withTiming`, 220 ms) en vez de
-desmontarse, y las páginas raíz reservan su hueco con `paddingBottom` (`tabBarHeight` en
-`Page.tsx`).
+`TabBar.tsx` pinta 4 botones fijos (icono lucide + etiqueta mono); el activo lleva fondo de control
+(`C.ctl`) y el tinte de su pestaña (`TAB_TINT`: Markets `#3F6B00`, Agents `#5B3CE0`, Portfolio `#8A6200`,
+Wallet `#C62C62`). Ya no hay pastilla arrastrable ni haptics. Tocar una pestaña llama a `switchTab` (nunca
+gatea: `requireAccount` sigue siendo el camino para el resto de la app) y siempre emite `tabPress`, así
+re-tocar la pestaña enfocada hace `popToTop`. La barra queda siempre montada y absoluta; en pantallas
+no-raíz se esconde deslizando hacia abajo (`translateY` con `withTiming`, 220 ms) en vez de desmontarse,
+y las páginas raíz reservan su hueco con `paddingBottom` (`tabBarHeight` en `Page.tsx`).
 
 **Para añadir una pantalla**: el `Screen` en `screens.ts`, su entrada en `TAB_OF`
 (`routes.ts`), el `Screen` en la pila de su pestaña dentro de `Navigator.tsx`, y
@@ -95,10 +108,17 @@ adaptador de `ref.ts`) y, para la tab bar, `switchTab`.
 cualquier recorrido con passkey:
 
 ```bash
+# desde el Mac: xcrun simctl spawn <UDID> notifyutil …
 notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 && \
   notifyutil -p com.apple.BiometricKit.enrollmentChanged   # inscribe
 notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match  # presenta la cara
+notifyutil -p com.apple.BiometricKit_Sim.pearl.match        # Face ID (iPhone 17)
 ```
+
+**Dynamic Type en vivo:** cambiar el tamaño de texto con la app abierta
+(`xcrun simctl ui <UDID> content_size extra-extra-extra-large`) deja las pantallas ya montadas con el
+layout viejo (texto recortado); relanzar la app antes de juzgar un recorte. Maestro lee los
+`accessibilityLabel` como texto: `tapOn: "tab-wallet"`, no `tapOn: {id: …}`.
 
 ## Carga y splash
 
@@ -114,7 +134,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 270/270 esperado (35 suites)
+npm test          # jest, 279/279 esperado (40 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -157,7 +177,8 @@ API key las hace la wallet de Mera; las órdenes van por WebSocket firmadas con 
 vive en SecureStore (`pickler.perpl.v1`, sin Face ID: solo puede operar, nunca retirar). Sign out
 conserva la trading key (atada a la wallet; no hay borrado desde la UI — "Reset trading key", sólo con
 key rechazada, enrola una nueva; máx. 16 por cuenta, revocar en `testnet.perpl.xyz/apikeys`); sin key,
-Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
+Market → *Trade it* muestra **Enable trading** (o *Reconnect trading*) en lugar del ticket, y Portfolio →
+Positions manda a abrir un mercado.
 
 - Colateral: el mismo AUSD de la wallet. Mínimos (100 / 10 / 0.01) se leen de `pub/context`.
 - Apalancamiento: 1x–5x, capado por mercado (`initial_margin / 100`; MON permite 3x).
@@ -180,14 +201,14 @@ Markets abre el mercado en Ask y la pestaña Trade muestra el gate.
   graban con `node scripts/perpl-market-data-capture.mjs --market 16 --seconds 20` (Node 22, sin cuenta) en
   `__tests__/fixtures/perpl/market-data-frames.json`.
 
-## Ask y Agents (pills de Market)
+## Ask an agent, Agents y Reads
 
 Backend en `services/reads` (Supabase `pickler`, esquema `mobile`; URL en `src/config/reads.ts`, override
 `PICKLER_READS_URL`; en un dev client ya instalado, igual que con `PICKLER_PERPL_REST`, un reinicio de
 Metro no lo aplica — hace falta `run:ios`). La app firma una vez al día `pickler-reads:<address>:<ts>` con la wallet (Face ID si está
 bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); Sign out lo borra. Créditos simulados:
 20 por wallet, 1 por lectura, reembolso si el agente falla. El push de resolución lo manda el servidor por APNs
-(`expo-notifications`, entorno `sandbox` en dev); tocarlo abre Market → Ask → My reads en esa read. Para probar el
+(`expo-notifications`, entorno `sandbox` en dev); tocarlo abre Portfolio → Read (el recordatorio abre Market en Trade, sin nivel). Para probar el
 tap sin APNs: `xcrun simctl push <UDID> fun.pickler.app payload.apns` con `{ "pickler": { "kind": "read", "readId", "marketId" } }`.
 `PUSH_MODE = "local"` (fallback D10) programa una notificación local al vencer en vez de esperar el push.
 `expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.
