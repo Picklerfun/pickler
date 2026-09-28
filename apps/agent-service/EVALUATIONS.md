@@ -1,57 +1,58 @@
-# Unified evaluation entry point
+# Evaluation operations
 
-Use the repository-root `evaluate` command for new BTC benchmark and Perpl comparison work:
+Use the repository-root command with an absolute private configuration path:
 
 ```sh
-npm run evaluate -- preflight --config /absolute/path/study.json
-npm run evaluate -- prepare --config /absolute/path/study.json
-npm run evaluate -- run --config /absolute/path/study.json --allow-paid
-npm run evaluate -- stop --config /absolute/path/study.json
-npm run evaluate -- report --config /absolute/path/study.json
+npm run build:shared
+npm run evaluate -- preflight --config /absolute/private/study.json
+npm run evaluate -- prepare --config /absolute/private/study.json
+npm run evaluate -- run --config /absolute/private/study.json --allow-paid
+npm run evaluate -- stop --config /absolute/private/study.json
+npm run evaluate -- report --config /absolute/private/study.json
 ```
 
-`--env-file` selects local credentials. Never commit credentials or private study data.
-These examples do not authorize a restart: the existing evaluations remain paused.
+These examples do not authorize execution. Existing studies and monitors remain paused. Never
+remove STOP files or reset balances/reservations to restart a study. Use the checkout containing
+the session's private artifacts and the explicitly selected database. `--env-file` selects credentials.
 
-The frozen native configuration selects the protocol. The core coordinator validates its
-version, supported command and paid opt-in before calling an adapter. The local application
-service is `src/evaluation-host/service.ts`; future trusted hosts can call this boundary,
-but no web or Worker integration is enabled by this change.
+## Protocol capabilities
 
-| Protocol                    | Configuration | Commands specific to this protocol | Accounting                                                     |
-| --------------------------- | ------------- | ---------------------------------- | -------------------------------------------------------------- |
-| `perps-comparison-v1`       | v1            | `resume`                           | Existing PostgreSQL reservations and known-cost reconciliation |
-| `btc-decision-benchmark-v1` | v4            | `validate`                         | Existing campaign ledger; reservations retained                |
+| Protocol              | Version                        | Available commands                                                       |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------ |
+| Perpetual comparison  | 1, `perps-comparison-v1`       | prepare, preflight, run, resume, status, stop, settle, report            |
+| BTC benchmark         | 4, `btc-decision-benchmark-v1` | prepare, preflight, validate, run, status, stop, settle, report, compare |
+| Original paper study  | 1, no protocol field           | status, report                                                           |
+| Quantitative BTC      | 2, `btc-quant-jev-v1`          | status, report, settle, history, replay                                  |
+| Paired BTC comparison | 3, `btc-policy-comparison-v1`  | status, report, settle                                                   |
 
-Both support prepare, preflight, run, status, stop, settle and report. BTC preflight validates
-configuration only and explicitly does not claim provider connectivity. Perpl preflight
-checks public evidence and model catalogs without a paid model evaluation. `settle` performs
-public reconciliation; Perpl can execute virtual risk-reducing exits. It never opens a position
-or calls a paid model. BTC reports remain in their session directory; Perpl supports `--output`.
+Legacy executable commands and aliases have been removed. Original v1 configurations are
+recognized in memory without rewriting the saved format. Historical adapters cannot construct
+a paid model or start a new evaluation, even when `--allow-paid` is supplied. Reports and public
+reconciliation preserve existing ledgers, reservations, configuration and STOP files. No missing
+historical state is initialized. `history` downloads the same explicitly requested public quote
+history; `replay` analyzes saved inputs without fabricating executions.
 
-Protocol adapters retain their existing scheduling, settlement and risk rules. Binary BTC
-outcomes and perpetual positions are different instruments: their financial calculations
-must not be combined. Strategy implementations and prompts remain in their existing shared
-core/runtime modules; the coordinator does not implement another strategy. Protocol versions
-identify the different strategy and accounting policies rather than silently translating them.
+Compare saved benchmark states explicitly:
 
-Legacy `perps:study`, `paper:study`, `paper:quant`, `paper:compare` and `paper:benchmark`
-execution entries reject new runs. Their historical reporting and explicitly allowed
-reconciliation commands remain available. This does not retire the separate manual paper
-trading tools. Existing reports, balances, STOP files, campaign budgets and model usage remain
-unchanged. Historical local paths must be used from the checkout containing that study.
+```sh
+npm run evaluate -- compare --config /absolute/private/benchmark.json --output /absolute/private/comparison --state /absolute/private/first/state.json --state /absolute/private/second/state.json
+```
 
-A shared model transport is not evidence of strategy quality. Controlled replay validates
-compatibility; a new prospective comparison must record its commit and frozen configuration,
-retain outstanding reservations, and remain within the previously authorized budget. Do not
-remove STOP files or reset an old session to restart it. Old incomplete results remain incomplete.
+BTC preflight validates configuration only. Perpl preflight checks public evidence and catalogs
+without a paid evaluation. `settle` makes no paid model calls: Perpl may simulate risk-reducing
+exits, while binary protocols reconcile official resolution. Manual trading commands are separate
+operations that consume the same engine. Perpl reports support `--output`; ordinary BTC reports
+remain in their session directory.
 
-## Shared Jev client
+## Ownership and accounting
 
-The active quantitative, compact, evidence-routing and Perpl readiness adapters all use
-`@pickler/infrastructure/model-providers/jev`. It owns the fixed endpoint, bounded transport,
-usage envelope, probability validation and sanitized diagnostics. Runtime adapters retain
-prompts, payloads, thresholds and historical error mapping. Usage is persisted before answer
-validation; an invalid answer cannot erase a charge. No retries or automatic repairs are added.
-BTC responses now have an explicit 1 MiB bound. Existing caller timeouts remain 30 seconds for
-quantitative review, 180 seconds for legacy evidence routing and 20 seconds for Perpl.
+Read the [canonical architecture](../../docs/trading-architecture.md). The portable engine is in
+`@pickler/trading`; `src/evaluation-host/local.ts` performs local composition and artifact IO.
+The two accounting policies remain distinct: PostgreSQL Perpl reconciles known costs, while the
+BTC campaign retains reservations. Neither currency balances nor model budgets are merged.
+
+All four active Jev adapters use one infrastructure client. Runtime retains prompts, thresholds
+and error mapping. Usage persists before answer validation, with no retries or repairs. BTC has
+a 1 MiB response bound; existing timeouts remain 30 seconds for quantitative review, 180 seconds
+for legacy evidence routing and 20 seconds for Perpl. Extraction does not establish live-provider
+acceptance. New prospective runs require frozen configuration and the remaining authorized budget.

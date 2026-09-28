@@ -17,15 +17,66 @@ export const EVALUATION_PROTOCOLS = {
     instrument: "binary",
     strategySetVersion: 1,
     strategies: BENCHMARK_VARIANTS,
-    commands: ["prepare", "preflight", "validate", "run", "status", "stop", "settle", "report"],
+    commands: [
+      "prepare",
+      "preflight",
+      "validate",
+      "run",
+      "status",
+      "stop",
+      "settle",
+      "report",
+      "compare",
+    ],
     paidCommands: ["validate", "run"],
     riskPolicy: "binary-edge-above-3pct-v1",
     accounting: "retain-all-reservations-v1",
   },
+  "paper-study-v1": {
+    version: 1,
+    instrument: "binary",
+    strategySetVersion: 1,
+    strategies: [],
+    commands: ["status", "report"],
+    paidCommands: [],
+    riskPolicy: "historical-only",
+    accounting: "preserve-historical-v1",
+  },
+  "btc-quant-jev-v1": {
+    version: 2,
+    instrument: "binary",
+    strategySetVersion: 1,
+    strategies: [],
+    commands: ["status", "report", "settle", "history", "replay"],
+    paidCommands: [],
+    riskPolicy: "historical-only",
+    accounting: "preserve-historical-v2",
+  },
+  "btc-policy-comparison-v1": {
+    version: 3,
+    instrument: "binary",
+    strategySetVersion: 1,
+    strategies: [],
+    commands: ["status", "report", "settle"],
+    paidCommands: [],
+    riskPolicy: "historical-only",
+    accounting: "preserve-historical-v3",
+  },
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
-  "prepare" | "preflight" | "validate" | "run" | "resume" | "status" | "stop" | "settle" | "report";
+  | "prepare"
+  | "preflight"
+  | "validate"
+  | "run"
+  | "resume"
+  | "status"
+  | "stop"
+  | "settle"
+  | "report"
+  | "history"
+  | "replay"
+  | "compare";
 export interface EvaluationConfiguration {
   protocol: EvaluationProtocol;
   version: number;

@@ -11,7 +11,7 @@ import {
   type ComparisonState,
   type ComparisonPorts,
   type QuantInput,
-} from "../src/index.js";
+} from "@pickler/trading/strategies";
 function fixture() {
   const now = 1790501470000,
     start = now - 70000;

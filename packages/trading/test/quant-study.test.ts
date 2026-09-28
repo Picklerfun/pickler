@@ -8,7 +8,7 @@ import {
   type QuantInput,
   type QuantState,
   type QuantPorts,
-} from "../src/index.js";
+} from "@pickler/trading/strategies";
 function fixture(side = "up") {
   const start = 1790501400000,
     now = start + 70000;

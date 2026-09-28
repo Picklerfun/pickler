@@ -1,4 +1,3 @@
-import type { TradingMode } from "@pickler/core";
 import type { AgentRecord, Market, Scope, RunRecord } from "@pickler/core";
 
 export type TradingOrigin = "manual" | "agent";

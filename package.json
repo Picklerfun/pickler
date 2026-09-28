@@ -15,7 +15,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
-    "test": "npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/trading/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts workers/trading/test/*.test.ts apps/web/test/*.test.ts",
+    "test": "npm run check:architecture && npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/trading/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts workers/trading/test/*.test.ts apps/web/test/*.test.ts",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",
@@ -35,7 +35,8 @@
     "check:staging": "node scripts/check-staging.mjs",
     "build:workers": "npm run build:shared && npm run build:worker --workspace=@pickler/api && npm run build:worker --workspace=@pickler/research-worker && npm run build:worker --workspace=@pickler/trading-worker && npm run build:worker --workspace=@pickler/web",
     "test:workers-local": "node --import tsx --test workers/research/test/worker-flow.test.ts",
-    "evaluate": "npm run evaluate --workspace=@pickler/agent-service --"
+    "evaluate": "npm run evaluate --workspace=@pickler/agent-service --",
+    "check:architecture": "node scripts/check-trading-architecture.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

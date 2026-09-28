@@ -7,7 +7,7 @@ Read [the root instructions](../../AGENTS.md) first and the local instructions o
 - Keep this package portable and safe for browser imports. No Next.js, React, core, infrastructure, secrets, or provider SDK dependencies.
 - Define explicit public request and response DTOs. Do not expose database rows, domain entities, `Date`, `bigint`, or credential-bearing fields directly.
 - TypeScript types do not validate runtime input. When schemas are introduced, choose browser-compatible validation and apply it at untrusted boundaries. Apply the exported Zod schemas to requests, responses and structured decisions; health remains a TypeScript-only interface.
-- Keep business invariants and authorization in core. HTTP parsing and error/status mapping belong in the app.
+- Keep research invariants in core and financial invariants in trading; import neither into DTOs. HTTP parsing and error/status mapping belong in the app.
 - Group future DTOs by feature, such as `src/bookings.ts`, and publish intentional exports through the package manifest or entry point.
 - Treat changes to serialized fields as API compatibility changes. Coordinate producer and consumer updates and document versioning decisions.
 

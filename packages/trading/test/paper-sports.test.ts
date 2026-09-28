@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertPaperMarket, type Market } from "../src/index.js";
+import { assertPaperMarket } from "@pickler/trading/polymarket";
+import { type Market } from "@pickler/core";
 const soccer: Market = {
   id: "1",
   question: "Will team A win?",

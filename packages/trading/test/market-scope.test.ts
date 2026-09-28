@@ -8,11 +8,11 @@ import {
   configuredMarketExclusion,
   protocolForMarket,
   assertCanQueue,
-  assertPaperAllowed,
   type AgentConfig,
   type Market,
   type MarketScope,
-} from "../src/index.js";
+} from "@pickler/core";
+import { assertPaperAllowed } from "@pickler/trading/polymarket";
 const now = Date.parse("2026-09-17T12:00:00Z");
 const { categoryIds: _categories, ...base } = DEFAULT_CONFIG;
 void _categories;

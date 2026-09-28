@@ -1,3 +1,8 @@
+<!-- historical-evidence -->
+
+> Archived extraction design; not current implementation guidance.
+> See [Trading architecture](../trading-architecture.md) for current ownership.
+
 # Relayer extraction 01: identity, authentication and organizations
 
 > Status: analysis and proposal. Nothing in this document is implemented in Pickler yet.

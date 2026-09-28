@@ -80,3 +80,34 @@ test("unknown versions and unsupported commands cannot fall through to another p
     code: "EVALUATION_ADAPTER_MISSING",
   });
 });
+
+test("historical protocols reject new work even with paid opt-in", async () => {
+  for (const [protocol, version] of [
+    ["paper-study-v1", 1],
+    ["btc-quant-jev-v1", 2],
+    ["btc-policy-comparison-v1", 3],
+  ] as const) {
+    const coordinator = createEvaluationCoordinator({});
+    for (const command of ["prepare", "run", "validate"] as const) {
+      await assert.rejects(
+        coordinator.execute(
+          request({ configuration: { protocol, version }, command, allowPaid: true }),
+        ),
+        { code: "EVALUATION_COMMAND_INVALID" },
+      );
+    }
+  }
+});
+
+test("core exports no duplicate trading implementation", async () => {
+  const core = await import("@pickler/core");
+  for (const name of [
+    "createTradingService",
+    "createPerpsPaperService",
+    "simulatePaperBuy",
+    "paperRisk",
+    "createEvaluationCoordinator",
+  ]) {
+    assert.equal(name in core, false, name);
+  }
+});

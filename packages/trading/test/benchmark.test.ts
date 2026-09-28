@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   runBenchmarkCase,
-  PilotError,
   benchmarkEvaluationReady,
   recoverBenchmark,
   benchmarkReserved,
@@ -15,7 +14,8 @@ import {
   type BenchmarkState,
   type BenchmarkPorts,
   type QuantInput,
-} from "../src/index.js";
+} from "@pickler/trading/strategies";
+import { PilotError } from "@pickler/core";
 function fixture() {
   const now = 1790501470000,
     start = now - 70000;

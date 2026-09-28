@@ -9,10 +9,10 @@ import * as perpl from "./perpl/index.js";
 import * as perpsPaper from "./perps-paper/index.js";
 /** Factories bind the core catalog to reviewed code, without changing capabilities. */
 export const pluginFactories = {
-  polymarket,
-  exa,
   balldontlie,
   "the-odds-api": odds,
+  exa,
+  polymarket,
   "paper-trading": paper,
   "polymarket-trading": trading,
   perpl,

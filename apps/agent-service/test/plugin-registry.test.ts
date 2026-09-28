@@ -21,3 +21,29 @@ test("execution factories expose no model tools and disabled reads remain absent
   });
   assert.deepEqual(Object.keys(tools), ["getSportsContext"]);
 });
+
+test("tool order remains identical for frozen model requests", () => {
+  const unused = async () => {
+    throw new Error("tool must not execute during registration");
+  };
+  assert.deepEqual(
+    Object.keys(
+      buildTools({
+        getSportsContext: unused,
+        getExternalOdds: unused,
+        searchWeb: unused,
+        readPage: unused,
+        getMarketRules: unused,
+        getOrderBook: unused,
+      }),
+    ),
+    [
+      "getSportsContext",
+      "getExternalOdds",
+      "searchWeb",
+      "readPage",
+      "getMarketRules",
+      "getOrderBook",
+    ],
+  );
+});

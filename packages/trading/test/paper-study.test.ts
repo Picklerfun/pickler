@@ -10,9 +10,8 @@ import {
   type StudyState,
   type StudyMarket,
   type StudyPorts,
-  type ModelAssessment,
-  PilotError,
-} from "../src/index.js";
+} from "@pickler/trading/strategies";
+import { type ModelAssessment, PilotError } from "@pickler/core";
 
 function fixture() {
   const start = 1790501400000;

@@ -1,6 +1,5 @@
 import {
   PERPS_STUDY_STRATEGIES as strategies,
-  perpsRules,
   type PerpsStudyRepository,
   type PerpsStudyScope,
   type PerpsStudyLease,
@@ -9,7 +8,8 @@ import {
   type PerpsProposal,
   type PerpsCallLane,
   type PerpsStudyRecord,
-} from "../../evaluation.js";
+} from "../perps-study/types.js";
+import { perpsRules } from "../perps-study/policy.js";
 import { PilotError } from "@pickler/core";
 import {
   createPerpsPaperService,

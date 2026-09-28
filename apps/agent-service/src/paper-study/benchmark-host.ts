@@ -1,3 +1,4 @@
+import { runBenchmarkLoop, reconcileCases } from "@pickler/trading/evaluation";
 import { readFile, mkdir, access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -8,8 +9,6 @@ import {
   BENCHMARK_PROTOCOL,
   benchmarkEvaluationReady,
   comparisonSlots,
-  markMissedSlots,
-  runBenchmarkCase,
   settleBenchmarkCase,
   recoverBenchmark,
   reserveBenchmarkReviews,
@@ -19,7 +18,6 @@ import {
   type BenchmarkState,
   type BenchmarkPorts,
   type QuantPlugin,
-  type ComparisonState,
 } from "@pickler/trading/strategies";
 import { PilotError } from "@pickler/core";
 import {
@@ -230,39 +228,15 @@ export async function runBtcBenchmark(
           },
         });
         const resolver = new PolymarketPaperResolution(transport);
-        const settlement = async () => {
-          for (const row of state.cases
-            .filter(
-              (r) =>
-                r.forecast &&
-                r.identities &&
-                r.nextResolutionAt <= Date.now() &&
-                r.resolutions.length < r.identities.length,
-            )
-            .slice(0, 4)) {
-            try {
-              for (const identity of row.identities!) {
-                if (row.resolutions.some((r) => r.outcomeId === identity.outcomeId)) {
-                  continue;
-                }
-                const result = await resolver.resolutionFor(
-                  identity,
-                  AbortSignal.timeout(20000),
-                  () => guard("polymarket"),
-                );
-                if (result) {
-                  row.resolutions.push(result);
-                }
-              }
-              settleBenchmarkCase(row, Date.now());
-              delete row.resolutionError;
-            } catch (e) {
-              row.resolutionError = e instanceof PilotError ? e.code : "RESOLUTION_FAILED";
-            }
-            row.nextResolutionAt = Date.now() + 60000;
-            await save();
-          }
-        };
+        const settlement = () =>
+          reconcileCases(state.cases, {
+            resolver,
+            guard: () => guard("polymarket"),
+            save,
+            now: Date.now,
+            signal: options.signal ?? new AbortController().signal,
+            settle: settleBenchmarkCase,
+          });
         if (command === "settle") {
           recoverBenchmark(state, Date.now());
           await save();
@@ -448,102 +422,21 @@ export async function runBtcBenchmark(
             state.settlementDeadline = state.deadline + 86400000;
             state.slots = comparisonSlots(started, state.deadline);
             await save();
-            const active = new Set<Promise<void>>();
-            let previousTick = Date.now();
-            let lastReportAt = 0;
-            let settlementTask: Promise<void> | undefined;
-            try {
-              while (!stopping && Date.now() < state.settlementDeadline!) {
-                await guard("polymarket");
-                const now = Date.now();
-                if (now - previousTick > 15000) {
-                  state.interruptions.push({ at: now, gapMs: now - previousTick });
-                }
-                previousTick = now;
-                markMissedSlots({ slots: state.slots } as ComparisonState, now);
-                if (now >= state.deadline) {
-                  awakeRelease?.();
-                  awakeRelease = undefined;
-                }
-                for (const slot of state.slots.filter(
-                  (s) =>
-                    s.status === "pending" &&
-                    now >= s.start + 60000 &&
-                    now <= s.start + 90000 &&
-                    now < state.deadline!,
-                )) {
-                  if (active.size >= 2) {
-                    break;
-                  }
-                  slot.status = "started";
-                  await save();
-                  const task = (async () => {
-                    try {
-                      const items = await data.study.discover(
-                        slot.kind,
-                        AbortSignal.timeout(30000),
-                      );
-                      const item = items.find((i) => i.windowStart === slot.start);
-                      if (!item) {
-                        slot.status = "failed";
-                        slot.reason = "NO_ELIGIBLE_MARKET";
-                        return;
-                      }
-                      slot.marketId = item.market.id;
-                      await runBenchmarkCase(state, item, ports);
-                      const row = state.cases.find((r) => r.marketId === item.market.id);
-                      slot.status = row?.status === "completed" ? "evaluated" : "failed";
-                      if (row?.reason) {
-                        slot.reason = row.reason;
-                      }
-                    } catch (e) {
-                      slot.status = "failed";
-                      slot.reason = e instanceof PilotError ? e.code : "DISCOVERY_FAILED";
-                    } finally {
-                      await save();
-                    }
-                  })();
-                  active.add(task);
-                  void task.then(
-                    () => active.delete(task),
-                    () => {
-                      stopping = true;
-                      active.delete(task);
-                    },
-                  );
-                }
-                // Resolution cannot block admission of coincident windows.
-                if (!settlementTask) {
-                  settlementTask = settlement();
-                  void settlementTask.then(
-                    () => {
-                      settlementTask = undefined;
-                    },
-                    () => {
-                      stopping = true;
-                      settlementTask = undefined;
-                    },
-                  );
-                }
-                if (now - lastReportAt >= 10000) {
-                  await save();
-                  lastReportAt = now;
-                }
-                if (
-                  now >= state.deadline &&
-                  active.size === 0 &&
-                  !state.cases.some(
-                    (r) => r.forecast && r.resolutions.length < (r.identities?.length ?? 0),
-                  )
-                ) {
-                  break;
-                }
-                await setTimeout(1000);
-              }
-            } finally {
-              stopping = true;
-              await Promise.allSettled([...active, ...(settlementTask ? [settlementTask] : [])]);
-            }
+            await runBenchmarkLoop(state, {
+              ports,
+              signal: options.signal ?? new AbortController().signal,
+              discover: (kind, signal) => data.study.discover(kind, signal),
+              guard,
+              save,
+              settle: settlement,
+              stopped: () => stopping,
+              admissionEnded: () => {
+                awakeRelease?.();
+                awakeRelease = undefined;
+              },
+              now: Date.now,
+              sleep: (ms) => setTimeout(ms),
+            });
             if (Date.now() >= state.deadline) {
               await atomicWrite(join(directory, "STOP"), "ADMISSIONS_COMPLETE\n");
             }

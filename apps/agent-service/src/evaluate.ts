@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { PilotError } from "@pickler/core";
 import { type EvaluationCommand } from "@pickler/trading/evaluation";
-import { executeEvaluation } from "./evaluation-host/service.js";
+import { executeEvaluation } from "./evaluation-host/local.js";
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
@@ -10,11 +10,12 @@ const { positionals, values } = parseArgs({
     "env-file": { type: "string" },
     output: { type: "string" },
     help: { type: "boolean" },
+    state: { type: "string", multiple: true },
   },
 });
 if (values.help) {
   console.log(
-    "evaluate prepare|preflight|validate|run|resume|status|stop|settle|report --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
+    "evaluate prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
   );
 } else {
   const controller = new AbortController();
@@ -32,6 +33,7 @@ if (values.help) {
       ...(values["env-file"] ? { envFile: values["env-file"] } : {}),
       ...(values.output ? { output: values.output } : {}),
       signal: controller.signal,
+      ...(values.state ? { states: values.state } : {}),
     });
   } catch (error) {
     console.error(

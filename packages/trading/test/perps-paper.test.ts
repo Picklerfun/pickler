@@ -7,12 +7,10 @@ import {
   paperUnits,
   paperDecimal,
   applyPaperFill,
-  DEFAULT_CONFIG,
-  effectivePlugins,
-  assertConfig,
   type PerpsPaperPosition,
   type PerpsPaperAttempt,
-} from "../src/index.js";
+} from "@pickler/trading/perps";
+import { DEFAULT_CONFIG, effectivePlugins, assertConfig } from "@pickler/core";
 const now = 1800000000000;
 const scope = { tenantId: "t", agentId: "a", sessionId: "s", network: "mainnet" as const };
 const intent = {

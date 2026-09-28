@@ -28,8 +28,8 @@ npm run evaluate -- validate --config .data/benchmark.json --allow-paid
 npm run evaluate -- run --config .data/benchmark.json --allow-paid
 npm run evaluate -- settle --config .data/benchmark.json
 npm run evaluate -- report --config .data/benchmark.json
-npm run paper:benchmark -- compare .data/benchmark-comparison \
-  .data/paper-studies/OLD_ID/state.json .data/paper-studies/NEW_ID/state.json
+npm run evaluate -- compare --config .data/benchmark.json --output .data/benchmark-comparison \
+  --state .data/paper-studies/OLD_ID/state.json --state .data/paper-studies/NEW_ID/state.json
 ```
 
 Set a unique ID, list **every** prior study under `historicalStudies`, and verify the Jev tariff
@@ -136,37 +136,7 @@ synthetic label isolation, safe diagnostics and known reporting arithmetic. Cont
 do not establish live profitability. Record live acceptance separately in
 `BTC-DECISION-BENCHMARK-VALIDATION.md` after execution.
 
-## Historical operator continuation and diagnosis
+## Historical continuation
 
-New paid diagnosis through the legacy CLI is disabled. Use the unified host described in
-[EVALUATIONS.md](EVALUATIONS.md); do not restart existing paused sessions.
-
-After renewed user authorization, prepare a new study declaring every prior study. Never remove
-a historical STOP or rewrite prior results. Prior v4 money and review counts are carried into
-the original USD 1.25 and 386-call ceilings, including unused reservations. A fresh evaluation
-is a repeated development experiment, not a new independent sample. Prompts and heldout labels
-must remain frozen.
-
-The retired `paper:benchmark diagnose` command historically reserved and sent
-exactly one current-reviewer call for that frozen scenario. It preserves usage and distinguishes
-PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM without rejected values. The diagnostic study
-cannot pass the 98-review live gate. Any subsequent evaluation needs its own explicitly prepared
-study, accounting for the diagnostic reservation as history; no automatic retry occurs.
-
-## Optional per-case isolation (not enabled by default)
-
-A new frozen configuration may explicitly set `invalidAnswerPolicy: "block-case"` after operator
-approval to change the original stop rule. This does not repair Jev's answers or relax validation.
-Only `JEV_INVALID_ANSWERS` with known valid usage is isolated, and never during the initial contract
-probes. Both reviewer calls on a synthetic case are still observed; incomplete/invalid responses
-remain failures in their respective denominators. Evaluation finishes as `completed_with_errors`
-when applicable. It is not a successful technical acceptance of the reviewer.
-
-During prospective evaluation, an invalid review blocks every proposed purchase in that market,
-including the no-veto control. The next distinct market can proceed without resending the failed
-request. Budgets, unknown usage, transport errors, invalid contract probes and cancellations retain
-the global stop. This preserves matched execution comparisons but conditions economic results on
-markets where required reviews were valid; report the excluded failed markets separately.
-
-The default `stop-study` remains unchanged for existing configurations. Configuration and state
-must agree on the frozen policy. Never edit an existing study to enable it or remove its STOP.
+Past diagnostic attempts remain evidence, not executable entry points. New execution uses only
+[EVALUATIONS.md](EVALUATIONS.md), preserving historical reservations and STOP files.

@@ -1,11 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  simulatePaperBuy,
-  type Market,
-  type OrderBook,
-  type PaperConditions,
-} from "../src/index.js";
+import { simulatePaperBuy, type PaperConditions } from "@pickler/trading/polymarket";
+import { type Market, type OrderBook } from "@pickler/core";
 const now = Date.parse("2026-09-17T12:00:00Z");
 const market: Market = {
   id: "1",

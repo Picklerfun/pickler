@@ -62,7 +62,7 @@ same transaction as cash postings. Failure can release an owned reservation even
 
 ```sh
 npm run build:shared
-node --import tsx --test packages/core/test/perps-paper.test.ts packages/infrastructure/test/perps-paper.test.ts
+node --import tsx --test packages/trading/test/perps-paper.test.ts packages/infrastructure/test/perps-paper.test.ts
 ```
 
 Database tests use separate temporary PostgreSQL databases and actual migrations. They exercise

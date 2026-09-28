@@ -1,3 +1,5 @@
+import { runHistoricalEvaluation } from "./history.js";
+import { compareBenchmarkStudies } from "../paper-study/benchmark-report.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +20,7 @@ export interface EvaluationHostRequest {
   envFile?: string;
   output?: string;
   signal?: AbortSignal;
+  states?: string[];
 }
 /** Public application service: no process.argv, chdir, or alternate provider/strategy implementation. */
 export async function executeEvaluation(input: EvaluationHostRequest) {
@@ -26,8 +29,31 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     protocol: EvaluationProtocol;
     version: number;
   };
+  const originalConfiguration = JSON.stringify(raw);
+  if (raw.version === 1 && !raw.protocol) {
+    raw.protocol = "paper-study-v1";
+  }
   const signal = input.signal ?? new AbortController().signal;
+  const historical = {
+    execute: async (request: import("@pickler/trading/evaluation").EvaluationRequest) =>
+      runHistoricalEvaluation(
+        request.command,
+        raw.protocol === "paper-study-v1"
+          ? Object.fromEntries(Object.entries(raw).filter(([key]) => key !== "protocol"))
+          : raw,
+        join(appRoot, ".data/paper-studies"),
+        signal,
+        async () => {
+          if (JSON.stringify(JSON.parse(await readFile(path, "utf8"))) !== originalConfiguration) {
+            throw new PilotError("CONFIG_CHANGED", "Frozen historical configuration changed");
+          }
+        },
+      ),
+  };
   const coordinator = createEvaluationCoordinator({
+    "paper-study-v1": historical,
+    "btc-quant-jev-v1": historical,
+    "btc-policy-comparison-v1": historical,
     "perps-comparison-v1": {
       async execute(request) {
         const command =
@@ -52,6 +78,18 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     "btc-decision-benchmark-v1": {
       async execute(request) {
         const config = benchmarkConfigSchema.parse(raw);
+        if (request.command === "compare") {
+          if (!input.output || !input.states?.length) {
+            throw new PilotError("INVALID_INPUT", "compare requires --output and --state paths");
+          }
+          console.log(
+            await compareBenchmarkStudies(
+              resolve(input.output),
+              input.states.map((path) => resolve(path)),
+            ),
+          );
+          return;
+        }
         const root = join(appRoot, ".data/paper-studies");
         const directory = join(root, config.id);
         if (request.command === "preflight") {
@@ -98,7 +136,7 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
       },
     },
   });
-  if (input.output && raw.protocol !== "perps-comparison-v1") {
+  if (input.output && raw.protocol !== "perps-comparison-v1" && input.command !== "compare") {
     throw new PilotError(
       "INVALID_INPUT",
       "BTC reports remain in their immutable session directory",

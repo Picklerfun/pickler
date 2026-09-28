@@ -248,7 +248,13 @@ test("only coherent high-confidence Jev insufficiency skips; abort has no repair
     started++;
     return new Promise(() => {});
   });
-  await assert.rejects(hanging.direct(studyContext(), AbortSignal.timeout(10), hooks));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10);
+  try {
+    await assert.rejects(hanging.direct(studyContext(), controller.signal, hooks));
+  } finally {
+    clearTimeout(timer);
+  }
   assert.equal(started, 1);
 });
 test("deterministic replay shares evidence, executes baseline, and supervises risk after model failure", async (t) => {

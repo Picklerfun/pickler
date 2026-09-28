@@ -7,11 +7,7 @@ import {
   JevClientError,
 } from "@pickler/infrastructure/model-providers/jev";
 import { PilotError } from "@pickler/core";
-import {
-  type PerpsDecisionContext,
-  type PerpsProposal,
-  type PerpsStudyConfig,
-} from "@pickler/trading/evaluation";
+import { type PerpsDecisionContext, type PerpsStudyConfig } from "@pickler/trading/evaluation";
 import { definePrompt } from "../prompts/define-prompt.js";
 export const perpsForecastPrompt = definePrompt({
   id: "perps-paper-proposal",

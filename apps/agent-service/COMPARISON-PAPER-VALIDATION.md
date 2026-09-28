@@ -1,3 +1,9 @@
+<!-- historical-evidence -->
+
+> Historical validation record: refers to the implementation and runs described below,
+> before the trading-package extraction (integration baseline `8f37f1f`). Not current
+> operating instructions. See [Evaluation operations](EVALUATIONS.md).
+
 # BTC paired-policy acceptance record
 
 ## Scope
