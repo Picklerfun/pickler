@@ -174,3 +174,14 @@ QUANT-PAPER-VALIDATION.md records controlled checks and the actual prospective s
 ## Paired BTC policy comparison
 
 `paper:compare` owns version-3 `btc-policy-comparison-v1`; read COMPARISON-PAPER.md. Replay is offline. A single paid synthetic Jev probe must pass before the two-hour run; probe plus run share a USD 0.25 reservation ceiling within the original USD 5. Freeze clean commit/configuration/prompts, preserve old studies, serialize reservations/writes and record missed slots without backfill. Paid-stop blocks reviews/fills but permits free forecasts and public settlement. Only actual virtual fills receive settlement arithmetic. Reports count shared forecasts/reviews once and keep synthetic acceptance separate. No hosted or real-trading changes.
+
+## Four-variant BTC decision benchmark
+
+`paper:benchmark` implements local version 4; read [BTC-DECISION-BENCHMARK.md](BTC-DECISION-BENCHMARK.md).
+Preparation freezes 48 synthetic labeled scenarios and both reviewers before paid calls. Keep labels
+out of requests and heldout wording families separate. Evaluate/run share USD 1.25 new reservations
+within the original USD 5 and a 386-call ceiling; old command accounting must include v4 or refuse it.
+Valid poor judgments continue all virtual variants; technical Jev failures stop new paid calls and
+all purchases. No retries, fallback, prompt tuning, hosted changes or automatic follow-up campaigns.
+The six-hour run shares initial/refreshed snapshots across A/B/C/D and records fixed slots.
+Offline reports import explicit historical paths without reconstructing unobserved variants.
