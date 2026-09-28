@@ -20,7 +20,7 @@ const TONES = {
  * Estados Sent / Filled / Failed / Unknown, compartidos por apertura (market.tsx) y cierre (tradingGate.tsx).
  * Vive aparte para que market.tsx y tradingGate.tsx no se importen entre sí (Require cycle, trampa de mobile-nav).
  */
-export function OrderResultCard({ result, primary, onEdit }: { result: OrderResult; primary: { label: string; onPress: () => void }; onEdit?: () => void }) {
+export function OrderResultCard({ result, primary, onEdit }: { result: OrderResult; primary: { label: string; onPress: () => void; accessibilityLabel?: string }; onEdit?: () => void }) {
   const t = TONES[result.step];
   const body = result.step === "filled" ? result.detail
     : result.step === "failed" ? result.text
@@ -35,7 +35,7 @@ export function OrderResultCard({ result, primary, onEdit }: { result: OrderResu
       {result.step !== "sent" ? (
         <View style={{ flexDirection: "row", gap: 8 }}>
           {result.step === "failed" && onEdit ? <Btn label="Edit" onPress={onEdit} variant="outline" flex={1} accessibilityLabel="edit-order" /> : null}
-          <Btn label={primary.label} onPress={primary.onPress} variant="lime" flex={1} accessibilityLabel="back-to-markets" />
+          <Btn label={primary.label} onPress={primary.onPress} variant="lime" flex={1} accessibilityLabel={primary.accessibilityLabel ?? "order-result-primary"} />
         </View>
       ) : null}
     </View>

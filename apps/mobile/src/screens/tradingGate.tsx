@@ -173,7 +173,7 @@ export function PositionsPanel(ctx: AppCtx) {
     return (
       <Page gap={11}>
         {closing.result ? (
-          <OrderResultCard result={closing.result} primary={{ label: "Back to Portfolio", onPress: () => setClosing(null) }} />
+          <OrderResultCard result={closing.result} primary={{ label: "Back to Portfolio", onPress: () => setClosing(null), accessibilityLabel: "back-to-portfolio" }} />
         ) : (
           <Card bd={C.hair2} bg={C.deep} gap={9}>
             <Tag>YOU CLOSE · AT MARKET</Tag>

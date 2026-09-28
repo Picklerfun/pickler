@@ -4,60 +4,40 @@ import { formatUnits } from "viem";
 import { AUSD_DECIMALS, formatAusd, parseAusd } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import { useNow } from "../hooks/useNow";
-import { formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
+import { change24h, formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
 import { levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from "../reads/level";
 import { cellLabel } from "../reads/matrix";
 import type { TradeLevel } from "../store";
-import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleton, StatusCard, T, Tag, type Tone } from "../ui/primitives";
+import { Btn, Card, Chip, InkBlock, KVList, type KVRow, Page, Segmented, Skeleton, T, Tag } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
 import { AskTab } from "./ask";
 import { BookCard } from "./book";
 import { OrderResultCard, type OrderResult } from "./orderResult";
+import { EnableTrading, TradingWarns } from "./tradingGate";
 
 type Step = { step: "edit" } | { step: "review" } | { step: "result"; result: OrderResult };
-
-const TRADE_GATE: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
-
-/** Sin trading key en este teléfono: el gate de Perpl vive aquí, no en Markets (fix gate, P3). El flujo real de Enable/Reconnect sigue en Markets. El botón navega a Markets (`nav("markets")`, no `back()`, porque Market también se abre desde un push). */
-function TradeGate({ perpl, nav }: Pick<AppCtx, "perpl" | "nav">) {
-  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.limeInk} /></Page>;
-  const existing = perpl.existingAccountId;
-  const reconnect = existing !== null && existing > 0n;
-  return (
-    <Page top={13} gap={11}>
-      <StatusCard tag="TRADE" title="Trading isn't set up on this phone" tone={TRADE_GATE}
-        body={reconnect
-          ? `This wallet already has Perpl account #${String(existing)}. Reconnect registers a trading key on this phone; no AUSD moves.`
-          : "Enable trading moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps."}>
-        <Btn label={reconnect ? "Reconnect trading" : "Enable trading"} onPress={() => nav("markets")} variant="lime" py={14} accessibilityLabel="trade-gate" />
-      </StatusCard>
-      <T w={400} s={11} lh={1.45} color={C.faint}>Ask and Agents work without a trading key.</T>
-    </Page>
-  );
-}
-
-const LEVEL: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
 
 /** Nivel elegido en Ask (D12): target, vencimiento, lado sugerido y qué pasará tras la orden. Nada cierra la posición. */
 function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level: TradeLevel; pd: number; now: number; onRemove: () => void }) {
   const side = sideFor(level.levelBps);
   const two = reminderKinds(level, now).length === 2;
   return (
-    <Card bd={LEVEL.bd} bg={LEVEL.bg} gap={8}>
-      <Tag color={LEVEL.fg}>TRADE THIS LEVEL · FROM ASK</Tag>
+    <Card bg={C.limeBg} bd="transparent" gap={8}>
+      <Tag color={C.limeInk}>TRADE THIS LEVEL · FROM ASK</Tag>
       <T w={700} s={16} lh={1.2} ls={-0.01} display accessibilityLabel="level-title">{levelTitle(symbol, level)} → {formatPrice(level.target, pd)}</T>
       <KVList rows={[
         { label: "TARGET", value: formatPrice(level.target, pd) },
         { label: "RESOLVES", value: resolvesLabel(level, now).replace("Resolves ", "") },
         { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.limeInk : C.down },
       ]} top />
-      <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Markets.`}</T>
+      <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Portfolio.`}</T>
       <Btn label="Remove level" onPress={onRemove} variant="ghost" py={8} accessibilityLabel="level-remove" />
     </Card>
   );
 }
 
-function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
+function TradeTab(ctx: AppCtx) {
+  const { S, set, perpl, reads, marketData, nav } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const side: Side = S.perpsSide ?? "long";
   const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
@@ -68,7 +48,8 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
   // Sólo el nivel de este mercado y todavía vivo; uno de otro mercado se conserva en el store pero no se pinta ni programa nada.
   const level = S.tradeLevel && S.tradeLevel.marketId === market.id && levelIsLive(S.tradeLevel, now) ? S.tradeLevel : undefined;
 
-  if (perpl.state.status !== "ready") return <TradeGate perpl={perpl} nav={nav} />;
+  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.faint} /></Page>;
+  if (perpl.state.status !== "ready") return <EnableTrading {...ctx} />;
 
   const leverages = leveragesFor(market);
   const lvUsed = leverages.includes(lv) ? lv : 1;
@@ -104,25 +85,26 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
   };
 
   const rows: KVRow[] = [
-    { label: "NOTIONAL", value: `≈ ${formatAusd(notional)} AUSD · ${formatSize(size, market.sizeDecimals)} ${sym}` },
+    { label: "SIZE", value: `${formatSize(size, market.sizeDecimals)} ${sym} · ≈ ${formatAusd(notional)} AUSD` },
     { label: "EST. PRICE", value: formatPrice(market.mark, market.priceDecimals) },
     { label: "FEE · TAKER", value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
-    { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: lvUsed > 1 ? C.down : C.dim },
+    { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: C.down },
     ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.limeInk }] : []),
   ];
 
   if (st.step === "result") {
-    return <Page top={13}><OrderResultCard result={st.result} primary={{ label: "Back to Markets", onPress: () => nav("markets") }} onEdit={() => setSt({ step: "edit" })} /></Page>;
+    return <Page top={13}><OrderResultCard result={st.result} primary={{ label: "See it in Portfolio", onPress: () => nav("portfolio"), accessibilityLabel: "see-in-portfolio" }} onEdit={() => setSt({ step: "edit" })} /></Page>;
   }
 
   if (st.step === "review") {
     return (
       <Page top={13} gap={11}>
-        <Card bd={side === "long" ? C.limeBd : C.downBd} bg={side === "long" ? C.limeBg06 : C.downBg} gap={8}>
-          <Tag color={side === "long" ? C.limeInk : C.down}>YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET</Tag>
-          <T w={700} s={22} lh={1.1} ls={-0.02} display>{formatAusd(units ?? 0n)} AUSD</T>
-          <KVList rows={rows} top />
-        </Card>
+        <InkBlock gap={8}>
+          <Tag color={C.onInkDim}>YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET</Tag>
+          <T w={700} s={22} lh={1.1} ls={-0.02} mono color={C.onInk}>{formatAusd(units ?? 0n)} AUSD</T>
+          {/* Sobre ink, dim/limeInk/down no se leen: se re-mapean a sus variantes claras. */}
+          <KVList rows={rows.map((r) => ({ ...r, fg: r.fg === C.down ? C.downOnInk : r.fg === C.limeInk ? C.limeOnInk : C.onInk }))} kFg={C.onInkDim} top style={{ borderTopColor: C.tile }} />
+        </InkBlock>
         {lvUsed > 1 ? <T w={400} s={11.5} lh={1.4} color={C.warn}>Higher leverage means a closer liquidation price.</T> : null}
         <Btn label={live ? `Confirm ${side}` : "Connecting…"} onPress={() => { void confirm(); }} variant="lime" py={14} disabled={!live} accessibilityLabel="confirm" />
         <Btn label="Change amount" onPress={() => setSt({ step: "edit" })} variant="ghost" accessibilityLabel="change-amount" />
@@ -133,20 +115,21 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
 
   return (
     <Page top={13} gap={11}>
+      <TradingWarns perpl={perpl} />
       {level ? <LevelCard symbol={sym} level={level} pd={market.priceDecimals} now={now} onRemove={() => set({ tradeLevel: undefined })} /> : null}
       <Segmented
-        options={[["long", "Long"], ["short", "Short"]] as const}
+        options={[["long", "Long · up"], ["short", "Short · down"]] as const}
         value={side}
         onChange={(k) => set({ perpsSide: k })}
-        tone={(k) => ({ bg: k === "long" ? C.lime : C.short, fg: C.onLime })}
+        tone={(k) => ({ bg: k === "long" ? C.lime : C.short, fg: C.ink })}
       />
       <BookCard market={market} data={marketData} target={level?.target} />
-      <Card bd={C.hair2} bg={C.deep} gap={6}>
+      <Card gap={6}>
         <Tag>MARGIN · AUSD</Tag>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <TextInput
             value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.faint} keyboardType="decimal-pad" accessibilityLabel="margin-input"
-            style={[textStyle(700, 32, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
+            style={[textStyle(700, 32, { lh: 1.3, mono: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
           />
           <Chip label="Max" onPress={() => setAmount(formatUnits(max, AUSD_DECIMALS))} bd={C.hair22} fg={C.ink} accessibilityLabel="max" />
         </View>
@@ -155,14 +138,17 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
       <View style={{ flexDirection: "row", gap: 5 }}>
         {leverages.map((l) => {
           const p = pill(l === lvUsed);
-          return <Chip key={l} label={`${l}x`} mono s={10} py={8} px={0} style={{ flex: 1 }} fg={p.fg} bd={p.bd} bg={p.bg} onPress={() => setLv(l)} accessibilityLabel={`lv-${l}`} />;
+          return <Chip key={l} label={`${l}×`} mono s={10} py={8} px={0} style={{ flex: 1 }} fg={p.fg} bd={p.bd} bg={p.bg} onPress={() => setLv(l)} accessibilityLabel={`lv-${l}`} />;
         })}
       </View>
       {leverages.length < 4 ? <T w={400} s={11} lh={1.4} color={C.faint}>{sym} allows up to {market.maxLeverage}x.</T> : null}
       <Card><KVList rows={rows} /></Card>
       {lvUsed > 1 ? <T w={400} s={11.5} lh={1.4} color={C.warn}>Higher leverage means a closer liquidation price.</T> : null}
       {error ? <T w={400} s={11.5} lh={1.4} color={C.warn}>{error}</T> : null}
-      <Btn label={ok ? `Review ${side} · ${formatAusd(units ?? 0n)} AUSD` : "Enter a margin"} onPress={() => setSt({ step: "review" })} arrow disabled={!ok} py={14} accessibilityLabel="review" />
+      <Btn
+        label={ok ? (level ? `${side === "long" ? "Long" : "Short"} to ${formatPrice(level.target, market.priceDecimals)} · Review ${formatAusd(units ?? 0n)} AUSD` : `Review · ${formatAusd(units ?? 0n)} AUSD`) : "Enter a margin"}
+        onPress={() => setSt({ step: "review" })} arrow disabled={!ok} py={14} variant="lime" accessibilityLabel="review"
+      />
       <T w={400} s={10.5} lh={1.4} color={C.faint}>Nothing sent yet. Fills from the book; PnL and liquidation on mark.</T>
     </Page>
   );
@@ -199,10 +185,23 @@ export function MarketScreen(ctx: AppCtx) {
 
   return (
     <View>
-      <View style={{ paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}>
-        <PillTabs options={[["trade", "Trade it"], ["ask", "Ask an agent"]] as const} value={S.marketTab} onChange={(k) => set({ marketTab: k })} />
+      <View style={{ paddingTop: 4, paddingHorizontal: 18, paddingBottom: 6 }}>
+        <Segmented options={[["trade", "Trade it"], ["ask", "Ask an agent"]] as const} value={S.marketTab} onChange={(k) => set({ marketTab: k })} />
       </View>
       {S.marketTab === "trade" ? <TradeTab {...ctx} /> : <AskTab {...ctx} />}
+    </View>
+  );
+}
+
+/** Mark en vivo y % 24h a la derecha de la cabecera (D10). */
+export function MarkBadge({ S, perpl }: AppCtx) {
+  const m = perpl.context?.markets.find((x) => x.id === S.perpsMarketId);
+  if (!m) return null;
+  const chg = change24h(m.mark, m.prev);
+  return (
+    <View style={{ alignItems: "flex-end" }}>
+      <T w={700} s={15} lh={1} mono>{formatPrice(m.mark, m.priceDecimals)}</T>
+      <T w={500} s={10.5} lh={1} mono color={chg >= 0 ? C.up : C.down} style={{ marginTop: 4 }}>{chg >= 0 ? "+" : ""}{(chg * 100).toFixed(1)}%</T>
     </View>
   );
 }

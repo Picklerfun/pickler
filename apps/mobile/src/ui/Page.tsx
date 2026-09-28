@@ -15,8 +15,11 @@ export function Page({ screen, children, headerRight }: { screen: Screen; childr
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { S, perpl, treasury, reads, seal, back, setControls } = ctx;
-  const perpsSymbol = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId)?.symbol;
-  const [title, sub] = headerFor(screen, perpsSymbol);
+  const openMarket = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId);
+  const perpsSymbol = openMarket?.symbol;
+  const [title, baseSub] = headerFor(screen, perpsSymbol);
+  // Market: subtítulo dinámico (agentes y apalancamiento máximo del mercado abierto); sin mercado, el de headerFor.
+  const sub = screen === "market" && openMarket ? `${reads.agents?.length ?? "—"} AGENTS · MAX ${openMarket.maxLeverage}×` : baseSub;
   const isRoot = ROOT_OF[screen] === screen;
   const canBack = CAN_BACK.includes(screen) && navigation.canGoBack();
   const showTabs = SHOW_TABS.includes(screen);

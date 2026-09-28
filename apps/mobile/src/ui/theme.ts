@@ -65,6 +65,8 @@ export const C = {
   downBd: "rgba(198,44,98,0.4)",
   downBd45: "rgba(198,44,98,0.45)",
   downBg: "#FDF0F5",
+  /** Pérdida como texto **sobre ink** (resumen de la orden): `down` no se lee sobre #0B0D1A. */
+  downOnInk: "#FF8FB8",
   warn: "#8A6200",
   pending: "#FFC93F",
   warnBd: "rgba(255,201,63,0.6)",

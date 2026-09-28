@@ -94,10 +94,10 @@ export function KV({ k, v, vFg = C.ink, kFg = C.faint }: { k: string; v: string;
 
 export type KVRow = { label: string; value: string; fg?: string };
 
-export function KVList({ rows, top, gap = 7, style }: { rows: KVRow[]; top?: boolean; gap?: number; style?: StyleProp<ViewStyle> }) {
+export function KVList({ rows, top, gap = 7, kFg, style }: { rows: KVRow[]; top?: boolean; gap?: number; kFg?: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ gap, paddingTop: top ? 9 : 0, borderTopWidth: top ? 1 : 0, borderTopColor: C.hair12 }, style]}>
-      {rows.map((r, i) => <KV key={i} k={r.label} v={r.value} vFg={r.fg} />)}
+      {rows.map((r, i) => <KV key={i} k={r.label} v={r.value} vFg={r.fg} kFg={kFg} />)}
     </View>
   );
 }
@@ -205,24 +205,6 @@ export function Segmented<K extends string>({ options, value, onChange, tone }: 
           <Touch key={k} onPress={() => onChange(k)} accessibilityLabel={`segment-${k}`} style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999, backgroundColor: t.bg, alignItems: "center" }}>
             <T w={600} s={13} lh={1} color={t.fg}>{label}</T>
           </Touch>
-        );
-      })}
-    </View>
-  );
-}
-
-/** Tabs píldora (tabs de mercado, de agente): lima al seleccionado. */
-export function PillTabs<K extends string>({ options, value, onChange, flex = true, style }: { options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) => void; flex?: boolean; style?: StyleProp<ViewStyle> }) {
-  return (
-    <View style={[{ flexDirection: "row", gap: 4 }, style]}>
-      {options.map(([k, label]) => {
-        const on = value === k;
-        return (
-          <Chip
-            key={k} label={label} onPress={() => onChange(k)} accessibilityLabel={`pill-${k}`}
-            fg={on ? C.limeInk : C.dim} bd={on ? C.limeBd : C.hair18} bg={on ? C.limeBg14 : "transparent"}
-            s={11.5} py={8} px={flex ? 6 : 12} style={flex ? { flex: 1 } : null}
-          />
         );
       })}
     </View>

@@ -8,13 +8,13 @@ import { sparkPoints } from "../perpl/marks";
 import { formatPrice } from "../perpl/orders";
 import {
   callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
-  questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
+  levelLabel, questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
 import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
 import type { Agent, Read } from "../reads/types";
 import type { AskCell, TradeLevel } from "../store";
 import { Btn, Card, Chip, Reveal, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, Warn } from "../ui/primitives";
-import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
+import { C, GRID_ACCENT, GRID_DOT } from "../ui/theme";
 
 const READING: Tone = { bd: C.warnBd, bg: C.warnBg, fg: C.warn };
 const FAILED: Tone = { bd: C.downBd, bg: C.downBg, fg: C.down };
@@ -40,30 +40,30 @@ export function ReadCard({ read, agentName: name, now, pushOff, footer }: { read
   const yes = p !== null && callOf(p);
   const line = resolutionLine(read, now);
   return (
-    <Card bd={C.hair2} bg={C.deep} gap={9}>
+    <Card gap={9}>
       <Tag color={C.faint}>{read.symbol} {cellLabel(read)} · {name.toUpperCase()}</Tag>
       <T w={400} s={12} lh={1.4} color={C.dim}>{read.question}</T>
       {p !== null ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <T w={700} s={30} lh={1.1} ls={-0.02} display>{formatProbability(p)}</T>
-          <Chip label={yes ? "YES" : "NO"} mono s={10} fg={yes ? C.limeInk : C.down} bd={yes ? C.limeBd : C.downBd} accessibilityLabel={`call-${yes ? "yes" : "no"}`} />
+          <T w={700} s={40} lh={1.1} ls={-0.02} mono color={C.vio}>{formatProbability(p)}</T>
+          <Chip label={yes ? "YES" : "NO"} mono s={10} fg={yes ? C.limeInk : C.down} bg={yes ? C.limeBg14 : C.downBg} bd={yes ? C.limeBg14 : C.downBg} accessibilityLabel={`call-${yes ? "yes" : "no"}`} />
           <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>probability of yes · mark {formatPrice(read.markAtRequest, read.priceDecimals)} at request</T>
         </View>
       ) : null}
       {read.reasons ? (
         <View style={{ gap: 4 }}>
-          <Tag>REASONS</Tag>
+          <Tag>WHY</Tag>
           {read.reasons.map((r, i) => <T key={i} w={400} s={12} lh={1.45} color={C.ink}>· {r}</T>)}
         </View>
       ) : null}
       {read.limits ? (
-        <View style={{ gap: 4 }}>
-          <Tag>WHAT WOULD BREAK IT</Tag>
+        <View style={{ gap: 4, padding: 12, borderRadius: 14, backgroundColor: C.warnBg }}>
+          <Tag color={C.warn}>LIMITS</Tag>
           <T w={400} s={12} lh={1.45} color={C.dim}>{read.limits}</T>
         </View>
       ) : null}
       <T w={500} s={11} lh={1.3} mono color={line.fg}>{line.text}</T>
-      {pushOff && read.status === "open" ? <T w={400} s={11} lh={1.4} color={C.faint}>Push is off — check My reads to see the result.</T> : null}
+      {pushOff && read.status === "open" ? <T w={400} s={11} lh={1.4} color={C.faint}>Push is off — check Portfolio → Reads to see the result.</T> : null}
       {footer}
     </Card>
   );
@@ -73,7 +73,7 @@ function SessionGate({ reads }: { reads: Reads }) {
   const signing = reads.session === "signing";
   return (
     <StatusCard tag="ASK" title="Unlock to ask" body="Your wallet signs once a day to use its simulated credits. No transaction, no gas." tone={ASK}>
-      <Btn label={signing ? "Unlocking…" : "Unlock with Face ID"} onPress={() => { void reads.ensureSession(); }} variant="lime" busy={signing} accessibilityLabel="ask-unlock" />
+      <Btn label={signing ? "Unlocking…" : "Unlock with Face ID"} onPress={() => { void reads.ensureSession(); }} variant="violet" busy={signing} accessibilityLabel="ask-unlock" />
       {reads.sessionError ? <T w={400} s={11.5} lh={1.4} color={C.warn}>{reads.sessionError}</T> : null}
     </StatusCard>
   );
@@ -82,7 +82,7 @@ function SessionGate({ reads }: { reads: Reads }) {
 /** D2 sin excepciones: skeleton sólo sin dato Y sin error; con error, «—» (I3, revisión final F1). */
 function CreditsRow({ credits, error }: { credits: number | null; error: string }) {
   return (
-    <Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+    <Card pad={11} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Tag>CREDITS</Tag>
       {credits === null && !error ? <Skeleton h={16} w={28} r={4} />
         : credits === null ? <T w={700} s={16} lh={1} mono>—</T>
@@ -92,7 +92,7 @@ function CreditsRow({ credits, error }: { credits: number | null; error: string 
   );
 }
 
-/** El `Grid` del prototipo: sparkline a la izquierda, escalera de precios, celdas de 44 px con un punto donde ya hay reads, horizontes abajo. */
+/** El `Grid` del prototipo: sparkline a la izquierda, escalera de precios, celdas de 48 px con un punto donde ya hay reads, horizontes abajo. */
 function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Market; marks: readonly number[]; dots: Set<string>; selected?: AskCell; onSelect: (c: Cell) => void }) {
   const acc = GRID_ACCENT.ask;
   const pd = market.priceDecimals;
@@ -105,22 +105,30 @@ function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Marke
         <View style={{ flex: 1, minWidth: 0 }}>
           {LEVELS_BPS.map((bps, i) => {
             const rowOn = selected?.levelBps === bps;
-            const markRule = bps > 0 && (LEVELS_BPS[i + 1] ?? 0) < 0; // la regla bajo el último nivel positivo es el mark (P4)
+            const markBand = bps > 0 && (LEVELS_BPS[i + 1] ?? 0) < 0; // la banda del mark va entre el último nivel positivo y el primero negativo (P4)
             return (
-              <View key={bps} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: markRule ? GRID_MARK_RULE : C.hair08 }}>
-                <View style={{ width: 58, justifyContent: "center", paddingLeft: 7, borderRightWidth: 1, borderRightColor: C.hair08 }}>
-                  <T w={500} s={9.5} lh={1} mono color={rowOn ? acc.fg : C.faint} numberOfLines={1}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
+              <View key={bps}>
+                <View style={{ flexDirection: "row", borderBottomWidth: markBand ? 0 : 1, borderBottomColor: C.hair08 }}>
+                  <View style={{ width: 58, justifyContent: "center", paddingLeft: 7, gap: 3, borderRightWidth: 1, borderRightColor: C.hair08 }}>
+                    <T w={500} s={9.5} lh={1} mono color={bps > 0 ? C.up : C.down} numberOfLines={1}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
+                    <T w={500} s={8.5} lh={1} mono color={C.faint} numberOfLines={1}>{levelLabel(bps)}</T>
+                  </View>
+                  {HORIZONS_MIN.map((h) => {
+                    const colOn = selected?.horizonMin === h;
+                    const on = rowOn && colOn;
+                    return (
+                      <Touch key={h} onPress={() => onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
+                        style={{ flex: 1, minWidth: 0, height: 48, borderLeftWidth: 1, borderLeftColor: C.hair08, backgroundColor: on ? acc.on : rowOn || colOn ? acc.soft : "transparent", alignItems: "center", justifyContent: "center" }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: dots.has(dotKey({ levelBps: bps, horizonMin: h })) ? GRID_DOT : "transparent" }} />
+                      </Touch>
+                    );
+                  })}
                 </View>
-                {HORIZONS_MIN.map((h) => {
-                  const colOn = selected?.horizonMin === h;
-                  const on = rowOn && colOn;
-                  return (
-                    <Touch key={h} onPress={() => onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
-                      style={{ flex: 1, minWidth: 0, height: 44, borderLeftWidth: 1, borderLeftColor: C.hair08, backgroundColor: on ? acc.on : rowOn || colOn ? acc.soft : "transparent", alignItems: "center", justifyContent: "center" }}>
-                      <View style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: dots.has(dotKey({ levelBps: bps, horizonMin: h })) ? GRID_DOT : "transparent" }} />
-                    </Touch>
-                  );
-                })}
+                {markBand ? (
+                  <View style={{ height: 22, justifyContent: "center", paddingLeft: 7, backgroundColor: C.ink }} accessibilityLabel="mark-band">
+                    <T w={700} s={10.5} lh={1} mono color={C.onInk} numberOfLines={1}>{formatPrice(market.mark, pd)} MARK</T>
+                  </View>
+                ) : null}
               </View>
             );
           })}
@@ -151,9 +159,9 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
   const noCredits = reads.credits !== null && reads.credits <= 0;
   const price = `${agent?.priceCredits ?? 1} credit`;
   return (
-    <Card bd={C.vioBd45} bg={C.vioBg07} gap={9}>
+    <Card bg={C.vioBg06} bd="transparent" gap={9}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Chip label={`Asking ${agent?.name ?? "…"} · ${price}`} fg={C.vio} bd={C.vioBd} bg={C.vioBg} s={10.5} py={5} px={9} style={{ flexShrink: 1 }} />
+        <Chip label={`Asking ${agent?.name ?? "…"} · ${price}`} fg={C.vio} bd={C.vioBg} bg={C.vioBg} s={10.5} py={5} px={9} style={{ flexShrink: 1 }} />
         <Touch onPress={() => setPicking((p) => !p)} style={{ paddingVertical: 5, paddingHorizontal: 8 }} accessibilityLabel="ask-change">
           <T w={600} s={10.5} lh={1} color={C.faint}>{picking ? "Done" : "Change"}</T>
         </Touch>
@@ -186,10 +194,10 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
       </View>
       <View style={{ flexDirection: "row", gap: 7 }}>
         <Btn label={noCredits ? "No credits left" : `Ask ${agent?.name ?? "agent"} · ${price}`} onPress={() => { if (agent) onAsk(agent.id); }}
-          arrow flex={1} py={12} disabled={noCredits || !agent} accessibilityLabel="ask" />
+          arrow flex={1} py={12} variant="violet" disabled={noCredits || !agent} accessibilityLabel="ask" />
         <Btn label="Clear" onPress={onClear} variant="ghost" py={12} accessibilityLabel="ask-clear" />
       </View>
-      <Btn label="Trade this level" onPress={onTrade} variant="outline" fg={C.limeInk} bd={C.limeBd} py={11} accessibilityLabel="trade-level" />
+      <Btn label="Trade this level" onPress={onTrade} variant="lime" py={11} accessibilityLabel="trade-level" />
       <T w={400} s={10.5} lh={1.4} color={C.faint}>{noCredits ? "Credits are simulated for the testnet." : "Nothing charged yet."}</T>
     </Card>
   );

@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { AgentsTab } from "../screens/agents";
 import { ComingSoonScreen } from "../screens/comingSoon";
-import { MarketScreen } from "../screens/market";
+import { MarkBadge, MarketScreen } from "../screens/market";
 import { MarketsScreen } from "../screens/markets";
 import { PerpsFundsScreen } from "../screens/perpsFunds";
 import { PortfolioScreen } from "../screens/portfolio";
@@ -29,7 +29,7 @@ const LaunchpadStack = createNativeStackNavigator<SoloStackParamList<"launchpad"
 const ActivityStack = createNativeStackNavigator<SoloStackParamList<"activity">>();
 
 const Markets = withPage("markets", MarketsScreen);
-const Market = withPage("market", MarketScreen);
+const Market = withPage("market", MarketScreen, { headerRight: MarkBadge });
 const PerpsFunds = withPage("perpsFunds", PerpsFundsScreen);
 const Wallet = withPage("wallet", WalletScreen);
 const Deposit = withPage("deposit", DepositScreen);
