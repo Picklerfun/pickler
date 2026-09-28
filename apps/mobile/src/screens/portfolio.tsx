@@ -28,6 +28,7 @@ function Totals({ perpl }: Pick<AppCtx, "perpl">) {
   const positions = perpl.live?.positions ?? [];
   const b = acc?.b ?? perpl.lastBalance ?? null;
   const upnl = unrealisedPnl(positions, perpl.context?.markets ?? []);
+  const waiting = perpl.state.status === "ready" || perpl.state.status === "loading";
   const t = b === null ? null : portfolioTotals({ b, lb: acc?.lb ?? 0n, locked: lockedCollateral(positions), upnl });
   const tile = (k: string, v: string, fg: string) => (
     <InkTile><Tag color={C.onInkDim}>{k}</Tag><T w={700} s={15} mono color={fg} style={{ marginTop: 6 }}>{v}</T></InkTile>
@@ -35,7 +36,10 @@ function Totals({ perpl }: Pick<AppCtx, "perpl">) {
   return (
     <InkBlock gap={12}>
       <Tag color={C.onInkDim}>TOTAL VALUE · AUSD{acc ? "" : b !== null ? " · LAST SEEN" : ""}</Tag>
-      {t === null ? <Skeleton h={44} w="60%" /> : <T w={700} s={44} lh={1} ls={-0.03} mono color={C.onInk}>{formatAusd(t.total)}</T>}
+      {/* Sin key (ni último saldo) no llega ningún dato: «—» en vez de un skeleton que nunca se resuelve. */}
+      {t !== null ? <T w={700} s={44} lh={1} ls={-0.03} mono color={C.onInk}>{formatAusd(t.total)}</T>
+        : waiting ? <Skeleton h={44} w="60%" />
+        : <T w={700} s={44} lh={1} ls={-0.03} mono color={C.onInkDim}>—</T>}
       {upnl !== null ? <T w={500} s={11} mono color={upnl <= -10_000n ? C.downOnInk : C.limeOnInk}>{formatPnl(upnl)} AUSD UNREALISED</T> : null}
       <View style={{ flexDirection: "row", gap: 8 }}>
         {tile("POSITIONS", t ? formatAusd(t.positions) : "—", C.limeOnInk)}
