@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
 import { createGate } from "../create/gate";
+import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
 import { MIN_FUNDED_AUSD } from "./status";
 import styles from "./home.module.css";
-
-/** The hint on every section before the first agent exists. */
-const NEEDS_AGENT = "After you create your agent";
 
 interface Item {
   key: SectionKey;
@@ -32,6 +30,7 @@ export function HomeMenu({
   calls,
   running,
   canManage,
+  researchLock = "",
   onSection,
   onSwitch,
 }: {
@@ -40,6 +39,8 @@ export function HomeMenu({
   calls: number;
   running: boolean;
   canManage: boolean;
+  /** Why this workspace cannot create agents at all (research not enabled), or "". */
+  researchLock?: string;
   onSection(key: SectionKey): void;
   onSwitch(agentId: string): void;
 }) {
@@ -47,9 +48,15 @@ export function HomeMenu({
   const name = agent?.name ?? "this agent";
   const unfundedHere = (agent?.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD;
   const canCreate = agent ? agent.canCreateAnother.ok : createGate(agents).open;
-  const lockNote = unfundedHere
+  const fundLock = unfundedHere
     ? `Fund ${name} first. One unfunded agent at a time.`
     : "Fund your other agent first. One unfunded agent at a time.";
+  const access = menuAccess({
+    hasAgent: agent !== null,
+    canManage,
+    researchLock,
+    fundLock: canCreate ? "" : fundLock,
+  });
   const plugins = agent?.config.plugins?.enabled.length ?? 0;
   const groups: { title: string; items: Item[] }[] = [
     {
@@ -122,20 +129,20 @@ export function HomeMenu({
       </button>
       {open && (
         <div className={styles.menu} id="home-menu-panel">
-          {canCreate && canManage ? (
+          {access.create ? (
             <Link href="/studio/new" className={styles.newAgent}>
               + New agent
             </Link>
           ) : (
-            <div className={styles.newAgentLocked} title={lockNote} aria-disabled="true">
+            <div className={styles.newAgentLocked} title={access.createNote} aria-disabled="true">
               <span className={styles.newAgentLabel}>+ New agent</span>
-              <span className={styles.newAgentNote}>
-                {canManage ? lockNote : "You can view this workspace but not create agents."}
-              </span>
+              <span className={styles.newAgentNote}>{access.createNote}</span>
             </div>
           )}
-          {!agent && (
-            <p className={styles.menuHint}>Every section opens {NEEDS_AGENT.toLowerCase()}.</p>
+          {!access.sections && (
+            <p className={styles.menuHint}>
+              Every section opens {access.sectionNote.toLowerCase()}.
+            </p>
           )}
           {groups.map((group) => (
             <div key={group.title} className={styles.menuGroup}>
@@ -145,15 +152,17 @@ export function HomeMenu({
                   key={item.key}
                   type="button"
                   className={styles.menuItem}
-                  disabled={!agent}
-                  title={agent ? undefined : NEEDS_AGENT}
+                  disabled={!access.sections}
+                  title={access.sectionNote || undefined}
                   onClick={() => {
                     setOpen(false);
                     onSection(item.key);
                   }}
                 >
                   <span className={styles.grow}>{item.label}</span>
-                  {agent ? item.note && <span className={styles.menuNote}>{item.note}</span> : null}
+                  {access.sections && item.note && (
+                    <span className={styles.menuNote}>{item.note}</span>
+                  )}
                 </button>
               ))}
             </div>

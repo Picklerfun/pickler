@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button, ButtonLink, Icon } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
 import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
+import { menuAccess } from "./access";
 import { HomeMenu } from "./menu";
 import shell from "../studio.module.css";
 import styles from "./home.module.css";
@@ -23,19 +24,16 @@ export function EmptyHome({
 }: {
   passkeys: PasskeysKnown;
   canManage: boolean;
-  /** A staged or fixture studio, which says so. Creating opens the creation flow's own preview. */
+  /** A staged or fixture studio, which says so. Creating still links to /studio/new, which
+      renders its own labelled preview when it has no session or no Supabase behind it. */
   preview: boolean;
   /** Why creating is closed on this workspace (research not enabled), or null when it is open. */
   locked: { title: string; note: string } | null;
   error: string;
 }) {
-  const canCreate = canManage && !locked;
-  let lockNote = "";
-  if (locked) {
-    lockNote = `${locked.title} ${locked.note}`;
-  } else if (!canManage) {
-    lockNote = "You can view this workspace but not create agents.";
-  }
+  const researchLock = locked ? `${locked.title} ${locked.note}` : "";
+  /* No agents, so no unfunded-agent lock: the same answer the Menu's "+ New agent" reads. */
+  const access = menuAccess({ hasAgent: false, canManage, researchLock, fundLock: "" });
 
   return (
     <main className={styles.home} data-surface="dark">
@@ -54,7 +52,8 @@ export function EmptyHome({
           agents={[]}
           calls={0}
           running={false}
-          canManage={canManage && !locked}
+          canManage={canManage}
+          researchLock={researchLock}
           onSection={noSection}
           onSwitch={noSection}
         />
@@ -95,9 +94,9 @@ export function EmptyHome({
             An agent reads the markets you point it at, researches one and makes its call on paper.
             Every step and every source stays on the record.
           </p>
-          {lockNote && <p className={styles.newAgentNote}>{lockNote}</p>}
+          {access.createNote && <p className={styles.newAgentNote}>{access.createNote}</p>}
           <div className={styles.firstActions}>
-            {canCreate ? (
+            {access.create ? (
               <ButtonLink as={Link} href="/studio/new" variant="primary" arrow>
                 Create your first agent
               </ButtonLink>

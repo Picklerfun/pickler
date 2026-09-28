@@ -454,7 +454,8 @@ export function Studio({
 
   /* With no agent every section would be empty, so any section asked for lands on the empty home;
      its Menu lists them disabled. */
-  if (studioLanding(loaded, agents) === "empty") {
+  const landing = studioLanding(loaded, agents, section);
+  if (landing === "empty") {
     return (
       <EmptyHome
         passkeys={passkeys}
@@ -466,7 +467,7 @@ export function Studio({
     );
   }
 
-  if (section === "home" && agent) {
+  if (landing === "home" && agent) {
     return (
       <Home
         key={agentId}
