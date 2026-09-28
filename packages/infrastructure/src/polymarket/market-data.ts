@@ -220,6 +220,7 @@ export class PolymarketData implements MarketData, PaperMarketData {
     marketId: string,
     outcomeId: string,
     signal: AbortSignal,
+    snapshot?: { raw: unknown; observedAt: string },
   ): Promise<PaperConditions> {
     if (!/^\d+$/.test(marketId) || !/^\d+$/.test(outcomeId)) {
       throw new PilotError("INVALID_INPUT", "Invalid market or outcome");
@@ -237,7 +238,10 @@ export class PolymarketData implements MarketData, PaperMarketData {
       orderPriceMinTickSize: z.number().finite().positive().lt(1),
       orderMinSize: z.number().finite().nonnegative(),
     });
-    const row = parse(schema, await this.getJson(`/markets/${marketId}`, signal));
+    const row = parse(
+      schema,
+      snapshot?.raw ?? (await this.getJson(`/markets/${marketId}`, signal)),
+    );
     const market = mapMarket(row, []);
     if (
       row.id !== marketId ||
@@ -253,7 +257,7 @@ export class PolymarketData implements MarketData, PaperMarketData {
     return {
       marketId,
       outcomeId,
-      observedAt: new Date().toISOString(),
+      observedAt: snapshot?.observedAt ?? new Date().toISOString(),
       // orderMinSize is a share quantity, not a currency amount.
       minimumNotional: "0",
       minimumShares: String(row.orderMinSize),

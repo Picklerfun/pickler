@@ -33,7 +33,11 @@ export interface QuantForecast {
   probabilities: QuantProbability[];
   limitations: string[];
 }
+export type QuantPolicy = "conservative-v1" | "central-v1";
 export interface QuantProposal {
+  policy?: QuantPolicy;
+  centralEdge?: number;
+  decisionEdge?: number;
   outcomeId: string;
   limitPrice: string;
   conservativeEdge: number;
@@ -69,9 +73,12 @@ export function quantForecast(input: QuantInput, now: number): QuantForecast {
     return fail("QUANT_BTC_ONLY");
   }
   const { ticker, candles, opening, rule } = input;
+  if (ticker.observedAt - now > 1000) {
+    return fail("QUANT_TICKER_CLOCK_AHEAD");
+  }
   if (
     !Number.isFinite(now) ||
-    ticker.observedAt > now ||
+    !Number.isFinite(ticker.observedAt) ||
     now - ticker.observedAt > 10000 ||
     ![ticker.price, ticker.bid, ticker.ask, opening.price].every(
       (v) => Number.isFinite(v) && v > 0,
@@ -161,7 +168,11 @@ export function quantProposal(
   input: QuantInput,
   forecast: QuantForecast,
   now: number,
+  policy: QuantPolicy = "conservative-v1",
 ): { proposal: QuantProposal | null; reasons: string[] } {
+  if (policy !== "conservative-v1" && policy !== "central-v1") {
+    return fail("QUANT_INVALID_POLICY");
+  }
   const candidates: QuantProposal[] = [],
     reasons: string[] = [];
   for (const probability of forecast.probabilities) {
@@ -175,13 +186,14 @@ export function quantProposal(
     if (!(tick > 0 && tick < 1 && rate >= 0 && rate <= 1)) {
       return fail("PAPER_INVALID_CONDITIONS");
     }
-    // p + fee per share must stay strictly below the conservative probability less 3pp.
+    const decisionProbability = policy === "central-v1" ? probability.estimate : probability.lower;
+    // Apply the selected probability basis without modifying the shared forecast.
     let low = 0,
       high = Math.floor((1 - 1e-10) / tick);
     while (low < high) {
       const mid = Math.ceil((low + high) / 2),
         price = mid * tick;
-      if (price + rate * price * (1 - price) < probability.lower - 0.03 - 1e-8) {
+      if (price + rate * price * (1 - price) < decisionProbability - 0.03 - 1e-8) {
         low = mid;
       } else {
         high = mid - 1;
@@ -199,7 +211,9 @@ export function quantProposal(
     }
     const effectiveCost = Number(simulated.fill.totalCost) / Number(simulated.fill.quantity);
     const conservativeEdge = probability.lower - effectiveCost;
-    if (conservativeEdge <= 0.03 + 1e-10) {
+    const centralEdge = probability.estimate - effectiveCost;
+    const decisionEdge = decisionProbability - effectiveCost;
+    if (decisionEdge <= 0.03 + 1e-10) {
       reasons.push(`${probability.label}:INSUFFICIENT_EDGE`);
       continue;
     }
@@ -207,12 +221,15 @@ export function quantProposal(
       outcomeId: probability.outcomeId,
       limitPrice,
       conservativeEdge,
+      centralEdge,
+      decisionEdge,
+      policy,
       effectiveCost,
       fill: simulated.fill,
     });
   }
   candidates.sort(
-    (a, b) => b.conservativeEdge - a.conservativeEdge || a.outcomeId.localeCompare(b.outcomeId),
+    (a, b) => b.decisionEdge! - a.decisionEdge! || a.outcomeId.localeCompare(b.outcomeId),
   );
   return { proposal: candidates[0] ?? null, reasons };
 }

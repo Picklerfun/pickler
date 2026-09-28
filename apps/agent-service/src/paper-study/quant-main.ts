@@ -6,6 +6,7 @@ import { config as dotenv } from "dotenv";
 import { z } from "zod";
 import {
   PilotError,
+  comparisonReserved,
   runQuantCase,
   settlePaperOrder,
   type QuantState,
@@ -192,10 +193,13 @@ try {
         const s = JSON.parse(await readFile(join(root, name, "state.json"), "utf8"));
         known.push({
           name,
-          reserved: (s.cases as { reservedApiUsd?: number; reservedUsd?: number }[]).reduce(
-            (a, c) => a + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
-            0,
-          ),
+          reserved:
+            s.version === 3
+              ? comparisonReserved(s)
+              : (s.cases as { reservedApiUsd?: number; reservedUsd?: number }[]).reduce(
+                  (a, c) => a + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
+                  0,
+                ),
         });
       } catch (error) {
         if (!(

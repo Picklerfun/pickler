@@ -170,3 +170,7 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 `paper:quant` implements the separate version-2 local BTC quantitative laboratory. Read QUANT-PAPER.md. It has explicit preflight/history/run/settle/report commands, a shared campaign lock and carried-forward $5 accounting. New paid reservations are capped at $0.10. Settle cannot discover, forecast or purchase. Preserve historical STOP files and snapshots; do not describe Coinbase proxy history as official Polymarket performance.
 
 QUANT-PAPER-VALIDATION.md records controlled checks and the actual prospective study separately. The report may replay saved books to explain both outcome costs/edges, but it must not mutate decisions or create fills. Compare Brier against available market quotes on matched observations, and preserve explicit failed/pending cases.
+
+## Paired BTC policy comparison
+
+`paper:compare` owns version-3 `btc-policy-comparison-v1`; read COMPARISON-PAPER.md. Replay is offline. A single paid synthetic Jev probe must pass before the two-hour run; probe plus run share a USD 0.25 reservation ceiling within the original USD 5. Freeze clean commit/configuration/prompts, preserve old studies, serialize reservations/writes and record missed slots without backfill. Paid-stop blocks reviews/fills but permits free forecasts and public settlement. Only actual virtual fills receive settlement arithmetic. Reports count shared forecasts/reviews once and keep synthetic acceptance separate. No hosted or real-trading changes.

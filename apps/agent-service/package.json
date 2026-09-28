@@ -27,7 +27,8 @@
     "evaluate:decisions:v3": "node --import tsx src/evaluate-decisions-v3.ts",
     "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts",
     "paper:study": "node --import tsx src/paper-study/main.ts",
-    "paper:quant": "node --import tsx src/paper-study/quant-main.ts"
+    "paper:quant": "node --import tsx src/paper-study/quant-main.ts",
+    "paper:compare": "node --import tsx src/paper-study/comparison-main.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
