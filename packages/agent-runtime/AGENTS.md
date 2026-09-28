@@ -68,3 +68,5 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 ## Quantitative BTC paper pilot
 
 `./composition/quant-review` exports the opt-in quantitative paper reviewer. Jev only vetoes high-confidence material contradictions; it never changes forecasts or invokes DeepSeek. Known usage and allowlisted answer diagnostics survive invalid responses. No paid retries.
+
+Quantitative reviewer prompt 1.1.0 explicitly recognizes conservative and central policies. Negative sensitivity alone is not a material contradiction. Policy and both edges are data, not model-editable rules. The pinned model, strict answer validation, safe diagnostics, usage accounting and no-retry/no-fallback behavior remain unchanged.
