@@ -113,3 +113,23 @@ test("conflicting rules and disabled plugins reject without hidden calls", async
   await assert.rejects(g.d.input(g.item, new AbortController().signal));
   assert.ok(!g.urls.some((u) => u.includes("coinbase")));
 });
+
+test("conditions reuse only the current metadata snapshot and preserve its timestamp", async () => {
+  const f = fixture();
+  const snapshots: unknown[] = [];
+  const original = f.d.study.markets.bind(f.d.study);
+  f.d.study.markets = (kind) => {
+    const adapter = original(kind);
+    const conditions = adapter.conditions.bind(adapter);
+    adapter.conditions = async (marketId, outcomeId, signal, snapshot) => {
+      snapshots.push(snapshot);
+      return conditions(marketId, outcomeId, signal);
+    };
+    return adapter;
+  };
+  await f.d.input(f.item, new AbortController().signal);
+  assert.equal(f.urls.filter((u) => u.includes("gamma-api")).length, 1);
+  assert.equal(snapshots.length, 2);
+  assert.deepEqual(snapshots[0], snapshots[1]);
+  assert.equal((snapshots[0] as { observedAt: string }).observedAt, new Date(now).toISOString());
+});
