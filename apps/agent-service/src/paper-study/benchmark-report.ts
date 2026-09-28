@@ -50,6 +50,7 @@ export function benchmarkSummary(state: BenchmarkState, scenarios: BenchmarkScen
     createdAt: state.createdAt,
     deadline: state.deadline,
     evaluation: state.evaluation,
+    invalidAnswerPolicy: state.invalidAnswerPolicy ?? "stop-study",
     paidStopped: state.paidStopped,
     accounting: {
       priorReservedUsd: state.priorReservedUsd,
