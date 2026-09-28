@@ -106,6 +106,23 @@ Migration 0011 adds nullable paper settlement snapshots and releases the open-po
 
 The study adapter reads the public crypto-price endpoint with exact window, variant and explicit 60-second TWAP parameters from Polymarket's public client. Validate opening value and timestamp before any model call. This is a frontend endpoint, not a promised stable API; fail closed on changes. Never label it as an independently verified signed Chainlink report.
 
+## Perpl public data plugin
+
+`src/perpl` exports `PerplMarketData`, a bounded public REST adapter for BTC/ETH on mainnet/testnet. Discover IDs/precision from context; preserve exact decimal strings, component provenance and unknowns. Fixed hosts, GET-only, no redirects/retries, 10-second/2-MiB limits, serial one-second starts and twelve requests per session. Context cache is scoped to adapter/network. Test hooks are trusted host injection, never agent configuration.
+
+## Perpetual paper accounts
+
+`PostgresPerpsPaperStore` owns scoped private perpetual paper accounts, append-only movements, position projections and 60-second fenced attempts. Serialize with agent/account locks, never replay expired work, and keep original session config/capital. Migration 0012 adds four RLS-enabled tables without changing existing paper or real budgets.
+
+Perpl history adds bounded four-page funding reads and a distinct tool permission. Migration 0013 stores immutable paper observations; funding postings deduplicate by position/event block and preserve discrepancies. `observe` applies ledger/mark changes atomically and keeps replayable results.
+
+`PostgresPerpsStudyStore` owns private study identities, dedicated agents, 90-second process leases,
+three-lane atomic USD reservations, original round inputs and durable usage. Migration 0014 adds
+three RLS tables. Unknown costs retain reservations; interrupted calls/executions are never replayed.
+Paper observations retain compact account snapshots instead of copying all previous fill evidence
+into every observation; replay reads the current ledger. Explicit closeAdmissions is irreversible
+within a virtual session and does not prevent exits.
+
 ## Quantitative BTC paper pilot
 
 `QuantData` reads explicit per-market cryptoMarketConfig and matching stream rules, opening reference, Coinbase ticker and consecutive candles. Plugins guard each request. `PolymarketPaperResolution.resolutionFor` reads immutable identities without fabricating an order. Historical proxy data is never a runtime fallback.

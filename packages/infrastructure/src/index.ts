@@ -83,6 +83,11 @@ export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
 
 export { PolymarketStudyData } from "./polymarket/study-data.js";
 
+export { PerplMarketData } from "./perpl/data.js";
+export type { PerplDataOptions, PerplPublicResponse } from "./perpl/transport.js";
+export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
+
 export { QuantData } from "./polymarket/quant-data.js";
 
 export {
