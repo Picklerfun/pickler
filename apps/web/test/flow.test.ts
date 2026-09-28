@@ -34,6 +34,7 @@ test("the flow starts on the account screen of the sign-up rail, with nothing kn
     code: "",
     handle: "",
     needsWallet: false,
+    wallet: "none",
   });
 });
 
@@ -56,6 +57,7 @@ test("signing up walks account, code, passkey, handle, welcome", () => {
     code: "482913",
     handle: "nightowl",
     needsWallet: true,
+    wallet: "created",
   });
 });
 
@@ -277,7 +279,7 @@ const EVERY_EVENT: readonly FlowEvent[] = [
   { type: "code_sent", email: "ana@pickler.xyz" },
   { type: "code_changed", code: "482913" },
   { type: "handle_claimed", handle: "nightowl" },
-  { type: "profile_missing" },
+  { type: "profile_missing", wallet: true },
   { type: "wallet_missing", profile: false },
   { type: "wallet_missing", profile: true },
   { type: "account_found" },
@@ -327,7 +329,7 @@ const WALLET: WalletDto = {
  * account already has a sub-organization — then a profile, or the handle step that makes one;
  * otherwise only `passkey_created` gets there, and the handle step is unreachable before it.
  */
-test("from INITIAL, nobody reaches welcome without a sub-organization but through the passkey step", () => {
+test("after each landing a verified code can produce, welcome needs a wallet and the handle comes after the passkey", () => {
   const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
   for (const mode of ["up", "in"] as const) {
     for (const handle of [null, "nightowl"]) {
@@ -363,6 +365,40 @@ test("from INITIAL, nobody reaches welcome without a sub-organization but throug
       }
     }
   }
+});
+
+/** The events that establish a master wallet: the ceremony, or a landing check that found one. */
+const WALLET_EVENTS: readonly FlowEvent["type"][] = [
+  "passkey_created",
+  "profile_missing",
+  "account_found",
+  "device_unknown",
+];
+
+/**
+ * A true walk: from INITIAL, every event any screen can send, in every order, as deep as the
+ * longest path through the machine. Every state on the handle step or welcome knows of a wallet,
+ * and with the wallet-establishing events removed neither step can be reached at all. Only the
+ * ceremony creates one, so a new account reaches the handle step only through `passkey_created`.
+ */
+test("from INITIAL over every event, neither the handle step nor welcome is reachable without a wallet", () => {
+  const all = reachable(INITIAL, EVERY_EVENT, 8);
+  for (const step of ["handle", "welcome"] as const) {
+    const on = all.filter((state) => state.step === step);
+    assert.ok(on.length > 0, `${step} is reachable at all`);
+    for (const state of on) {
+      assert.notEqual(state.wallet, "none", `${step} without a wallet: ${JSON.stringify(state)}`);
+    }
+  }
+
+  const without = EVERY_EVENT.filter((event) => !WALLET_EVENTS.includes(event.type));
+  const walletless = reachable(INITIAL, without, 8);
+  assert.ok(walletless.every((state) => state.step !== "handle" && state.step !== "welcome"));
+  assert.ok(walletless.every((state) => state.wallet === "none"));
+
+  // A handle claimed where no wallet is known changes nothing, even on the handle step itself.
+  const forged: FlowState = { ...INITIAL, step: "handle" };
+  assert.equal(next(forged, { type: "handle_claimed", handle: "nightowl" }), forged);
 });
 
 /* Opening /signup or /signin with a session — plain, `?step=passkey` where every signed-in screen
@@ -592,6 +628,17 @@ test("a new account is greeted as one; WELCOME BACK is only for an account that 
     ]).state;
     assert.equal(legacy.step, "welcome", mode);
     assert.equal(welcomeTitle(legacy), "WELCOME BACK", mode);
+  }
+
+  // A resumed account that already had a wallet and only now chose its handle.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const handled = walk(start, [
+      verifiedEvent({ handle: null, wallet: WALLET, enrolledHere: true }),
+      { type: "handle_claimed", handle: "nightowl" },
+    ]).state;
+    assert.equal(handled.step, "welcome", mode);
+    assert.equal(welcomeTitle(handled), "WELCOME BACK", mode);
   }
 
   // Leaving the new-device rail.

@@ -29,6 +29,7 @@ import type {
 } from "./custody-api";
 import { challenge, confirmAdd, prepareAdd, register } from "./custody-api";
 import type { FlowEvent } from "./flow";
+import { SIGNUP_HANDLE_STEP, SIGNUP_PASSKEY_STEP } from "./callback";
 import { ApiError } from "./pickler-api";
 
 /** Thrown when there is no session to read a token from at all, rather than an expired one. */
@@ -254,21 +255,9 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
   }
 }
 
-/**
- * Where a signed-in person without a master wallet is sent from every screen: the signup's own
- * passkey step. Nobody gets in anywhere without the wallet.
- */
-export const SIGNUP_PASSKEY_STEP = "/signup?step=passkey";
-
-/**
- * Where a signed-in person with a master wallet and no profile is sent: the signup's handle step.
- *
- * Both URLs are cosmetic. `/signup` resumes an existing session by reading the account and landing
- * on whatever it still needs (`landing`), whatever the query says, so neither can send somebody to
- * a step they do not need, and neither can loop: the step they land on is decided by the same two
- * reads that sent them.
- */
-export const SIGNUP_HANDLE_STEP = "/signup?step=handle";
+// The two signup steps every signed-in screen redirects to, defined once in `callback.ts` (a
+// module the server's auth callback can import) and re-exported here for the screens.
+export { SIGNUP_HANDLE_STEP, SIGNUP_PASSKEY_STEP };
 
 /**
  * The signed-in person's master wallet from GET /wallets/me, or null when there is no
@@ -358,7 +347,7 @@ export function verifiedEvent(account: {
 }): FlowEvent {
   switch (landing(account)) {
     case "handle":
-      return { type: "profile_missing" };
+      return { type: "profile_missing", wallet: true };
     case "passkey":
       return { type: "wallet_missing", profile: account.handle !== null };
     case "recover":

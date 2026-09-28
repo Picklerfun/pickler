@@ -354,19 +354,25 @@ and workspace) → welcome. `lib/flow.ts` is the pure machine, pinned in `flow.t
 `auth → code → passkey → handle → welcome`, and the only event that leaves `passkey` is
 `passkey_created { profile }`, which goes to `handle` when there is no profile yet and to `welcome`
 when there is one (an account made before the order changed). The handle step's
-`POST /v1/profile` (`ensureProfile`) runs only after the wallet exists. Signin is
+`POST /v1/profile` (`ensureProfile`) runs only after the wallet exists, and the API refuses it
+otherwise (409 `wallet_required`). Signin is
 `auth → code → welcome`, or `auth → code → passkey → welcome` when the landing check (`landing` in
 `lib/custody.ts`, reading `GET /v1/signing/wallets/me` and `GET /v1/profile`) finds no
 sub-organization on an account with a profile and sends `wallet_missing { profile: true }`. The
 landing check puts the wallet first: no wallet → `passkey` whatever the profile; a wallet and no
-profile → `handle` (`profile_missing`); both → welcome, or the new-device rail when this browser is
+profile → `handle` (`profile_missing { wallet: true }`, the finding carried in the event's type);
+both → welcome, or the new-device rail when this browser is
 not marked enrolled. What the landing check dispatches is `verifiedEvent`
 (pure, in `lib/custody.ts`, over `landing`); a read that fails other than with a 404 dispatches
 nothing, and the screen says the account could not be read, with "Try again". Every event is
-accepted only on the steps whose screen can send it, and a walk from `INITIAL` through
-`verifiedEvent` for every account shape pins that welcome is reachable without `passkey_created`
-only for an account that already has a sub-organization, and that the handle step is unreachable
-before the passkey step for an account without one.
+accepted only on the steps whose screen can send it. `FlowState.wallet` (`none`, `found`,
+`created`) is set only by the events that establish a wallet — `passkey_created`, `profile_missing`,
+`account_found`, `device_unknown` — and `handle_claimed` is ignored while it is `none`. A walk from
+`INITIAL` over every event pins that no state on the handle step or welcome lacks a wallet, and
+that neither step is reachable at all without those events; a second walk, after `verifiedEvent`
+for every account shape, pins that the handle step comes only after the passkey step for an account
+without a wallet. `welcomeTitle` says WALLET CREATED only on the sign-up rail after the ceremony
+created the wallet in this session, and WELCOME BACK otherwise.
 
 The step is `steps/create-wallet-step.tsx` (`#signup-passkey`, recovered from the `PasskeyStep`
 commit c4383d2 deleted): one prompt, the enrolment ceremony (`createWallet`: challenge fetched as

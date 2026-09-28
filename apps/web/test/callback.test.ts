@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   callbackDestination,
-  HANDLE_STEP,
-  PASSKEY_STEP,
+  SIGNUP_HANDLE_STEP,
+  SIGNUP_PASSKEY_STEP,
   readOf,
   SIGNUP_RESUME,
 } from "../src/features/auth/lib/callback";
@@ -13,24 +13,27 @@ const STUDIO = "/studio";
 test("a new account goes straight to the passkey step, never through the studio", () => {
   assert.equal(
     callbackDestination({ profile: "missing", wallet: "missing" }, STUDIO),
-    PASSKEY_STEP,
+    SIGNUP_PASSKEY_STEP,
   );
-  assert.equal(PASSKEY_STEP, "/signup?step=passkey");
+  assert.equal(SIGNUP_PASSKEY_STEP, "/signup?step=passkey");
 });
 
 test("no master wallet goes to the passkey step first, whatever the profile", () => {
   for (const profile of ["found", "missing", "failed"] as const) {
     assert.equal(
       callbackDestination({ profile, wallet: "missing" }, STUDIO),
-      PASSKEY_STEP,
+      SIGNUP_PASSKEY_STEP,
       profile,
     );
   }
 });
 
 test("a master wallet without a profile goes straight to the handle step", () => {
-  assert.equal(callbackDestination({ profile: "missing", wallet: "found" }, STUDIO), HANDLE_STEP);
-  assert.equal(HANDLE_STEP, "/signup?step=handle");
+  assert.equal(
+    callbackDestination({ profile: "missing", wallet: "found" }, STUDIO),
+    SIGNUP_HANDLE_STEP,
+  );
+  assert.equal(SIGNUP_HANDLE_STEP, "/signup?step=handle");
 });
 
 test("only a complete account goes to the studio", () => {
