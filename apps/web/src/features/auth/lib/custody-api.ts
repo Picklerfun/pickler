@@ -56,6 +56,25 @@ export interface BalanceDto {
   raw: string | null;
 }
 
+/**
+ * One passkey, as GET /passkeys sends it.
+ *
+ * Both nullable fields are nullable here too, deliberately. `device_type` is null when the
+ * transports named no device class, and `last_used_at` is null for a passkey that has never signed
+ * anything — a fact the account screen shows rather than fills in. Widening either to a string
+ * would make the DTO promise a value the route does not always send, and `call`'s `as T` would
+ * never notice.
+ */
+export interface PasskeyDto {
+  id: string;
+  credential_id: string;
+  label: string;
+  transports: string[];
+  device_type: string | null;
+  created_at: string;
+  last_used_at: string | null;
+}
+
 /** What GET /wallets/me answers with. */
 export interface WalletDto {
   address: string;
@@ -126,3 +145,14 @@ export const confirmAdd = (
 
 /** Throws ApiError 404 when this account has no wallet yet, which is an ordinary first-run state. */
 export const wallet = (token: string) => call<WalletDto>(`${SIGNING}/wallets/me`, { token });
+
+/**
+ * Every passkey on this account, oldest first. An account with none answers `[]` rather than 404.
+ *
+ * **A rejection here must not be turned into an empty list by any caller.** The route does not
+ * catch, core does not catch, and the repository method behind it exists separately from
+ * `listCredentials` precisely so that the deliberate swallow feeding `excludeCredentials` cannot
+ * reach this answer. A screen that renders `[]` for a failed read tells somebody they have no
+ * passkeys when nobody looked, which is the more alarming of the two ways to be wrong.
+ */
+export const passkeys = (token: string) => call<PasskeyDto[]>(`${SIGNING}/passkeys`, { token });

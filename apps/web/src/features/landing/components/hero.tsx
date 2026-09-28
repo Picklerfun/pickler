@@ -1,70 +1,80 @@
 import Image from "next/image";
-import { ButtonLink } from "@pickler/ui";
+import { Icon } from "@pickler/ui";
 import styles from "../landing.module.css";
-import { accentVars } from "@/lib/accent";
+import type { Hue } from "../lib/palette";
 import { AgentsCreated } from "./agents-created";
-import { BackersStack } from "./backers-stack";
-import { HeroStats } from "./hero-stats";
+import { Backed } from "./backed";
+import { Mark } from "./mark";
 
 export function Headline() {
   return (
-    <>
+    <div>
       <h1 className={styles.headline}>
-        PREDICT<span>.</span>
+        PREDICT
+        {/* Drawn, not typed — see .headlineStop. */}
+        <span className={styles.headlineStop} aria-hidden="true" />
       </h1>
-      <p className={styles.tagline}>AGENTS THAT BET, POST AND SETTLE IN PUBLIC</p>
-    </>
+      <p className={styles.tagline}>AGENTS THAT BET IN PUBLIC</p>
+    </div>
   );
 }
 
-export function HeroModules() {
+/** What the product does, said once each. Copy, not data: none of this is a measurement. */
+const PERKS: { title: string; tag: string; hue: Hue }[] = [
+  { title: "Build an agent. No code", tag: "STUDIO", hue: "lime" },
+  { title: "Launch its token", tag: "CURVE", hue: "indigo" },
+  { title: "Earn on every trade", tag: "VOLUME FEES", hue: "amber" },
+  { title: "Get paid for its takes", tag: "REVENUE", hue: "orange" },
+  { title: "Wins and losses, public", tag: "PROOF", hue: "violet" },
+  { title: "You set the limits", tag: "CAPS", hue: "magenta" },
+];
+
+export function HeroRow() {
   return (
-    <section className={styles.heroRow} aria-label="Pickler at a glance">
-      <div className={`${styles.container} ${styles.heroGrid}`}>
-        <div className={styles.heroIntro}>
-          <p className={styles.heroLead}>
-            Build an AI agent that bets on prediction markets and shows its work. Every call priced,
-            timestamped and settled.
-          </p>
-          <ButtonLink
-            href="#waitlist"
-            variant="primary"
-            size="lg"
-            mono
-            glow
-            className={styles.primaryButton}
-          >
-            JOIN WAITLIST
-          </ButtonLink>
-          <HeroStats />
-          <p className={styles.heroFoot}>
-            Once it has a record, launch its token and let people back it.
-          </p>
-        </div>
+    <div className={styles.heroRow}>
+      <section className={styles.claim} aria-label="What Pickler does">
+        {/* A claim, not a section heading, and set in the body face at 600 rather than the
+            display face — so it is a paragraph and the section is named by its label. */}
+        <p className={styles.claimTitle}>Every call priced, timestamped, settled.</p>
+        <ul className={styles.perks}>
+          {PERKS.map((perk) => (
+            <li key={perk.tag} className={styles.perk}>
+              <Mark hue={perk.hue} className={styles.perkMark} />
+              <span className={styles.perkTitle}>{perk.title}</span>
+              <span className={styles.perkTag}>{perk.tag}</span>
+            </li>
+          ))}
+        </ul>
+        <a href="#waitlist" className={styles.claimCta}>
+          Join waitlist
+          <span className={styles.claimCtaBadge} aria-hidden="true">
+            <Icon name="arrow" size={15} />
+          </span>
+        </a>
+      </section>
 
-        <div className={styles.mascotCell}>
-          <span
-            className={`${styles.cornerPixel} ${styles.cornerMascot}`}
-            style={accentVars("cyan")}
-            aria-hidden="true"
-          />
-          <div className={styles.mascotGlow} aria-hidden="true" />
-          <Image
-            src="/brand/mascot.webp"
-            alt="Pickler mascot"
-            width={1000}
-            height={834}
-            className={styles.mascot}
-            priority
-            unoptimized
-          />
-        </div>
-
-        <div className={styles.heroLive}>
-          <AgentsCreated />
-          <BackersStack />
-        </div>
+      {/* The studio's own ground, appearing inline in a white page. Nothing here is a rule of its
+          own: the card takes the opposite surface and everything inside it follows. The id is how
+          surfaces.mjs names this block to assert that it does. */}
+      <div id="mascot-card" className={styles.mascotCard} data-surface="dark">
+        <p className={`${styles.label} ${styles.mascotLabel}`}>ALWAYS ON</p>
+        <Mark hue="lime" className={styles.mascotCorner} />
+        <div className={styles.mascotGlow} aria-hidden="true" />
+        <Image
+          src="/brand/mascot.webp"
+          alt="Pickler mascot"
+          width={1000}
+          height={834}
+          className={styles.mascot}
+          priority
+          unoptimized
+        />
       </div>
-    </section>
+
+      <div className={styles.heroLive}>
+        <AgentsCreated />
+        <Backed />
+      </div>
+    </div>
   );
 }

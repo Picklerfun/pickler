@@ -9,11 +9,14 @@
   --cyan-ink: var(--pk-cyan-ink);
   --rule: var(--pk-rule);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan: var(--pk-cyan);
   --magenta: var(--pk-magenta);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   min-height: 100vh;
@@ -70,7 +73,7 @@
 
 .monoLabel {
   margin: 0;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--muted);
 }
@@ -188,6 +191,7 @@
 
 .brandName {
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.01em;
 }
 
@@ -196,7 +200,7 @@
   align-items: center;
   padding: 14px 16px;
   border-right: 1px solid var(--rule);
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--faint);
   border-radius: var(--pk-radius-pill);
@@ -208,7 +212,7 @@
   margin-left: auto;
   padding: 14px 20px;
   border-left: 1px solid var(--rule);
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.08em;
 }
 
@@ -232,7 +236,7 @@
 
 .eyebrow {
   margin: 0 0 14px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -240,6 +244,7 @@
 .title {
   margin: 0 0 12px;
   font: 700 clamp(34px, 6vw, 64px)/0.98 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -289,7 +294,8 @@
 
 .inviteSource {
   margin-left: auto;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -320,7 +326,7 @@
   gap: 9px;
   margin-bottom: 10px;
   padding: 0;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--muted);
   border-radius: var(--pk-radius-lg);
@@ -342,7 +348,7 @@
   width: auto;
   border-color: rgba(200, 240, 58, 0.45);
   font-weight: 700;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .hint {
@@ -353,12 +359,13 @@
 
 .monoHint {
   margin: 9px 0 0;
-  font: 500 12.5px/1.3 var(--mono);
+  font: 500 12.5px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
 .good {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .bad {
@@ -375,7 +382,8 @@
 }
 
 .counter {
-  font: 500 12.5px/1.3 var(--mono);
+  font: 500 12.5px/1.3 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .chips {
@@ -427,7 +435,8 @@
 
 .fieldError {
   margin: 9px 0 0;
-  font: 500 12.5px/1.3 var(--mono);
+  font: 500 12.5px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--magenta);
 }
 
@@ -440,7 +449,8 @@
 }
 
 .progressLabel {
-  font: 500 12.5px/1.4 var(--mono);
+  font: 500 12.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -470,8 +480,9 @@
 }
 
 .pieceCount {
-  font: 500 12px/1 var(--mono);
-  color: var(--lime);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
+  color: var(--lime-ink);
 }
 
 .well {
@@ -528,7 +539,8 @@
 
 .blockLabel {
   display: block;
-  font: 500 11.5px/1.3 var(--mono);
+  font: 500 11.5px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -570,7 +582,7 @@
   align-items: center;
   gap: 9px;
   margin-bottom: 16px;
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--ink-soft);
 }
@@ -588,6 +600,7 @@
   margin: 0 0 14px;
   overflow-wrap: anywhere;
   font: 700 clamp(30px, 4.6vw, 52px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -611,17 +624,17 @@
   padding: 14px 16px;
   background: rgba(5, 6, 26, 0.45);
   border: 1px solid rgba(245, 246, 255, 0.24);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .tile dd {
   margin: 0 0 5px;
-  font: 700 26px/1 var(--mono);
+  font: 700 26px/1 var(--label);
   letter-spacing: -0.03em;
 }
 
 .tile dt {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
@@ -629,17 +642,17 @@
 .tileLime {
   background: rgba(200, 240, 58, 0.12);
   border-color: rgba(200, 240, 58, 0.4);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .tileCyan {
   background: rgba(90, 216, 255, 0.12);
   border-color: rgba(90, 216, 255, 0.4);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .tileLime dd {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .tileCyan dd {
@@ -679,7 +692,7 @@
 }
 
 .heldText dt {
-  font: 500 11.5px/1.3 var(--mono);
+  font: 500 11.5px/1.3 var(--label);
   letter-spacing: 0.08em;
   color: var(--muted);
 }
@@ -710,7 +723,7 @@
 
 .crowdEyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--cyan-ink);
 }
@@ -718,6 +731,7 @@
 .crowdTitle {
   margin: 0 0 12px;
   font: 700 clamp(24px, 3vw, 34px)/1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
@@ -763,7 +777,8 @@
 .linkText {
   margin: 10px 0 0;
   overflow-wrap: anywhere;
-  font: 500 12.5px/1.4 var(--mono);
+  font: 500 12.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--cyan-ink);
 }
 

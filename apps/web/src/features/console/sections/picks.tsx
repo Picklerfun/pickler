@@ -104,11 +104,11 @@ function Forecast({ view }: { view: DecisionView }) {
             </span>
           </div>
           <div className={styles.row}>
-            <span className={styles.key} data-tint="cyan" data-fill="true">
+            <span className={styles.key} data-tint="violet" data-fill="true">
               <span className={styles.keyBand} />
               {two(band.lower)} – {two(band.upper)}
             </span>
-            <span className={styles.key} data-tint="cyan">
+            <span className={styles.key} data-tint="violet">
               <span className={styles.keyTick} />
               estimate {two(band.estimate)}
             </span>
@@ -240,7 +240,7 @@ export function Picks({
     return (
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2>Picks</h2>
+          <h1>Picks</h1>
           <p>every decision, with the range, the counter-evidence and who said no</p>
         </div>
         <p className={styles.empty}>
@@ -259,7 +259,7 @@ export function Picks({
   return (
     <div className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2>Picks</h2>
+        <h1>Picks</h1>
         <span className={styles.count}>{picks.length} DECISIONS</span>
         <p>every decision, with the range, the counter-evidence and who said no</p>
       </div>

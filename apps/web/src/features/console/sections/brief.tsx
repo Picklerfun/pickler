@@ -62,7 +62,7 @@ export function Brief({
         <span className={styles.stubState}>BUILT</span>
       </p>
       <div className={styles.sectionHead}>
-        <h2>Brief</h2>
+        <h1>Brief</h1>
         <span className={styles.count}>{profile.length} / 4,000</span>
       </div>
       <p className={styles.stubBody}>

@@ -8,6 +8,7 @@ import type {
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
+  Passkey,
   RegistrationInput,
   StoredChallenge,
 } from "@pickler/core";
@@ -37,6 +38,35 @@ export class PostgresCustodyStore implements CustodyRepository, ChallengeStore {
          FROM wallets.passkeys
         WHERE user_id = $1
         ORDER BY created_at`,
+      [userId],
+    );
+    return rows;
+  }
+
+  /**
+   * Every passkey on the account, oldest first.
+   *
+   * Beside `listCredentials` and not folded into it: that one feeds `excludeCredentials`, whose
+   * caller swallows a failure, and this one answers a question about whether somebody can still
+   * reach their funds. Nothing here catches, so an unreachable database reaches the route as a
+   * failure rather than as an account with no passkeys.
+   *
+   * `device_type` and `last_used_at` are selected as they are stored, null included. A COALESCE
+   * here would turn "this passkey has never been used" into a date, which is the one thing the
+   * column exists to be able to say.
+   */
+  async listPasskeys(userId: string): Promise<Passkey[]> {
+    const { rows } = await this.pool.query<Passkey>(
+      `SELECT id,
+              credential_id AS "credentialId",
+              label,
+              transports,
+              device_type AS "deviceType",
+              created_at AS "createdAt",
+              last_used_at AS "lastUsedAt"
+         FROM wallets.passkeys
+        WHERE user_id = $1
+        ORDER BY created_at, id`,
       [userId],
     );
     return rows;

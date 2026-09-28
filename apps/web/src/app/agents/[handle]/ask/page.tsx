@@ -28,8 +28,11 @@ export default async function Ask({ params }: Params) {
   if (!persona.service.open) {
     redirect(`/agents/${persona.handle}`);
   }
+  // Dark: this page's body still composes against the old ground — panels made of white at 6%,
+  // glows, a starfield behind them — and redrawing it is its own task. The shell is light for
+  // everyone else.
   return (
-    <PublicShell>
+    <PublicShell surface="dark">
       <AskFlow persona={persona} />
     </PublicShell>
   );

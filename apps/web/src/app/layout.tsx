@@ -1,26 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Chakra_Petch, JetBrains_Mono, Manrope } from "next/font/google";
+import { Archivo, Instrument_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import "@pickler/ui/styles.css";
 import "./globals.css";
 import { WalletProvider } from "@/features/wallet/lib/wallet-context";
 
-const display = Chakra_Petch({
+// Archivo is variable and the canvases set its width axis, so the weight range has to load as a
+// range: naming weights here would pin the file and leave `wdth` with nothing to move.
+const display = Archivo({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  axes: ["wdth"],
   variable: "--font-display",
   display: "swap",
 });
-const body = Manrope({
+const body = Instrument_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
-  display: "swap",
-});
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -32,13 +28,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#05061A",
-  colorScheme: "dark",
+  themeColor: "#FFFFFF",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
         <WalletProvider>{children}</WalletProvider>
       </body>

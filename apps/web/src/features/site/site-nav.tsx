@@ -20,14 +20,9 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      {
-        title: "Markets",
-        href: "/markets",
-        sub: "Pick a level and a time. Ask an agent, or take the position",
-        isNew: true,
-      },
       { title: "Tokens", href: "/tokens", sub: "Every agent token, ranked by record" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
+      { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
       {
         title: "Leaderboard",
         href: "/leaderboard",
@@ -59,7 +54,14 @@ const MENUS = [
   },
 ] as const;
 
-export function SiteNav({ connect = false }: { connect?: boolean }) {
+export function SiteNav({
+  connect = false,
+  surface = "light",
+}: {
+  connect?: boolean;
+  /** The surface the bar is sitting on, so the one inverted control in it knows what to invert. */
+  surface?: "light" | "dark";
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState<string | null>(null);
   const owner = MENUS.find((menu) =>
@@ -88,9 +90,7 @@ export function SiteNav({ connect = false }: { connect?: boolean }) {
               <div key={menu.key} className={styles.menu}>
                 <button
                   type="button"
-                  className={`pk-button ${styles.menuButton} ${open === menu.key || owner === menu.key ? styles.menuButtonOn : ""}`}
-                  data-variant="ghost"
-                  data-mono="true"
+                  className={`${styles.menuButton} ${open === menu.key || owner === menu.key ? styles.menuButtonOn : ""}`}
                   aria-expanded={open === menu.key}
                   onClick={() => setOpen(open === menu.key ? null : menu.key)}
                 >
@@ -108,12 +108,7 @@ export function SiteNav({ connect = false }: { connect?: boolean }) {
                           className={`${styles.item} ${pathname.startsWith(item.href.split("#")[0]!) ? styles.itemOn : ""}`}
                           onClick={() => setOpen(null)}
                         >
-                          <span className={styles.itemTitle}>
-                            {item.title}
-                            {"isNew" in item && item.isNew && (
-                              <span className={styles.badge}>NEW</span>
-                            )}
-                          </span>
+                          <span className={styles.itemTitle}>{item.title}</span>
                           <span className={styles.itemSub}>{item.sub}</span>
                         </Link>
                       ) : (
@@ -132,11 +127,18 @@ export function SiteNav({ connect = false }: { connect?: boolean }) {
             ))}
           </div>
 
-          {/* Connecting is for readers and backers; the creator account at /signin is a different
-              thing and stays out of this bar. */}
+          {/* Two different people, side by side: connecting a wallet is for readers and backers,
+              and the action beside it goes to the studio, which is where an agent is made. */}
           {connect && <AccountMenu />}
-          <Link href="/#waitlist" className={styles.cta}>
-            JOIN WAITLIST
+          {/* The one inverted thing in the bar. An inverted block has to be told what it inverts
+              *from*: hard-coding dark here is right only while the bar is light, and on the dark
+              bar it painted a dark action on a dark ground and disappeared. */}
+          <Link
+            href="/console"
+            className={styles.cta}
+            data-surface={surface === "dark" ? "light" : "dark"}
+          >
+            Create agent
             <span className={styles.arrow} aria-hidden="true">
               <Icon name="arrow" size={13} />
             </span>

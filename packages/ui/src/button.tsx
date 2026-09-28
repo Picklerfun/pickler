@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 import { Icon } from "./icon";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "tile";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "tile" | "chip";
 export type ButtonSize = "sm" | "md" | "lg";
 
 /* The repo compiles with exactOptionalPropertyTypes, and a CSS module class is `string |

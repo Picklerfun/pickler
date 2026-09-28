@@ -21,7 +21,7 @@ export default async function Leaderboard({ searchParams }: { searchParams: Prom
     services.getPlatformAnalytics(range),
   ]);
   return (
-    <PublicShell>
+    <PublicShell charts>
       <LeaderboardPage board={board} analytics={analytics} />
     </PublicShell>
   );

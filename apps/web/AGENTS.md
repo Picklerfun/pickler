@@ -62,7 +62,7 @@ next dev. Check cookies, protected routes, session refresh, signout and tenant i
 
 ## Design system
 
-Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): pill for actions and chips, 16 for cards, 12 for inputs and tiles, 6 for small marks. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the landing, apply and public pages use `data-surface="public"`, the auth screens use `data-surface="console"`, which is the dashboard's tone. Type is the same on both: Chakra Petch for titles and the lead figure of a view, JetBrains Mono for tabular data and labels, Manrope for body text and every control.
+Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — landing, apply, the public pages — uses `data-surface="light"`, and the studio, account and auth screens use `data-surface="dark"`. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
 
 Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is the lit marketing call to action — the hero, the waitlist, the application), `Chip` for filters and toggles (`ChipLink` when it navigates, `ChipText` when it only reads), `Segmented` for an exclusive choice that is always on screen, `Tag` for read-only status, `Meter` for a filled track, `Icon` for every icon. Feature stylesheets keep only what a control does differently and pass it through `className`; they do not re-declare shape, type or state. Colour is the same: each sheet aliases the system tokens (`--ink: var(--pk-ink)`) and holds no literal. Panels take the shared surface with `composes: pk-panel from global` instead of redeclaring a border and a radius.
 
@@ -154,7 +154,7 @@ identity and owns business decisions. Only public Supabase Auth configuration re
 
 `features/console` and `/console` provide private agent configuration, manual research, schedule
 and pause controls, history and evidence. Reuse the existing shared control system with
-`data-surface="console"`. API mutation errors remain explicit; do not automatically retry paid
+`data-surface="dark"`. API mutation errors remain explicit; do not automatically retry paid
 research. Reuse an idempotency key after an uncertain admission response. Poll pending/active
 research every three seconds, stop at terminal status, suspend in hidden tabs and clean up
 requests/timers on navigation. Results are not added to the public sample directory.

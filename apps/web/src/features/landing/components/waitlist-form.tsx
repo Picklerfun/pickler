@@ -1,7 +1,6 @@
 "use client";
 
 import type { ApiErrorResponse, JoinWaitlistResponse } from "@pickler/api-schema";
-import { Button, Input } from "@pickler/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import styles from "../landing.module.css";
@@ -14,6 +13,14 @@ type Status =
   | { kind: "joined"; position: number; continuing: boolean }
   | { kind: "error"; message: string };
 
+/**
+ * The page's one ask.
+ *
+ * The count under it is the snapshot's `waitlistCount` before joining and the API's own `position`
+ * after — not the count plus one. The canvas shows 1,204 becoming 1,205, which assumes nobody else
+ * joined in between and that a placement can be worked out on the client; the endpoint answers with
+ * the real one, including when the address was already in line.
+ */
 export function WaitlistForm() {
   const { waitlistCount } = useLanding().data.stats;
   const [email, setEmail] = useState("");
@@ -54,64 +61,56 @@ export function WaitlistForm() {
   const joined = status.kind === "joined";
 
   return (
-    <section id="waitlist" className={styles.layer} aria-labelledby="waitlist-title">
-      <div className={`${styles.container} ${styles.waitlist}`}>
-        <p className={styles.eyebrow}>CLOSED BETA · MONAD TESTNET</p>
-        <h2 id="waitlist-title" className={styles.waitlistTitle}>
-          GET IN LINE
-        </h2>
-        <p className={styles.waitlistLead}>
-          We are letting creators in a few at a time. Drop your email and we will send an invite.
+    <section id="waitlist" className={styles.waitlist} aria-labelledby="waitlist-title">
+      <h2 id="waitlist-title" className={styles.waitlistTitle}>
+        GET IN LINE.
+      </h2>
+      <p className={styles.waitlistLead}>A few creators a week. Invites by email.</p>
+      <form className={styles.waitlistForm} onSubmit={onSubmit}>
+        <label htmlFor="waitlist-email" className={styles.srOnly}>
+          Email
+        </label>
+        <input
+          id="waitlist-email"
+          className={styles.emailInput}
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          placeholder="you@email.com"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (status.kind === "error") {
+              setStatus({ kind: "idle" });
+            }
+          }}
+          aria-invalid={status.kind === "error"}
+          aria-describedby={status.kind === "error" ? "waitlist-error" : undefined}
+          disabled={joined}
+        />
+        {/* Inverted against the panel it sits on, the same way the bar's action is. */}
+        <button
+          type="submit"
+          className={`${styles.invert} ${styles.submit}`}
+          data-surface="dark"
+          disabled={status.kind === "submitting" || joined}
+        >
+          {joined ? "You are in" : status.kind === "submitting" ? "Joining…" : "Join waitlist"}
+        </button>
+      </form>
+      {status.kind === "error" && (
+        <p id="waitlist-error" className={styles.formError} role="alert">
+          {status.message}
         </p>
-        <form className={styles.waitlistForm} onSubmit={onSubmit} noValidate={false}>
-          <label htmlFor="waitlist-email" className={styles.srOnly}>
-            Email
-          </label>
-          <Input
-            id="waitlist-email"
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            placeholder="you@email.com"
-            size="lg"
-            shape="pill"
-            className={styles.emailInput}
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              if (status.kind === "error") {
-                setStatus({ kind: "idle" });
-              }
-            }}
-            invalid={status.kind === "error"}
-            aria-describedby={status.kind === "error" ? "waitlist-error" : undefined}
-            disabled={joined}
-          />
-          <Button
-            type="submit"
-            className={styles.primaryButton}
-            size="lg"
-            mono
-            glow
-            disabled={status.kind === "submitting" || joined}
-          >
-            {joined ? "YOU ARE IN" : status.kind === "submitting" ? "JOINING…" : "JOIN WAITLIST"}
-          </Button>
-        </form>
-        {status.kind === "error" && (
-          <p id="waitlist-error" className={styles.formError} role="alert">
-            {status.message}
-          </p>
-        )}
-        <p className={styles.lineLabel} aria-live="polite">
-          {joined
-            ? status.continuing
-              ? `YOU ARE ${formatInteger(status.position)} IN LINE · OPENING YOUR APPLICATION…`
-              : `ALREADY IN LINE AT ${formatInteger(status.position)} · FINISH FROM THE BROWSER YOU SIGNED UP WITH`
-            : `${formatInteger(waitlistCount)} CREATORS IN LINE`}
-        </p>
-      </div>
+      )}
+      <p className={styles.lineLabel} aria-live="polite">
+        {joined
+          ? status.continuing
+            ? `YOU ARE ${formatInteger(status.position)} IN LINE · OPENING YOUR APPLICATION…`
+            : `ALREADY IN LINE AT ${formatInteger(status.position)} · FINISH FROM THE BROWSER YOU SIGNED UP WITH`
+          : `${formatInteger(waitlistCount)} CREATORS IN LINE`}
+      </p>
     </section>
   );
 }

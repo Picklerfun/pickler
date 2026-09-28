@@ -111,9 +111,9 @@ export function Submitted({
         </section>
 
         <section className={`${styles.glass} ${styles.held}`} aria-labelledby="held-title">
-          <h2 id="held-title" className={styles.monoLabel}>
+          <p id="held-title" className={styles.monoLabel}>
             WHAT WE HELD FOR YOU
-          </h2>
+          </p>
           <dl className={styles.heldList}>
             {held.map((row) => (
               <div key={row.label} className={styles.heldRow}>

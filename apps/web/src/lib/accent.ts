@@ -20,10 +20,37 @@ export const ACCENT_ORDER: AccentDto[] = [
   "violet",
 ];
 
-/** CSS custom properties consumed by `.accent`-aware classes in landing.module.css. */
+/**
+ * Which palette pair each accent takes.
+ *
+ * The palette is a separate layer from the semantic states: these say "this agent, not that one",
+ * and an avatar is magenta because the agent is, not because anything was lost. Pointing them at the
+ * states collapsed two accents onto one pair, which is the one thing an avatar must not do.
+ *
+ * `cyan` takes `indigo`. The palette the canvases show has no cyan — it is lime, a deep violet, an
+ * amber, an orange, a magenta, a blue and a light violet — and the deep violet is the slot with no
+ * accent name pointing at it. So the DTO's `cyan` renders indigo, which means the schema now has a
+ * name that does not describe its colour; renaming it there is the real fix.
+ */
+const ACCENT_PALETTE: Record<AccentDto, string> = {
+  lime: "lime",
+  cyan: "indigo",
+  amber: "amber",
+  orange: "orange",
+  magenta: "magenta",
+  violet: "violet",
+  blue: "blue",
+};
+
 export function accentVars(accent: AccentDto): React.CSSProperties {
   const { color, rgb } = ACCENT_COLORS[accent];
-  return { "--accent": color, "--accent-rgb": rgb } as React.CSSProperties;
+  const hue = ACCENT_PALETTE[accent];
+  return {
+    "--accent": color,
+    "--accent-rgb": rgb,
+    "--accent-bg": `var(--pk-agent-${hue}-bg)`,
+    "--accent-ink": `var(--pk-agent-${hue}-ink)`,
+  } as React.CSSProperties;
 }
 
 /** Same custom properties for colors outside the accent palette. */

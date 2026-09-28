@@ -1,95 +1,378 @@
-/* Portfolio: balances first, then what the wallet has backed. */
+/* Portfolio, on the light marketplace surface: what the wallet holds, over what it has asked for.
+ *
+ * The total panel is a dark block in a light page. It carries no colour of its own — it takes
+ * data-surface="dark" and every token inside it resolves to the studio's ramp, which is the one
+ * mechanism the whole system rests on. The same trick does the selected tab at control size. */
 
 .main {
   position: relative;
   z-index: 10;
-  max-width: 1120px;
+  /* The shell is a flex column, where `margin: 0 auto` alone sizes the item to its content instead
+     of filling — which centred the heading on the gated page and left it sitting under a 460px
+     card. `width: 100%` gives the auto margins something to centre. */
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 28px 22px 60px;
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  font: 500 11px/1 var(--pk-font-mono);
-  letter-spacing: 0.14em;
-  color: var(--pk-cyan-ink);
+  padding: 34px 18px 72px;
 }
 
 .title {
-  margin: 0 0 10px;
-  font: 700 clamp(26px, 4vw, 40px) / 1 var(--pk-font-display);
-  letter-spacing: -0.03em;
-}
-
-.lead {
-  margin: 0 0 22px;
-  max-width: 560px;
-  font: 400 16px/1.5 var(--pk-font);
-  color: var(--pk-ink-soft);
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.card {
-  composes: pk-panel from global;
-  padding: 20px;
-}
-
-.label {
-  margin: 0 0 9px;
-  font: 500 10px/1 var(--pk-font-mono);
-  letter-spacing: 0.12em;
-  color: var(--pk-ink-faint);
-}
-
-.figure {
-  margin: 0;
-  font: 700 32px/1 var(--pk-font-mono);
+  margin: 0 0 26px;
+  font: 700 clamp(40px, 6vw, 76px) / 0.95 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
   color: var(--pk-ink);
 }
 
-.figure span {
-  font: 500 13px/1 var(--pk-font-mono);
-  color: var(--pk-ink-faint);
+/* Dev only. It is loud on purpose: a screen that looks connected and is not is the worst thing
+   this page could be, so it says which one it is before anything else does. */
+.preview {
+  max-width: 70ch;
+  margin: 0 0 20px;
+  padding: 11px 16px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-state-caution-bg);
+  font: 600 12.5px/1.45 var(--pk-font);
+  color: var(--pk-state-caution-ink);
+  text-wrap: pretty;
 }
 
-.note {
-  margin: 10px 0 0;
-  font: 400 12.5px/1.45 var(--pk-font);
-  color: var(--pk-ink-faint);
-  text-wrap: pretty;
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The dark block. `background: var(--pk-bg)` is not a light value being overridden: inside
+   data-surface="dark" that token is the studio's own ground, so the panel and the studio are the
+   same colour by construction rather than by two people typing the same hex. */
+.total {
+  padding: 28px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.totalLabel {
+  margin: 0 0 14px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.totalFigure {
+  margin: 0;
+  font: 700 clamp(44px, 5.4vw, 68px) / 1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  color: var(--pk-ink);
+}
+
+/* No balance read yet. A full-strength em-dash at 68px reads as a rule someone drew across the
+   panel rather than as an absent number; the muted ink says "not known" instead. */
+.totalFigure[data-unknown="true"] {
+  color: var(--pk-ink-muted);
+}
+
+.totalFigure span {
+  font: 600 20px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-muted);
+}
+
+.totalNote {
+  margin: 14px 0 0;
+  font: 600 13px/1.3 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-muted);
 }
 
 .switch {
   margin-top: 12px;
   padding: 9px 14px;
-  background: rgba(255, 201, 63, 0.12);
-  border: 1px solid rgba(255, 201, 63, 0.4);
+  border: 0;
   border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-caution-bg);
   font: 600 12px/1 var(--pk-font);
-  color: var(--pk-amber);
+  color: var(--pk-state-caution-ink);
   cursor: pointer;
 }
 
-.holdings {
-  composes: pk-panel from global;
-  padding: 20px;
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
 }
 
-.empty {
+.tile {
+  flex: 1 1 120px;
+  padding: 16px 18px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+}
+
+.tileValue {
+  margin: 0;
+  font: 700 22px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink);
+}
+
+.tileLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 0 0;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-soft);
+}
+
+.markLime,
+.markViolet,
+.markMuted {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.markLime {
+  background: var(--pk-lime);
+}
+
+.markViolet {
+  background: var(--pk-violet);
+}
+
+.markMuted {
+  background: var(--pk-ink-muted);
+}
+
+.tileSub {
+  margin: 6px 0 0;
+  font: 600 10px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+
+.sideLabel {
   margin: 0 0 14px;
-  font: 400 14.5px/1.55 var(--pk-font);
-  color: var(--pk-ink-dim);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.sideFigure {
+  margin: 0;
+  font: 700 clamp(40px, 4.6vw, 56px) / 1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  color: var(--pk-ink);
+}
+
+.sideNote {
+  margin: 10px 0 0;
+  font: 400 16px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
   text-wrap: pretty;
 }
 
-.emptyActions {
+/* Pushed to the bottom of the panel, as the canvas has it. */
+.ledger {
+  display: grid;
+  gap: 9px;
+  margin: auto 0 0;
+  padding-top: 24px;
+}
+
+.ledgerRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font: 600 11.5px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+}
+
+.ledgerRow dt {
+  margin: 0;
+  color: var(--pk-ink-muted);
+}
+
+.ledgerRow dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink);
+}
+
+.tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 26px 0 14px;
+  padding: 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-2);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+}
+
+/* The selected tab takes the ink as its ground and the page ground as its ink — which is the
+   inversion, so it is written as one rather than as two hand-picked colours. The faint count then
+   resolves to the dark ramp's faint, which is the one drawn to be legible there. */
+.tab[data-surface="dark"] {
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.tabCount {
+  font: 600 11px/1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-faint);
+}
+
+.rows {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 16px 22px;
+  padding: 22px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+
+.probability {
+  min-width: 78px;
+  margin: 0;
+  font: 700 36px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--pk-violet);
+}
+
+.rowBody {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.question {
+  margin: 0;
+  font: 600 18px/1.3 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+  text-wrap: pretty;
+}
+
+.rowMeta {
+  margin: 7px 0 0;
+  font: 600 11.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.state {
+  padding: 7px 12px;
+  border-radius: var(--pk-radius-pill);
+  font: 700 10.5px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.state[data-tone="good"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+.state[data-tone="caution"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+
+.state[data-tone="loss"] {
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-state-loss-ink);
+}
+
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 18px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 13px/1 var(--pk-font);
+  color: var(--pk-ink);
+  text-decoration: none;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration),
+    border-color var(--pk-duration);
+}
+
+.open:hover {
+  border-color: var(--pk-ink);
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+
+/* A tab with no source behind it. It says which of the two it is — nothing held, or nothing to
+   hold yet — because those are different facts and only one of them is about this wallet. */
+.blank {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 28px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+
+.blankTitle {
+  margin: 0;
+  font: 700 22px/1.2 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+}
+
+.blankLead {
+  max-width: 64ch;
+  margin: 0;
+  font: 400 15px/1.55 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
 }

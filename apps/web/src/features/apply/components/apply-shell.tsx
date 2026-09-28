@@ -6,7 +6,9 @@ import styles from "../apply.module.css";
 
 export function ApplyShell({ children }: { children: ReactNode }) {
   return (
-    <div className={styles.page} data-surface="public">
+    // Pinned dark, as the public shell is: .space paints an opaque ground under everything here
+    // and there is no light canvas for this page yet.
+    <div className={styles.page} data-surface="dark">
       <div aria-hidden="true">
         <div className={styles.space} />
         <div className={styles.stars} />

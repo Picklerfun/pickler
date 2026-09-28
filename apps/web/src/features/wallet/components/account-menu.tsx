@@ -24,10 +24,11 @@ export function AccountMenu() {
     return (
       <span className={styles.slot}>
         <Button
-          className={styles.connect}
+          variant="chip"
           onClick={() => wallet.connect()}
           disabled={wallet.status === "connecting"}
         >
+          <Icon name="wallet" size={16} />
           {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
         </Button>
         {wallet.error && <span className={styles.error}>{wallet.error}</span>}
@@ -58,7 +59,7 @@ export function AccountMenu() {
           className={`${styles.dot} ${wallet.onTargetChain ? "" : styles.dotWrong}`}
           aria-hidden="true"
         />
-        {shortAddress(address)}
+        <span className={styles.chipAddress}>{shortAddress(address)}</span>
         <Icon name={open ? "chevronUp" : "chevronDown"} size={13} />
       </button>
 

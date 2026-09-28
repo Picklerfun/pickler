@@ -1,0 +1,709 @@
+/* Pickler account, implemented from the "Pickler Account" design canvas.
+ *
+ * Night blue, with one light block in it: the master-wallet card takes data-surface="light" and
+ * everything inside it reads the light value of the same token names. That inversion is the
+ * mechanism the whole system rests on, and scripts/design/surfaces.mjs asserts it on this route —
+ * if the card were painted with literals the check would report no nesting here.
+ *
+ * Every colour below is a --pk-* token. scripts/design/tokens.mjs fails on any colour no token
+ * holds, and the two places this file uses `currentColor` are inheriting a token, not dodging one. */
+
+.account {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--pk-rule);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--pk-ink);
+  text-decoration: none;
+}
+
+/* The display face, and its width axis after the shorthand rather than before it: `font` resets
+   font-variation-settings, so declaring the axis first would leave Archivo at its default width —
+   a different typeface, and one that nothing on screen tells you about. */
+.wordmark {
+  font: 700 17px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.01em;
+}
+
+.pill {
+  padding: 7px 11px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.handleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 14px 5px 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 13.5px/1 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.chipMark {
+  display: grid;
+  grid-template-columns: repeat(2, 9px);
+  gap: 2px;
+  padding: 5px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+
+/* One square, sized by whatever holds it. Its tint is an accent rather than a state's: these say
+   "this person", not "this happened". */
+.square {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.square[data-tint="lime"] {
+  background: var(--pk-lime);
+}
+
+.square[data-tint="violet"] {
+  background: var(--pk-violet);
+}
+
+.square[data-tint="amber"] {
+  background: var(--pk-amber);
+}
+
+.square[data-tint="blue"] {
+  background: var(--pk-blue);
+}
+
+/* ---------- Rail ---------- */
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.rail {
+  display: flex;
+  flex: 0 0 218px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pk-rule);
+}
+
+.railLabel {
+  margin: 0 0 8px;
+  padding: 0 10px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+
+.railItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+
+.railItem:hover {
+  color: var(--pk-ink);
+}
+
+.railItem[data-selected="true"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+
+.railItem .square {
+  width: 10px;
+  height: 10px;
+}
+
+.railText {
+  flex: 1 1 auto;
+  font: 600 13.5px/1 var(--pk-font);
+}
+
+.railBadge {
+  padding: 5px 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-caution-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-state-caution-ink);
+}
+
+.back {
+  margin-top: 14px;
+  padding: 10px;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-ink-muted);
+  font: 600 13px/1 var(--pk-font);
+  text-decoration: none;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+
+.back:hover {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+
+/* ---------- Main ---------- */
+
+.main {
+  flex: 1 1 520px;
+  min-width: 0;
+  padding: 32px 28px 64px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  animation: rise 260ms ease-out;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.previewBanner {
+  max-width: 760px;
+  margin: 0 auto 18px;
+  padding: 13px 16px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-state-caution-bg);
+  font: 600 11.5px/1.5 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-state-caution-ink);
+}
+
+.signedOut {
+  max-width: 760px;
+  margin: 0 auto;
+  font: 500 15px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.signInLink {
+  color: var(--pk-lime-ink);
+}
+
+/* Section labels. Deliberately not h2: the canvas sets these in the body face at 10–12px tracked
+   wide, and an h2 in this system is the display face — scripts/design/type.mjs measures every h1
+   and h2 for the width axis, and it is right to. */
+.heading {
+  margin: 22px 0 0;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- The gaps ---------- */
+
+.notYet {
+  padding: 20px 22px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+
+.notYetBadge {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-caution-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-state-caution-ink);
+}
+
+.notYetTitle {
+  margin: 12px 0 6px;
+  font: 600 15px/1.3 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.notYetNote {
+  max-width: 64ch;
+  margin: 0;
+  font: 500 13.5px/1.55 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+/* ---------- Wallet ---------- */
+
+/* The inversion. Nothing here names a light colour: the subtree takes the opposite surface and the
+   same token names resolve to their light values. */
+.card {
+  padding: 26px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.cardLabel {
+  margin: 0 0 18px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.cardNote {
+  max-width: 56ch;
+  margin: 0;
+  font: 500 14px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.balance {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--pk-panel-2);
+}
+
+/* The accent names the use; the word takes that accent's ink, because an accent bright enough to
+   carry a fill is never dark enough to be read on white. The square keeps the accent — which is
+   the split the token file exists to make. */
+.balanceUse {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+}
+
+.balanceUse[data-tint="blue"] {
+  color: var(--pk-cyan-ink);
+}
+
+.balanceUse[data-tint="violet"] {
+  color: var(--pk-violet-ink);
+}
+
+.balanceSquare {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.balanceUse[data-tint="blue"] .balanceSquare {
+  background: var(--pk-blue);
+}
+
+.balanceUse[data-tint="violet"] .balanceSquare {
+  background: var(--pk-violet);
+}
+
+.balanceAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.balanceValue {
+  min-width: 0;
+  overflow: hidden;
+  font: 700 clamp(28px, 3.4vw, 42px) / 1 var(--pk-font);
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.balanceSymbol {
+  flex: 0 0 auto;
+  font: 600 16px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+/* A balance that could not be read is not a balance of zero, and this line is the difference. */
+.balanceUnread {
+  margin: 10px 0 0;
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-amber-ink);
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.receive {
+  border-color: transparent;
+  background: var(--pk-panel-2);
+}
+
+.network {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+
+.networkName {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.networkTitle {
+  margin: 0 0 7px;
+  font: 600 15.5px/1 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.address {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+}
+
+.address:hover {
+  color: var(--pk-ink);
+}
+
+.selfCustody {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-good-bg);
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-state-good-ink);
+}
+
+/* currentColor is the state's own ink, inherited from the line above — a token, not a literal. */
+.selfCustodyDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+  background: currentColor;
+}
+
+/* ---------- Security ---------- */
+
+.risk {
+  padding: 24px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+}
+
+.riskEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+}
+
+.riskEyebrow[data-tone="good"] {
+  color: var(--pk-lime-ink);
+}
+
+.riskEyebrow[data-tone="caution"] {
+  color: var(--pk-amber-ink);
+}
+
+.riskSquare {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--pk-radius-mark);
+  background: currentColor;
+}
+
+.riskHeadline {
+  margin: 0 0 14px;
+  font: 700 clamp(46px, 6vw, 64px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+}
+
+.riskBody {
+  max-width: 54ch;
+  margin: 0;
+  font: 500 15px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.addPasskey {
+  margin-top: 4px;
+  padding: 17px 22px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+
+.rowText {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.rowTitle {
+  margin: 0 0 7px;
+  font: 600 15.5px/1.2 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.rowMeta {
+  margin: 0;
+  font: 600 10.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* A passkey's mark. Lime because the row is a key that can move funds, which is the good state
+   rather than a warning — the caution in this section is reserved for what is missing. */
+.passkeyMark {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-lime);
+}
+
+.remove {
+  flex: 0 0 auto;
+}
+
+.current {
+  padding: 7px 10px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-cool-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-state-cool-ink);
+}
+
+.toggle {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  cursor: not-allowed;
+}
+
+.toggle[aria-checked="true"] {
+  background: var(--pk-lime);
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink-muted);
+  transition: transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.35);
+}
+
+.toggle[aria-checked="true"] .toggleKnob {
+  background: var(--pk-on-lime);
+  transform: translateX(18px);
+}
+
+/* ---------- Public profile ---------- */
+
+.identity {
+  padding: 26px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+}
+
+.mark {
+  display: grid;
+  grid-template-columns: repeat(2, 28px);
+  gap: 4px;
+  width: max-content;
+  margin: 0 0 18px;
+  padding: 6px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+
+.mark .square {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.handle {
+  margin: 0 0 10px;
+  font: 700 clamp(34px, 4.2vw, 52px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+  color: var(--pk-ink);
+}
+
+.joined {
+  margin: 0 0 18px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-faint);
+}
+
+.link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bio {
+  width: 100%;
+  padding: 15px 20px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 500 14px/1 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.bio::placeholder {
+  color: var(--pk-ink-faint);
+}
+
+/* The user agent dims a disabled control by itself, which paints a colour no token holds and which
+   the token check cannot see through. The field says what it is with its cursor instead. */
+.bio:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* The rail becomes a strip above the section once there is no room beside it. */
+@media (max-width: 860px) {
+  .rail {
+    flex: 1 1 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--pk-rule);
+  }
+
+  .railLabel {
+    flex: 1 1 100%;
+  }
+
+  .railItem {
+    width: auto;
+  }
+
+  .back {
+    margin-top: 0;
+  }
+
+  .main {
+    padding: 24px 18px 56px;
+  }
+
+  .balances {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    animation: none;
+  }
+
+  .toggleKnob {
+    transition: none;
+  }
+}

@@ -64,12 +64,34 @@ function harness(
 
   const row: { account: CustodyAccount | null } = { account: null };
   const passkeys: Parameters<CustodyRepository["addPasskey"]>[0][] = [];
+  /** Lets a test make the passkey read fail without touching any other repository method.
+   *  Named apart from the balance `reads` below, which is a different collaborator's record. */
+  const passkeyRead: { fail: Error | null } = { fail: null };
   const repository: CustodyRepository = {
     async findByUserId(userId) {
       return row.account?.userId === userId ? row.account : null;
     },
     async listCredentials() {
       return [];
+    },
+    async listPasskeys(userId) {
+      // Scoped by user, unlike listCredentials above, because the route's whole job is to answer
+      // for the caller and a fake that ignores the argument cannot catch it answering for someone
+      // else. `passkeyRead.fail` turns this into an unreachable database.
+      if (passkeyRead.fail) {
+        throw passkeyRead.fail;
+      }
+      return passkeys
+        .filter((passkey) => passkey.userId === userId)
+        .map((passkey, index) => ({
+          id: `passkey-${index}`,
+          credentialId: passkey.credentialId,
+          label: passkey.label,
+          transports: passkey.transports,
+          deviceType: passkey.deviceType,
+          createdAt: new Date(NOW.getTime() + index * 1000),
+          lastUsedAt: index === 0 ? new Date(NOW.getTime() + 60_000) : null,
+        }));
     },
     async saveRegistration(input) {
       if (row.account) {
@@ -195,6 +217,7 @@ function harness(
     builds,
     forwards,
     reads,
+    passkeyRead,
     orphans,
     requestIds,
     authOptions,
@@ -575,12 +598,95 @@ test("the wallet is 404 before registration and carries the balances after", asy
   assert.deepEqual(h.reads, [ADDRESS]);
 });
 
+test("the passkey list is the caller's own, oldest first, with nulls kept", async () => {
+  const h = harness();
+  // Pushed rather than registered: this fake's saveRegistration does not mirror the passkeys row
+  // the port says the transaction writes, and teaching it to would change what `h.passkeys` means
+  // for every other assertion in this file that reads it.
+  h.passkeys.push({
+    userId: ANA,
+    credentialId: "credential-1",
+    label: "MacBook",
+    transports: ["internal"],
+    deviceType: "multiDevice",
+  });
+  h.passkeys.push({
+    userId: ANA,
+    credentialId: "credential-2",
+    label: "iPhone",
+    transports: ["hybrid"],
+    deviceType: null,
+  });
+  // A stranger's passkey in the same store. Without this the route could ignore the user id
+  // entirely and every assertion below would still pass.
+  h.passkeys.push({
+    userId: OTRA,
+    credentialId: "credential-stranger",
+    label: "Someone else's laptop",
+    transports: ["internal"],
+    deviceType: "singleDevice",
+  });
+
+  const res = await h.app.request("/v1/signing/passkeys", {}, env);
+  assert.equal(res.status, 200);
+  const listed = (await json(res)).data as unknown as Record<string, unknown>[];
+
+  assert.deepEqual(
+    listed.map((row) => row["label"]),
+    ["MacBook", "iPhone"],
+  );
+  // `last_used_at` is null on the device that has never signed, and a date on the one that has.
+  // A response that filled the null with the creation date would lose the only thing the column
+  // can say, and it would look entirely reasonable.
+  assert.equal(listed[0]?.["last_used_at"], new Date(NOW.getTime() + 60_000).toISOString());
+  assert.equal(listed[1]?.["last_used_at"], null);
+  assert.equal(listed[0]?.["device_type"], "multiDevice");
+  // Null out, not "unknown" and not omitted: the column is nullable and the screen reads it.
+  assert.equal(listed[1]?.["device_type"], null);
+  assert.deepEqual(listed[1]?.["transports"], ["hybrid"]);
+});
+
+test("a passkey read that fails is a failure, never an empty list", async () => {
+  // The reason `listPasskeys` is a second port method rather than a widened `listCredentials`.
+  // That one degrades a lookup failure to `undefined` on purpose, because a failure there must not
+  // stop somebody registering. Here the opposite is required: the screen behind this route tells
+  // a person whether they can still reach their funds, and an empty list reads as "no passkeys".
+  // If this ever goes green at 200 with [], the two contracts have collapsed back into one.
+  const h = harness();
+  h.passkeys.push({
+    userId: ANA,
+    credentialId: "credential-1",
+    label: "MacBook",
+    transports: ["internal"],
+    deviceType: "multiDevice",
+  });
+  h.passkeyRead.fail = new Error("connection terminated unexpectedly");
+
+  const res = await h.app.request("/v1/signing/passkeys", {}, env);
+
+  assert.equal(res.status, 500);
+  const body = await json(res);
+  assert.equal(body["success"], false);
+  assert.equal(body["data"], undefined);
+});
+
+test("an account with no passkeys answers with an empty list, not a 404", async () => {
+  // The other half of the pair above: empty must still be reachable, or the test before this one
+  // would pass against a route that failed on everything.
+  const h = harness();
+  const res = await h.app.request("/v1/signing/passkeys", {}, env);
+
+  assert.equal(res.status, 200);
+  assert.deepEqual((await json(res)).data, []);
+});
+
 test("API keys and anonymous callers never reach custody", async () => {
   const routes: [string, string][] = [
     ["POST", "/v1/signing/passkeys/challenge"],
     ["POST", "/v1/signing/passkeys/register"],
     ["POST", "/v1/signing/passkeys/add/prepare"],
     ["POST", "/v1/signing/passkeys/add/confirm"],
+    ["GET", "/v1/signing/passkeys"],
     ["GET", "/v1/signing/wallets/me"],
   ];
   const callers = [buildApiKeyPrincipal({ id: "k1", scopes: ["read:agents"] }, "w1"), null];

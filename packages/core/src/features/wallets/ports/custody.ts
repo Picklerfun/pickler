@@ -47,9 +47,47 @@ export interface RegistrationInput {
   deviceType: string;
 }
 
+/**
+ * A passkey on an account, whole, as a person is shown it.
+ *
+ * Both nullable fields mean something and neither has a sensible default. `deviceType` is null for
+ * a row whose transports named no device class. `lastUsedAt` is null for a passkey that has never
+ * signed anything — which is a fact worth showing, not a blank to fill with the creation date.
+ */
+export interface Passkey {
+  id: string;
+  credentialId: string;
+  label: string;
+  transports: string[];
+  deviceType: string | null;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+}
+
 export interface CustodyRepository {
   findByUserId(userId: string): Promise<CustodyAccount | null>;
+  /**
+   * Feeds `excludeCredentials` on a challenge, and nothing else.
+   *
+   * **Never read this to count an account's passkeys.** Its one caller degrades a failure to
+   * `undefined` on purpose — a lookup failure must not stop somebody registering — so "this
+   * account has no credentials" and "the database did not answer" leave here indistinguishable.
+   * That is the right contract for an exclusion list and the wrong one for anything that makes a
+   * claim about somebody's safety: a security headline read off this would one day say "covered"
+   * because Postgres was down. `listPasskeys` below is the read with the opposite contract.
+   */
   listCredentials(userId: string): Promise<{ credentialId: string; transports: string[] }[]>;
+  /**
+   * Every passkey on the account, oldest first.
+   *
+   * Separate from `listCredentials` because the contracts are opposite and not because the columns
+   * differ. **Errors propagate.** A caller of this is answering "can you still reach your funds if
+   * you lose this device", and the only honest answer to a failed lookup is that it could not be
+   * checked — never an empty list, which reads as "no passkeys" and is the more alarming of the
+   * two lies. Anything that wraps this in a catch and returns `[]` has merged the two methods
+   * again in the one place it matters.
+   */
+  listPasskeys(userId: string): Promise<Passkey[]>;
   /**
    * One transaction across turnkey_orgs, wallets, wallet_accounts and passkeys.
    * Returns `created: false` when the unique index on user_id already holds a row,

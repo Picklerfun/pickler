@@ -102,18 +102,67 @@ AAGUID), ports (`TurnkeyOrgRepository`, `PasskeyRepository`, `ChallengeStore`,
 (`stampCreateSubOrganization` then `sendStampedRequest`), and Postgres repositories on the pool,
 following `PostgresBudgetLedger`.
 
-**`workers/api/src/routes/signing.ts`** mounted at `/v1/signing/passkeys`:
+**`workers/api/src/routes/signing.ts`** mounted at `/v1/signing`:
 
-| Route               | Purpose                                                            |
-| ------------------- | ------------------------------------------------------------------ |
-| `POST /challenge`   | issue a challenge, with `excludeCredentials` for existing passkeys |
-| `POST /register`    | create the sub-organization and Master Wallet; idempotent          |
-| `POST /add/prepare` | build the unsigned `CREATE_AUTHENTICATORS` for a new device        |
-| `POST /add/confirm` | forward the stamped activity                                       |
-| `GET /`             | list this person's devices                                         |
+| Route                        | Purpose                                                            |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `POST /passkeys/challenge`   | issue a challenge, with `excludeCredentials` for existing passkeys |
+| `POST /passkeys/register`    | create the sub-organization and Master Wallet; idempotent          |
+| `POST /passkeys/add/prepare` | build the unsigned `CREATE_AUTHENTICATORS` for a new device        |
+| `POST /passkeys/add/confirm` | forward the stamped activity                                       |
+| `GET /passkeys`              | list this person's devices                                         |
+| `GET /wallets/me`            | the master wallet's address and balances                           |
+
+The paths are as `signing.ts` mounts them, which is not what an earlier draft of this table said.
+It listed the device list as `GET /` and omitted `GET /wallets/me` altogether — and the device list
+was then **never implemented**, so for the whole of the first specification this document described
+a route that did not exist. Task 13's account screen was planned against this table, and its brief
+repeated the promise as fact; the screen was built refusing to state a passkey count it could not
+obtain, and the route was added afterwards. A route table is a claim about the code and is worth
+re-reading against `signing.ts` before anything is planned on top of it.
+
+That needed saying twice. The draft that added the missing rows still named the mount
+`/v1/signing/passkeys` and still wrote the four POST rows without their `/passkeys` segment — a
+prefix under which `GET /passkeys` and `GET /wallets/me` cannot exist at all — directly above a
+sentence claiming the paths were as `signing.ts` mounts them. Both are corrected above, against
+`app.ts` and the six `api.get`/`api.post` calls.
+
+**A table of paths says nothing about shapes, and the shapes were wrong in the other direction.**
+Task 12/13's brief derived a single `WalletDto` carrying `sub_organization_id`,
+`master_wallet_id`, `address` and optional balances. No route answers that.
+`POST /passkeys/register` sends the two ids and the address and **no balances**; `GET /wallets/me`
+sends the address and the balances and **neither id**. They are disjoint, so the client has
+`RegisteredWalletDto` and `WalletDto` as separate types — one type spanning both would declare
+fields each response omits, and the client's `call` casts its envelope with `as T` rather than
+validating it, so nothing would have said so at runtime either. `POST /passkeys/add/confirm`'s
+response, `{ activity_id, status }`, was described nowhere at all. Where core has a type, the
+browser DTOs are pinned against it in `apps/web/test/custody-api.test.ts`; that is what caught
+`UnsignedActivity.timestampMs` being decimal text rather than a number. Prose describing a
+response is a claim about the code in exactly the way a path is.
 
 New bindings: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_PARENT_ORG_ID`,
 `TURNKEY_RPID`, `TURNKEY_APP_NAME`.
+
+### Two list methods, and why they are not one
+
+`CustodyRepository` has `listCredentials` and `listPasskeys`, and the difference is the contract on
+failure rather than the columns.
+
+`listCredentials` feeds `excludeCredentials` on a challenge. Its caller catches and degrades to no
+exclusions, because a lookup failure must never stop somebody registering — Relayer learned that the
+same way. So "this account has no credentials" and "the database did not answer" leave that method
+indistinguishable, which is correct for an exclusion list.
+
+`listPasskeys` answers the account screen, which tells a person whether they can still reach their
+funds after losing a device. **Errors propagate**: nothing in the repository, the service or the
+route catches, and the browser turns a rejection into a `failed` state rather than an empty array.
+An empty list for an unreachable database would read as "no passkeys", which is the more alarming
+of the two ways to be wrong, and it would look entirely reasonable on screen.
+
+Sharing one method would mean one of the two callers is silently wrong, and it would be the one
+that matters. `workers/api/test/signing.test.ts` pins the distinction directly — a repository that
+throws must surface as a failed read and not as `[]` — because an untested distinction collapses
+back into the first method the next time somebody tidies.
 
 **A defect fixed while porting.** Relayer's `register` writes four tables in sequence without a
 transaction, and every intermediate failure path carries a comment reading _"orphan in Turnkey"_.
@@ -283,3 +332,19 @@ missing is the wiring: those three builders have no caller outside their tests, 
 `cosigner.providers.ts` and `wallets.service.ts` only read. That is why the extraction report says
 nothing writes `agent_policy_meta`. Specification two connects tested builders to agent creation;
 it does not design the round.
+
+**Two client shapes worth knowing before adding routes.** The web client's DTOs are deliberately
+not one type across the signing routes: `/passkeys/register` answers two ids and an address,
+`/wallets/me` answers an address and balances and neither id, and `/passkeys/add/confirm` answers
+`{ activity_id, status }`. A type spanning them would be wrong in a direction no path check
+reaches, and it would not surface as an error — `call` casts its envelope with `as T` rather than
+validating, so an overstated DTO appears as `undefined` at a property access, or as a null the type
+swears is impossible, far from the cause. When specification two adds agent-wallet routes, give
+each response its own type.
+
+And `wallet()` throws `ApiError(404)` for an account that has no wallet yet rather than returning
+`null`. That follows the existing idiom at `account.ts:43`, but it means every caller needs a
+`try`/`catch` to render the ordinary "not yet" state — a case that is not an error from the
+person's point of view. Worth settling deliberately when the agent-wallet reads land, because
+there will be more of these and the same choice made twice by accident is how an idiom becomes a
+rule nobody chose.

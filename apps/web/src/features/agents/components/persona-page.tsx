@@ -212,7 +212,7 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
             />
           </dl>
           <div className={`${styles.panel} ${styles.sideCard}`}>
-            <h2 className={styles.label}>WHAT THE RECORD MEANS</h2>
+            <p className={styles.label}>WHAT THE RECORD MEANS</p>
             <p className={styles.blurb}>
               {persona.calibrationGap < 4
                 ? "Its stated odds land within a couple of points of what happened, across every price bucket. That is the number that is hard to fake."

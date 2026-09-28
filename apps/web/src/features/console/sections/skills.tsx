@@ -66,7 +66,7 @@ export function Skills({
   return (
     <div className={styles.section} data-narrow="true">
       <div className={styles.sectionHead}>
-        <h2>Skills</h2>
+        <h1>Skills</h1>
         <span className={styles.count}>
           {tools.length} OF 6 TOOLS · {enabled.length} OF {plugins.length || 5} PLUGINS
         </span>

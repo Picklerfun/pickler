@@ -10,14 +10,18 @@
   --line: var(--pk-rule);
   --line-strong: var(--pk-rule-strong);
   --lime: var(--pk-lime);
-  --lime-ink: var(--pk-on-lime);
+  --lime-ink: var(--pk-lime-ink);
+  --on-lime: var(--pk-on-lime);
   --cyan-ink: var(--pk-cyan-ink);
   --amber: var(--pk-amber);
+  --amber-ink: var(--pk-amber-ink);
   --magenta: var(--pk-magenta);
   --violet: var(--pk-violet);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   display: flex;
@@ -30,7 +34,7 @@
 }
 
 .page a {
-  color: var(--lime);
+  color: var(--lime-ink);
   text-decoration: none;
 }
 
@@ -91,7 +95,7 @@
   min-height: 60px;
   padding: 0 22px;
   border-bottom: 1px solid var(--line);
-  background: #0b0b0e;
+  background: var(--pk-nav-bg);
 }
 
 .page a.brand,
@@ -111,6 +115,7 @@
 
 .brandName {
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.01em;
 }
 
@@ -120,7 +125,7 @@
   padding: 7px 12px;
   border: 1px solid rgba(243, 241, 236, 0.14);
   border-radius: var(--pk-radius-pill);
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--muted);
 }
@@ -159,7 +164,7 @@
 .page a.primary,
 .page a.primary:hover {
   display: inline-flex;
-  color: var(--lime-ink);
+  color: var(--on-lime);
 }
 
 .primary:disabled {
@@ -172,11 +177,11 @@
 }
 
 .good {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .warn {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .bad {
@@ -192,7 +197,7 @@
   margin: 0 0 16px;
   padding: 12px 14px;
   border: 1px solid rgba(255, 95, 162, 0.4);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: rgba(255, 95, 162, 0.08);
   font: 500 13px/1.45 var(--body);
   color: #ffc2da;
@@ -227,7 +232,7 @@
 
 .eyebrow {
   margin: 0 0 12px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -235,6 +240,7 @@
 .headline {
   margin: 0 0 12px;
   font: 700 clamp(30px, 4.4vw, 42px)/1.02 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.025em;
 }
 
@@ -267,13 +273,14 @@
 }
 
 .step span {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .stepActive {
   border-color: rgba(200, 240, 58, 0.34);
   background: rgba(200, 240, 58, 0.1);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .methods {
@@ -319,7 +326,7 @@
 }
 
 .check {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .card {
@@ -357,7 +364,8 @@
 .strengthLabel {
   flex: none;
   min-width: 42px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   text-align: right;
 }
 
@@ -383,8 +391,8 @@
   height: 20px;
   margin-top: 1px;
   border: 1px solid rgba(243, 241, 236, 0.26);
-  border-radius: var(--pk-radius-sm);
-  color: var(--lime-ink);
+  border-radius: var(--pk-radius-mark);
+  color: var(--on-lime);
 }
 
 .terms input:checked + .box {
@@ -467,7 +475,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -484,8 +492,9 @@
 .bigNumber {
   display: block;
   font: 700 42px/0.9 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
-  color: var(--lime);
+  color: var(--lime-ink);
   text-shadow: 0 0 26px rgba(200, 240, 58, 0.45);
 }
 
@@ -505,7 +514,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--muted);
 }
@@ -527,7 +536,7 @@
   overflow: hidden;
   list-style: none;
   border: 1px solid rgba(243, 241, 236, 0.14);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background-color: var(--bg);
   background-image:
     linear-gradient(rgba(243, 241, 236, 0.06) 1px, transparent 1px),
@@ -543,6 +552,7 @@
   place-items: center;
   background: rgba(200, 240, 58, 0.2);
   font: 700 15px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: 0.06em;
   text-shadow: 0 0 20px rgba(200, 240, 58, 0.9);
   border-radius: var(--pk-radius-lg);
@@ -590,13 +600,15 @@
 
 .dropText span {
   display: block;
-  font: 500 11px/1.35 var(--mono);
+  font: 500 11px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
 .nextLabel {
   margin: 10px 0 0;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -704,6 +716,7 @@
 .cardTitle {
   margin: 0 0 6px;
   font: 700 26px/1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
@@ -736,7 +749,7 @@
   align-items: center;
   gap: 11px;
   margin-bottom: 14px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--muted);
 }
@@ -776,7 +789,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -795,7 +808,8 @@
 
 .callTicker {
   flex: none;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -811,7 +825,8 @@
 
 .callResult {
   flex: none;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .footerLinks {
@@ -820,7 +835,7 @@
   align-items: center;
   gap: 14px;
   padding: 0 4px;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.06em;
 }
 
@@ -864,7 +879,7 @@
   border: 1px solid rgba(200, 240, 58, 0.4);
   border-radius: var(--pk-radius-pill);
   background: rgba(200, 240, 58, 0.12);
-  color: var(--lime);
+  color: var(--lime-ink);
   box-shadow: 0 0 30px rgba(200, 240, 58, 0.3);
   animation: pop 520ms cubic-bezier(0.3, 1.5, 0.5, 1);
 }
@@ -877,6 +892,7 @@
 .doneTitle {
   margin: 0 0 12px;
   font: 700 34px/1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
@@ -890,7 +906,8 @@
 
 .doneFoot {
   margin: 18px 0 0;
-  font: 500 10.5px/1.5 var(--mono);
+  font: 500 10.5px/1.5 var(--label);
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -1060,7 +1077,7 @@
 }
 
 .railLabel {
-  font: 600 10px/1 var(--mono);
+  font: 600 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--muted);
   overflow: hidden;
@@ -1073,7 +1090,7 @@
 }
 
 .railDone .railLabel {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .railActive .railBar {
@@ -1094,18 +1111,19 @@
 .flowTitle {
   margin: 14px 0 0;
   font: 700 clamp(34px, 5.4vw, 52px)/0.94 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
 .flowTitle::after {
   content: ".";
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .flowLead {
   margin: 0;
-  font: 600 12px/1.4 var(--mono);
+  font: 600 12px/1.4 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
   overflow-wrap: anywhere;
@@ -1228,7 +1246,7 @@
 
 .codeAlertTag {
   flex: none;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--pk-pink-ink);
 }
@@ -1245,7 +1263,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -1286,7 +1304,7 @@
 
 .handleField :global(.pk-field-note) {
   padding: 0 4px;
-  font: 600 11px/1.4 var(--mono);
+  font: 600 11px/1.4 var(--label);
   letter-spacing: 0.06em;
 }
 
@@ -1295,7 +1313,8 @@
    nothing this file gives a finished screen. */
 .notBuilt {
   margin: 24px 0 0;
-  font: 400 13.5px/1.7 var(--mono);
+  font: 400 13.5px/1.7 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
   white-space: pre-line;
 }
@@ -1324,7 +1343,7 @@
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-left: 2px solid var(--accent);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--panel);
 }
 
@@ -1345,7 +1364,7 @@
 
 .pointTag {
   flex: none;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--accent);
 }
@@ -1370,8 +1389,8 @@
   padding: 24px 22px 26px;
   overflow-y: auto;
   border-bottom: none;
-  border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
-  background: #101014;
+  border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) 0 0;
+  background: var(--pk-popover);
   color: var(--ink);
   font-family: var(--body);
   animation: fadeIn 160ms ease-out;
@@ -1397,20 +1416,21 @@
     height: fit-content;
     margin: auto;
     border-bottom: 1px solid var(--line);
-    border-radius: var(--pk-radius-xl);
+    border-radius: var(--pk-radius-2xl);
   }
 }
 
 .sheetTitle {
   margin: 0;
   font: 700 21px/1.2 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
 .sheetNote {
   margin: 0;
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
   letter-spacing: 0.1em;
   color: var(--muted);
   overflow-wrap: anywhere;
@@ -1430,7 +1450,7 @@
 .sheetSaved {
   margin-right: 7px;
   vertical-align: -3px;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .sheet .alert {
@@ -1445,9 +1465,9 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font: 600 12.5px/1 var(--mono);
+  font: 600 12.5px/1 var(--label);
   letter-spacing: 0.06em;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* The address is a button because it is there to be taken away, not only read. */
@@ -1456,7 +1476,7 @@
   border: 1px solid var(--line);
   border-radius: var(--pk-radius-pill);
   background: var(--panel);
-  font: 600 12px/1 var(--mono);
+  font: 600 12px/1 var(--label);
   letter-spacing: 0.04em;
   color: var(--ink);
   cursor: pointer;
@@ -1473,9 +1493,10 @@
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--pk-amber-edge);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-amber-tint);
-  font: 500 11.5px/1.5 var(--mono);
+  font: 500 11.5px/1.5 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink);
   overflow-wrap: anywhere;
   user-select: all;
@@ -1485,7 +1506,7 @@
   display: block;
   margin-bottom: 4px;
   letter-spacing: 0.08em;
-  color: var(--amber);
+  color: var(--amber-ink);
   user-select: none;
 }
 
@@ -1521,7 +1542,7 @@
   justify-content: space-between;
   gap: 10px;
   margin: 0;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--muted);
 }
@@ -1536,19 +1557,20 @@
 .balance {
   margin: 0;
   font: 700 clamp(30px, 5vw, 40px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
 .balance span {
   margin-left: 6px;
-  font: 600 14px/1 var(--mono);
+  font: 600 14px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--muted);
 }
 
 .balanceSecondary {
   margin: 0;
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--label);
   letter-spacing: 0.04em;
   color: var(--muted);
 }
@@ -1557,7 +1579,7 @@
 .balanceUnknown {
   margin: 0;
   font: 500 13.5px/1.45 var(--body);
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 /* ---------- New device ---------- */
@@ -1588,7 +1610,7 @@
 .tileText span {
   display: block;
   margin-top: 4px;
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
   letter-spacing: 0.08em;
   color: var(--muted);
 }
@@ -1596,7 +1618,7 @@
 .lost {
   padding: 14px 16px;
   border: 1px solid var(--line);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--panel);
 }
 
@@ -1620,7 +1642,7 @@
 }
 
 .lostFacts li {
-  font: 500 11px/1.5 var(--mono);
+  font: 500 11px/1.5 var(--label);
   letter-spacing: 0.08em;
   color: var(--muted);
 }

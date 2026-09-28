@@ -167,6 +167,7 @@ export type {
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
+  Passkey,
   RegistrationInput,
   StoredChallenge,
   SubOrganizationCreator,

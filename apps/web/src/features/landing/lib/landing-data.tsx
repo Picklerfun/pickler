@@ -1,15 +1,7 @@
 "use client";
 
 import type { LandingResponse } from "@pickler/api-schema";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 const REFRESH_MS = 30_000;
 const CLOCK_MS = 15_000;
@@ -22,6 +14,14 @@ interface LandingState {
 
 const LandingContext = createContext<LandingState | null>(null);
 
+/**
+ * The landing's one source of numbers.
+ *
+ * Everything on the page is a figure out of this snapshot, and the only thing that moves it is the
+ * API answering differently. Nothing here counts up on its own: an interval that increments a
+ * number nothing produced would read as live and be invented, which is the one thing a page full of
+ * money figures cannot do.
+ */
 export function LandingDataProvider({
   initial,
   children,
@@ -67,45 +67,4 @@ export function useLanding(): LandingState {
     throw new Error("useLanding must be used inside LandingDataProvider");
   }
   return value;
-}
-
-const noop = () => () => {};
-
-/** False during server rendering and hydration, true afterwards. */
-export function useIsClient() {
-  return useSyncExternalStore(
-    noop,
-    () => true,
-    () => false,
-  );
-}
-
-function subscribeReducedMotion(onChange: () => void) {
-  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-export function usePrefersReducedMotion() {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
-}
-
-/** setInterval that pauses when the user prefers reduced motion. */
-export function useAnimationInterval(callback: () => void, ms: number) {
-  const reduced = usePrefersReducedMotion();
-  const latest = useRef(callback);
-  useEffect(() => {
-    latest.current = callback;
-  });
-  useEffect(() => {
-    if (reduced) {
-      return;
-    }
-    const id = setInterval(() => latest.current(), ms);
-    return () => clearInterval(id);
-  }, [reduced, ms]);
 }

@@ -113,6 +113,10 @@ export function PasskeySheet({
     <dialog
       ref={sheet}
       className={styles.sheet}
+      // A dialog is a child of the body, outside whatever opened it, so it inherits no surface and
+      // would fall through to the light default. The ceremonies it carries all run on the dark
+      // screens, so it names the surface it should have inherited.
+      data-surface="dark"
       aria-label={copy.title}
       onCancel={cancel}
       onClick={backdrop}

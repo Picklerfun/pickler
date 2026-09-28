@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
@@ -19,6 +19,9 @@ import {
 import { useNow } from "@/lib/now";
 import { startPolling } from "./lib/polling";
 import { AgentForm } from "./agent-form";
+import { EmptyStudio } from "./empty/empty-studio";
+import { studioPreview } from "./preview";
+import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
 import { Picks } from "./sections/picks";
 import { Activity } from "./sections/activity";
@@ -28,6 +31,7 @@ import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
+import type { Phase } from "./sections/keys";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -128,10 +132,16 @@ const initials = (value: string) =>
     .join("")
     .slice(0, 2) || "AG";
 
-export function Console() {
+export function Console({
+  openSection,
+  openPhase,
+}: {
+  openSection?: SectionKey | undefined;
+  openPhase?: Phase | undefined;
+}) {
   const router = useRouter();
-  const [section, setSection] = useState<SectionKey>("overview");
-  const [wide, setWide] = useState(true);
+  const [section, setSection] = useState<SectionKey>(openSection ?? "overview");
+  const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -146,6 +156,7 @@ export function Console() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
+  const [preview, setPreview] = useState(false);
   const requestKeys = useRef(new Map<string, string>());
 
   const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
@@ -170,7 +181,35 @@ export function Console() {
       try {
         const supabase = getSupabase();
         if (!supabase) {
-          throw new Error("Authentication is not configured for this environment.");
+          /* No authentication anywhere in this environment, so there is no studio to stand in
+             front of. Outside production the screen renders from a fixture instead of a dead end,
+             because a design check that walks a sign-in stub reports the same green as one that
+             walked the studio. */
+          const fixture = studioPreview(Date.now(), window.location.search);
+          if (!fixture) {
+            throw new Error("Authentication is not configured for this environment.");
+          }
+          if (!active) {
+            return;
+          }
+          setPreview(true);
+          setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
+          setAgents(fixture.agents);
+          setCatalog(fixture.catalog);
+          setOptions(fixture.options);
+          /* The empty studio's fixture has neither, and indexing into it threw where the catch
+             turned a crash into a blank screen with the catalog never set. */
+          const first = fixture.agents[0];
+          const run = fixture.runs[0];
+          if (first) {
+            setAgentId(first.id);
+          }
+          if (run) {
+            setRuns(fixture.runs);
+            setRunId(run.id);
+            setTrace({ runId: run.id, events: fixture.events });
+          }
+          return;
         }
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
@@ -210,7 +249,7 @@ export function Console() {
 
   /* One cancellable read loop owns both the run list and the selected trace. */
   useEffect(() => {
-    if (!agentId) {
+    if (!agentId || preview) {
       return;
     }
     return startPolling(
@@ -238,7 +277,7 @@ export function Console() {
         setError(caught instanceof Error ? caught.message : "Could not refresh research.");
       },
     );
-  }, [agentId, runId, agent?.scheduleEnabled, refresh]);
+  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview]);
 
   const act = useCallback(
     async (operation: () => Promise<void>) => {
@@ -336,15 +375,34 @@ export function Console() {
     setMenu(null);
   }
 
-  return (
-    <main className={styles.studio} data-surface="console" onClick={() => setMenu(null)}>
-      <div className={styles.horizon} aria-hidden="true" />
+  /* No agents is not an empty studio, it is a different screen: the journey to a first one. It
+     brings its own shell, so it replaces this one rather than sitting inside it. */
+  if (access && !agents.length && !creating) {
+    return (
+      <EmptyStudio
+        openPhase={openPhase}
+        catalog={catalog}
+        defaults={options?.defaults ? ({ ...options.defaults } as Config) : null}
+        canManage={canManage}
+        owner="@you"
+        onCreated={(id) => {
+          void act(async () => {
+            await loadAgents();
+            setAgentId(id);
+            setSection("overview");
+          });
+        }}
+      />
+    );
+  }
 
+  return (
+    <main className={styles.studio} data-surface="dark" onClick={() => setMenu(null)}>
       <header className={styles.topbar}>
         <button
           type="button"
           className={styles.iconButton}
-          onClick={() => setWide(!wide)}
+          onClick={() => setRail(!wide)}
           aria-label={wide ? "Collapse the rail" : "Expand the rail"}
         >
           <Icon name={wide ? "chevronLeft" : "chevronRight"} size={16} />
@@ -439,10 +497,14 @@ export function Console() {
             className={styles.switcher}
             data-quiet="true"
             aria-expanded={menu === "account"}
+            aria-label="Account"
             onClick={() => setMenu(menu === "account" ? null : "account")}
           >
-            <span className={styles.avatar} data-tint="grey">
-              <Icon name="user" size={14} />
+            <span className={styles.swatch} aria-hidden="true">
+              <i data-swatch="lime" />
+              <i data-swatch="violet" />
+              <i data-swatch="amber" />
+              <i data-swatch="blue" />
             </span>
             <Icon name="chevronDown" size={14} />
           </button>
@@ -541,7 +603,14 @@ export function Console() {
           </div>
         </nav>
 
-        <div className={styles.main}>
+        <div className={styles.main} id={`studio-panel-${section}`}>
+          {preview && (
+            <p className={styles.preview} role="status">
+              <Icon name="alert" size={13} />
+              Design preview. This build has no authentication configured, so the studio is drawn
+              from a fixture — every number below is from the canvas, not from a workspace.
+            </p>
+          )}
           {blockedState && (
             <section className={styles.blocked} data-tint={blockedState.tint} role="status">
               <span className={styles.blockedMark}>
@@ -584,7 +653,7 @@ export function Console() {
           ) : !agent ? (
             <div className={styles.section} data-narrow="true">
               <div className={styles.sectionHead}>
-                <h2>No agent yet</h2>
+                <h1>No agent yet</h1>
               </div>
               <p className={styles.stubBody}>
                 An agent is a standing brief plus the plugins it may reach. Create one and the

@@ -12,15 +12,19 @@
   --faint: var(--pk-ink-faint);
   --placeholder: var(--pk-ink-placeholder);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan-ink: var(--pk-cyan-ink);
   --violet-ink: var(--pk-violet-ink);
   --pink-ink: var(--pk-pink-ink);
   --amber: var(--pk-amber);
+  --amber-ink: var(--pk-amber-ink);
   --rule: var(--pk-rule);
   --border: var(--pk-border);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   z-index: 1;
@@ -36,7 +40,7 @@
 
 .eyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -44,6 +48,7 @@
 .title {
   margin: 0 0 10px;
   font: 700 clamp(30px, 5vw, 52px) / 1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -57,13 +62,13 @@
 
 .microLabel {
   margin: 0;
-  font: 500 10px/1.3 var(--mono);
+  font: 500 10px/1.3 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
 
 .toneWin {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .toneLoss {
@@ -71,7 +76,7 @@
 }
 
 .toneWarn {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .toneAskInk {
@@ -116,7 +121,7 @@
 
 .filterChip {
   gap: 7px;
-  font-family: var(--mono);
+  font-family: var(--label);
   font-size: 11.5px;
   letter-spacing: 0.04em;
 }
@@ -131,7 +136,7 @@
 }
 
 .sortLabel {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -177,11 +182,11 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
-  border-radius: var(--pk-radius-md);
-  background: rgba(var(--accent-rgb), 0.14);
-  font: 700 12px/1 var(--mono);
-  color: var(--accent);
+  border-radius: var(--pk-radius-sm);
+  background: var(--accent-bg);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
+  color: var(--accent-ink);
 }
 
 .marketName {
@@ -212,7 +217,7 @@
   padding: 3px 7px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -220,20 +225,23 @@
 .marketCoverage {
   display: block;
   margin-top: 4px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
 .marketPrice {
   flex: none;
   text-align: right;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .marketPriceValue {
   display: block;
   margin-bottom: 5px;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .marketStats {
@@ -244,7 +252,8 @@
   padding: 11px 0;
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
-  font: 500 10px/1.4 var(--mono);
+  font: 500 10px/1.4 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .marketStats dt {
@@ -310,7 +319,7 @@
   padding: 9px 13px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
@@ -345,18 +354,20 @@
 }
 
 .tile dt {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
 
 .tile dd {
   margin: 8px 0 0;
-  font: 700 22px/1 var(--mono);
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .tile dd span {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tileNote {
@@ -382,14 +393,14 @@
 .modes [data-value="trade"][aria-pressed="true"] {
   border-color: var(--pk-lime-edge);
   background: var(--pk-lime-tint);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .coverage {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -418,23 +429,23 @@
 
 .surface {
   composes: pk-panel from global;
-  --accent-ink: var(--lime);
-  --accent-on: rgba(200, 240, 58, 0.4);
-  --accent-soft: rgba(200, 240, 58, 0.08);
+  --accent-ink: var(--lime-ink);
+  --accent-on: var(--pk-lime-edge);
+  --accent-soft: var(--pk-state-good-bg);
 
   overflow: hidden;
 }
 
 .toneShort {
   --accent-ink: var(--pink-ink);
-  --accent-on: rgba(255, 95, 162, 0.4);
-  --accent-soft: rgba(255, 95, 162, 0.08);
+  --accent-on: var(--pk-magenta-edge);
+  --accent-soft: var(--pk-state-loss-bg);
 }
 
 .toneAsk {
   --accent-ink: var(--violet-ink);
-  --accent-on: rgba(155, 123, 255, 0.45);
-  --accent-soft: rgba(155, 123, 255, 0.09);
+  --accent-on: var(--pk-violet-edge);
+  --accent-soft: var(--pk-state-info-bg);
 }
 
 .surfaceHead {
@@ -467,24 +478,27 @@
   place-items: center;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--faint);
 }
 
+/* The grid's two halves. At 0.04 the split read on the dark page and vanished on a white one, which
+   is the whole of what alpha over a hex does wrong: these are large areas, so the pairs make them
+   quieter in proportion and visible at all. */
 .railLong {
   flex: 5;
-  background: rgba(200, 240, 58, 0.04);
+  background: var(--pk-state-good-bg);
 }
 
 .railShort {
   flex: 4;
-  background: rgba(255, 95, 162, 0.04);
+  background: var(--pk-state-loss-bg);
 }
 
 .toneLong .railLong,
 .toneAsk .railLong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .toneShort .railShort,
@@ -510,7 +524,7 @@
   position: absolute;
   bottom: 10px;
   left: 10px;
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--placeholder);
 }
@@ -529,16 +543,17 @@
   padding: 0 12px;
   border-top: 1px solid var(--pk-border-strong);
   border-bottom: 1px solid var(--pk-border-strong);
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 .markPrice {
-  font: 700 10.5px/1 var(--mono);
+  font: 700 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .row {
   display: flex;
-  border-bottom: 1px solid var(--pk-hairline, rgba(245, 246, 255, 0.08));
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .rowLevel {
@@ -548,14 +563,15 @@
   justify-content: center;
   gap: 4px;
   padding-left: 12px;
-  border-right: 1px solid rgba(245, 246, 255, 0.08);
-  font: 500 9.5px/1 var(--mono);
+  border-right: 1px solid var(--pk-rule);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--placeholder);
 }
 
 .rowPrice {
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -564,7 +580,8 @@
 }
 
 .rowPct {
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--placeholder);
 }
 
@@ -575,7 +592,7 @@
   min-width: 0;
   height: 54px;
   border: 0;
-  border-left: 1px solid rgba(245, 246, 255, 0.08);
+  border-left: 1px solid var(--pk-rule);
   background: transparent;
   cursor: pointer;
   transition: background var(--pk-duration) ease;
@@ -594,7 +611,7 @@
 }
 
 .cell[data-blocked] {
-  background: rgba(245, 246, 255, 0.02);
+  background: var(--pk-panel);
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -610,7 +627,7 @@
   border: 1px solid var(--accent-on);
   border-radius: var(--pk-radius-pill);
   background: var(--pk-bg);
-  font: 600 10px/1 var(--mono);
+  font: 600 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--accent-ink);
 }
@@ -623,7 +640,7 @@
 }
 
 .cellDot[data-call] {
-  background: rgba(245, 246, 255, 0.35);
+  background: var(--pk-panel-3);
 }
 
 .columns {
@@ -633,13 +650,14 @@
 .column {
   flex: 1;
   padding: 10px 0;
-  border-left: 1px solid rgba(245, 246, 255, 0.08);
+  border-left: 1px solid var(--pk-rule);
   text-align: center;
 }
 
 .columnLabel {
   display: block;
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -650,7 +668,8 @@
 .columnTime {
   display: block;
   margin-top: 4px;
-  font: 500 9px/1 var(--mono);
+  font: 500 9px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--placeholder);
 }
 
@@ -683,7 +702,7 @@
   align-items: center;
   gap: 7px;
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -692,20 +711,20 @@
   width: 6px;
   height: 6px;
   border-radius: var(--pk-radius-pill);
-  background: rgba(245, 246, 255, 0.35);
+  background: var(--pk-ink-faint);
 }
 
 .notice {
   padding: 12px 14px;
   border: 1px solid var(--pk-amber-edge);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-amber-tint);
 }
 
 .noticeTitle {
   margin: 0;
   font: 700 13px/1.3 var(--body);
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .noticeBody {
@@ -742,17 +761,17 @@
 
 .ticket.long {
   border-color: var(--pk-lime-edge);
-  background: rgba(200, 240, 58, 0.06);
+  background: var(--pk-state-good-bg);
 }
 
 .ticket.short {
   border-color: var(--pk-magenta-edge);
-  background: rgba(255, 95, 162, 0.06);
+  background: var(--pk-state-loss-bg);
 }
 
 .ticket.ask {
   border-color: var(--pk-violet-edge);
-  background: rgba(155, 123, 255, 0.07);
+  background: var(--pk-state-info-bg);
 }
 
 .ticket.warn {
@@ -765,7 +784,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
@@ -773,20 +792,26 @@
 .ticketTitle {
   margin: 0;
   font: 700 21px/1.15 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   text-wrap: pretty;
 }
 
+/* A sentence, not a title: the family comes from `data-face="body"` on the element rather than from
+   a shorthand here, so the opt-out is load-bearing and removing it shows. */
 .ticketPhrase {
   margin: 0;
-  font: 700 17px/1.3 var(--body);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
   letter-spacing: -0.02em;
   text-wrap: pretty;
 }
 
 .ticketRule {
   margin: 0;
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -830,7 +855,7 @@
   height: 14px;
   margin-top: 3px;
   border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-mark);
 }
 
 .legendLong {
@@ -842,7 +867,7 @@
 }
 
 .legendTime {
-  background: rgba(245, 246, 255, 0.25);
+  background: var(--pk-ink-faint);
 }
 
 .steppers {
@@ -858,14 +883,14 @@
   gap: 6px;
   padding: 6px 8px;
   border: 1px solid var(--pk-rule);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .stepperButton {
   width: 28px;
   height: 28px;
   border: 1px solid var(--border);
-  border-radius: var(--pk-radius-sm);
+  border-radius: var(--pk-radius-mark);
   background: transparent;
   color: var(--ink);
   font: 700 14px/1 var(--body);
@@ -882,7 +907,8 @@
 
 .stepperValue strong {
   display: block;
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .stepperValue .microLabel {
@@ -895,7 +921,7 @@
   gap: 8px;
   padding: 11px 13px;
   border: 1px solid var(--border);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-field);
 }
 
@@ -905,14 +931,16 @@
   border: 0;
   background: transparent;
   color: var(--ink);
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   outline: 0;
 }
 
 .marginUnit {
   flex: none;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -924,7 +952,8 @@
 .quickChip {
   flex: 1;
   justify-content: center;
-  font-family: var(--mono);
+  font-family: var(--label);
+  letter-spacing: 0.08em;
   font-size: 10.5px;
 }
 
@@ -932,7 +961,7 @@
   display: flex;
   justify-content: space-between;
   margin: 0 0 6px;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -951,7 +980,7 @@
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--rule);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: rgba(5, 6, 26, 0.4);
   font: 700 13px/1.3 var(--body);
 }
@@ -970,13 +999,15 @@
   height: 22px;
   border: 1px solid var(--border);
   border-radius: var(--pk-radius-pill);
-  font: 700 10px/1 var(--mono);
+  font: 700 10px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .orderRule {
   display: block;
   margin-top: 3px;
-  font: 500 10px/1.4 var(--mono);
+  font: 500 10px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -987,7 +1018,8 @@
   margin: 0;
   padding-top: 10px;
   border-top: 1px solid var(--rule);
-  font: 500 10.5px/1.4 var(--mono);
+  font: 500 10.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .figures > div {
@@ -1024,12 +1056,12 @@
 
 .pulseLime {
   background: var(--lime);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
+  box-shadow: 0 0 10px var(--pk-lime);
 }
 
 .pulseCyan {
   background: var(--pk-cyan);
-  box-shadow: 0 0 10px rgba(90, 216, 255, 0.9);
+  box-shadow: 0 0 10px var(--pk-blue);
 }
 
 @keyframes pulse {
@@ -1049,7 +1081,7 @@
   padding: 4px 9px;
   border: 1px dashed var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  font: 500 9px/1.2 var(--mono);
+  font: 500 9px/1.2 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
@@ -1071,7 +1103,7 @@
 .sideNote {
   composes: pk-panel from global;
   padding: 14px 16px;
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 .sideNote p:last-child {

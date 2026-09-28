@@ -79,6 +79,10 @@ export function Overview({
 
   return (
     <div className={styles.section}>
+      <div className={styles.sectionHead}>
+        <h1>Overview</h1>
+        <p>what it is about to do, and what it just did</p>
+      </div>
       <div className={styles.cards}>
         <section className={styles.card}>
           <div className={styles.split}>
@@ -120,8 +124,9 @@ export function Overview({
               aria-label="Market ID"
               className={styles.fieldGrow}
             />
+            {/* Not `glow`: that is the marketing call to action, and it paints a half-white edge
+                no token holds. The canvas draws Run now as a flat lime fill with no shadow. */}
             <Button
-              glow
               disabled={runsLocked || !canManage || busy || agent.paused}
               title={
                 runsLocked

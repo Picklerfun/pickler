@@ -50,7 +50,7 @@ export function AskTicket({ detail, square, onStepLevel, onClear }: AskTicketPro
   return (
     <section className={`${styles.ticket} ${styles.ask}`} aria-labelledby="ticket-title">
       <p className={`${styles.ticketLabel} ${styles.toneAskInk}`}>YOUR QUESTION · NOTHING SENT</p>
-      <h2 id="ticket-title" className={styles.ticketPhrase}>
+      <h2 id="ticket-title" className={styles.ticketPhrase} data-face="body">
         {detail.readQuestion.replace("{level}", target)}
       </h2>
       <p className={styles.ticketRule}>

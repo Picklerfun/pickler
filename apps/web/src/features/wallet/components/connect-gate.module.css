@@ -8,7 +8,8 @@
   margin: 40px auto;
   padding: 32px 24px;
   border: 1px dashed var(--pk-border);
-  border-radius: var(--pk-radius-lg);
+  /* A card, and §4 gives cards `xl`. It was on the tile step, which is a different role. */
+  border-radius: var(--pk-radius-xl);
   text-align: center;
 }
 
@@ -17,15 +18,16 @@
   place-items: center;
   width: 46px;
   height: 46px;
-  border: 1px solid rgba(155, 123, 255, 0.5);
+  border: 1px solid var(--pk-violet-edge);
   border-radius: var(--pk-radius-pill);
-  background: rgba(155, 123, 255, 0.12);
-  color: #b49bff;
+  background: var(--pk-violet-tint);
+  color: var(--pk-violet-ink);
 }
 
 .title {
   margin: 0;
   font: 700 22px/1.1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   color: var(--pk-ink);
 }

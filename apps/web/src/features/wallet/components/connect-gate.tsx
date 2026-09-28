@@ -26,7 +26,9 @@ export function ConnectGate({
   }
 
   return (
-    <section className={styles.gate}>
+    /* The hook scripts/design points at to tell this gate from a stub. A data attribute
+       rather than an id because the gate is shared and an id would have to be unique. */
+    <section className={styles.gate} data-connect-gate="">
       <span className={styles.mark} aria-hidden="true">
         <Icon name="wallet" size={22} />
       </span>

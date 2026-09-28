@@ -57,7 +57,7 @@ export function Limits({
         <span className={styles.stubState}>HALF BUILT</span>
       </p>
       <div className={styles.sectionHead}>
-        <h2>Limits &amp; funding</h2>
+        <h1>Limits &amp; funding</h1>
       </div>
       <p className={styles.stubBody}>
         Six numbers cap what one run may spend. Funding per agent is the half that does not exist:
