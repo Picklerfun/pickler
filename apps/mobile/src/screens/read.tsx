@@ -23,19 +23,28 @@ const STATE: Record<Read["status"], { label: string; fg: string; bg: string }> =
 export function ReadScreen({ S, reads, nav }: AppCtx) {
   const now = useNow(30_000);
   const listed = (reads.reads ?? []).find((r) => r.id === S.readId) ?? null;
-  const [fetched, setFetched] = useState<Read | null>(null);
-  const [missing, setMissing] = useState(false);
+  // Guardados por id (no por posición): navigateTo usa pop:true, así que un segundo push a "read" reutiliza
+  // esta misma instancia con otro S.readId, y sin la llave el resultado/estado "missing" de la read anterior
+  // podría renderizarse bajo el id nuevo mientras el fetch está en curso.
+  const [fetched, setFetched] = useState<{ id: string; read: Read } | null>(null);
+  const [missing, setMissing] = useState<string | null>(null);
   const { fetchOne } = reads;
   useEffect(() => {
-    if (listed || !S.readId) return;
+    const id = S.readId;
+    if (listed || !id) return;
     let stale = false;
-    void fetchOne(S.readId).then((r) => { if (stale) return; if (r) setFetched(r); else setMissing(true); });
+    void fetchOne(id).then((r) => {
+      if (stale) return;
+      if (r) setFetched({ id, read: r });
+      else setMissing(id);
+    });
     return () => { stale = true; };
   }, [listed, S.readId, fetchOne]);
-  const read = listed ?? fetched;
+  const read = listed ?? (fetched !== null && fetched.id === S.readId ? fetched.read : null);
+  const isMissing = missing === S.readId;
 
   if (!read) {
-    return missing
+    return isMissing
       ? <Page><Warn title="Couldn't open this read" body="It may belong to another wallet, or the reads service is unreachable." /></Page>
       : <Page gap={12}><Skeleton.Card lines={4} /><Skeleton.Card lines={2} /></Page>;
   }
