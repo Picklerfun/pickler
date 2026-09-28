@@ -203,3 +203,15 @@ test("paging does not repeat or skip a launch", async (t) => {
 
   assert.equal(seen.size, first.data.length + second.data.length, "a launch appeared twice");
 });
+
+test("launch reads do not close the invocation-owned database pool", async () => {
+  const pool = new Pool({ max: 1 });
+  let closed = false;
+  pool.end = async () => {
+    closed = true;
+  };
+  const model = new PostgresLaunchReadModel(pool);
+  assert.equal(model.pool, pool);
+  await model.close();
+  assert.equal(closed, false);
+});
