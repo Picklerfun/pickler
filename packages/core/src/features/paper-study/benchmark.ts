@@ -64,7 +64,8 @@ export interface BenchmarkState {
   maxNewReservedUsd: number;
   jevInputPerMillion: number;
   paidStopped: string | null;
-  evaluation: "pending" | "started" | "completed" | "failed";
+  invalidAnswerPolicy?: "stop-study" | "block-case";
+  evaluation: "pending" | "started" | "completed" | "completed_with_errors" | "failed";
   reviews: BenchmarkReview[];
   cases: BenchmarkCase[];
   slots: ComparisonSlot[];
@@ -202,16 +203,47 @@ export async function performBenchmarkReview(
       throw new PilotError("JEV_REVIEW_INCOMPLETE", "Incomplete review");
     }
   } catch (error) {
-    state.paidStopped ??= error instanceof PilotError ? error.code : "JEV_REVIEW_FAILED";
+    const reason = error instanceof PilotError ? error.code : "JEV_REVIEW_FAILED";
     review.result = {
       ...review.result,
       status: "failed",
       inputTokens: review.result?.inputTokens ?? null,
       outputTokens: review.result?.outputTokens ?? null,
-      reason: state.paidStopped,
+      reason,
     };
+    if (!isolatedBenchmarkFailure(state, review)) {
+      state.paidStopped ??= reason;
+    }
   }
   await ports.save();
+}
+/** Opt-in laboratory fault isolation; never reinterpret an invalid answer as approval. */
+export function isolatedBenchmarkFailure(state: BenchmarkState, review: BenchmarkReview): boolean {
+  return (
+    state.invalidAnswerPolicy === "block-case" &&
+    review.phase !== "contract" &&
+    review.result?.status === "failed" &&
+    review.result.reason === "JEV_INVALID_ANSWERS" &&
+    typeof review.result.inputTokens === "number" &&
+    Number.isFinite(review.result.inputTokens) &&
+    review.result.inputTokens >= 0 &&
+    review.result.inputTokens <= 65536 &&
+    typeof review.result.outputTokens === "number" &&
+    Number.isFinite(review.result.outputTokens) &&
+    review.result.outputTokens >= 0
+  );
+}
+export function benchmarkEvaluationReady(state: BenchmarkState): boolean {
+  return (
+    !state.paidStopped &&
+    ["completed", "completed_with_errors"].includes(state.evaluation) &&
+    state.reviews.length === 98 &&
+    state.reviews.filter((r) => r.phase === "contract" && r.result?.status === "completed")
+      .length === 2 &&
+    state.reviews.every(
+      (r) => r.result?.status === "completed" || isolatedBenchmarkFailure(state, r),
+    )
+  );
 }
 function assertInput(item: StudyMarket, input: QuantInput, original?: QuantInput) {
   if (
@@ -353,12 +385,15 @@ export async function runBenchmarkCase(
       );
     }
     row.reviewedAt = ports.now();
-    if (state.paidStopped) {
+    const failedReview = state.reviews.find(
+      (r) => row.reviewIds.includes(r.id) && r.result?.status === "failed",
+    );
+    if (state.paidStopped || failedReview) {
       row.status = "failed";
-      row.reason = state.paidStopped;
+      row.reason = state.paidStopped ?? failedReview!.result!.reason!;
       for (const d of proposed) {
         d.status = "blocked";
-        d.reasons = [state.paidStopped];
+        d.reasons = [row.reason];
       }
       return;
     }
