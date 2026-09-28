@@ -364,6 +364,14 @@ delegated user's policies; that screen belongs to the account work, not here.
 
 ## 7. The runtime, locally
 
+Locally only auth touches Supabase. The API worker verifies the Supabase session against
+`JWT_ISSUER`'s JWKS and, for the wallet sign-in, calls the auth admin API; every product row —
+profile, handle, workspace, agent, events, waitlist — is read and written through `DATABASE_URL`, the
+Docker PostgreSQL on `127.0.0.1:55432` after `npm run db:up` and `npm run db:migrate`. Only the
+deployed environment's `DATABASE` binding reaches the hosted database. A user created locally
+therefore exists in hosted Supabase Auth and nowhere else: their profile and workspace are local
+rows, and `auth.users` does not exist in the Docker database, so nothing references it.
+
 The runner is `npm run dev:agent` (the agent service claims queued runs); it and
 `workers/research` read `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`, `EXA_API_KEY`,
 `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY` (names in the `.env`/`.dev.vars` examples; values never in

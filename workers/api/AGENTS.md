@@ -10,7 +10,7 @@ Read [the root instructions](../../AGENTS.md), [core](../../packages/core/AGENTS
 src/
   index.ts                  # Worker entry; builds services lazily from bindings
   app.ts                    # createApp(services): routes, request id, error handler
-  container.ts              # Composition root: Supabase adapters + core use cases
+  container.ts              # Composition root: Postgres adapters + core use cases
   env.ts                    # Bindings and Hono context variables
   http/envelope.ts          # Relayer's response envelope (same JSON shape)
   http/error-handler.ts     # Relayer's global exception filter; maps core errors to statuses
@@ -99,7 +99,7 @@ with `... -- --append <absolute path to workers/api/.dev.vars>`. A changed `.dev
 
 ## Budget ledger
 
-`AgentLedger` (binding `AGENT_LEDGER`, SQLite-backed, one instance per agent id) replaces Relayer's Redis hash and `budget-check.lua`. Logic lives in `@pickler/core` (`createBudgetLedger`); the object wraps every operation in `ctx.storage.transactionSync`, schedules an alarm for the next reservation expiry and hydrates once, read-only, from `budget.budgets` and `agents.agents.status`.
+`AgentLedger` (binding `AGENT_LEDGER`, SQLite-backed, one instance per agent id) replaces Relayer's Redis hash and `budget-check.lua`. Logic lives in `@pickler/core` (`createBudgetLedger`); the object wraps every operation in `ctx.storage.transactionSync`, schedules an alarm for the next reservation expiry and hydrates once, read-only, from `budget.budgets` and `agents.agents.status` through `PostgresBudgetSource` and `PostgresAgentRegistry` on a pool it opens from the same database binding as the request path and closes after the read.
 
 - Spend goes through `reserve` → `commit` or `release`, idempotent by reservation id. Post-hoc telemetry uses `record`, deduplicated by event id.
 - Tables are created synchronously in the constructor. Do not move migrations into `blockConcurrencyWhile(async …)`: a spike showed methods could run before the tables existed.
@@ -230,6 +230,18 @@ There is no hosted direct-secret fallback or plaintext staging exception. Keep p
 to each invocation, limited to two connections, and close them on every outcome. Local development
 uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
 operator connection. Admission controls remain independent of transport.
+
+## Supabase is auth only
+
+Every product-data port goes through the invocation's pool: profiles (`PostgresProfileRepository`),
+workspaces and API keys (`PostgresWorkspaceDirectory`, `PostgresApiKeyDirectory`), agents and their
+events (`PostgresAgentRegistry`, `PostgresAgentEventLog`), the waitlist and applications
+(`PostgresWaitlist`, `PostgresApplicants`), and the ledger's hydration (`PostgresBudgetSource`).
+Supabase is reached for auth alone: the JWKS verifier on `JWT_ISSUER`, and the admin client the
+wallet sign-in uses for `auth.admin` and `verifyOtp`. So a local run, whose `DATABASE_URL` is the
+Docker PostgreSQL, never reads or writes the hosted project's tables, and a profile created locally
+is the one `onboard` reads next. Do not wire a `createSupabase*` data adapter back in here; in a
+deployment the same tables are reached through `DATABASE` instead.
 
 ## Operator-enabled Studio access
 

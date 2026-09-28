@@ -52,3 +52,5 @@ MODEL_API_KEY=
 SUPER_ADMIN_EMAILS=
 
 # DATABASE_URL is local-only. Hosted API uses the DATABASE Hyperdrive binding.
+# Locally, SUPABASE_URL and SUPABASE_SECRET_KEY serve auth only (JWKS and the auth admin API);
+# every product row goes to DATABASE_URL, never to the hosted project's tables.

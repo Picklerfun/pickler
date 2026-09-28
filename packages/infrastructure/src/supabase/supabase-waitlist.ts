@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { SupabaseRestClient } from "./supabase-rest-client.js";
 
 // growth.join_waitlist returns a single-row table.
-const placementSchema = z
+export const placementSchema = z
   .array(
     z.object({
       line_position: z.coerce.number().int().positive(),

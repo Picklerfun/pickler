@@ -12,12 +12,7 @@ import {
 } from "@pickler/core";
 import {
   createSupabaseAdmin,
-  createSupabaseAgentEventLog,
-  createSupabaseAgentRegistry,
-  createSupabaseApiKeyDirectory,
   createSupabaseJwtVerifier,
-  createSupabaseProfileRepository,
-  createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
   PostgresResearchStore,
   PostgresPaperStore,
@@ -25,6 +20,11 @@ import {
   PolymarketPaperResolution,
   PostgresStudioDirectory,
   PostgresBudgetLedger,
+  PostgresAgentEventLog,
+  PostgresAgentRegistry,
+  PostgresApiKeyDirectory,
+  PostgresProfileRepository,
+  PostgresWorkspaceDirectory,
   PostgresCustodyStore,
   createActivityBuilders,
   createAddPasskeyActivityBuilder,
@@ -311,13 +311,12 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   required(env, "JWT_ISSUER");
   const repository = new PostgresResearchStore(database.url, undefined, database.options);
   const directory = new PostgresStudioDirectory(repository.pool);
-  const db = createSupabaseAdmin({
-    url: required(env, "SUPABASE_URL"),
-    secretKey: required(env, "SUPABASE_SECRET_KEY"),
-  });
+  // Product data goes through this pool only. Supabase is reached for auth alone — the JWKS
+  // verifier below and the admin API in the wallet sign-in — so a local run, whose DATABASE_URL is
+  // the Docker Postgres, never reads or writes the hosted project's tables.
   const issuer = required(env, "JWT_ISSUER");
-  const workspaces = createSupabaseWorkspaceDirectory(db);
-  const agents = createSupabaseAgentRegistry(db);
+  const workspaces = new PostgresWorkspaceDirectory(repository.pool);
+  const agents = new PostgresAgentRegistry(repository.pool);
   const now = () => new Date();
 
   const authenticate = createAuthenticateRequest({
@@ -327,19 +326,19 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       ...(env.JWT_AUDIENCE ? { audience: env.JWT_AUDIENCE } : {}),
     }),
     workspaces,
-    apiKeys: createSupabaseApiKeyDirectory(db),
+    apiKeys: new PostgresApiKeyDirectory(repository.pool),
     sha256Hex,
     now,
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
-  const profiles = createProfileService(createSupabaseProfileRepository(db));
+  const profiles = createProfileService(new PostgresProfileRepository(repository.pool));
   const custody = custodyServices(env, repository.pool, authenticate, profiles);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(env, repository.pool),
+    growth: createGrowthServices(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     studio: {
@@ -393,7 +392,11 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       now,
     }),
     findWorkspace: (id) => workspaces.findById(id),
-    agentQueries: createAgentQueries({ agents, events: createSupabaseAgentEventLog(db), now }),
+    agentQueries: createAgentQueries({
+      agents,
+      events: new PostgresAgentEventLog(repository.pool),
+      now,
+    }),
     budgets: new PostgresBudgetLedger(repository.pool),
     profiles,
   };
