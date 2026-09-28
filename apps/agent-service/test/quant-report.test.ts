@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { QuantState } from "@pickler/core";
+import type { QuantState } from "@pickler/trading/strategies";
 import { quantRows, saveQuant } from "../src/paper-study/quant-report.js";
 function state(): QuantState {
   return {

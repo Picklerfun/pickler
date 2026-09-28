@@ -1,12 +1,11 @@
 import {
   createResearchRunner,
-  createPaperService,
-  createPaperSettlementService,
   effectivePlugins,
   PilotError,
   type PluginId,
   type ResearchObserver,
 } from "@pickler/core";
+import { createPaperService, createPaperSettlementService } from "@pickler/trading/polymarket";
 import {
   PostgresResearchStore,
   type DatabaseConnectionOptions,

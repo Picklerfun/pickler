@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import { normalCdf } from "@pickler/core";
+import { normalCdf } from "@pickler/trading/strategies";
 import type { QuantData } from "@pickler/infrastructure";
 import { atomicWrite } from "./files.js";
 /** Explicit offline proxy evaluation: never used as runtime provider fallback. */

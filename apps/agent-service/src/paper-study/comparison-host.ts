@@ -7,7 +7,7 @@ import {
   comparisonReserved,
   type BenchmarkState,
   type ComparisonState,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 
 export function serialExecutor() {
   let tail: Promise<unknown> = Promise.resolve();

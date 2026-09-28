@@ -9,7 +9,12 @@ import {
   compactChecks,
 } from "@pickler/agent-runtime/composition/compact-quant-review";
 import { createQuantReviewer } from "@pickler/agent-runtime/composition/quant-review";
-import { quantForecast, quantProposal, type QuantReview, type BenchmarkState } from "@pickler/core";
+import {
+  quantForecast,
+  quantProposal,
+  type QuantReview,
+  type BenchmarkState,
+} from "@pickler/trading/strategies";
 import {
   prepareBenchmarkScenarios,
   verifyBenchmarkScenarios,

@@ -1,11 +1,7 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import {
-  DEFAULT_CONFIG,
-  type PerpsPaperFill,
-  paperUnits,
-  type PerpsPaperScope,
-} from "@pickler/core";
+import { DEFAULT_CONFIG } from "@pickler/core";
+import { type PerpsPaperFill, paperUnits, type PerpsPaperScope } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "../src/persistence/perps-paper-store.js";
 import { createTestStore } from "./database.js";
 async function setup(t: TestContext) {

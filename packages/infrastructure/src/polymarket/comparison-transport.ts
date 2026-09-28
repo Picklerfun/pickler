@@ -1,4 +1,5 @@
-import { PilotError, type QuantPlugin } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type QuantPlugin } from "@pickler/trading/strategies";
 export interface PublicRequestDiagnostic {
   id: string;
   provider: "polymarket" | "coinbase" | "polygon";

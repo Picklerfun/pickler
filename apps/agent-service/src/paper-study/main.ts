@@ -4,8 +4,8 @@ import { readFile, access, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { config as dotenv } from "dotenv";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   STUDY_PLUGINS,
   recoverStudy,
   hasUnsettledStudyRouting,
@@ -15,7 +15,7 @@ import {
   type StudyKind,
   type StudyPlugin,
   type StudyPorts,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { PolymarketStudyData, PolymarketPaperResolution } from "@pickler/infrastructure";
 import { createJevStudyModel } from "@pickler/agent-runtime/composition/jev-study-model";
 import { readConfig, lockStudy, saveStudy, atomicWrite } from "./files.js";

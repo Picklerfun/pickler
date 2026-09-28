@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { PilotError, type AgentRecord } from "@pickler/core";
 import {
-  PilotError,
   applyPaperObservation,
   type PerpsPaperObservation,
   assertPerpsPaperAgent,
@@ -11,7 +11,6 @@ import {
   assertPaperIntent,
   paperDecimal,
   paperUnits,
-  type AgentRecord,
   type PerpsPaperScope,
   type PerpsPaperView,
   type PerpsPaperAccount,
@@ -21,7 +20,7 @@ import {
   type PerpsPaperLease,
   type PerpsPaperMovement,
   type PerpsPaperRepository,
-} from "@pickler/core";
+} from "@pickler/trading/perps";
 interface Locked {
   id: string;
   view: PerpsPaperView;

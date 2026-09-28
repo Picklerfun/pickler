@@ -2,11 +2,10 @@ import { createHash } from "node:crypto";
 import {
   createPerpsPaperService,
   type PerpsPaperData,
-  type AgentRecord,
-  type Scope,
   type PerpsPaperRepository,
   assertPerpsPaperAgent,
-} from "@pickler/core";
+} from "@pickler/trading/perps";
+import { type AgentRecord, type Scope } from "@pickler/core";
 import { createPerplSession } from "./perpl.js";
 import type { PerplDataOptions } from "@pickler/infrastructure";
 /** Operator-only simulator. No Mastra trading tool or signer is exposed. */

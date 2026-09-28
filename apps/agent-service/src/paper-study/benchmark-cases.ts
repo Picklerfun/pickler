@@ -5,7 +5,7 @@ import {
   type QuantInput,
   type QuantForecast,
   type QuantProposal,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { comparisonProbeInput } from "./comparison-probe.js";
 
 export const scenarioChecks = [

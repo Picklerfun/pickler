@@ -1,13 +1,8 @@
 import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
 import { createPerpsPaperRuntime } from "@pickler/agent-runtime/composition/perps-paper";
-import {
-  PilotError,
-  type PerpsPaperRepository,
-  type AgentRecord,
-  type Scope,
-  type PerpCandles,
-} from "@pickler/core";
-import type { StudyData } from "./runner.js";
+import { PilotError, type AgentRecord, type Scope, type PerpCandles } from "@pickler/core";
+import { type PerpsPaperRepository } from "@pickler/trading/perps";
+import type { StudyData } from "@pickler/trading/evaluation";
 export function createStudyData(
   paper: PerpsPaperRepository,
   agents: { agent(scope: Scope): Promise<AgentRecord> },

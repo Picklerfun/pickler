@@ -1,12 +1,12 @@
 import { encodeFunctionData, parseAbi } from "viem";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   type PaperOrder,
   type PaperResolutionIdentity,
   type PaperResolution,
   type PaperResolutionProvider,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { providerJson } from "../research/http.js";
 
 // Official Polygon CTF, shared by standard and negative-risk markets.

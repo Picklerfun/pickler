@@ -1,4 +1,8 @@
-import { settleComparisonCase, type ComparisonCase, type QuantInput } from "@pickler/core";
+import {
+  settleComparisonCase,
+  type ComparisonCase,
+  type QuantInput,
+} from "@pickler/trading/strategies";
 /** Explicit synthetic contract probe; never used as a substitute for live data. */
 export function comparisonProbeInput(now: number): QuantInput {
   const start = Math.floor(now / 300000) * 300000;

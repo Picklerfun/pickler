@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
-import { PilotError, type EvaluationCommand } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type EvaluationCommand } from "@pickler/trading/evaluation";
 import { executeEvaluation } from "./evaluation-host/service.js";
 const { positionals, values } = parseArgs({
   allowPositionals: true,

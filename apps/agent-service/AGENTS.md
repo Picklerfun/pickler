@@ -223,3 +223,9 @@ Read [EVALUATIONS.md](EVALUATIONS.md). `src/evaluation-host/service.ts` delegate
 existing protocol hosts after core admission checks. Legacy study CLIs permit historical
 reads/reconciliation only; do not add an alternate paid entry point. Protocol-specific
 schedulers, strategies and accounting remain versioned and retain existing persistence.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

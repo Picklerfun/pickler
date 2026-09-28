@@ -6,16 +6,15 @@ import { setTimeout } from "node:timers/promises";
 import { createHash } from "node:crypto";
 import { config as dotenv } from "dotenv";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   comparisonReserved,
   benchmarkReserved,
   runQuantCase,
-  settlePaperOrder,
   type QuantState,
   type QuantPlugin,
-  type PaperOrder,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
+import { settlePaperOrder, type PaperOrder } from "@pickler/trading/polymarket";
 import { QuantData, PolymarketPaperResolution } from "@pickler/infrastructure";
 import { createQuantReviewer } from "@pickler/agent-runtime/composition/quant-review";
 import { lockStudy, atomicWrite } from "./files.js";

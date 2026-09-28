@@ -15,7 +15,7 @@ import {
   type QuantState,
   type StudyState,
   type BenchmarkVariant,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { atomicWrite } from "./files.js";
 import { sha256, type BenchmarkScenario } from "./benchmark-cases.js";
 

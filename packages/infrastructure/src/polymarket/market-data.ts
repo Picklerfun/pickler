@@ -8,9 +8,8 @@ import {
   type MarketData,
   type Category,
   type OrderBook,
-  type PaperConditions,
-  type PaperMarketData,
 } from "@pickler/core";
+import { type PaperConditions, type PaperMarketData } from "@pickler/trading/polymarket";
 import { providerJson } from "../research/http.js";
 const tag = z.object({ id: z.string().regex(/^\d+$/), label: z.string().min(1) });
 const wireMarket = z.object({

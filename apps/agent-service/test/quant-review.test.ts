@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createQuantReviewer } from "@pickler/agent-runtime/composition/quant-review";
-import type { QuantInput, QuantForecast, QuantProposal, QuantReview } from "@pickler/core";
+import type {
+  QuantInput,
+  QuantForecast,
+  QuantProposal,
+  QuantReview,
+} from "@pickler/trading/strategies";
 const input = { books: [] } as unknown as QuantInput,
   forecast = {} as QuantForecast,
   proposal = {} as QuantProposal;

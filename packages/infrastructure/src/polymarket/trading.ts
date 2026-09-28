@@ -13,15 +13,15 @@ import { privateKey } from "@polymarket/client/viem";
 import { hashTypedData, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   moneyMicros,
   type TradingProvider,
   type BuyRequest,
   type LivePreview,
   type LiveOrder,
   type Reconciliation,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { PolymarketData } from "./market-data.js";
 
 export interface TradingCredentials {

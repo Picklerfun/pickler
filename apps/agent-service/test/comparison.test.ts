@@ -6,7 +6,7 @@ import {
   runComparisonCase,
   type ComparisonState,
   type QuantState,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import {
   comparisonProbeInput,
   settleComparisonProbe,

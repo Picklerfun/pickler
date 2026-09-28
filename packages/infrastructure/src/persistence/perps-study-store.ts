@@ -1,18 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { DEFAULT_CONFIG, PERP_TOOLS, PilotError, type AgentRecord } from "@pickler/core";
 import {
-  DEFAULT_CONFIG,
-  PERP_TOOLS,
   PERPS_STUDY_STRATEGIES,
   PERPS_INPUT_LIMIT,
   PERPS_OUTPUT_LIMIT,
-  PilotError,
   assertPerpsStudyConfig,
-  assertPerpsPaperAgent,
   perpsCallCost,
   perpsAccountedUsd,
-  paperUnits,
-  type AgentRecord,
   type PerpsStudyConfig,
   type PerpsStudyScope,
   type PerpsStudyRecord,
@@ -22,10 +17,10 @@ import {
   type PerpsRound,
   type PerpsCallLane,
   type PerpsEvidence,
-  type PerpsPaperAccount,
   type PerpsStrategy,
   type PerpsProposal,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
+import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
 function canonical(value: unknown): string {
   if (Array.isArray(value)) {

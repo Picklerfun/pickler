@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { QuantData } from "../src/polymarket/quant-data.js";
-import { PilotError, type StudyMarket } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type StudyMarket } from "@pickler/trading/strategies";
 const start = 1790501400000,
   now = start + 70000;
 function fixture(seconds: 30 | 60 = 60, disabled = false, contradiction = false) {

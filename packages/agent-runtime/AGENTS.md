@@ -98,3 +98,9 @@ transport, usage validation and choice validation. Keep instrument-specific prom
 routing here; do not recreate the HTTP endpoint or probability schema in each adapter.
 The Perpl adapter retains its 20-second, 30,000-byte request and 1 MiB response limits,
 request hashing and persisted usage hooks. No prompt/version change is implied by extraction.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

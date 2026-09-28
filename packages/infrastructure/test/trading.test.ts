@@ -1,15 +1,14 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { DEFAULT_CONFIG, type Decision } from "@pickler/core";
 import {
-  DEFAULT_CONFIG,
   createTradingService,
   moneyMicros,
   assertLivePreview,
   type LivePreview,
   type TradingProvider,
   type Reconciliation,
-  type Decision,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { PostgresTradingStore } from "../src/persistence/trading-store.js";
 import { createTestStore } from "./database.js";
 

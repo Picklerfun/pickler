@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 import {
   createEvaluationCoordinator,
   EVALUATION_PROTOCOLS,
-  PilotError,
   type EvaluationCommand,
   type EvaluationProtocol,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
+import { PilotError } from "@pickler/core";
 import { runPerpsStudy } from "../perps-study/host.js";
 import { runBtcBenchmark, benchmarkConfigSchema } from "../paper-study/benchmark-host.js";
 const appRoot = fileURLToPath(new URL("../../", import.meta.url));

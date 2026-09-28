@@ -7,8 +7,8 @@ import { createHash } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { config as dotenv } from "dotenv";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   COMPARISON_PROTOCOL,
   comparisonSlots,
   markMissedSlots,
@@ -18,7 +18,7 @@ import {
   type QuantPlugin,
   type ComparisonPorts,
   type ComparisonCase,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import {
   QuantData,
   PolymarketPaperResolution,

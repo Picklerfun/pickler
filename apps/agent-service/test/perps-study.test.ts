@@ -6,18 +6,17 @@ import {
   perpsRules,
   perpsAccountedUsd,
   type PerpsStrategy,
-  type PerpsPaperAccount,
   type PerpsProposal,
-  type PerpsPaperView,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
+import { type PerpsPaperAccount, type PerpsPaperView } from "@pickler/trading/perps";
 import { PostgresPerpsStudyStore, PostgresPerpsPaperStore } from "@pickler/infrastructure";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import {
   createPerpsStudyModels,
   perpsModelState,
-  type PerpsModels,
 } from "@pickler/agent-runtime/composition/perps-study-model";
-import { createPerpsStudyRunner } from "../src/perps-study/runner.js";
+import type { PerpsModels } from "@pickler/trading/evaluation";
+import { createPerpsStudyRunner } from "@pickler/trading/evaluation";
 import { perpsStudyReport, renderPerpsReport } from "../src/perps-study/report.js";
 import { studyConfig, studyContext, studyEvidence } from "./perps-study-fixtures.js";
 const holds: PerpsProposal[] = (["BTC", "ETH"] as const).map((symbol) => ({

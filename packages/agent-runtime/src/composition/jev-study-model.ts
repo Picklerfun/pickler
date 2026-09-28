@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { modelAssessmentSchema } from "@pickler/api-schema";
-import { PilotError, type StudyUsage, type StudyRouting } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type StudyUsage, type StudyRouting } from "@pickler/trading/strategies";
 import { definePrompt } from "../prompts/define-prompt.js";
 import {
   evaluateJev,

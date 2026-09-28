@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { PaperOrder } from "@pickler/core";
+import type { PaperOrder } from "@pickler/trading/polymarket";
 import { PolymarketPaperResolution } from "../src/polymarket/paper-resolution.js";
 
 const order = {

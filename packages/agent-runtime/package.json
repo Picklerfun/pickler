@@ -99,7 +99,8 @@
     "@pickler/core": "*",
     "@pickler/infrastructure": "*",
     "@pickler/api-schema": "*",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@pickler/trading": "*"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*"

@@ -45,7 +45,8 @@
     "dotenv": "17.4.2",
     "hono": "4.13.8",
     "zod": "4.6.5",
-    "@pickler/agent-runtime": "*"
+    "@pickler/agent-runtime": "*",
+    "@pickler/trading": "*"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*",

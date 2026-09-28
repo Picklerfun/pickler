@@ -1,3 +1,4 @@
+import type { PerpsModels, PerpsModelHooks } from "@pickler/trading/evaluation";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -5,12 +6,12 @@ import {
   jevChoiceSchema,
   JevClientError,
 } from "@pickler/infrastructure/model-providers/jev";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   type PerpsDecisionContext,
   type PerpsProposal,
   type PerpsStudyConfig,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
 import { definePrompt } from "../prompts/define-prompt.js";
 export const perpsForecastPrompt = definePrompt({
   id: "perps-paper-proposal",
@@ -117,23 +118,6 @@ async function bounded<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   } finally {
     signal.removeEventListener("abort", abort);
   }
-}
-export interface PerpsModelHooks {
-  before(request: { sha256: string; bytes: number }): Promise<void>;
-  usage(input: number, output: number): Promise<void>;
-}
-export interface PerpsModels {
-  metadata: unknown;
-  direct(
-    context: PerpsDecisionContext,
-    signal: AbortSignal,
-    hooks: PerpsModelHooks,
-  ): Promise<PerpsProposal[]>;
-  readiness(
-    context: PerpsDecisionContext,
-    signal: AbortSignal,
-    hooks: PerpsModelHooks,
-  ): Promise<{ skip: boolean; answers: unknown }>;
 }
 export function createPerpsStudyModels(
   config: PerpsStudyConfig,

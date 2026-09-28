@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { PilotError, type QuantInput, type QuantPlugin, type StudyMarket } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type QuantInput, type QuantPlugin, type StudyMarket } from "@pickler/trading/strategies";
 import { PolymarketStudyData } from "./study-data.js";
 import { providerJson } from "../research/http.js";
 const candleSchema = z

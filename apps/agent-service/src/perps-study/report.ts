@@ -1,13 +1,15 @@
 import {
   PERPS_STUDY_STRATEGIES,
+  perpsAccountedUsd,
+  type PerpsStudyView,
+  type PerpsStrategy,
+} from "@pickler/trading/evaluation";
+import {
   paperRisk,
   paperUnits as u,
   paperDecimal as d,
-  perpsAccountedUsd,
-  type PerpsStudyView,
   type PerpsPaperView,
-  type PerpsStrategy,
-} from "@pickler/core";
+} from "@pickler/trading/perps";
 export function perpsStudyReport(
   study: PerpsStudyView,
   accounts: Record<PerpsStrategy, PerpsPaperView>,

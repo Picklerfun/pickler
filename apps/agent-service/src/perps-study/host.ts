@@ -10,15 +10,16 @@ import {
 } from "@pickler/infrastructure";
 import {
   PERPS_STUDY_STRATEGIES,
-  PilotError,
   assertPerpsStudyConfig,
   type PerpsStrategy,
-  type PerpsPaperView,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
+import { PilotError } from "@pickler/core";
+import { type PerpsPaperView } from "@pickler/trading/perps";
 import { perpsStudyConfigSchema } from "@pickler/api-schema";
 import { createPerpsStudyModels } from "@pickler/agent-runtime/composition/perps-study-model";
+
 import { createStudyData } from "./data.js";
-import { createPerpsStudyRunner } from "./runner.js";
+import { createPerpsStudyRunner } from "@pickler/trading/evaluation";
 import { perpsStudyReport, renderPerpsReport } from "./report.js";
 export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   signal?.throwIfAborted();

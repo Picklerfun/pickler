@@ -134,3 +134,9 @@ choice validation and sanitized diagnostics. Callers provide prompts, limits and
 usage persistence hooks; the client never retries, stores credentials or selects a strategy.
 BTC adapters now enforce a 1 MiB response bound; request limits and protocol-specific timeouts
 remain caller-owned. Do not add independent Jev transports to active trading evaluation adapters.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

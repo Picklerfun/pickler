@@ -125,3 +125,9 @@ The opt-in Polymarket pilot remains disabled by default. Read `apps/agent-servic
 ## Cloudflare trading pilot
 
 The Cloudflare pilot adds `workers/trading` (read its AGENTS.md) and `docs/polymarket-worker-pilot.md`. It holds the signer exclusively, uses the trusted DATABASE binding, and starts with trading admissions closed. Do not confuse controlled signature tests with live financial acceptance.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

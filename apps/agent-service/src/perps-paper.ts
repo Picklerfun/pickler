@@ -3,7 +3,8 @@ import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 import { PostgresResearchStore, PostgresPerpsPaperStore } from "@pickler/infrastructure";
-import { effectivePlugins, paperRisk, PilotError } from "@pickler/core";
+import { effectivePlugins, PilotError } from "@pickler/core";
+import { paperRisk } from "@pickler/trading/perps";
 import {
   perpsPaperScopeSchema,
   perpsPaperViewSchema,

@@ -6,7 +6,7 @@ import {
   quantProposal,
   type ComparisonState,
   type QuantState,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { atomicWrite } from "./files.js";
 
 export function replayComparison(state: QuantState) {

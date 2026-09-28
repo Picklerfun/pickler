@@ -42,11 +42,11 @@ Discovery policy is optional for historical configs. Version 1 `pre-event` requi
 
 NFL research adds provider-neutral `SportsData`, versioned plugin permissions and `nfl-winner-v1` report validation. Plugins and individual tools must both be enabled. `effectivePlugins` interprets historical permissions without enabling sports sources. Optional sports integrations can be disabled; invoked failures remain failures. Decisions v3 preserve a separate forecast and coverage, including on abstention. Do not weaken uncertainty policy to obtain trades.
 
-`features/paper/orders.ts` owns the manual paper capability contracts, eligibility and integer full-budget simulation. A paper order is never a model tool. Both paper and Polymarket permissions apply; unchanged configuration and a current policy-approved trade are mandatory. Ten virtual units include estimated fees; no partial fills or real orders. Recheck time/quote eligibility at atomic finalization.
+`@pickler/trading/polymarket` owns the manual paper capability contracts, eligibility and integer full-budget simulation. A paper order is never a model tool. Both paper and Polymarket permissions apply; unchanged configuration and a current policy-approved trade are mandatory. Ten virtual units include estimated fees; no partial fills or real orders. Recheck time/quote eligibility at atomic finalization.
 
 `researchReferences` produces citable market, quote and plugin-availability context, distinct from external `Source` evidence. `validateReport` accepts these only in their declared sections; context cannot substantiate injuries or sporting advantage. The runner persists these references and retains the original provider events. Top-level decision source IDs still require retrieved sources. Keep historical reports readable without requiring a context-reference backfill.
 
-`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization supports reviewed NFL/soccer full-game winners through `features/paper/sports.ts`; general reports do not authorize arbitrary market types.
+`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization supports reviewed NFL/soccer full-game winners through `@pickler/trading/polymarket`; general reports do not authorize arbitrary market types.
 
 Product API-key authorization is deny-by-default for every key kind. `read:agents` grants read-only
 product agent access; legacy broad labels grant no implied permissions. Budget reservations record
@@ -98,62 +98,9 @@ are diagnostic gaps, never reconstructed from later evidence. Host observers mus
 capture-only operations; paid comparison is a separately admitted operation. Core owns no files,
 provider credentials or observer pricing, and the observer is not a decision-policy input.
 
-## Paper resolution
+## Trading boundary
 
-Paper settlement lives in `features/paper/settlement.ts`; it applies finalized payout fractions to immutable fills, calculates virtual P&L with integer arithmetic and never signs or sends orders. `features/paper/sports.ts` restricts new scoped buys to reviewed NFL/soccer game winners. Settlement is explicit, idempotent and permission-checked; open costs are not realized losses.
-
-## Local paper studies
-
-`features/paper-study` exports provider-independent study contracts, BTC window eligibility, bounded prospective attempts and settlement coordination. This operator laboratory does not expand the production sports catalog or tenant permissions. Reuse conservative decision and virtual-fill policies. Persist before paid calls, never replay started cases, and never infer payouts from prices or elapsed time.
-
-Each new local study case snapshots its model/prompt metadata so an explicit operator upgrade can retain historical attribution without resetting the ledger.
-
-Paper study reservations include one Jev screen and one possible full forecast plus sports search
-costs. Jev pricing must be supplied explicitly for new runs. `StudyUsage.routing` attributes providers
-separately; `hasUnsettledStudyRouting` blocks further admission after incomplete/unknown routed
-calls. Keep historical cases/configuration readable without rewriting their reservations.
-
-Study routing records may carry an allowlisted Jev validation stage. Token counts and prices are
-distinct: free output can have nonzero tokens, and known usage survives rejected answers.
-
-Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
-
-## Perpl public data plugin
-
-`features/perps` exports separate perpetual-data contracts and `createPerpReadService`. Perpl config is optional and opt-in; preserve historical tool/plugin defaults. The service pins config version and rechecks tenant, tool, plugin and market permissions around reads. No probability schema, SDK, signer or persistence belongs here.
-
-## Perpetual paper accounts
-
-`features/perps-paper` owns the opt-in virtual account contracts, exact decimal arithmetic, conservative 1x risk policy and trusted simulator fill transitions. Margin is reserved, never a cash expense; preserve negative balances and unknown marks. No signer, model tool or Polymarket decision dependency.
-
-Perpetual simulation adds `simulatePerpsFill`, `applyPaperObservation` and `createPerpsPaperService`: full-depth 50-bps virtual execution, sampled mark risk, versioned estimated funding and sticky discrepancies. No inferred zero funding or liquidation. Trusted marks-only refreshes preserve funding status; model proposals cannot call the store.
-
-`features/perps-study` exports the independent comparison contracts, exact model reservation math
-and deterministic SMA20/50 policy. Unknown/missing candles imply hold, not a fabricated neutral
-signal. Paper accounts may permanently close admissions while permitting reducing exits. Study
-models never choose size or receive repository/configuration access.
-
-## Quantitative BTC paper pilot
-
-`features/paper-study/quant` and `quant-session` own the separate btc-quant-jev-v1 laboratory: reproducible two-outcome probabilities, sensitivity assumptions, fee-aware proposals, review admission and final refresh. They do not alter hosted research policy. Resolution identities also support forecasts without orders. Paid failures retain reservations and stop further paid admissions.
-
-`features/paper-study/comparison.ts` owns version-3 paired-policy cases, joint review admission, slot bookkeeping and independent virtual settlement. `quantProposal` accepts an explicit policy without modifying forecast bounds; historical calls default to conservative. Hosts provide serialized admission/persistence. Preserve shared review accounting and distinguish blocked paid proposals from no-edge abstentions. The experimental ticker guard tolerates at most one second of future skew without rewriting provider timestamps.
-
-`benchmark.ts` adds isolated version-4 A/B/C/D execution, joint reservations and separate reviewer
-identities. All variants share initial and refreshed inputs, including vetoed cases and the no-veto
-control. Technical paid-stop blocks every variant's purchase. `benchmark-metrics.ts` owns shared
-forecast scores, realized-only economics, labeled review metrics and seeded paired hour-block
-bootstrap. Missing/pending/failed observations are never silently zero; synthetic labels are not
-human judgments. Preserve the older protocols and never alter quantitative formulas for this study.
-
-Explicit benchmark continuations carry prior v4 reservations and review counts into the original
-USD 1.25 / 386-call ceilings. Starting a new study does not reset these limits.
-
-The optional local benchmark `invalidAnswerPolicy: "block-case"` isolates only
-JEV_INVALID_ANSWERS with known bounded usage outside contract probes. All variants are blocked
-for that market; transport, usage, contract and budget failures still stop the study. The default
-remains stop-study. Evaluation with isolated failures is completed_with_errors, never a pass.
-
-`features/evaluation/coordinator.ts` owns the frozen evaluation protocol registry and shared
-command/paid admission boundary. Hosts inject protocol adapters; core does not access files,
-providers or process arguments. Binary and perpetual accounting policies remain distinct.
+Trading rules, financial contracts, simulations and evaluation coordination are owned by
+`@pickler/trading`; read [its instructions](../trading/AGENTS.md). Core retains agent configuration,
+identity, research authorization and public Perpl market-data contracts. Never import trading
+from core. Consumers import trading subpaths directly; no compatibility exports remain here.

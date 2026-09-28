@@ -1,12 +1,11 @@
 import {
   createAgentQueries,
-  createPaperService,
-  createPaperSettlementService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
   parseEmailAllowlist,
 } from "@pickler/core";
+import { createPaperService, createPaperSettlementService } from "@pickler/trading/polymarket";
 import {
   createSupabaseAdmin,
   createSupabaseAgentEventLog,

@@ -4,13 +4,13 @@ import {
   JevClientError,
   jevChoiceSchema,
 } from "@pickler/infrastructure/model-providers/jev";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   type QuantInput,
   type QuantForecast,
   type QuantProposal,
   type QuantReview,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { definePrompt } from "../prompts/define-prompt.js";
 export const quantReviewPrompt = definePrompt({
   id: "btc-quant-jev-review",

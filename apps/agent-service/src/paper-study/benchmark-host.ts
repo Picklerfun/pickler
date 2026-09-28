@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
   BENCHMARK_PROTOCOL,
   benchmarkEvaluationReady,
-  PilotError,
   comparisonSlots,
   markMissedSlots,
   runBenchmarkCase,
@@ -21,7 +20,8 @@ import {
   type BenchmarkPorts,
   type QuantPlugin,
   type ComparisonState,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
+import { PilotError } from "@pickler/core";
 import {
   QuantData,
   PolymarketPaperResolution,

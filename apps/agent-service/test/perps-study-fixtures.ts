@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
+import { initialPaperAccount, type PerpsPaperFrame } from "@pickler/trading/perps";
+import { type PerpSymbol } from "@pickler/core";
 import {
-  initialPaperAccount,
-  type PerpsPaperFrame,
-  type PerpSymbol,
   type PerpsStudyConfig,
   type PerpsEvidence,
   type PerpsDecisionContext,
-} from "@pickler/core";
+} from "@pickler/trading/evaluation";
 export const studyConfig: PerpsStudyConfig = {
   version: 1,
   protocol: "perps-comparison-v1",

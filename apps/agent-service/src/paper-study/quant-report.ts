@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { simulatePaperBuy, type QuantState, type QuantCase } from "@pickler/core";
+import { simulatePaperBuy } from "@pickler/trading/polymarket";
+import { type QuantState, type QuantCase } from "@pickler/trading/strategies";
 import { atomicWrite } from "./files.js";
 /** Replay the saved book only for reporting, never to authorize a purchase. */
 function quotedEdge(c: QuantCase, label: "Up" | "Down") {

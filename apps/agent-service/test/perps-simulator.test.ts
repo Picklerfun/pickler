@@ -1,9 +1,8 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { DEFAULT_CONFIG, PERP_TOOLS, type PerpFundingHistory } from "@pickler/core";
 import {
-  DEFAULT_CONFIG,
-  PERP_TOOLS,
   initialPaperAccount,
   simulatePerpsFill,
   applyPaperFill,
@@ -13,10 +12,9 @@ import {
   createPerpsPaperService,
   type PerpsPaperFrame,
   type PerpsPaperPosition,
-  type PerpFundingHistory,
   type PerpsPaperScope,
   type PerpsPaperIntent,
-} from "@pickler/core";
+} from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore, PerplMarketData } from "@pickler/infrastructure";
 import { createTestStore } from "@pickler/infrastructure/testing";
 const now = 1800000000000;

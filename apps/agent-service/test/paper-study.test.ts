@@ -9,7 +9,7 @@ import {
   studyConfigSchema,
   renderStudy,
 } from "../src/paper-study/files.js";
-import type { StudyState } from "@pickler/core";
+import type { StudyState } from "@pickler/trading/strategies";
 test("single writer lock and atomic artifact persistence", async () => {
   const dir = await mkdtemp(join(tmpdir(), "pickler-study-test-"));
   try {
