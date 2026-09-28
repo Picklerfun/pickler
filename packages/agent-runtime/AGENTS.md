@@ -70,3 +70,10 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 `./composition/quant-review` exports the opt-in quantitative paper reviewer. Jev only vetoes high-confidence material contradictions; it never changes forecasts or invokes DeepSeek. Known usage and allowlisted answer diagnostics survive invalid responses. No paid retries.
 
 Quantitative reviewer prompt 1.1.0 explicitly recognizes conservative and central policies. Negative sensitivity alone is not a material contradiction. Policy and both edges are data, not model-editable rules. The pinned model, strict answer validation, safe diagnostics, usage accounting and no-retry/no-fallback behavior remain unchanged.
+
+`./composition/compact-quant-review` is a separate opt-in semantic reviewer 1.0.0 for local v4
+benchmarks. Keep the current reviewer intact. It supplies original rules, provenance and explicit
+system interpretation without books/candles, and asks four atomic consistency questions. Only a
+high-confidence contradiction vetoes; uncertainty is not approval. Both probability and confidence
+derive from the same distribution. Never include synthetic labels or extend this adapter to hosted
+research implicitly. Invalid answers retain usage and allowlisted diagnostics without retries.
