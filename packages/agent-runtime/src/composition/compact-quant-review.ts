@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { probabilityIssues } from "./jev-probability-diagnostics.js";
+import {
+  evaluateJev,
+  JevClientError,
+  jevChoiceSchema,
+} from "@pickler/infrastructure/model-providers/jev";
 import {
   PilotError,
   type QuantInput,
@@ -22,40 +26,16 @@ export const compactChecks = [
   "resolution_source",
 ] as const;
 const values = ["CONSISTENT", "CONTRADICTED", "NOT_STATED"] as const;
-const answer = z
+const answer = jevChoiceSchema(values);
+const labels = Object.fromEntries(compactChecks.map((id) => [id, values]));
+const answersSchema = z
   .object({
-    type: z.literal("choice"),
-    choice: z.enum(values),
-    confidence: z.number().min(0).max(1),
-    probabilities: z.record(z.enum(values), z.number().min(0).max(1)),
+    price_basis: answer,
+    averaging_window: answer,
+    tie_rule: answer,
+    resolution_source: answer,
   })
-  .strict()
-  .superRefine((a, ctx) => {
-    const ps = Object.values(a.probabilities);
-    if (Math.abs(ps.reduce((sum, value) => sum + value, 0) - 1) > 0.001) {
-      ctx.addIssue({ code: "custom", message: "PROBABILITY_SUM_INVALID" });
-    }
-    if (a.probabilities[a.choice]! + 1e-6 < Math.max(...ps)) {
-      ctx.addIssue({ code: "custom", message: "CHOICE_NOT_MAXIMUM" });
-    }
-  });
-const envelope = z.object({
-  model: z.literal("jev-1.13.0"),
-  usage: z.object({
-    input_tokens: z.number().int().nonnegative(),
-    output_tokens: z.number().int().nonnegative(),
-  }),
-});
-const schema = envelope.extend({
-  answers: z
-    .object({
-      price_basis: answer,
-      averaging_window: answer,
-      tie_rule: answer,
-      resolution_source: answer,
-    })
-    .strict(),
-});
+  .strict();
 /** No labels, candles or full order books enter the semantic review. */
 export function compactReviewRequest(
   input: QuantInput,
@@ -155,55 +135,25 @@ export function createCompactQuantReviewer(
         await report({ ...record });
         await guard();
         signal.throwIfAborted();
-        const response = await transport("https://api.typesafe.ai/v1/systemone", {
-          method: "POST",
-          headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-          body,
-          signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
-          redirect: "manual",
+        const result = await evaluateJev({
+          apiKey: key,
+          payload: JSON.parse(body),
+          answersSchema,
+          labels,
+          signal,
+          timeoutMs: 30000,
+          maxRequestBytes: 30000,
+          maxResponseBytes: 1024 * 1024,
+          maxInputTokens: 65536,
+          transport,
+          usage: async (usage) => {
+            record.inputTokens = usage.input_tokens;
+            record.outputTokens = usage.output_tokens;
+            await report({ ...record });
+          },
         });
-        if (!response.ok) {
-          record.diagnostics = { version: 1, stage: "http", status: response.status };
-          throw new PilotError("JEV_HTTP_FAILURE", "Review request failed");
-        }
-        const raw: unknown = await response.json();
-        const usage = envelope.safeParse(raw);
-        if (!usage.success) {
-          throw new PilotError("JEV_INVALID_USAGE", "Invalid pinned model/usage");
-        }
-        record.inputTokens = usage.data.usage.input_tokens;
-        record.outputTokens = usage.data.usage.output_tokens;
-        await report({ ...record });
-        if (record.inputTokens > 65536) {
-          throw new PilotError("JEV_RESERVATION_EXCEEDED", "Input reservation exceeded");
-        }
-        const parsed = schema.safeParse(raw);
-        if (!parsed.success) {
-          const fields = ["type", "choice", "confidence", "probabilities"];
-          const codes = [
-            "invalid_type",
-            "invalid_value",
-            "unrecognized_keys",
-            "too_small",
-            "too_big",
-            "custom",
-            "invalid_key",
-          ];
-          record.diagnostics = {
-            version: 1,
-            stage: "answers",
-            probabilityIssues: probabilityIssues(parsed.error.issues, compactChecks),
-            issueCount: parsed.error.issues.length,
-            issues: parsed.error.issues.slice(0, 16).map((i) => ({
-              question: compactChecks.find((q) => q === i.path[1]) ?? "unknown",
-              field: fields.find((f) => f === i.path[2]) ?? "object",
-              code: codes.find((c) => c === i.code) ?? "other",
-            })),
-          };
-          throw new PilotError("JEV_INVALID_ANSWERS", "Invalid review answers");
-        }
-        record.answers = parsed.data.answers;
-        record.veto = Object.values(parsed.data.answers).some(
+        record.answers = result.answers;
+        record.veto = Object.values(result.answers).some(
           (a) =>
             a.choice === "CONTRADICTED" &&
             a.confidence >= 0.9 &&
@@ -217,7 +167,19 @@ export function createCompactQuantReviewer(
         return record;
       } catch (error) {
         record.status = "failed";
-        record.reason = error instanceof PilotError ? error.code : "JEV_REVIEW_FAILED";
+        if (error instanceof JevClientError) {
+          record.diagnostics = error.diagnostics;
+        }
+        record.reason =
+          error instanceof JevClientError
+            ? error.code === "INPUT_TOO_LARGE"
+              ? "QUANT_REVIEW_TOO_LARGE"
+              : error.code === "INVALID_RESPONSE" || error.code === "RESPONSE_LIMIT"
+                ? "JEV_REVIEW_FAILED"
+                : `JEV_${error.code}`
+            : error instanceof PilotError
+              ? error.code
+              : "JEV_REVIEW_FAILED";
         record.durationMs = Date.now() - started;
         await report({ ...record });
         throw new PilotError(record.reason, "Review failed; no retry");
