@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { probabilityIssues } from "./jev-probability-diagnostics.js";
 import {
   PilotError,
   type QuantInput,
@@ -30,11 +31,11 @@ function choice(values: readonly [string, ...string[]]) {
     .strict()
     .superRefine((a, c) => {
       const p = Object.values(a.probabilities);
-      if (
-        Math.abs(p.reduce((x, y) => x + y, 0) - 1) > 0.001 ||
-        a.probabilities[a.choice]! + 1e-6 < Math.max(...p)
-      ) {
-        c.addIssue({ code: "custom", message: "Invalid probability distribution" });
+      if (Math.abs(p.reduce((sum, value) => sum + value, 0) - 1) > 0.001) {
+        c.addIssue({ code: "custom", message: "PROBABILITY_SUM_INVALID" });
+      }
+      if (a.probabilities[a.choice]! + 1e-6 < Math.max(...p)) {
+        c.addIssue({ code: "custom", message: "CHOICE_NOT_MAXIMUM" });
       }
     });
 }
@@ -164,7 +165,10 @@ export function createQuantReviewer(
         }
         const parsed = schema.safeParse(raw);
         if (!parsed.success) {
-          record.diagnostics = answerDiagnostics(raw, parsed.error.issues);
+          record.diagnostics = {
+            ...answerDiagnostics(raw, parsed.error.issues),
+            probabilityIssues: probabilityIssues(parsed.error.issues, Object.keys(labels)),
+          };
           throw new PilotError("JEV_INVALID_ANSWERS", "Invalid review answers");
         }
         const a = parsed.data.answers;
