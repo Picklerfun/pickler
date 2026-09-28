@@ -118,7 +118,7 @@ window.DOCS = [
       { num: 1, status: 'completed' },
       { num: 2, status: 'completed' },
       { num: 3, status: 'completed' },
-      { num: 4, status: 'pending' },
+      { num: 4, status: 'plan_ready' },
     ],
   },
   {
