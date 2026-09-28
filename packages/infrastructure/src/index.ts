@@ -128,4 +128,3 @@ export {
 } from "./persistence/product/launch-read-model.js";
 
 /** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */
-export { migrateDatabase, migrationsFolder } from "./persistence/migrate-database.js";
