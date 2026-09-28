@@ -257,6 +257,8 @@ test("pending results, independent settlement and Brier are never quadruple-coun
   const r = f.state.cases[0]!;
   assert.equal(variantMetrics([r], "C").returnOnSettledCost, null);
   assert.equal(variantMetrics([r], "C").pendingPositions, 1);
+  assert.equal(variantMetrics([r], "C").realizedPnl, null);
+  assert.equal(variantMetrics([], "C").realizedPnl, null);
   assert.equal(pairedObservations([r], "C", "D").length, 0);
   r.resolutions = r.identities!.map((i) => ({
     ...i,
