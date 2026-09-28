@@ -10,7 +10,8 @@ import {
 } from "@pickler/core";
 import { createApp } from "../src/app.js";
 
-function app(principal: unknown) {
+/** `wallets` holds the user ids with a custody account; the profile is refused for anyone else. */
+function app(principal: unknown, wallets: ReadonlySet<string> = new Set(["ana-user"])) {
   const rows: Profile[] = [
     {
       userId: "taken-user",
@@ -47,7 +48,9 @@ function app(principal: unknown) {
     findWorkspace: async () => null,
     agentQueries: {} as never,
     budgets: {} as never,
-    profiles: createProfileService(repo),
+    profiles: createProfileService(repo, {
+      hasCustodyAccount: async (userId) => wallets.has(userId),
+    }),
   });
 }
 
@@ -114,6 +117,26 @@ test("signed-in users create and read their own profile; API keys and anonymous 
   );
   assert.equal((await post(null, { display_name: "Ana", handle: "anarobles" })).status, 401);
   assert.equal((await app(ana).request("/v1/profile", {}, env)).status, 404);
+});
+
+test("a profile is refused with 409 wallet_required until the caller has a master wallet", async () => {
+  const ana = buildUserPrincipal({ user: { id: "ana-user", email: "ana@x.io" } });
+  const create = (wallets: ReadonlySet<string>) =>
+    app(ana, wallets).request(
+      "/v1/profile",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: "Ana Robles", handle: "anarobles" }),
+      },
+      env,
+    );
+
+  const refused = await create(new Set());
+  assert.equal(refused.status, 409);
+  assert.equal((await json(refused)).error, "wallet_required");
+
+  assert.equal((await create(new Set(["ana-user"]))).status, 201);
 });
 
 test("CORS allows configured origins only", async () => {

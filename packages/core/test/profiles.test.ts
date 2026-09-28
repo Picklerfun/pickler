@@ -5,9 +5,13 @@ import {
   InvalidProfileError,
   ProfileAlreadyExistsError,
   ProfileHandleTakenError,
+  WalletRequiredError,
   type Profile,
   type ProfileRepository,
 } from "../src/index.js";
+
+/** For tests about the profile itself; the wallet rule has its own test below. */
+const EVERYONE_HAS_A_WALLET = { hasCustodyAccount: async () => true };
 
 function memoryRepo(): ProfileRepository & { rows: Profile[] } {
   const rows: Profile[] = [];
@@ -32,7 +36,7 @@ function memoryRepo(): ProfileRepository & { rows: Profile[] } {
 test("handle availability explains why a handle cannot be used", async () => {
   const repo = memoryRepo();
   repo.rows.push({ userId: "u0", displayName: "Taken", handle: "halftime", createdAt: new Date() });
-  const profiles = createProfileService(repo);
+  const profiles = createProfileService(repo, EVERYONE_HAS_A_WALLET);
   assert.deepEqual(await profiles.checkHandle("@AnaRobles"), {
     handle: "anarobles",
     available: true,
@@ -66,7 +70,7 @@ test("handle availability explains why a handle cannot be used", async () => {
 
 test("creating a profile validates, normalizes and is idempotent per user", async () => {
   const repo = memoryRepo();
-  const profiles = createProfileService(repo);
+  const profiles = createProfileService(repo, EVERYONE_HAS_A_WALLET);
   const created = await profiles.createProfile("u1", {
     displayName: "  Ana   Robles ",
     handle: "@AnaRobles",
@@ -94,4 +98,29 @@ test("creating a profile validates, normalizes and is idempotent per user", asyn
     profiles.createProfile("u2", { displayName: "Bo", handle: "admin" }),
     InvalidProfileError,
   );
+});
+
+test("a profile is refused until the user has a custody account, then created", async () => {
+  const repo = memoryRepo();
+  const wallets = new Set<string>();
+  const asked: string[] = [];
+  const profiles = createProfileService(repo, {
+    hasCustodyAccount: async (userId) => {
+      asked.push(userId);
+      return wallets.has(userId);
+    },
+  });
+
+  await assert.rejects(
+    profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" }),
+    WalletRequiredError,
+  );
+  assert.deepEqual(asked, ["u1"], "the caller's own account is the one checked");
+  assert.equal(repo.rows.length, 0, "nothing is written without a wallet");
+  assert.equal((await profiles.checkHandle("anarobles")).available, true);
+
+  wallets.add("u1");
+  const created = await profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" });
+  assert.equal(created.handle, "anarobles");
+  assert.equal(repo.rows.length, 1);
 });

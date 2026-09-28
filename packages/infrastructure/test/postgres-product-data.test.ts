@@ -57,6 +57,9 @@ async function seedAgent(pool: Pool, workspaceId: string, handle: string) {
   return id;
 }
 
+/** These tests are about the profile rows; the wallet rule is core's and the API's to test. */
+const EVERYONE_HAS_A_WALLET = { hasCustodyAccount: async () => true };
+
 test("a profile is created through identity.create_profile and read back", async (t) => {
   const { pool } = await createTestStore(t);
   const repository = new PostgresProfileRepository(pool);
@@ -99,7 +102,7 @@ test("create reports handle_taken and user_has_profile as the function returns t
 
 test("the profile service maps the outcomes to its errors", async (t) => {
   const { pool } = await createTestStore(t);
-  const profiles = createProfileService(new PostgresProfileRepository(pool));
+  const profiles = createProfileService(new PostgresProfileRepository(pool), EVERYONE_HAS_A_WALLET);
   const [first, second] = [await newUser(pool), await newUser(pool)];
   const created = await profiles.createProfile(first, { displayName: "Ana", handle: "anarobles" });
 
@@ -120,7 +123,7 @@ test("the profile service maps the outcomes to its errors", async (t) => {
 
 test("onboarding succeeds on the same database right after the profile is created", async (t) => {
   const { pool } = await createTestStore(t);
-  const profiles = createProfileService(new PostgresProfileRepository(pool));
+  const profiles = createProfileService(new PostgresProfileRepository(pool), EVERYONE_HAS_A_WALLET);
   const directory = new PostgresStudioDirectory(pool);
   const workspaces = new PostgresWorkspaceDirectory(pool);
   const userId = await newUser(pool);

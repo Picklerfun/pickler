@@ -5,16 +5,17 @@ import {
   parseDisplayName,
   ProfileAlreadyExistsError,
   ProfileHandleTakenError,
+  WalletRequiredError,
   type HandleProblem,
   type Profile,
 } from "../domain/profile.js";
-import type { ProfileRepository } from "../ports/profile-repository.js";
+import type { CustodyAccountLookup, ProfileRepository } from "../ports/profile-repository.js";
 
 export type HandleAvailability =
   | { handle: string; available: true }
   | { handle: string; available: false; reason: HandleProblem | "taken" };
 
-export function createProfileService(repository: ProfileRepository) {
+export function createProfileService(repository: ProfileRepository, custody: CustodyAccountLookup) {
   return {
     async checkHandle(raw: string): Promise<HandleAvailability> {
       const handle = normalizeHandle(raw);
@@ -32,6 +33,9 @@ export function createProfileService(repository: ProfileRepository) {
     /**
      * Creates the caller's profile. Repeating the same request returns the existing profile, so a
      * client retry after a lost response is safe; a different handle for an existing profile conflicts.
+     *
+     * Refused with `WalletRequiredError` until the caller has a custody account: the username is
+     * saved only once the passkey and the master wallet exist.
      */
     async createProfile(
       userId: string,
@@ -42,6 +46,9 @@ export function createProfileService(repository: ProfileRepository) {
       const problem = handleProblem(handle);
       if (problem) {
         throw new InvalidProfileError("handle", problem);
+      }
+      if (!(await custody.hasCustodyAccount(userId))) {
+        throw new WalletRequiredError();
       }
 
       const existing = await repository.findByUserId(userId);

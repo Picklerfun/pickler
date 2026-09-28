@@ -279,13 +279,20 @@ function harness(
   const profileRow: {
     value: { userId: string; displayName: string; handle: string; createdAt: Date } | null;
   } = { value: { userId: ANA, displayName: "Ana Robles", handle: "anarobles", createdAt: NOW } };
-  const profiles = createProfileService({
-    findByUserId: async (userId) => (profileRow.value?.userId === userId ? profileRow.value : null),
-    isHandleTaken: async () => false,
-    create: async () => {
-      throw new Error("unused");
+  // POST /v1/profile is mounted on the same app and refuses a user without a custody account, read
+  // from the same repository `register` writes — so the passkey-first rule is tested end to end.
+  const profiles = createProfileService(
+    {
+      findByUserId: async (userId) =>
+        profileRow.value?.userId === userId ? profileRow.value : null,
+      isHandleTaken: async () => false,
+      create: async (input) => {
+        profileRow.value = { ...input, createdAt: NOW };
+        return { created: true, profile: profileRow.value };
+      },
     },
-  });
+    { hasCustodyAccount: async (userId) => (await repository.findByUserId(userId)) !== null },
+  );
 
   const app = createApp({
     authenticate,
@@ -295,7 +302,7 @@ function harness(
     findWorkspace: async () => null,
     agentQueries: {} as never,
     budgets: {} as never,
-    profiles: {} as never,
+    profiles,
     custody: {
       authenticate,
       custody,
@@ -953,6 +960,22 @@ test("with no profile and no email, both names are the opaque fallback", async (
     attestation: ATTESTATION,
   });
   assert.equal(h.creations[0]?.ownerLabel, "pickler-11111111");
+});
+
+test("the handle is refused with wallet_required before register, and saved after it", async () => {
+  const h = harness();
+  h.profileRow.value = null;
+  const create = () => post(h, "/v1/profile", { display_name: "Ana Robles", handle: "anarobles" });
+
+  const refused = await create();
+  assert.equal(refused.status, 409);
+  assert.equal((await json(refused))["error"], "wallet_required");
+  assert.equal(h.profileRow.value, null, "no profile is written without a wallet");
+
+  await registered(h);
+  const created = await create();
+  assert.equal(created.status, 201, await created.text());
+  assert.equal(h.profileRow.value?.handle, "anarobles");
 });
 
 test("the orphan of a lost race is logged against the request that caused it", async () => {

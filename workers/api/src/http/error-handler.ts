@@ -12,6 +12,7 @@ import {
   InvalidProfileError,
   ProfileAlreadyExistsError,
   ProfileHandleTakenError,
+  WalletRequiredError,
   AuthenticationRequiredError,
   ChallengeNotUsableError,
   DataSourceUnavailableError,
@@ -70,6 +71,9 @@ function classify(
       message: error.message,
       extras: { error: "handle_taken", code: "handle" },
     };
+  }
+  if (error instanceof WalletRequiredError) {
+    return { status: 409, message: error.message, extras: { error: "wallet_required" } };
   }
   if (error instanceof ProfileAlreadyExistsError) {
     return {

@@ -132,6 +132,7 @@ export type { SignedActivityForwarder, TurnkeyReader } from "./features/signing/
 export * from "./features/profiles/domain/profile.js";
 export type {
   CreateProfileResult,
+  CustodyAccountLookup,
   ProfileRepository,
 } from "./features/profiles/ports/profile-repository.js";
 export {

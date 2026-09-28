@@ -332,7 +332,12 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     now,
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
-  const profiles = createProfileService(new PostgresProfileRepository(repository.pool));
+  // A profile is refused until its user has a custody account, read from the same table
+  // `register` writes; composed whether or not Turnkey is bound, so without it nobody can pass.
+  const custodyAccounts = new PostgresCustodyStore(repository.pool);
+  const profiles = createProfileService(new PostgresProfileRepository(repository.pool), {
+    hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
+  });
   const custody = custodyServices(env, repository.pool, authenticate, profiles);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
