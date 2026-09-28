@@ -159,3 +159,5 @@ export * from "./features/paper-study/study.js";
 export * from "./features/paper-study/quant.js";
 
 export * from "./features/paper-study/quant-session.js";
+
+export * from "./features/paper-study/comparison.js";
