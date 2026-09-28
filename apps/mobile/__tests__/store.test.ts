@@ -1,6 +1,6 @@
 import {
   CAN_BACK, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  askMarketId, isComingSoonTab, refreshOk, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
+  askMarketId, isComingSoonTab, perplActiveFor, readsActiveFor, refreshOk, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
 } from "../src/store";
 
 test("the held action names what the gate kept, and is null when it kept nothing", () => {
@@ -105,6 +105,18 @@ test("tradingLineState: live, last seen, skeleton only while the socket is activ
   expect(tradingLineState({ account: null, keyRejected: true, status: "closed" }, null, true)).toBe("unknown"); // key rejected: terminal, not skeleton (R2)
   expect(tradingLineState({ account: null, keyRejected: false, status: "closed" }, null, true)).toBe("unknown"); // socket closed for good: terminal, not skeleton (R2)
   expect(tradingLineState({ account: null, keyRejected: false, status: "connecting" }, null, true)).toBe("skeleton"); // still connecting: skeleton stands
+});
+
+test("the Perpl socket runs where trading data is shown, Portfolio included (D26)", () => {
+  for (const s of ["markets", "market", "perpsFunds", "portfolio"] as const) expect(perplActiveFor(s)).toBe(true);
+  for (const s of ["wallet", "agents", "agent", "read", "signin"] as const) expect(perplActiveFor(s)).toBe(false);
+});
+
+test("reads poll on Ask, Portfolio, Agents, the profile, Read and Markets (agent count), not on Trade", () => {
+  expect(readsActiveFor("market", "ask")).toBe(true);
+  expect(readsActiveFor("market", "trade")).toBe(false);
+  for (const s of ["portfolio", "agents", "agent", "read", "markets"] as const) expect(readsActiveFor(s, "trade")).toBe(true);
+  expect(readsActiveFor("wallet", "trade")).toBe(false);
 });
 
 test("screenHasData follows the null contract of the hooks", () => {

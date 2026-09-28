@@ -1,6 +1,6 @@
 import {
   callOf, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, isHorizon, isLevel, LEVELS_BPS,
-  levelLabel, outcomeOf, questionFor, readDots, recordLabel, stepHorizon, stepLevel, targetFor,
+  levelLabel, outcomeOf, questionFor, readDots, readsForMarket, recordLabel, stepHorizon, stepLevel, targetFor,
 } from "../src/reads/matrix";
 
 test("the matrix is 5 levels × 4 horizons, in the spec order (D2)", () => {
@@ -97,4 +97,12 @@ test("readDots marks only cells with open/right/wrong reads, once per cell (P5)"
   expect([...dots]).toEqual(["100|240"]);
   expect(dots.has(dotKey({ levelBps: 100, horizonMin: 240 }))).toBe(true);
   expect(readDots([]).size).toBe(0);
+});
+
+test("readsForMarket keeps only the open market's reads (the list is no longer filtered by the server)", () => {
+  const r = (id: string, marketId: number) => ({ id, marketId }) as unknown as import("../src/reads/types").Read;
+  const all = [r("a", 1), r("b", 2), r("c", 1)];
+  expect(readsForMarket(all, 1).map((x) => x.id)).toEqual(["a", "c"]);
+  expect(readsForMarket(all, undefined)).toEqual([]);
+  expect(readsForMarket(null, 1)).toEqual([]);
 });

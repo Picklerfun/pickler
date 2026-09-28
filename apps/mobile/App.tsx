@@ -20,10 +20,9 @@ import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
 import type { PushTarget } from "./src/reads/push";
 import { pushTarget } from "./src/reads/push";
-import { type Screen, screenHasData, useAppStore } from "./src/store";
+import { perplActiveFor, readsActiveFor, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
-const PERPL_SCREENS: readonly Screen[] = ["markets", "market", "perpsFunds"];
 
 // Splash nativo (spec mobile-loading D7): se queda hasta que la cuenta local se resolvió; 2 s de tope por si el almacenamiento no responde.
 void SplashScreen.preventAutoHideAsync();
@@ -70,8 +69,8 @@ export default function App() {
     const t = setTimeout(() => { void SplashScreen.hideAsync(); }, 2000);
     return () => clearTimeout(t);
   }, [ready]);
-  const perpsActive = PERPL_SCREENS.includes(scr);
-  const readsActive = scr === "market" && store.S.marketTab !== "trade";
+  const perpsActive = perplActiveFor(scr);
+  const readsActive = readsActiveFor(scr, store.S.marketTab);
   // Order book (D11, P5): sólo con Trade visible y trading key (sin key, el gate no muestra el book).
   const bookActive = scr === "market" && store.S.marketTab === "trade" && perpl.state.status === "ready";
   const marketData = useMarketData(store.S.perpsMarketId, bookActive);

@@ -79,3 +79,8 @@ export function readDots(reads: readonly { levelBps: number; horizonMin: number;
   for (const r of reads) if (r.status === "open" || r.status === "right" || r.status === "wrong") out.add(dotKey(r));
   return out;
 }
+
+/** Reads del mercado abierto: `reads-list` ya no se filtra por mercado (spec mobile-light D26). */
+export function readsForMarket<R extends { marketId: number }>(reads: readonly R[] | null, marketId: number | undefined): R[] {
+  return reads && marketId !== undefined ? reads.filter((r) => r.marketId === marketId) : [];
+}

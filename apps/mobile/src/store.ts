@@ -92,6 +92,14 @@ export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
   }
 }
 
+const PERPL_SCREENS: readonly Screen[] = ["markets", "market", "perpsFunds", "portfolio"];
+const READS_SCREENS: readonly Screen[] = ["portfolio", "agents", "agent", "read", "markets"];
+
+/** Pantallas con socket y polling de contexto de Perpl (D26: Portfolio muestra las posiciones). */
+export const perplActiveFor = (scr: Screen): boolean => PERPL_SCREENS.includes(scr);
+/** Polling de reads y agentes: Ask dentro de Market, más las pantallas que listan reads o agentes (D26). */
+export const readsActiveFor = (scr: Screen, marketTab: MarketTab): boolean => (scr === "market" ? marketTab === "ask" : READS_SCREENS.includes(scr));
+
 export type TradingLineState = "live" | "lastSeen" | "skeleton" | "unknown";
 
 /** Qué pinta la línea/card «AUSD in trading»: `socketActive` = la pantalla tiene el socket de Perpl (PERPL_SCREENS);

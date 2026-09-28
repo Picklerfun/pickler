@@ -8,7 +8,7 @@ import { sparkPoints } from "../perpl/marks";
 import { formatPrice } from "../perpl/orders";
 import {
   callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
-  questionFor, readDots, stepHorizon, stepLevel, targetFor,
+  questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
 import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
 import type { Agent, Read } from "../reads/types";
@@ -231,7 +231,7 @@ export function AskTab(ctx: AppCtx) {
           footer={cardFooter(request.read, <Btn label="Ask another" onPress={() => { reads.resetRequest(); set({ askCell: undefined }); }} variant="ghost" py={11} accessibilityLabel="ask-another" />)} />
       );
     }
-    const dots = readDots(reads.reads ?? []);
+    const dots = readDots(readsForMarket(reads.reads, market.id));
     return (
       <View style={{ gap: 11 }}>
         <CreditsRow credits={reads.credits} error={reads.listError} />

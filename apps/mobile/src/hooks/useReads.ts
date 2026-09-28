@@ -3,7 +3,7 @@ import { AppState } from "react-native";
 import { accountAddress, type AccountState } from "../account";
 import { PUSH_MODE, READS_URL } from "../config/reads";
 import type { Side } from "../perpl/orders";
-import { describeReadsError, fetchAgents, fetchReads, isSessionError, postReminders, requestRead } from "../reads/api";
+import { describeReadsError, fetchAgents, fetchRead, fetchReads, isSessionError, postReminders, requestRead } from "../reads/api";
 import { READS_POLL_MS } from "../reads/constants";
 import type { ReminderKind } from "../reads/level";
 import { createSession, type ReadsSession, sessionFor } from "../reads/session";
@@ -27,7 +27,7 @@ export type Reads = {
   session: ReadsSessionStatus;
   sessionError: string;
   credits: number | null;
-  /** Reads del mercado activo, más recientes primero (máx. 50, D16). */
+  /** Todas tus reads, más recientes primero (máx. 50, D26). */
   /** `null` = todavía no se pidió (sin sesión o en vuelo); `[]` = pedido y vacío. */
   reads: Read[] | null;
   listError: string;
@@ -39,6 +39,8 @@ export type Reads = {
   /** agents-list + reads-list del mercado activo (pull-to-refresh). */
   refresh: () => Promise<void>;
   ask: (cell: AskCell, agentId: string) => Promise<void>;
+  /** Una read por id (pantalla Read abierta desde un push, D14): primero la lista; si no está, read-get. */
+  fetchOne: (id: string) => Promise<Read | null>;
   resetRequest: () => void;
   /** «Trade this level» tras una orden filled/open (D12, P7–P8): reminder-set con el nivel y el lado; local además con PUSH_MODE local. */
   setReminders: (symbol: string, level: TradeLevel, side: Side) => Promise<RemindersOutcome>;
@@ -64,8 +66,6 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   // contra el valor vivo, no contra el que tenía cuando arrancó (Findings #2 y #4).
   const addressRef = useRef(address);
   addressRef.current = address;
-  const marketIdRef = useRef(marketId);
-  marketIdRef.current = marketId;
   // true tras un 401 hasta que el usuario pulsa "Unlock" (ensureSession de nuevo): evita el bucle
   // firma → 401 → firma silenciosa cada 15 s (Finding #1, D6/P2).
   const droppedRef = useRef(false);
@@ -157,19 +157,16 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const loadReads = useCallback(async () => {
     const s = sessionRef.current;
     if (!s) return;
-    const requestedMarketId = marketId; // el marketId puede cambiar mientras el fetch está en vuelo (Finding #2)
     try {
-      const r = await fetchReads(READS_URL, s, requestedMarketId);
-      if (marketIdRef.current !== requestedMarketId) return; // respuesta tardía de un mercado que ya no es el activo
+      const r = await fetchReads(READS_URL, s); // todas tus reads (máx. 50); el board filtra por mercado (D26)
       setReads(r.reads);
       setCredits(r.credits);
       setListError("");
     } catch (e) {
-      if (isSessionError(e)) { await dropSession(); return; } // la sesión es inválida sin importar el mercado
-      if (marketIdRef.current !== requestedMarketId) return;
+      if (isSessionError(e)) { await dropSession(); return; }
       setListError(describeReadsError(e));
     }
-  }, [marketId, dropSession]);
+  }, [dropSession]);
 
   const refresh = useCallback(async () => { await Promise.allSettled([loadAgents(), loadReads()]); }, [loadAgents, loadReads]);
 
@@ -207,6 +204,19 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     }
   }, [marketId, ensureSession, ensurePermission, scheduleLocal, dropSession, loadReads]);
 
+  /** Una read por id (pantalla Read abierta desde un push, D14): primero la lista; si no está, read-get. */
+  const fetchOne = useCallback(async (id: string): Promise<Read | null> => {
+    if (!(await ensureSession())) return null;
+    try {
+      const read = await fetchRead(READS_URL, sessionRef.current!, id);
+      setReads((list) => upsert(list ?? [], read));
+      return read;
+    } catch (e) {
+      if (isSessionError(e)) await dropSession();
+      return null;
+    }
+  }, [ensureSession, dropSession]);
+
   const resetRequest = useCallback(() => setRequest({ step: "idle" }), []);
 
   const setReminders = useCallback(async (symbol: string, level: TradeLevel, side: Side): Promise<RemindersOutcome> => {
@@ -227,5 +237,5 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     }
   }, [ensureSession, ensurePermission, scheduleLocalReminders, dropSession]);
 
-  return { session: status, sessionError, credits, reads, listError, agents, agentsError, request, ensureSession, refresh, ask, resetRequest, setReminders, setActive };
+  return { session: status, sessionError, credits, reads, listError, agents, agentsError, request, ensureSession, refresh, ask, fetchOne, resetRequest, setReminders, setActive };
 }
