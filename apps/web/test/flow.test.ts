@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { INITIAL, next, rail, stepsFor } from "../src/features/auth/lib/flow";
+import { INITIAL, next, rail, stepsFor, welcomeTitle } from "../src/features/auth/lib/flow";
 import type { FlowEvent, FlowState, RailPhase, Step } from "../src/features/auth/lib/flow";
 import { verifiedEvent } from "../src/features/auth/lib/custody";
 import type { WalletDto } from "../src/features/auth/lib/custody-api";
@@ -552,4 +552,53 @@ test("an event sent from a screen that cannot send it changes nothing", () => {
   assert.equal(next(INITIAL, { type: "passkey_created", profile: false }), INITIAL);
   assert.equal(next(INITIAL, { type: "device_skipped" }), INITIAL);
   assert.equal(next(INITIAL, { type: "handle_claimed", handle: "x" }), INITIAL);
+});
+
+test("a new account is greeted as one; WELCOME BACK is only for an account that already existed", () => {
+  // Created in this session: passkey, then handle, on the sign-up rail.
+  const created = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    verifiedEvent({ handle: null, wallet: null, enrolledHere: false }),
+    { type: "passkey_created", profile: false },
+    { type: "handle_claimed", handle: "nightowl" },
+  ]).state;
+  assert.equal(created.step, "welcome");
+  assert.equal(welcomeTitle(created), "WALLET CREATED");
+
+  // A sign-in, on either rail.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const signedIn = walk(start, [
+      { type: "code_sent", email: "ana@pickler.xyz" },
+      verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: true }),
+    ]).state;
+    assert.equal(signedIn.step, "welcome", mode);
+    assert.equal(welcomeTitle(signedIn), "WELCOME BACK", mode);
+  }
+
+  // A resumed complete account, with nothing typed.
+  const resumedComplete = next(
+    INITIAL,
+    verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: true }),
+  );
+  assert.equal(welcomeTitle(resumedComplete), "WELCOME BACK");
+
+  // An older account that only added its wallet, on either rail.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const legacy = walk(start, [
+      verifiedEvent({ handle: "nightowl", wallet: null, enrolledHere: false }),
+      { type: "passkey_created", profile: true },
+    ]).state;
+    assert.equal(legacy.step, "welcome", mode);
+    assert.equal(welcomeTitle(legacy), "WELCOME BACK", mode);
+  }
+
+  // Leaving the new-device rail.
+  const skipped = walk(INITIAL, [
+    verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: false }),
+    { type: "device_skipped" },
+  ]).state;
+  assert.equal(skipped.step, "welcome");
+  assert.equal(welcomeTitle(skipped), "WELCOME BACK");
 });

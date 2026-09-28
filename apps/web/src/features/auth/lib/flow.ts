@@ -243,3 +243,15 @@ export function rail(state: FlowState): RailPhase[] {
     done: index < at,
   }));
 }
+
+/**
+ * The welcome screen's title. The sign-up rail reaches welcome only by finishing sign-up in this
+ * session — the passkey, then the handle — so it greets a new account. Every other way in is an
+ * account that already existed: a sign-in, a resumed complete account (`account_found`), leaving the
+ * new-device rail, or an older account that only added its wallet (`wallet_missing` with a profile
+ * puts it on the sign-in rail). The canvas draws WELCOME BACK for sign-in only; its sign-up ends on
+ * the "Wallet created" screen, whose words the new-account title takes.
+ */
+export function welcomeTitle(state: FlowState): "WALLET CREATED" | "WELCOME BACK" {
+  return state.mode === "up" ? "WALLET CREATED" : "WELCOME BACK";
+}

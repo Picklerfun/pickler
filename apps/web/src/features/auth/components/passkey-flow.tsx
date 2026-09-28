@@ -27,7 +27,7 @@ import {
 import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
 import type { ChallengeOptionsDto, PasskeyDto, WalletDto } from "../lib/custody-api";
 import { describeDevice } from "../lib/device";
-import { INITIAL, next, rail } from "../lib/flow";
+import { INITIAL, next, rail, welcomeTitle } from "../lib/flow";
 import { ApiError, getProfile } from "../lib/pickler-api";
 import { Button } from "@pickler/ui";
 import type { Ceremony, SheetPhase } from "../lib/sheet";
@@ -558,7 +558,12 @@ function SignFlow({
             />
           )}
           {state.step === "welcome" && (
-            <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
+            <WelcomeStep
+              title={welcomeTitle(state)}
+              handle={profileHandle}
+              wallet={wallet}
+              destination={target}
+            />
           )}
           {state.step === "welcome" && (
             <SecondPasskey passkeys={createdPasskeys} id="welcome-second-passkey" />
