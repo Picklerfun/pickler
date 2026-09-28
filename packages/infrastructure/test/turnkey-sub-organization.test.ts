@@ -158,7 +158,7 @@ test("creates a sub-organization whose only root credential is the user's passke
     timestampMs: body.timestampMs,
     organizationId: "parent-org-1",
     parameters: {
-      subOrganizationName: "adalovelace · u_7f3a",
+      subOrganizationName: "adalovelace - u_7f3a",
       rootQuorumThreshold: 1,
       rootUsers: [
         {
@@ -439,4 +439,16 @@ test("the forwarder still refuses a body aimed at someone else's sub-organizatio
     ),
     /different organization/,
   );
+});
+
+test("names sent to Turnkey are printable ASCII, which is all it accepts", async () => {
+  const { turnkeyName } = await import("../src/turnkey/turnkey-sub-organization.js");
+  assert.equal(turnkeyName("adalovelace · u_7f3a"), "adalovelace u_7f3a");
+  assert.equal(turnkeyName("iPhone de José ✨"), "iPhone de Jos");
+  assert.equal(turnkeyName("  plain-name_1  "), "plain-name_1");
+  assert.equal(turnkeyName("✨"), "");
+  for (const name of ["adalovelace - u_7f3a", "pickler-1a2b3c4d"]) {
+    assert.equal(turnkeyName(name), name);
+    assert.match(turnkeyName(name), /^[\x20-\x7E]*$/);
+  }
 });
