@@ -38,14 +38,21 @@ const STALE_AFTER_BLOCKS = 50;
 export class PostgresLaunchReadModel {
   readonly pool: Pool;
   private readonly database: NodePgDatabase;
+  private readonly ownsPool: boolean;
 
-  constructor(connectionString: string, options?: DatabaseConnectionOptions) {
-    this.pool = new Pool(databasePoolConfig(connectionString, options));
+  constructor(connection: string | Pool, options?: DatabaseConnectionOptions) {
+    this.ownsPool = typeof connection === "string";
+    this.pool =
+      typeof connection === "string"
+        ? new Pool(databasePoolConfig(connection, options))
+        : connection;
     this.database = drizzle(this.pool);
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    if (this.ownsPool) {
+      await this.pool.end();
+    }
   }
 
   async listLaunches(query: LaunchListQuery): Promise<ReadDto<LaunchSummaryDto[]>> {
