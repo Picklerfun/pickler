@@ -10,6 +10,9 @@ import { authRoutes } from "./routes/auth";
 import { corsFromEnv } from "./middleware/cors";
 import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes/profiles";
 
+import type { PostgresLaunchReadModel } from "@pickler/infrastructure";
+
+import { launchRoutes } from "./launches/routes";
 import { growthRoutes } from "./routes/growth";
 import { marketplaceRoutes } from "./routes/marketplace";
 import type { createGrowthServices } from "./growth/services";
@@ -25,6 +28,9 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
   custody?: SigningRouteServices;
   /** Absent when SIWE_DOMAIN or WALLET_EMAIL_DOMAIN is missing; the rest of the API still serves. */
   walletAuth?: WalletAuthServices;
+
+  /** Absent until a database binding exists; the routes are not mounted without one. */
+  launches?: PostgresLaunchReadModel;
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -44,6 +50,7 @@ export function createApp(services: Services) {
 
   if (services.studio) {
     app.route("/v1/studio", studioRoutes(services.studio));
+    app.route("/v1/console", studioRoutes(services.studio));
   }
   if (services.custody) {
     app.route("/v1/signing", signingRoutes(services.custody));
@@ -51,10 +58,14 @@ export function createApp(services: Services) {
   if (services.walletAuth) {
     app.route("/v1/auth/wallet", walletAuthRoutes(services.walletAuth));
   }
+  if (services.launches) {
+    app.route("/v1/launches", launchRoutes(services.launches));
+  }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
     // Under its own prefix: /v1/agents is the authenticated workspace list ported from Relayer.
     app.route("/v1/marketplace", marketplaceRoutes(services.growth));
+    app.route("/v1/demo", marketplaceRoutes(services.growth));
   }
   return app;
 }

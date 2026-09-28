@@ -167,8 +167,9 @@ export const paperOrders = pickler
       createdAt: milliseconds("created_at").notNull(),
       finishedAt: milliseconds("finished_at"),
       reason: text("reason"),
-      fill: jsonb("fill").$type<import("@pickler/core").PaperFill>(),
-      settlement: jsonb("settlement").$type<import("@pickler/core").PaperSettlement>(),
+      fill: jsonb("fill").$type<import("@pickler/trading/polymarket").PaperFill>(),
+      settlement:
+        jsonb("settlement").$type<import("@pickler/trading/polymarket").PaperSettlement>(),
       snapshot: jsonb("snapshot").notNull(),
       leaseOwner: text("lease_owner"),
       leaseExpiresAt: milliseconds("lease_expires_at"),
@@ -249,13 +250,15 @@ export const liveOrders = pickler
       status: text("status").notNull(),
       marketId: text("market_id").notNull(),
       configVersion: integer("config_version").notNull(),
-      preview: jsonb("preview").$type<import("@pickler/core").LivePreview>().notNull(),
+      preview: jsonb("preview")
+        .$type<import("@pickler/trading/polymarket").LivePreview>()
+        .notNull(),
       budgetMicros: integer("budget_micros").notNull(),
       createdAt: milliseconds("created_at").notNull(),
       expiresAt: milliseconds("expires_at").notNull(),
       orderHash: text("order_hash"),
       reason: text("reason"),
-      fill: jsonb("fill").$type<import("@pickler/core").LiveFill>(),
+      fill: jsonb("fill").$type<import("@pickler/trading/polymarket").LiveFill>(),
       leaseOwner: text("lease_owner"),
       leaseExpiresAt: milliseconds("lease_expires_at"),
     },
@@ -280,5 +283,146 @@ export const liveOrders = pickler
         sql`${t.status} in ('prepared','queued','submitting','unknown','settled','not_filled','failed','expired')`,
       ),
     ],
+  )
+  .enableRLS();
+
+export const perpsPaperAccounts = pickler
+  .table(
+    "perps_paper_accounts",
+    {
+      id: text("id").primaryKey(),
+      tenantId: text("tenant_id").notNull(),
+      agentId: text("agent_id").notNull(),
+      sessionId: text("session_id").notNull(),
+      network: text("network").notNull(),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/perps").PerpsPaperAccount>()
+        .notNull(),
+    },
+    (t) => [
+      uniqueIndex("perps_paper_account_scope").on(t.tenantId, t.agentId, t.sessionId, t.network),
+      foreignKey({
+        columns: [t.tenantId, t.agentId],
+        foreignColumns: [agents.tenantId, agents.id],
+      }),
+      check("perps_paper_network", sql`${t.network} in ('mainnet','testnet')`),
+    ],
+  )
+  .enableRLS();
+export const perpsPaperAttempts = pickler
+  .table(
+    "perps_paper_attempts",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/perps").PerpsPaperAttempt>()
+        .notNull(),
+      owner: text("owner"),
+      expiresAt: milliseconds("expires_at"),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();
+export const perpsPaperPositions = pickler
+  .table(
+    "perps_paper_positions",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      id: text("id").notNull(),
+      symbol: text("symbol").notNull(),
+      closedAt: milliseconds("closed_at"),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/perps").PerpsPaperPosition>()
+        .notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.accountId, t.id] }),
+      uniqueIndex("perps_paper_open_symbol")
+        .on(t.accountId, t.symbol)
+        .where(sql`${t.closedAt} is null`),
+    ],
+  )
+  .enableRLS();
+export const perpsPaperMovements = pickler
+  .table(
+    "perps_paper_movements",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/perps").PerpsPaperMovement>()
+        .notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();
+
+export const perpsPaperObservations = pickler
+  .table(
+    "perps_paper_observations",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document").notNull(),
+      result: jsonb("result").$type<import("@pickler/trading/perps").PerpsPaperView>().notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();
+
+export const perpsStudies = pickler
+  .table(
+    "perps_studies",
+    {
+      id: text("id").primaryKey(),
+      tenantId: text("tenant_id").notNull(),
+      sessionId: text("session_id").notNull(),
+      network: text("network").notNull(),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/evaluation").PerpsStudyRecord>()
+        .notNull(),
+      owner: text("owner"),
+      expiresAt: milliseconds("expires_at"),
+    },
+    (t) => [uniqueIndex("perps_study_scope").on(t.tenantId, t.sessionId, t.network)],
+  )
+  .enableRLS();
+export const perpsStudyRounds = pickler
+  .table(
+    "perps_study_rounds",
+    {
+      studyId: text("study_id")
+        .notNull()
+        .references(() => perpsStudies.id),
+      key: text("key").notNull(),
+      document: jsonb("document")
+        .$type<import("@pickler/trading/evaluation").PerpsRound>()
+        .notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.studyId, t.key] })],
+  )
+  .enableRLS();
+export const perpsStudyEvents = pickler
+  .table(
+    "perps_study_events",
+    {
+      studyId: text("study_id")
+        .notNull()
+        .references(() => perpsStudies.id),
+      key: text("key").notNull(),
+      at: milliseconds("at").notNull(),
+      kind: text("kind").notNull(),
+      data: jsonb("data").notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.studyId, t.key] })],
   )
   .enableRLS();

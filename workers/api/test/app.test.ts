@@ -164,3 +164,27 @@ test("staging conceals unexpected database/provider error details", async () => 
   assert.equal(response.status, 500);
   assert.ok(!(await response.text()).includes("private-password"));
 });
+
+test("legacy console and Studio both retain user authentication", async () => {
+  let calls = 0;
+  const authenticate = async () => {
+    calls++;
+    throw new AuthenticationRequiredError();
+  };
+  const app = createApp({
+    authenticate,
+    authenticateAgent: async () => {
+      throw new Error("unused");
+    },
+    findWorkspace: async () => null,
+    agentQueries: {} as never,
+    budgets: {} as never,
+    profiles: {} as never,
+    studio: { authenticate } as never,
+  });
+  for (const prefix of ["/v1/studio", "/v1/console"]) {
+    const response = await app.request(`${prefix}/access`, {}, env);
+    assert.equal(response.status, 401);
+  }
+  assert.equal(calls, 2);
+});

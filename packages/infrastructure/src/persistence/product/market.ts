@@ -5,9 +5,11 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
+  jsonb,
   numeric,
   pgSchema,
   primaryKey,
@@ -40,9 +42,15 @@ export const tokens = market
     "tokens",
     {
       id: uuid("id").primaryKey().defaultRandom(),
-      agentId: uuid("agent_id")
-        .notNull()
-        .references(() => agents.id, { onDelete: "restrict" }),
+      /**
+       * Null until the product links this launch to an agent.
+       *
+       * The chain is the source of truth for a launch existing: the factory knows an
+       * `agentKey`, a hash nothing can reverse into our agent's identifier. Requiring the
+       * link here would mean the indexer either invents one or drops the launch, and a
+       * launch the chain has and we do not is worse than one whose agent is still unknown.
+       */
+      agentId: uuid("agent_id").references(() => agents.id, { onDelete: "restrict" }),
       /** Reserved when an application is approved, before any contract exists. */
       ticker: text("ticker").notNull(),
       name: text("name").notNull(),
@@ -293,6 +301,81 @@ export const indexerCursors = market
       check("indexer_cursors_stream_length", sql`char_length(${t.stream}) between 1 and 40`),
       check("indexer_cursors_block_positive", sql`${t.lastBlock} >= 0`),
       check("indexer_cursors_block_hash_format", sql`${t.lastBlockHash} ~ '^0x[0-9a-f]{64}$'`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * Every block the indexer has seen, including ones a reorg later discarded.
+ *
+ * Keyed by hash rather than number: two competing blocks can share a height, and keeping
+ * both is what lets a projection be rolled back to the branch that survived. `parentHash`
+ * is how the chain is walked backwards to find where a fork began.
+ */
+export const chainBlocks = market
+  .table(
+    "chain_blocks",
+    {
+      chain: text("chain").notNull(),
+      hash: text("hash").notNull(),
+      number: bigint("number", { mode: "number" }).notNull(),
+      parentHash: text("parent_hash").notNull(),
+      blockTime: timestamp("block_time", { withTimezone: true }).notNull(),
+      /** Whether this block is still on the branch the node considers canonical. */
+      orphaned: boolean("orphaned").notNull().default(false),
+      /** observed | confirmed | finalized, under the policy measured for this chain. */
+      finality: text("finality").notNull().default("observed"),
+      seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.hash] }),
+      index("chain_blocks_height_idx").on(t.chain, t.number),
+      check("chain_blocks_chain_format", sql`${t.chain} ~ '^eip155:[1-9][0-9]*$'`),
+      check("chain_blocks_hash_format", sql`${t.hash} ~ '^0x[0-9a-f]{64}$'`),
+      check("chain_blocks_parent_hash_format", sql`${t.parentHash} ~ '^0x[0-9a-f]{64}$'`),
+      check("chain_blocks_number_positive", sql`${t.number} >= 0`),
+      check("chain_blocks_finality", sql`${t.finality} in ('observed', 'confirmed', 'finalized')`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * Raw decoded logs, kept so a projection can be rebuilt without re-reading the chain.
+ *
+ * The primary key is the log's full identity. Block number and index alone would collide
+ * across a reorg, which is exactly when correctness matters most. `abiHash` records which
+ * version of a contract's ABI the decoding used, so an old log stays interpretable after
+ * the contract changes.
+ */
+export const chainEvents = market
+  .table(
+    "chain_events",
+    {
+      chain: text("chain").notNull(),
+      blockHash: text("block_hash").notNull(),
+      txHash: text("tx_hash").notNull(),
+      logIndex: integer("log_index").notNull(),
+      blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+      emitter: text("emitter").notNull(),
+      eventName: text("event_name").notNull(),
+      abiHash: text("abi_hash").notNull(),
+      topics: jsonb("topics").notNull(),
+      data: text("data").notNull(),
+      decoded: jsonb("decoded"),
+      orphaned: boolean("orphaned").notNull().default(false),
+      indexedAt: timestamp("indexed_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.blockHash, t.txHash, t.logIndex] }),
+      index("chain_events_emitter_idx").on(t.chain, t.emitter, t.blockNumber),
+      index("chain_events_name_idx").on(t.chain, t.eventName, t.blockNumber),
+      check("chain_events_chain_format", sql`${t.chain} ~ '^eip155:[1-9][0-9]*$'`),
+      check("chain_events_block_hash_format", sql`${t.blockHash} ~ '^0x[0-9a-f]{64}$'`),
+      check("chain_events_tx_hash_format", sql`${t.txHash} ~ '^0x[0-9a-f]{64}$'`),
+      check("chain_events_emitter_format", sql`${t.emitter} ~ '^0x[0-9a-f]{40}$'`),
+      check("chain_events_log_index_positive", sql`${t.logIndex} >= 0`),
+      check("chain_events_block_number_positive", sql`${t.blockNumber} >= 0`),
+      check("chain_events_abi_hash_format", sql`${t.abiHash} ~ '^[0-9a-f]{64}$'`),
     ],
   )
   .enableRLS();

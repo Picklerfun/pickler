@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import { DEFAULT_CONFIG, type MarketData } from "@pickler/core";
 import { createApi } from "../src/api/app";
-import { buildTools } from "../src/plugins/registry";
+import { buildTools } from "@pickler/agent-runtime/plugins/registry";
 import { agentConfigSchema, decisionSchema } from "@pickler/api-schema";
 
 test("HTTP authorization, scoped writes, async run dispatch and polling", async (t) => {

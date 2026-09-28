@@ -144,6 +144,8 @@ export const studioOptionsSchema = z.object({
         "paper-trading",
         "polymarket-trading",
         "perpl",
+        "perps-paper",
+        "perps-paper",
       ]),
       version: z.string(),
       tools: agentConfigSchema.shape.tools,

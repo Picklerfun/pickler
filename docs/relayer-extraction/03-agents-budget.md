@@ -1,3 +1,8 @@
+<!-- historical-evidence -->
+
+> Archived extraction design; not current implementation guidance.
+> See [Trading architecture](../trading-architecture.md) for current ownership.
+
 # 03 — Agent kit, budget and events: Relayer extraction report
 
 - **Source:** Relayer monorepo, branch `develop`, commit `bb6bb1226e9289f675e355e7c022530e1e790fd9`

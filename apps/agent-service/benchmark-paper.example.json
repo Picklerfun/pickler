@@ -1,0 +1,9 @@
+{
+  "version": 4,
+  "protocol": "btc-decision-benchmark-v1",
+  "id": "btc-decision-benchmark-example",
+  "plugins": ["polymarket", "coinbase", "jev"],
+  "jevInputPerMillion": null,
+  "maxNewReservedUsd": 1.25,
+  "historicalStudies": []
+}

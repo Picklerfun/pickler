@@ -4,11 +4,11 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
   MARKET_CATALOG,
-  type createTradingService,
   PilotError,
   type ResearchRepository,
   type MarketData,
 } from "@pickler/core";
+import { type createTradingService } from "@pickler/trading/polymarket";
 import {
   liveBuySchema,
   liveOrderSchema,

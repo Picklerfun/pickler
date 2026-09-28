@@ -16,7 +16,7 @@ export const perplConfigSchema = z
 export const perpProvenanceSchema = z
   .object({
     provider: z.literal("perpl"),
-    pluginVersion: z.literal("1.0.0"),
+    pluginVersion: z.enum(["1.0.0", "1.1.0"]),
     network: z.enum(["mainnet", "testnet"]),
     chainId: integer,
     url: z.string().url(),
@@ -144,5 +144,32 @@ export const perpCandlesSchema = z
       )
       .max(1024),
     provenance: perpProvenanceSchema,
+  })
+  .strict();
+export const perpFundingRequestSchema = z
+  .object({ symbol: perpSymbolSchema, from: integer, to: integer })
+  .strict()
+  .refine((v) => v.to >= v.from);
+export const perpFundingHistorySchema = z
+  .object({
+    market: perpMarketInfoSchema,
+    from: integer,
+    to: integer,
+    complete: z.boolean(),
+    events: z
+      .array(
+        z
+          .object({
+            eventBlock: integer,
+            appliesAt: integer.nullable(),
+            rate: decimal,
+            index: decimal,
+            estimated: z.boolean(),
+            provenance: perpProvenanceSchema,
+          })
+          .strict(),
+      )
+      .max(4100),
+    pages: z.array(perpProvenanceSchema).max(4),
   })
   .strict();

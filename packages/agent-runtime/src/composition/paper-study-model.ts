@@ -3,13 +3,13 @@ import { Agent } from "@mastra/core/agent";
 import { noopLogger } from "@mastra/core/logger";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { modelAssessmentSchema } from "@pickler/api-schema";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   type StudyMarket,
   type StudyEvidence,
   type StudyUsage,
   type StudyKind,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { validatedModelOutput, classifyModelFailure } from "./model-output.js";
 import { paperStudyPrompt } from "../prompts/paper-study-system.js";
 

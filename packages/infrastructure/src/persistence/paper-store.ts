@@ -1,22 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { PilotError, PLUGINS, type Scope, type AgentRecord, type RunRecord } from "@pickler/core";
 import {
-  PilotError,
-  PLUGINS,
   assertPaperAllowed,
   assertPaperFillCurrent,
   assertPaperSettlementAccess,
   settlePaperOrder,
   summarizePaperOrders,
   type PaperResolution,
-  type Scope,
   type PaperSettlementRepository,
   type PaperRepository,
   type PaperOrder,
   type PaperFill,
-  type AgentRecord,
-  type RunRecord,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 
 const projection = `id, tenant_id AS "tenantId", agent_id AS "agentId", run_id AS "runId", market_id AS "marketId", outcome_id AS "outcomeId", status, '10' AS "virtualBudget", created_at::double precision AS "createdAt", finished_at::double precision AS "finishedAt", reason, fill, settlement`;
 /** JSONB business documents stay unchanged; only database column names are mapped. */

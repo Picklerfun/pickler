@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createJevStudyModel } from "@pickler/agent-runtime/composition/jev-study-model";
-import type { StudyMarket, StudyEvidence, StudyUsage, ModelAssessment } from "@pickler/core";
+import type { StudyMarket, StudyEvidence, StudyUsage } from "@pickler/trading/strategies";
+import type { ModelAssessment } from "@pickler/core";
 
 const env = {
   MODEL_BASE_URL: "https://example.com/v1",

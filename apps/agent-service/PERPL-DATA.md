@@ -1,6 +1,6 @@
 # Perpl public data plugin
 
-Perpl plugin 1.0.0 provides BTC/ETH public perpetual data through the Pickler harness. It is
+Perpl plugin 1.1.0 provides BTC/ETH public perpetual data through the Pickler harness. It is
 opt-in per tenant/agent, independent of the Polymarket research workflow, and disabled in historical
 defaults. It supports mainnet (chain 143, default when configuring) and testnet (chain 10143).
 
@@ -26,7 +26,7 @@ npm run perpl:data --workspace=@pickler/agent-service -- capture --tenant TENANT
 ```
 
 Replace the IDs and expected version with actual stored values. `configure` preserves other
-configuration fields, adds the plugin and its four tools, uses optimistic version checking, and
+configuration fields, adds the plugin and its five tools, uses optimistic version checking, and
 **disables scheduling** through the existing config update policy. It returns the resulting version
 and schedule state. It does not enable scheduled perps research. Use `--network testnet` to configure
 a separate agent or explicitly change an existing one. `check` and `capture` always use stored
@@ -39,8 +39,8 @@ new directories 0700. Keep captures private and ignored by Git.
 
 ## Harness contract
 
-`@pickler/agent-runtime/composition/perpl` exports `createPerplSession(repository, scope, signal)`.
-It returns a guarded service and four Mastra read tools. Runtime composition exposes the same
+`@pickler/agent-runtime/plugins/perpl` exports `createPerplSession(repository, scope, signal)`.
+It returns a guarded service and five Mastra read tools. Runtime composition exposes the same
 session through `runtime.perpl(scope, signal)` and the public context check through
 `checkPlugin(scope, "perpl")`. No Perpl tools are injected into Polymarket research.
 
@@ -139,3 +139,7 @@ Private manifest SHA-256 values (raw captures are excluded from Git):
 - `mainnet-20260928-01` (incomplete): `24414ea4c0596fcc0e80f42c67d5f2d6bae9526b4bbd9c8855cb238bfdd3c1db`
 - `mainnet-20260928-02` (complete): `07697884d10cece43e2f02781e27c4dfcb9b11c960af227d3716de62173072b0`
 - `testnet-20260928-01` (complete): `17f4dbba2ae5befdca72d17d7bd5ae737e86417a53631c4e8227c5ea6639d667`
+
+Version 1.1.0 adds explicitly permitted `getPerpFundingHistory`, bounded to four pages within the
+same session request cap. Historical 1.0.0 captures remain readable. See [PERPS-PAPER.md](PERPS-PAPER.md)
+for estimated funding semantics; the standard data capture still makes seven requests.

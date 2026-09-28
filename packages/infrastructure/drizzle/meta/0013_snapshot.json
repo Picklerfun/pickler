@@ -1,6 +1,6 @@
 {
-  "id": "ba7955ce-ab05-4240-aa66-dcd7e0bd0222",
-  "prevId": "5e9d735a-6bf3-466b-891d-6614751c36db",
+  "id": "4c7eb9c8-1f75-484f-be9a-f9c9c612cc3b",
+  "prevId": "da1c1340-f225-427f-9c2b-15461b8cac1c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -697,6 +697,346 @@
           "value": "\"pickler\".\"paper_orders\".\"status\" <> 'pending' OR (\"pickler\".\"paper_orders\".\"lease_owner\" IS NOT NULL AND \"pickler\".\"paper_orders\".\"lease_expires_at\" IS NOT NULL)"
         }
       },
+      "isRLSEnabled": true
+    },
+    "pickler.perps_paper_accounts": {
+      "name": "perps_paper_accounts",
+      "schema": "pickler",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "network": {
+          "name": "network",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document": {
+          "name": "document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "perps_paper_account_scope": {
+          "name": "perps_paper_account_scope",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "network",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "perps_paper_accounts_tenant_id_agent_id_agents_tenant_id_id_fk": {
+          "name": "perps_paper_accounts_tenant_id_agent_id_agents_tenant_id_id_fk",
+          "tableFrom": "perps_paper_accounts",
+          "tableTo": "agents",
+          "schemaTo": "pickler",
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "perps_paper_network": {
+          "name": "perps_paper_network",
+          "value": "\"pickler\".\"perps_paper_accounts\".\"network\" in ('mainnet','testnet')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "pickler.perps_paper_attempts": {
+      "name": "perps_paper_attempts",
+      "schema": "pickler",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document": {
+          "name": "document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "perps_paper_attempts_account_id_perps_paper_accounts_id_fk": {
+          "name": "perps_paper_attempts_account_id_perps_paper_accounts_id_fk",
+          "tableFrom": "perps_paper_attempts",
+          "tableTo": "perps_paper_accounts",
+          "schemaTo": "pickler",
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "perps_paper_attempts_account_id_key_pk": {
+          "name": "perps_paper_attempts_account_id_key_pk",
+          "columns": ["account_id", "key"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.perps_paper_movements": {
+      "name": "perps_paper_movements",
+      "schema": "pickler",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document": {
+          "name": "document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "perps_paper_movements_account_id_perps_paper_accounts_id_fk": {
+          "name": "perps_paper_movements_account_id_perps_paper_accounts_id_fk",
+          "tableFrom": "perps_paper_movements",
+          "tableTo": "perps_paper_accounts",
+          "schemaTo": "pickler",
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "perps_paper_movements_account_id_key_pk": {
+          "name": "perps_paper_movements_account_id_key_pk",
+          "columns": ["account_id", "key"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.perps_paper_observations": {
+      "name": "perps_paper_observations",
+      "schema": "pickler",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document": {
+          "name": "document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "perps_paper_observations_account_id_perps_paper_accounts_id_fk": {
+          "name": "perps_paper_observations_account_id_perps_paper_accounts_id_fk",
+          "tableFrom": "perps_paper_observations",
+          "tableTo": "perps_paper_accounts",
+          "schemaTo": "pickler",
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "perps_paper_observations_account_id_key_pk": {
+          "name": "perps_paper_observations_account_id_key_pk",
+          "columns": ["account_id", "key"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.perps_paper_positions": {
+      "name": "perps_paper_positions",
+      "schema": "pickler",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "symbol": {
+          "name": "symbol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document": {
+          "name": "document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "perps_paper_open_symbol": {
+          "name": "perps_paper_open_symbol",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "symbol",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pickler\".\"perps_paper_positions\".\"closed_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "perps_paper_positions_account_id_perps_paper_accounts_id_fk": {
+          "name": "perps_paper_positions_account_id_perps_paper_accounts_id_fk",
+          "tableFrom": "perps_paper_positions",
+          "tableTo": "perps_paper_accounts",
+          "schemaTo": "pickler",
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "perps_paper_positions_account_id_id_pk": {
+          "name": "perps_paper_positions_account_id_id_pk",
+          "columns": ["account_id", "id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "pickler.provider_cache": {
@@ -3359,47 +3699,6 @@
       },
       "isRLSEnabled": true
     },
-    "identity.siwe_nonces": {
-      "name": "siwe_nonces",
-      "schema": "identity",
-      "columns": {
-        "nonce": {
-          "name": "nonce",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "siwe_nonces_expiry_idx": {
-          "name": "siwe_nonces_expiry_idx",
-          "columns": [
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "identity.wallet_links": {
       "name": "wallet_links",
       "schema": "identity",
@@ -4880,389 +5179,6 @@
         }
       },
       "isRLSEnabled": true
-    },
-    "wallets.passkeys": {
-      "name": "passkeys",
-      "schema": "wallets",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "credential_id": {
-          "name": "credential_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transports": {
-          "name": "transports",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "array[]::text[]"
-        },
-        "device_type": {
-          "name": "device_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "passkeys_credential_key": {
-          "name": "passkeys_credential_key",
-          "columns": [
-            {
-              "expression": "credential_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "passkeys_user_idx": {
-          "name": "passkeys_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "wallets.turnkey_orgs": {
-      "name": "turnkey_orgs",
-      "schema": "wallets",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "sub_organization_id": {
-          "name": "sub_organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "master_wallet_id": {
-          "name": "master_wallet_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "root_user_id": {
-          "name": "root_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "turnkey_orgs_sub_organization_key": {
-          "name": "turnkey_orgs_sub_organization_key",
-          "columns": [
-            {
-              "expression": "sub_organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "wallets.wallet_accounts": {
-      "name": "wallet_accounts",
-      "schema": "wallets",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "wallet_id": {
-          "name": "wallet_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "chain": {
-          "name": "chain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "address_format": {
-          "name": "address_format",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "wallet_accounts_wallet_path_key": {
-          "name": "wallet_accounts_wallet_path_key",
-          "columns": [
-            {
-              "expression": "wallet_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "path",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "wallet_accounts_chain": {
-          "name": "wallet_accounts_chain",
-          "value": "\"wallets\".\"wallet_accounts\".\"chain\" in ('monad')"
-        },
-        "wallet_accounts_address_format": {
-          "name": "wallet_accounts_address_format",
-          "value": "\"wallets\".\"wallet_accounts\".\"address\" ~ '^0x[0-9a-fA-F]{40}$'"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "wallets.wallets": {
-      "name": "wallets",
-      "schema": "wallets",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "wallet_id": {
-          "name": "wallet_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sub_organization_id": {
-          "name": "sub_organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "wallets_wallet_key": {
-          "name": "wallets_wallet_key",
-          "columns": [
-            {
-              "expression": "wallet_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wallets_user_idx": {
-          "name": "wallets_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "wallets_kind": {
-          "name": "wallets_kind",
-          "value": "\"wallets\".\"wallets\".\"kind\" in ('master', 'agent')"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "wallets.webauthn_challenges": {
-      "name": "webauthn_challenges",
-      "schema": "wallets",
-      "columns": {
-        "challenge": {
-          "name": "challenge",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "webauthn_challenges_expiry_idx": {
-          "name": "webauthn_challenges_expiry_idx",
-          "columns": [
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
     }
   },
   "enums": {
@@ -5324,8 +5240,7 @@
     "budget": "budget",
     "growth": "growth",
     "identity": "identity",
-    "market": "market",
-    "wallets": "wallets"
+    "market": "market"
   },
   "sequences": {},
   "roles": {},

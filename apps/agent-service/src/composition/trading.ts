@@ -1,4 +1,5 @@
-import { createTradingService, PilotError } from "@pickler/core";
+import { createTradingService } from "@pickler/trading/polymarket";
+import { PilotError } from "@pickler/core";
 import {
   PolymarketTrading,
   PostgresTradingStore,

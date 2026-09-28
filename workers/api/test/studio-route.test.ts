@@ -91,7 +91,7 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
       },
     },
     trading: {
-      repository: {} as import("@pickler/core").TradingRepository,
+      repository: {} as import("@pickler/trading/polymarket").TradingRepository,
       admissionsEnabled: true,
       notify: async () => {},
       invoke: async (_path, input) => {

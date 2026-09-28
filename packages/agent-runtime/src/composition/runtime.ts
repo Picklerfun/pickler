@@ -1,13 +1,12 @@
 import {
   createResearchRunner,
-  createPaperService,
-  createPaperSettlementService,
   effectivePlugins,
   PilotError,
   type PluginId,
   type ResearchObserver,
   type RunRecord,
 } from "@pickler/core";
+import { createPaperPlugin } from "../plugins/paper-trading/index.js";
 import {
   PostgresResearchStore,
   type DatabaseConnectionOptions,
@@ -20,7 +19,7 @@ import {
   PostgresPublicDataCache,
 } from "@pickler/infrastructure";
 import type { Environment } from "../environment.js";
-import { createPerplSession } from "./perpl.js";
+import { createPerplSession } from "../plugins/perpl/index.js";
 import { createModel } from "./model.js";
 import { scopeRun } from "./run-scope.js";
 
@@ -55,13 +54,11 @@ export function createRuntime(
     markets,
     perpl: (scope: { tenantId: string; agentId: string }, signal: AbortSignal) =>
       createPerplSession(repository, scope, signal),
-    paper: {
-      ...createPaperService(new PostgresPaperStore(repository.pool), markets),
-      ...createPaperSettlementService(
-        new PostgresPaperStore(repository.pool),
-        new PolymarketPaperResolution(),
-      ),
-    },
+    paper: createPaperPlugin(
+      new PostgresPaperStore(repository.pool),
+      markets,
+      new PolymarketPaperResolution(),
+    ),
     execute(run: RunRecord, signal?: AbortSignal) {
       const execute = createResearchRunner({
         ...(options?.observer ? { observer: options.observer } : {}),

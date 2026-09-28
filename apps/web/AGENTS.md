@@ -116,7 +116,7 @@ explicit **design preview**, and every one of those panels carries `DESIGN PREVI
 EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
 
 `features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
-— against the mirrored limits in `@pickler/api-schema`. It moves to core when an order is really
+— against the mirrored limits in `@pickler/api-schema`. It moves to trading when an order is really
 sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
 same way in both.
 
@@ -407,3 +407,5 @@ needs a session with a profile and no wallet and the design harness has none;
 ## Cloudflare trading pilot
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
+
+The historical `/console` URL redirects to `/studio` with its query preserved. `/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.

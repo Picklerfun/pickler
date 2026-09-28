@@ -42,7 +42,7 @@ The separate local background experiment lives in `src/cloudflare/background`; r
 
 Read [NFL-RESEARCH.md](NFL-RESEARCH.md) for configurable plugins, migration and bounded evaluation. `configure:nfl` explicitly updates both lab agents; `--sports` requires the optional operator keys. `evaluate:nfl -- --all-six` makes paid model calls on synthetic frozen evidence, never CI or production fallback data. The immutable NFL final prompt has its own snapshot and schema; legacy protocols retain their final prompt. Both Node and Cloudflare composition use the same plugin guards and adapters.
 
-Manual simulation is documented in [PAPER-TRADING.md](PAPER-TRADING.md). The composition root binds `PostgresPaperStore` and the core paper service into the same tenant API used by Node and Cloudflare. CLI commands `paper-buy` and `paper-result` require a run ID; requests remain manually initiated. The paper plugin has no LLM tool. Never detach this operation from its request or silently retry an interrupted attempt.
+Manual simulation is documented in [PAPER-TRADING.md](PAPER-TRADING.md). The composition root binds `PostgresPaperStore` and the trading paper service into the same tenant API used by Node and Cloudflare. CLI commands `paper-buy` and `paper-result` require a run ID; requests remain manually initiated. The paper plugin has no LLM tool. Never detach this operation from its request or silently retry an interrupted attempt.
 
 NFL context citations are produced by core's `researchReferences` and remain separate from retrieved sources. The final prompt lists their section restrictions; do not bypass attribution checks or turn plugin availability into sports evidence. Explicit evaluator `--attempt <label>` directories preserve previous results; `--case <id>` restricts a deliberate diagnostic. No default-ledger bypass or automatic paid retry is allowed. Read `NFL-LIVE-VALIDATION.md` for actual acceptance results and `NFL-SOURCES.md` before adding sports providers.
 
@@ -161,15 +161,16 @@ Paper CLI adds `paper-settle alpha|beta RUN_ID` and `paper-summary alpha|beta`. 
 
 ## Continuous paper laboratory
 
-Read [PAPER-STUDY.md](PAPER-STUDY.md) before changing `src/paper-study`. `paper:study` runs an explicit local operator session with atomic JSON persistence, a single-writer lock and HTML/CSV reports. It is separate from production tenant research, never uses signer credentials, and requires explicit paid approval plus configured rates. No paid calls on import or preflight. Preserve interrupted attempts and original budget/time windows on resume.
+## Evaluations
 
-`paper:study run` now uses active Jev-first routing automatically, with explicit paid admission and
-both credentials. Require verified `jevInputPerMillion`; no hidden activation flag. Preserve separate
-Jev/DeepSeek usage, stop after unknown routed charges and retain all old study snapshots. See
-PAPER-STUDY.md for the readiness gate, full-forecast fallback and historical resume boundary.
+Read [EVALUATIONS.md](EVALUATIONS.md) and the [canonical architecture](../../docs/trading-architecture.md).
+The single evaluation command dispatches frozen protocols through `@pickler/trading/evaluation`.
+Local composition lives in `src/evaluation-host/local.ts`; shared scheduling, rounds and financial
+rules belong in trading. Historical protocols expose only their documented read/reconciliation
+commands. Never reintroduce old executable aliases or reset a paused session.
 
-Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
+## Trading package boundary
 
-## Perpl public data plugin
-
-Read [PERPL-DATA.md](PERPL-DATA.md) for the opt-in `perpl:data configure|check|capture` operator command. It uses an existing scoped database agent, no model/key, and never seeds/migrates. Configure is version-checked and disables scheduling. Captures use exclusive private attempt directories, original bodies, hashes and incomplete manifests. `test/perpl-public.probe.ts` is an explicit public-network probe with an in-memory verification agent; it is excluded from automatic tests and never modifies real configurations.
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

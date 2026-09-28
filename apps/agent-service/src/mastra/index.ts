@@ -9,7 +9,7 @@ import { setTimeout } from "node:timers/promises";
 import { createContainer } from "../composition/container";
 import { createApi } from "../api/app";
 import { agentConfigSchema, agentResponseSchema, marketCatalogSchema } from "@pickler/api-schema";
-import { plugins } from "../plugins/registry";
+import { plugins } from "@pickler/agent-runtime/plugins/registry";
 
 let pendingContainer: ReturnType<typeof createContainer> | undefined;
 const getContainer = () => (pendingContainer ??= createContainer());

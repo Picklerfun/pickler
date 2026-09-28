@@ -1,0 +1,38 @@
+{
+  "name": "@pickler/trading",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./polymarket": {
+      "types": "./src/polymarket.ts",
+      "import": "./dist/polymarket.js"
+    },
+    "./perps": {
+      "types": "./src/perps.ts",
+      "import": "./dist/perps.js"
+    },
+    "./strategies": {
+      "types": "./src/strategies.ts",
+      "import": "./dist/strategies.js"
+    },
+    "./evaluation": {
+      "types": "./src/evaluation.ts",
+      "import": "./dist/evaluation.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pickler/core": "*"
+  },
+  "devDependencies": {
+    "@pickler/typescript-config": "*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

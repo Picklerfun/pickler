@@ -1,4 +1,5 @@
-import { createTradingService, PilotError } from "@pickler/core";
+import { createPolymarketTradingPlugin } from "@pickler/agent-runtime/plugins/polymarket-trading";
+import { PilotError } from "@pickler/core";
 import {
   PostgresResearchStore,
   PostgresTradingStore,
@@ -56,7 +57,10 @@ function compose(env: Env) {
     undefined,
     parsed.data.wallet.toLowerCase(),
   );
-  return { service: createTradingService(repository, provider), close: () => owner.close() };
+  return {
+    service: createPolymarketTradingPlugin(repository, provider),
+    close: () => owner.close(),
+  };
 }
 const scopeSchema = z.object({ tenantId: z.string().min(1), agentId: z.string().min(1) }).strict();
 const inputSchema = z

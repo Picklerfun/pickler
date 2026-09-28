@@ -22,6 +22,8 @@ export default defineConfig([
     "**/next-env.d.ts",
     "contracts/out/**",
     "contracts/cache/**",
+    // Vendored Solidity dependencies; they carry their own JavaScript tooling.
+    "contracts/lib/**",
   ]),
   {
     files: [
@@ -37,6 +39,8 @@ export default defineConfig([
             "next",
             "next/*",
             "react",
+            "@pickler/trading",
+            "@pickler/trading/*",
             "@pickler/infrastructure",
             "@pickler/ui",
             "@pickler/web",
@@ -45,6 +49,30 @@ export default defineConfig([
             "@pickler/chain",
             "@mastra/*",
             "@ai-sdk/*",
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["packages/trading/src/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            "node:*",
+            "next",
+            "next/*",
+            "react",
+            "@mastra/*",
+            "@ai-sdk/*",
+            "@pickler/infrastructure",
+            "@pickler/infrastructure/*",
+            "@pickler/agent-runtime",
+            "@pickler/agent-runtime/*",
+            "@pickler/api-schema",
+            "@pickler/web",
           ],
         },
       ],

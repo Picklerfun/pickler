@@ -14,7 +14,7 @@ import {
   type PerpNetwork,
 } from "@pickler/core";
 import { PerplMarketData } from "@pickler/infrastructure";
-import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
+import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
 import { agentConfigSchema, studioOptionsSchema } from "@pickler/api-schema";
 import { PLUGINS } from "@pickler/core";
 import { capturePerplData } from "../src/perpl/capture.js";

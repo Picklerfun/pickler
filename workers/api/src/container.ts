@@ -2,14 +2,13 @@ import {
   VENUE_CONTRACTS,
   createAgentQueries,
   createCustodyService,
-  createPaperService,
-  createPaperSettlementService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
   createWalletSignIn,
   parseEmailAllowlist,
 } from "@pickler/core";
+import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
 import {
   createSupabaseAdmin,
   createSupabaseAgentEventLog,
@@ -20,6 +19,7 @@ import {
   createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
   PostgresResearchStore,
+  PostgresLaunchReadModel,
   PostgresPaperStore,
   PolymarketData,
   PolymarketPaperResolution,
@@ -340,6 +340,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
     growth: createGrowthServices(env, repository.pool),
+    launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     studio: {
@@ -370,13 +371,11 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       wallets: new PostgresCustodyStore(repository.pool),
       balances: ausdBalances(env),
       ...(custody ? { custody: custody.custody } : {}),
-      paper: {
-        ...createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
-        ...createPaperSettlementService(
-          new PostgresPaperStore(repository.pool),
-          new PolymarketPaperResolution(),
-        ),
-      },
+      paper: createPaperPlugin(
+        new PostgresPaperStore(repository.pool),
+        new PolymarketData(),
+        new PolymarketPaperResolution(),
+      ),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");
