@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { probabilityIssues } from "./jev-probability-diagnostics.js";
 import {
   PilotError,
   type QuantInput,
@@ -31,11 +32,11 @@ const answer = z
   .strict()
   .superRefine((a, ctx) => {
     const ps = Object.values(a.probabilities);
-    if (
-      Math.abs(ps.reduce((s, p) => s + p, 0) - 1) > 0.001 ||
-      a.probabilities[a.choice] + 1e-6 < Math.max(...ps)
-    ) {
-      ctx.addIssue({ code: "custom", message: "Invalid distribution" });
+    if (Math.abs(ps.reduce((sum, value) => sum + value, 0) - 1) > 0.001) {
+      ctx.addIssue({ code: "custom", message: "PROBABILITY_SUM_INVALID" });
+    }
+    if (a.probabilities[a.choice]! + 1e-6 < Math.max(...ps)) {
+      ctx.addIssue({ code: "custom", message: "CHOICE_NOT_MAXIMUM" });
     }
   });
 const envelope = z.object({
@@ -191,6 +192,7 @@ export function createCompactQuantReviewer(
           record.diagnostics = {
             version: 1,
             stage: "answers",
+            probabilityIssues: probabilityIssues(parsed.error.issues, compactChecks),
             issueCount: parsed.error.issues.length,
             issues: parsed.error.issues.slice(0, 16).map((i) => ({
               question: compactChecks.find((q) => q === i.path[1]) ?? "unknown",
