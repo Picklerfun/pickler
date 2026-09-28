@@ -77,7 +77,10 @@ export function comparisonTransport(options: {
       if (gate.cooldown > now()) {
         throw new PilotError("PROVIDER_COOLDOWN", "Provider cooldown");
       }
-      await wait(Math.max(0, gate.next - now()), init?.signal);
+      // Timers may wake early; the clock, not timer completion, admits the request.
+      while (gate.next > now()) {
+        await wait(gate.next - now(), init?.signal);
+      }
       await options.guard(plugin);
       init?.signal?.throwIfAborted();
       const startedAt = now();
