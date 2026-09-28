@@ -185,3 +185,8 @@ Valid poor judgments continue all virtual variants; technical Jev failures stop 
 all purchases. No retries, fallback, prompt tuning, hosted changes or automatic follow-up campaigns.
 The six-hour run shares initial/refreshed snapshots across A/B/C/D and records fixed slots.
 Offline reports import explicit historical paths without reconstructing unobserved variants.
+
+An explicitly user-authorized benchmark continuation uses a new study, retaining all historical
+STOP files and reservations. `paper:benchmark diagnose CONFIG --case CASE_ID --allow-paid` makes
+one current-reviewer call in an otherwise empty frozen study; it cannot unlock a prospective run.
+All v4 studies share the original USD 1.25 and 386 reservations. No automatic failed-call retry.
