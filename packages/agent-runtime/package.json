@@ -71,6 +71,10 @@
     "./composition/quant-review": {
       "types": "./src/composition/quant-review.ts",
       "import": "./dist/composition/quant-review.js"
+    },
+    "./composition/compact-quant-review": {
+      "types": "./src/composition/compact-quant-review.ts",
+      "import": "./dist/composition/compact-quant-review.js"
     }
   },
   "scripts": {
