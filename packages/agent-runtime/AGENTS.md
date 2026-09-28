@@ -77,3 +77,6 @@ system interpretation without books/candles, and asks four atomic consistency qu
 high-confidence contradiction vetoes; uncertainty is not approval. Both probability and confidence
 derive from the same distribution. Never include synthetic labels or extend this adapter to hosted
 research implicitly. Invalid answers retain usage and allowlisted diagnostics without retries.
+
+Quantitative reviewer diagnostics now distinguish PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM
+using fixed labels only. Thresholds, prompts, rejected-answer policy and usage retention are unchanged.
