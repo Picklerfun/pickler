@@ -168,3 +168,5 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 ## Quantitative BTC paper pilot
 
 `paper:quant` implements the separate version-2 local BTC quantitative laboratory. Read QUANT-PAPER.md. It has explicit preflight/history/run/settle/report commands, a shared campaign lock and carried-forward $5 accounting. New paid reservations are capped at $0.10. Settle cannot discover, forecast or purchase. Preserve historical STOP files and snapshots; do not describe Coinbase proxy history as official Polymarket performance.
+
+QUANT-PAPER-VALIDATION.md records controlled checks and the actual prospective study separately. The report may replay saved books to explain both outcome costs/edges, but it must not mutate decisions or create fills. Compare Brier against available market quotes on matched observations, and preserve explicit failed/pending cases.
