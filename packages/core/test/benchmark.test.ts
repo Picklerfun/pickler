@@ -435,3 +435,14 @@ test("known Brier/calibration and paired valid abstentions do not use future quo
   row.variants[2]!.status = "failed";
   assert.equal(pairedObservations([row], "C", "D").length, 0);
 });
+
+test("explicit continuation retains previous benchmark money and call ceilings", async () => {
+  for (const prior of [{ priorBenchmarkReviewCount: 386 }, { priorBenchmarkReservedUsd: 1.25 }]) {
+    const f = fixture();
+    Object.assign(f.state, prior);
+    await runBenchmarkCase(f.state, f.input.item, f.ports);
+    assert.equal(f.calls(), 0);
+    assert.equal(f.state.paidStopped, "API_BUDGET_EXHAUSTED");
+    assert.equal(benchmarkReserved(f.state), 0);
+  }
+});
