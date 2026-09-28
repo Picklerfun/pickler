@@ -1,5 +1,10 @@
 import { z } from "zod";
+import { perplConfigSchema } from "./perps.js";
 export const toolNameSchema = z.enum([
+  "listPerpMarkets",
+  "getPerpSnapshot",
+  "getPerpOrderBook",
+  "getPerpCandles",
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -71,7 +76,8 @@ export const agentConfigSchema = z
       .optional(),
     marketScope: marketScopeSchema.optional(),
     categoryIds: z.array(z.string().regex(/^\d+$/)).max(10).optional(),
-    tools: z.array(toolNameSchema).max(6),
+    perpl: perplConfigSchema.optional(),
+    tools: z.array(toolNameSchema).max(10),
     plugins: z
       .object({
         version: z.literal(1),
@@ -84,9 +90,10 @@ export const agentConfigSchema = z
               "the-odds-api",
               "paper-trading",
               "polymarket-trading",
+              "perpl",
             ]),
           )
-          .max(6),
+          .max(7),
       })
       .strict()
       .optional(),

@@ -6,7 +6,9 @@ import {
 } from "./market-scope.js";
 import type { PluginConfig } from "./plugins.js";
 import type { ResearchReport, SportsContext, ResearchReference } from "./nfl.js";
-export const TOOL_NAMES = [
+import { PERP_TOOLS, type PerplConfig } from "../perps/types.js";
+import { assertPerplConfig } from "../perps/service.js";
+export const RESEARCH_TOOL_NAMES = [
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -14,6 +16,7 @@ export const TOOL_NAMES = [
   "getSportsContext",
   "getExternalOdds",
 ] as const;
+export const TOOL_NAMES = [...RESEARCH_TOOL_NAMES, ...PERP_TOOLS] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 export const MAX_LIMITS = {
   searches: 3,
@@ -31,6 +34,7 @@ export interface DiscoveryPolicy {
   maxHorizonDays: number;
 }
 export interface AgentConfig {
+  perpl?: PerplConfig | undefined;
   trading?: import("../trading/types.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
   plugins?: PluginConfig | undefined;
@@ -351,7 +355,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   profile:
     "Research carefully. Read resolution rules, seek contrary evidence, and abstain when evidence is insufficient.",
   categoryIds: [],
-  tools: [...TOOL_NAMES],
+  tools: [...RESEARCH_TOOL_NAMES],
   intervalHours: 4,
   limits: { ...MAX_LIMITS },
   uncertaintyPolicy: { ...DEFAULT_UNCERTAINTY_POLICY },
@@ -373,6 +377,9 @@ export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
 }
 
 export function assertConfig(config: AgentConfig): void {
+  if (config.perpl) {
+    assertPerplConfig(config.perpl);
+  }
   if (
     config.trading &&
     (config.trading.version !== 1 || !["off", "manual", "automatic"].includes(config.trading.mode))
@@ -424,6 +431,7 @@ export function assertConfig(config: AgentConfig): void {
             "the-odds-api",
             "paper-trading",
             "polymarket-trading",
+            "perpl",
           ].includes(id),
       ))
   ) {
