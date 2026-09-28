@@ -115,7 +115,7 @@
       <div class="tldr">
         <h3>Resumen ejecutivo</h3>
         <p>Los pills Ask y Agents de Market dejan de ser «coming soon»: un agente (Claude Sonnet 5 con su persona) da una lectura pagada con créditos simulados sobre una celda de la matriz nivel × horizonte —probabilidad, tres razones, límites— y un cron la resuelve right/wrong contra el mark real de Perpl y avisa por push. Agents lista los agentes con récord verificable; Trade sigue manual y gana order book L2 y «Trade this level» con recordatorios. Backend propio en el esquema <code>mobile</code> del Supabase compartido con Gilbert.</p>
-        <p>Decisiones que lo ordenan: la matriz es 5 niveles × 4 horizontes sobre el mark real; el cobro es simulado (20 créditos por wallet, reembolso si la lectura no llega en 60 s); la identidad es una firma de wallet válida 24 h; el modelo es <code>claude-sonnet-5</code> con salida estructurada; los pushes salen del servidor por APNs directo (con fallback local decidido de antemano). Sin cierre automático ni take-profit: fuera del bounty. Cuatro fases con checkpoint; al cierre, build 6 de TestFlight. Deadline: 13 oct 2026.</p>
+        <p>Decisiones que lo ordenan: la matriz es 5 niveles × 4 horizontes sobre el mark real; el cobro es simulado (20 créditos por wallet, reembolso si la lectura no llega en 60 s); la identidad es una firma de wallet válida 24 h; el modelo es <code>claude-sonnet-5</code> con salida estructurada; los pushes salen del servidor por APNs directo (con fallback local decidido de antemano). Sin cierre automático ni take-profit: fuera del bounty. Cuatro fases con checkpoint; al cierre, build 10 de TestFlight. Deadline: 13 oct 2026.</p>
       </div>
     </section>
 
@@ -220,7 +220,7 @@
             <summary>Pendientes (no bloqueantes)</summary>
             <ul>
               <li><b>Resuelto (2026-09-20):</b> <b>Push real de resolución sin ver llegar</b>: se vio llegar el push real al simulador (<code>{"apns":{"status":200,"reason":null}}</code> y banner en pantalla) — audit F1 §8.</li>
-              <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> (developer.apple.com): insumo de Jesús para el iPhone y TestFlight (F4); el simulador no la necesita.</li>
+              <li><b>Resuelto en el build 6:</b> capability <b>Push Notifications</b> habilitada en el App ID <code>fun.pickler.app</code> y perfil regenerado; lo pendiente es la key/secrets APNs del servidor.</li>
               <li><b>Resuelto (2026-09-20):</b> Decisión de <code>PUSH_MODE</code>: se queda en <code>"apns"</code> (el fallback local de D10 sigue implementado y probado por test) — audit F1 §8.</li>
               <li><b>Resuelto (2026-09-21):</b> Markets queda <code>readOnly</code> sin trading key: la lista ahora siempre abre el mercado (en Ask sin key, en Trade con key) y el gate de Perpl vive sólo en la pestaña Trade — plan <code>2026-09-21-markets-ask-gate.md</code>, tracker <code>dev/2026-09-21-markets-ask-gate.html</code>.</li>
               <li>El prompt de Face ID al firmar la sesión desde el gate <b>no se observó en el simulador</b> (SecureStore resolvió sin prompt tras Lock): confirmar en el iPhone.</li>
@@ -273,7 +273,7 @@
             <ul>
               <li>Falta el push <b>real</b> de recordatorio: <code>pushSent: 0</code> en los ticks de cron del fill del 23 sep porque los secretos APNs siguen ausentes; el pipeline de recordatorios ya corrió limpio end-to-end en el simulador (heredado de F1/F2, residual 1).</li>
               <li>Dos keys de trading sobrantes en la cuenta #620 sin revocar (Jesús, 2026-09-22: «No / todavía no»).</li>
-              <li>Capability <b>Push Notifications</b> en el App ID <code>fun.pickler.app</code> y la key APNs siguen pendientes (heredado de F1/F2): el push real de recordatorio depende de ellas.</li>
+              <li>La capability <b>Push Notifications</b> quedó habilitada desde el build 6; la key/secrets APNs del servidor siguen pendientes (heredado de F1/F2), y de ellos depende el push real de recordatorio.</li>
               <li>Persona real del agente <code>jesus</code> sigue en placeholder (heredado de F1).</li>
               <li><code>market.tsx</code> no cierra el teclado numérico del margen (sin <code>Keyboard.dismiss()</code> ni tecla "Done"): un tap detrás del teclado puede agregar un dígito extra al margen (visto dos veces en el recorrido del 23 sep).</li>
               <li>En Maestro, <code>tapOn</code> por texto exacto es poco confiable en esta app ("Close" falló repetidamente pese a estar visible) — preferir siempre <code>accessibilityLabel</code>.</li>
@@ -283,7 +283,7 @@
       </article>
 
       <!-- Phase 4 ====================================================== -->
-      <article class="phase-card" data-phase="4" data-status="pending">
+      <article class="phase-card" data-phase="4" data-status="plan_ready">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F4</span>
@@ -291,19 +291,32 @@
           </div>
           <div class="phase-status-control">
             <select aria-label="Phase 4 status">
-              <option value="pending" selected>pending</option>
-              <option value="plan_ready">plan_ready</option>
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
             </select>
           </div>
         </div>
         <div class="phase-body">
-          <p><code>buildNumber</code> siguiente (los builds 6–9 de TestFlight ya subieron otras fases; éste sube con Ask + Trade completos de F3), archive con entitlement <code>aps-environment</code> verificado, upload, <code>VALID</code> con el grupo Equipo y tracker <code>pickler-dev-new</code>. En el iPhone de Jesús: una lectura completa hasta el push de resolución y un nivel con recordatorio.</p>
+          <p><code>buildNumber 10</code> con Ask + Trade completos de F3 y el Worker AASA ya desplegado incorporado a Git; archive con entitlement <code>aps-environment</code> verificado, upload, <code>VALID</code> con el grupo Equipo y tracker <code>pickler-dev-new</code>. En el iPhone de Jesús: humo de passkey, Ask/Agents y order book L2. El push real queda como residual explícito hasta provisionar APNs.</p>
           <div class="phase-meta">
-            <div><div class="k">Entregable</div><div class="v">Build con Ask + Trade completos distribuido al grupo Equipo, probado en el iPhone de Jesús: una lectura hasta el push y un nivel con recordatorio; tracker en <code>docs/overview/dev/</code></div></div>
-            <div><div class="k">Prerequisitos</div><div class="v">F3; autorización explícita de Jesús para subir</div></div>
+            <div><div class="k">Entregable</div><div class="v">Git y TestFlight sincronizados: AASA versionado; build 0.1.0 (10) distribuido a Equipo y probado en el iPhone con passkey + Ask/Agents + book L2; tracker y audit con APNs pendiente</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F3; autorización de Jesús para commit, push y subida (otorgada 2026-09-28)</div></div>
           </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/5</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> Task 1: recuperar y verificar <code>infra/aasa-worker</code> sin redesplegar Cloudflare</label></li>
+              <li><label><input type="checkbox"> Task 2: bump a build 10, config Expo, tests y TypeScript</label></li>
+              <li><label><input type="checkbox"> Task 3: revisión independiente, integración y push de la release</label></li>
+              <li><label><input type="checkbox"> Task 4: archive, upload y verificación <code>VALID</code> + grupo Equipo</label></li>
+              <li><label><input type="checkbox"> Task 5: humo en iPhone, tracker build 10, audit y cierre sincronizado</label></li>
+            </ol>
+          </details>
         </div>
       </article>
 

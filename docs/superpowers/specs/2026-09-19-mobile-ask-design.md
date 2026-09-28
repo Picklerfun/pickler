@@ -311,10 +311,12 @@ autorización de Jesús en esa sesión.
   desde Markets (0.00002 BTC @ 86588.1, fee 0.0005 AUSD); trading 104.86 free → 103.13 free + 1.73 en
   posición → 104.86 free; RPC on-chain AUSD 29.00 / MON 0.03850114 sin cambio. Ver audit F3 §1 (tabla por
   task e intento definitivo), §4 (saldos antes/después) y §5 (residual del push real).
-- **F4**: `buildNumber` siguiente (los builds 6–9 de TestFlight ya subieron otras fases; éste sube
-  con Ask + Trade completos de F3), archive, upload, `VALID` con el grupo Equipo, tracker
-  `docs/overview/dev/<fecha>-testflight-build<N>.html`; en el iPhone de Jesús: una lectura completa
-  (pedir → push de resolución) y un nivel con recordatorio.
+- **F4**: **(F4, decisión aprobada 2026-09-28)** `buildNumber 10` con Ask + Trade completos de F3;
+  incorporar a Git el Worker AASA que ya está desplegado (sin redesplegar), archive, upload, `VALID`
+  con el grupo Equipo y tracker `docs/overview/dev/2026-09-28-testflight-build10.html`. En el iPhone
+  de Jesús: humo de passkey, Ask/Agents y order book L2, sin abrir una orden ni mover fondos. La
+  entrega push real queda como residual separado hasta provisionar los secretos APNs; no bloquea la
+  sincronización de Git/TestFlight ni se reporta como verificada.
 
 ---
 

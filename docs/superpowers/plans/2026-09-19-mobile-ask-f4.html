@@ -1,0 +1,440 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-19-mobile-ask-f4.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask — F4: sincronización de Git y TestFlight build 10 — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-19-mobile-ask-f4">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-19-mobile-ask-f4.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Ask — F4: sincronización de Git y TestFlight build 10 — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-19-mobile-ask-f4.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan">Decisiones del plan</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-recuperar-y-verificar-infraaasa-worker">Task 1: Recuperar y verificar `infra/aasa-worker`</a></li><li><a href="#task-2-preparar-y-probar-la-app-como-build-10">Task 2: Preparar y probar la app como build 10</a></li><li><a href="#task-3-revision-independiente-integracion-y-push">Task 3: Revisión independiente, integración y push</a></li><li><a href="#task-4-archivar-subir-y-verificar-testflight-build-10">Task 4: Archivar, subir y verificar TestFlight build 10</a></li><li><a href="#task-5-humo-en-iphone-tracker-y-cierre-de-f4">Task 5: Humo en iPhone, tracker y cierre de F4</a></li><li><a href="#evidencia-minima-para-declarar-la-sincronizacion-terminada">Evidencia mínima para declarar la sincronización terminada</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-19-mobile-ask-f4.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="ask-f4-sincronizacion-de-git-y-testflight-build-10-implementation-plan">Ask — F4: sincronización de Git y TestFlight build 10 — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use <code>executing-plans</code> task by task. Stop at the checkpoints; do not broaden this release into APNs provisioning or unrelated cleanup.
+</blockquote>
+<p><strong>Goal:</strong> Dejar una base única y auditable antes del siguiente desarrollo: el <code>aasa-worker</code> ya desplegado queda versionado, <code>origin/main</code> contiene exactamente la app con Ask F3, y TestFlight distribuye <code>0.1.0 (10)</code> al grupo interno «Equipo». El build 10 registra la ausencia conocida de secretos APNs; no promete una entrega push real.</p>
+<p><strong>Architecture:</strong> Es una fase de release, no una nueva feature. La fuente de verdad empieza en <code>origin/main</code> (<code>df657c3</code> al escribir este plan). El Worker no se vuelve a desplegar: se recuperan exactamente los tres archivos sin seguimiento del checkout principal y se contrasta su respuesta con <code>pickler.fun</code> y el CDN de Apple. La app sólo cambia <code>ios.buildNumber</code> de <code>9</code> a <code>10</code>. Tras tests y revisión independiente, se integra y pushea; el <code>.ipa</code> se archiva desde el commit integrado, se sube y se valida por la API de App Store Connect. El cierre actualiza el overview vivo de Ask, crea el tracker dev del build 10 y deja audit de F4.</p>
+<p><strong>Tech Stack:</strong> Git worktrees; Cloudflare Worker/TypeScript (<code>wrangler</code> sólo en <code>--dry-run</code>); Expo SDK 57 / React Native 0.86; Jest + TypeScript; Xcode 26.2; <code>xcrun altool</code>; App Store Connect API; documentación Pickler (<code>docs-md-to-html.mjs</code>, <code>render-check.mjs</code>, manifest).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, F4 del overview <code>docs/overview/2026-09-19-mobile-ask.html</code>. Estado previo: F1–F3 <code>completed</code>, F4 <code>pending</code>; TestFlight más reciente = build 9 <code>VALID</code> y en «Equipo»; Ask F3 ya está en <code>origin/main</code> pero no en TestFlight.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree: <code>.claude/worktrees/testflight-build10-sync</code>; rama <code>release/testflight-build10-sync</code>; base verificada <code>origin/main</code> <code>df657c3</code>. Todo cambio se hace aquí hasta la integración. Nunca <code>git add -A</code>; agregar archivos por nombre.</li>
+<li>La aprobación de Jesús cubre <strong>commit, push a <code>main</code> y subida del build 10</strong>, pero no borra checkpoints: parar si cambia <code>origin/main</code>, si el material AASA difiere de los hashes aprobados, si una prueba falla, si el archive no contiene build 10/entitlements esperados o si Apple no asigna el build a «Equipo».</li>
+<li>El checkout principal contiene la única copia sin seguimiento de <code>infra/aasa-worker/</code>. Preservarla antes de integrar: moverla a un backup explícito bajo <code>/private/tmp</code>, mergear, comparar hashes y conservar el backup hasta el cierre. No borrar ni sobrescribir a ciegas.</li>
+<li>Hashes de la copia aprobada (2026-09-28): <code>README.md</code> <code>8e50b8625cda716821ae25c879c9db852f7a85c09f44480f9c56c133633cdca9</code>; <code>src/index.ts</code> <code>f56ebbf686e1bf2c2ded5a97da67caac244766653b97c985be91943fdf734b71</code>; <code>wrangler.jsonc</code> <code>bf00c2adfa3e4ce1e4acda84d94283981227d4bda1c0afb9a80959d1e4498269</code>.</li>
+<li><strong>No desplegar Cloudflare</strong>: hoy tanto <code>https://pickler.fun/.well-known/apple-app-site-association</code> como el CDN de Apple responden <code>200 application/json</code> con <code>2PBQJ37Q8W.fun.pickler.app</code>. Sólo dry-run local y verificación HTTP de lectura.</li>
+<li>APNs real queda fuera de F4 por decisión aprobada. Los secretos siguen ausentes y los recordatorios pueden procesarse con <code>pushSent: 0</code>; se documenta como residual. No crear keys, cambiar capabilities ni desplegar backend en esta fase.</li>
+<li>Credenciales ASC: leer <code>apps/mobile/.env.asc</code> del checkout principal y el <code>.p8</code> existente en <code>/Users/josedejesusacevedoflores/.appstoreconnect/private_keys/</code>; nunca copiarlos al repo, imprimirlos ni incluirlos en evidencia.</li>
+<li>Tests con el lock global: desde <code>apps/mobile</code>, <code>bash ../../scripts/test-lock.sh npm test</code>. <code>npx tsc --noEmit</code> después. Registrar conteos reales; no copiar los históricos.</li>
+<li>Antes de integrar, revisión independiente obligatoria de requisitos, diff y evidencia. El revisor no escribe. Después de integrar, el <code>.ipa</code> debe corresponder al SHA de código/infra que entró a <code>main</code>; commits posteriores pueden ser sólo documentación de la subida.</li>
+<li>La prueba en iPhone no abre operaciones ni mueve fondos: instalar build 10, arranque/sign-in por passkey, abrir BTC, comprobar Ask/Agents y el book L2 de Trade. La entrega push real se marca no verificada por APNs, no se fuerza una orden.</li>
+</ul>
+<h2 id="decisiones-del-plan">Decisiones del plan</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Razón</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td>El Worker desplegado se versiona sin redeploy.</td><td>Producción y el CDN de Apple ya sirven el cuerpo correcto; desplegar otra vez añadiría riesgo sin cambiar el resultado.</td></tr>
+<tr><td>P2</td><td>Build 10 contiene el <code>main</code> actual con Ask F3 y el único cambio de app es <code>buildNumber: &quot;10&quot;</code>.</td><td>Apple exige un número nuevo; cualquier cambio funcional adicional rompería la idea de baseline sincronizada.</td></tr>
+<tr><td>P3</td><td>APNs no bloquea <code>VALID</code> + grupo «Equipo» ni el cierre de sincronización, pero queda visible en tracker, audit y overview.</td><td>Jesús aprobó separar la deuda de notificaciones de esta liberación.</td></tr>
+<tr><td>P4</td><td>F4 sólo pasa a <code>completed</code> después de distribución y humo real en el iPhone.</td><td><code>VALID</code> prueba procesamiento, no que el binario arranque ni que los passkeys sigan resolviendo con el AASA vivo.</td></tr>
+<tr><td>P5</td><td>El tracker build 10 se crea después de la respuesta real de Apple.</td><td><code>shipped</code> exige evidencia de <code>VALID</code> y testers asignados; no se anticipan UUID, tamaños ni estados.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Cambio</th></tr>
+</thead>
+<tbody>
+<tr><td><code>infra/aasa-worker/README.md</code></td><td>1</td><td>Versionar operación y verificación del Worker ya desplegado.</td></tr>
+<tr><td><code>infra/aasa-worker/src/index.ts</code></td><td>1</td><td>Versionar handler exacto del AASA.</td></tr>
+<tr><td><code>infra/aasa-worker/wrangler.jsonc</code></td><td>1</td><td>Versionar ruta exacta de zona.</td></tr>
+<tr><td><code>apps/mobile/app.config.ts</code></td><td>2</td><td><code>ios.buildNumber</code> 9 → 10; ningún otro cambio funcional.</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> + HTML</td><td>plan / 5</td><td>Corregir F4 con build 10 y APNs como residual aprobado.</td></tr>
+<tr><td><code>docs/superpowers/plans/2026-09-19-mobile-ask-f4.md</code> + HTML</td><td>plan</td><td>Este plan y su HTML generado.</td></tr>
+<tr><td><code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code></td><td>plan / 5</td><td>F4 <code>plan_ready</code> ahora; <code>completed</code> sólo con evidencia final.</td></tr>
+<tr><td><code>docs/overview/dev/2026-09-28-testflight-build10.html</code></td><td>5</td><td>Tracker con evidencia real de archive/upload/ASC/iPhone.</td></tr>
+<tr><td><code>docs/superpowers/audits/2026-09-28-mobile-ask-f4-rulings.md</code></td><td>5</td><td>Rulings, correcciones, evidencia, residuales y rollback de F4.</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-recuperar-y-verificar-infraaasa-worker">Task 1: Recuperar y verificar <code>infra/aasa-worker</code></h3>
+<p><strong>Files:</strong> Create <code>infra/aasa-worker/README.md</code>, <code>infra/aasa-worker/src/index.ts</code>, <code>infra/aasa-worker/wrangler.jsonc</code> con el contenido exacto de la copia aprobada del checkout principal.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Revalidar base y propiedad</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/testflight-build10-sync
+git fetch origin main --prune
+git rev-list --left-right --count HEAD...origin/main
+git status --short --branch</code></pre>
+<p>Expected: <code>0 0</code>, árbol limpio salvo los docs de este plan. Si <code>origin/main</code> avanzó, parar y revisar el diff antes de rebasear.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Revalidar la fuente antes de copiar</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict
+shasum -a 256 infra/aasa-worker/README.md infra/aasa-worker/src/index.ts infra/aasa-worker/wrangler.jsonc</code></pre>
+<p>Expected: los tres hashes de Global Constraints. Si alguno cambió, parar: puede pertenecer a otra sesión.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Añadir los tres archivos exactos al worktree</strong></label></li>
+</ul>
+<p>Usar <code>apply_patch</code> para reproducir el contenido aprobado; no modificar copy, ruta, account id ni cache headers. Después:</p>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/testflight-build10-sync
+shasum -a 256 infra/aasa-worker/README.md infra/aasa-worker/src/index.ts infra/aasa-worker/wrangler.jsonc
+git diff --check
+git status --short</code></pre>
+<p>Expected: hashes idénticos; sólo tres archivos AASA más los docs del plan.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Probar el artefacto y el estado vivo sin desplegar</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd infra/aasa-worker
+npx wrangler@latest deploy --dry-run --outdir /private/tmp/pickler-aasa-worker-dry-run
+curl -sS -D /private/tmp/pickler-aasa-origin.headers https://pickler.fun/.well-known/apple-app-site-association -o /private/tmp/pickler-aasa-origin.json
+curl -sS -D /private/tmp/pickler-aasa-apple.headers https://app-site-association.cdn-apple.com/a/v1/pickler.fun -o /private/tmp/pickler-aasa-apple.json</code></pre>
+<p>Expected: dry-run compila; ambos endpoints <code>200</code>, <code>content-type: application/json</code>, sin redirect, y ambos cuerpos son exactamente <code>{&quot;webcredentials&quot;:{&quot;apps&quot;:[&quot;2PBQJ37Q8W.fun.pickler.app&quot;]}}</code>. Un fallo HTTP bloquea la release; no improvisar un deploy.</p>
+<hr>
+<h3 id="task-2-preparar-y-probar-la-app-como-build-10">Task 2: Preparar y probar la app como build 10</h3>
+<p><strong>Files:</strong> Modify <code>apps/mobile/app.config.ts</code> sólo en <code>ios.buildNumber</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Instalar y medir baseline</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/testflight-build10-sync/apps/mobile
+npm ci
+bash ../../scripts/test-lock.sh npm test
+npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: suites/tests reales en verde y <code>TSC-OK</code>. Cualquier rojo se investiga; no se atribuye a “preexistente” sin demostrarlo contra <code>origin/main</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Demostrar el número viejo antes del cambio</strong></label></li>
+</ul>
+<pre><code class="language-bash">rg -n &#39;buildNumber: &quot;9&quot;&#39; app.config.ts</code></pre>
+<p>Expected: una coincidencia. Cambiar únicamente <code>buildNumber: &quot;9&quot;</code> por <code>buildNumber: &quot;10&quot;</code> con <code>apply_patch</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Validar configuración y regresión completa</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo config --type public --json | jq &#39;{name,version,ios:{bundleIdentifier:.ios.bundleIdentifier,buildNumber:.ios.buildNumber,associatedDomains:.ios.associatedDomains}}&#39;
+bash ../../scripts/test-lock.sh npm test
+npx tsc --noEmit &amp;&amp; echo TSC-OK
+cd ../..
+git diff --check
+git add -N infra/aasa-worker/README.md infra/aasa-worker/src/index.ts infra/aasa-worker/wrangler.jsonc docs/superpowers/plans/2026-09-19-mobile-ask-f4.md docs/superpowers/plans/2026-09-19-mobile-ask-f4.html
+git diff --stat origin/main
+git diff origin/main -- apps/mobile/app.config.ts infra/aasa-worker</code></pre>
+<p>Expected: <code>Pickler</code>, versión <code>0.1.0</code>, bundle <code>fun.pickler.app</code>, build <code>10</code>, associated domain <code>webcredentials:pickler.fun</code>; tests y tsc verdes; <code>git diff origin/main</code> incluye también los archivos nuevos (intent-to-add) y el diff funcional queda limitado al bump y a los tres archivos del Worker.</p>
+<hr>
+<h3 id="task-3-revision-independiente-integracion-y-push">Task 3: Revisión independiente, integración y push</h3>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Revisión independiente</strong></label></li>
+</ul>
+<p>Entregar al revisor: spec F4, este plan, <code>git status --short</code> y el <strong>diff completo de trabajo</strong> <code>git diff origin/main</code> (los archivos nuevos deben aparecer gracias al <code>git add -N</code> de Task 2), hashes AASA, salida de dry-run/HTTP, tests/tsc y config Expo. Debe comprobar lógica del Worker, exactitud de ruta/body/headers, ausencia de secretos, que no haya cambio funcional extra y que build 10 sea único. Registrar veredicto y fixes en el audit; re-ejecutar evidencia si hay correcciones. Si el diff no muestra <code>infra/aasa-worker/*</code> y los dos archivos del plan, la revisión es inválida y no se integra.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Commit de release con archivos explícitos</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add infra/aasa-worker/README.md infra/aasa-worker/src/index.ts infra/aasa-worker/wrangler.jsonc apps/mobile/app.config.ts docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-19-mobile-ask-f4.md docs/superpowers/plans/2026-09-19-mobile-ask-f4.html docs/overview/2026-09-19-mobile-ask.html docs/overview/data/manifest.js
+git diff --cached --check
+git commit -m &quot;chore(release): preparar TestFlight build 10 y versionar AASA&quot;</code></pre>
+<p>Antes del commit, los HTML/docs deben haber pasado los checks de la etapa de plan y sólo contener F4 <code>plan_ready</code>, no resultados futuros.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Preservar la copia sin seguimiento e integrar en <code>main</code></strong></label></li>
+</ul>
+<p>En el checkout principal, verificar nuevamente que <code>main == origin/main</code> y que el único cambio sea <code>infra/aasa-worker/</code>. Mover esa carpeta a <code>/private/tmp/pickler-aasa-worker-pre-sync-2026-09-28</code> (abortar si el destino ya existe), hacer merge no interactivo de <code>release/testflight-build10-sync</code>, comparar los tres hashes entre el backup y los archivos ya trackeados, y conservar el backup hasta el cierre.</p>
+<pre><code class="language-bash">set -euo pipefail
+cd /Users/josedejesusacevedoflores/Documents/predict
+git fetch origin main --prune
+git rev-list --left-right --count main...origin/main
+git status --short --branch
+test ! -e /private/tmp/pickler-aasa-worker-pre-sync-2026-09-28
+mv infra/aasa-worker /private/tmp/pickler-aasa-worker-pre-sync-2026-09-28
+(cd /private/tmp/pickler-aasa-worker-pre-sync-2026-09-28 &amp;&amp; shasum -a 256 README.md src/index.ts wrangler.jsonc) &gt; /private/tmp/pickler-aasa-before.sha256
+git merge --no-ff release/testflight-build10-sync -m &quot;Merge release/testflight-build10-sync: AASA versionado y build 10 preparado&quot;
+(cd infra/aasa-worker &amp;&amp; shasum -a 256 README.md src/index.ts wrangler.jsonc) &gt; /private/tmp/pickler-aasa-after.sha256
+diff -u /private/tmp/pickler-aasa-before.sha256 /private/tmp/pickler-aasa-after.sha256
+git push origin main
+git fetch origin main
+git rev-list --left-right --count main...origin/main
+git status --short --branch</code></pre>
+<p>Expected: <code>0 0</code>, checkout principal limpio, Worker trackeado. Si el merge o push falla, no archivar todavía.</p>
+<hr>
+<h3 id="task-4-archivar-subir-y-verificar-testflight-build-10">Task 4: Archivar, subir y verificar TestFlight build 10</h3>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Archivar desde el <code>main</code> integrado</strong></label></li>
+</ul>
+<p>Registrar <code>git rev-parse HEAD</code> como <code>RELEASE_SHA</code>. Desde <code>apps/mobile</code> del checkout principal, cargar en el entorno <code>ASC_KEY_ID</code>/<code>ASC_ISSUER_ID</code> desde su <code>.env.asc</code> sin imprimirlos y ejecutar:</p>
+<pre><code class="language-bash">npm ci
+npm run ios:archive</code></pre>
+<p>Expected: <code>ARCHIVE SUCCEEDED</code>, <code>EXPORT SUCCEEDED</code>, <code>build/export/Pickler.ipa</code>. Verificar con herramientas de Apple/plist: versión <code>0.1.0</code>, build <code>10</code>, bundle <code>fun.pickler.app</code>, MinimumOSVersion <code>18.0</code>, <code>application-identifier</code> del team correcto y entitlement <code>aps-environment</code>. Registrar tamaño y SHA-256 del <code>.ipa</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Subir una sola vez</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm run ios:upload</code></pre>
+<p>Expected: <code>UPLOAD SUCCEEDED</code> sin <code>UPLOAD FAILED</code>, <code>ERROR ITMS</code> ni <code>Validation failed</code>; capturar Delivery UUID y log completo en scratch fuera del repo. Si el comando es ambiguo o falla, no reintentar hasta resolver si Apple aceptó el binario.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar App Store Connect por API</strong></label></li>
+</ul>
+<p>Consultar <code>GET /v1/builds?filter[app]=6812631756&amp;filter[version]=10&amp;include=preReleaseVersion</code> hasta estado terminal, con espera acotada y actualizaciones al usuario. Luego listar <code>/v1/betaGroups?filter[app]=6812631756</code> y <code>/v1/betaGroups/&lt;Equipo&gt;/builds</code>.</p>
+<p>Expected: build <code>0.1.0 (10)</code>, <code>processingState: VALID</code>, <code>expired: false</code>, y build 10 presente en el grupo «Equipo» (<code>hasAccessToAllBuilds: true</code>). <code>VALID</code> sin grupo no se declara distribuido.</p>
+<hr>
+<h3 id="task-5-humo-en-iphone-tracker-y-cierre-de-f4">Task 5: Humo en iPhone, tracker y cierre de F4</h3>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Prueba acotada en el iPhone de Jesús</strong></label></li>
+</ul>
+<p>Jesús instala build 10 desde TestFlight y confirma: arranque; crear/abrir cuenta con passkey (prueba el AASA); Markets → BTC; pills Ask y Agents cargan; Trade muestra order book L2 vivo. No crear orden ni mover fondos. Registrar dispositivo/iOS y resultado real. Push real queda “no verificado — APNs pendiente”, no se simula como éxito.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Audit y estado del proyecto</strong></label></li>
+</ul>
+<p>Continuar <strong>en el worktree de la release</strong>, nunca editando docs directamente en <code>main</code>. Primero llevar la rama al merge ya pusheado:</p>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/testflight-build10-sync
+git fetch origin main --prune
+git merge --ff-only origin/main
+git status --short --branch</code></pre>
+<p>Expected: fast-forward al merge de release y árbol limpio. Crear <code>docs/superpowers/audits/2026-09-28-mobile-ask-f4-rulings.md</code> con: rulings, correcciones, <code>RELEASE_SHA</code>, hashes AASA/HTTP, tests/tsc, archive/export/IPA, Delivery UUID, respuesta ASC/grupo, resultado del iPhone, residual APNs, ubicación del backup y rollback. Actualizar el estado F4 en el spec, overview y manifest. Cambiar F4 a <code>completed</code>, marcar sus cinco tasks y actualizar el status global a <code>completed</code> sólo si Step 1 pasó; si falta el iPhone, mantener F4 <code>in_progress</code> y explicar el único bloqueo.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tracker del build 10</strong></label></li>
+</ul>
+<p>Usar <code>.agents/skills/pickler-dev-new/</code> para crear <code>docs/overview/dev/2026-09-28-testflight-build10.html</code> y entrada al principio del manifest, <code>types: [&#39;feature&#39;]</code>, tags <code>mobile/testflight/ios/ask/perpl</code>. <code>status: shipped</code> sólo con <code>VALID</code> + grupo «Equipo». Completar “Qué cambió”, archivos y validación desde el diff/audit/log real; marcar explícitamente el estado del iPhone y APNs.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Generar, renderizar y mirar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm run docs:html
+npm run docs:check
+npm run agents:check
+node scripts/agent-infra/render-check.mjs /private/tmp/pickler-build10-docs/overview 2026-09-19-mobile-ask
+node scripts/agent-infra/render-check.mjs /private/tmp/pickler-build10-docs/tracker dev/2026-09-28-testflight-build10</code></pre>
+<p>Abrir y mirar las capturas de 390 px y 1440 px de ambos documentos; corregir overflow, texto cortado o estados discordantes. Repetir checks tras cada corrección.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Revisión final, commit documental y prueba de sincronía</strong></label></li>
+</ul>
+<p>Solicitar revisión independiente final sobre tracker, audit, spec, overview/manifest y evidencia Apple/iPhone. En el worktree de la release, agregar únicamente los archivos de docs por nombre y commitear con conventional commit. Después, en el checkout principal, integrar ese commit por fast-forward y pushear <code>main</code>:</p>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/testflight-build10-sync
+git add docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-19-mobile-ask-f4.md docs/superpowers/plans/2026-09-19-mobile-ask-f4.html docs/superpowers/audits/2026-09-28-mobile-ask-f4-rulings.md docs/overview/2026-09-19-mobile-ask.html docs/overview/dev/2026-09-28-testflight-build10.html docs/overview/data/manifest.js
+git diff --cached --check
+git commit -m &quot;docs(mobile-ask): cerrar F4 con TestFlight build 10&quot;
+cd /Users/josedejesusacevedoflores/Documents/predict
+git merge --ff-only release/testflight-build10-sync
+git push origin main
+git fetch origin main --prune
+git rev-list --left-right --count main...origin/main
+git status --short --branch
+node scripts/agent-infra/branches.mjs origin/main</code></pre>
+<p>Expected: <code>0 0</code>, árbol limpio, sin stash, rama de release integrada, build 10 <code>VALID</code> + «Equipo», F4 cerrada si hubo humo en iPhone. El backup de <code>/private/tmp</code> se conserva y se reporta; su eliminación requiere un cierre explícito posterior.</p>
+<h2 id="evidencia-minima-para-declarar-la-sincronizacion-terminada">Evidencia mínima para declarar la sincronización terminada</h2>
+<ol>
+<li><code>main == origin/main</code> antes del archive y después del commit documental.</li>
+<li>AASA origin + CDN Apple <code>200 application/json</code>, cuerpo exacto, Worker versionado con hashes aprobados.</li>
+<li>Tests y TypeScript verdes contra el defecto: <code>buildNumber</code> era 9 y la config resuelta ahora es 10.</li>
+<li><code>.ipa</code> inspeccionado: <code>0.1.0 (10)</code>, bundle/entitlements correctos, hash y tamaño registrados.</li>
+<li><code>UPLOAD SUCCEEDED</code>; ASC build 10 <code>VALID</code>, no expirado y listado en «Equipo».</li>
+<li>Humo real en el iPhone o, si falta, F4 permanece <code>in_progress</code> y no se afirma cierre total.</li>
+<li>Tracker renderizado y mirado; <code>docs:check</code> y <code>agents:check</code> verdes; audit con APNs como residual.</li>
+</ol>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-19-mobile-ask-f4.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-19-mobile-ask-f4';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
