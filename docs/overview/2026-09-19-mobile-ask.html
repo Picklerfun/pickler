@@ -61,7 +61,7 @@
       <div class="sb-grid">
         <div class="sb-cell">
           <div class="k">Estado</div>
-          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+          <div class="v"><span class="sb-pill completed" data-sb="status">Completed</span></div>
         </div>
         <div class="sb-cell">
           <div class="k">Spec</div>
@@ -78,7 +78,7 @@
         <div class="sb-cell">
           <div class="k">Próximo paso</div>
           <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
-          <div class="v" data-sb="next" data-done="">—</div>
+          <div class="v" data-sb="next" data-done="Proyecto cerrado en TestFlight build 10; APNs real queda como residual separado">—</div>
         </div>
       </div>
 
@@ -283,7 +283,7 @@
       </article>
 
       <!-- Phase 4 ====================================================== -->
-      <article class="phase-card" data-phase="4" data-status="plan_ready">
+      <article class="phase-card" data-phase="4" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F4</span>
@@ -292,9 +292,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 4 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -307,14 +307,14 @@
           <details class="tasks">
             <summary>
               <span>Tasks del plan</span>
-              <span class="progress-pill" data-tasks-counter>0/5</span>
+              <span class="progress-pill" data-tasks-counter>5/5</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> Task 1: recuperar y verificar <code>infra/aasa-worker</code> sin redesplegar Cloudflare</label></li>
-              <li><label><input type="checkbox"> Task 2: bump a build 10, config Expo, tests y TypeScript</label></li>
-              <li><label><input type="checkbox"> Task 3: revisión independiente, integración y push de la release</label></li>
-              <li><label><input type="checkbox"> Task 4: archive, upload y verificación <code>VALID</code> + grupo Equipo</label></li>
-              <li><label><input type="checkbox"> Task 5: humo en iPhone, tracker build 10, audit y cierre sincronizado</label></li>
+              <li><label><input type="checkbox" checked> Task 1: recuperar y verificar <code>infra/aasa-worker</code> sin redesplegar Cloudflare</label></li>
+              <li><label><input type="checkbox" checked> Task 2: bump a build 10, config Expo, tests y TypeScript</label></li>
+              <li><label><input type="checkbox" checked> Task 3: revisión independiente, integración y push de la release</label></li>
+              <li><label><input type="checkbox" checked> Task 4: archive, upload y verificación <code>VALID</code> + grupo Equipo</label></li>
+              <li><label><input type="checkbox" checked> Task 5: humo en iPhone, tracker build 10, audit y cierre sincronizado</label></li>
             </ol>
           </details>
         </div>

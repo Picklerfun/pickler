@@ -17,6 +17,11 @@ reales de Perpl y «Trade this level»/`LevelCard`/`reminder-set` completos, pro
 end to end el 2026-09-23** (tras un primer intento `unknown` y dos reintentos abortados por colisión de
 simulador): orden FILLED, dos recordatorios creados y procesados por el cron, posición cerrada a mano. El
 push **real** sigue pendiente (`pushSent: 0`, falta la key APNs). Ver audit F3 §1 y §5.
+**F4 `completed`** (plan `docs/superpowers/plans/2026-09-19-mobile-ask-f4.md`): build 0.1.0 (10)
+subido desde `main` `609c531`, `VALID` y distribuido al grupo interno «Equipo»; Worker AASA versionado
+sin redesplegar. Jesús confirmó el 2026-09-28 que pasó el humo completo en un iPhone físico:
+arranque/passkey, Markets → BTC, Ask, Agents y order book L2 de Trade, sin abrir una orden ni mover
+fondos (modelo de iPhone y versión de iOS no reportados). APNs real sigue como residual separado.
 **Slug**: `mobile-ask`
 **Rama**: `feat/mobile-ask`, base `main` (`5ed4e1c`, = `origin/main`), worktree `.claude/worktrees/mobile-ask`
 **Contexto**: el build 5 de TestFlight (2026-09-19) deja Wallet y Trade reales con el diseño hi-fi, y
@@ -316,7 +321,9 @@ autorización de Jesús en esa sesión.
   con el grupo Equipo y tracker `docs/overview/dev/2026-09-28-testflight-build10.html`. En el iPhone
   de Jesús: humo de passkey, Ask/Agents y order book L2, sin abrir una orden ni mover fondos. La
   entrega push real queda como residual separado hasta provisionar los secretos APNs; no bloquea la
-  sincronización de Git/TestFlight ni se reporta como verificada.
+  sincronización de Git/TestFlight ni se reporta como verificada. **(F4, verificado 2026-09-28)**
+  Jesús confirmó que el recorrido completo pasó en un iPhone físico; modelo y versión de iOS no
+  reportados. F4 queda `completed`.
 
 ---
 

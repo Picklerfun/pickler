@@ -28,6 +28,15 @@
 window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
+    date: '2026-09-28',
+    title: 'TestFlight build 10',
+    summary: 'Build 0.1.0 (10): Ask F3 completo — order book L2 vivo, «Trade this level» y recordatorios— más el Worker AASA ya desplegado incorporado a Git. VALID en App Store Connect y en el grupo «Equipo»; humo completo aprobado en iPhone físico.',
+    file: 'dev/2026-09-28-testflight-build10.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios', 'ask', 'perpl'],
+  },
+  {
     date: '2026-09-21',
     title: 'TestFlight build 9',
     summary: 'Build 0.1.0 (9): navegación nativa F2 — tab bar con pastilla lima arrastrable (cambia al soltar, háptica) y barra que se esconde deslizando al entrar/salir de no-raíz; cierra el proyecto mobile-nav. VALID en App Store Connect y en el grupo «Equipo».',
@@ -112,13 +121,13 @@ window.DOCS = [
     summary: 'Ask y Agents dejan de ser «coming soon»: un agente (Claude Sonnet 5 con su persona) da una lectura pagada con créditos simulados sobre una celda nivel × horizonte, un cron la resuelve right/wrong contra el mark de Perpl y avisa por push; Agents lista agentes con récord real; Trade sigue manual y gana order book L2 y «Trade this level» con recordatorios. Backend propio en el esquema mobile del Supabase pickler compartido.',
     file: '2026-09-19-mobile-ask.html',
     types: ['spec', 'plan'],
-    status: 'active',
+    status: 'completed',
     tags: ['mobile', 'expo', 'perpl', 'supabase', 'claude', 'agentes', 'push'],
     phases: [
       { num: 1, status: 'completed' },
       { num: 2, status: 'completed' },
       { num: 3, status: 'completed' },
-      { num: 4, status: 'plan_ready' },
+      { num: 4, status: 'completed' },
     ],
   },
   {
