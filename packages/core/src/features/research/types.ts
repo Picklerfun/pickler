@@ -6,7 +6,9 @@ import {
 } from "./market-scope.js";
 import type { PluginConfig } from "./plugins.js";
 import type { ResearchReport, SportsContext, ResearchReference } from "./nfl.js";
-export const TOOL_NAMES = [
+import { PERP_TOOLS, type PerplConfig } from "../perps/types.js";
+import { assertPerplConfig } from "../perps/service.js";
+export const RESEARCH_TOOL_NAMES = [
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -14,6 +16,7 @@ export const TOOL_NAMES = [
   "getSportsContext",
   "getExternalOdds",
 ] as const;
+export const TOOL_NAMES = [...RESEARCH_TOOL_NAMES, ...PERP_TOOLS] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 export const MAX_LIMITS = {
   searches: 3,
@@ -31,7 +34,9 @@ export interface DiscoveryPolicy {
   maxHorizonDays: number;
 }
 export interface AgentConfig {
-  trading?: import("../trading/types.js").TradingConfig | undefined;
+  perpsPaper?: import("./trading-config.js").PerpsPaperConfig | undefined;
+  perpl?: PerplConfig | undefined;
+  trading?: import("./trading-config.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
   plugins?: PluginConfig | undefined;
   researchProtocol?: "nfl-winner-v1" | undefined;
@@ -254,6 +259,8 @@ export interface ResearchModel {
     beforeStep?(): Promise<void>;
     onDiagnostic?(data: unknown): Promise<void>;
     evidence?(): { sources: Source[]; quotes: OrderBook[]; references?: ResearchReference[] };
+    /** Trusted host capture of the exact tool-free finalizer evidence, never model input. */
+    onDecisionInput?(input: DecisionInputSnapshot): void;
     selectionSteps?: number;
   }): Promise<{ decision: ModelAssessment; usage: unknown }>;
   metadata(): {
@@ -267,6 +274,28 @@ export interface ResearchModel {
       generalDecision?: PromptSnapshot;
     };
   };
+}
+
+export interface DecisionInputSnapshot {
+  observedAt: string;
+  market: Market;
+  evidence: { sources: Source[]; quotes: OrderBook[]; references?: ResearchReference[] };
+}
+
+/** Observation only: the primary decision has already been durably completed. */
+export interface ResearchObservation extends DecisionInputSnapshot {
+  schemaVersion: 1;
+  scope: Scope & { runId: string; configVersion: number };
+  primary: {
+    decision: Decision;
+    usage: unknown;
+    metadata: ReturnType<ResearchModel["metadata"]>;
+  };
+}
+
+export interface ResearchObserver {
+  completed(snapshot: ResearchObservation): Promise<void>;
+  failed?(): void | Promise<void>;
 }
 
 export interface ResearchRepository {
@@ -327,7 +356,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   profile:
     "Research carefully. Read resolution rules, seek contrary evidence, and abstain when evidence is insufficient.",
   categoryIds: [],
-  tools: [...TOOL_NAMES],
+  tools: [...RESEARCH_TOOL_NAMES],
   intervalHours: 4,
   limits: { ...MAX_LIMITS },
   uncertaintyPolicy: { ...DEFAULT_UNCERTAINTY_POLICY },
@@ -349,6 +378,15 @@ export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
 }
 
 export function assertConfig(config: AgentConfig): void {
+  if (
+    config.perpsPaper &&
+    (config.perpsPaper.version !== 1 || config.perpsPaper.policy !== "conservative-1x-v1")
+  ) {
+    throw new PilotError("INVALID_INPUT", "Invalid perpetual paper policy");
+  }
+  if (config.perpl) {
+    assertPerplConfig(config.perpl);
+  }
   if (
     config.trading &&
     (config.trading.version !== 1 || !["off", "manual", "automatic"].includes(config.trading.mode))
@@ -400,6 +438,8 @@ export function assertConfig(config: AgentConfig): void {
             "the-odds-api",
             "paper-trading",
             "polymarket-trading",
+            "perpl",
+            "perps-paper",
           ].includes(id),
       ))
   ) {

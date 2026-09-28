@@ -12,6 +12,7 @@ import {
   type ConsoleDirectory,
   type ResearchRepository,
 } from "@pickler/core";
+import { type TradingRepository } from "@pickler/trading/polymarket";
 import {
   createAgentSchema,
   consoleOptionsSchema,
@@ -23,12 +24,22 @@ import {
   eventResponseSchema,
   pauseSchema,
   paperOrderSchema,
+  paperSummarySchema,
   scheduleSchema,
+  liveBuySchema,
+  liveOrderSchema,
+  tradingAccountSchema,
 } from "@pickler/api-schema";
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 
 export interface ConsoleServices {
+  trading?: {
+    repository: TradingRepository;
+    admissionsEnabled: boolean;
+    invoke(path: string, input: unknown): Promise<Response>;
+    notify(): Promise<void>;
+  };
   authenticate: Authenticate;
   directory: ConsoleDirectory;
   repository: ResearchRepository;
@@ -37,6 +48,8 @@ export interface ConsoleServices {
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
+    settle?(tenantId: string, runId: string): Promise<unknown>;
+    summary?(scope: { tenantId: string; agentId: string }): Promise<unknown>;
   };
 }
 
@@ -124,6 +137,18 @@ export function consoleRoutes(services: ConsoleServices) {
     const current = await access.authorize(c.get("principal"), true);
     const scope = await services.directory.agentScope(current, c.req.param("id"));
     const body = configUpdateSchema.parse(await c.req.json());
+    if (
+      body.config.trading?.mode === "automatic" &&
+      (await repo.agent(scope)).config.trading?.mode !== "automatic"
+    ) {
+      if (!services.trading || !(await services.trading.repository.account(scope)).enabled) {
+        throw new PilotError("TRADING_DISABLED", "Trading access required");
+      }
+      const orders = await services.trading.repository.list(scope);
+      if (!orders.some((order) => order.origin === "manual" && order.status === "settled")) {
+        throw new PilotError("TRADING_MANUAL_REQUIRED", "Confirm a manual purchase first");
+      }
+    }
     if (!body.config.marketScope) {
       throw new PilotError("INVALID_INPUT", "Category selection required");
     }
@@ -178,6 +203,27 @@ export function consoleRoutes(services: ConsoleServices) {
         .parse(await repo.events(current.tenantId, c.req.param("id"))),
     });
   });
+  api.post("/runs/:id/paper-order/settle", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    if (!services.paper?.settle) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper settlement unavailable");
+    }
+    const raw = await c.req.text();
+    if (raw) {
+      z.object({}).strict().parse(JSON.parse(raw));
+    }
+    return c.json(
+      paperOrderSchema.parse(await services.paper.settle(current.tenantId, c.req.param("id"))),
+    );
+  });
+  api.get("/agents/:id/paper-summary", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    if (!services.paper?.summary) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper summary unavailable");
+    }
+    return c.json(paperSummarySchema.parse(await services.paper.summary(scope)));
+  });
   api.post("/runs/:id/paper-order", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
     if (!services.paper) {
@@ -216,6 +262,109 @@ export function consoleRoutes(services: ConsoleServices) {
     const scope = await services.directory.agentScope(current, c.req.param("id"));
     await repo.schedule(scope, scheduleSchema.parse(await c.req.json()).enabled, Date.now());
     return c.json({ ok: true });
+  });
+  api.get("/agents/:id/trading/account", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    if (!services.trading) {
+      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+    }
+    return c.json(tradingAccountSchema.parse(await services.trading.repository.account(scope)));
+  });
+  api.get("/agents/:id/trading/orders", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    if (!services.trading) {
+      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+    }
+    return c.json({
+      orders: liveOrderSchema.array().parse(await services.trading.repository.list(scope)),
+    });
+  });
+  api.get("/agents/:id/trading/positions", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const scope = await services.directory.agentScope(current, c.req.param("id"));
+    if (!services.trading) {
+      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+    }
+    const orders = await services.trading.repository.list(scope);
+    return c.json({
+      positions: liveOrderSchema
+        .array()
+        .parse(orders.filter((order) => order.status === "settled")),
+    });
+  });
+  api.get("/trading/orders/:id", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    if (!services.trading) {
+      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+    }
+    return c.json(
+      liveOrderSchema.parse(
+        await services.trading.repository.get(current.tenantId, c.req.param("id")),
+      ),
+    );
+  });
+  for (const operation of ["check", "prepare"] as const) {
+    api.post(`/agents/:id/trading/${operation}`, async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      if (!services.trading || (!services.trading.admissionsEnabled && operation !== "check")) {
+        throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
+      }
+      const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
+      const body = await c.req.json();
+      const request =
+        operation === "prepare" ? liveBuySchema.parse(body) : z.object({}).strict().parse(body);
+      const response = await services.trading.invoke(`/${operation}`, {
+        scope,
+        key,
+        ...(operation === "prepare" ? { request } : {}),
+      });
+      return new Response(response.body, {
+        status: response.status,
+        headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
+      });
+    });
+  }
+  api.post("/trading/orders/:id/submit", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    z.object({})
+      .strict()
+      .parse(await c.req.json());
+    if (!services.trading?.admissionsEnabled) {
+      throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
+    }
+    const order = await services.trading.repository.enqueue(
+      current.tenantId,
+      c.req.param("id"),
+      idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
+    );
+    try {
+      await services.trading.notify();
+    } catch {
+      console.error("Trading notification awaits reconciliation");
+    }
+    return c.json(liveOrderSchema.parse(order), 202);
+  });
+  api.post("/runs/:id/live-order", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    z.object({})
+      .strict()
+      .parse(await c.req.json());
+    if (!services.trading?.admissionsEnabled) {
+      throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
+    }
+    const run = await repo.run(current.tenantId, c.req.param("id"));
+    const response = await services.trading.invoke("/from-run", {
+      scope: { tenantId: current.tenantId, agentId: run.agentId },
+      runId: run.id,
+      key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
+    });
+    return new Response(response.body, {
+      status: response.ok ? 202 : response.status,
+      headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
+    });
   });
   return api;
 }

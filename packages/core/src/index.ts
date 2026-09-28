@@ -169,8 +169,9 @@ export { evaluateDecision } from "./features/research/decision-policy.js";
 export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
-export * from "./features/paper/orders.js";
 export * from "./features/console/access.js";
 
-export * from "./features/trading/types.js";
-export * from "./features/trading/service.js";
+export * from "./features/perps/types.js";
+export * from "./features/perps/service.js";
+
+export * from "./features/research/trading-config.js";

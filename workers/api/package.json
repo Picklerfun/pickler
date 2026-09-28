@@ -14,7 +14,8 @@
     "@pickler/infrastructure": "*",
     "hono": "^4.13.8",
     "@pickler/api-schema": "*",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@pickler/trading": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",

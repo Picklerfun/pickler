@@ -5,6 +5,7 @@ import { PostgresResearchStore } from "@pickler/infrastructure";
 
 export interface Env extends Environment {
   APP_ENV: string;
+  TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
   DATABASE?: Hyperdrive;
   RESEARCH_QUEUE: Queue<{ kind: "research-wakeup" }>;
   ADMISSIONS_ENABLED: string;

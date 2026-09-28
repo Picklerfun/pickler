@@ -42,11 +42,11 @@ Discovery policy is optional for historical configs. Version 1 `pre-event` requi
 
 NFL research adds provider-neutral `SportsData`, versioned plugin permissions and `nfl-winner-v1` report validation. Plugins and individual tools must both be enabled. `effectivePlugins` interprets historical permissions without enabling sports sources. Optional sports integrations can be disabled; invoked failures remain failures. Decisions v3 preserve a separate forecast and coverage, including on abstention. Do not weaken uncertainty policy to obtain trades.
 
-`features/paper/orders.ts` owns the manual paper capability contracts, eligibility and integer full-budget simulation. A paper order is never a model tool. Both paper and Polymarket permissions apply; unchanged configuration and a current policy-approved trade are mandatory. Ten virtual units include estimated fees; no partial fills or real orders. Recheck time/quote eligibility at atomic finalization.
+`@pickler/trading/polymarket` owns the manual paper capability contracts, eligibility and integer full-budget simulation. A paper order is never a model tool. Both paper and Polymarket permissions apply; unchanged configuration and a current policy-approved trade are mandatory. Ten virtual units include estimated fees; no partial fills or real orders. Recheck time/quote eligibility at atomic finalization.
 
 `researchReferences` produces citable market, quote and plugin-availability context, distinct from external `Source` evidence. `validateReport` accepts these only in their declared sections; context cannot substantiate injuries or sporting advantage. The runner persists these references and retains the original provider events. Top-level decision source IDs still require retrieved sources. Keep historical reports readable without requiring a context-reference backfill.
 
-`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization remains NFL-only.
+`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization supports reviewed NFL/soccer full-game winners through `@pickler/trading/polymarket`; general reports do not authorize arbitrary market types.
 
 Product API-key authorization is deny-by-default for every key kind. `read:agents` grants read-only
 product agent access; legacy broad labels grant no implied permissions. Budget reservations record
@@ -82,6 +82,27 @@ market stay comparable. `readQuestionAtLevel` in `features/agents` writes that s
 
 The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
 today, so it lives in the web feature that draws it against the mirrored limits in
-`@pickler/api-schema`. It belongs here the day an order is placed, because then it decides money.
+`@pickler/api-schema`. It belongs in trading the day an order is placed, because then it decides money.
+
+## Cloudflare trading pilot
+
+Trading uses operator-enabled immutable accounts and provider-neutral NFL/soccer winner eligibility. The sign port accepts a final ownership guard. Automatic attempts are durably admitted once; confirmed autonomous purchases close the pilot. See ../../docs/polymarket-worker-pilot.md.
+
+## Optional research observation
+
+The model port may report `DecisionInputSnapshot` for the exact tool-free finalizer evidence.
+The runner clones it and publishes `ResearchObservation` through an injected `ResearchObserver`
+only after a successful final decision write. Observer failure and diagnostics cannot re-enter
+research failure handling, mutate the primary result or create an abstention. Missing snapshots
+are diagnostic gaps, never reconstructed from later evidence. Host observers must remain bounded
+capture-only operations; paid comparison is a separately admitted operation. Core owns no files,
+provider credentials or observer pricing, and the observer is not a decision-policy input.
+
+## Trading boundary
+
+Trading rules, financial contracts, simulations and evaluation coordination are owned by
+`@pickler/trading`; read [its instructions](../trading/AGENTS.md). Core retains agent configuration,
+identity, research authorization and public Perpl market-data contracts. Never import trading
+from core. Consumers import trading subpaths directly; no compatibility exports remain here.
 
 `src/features/launch` holds the launchpad domain: `domain/curve-math.ts` previews curve pricing and is held to the Solidity library by a generated fixture, and `ports/chain-reader.ts` describes what the domain needs from a chain without naming one. No blockchain SDK is imported here.

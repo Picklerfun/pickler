@@ -71,7 +71,29 @@ export { PostgresBudgetLedger } from "./console/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";
-export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
+export {
+  PolymarketTrading,
+  tradingOrderHash,
+  type TradingCredentials,
+} from "./polymarket/trading.js";
+
+export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
+
+export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
+
+export { PolymarketStudyData } from "./polymarket/study-data.js";
+
+export { PerplMarketData } from "./perpl/data.js";
+export type { PerplDataOptions, PerplPublicResponse } from "./perpl/transport.js";
+export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
+
+export { QuantData } from "./polymarket/quant-data.js";
+
+export {
+  comparisonTransport,
+  type PublicRequestDiagnostic,
+} from "./polymarket/comparison-transport.js";
 
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
 

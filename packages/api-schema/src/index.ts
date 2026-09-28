@@ -16,4 +16,10 @@ export * from "./research.js";
 export * from "./paper.js";
 export * from "./console.js";
 export * from "./trading.js";
+
+export * from "./perps.js";
+export * from "./perps-paper.js";
+
+export * from "./perps-study.js";
+
 export * from "./launches.js";

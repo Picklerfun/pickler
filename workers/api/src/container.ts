@@ -1,11 +1,11 @@
 import {
   createAgentQueries,
-  createPaperService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
   parseEmailAllowlist,
 } from "@pickler/core";
+import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
 import {
   createSupabaseAdmin,
   createSupabaseAgentEventLog,
@@ -18,8 +18,10 @@ import {
   PostgresResearchStore,
   PostgresPaperStore,
   PolymarketData,
+  PolymarketPaperResolution,
   PostgresConsoleDirectory,
   PostgresBudgetLedger,
+  PostgresTradingStore,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
@@ -93,10 +95,33 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     onboard: (userId) => directory.onboard(userId),
     console: {
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
+      trading: {
+        repository: new PostgresTradingStore(repository.pool),
+        admissionsEnabled: env.TRADING_ADMISSIONS_ENABLED === "true",
+        async invoke(path, input) {
+          if (!env.TRADING_EXECUTOR) {
+            throw new Error("Trading executor unavailable");
+          }
+          return env.TRADING_EXECUTOR.fetch(
+            new Request(`https://trading.internal${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(input),
+            }),
+          );
+        },
+        async notify() {
+          await env.TRADING_QUEUE?.send({ kind: "trading-wakeup" });
+        },
+      },
       authenticate,
       directory,
       repository,
-      paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
+      paper: createPaperPlugin(
+        new PostgresPaperStore(repository.pool),
+        new PolymarketData(),
+        new PolymarketPaperResolution(),
+      ),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");

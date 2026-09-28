@@ -7,7 +7,7 @@ Read [the root instructions](../../AGENTS.md) first and the local instructions o
 - Keep this package portable and safe for browser imports. No Next.js, React, core, infrastructure, secrets, or provider SDK dependencies.
 - Define explicit public request and response DTOs. Do not expose database rows, domain entities, `Date`, `bigint`, or credential-bearing fields directly.
 - TypeScript types do not validate runtime input. When schemas are introduced, choose browser-compatible validation and apply it at untrusted boundaries. Apply the exported Zod schemas to requests, responses and structured decisions; health remains a TypeScript-only interface.
-- Keep business invariants and authorization in core. HTTP parsing and error/status mapping belong in the app.
+- Keep research invariants in core and financial invariants in trading; import neither into DTOs. HTTP parsing and error/status mapping belong in the app.
 - Group future DTOs by feature, such as `src/bookings.ts`, and publish intentional exports through the package manifest or entry point.
 - Treat changes to serialized fields as API compatibility changes. Coordinate producer and consumer updates and document versioning decisions.
 
@@ -50,3 +50,25 @@ Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` 
 signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries
 the read's sentence with `{level}` where the chosen price goes, so a page fills in a number and
 never rewrites the wording.
+
+## Cloudflare trading pilot
+
+Trading account DTOs include operator enablement; order previews optionally include outcome labels for historical compatibility. Public responses never contain lease tokens, signed payloads or secrets. See ../../docs/polymarket-worker-pilot.md.
+
+## Paper resolution
+
+Paper DTOs now include optional nullable settlement evidence, buy-time resolution identity and minimumShares. `paperSummarySchema` reports virtual costs, payouts, realized P&L and net cash flow; it is not a wallet balance. Existing orders without settlement remain readable. Scoped paper market snapshots include their classification.
+
+## Perpl public data plugin
+
+`src/perps.ts` exports independent Perpl data/config schemas with decimal strings, explicit network/provenance, candle gaps and bounded book depth. Do not reuse 0..1 prediction prices or the demo market DTOs. Research config accepts optional Perpl settings and four explicitly enabled tools; historical defaults remain unchanged.
+
+## Perpetual paper accounts
+
+`src/perps-paper.ts` exports virtual account, intent, position, ledger, status and risk DTOs. Monetary values are decimal strings; unknown valuation stays null. Lease owner tokens are deliberately excluded. Agent config accepts opt-in `perpsPaper` and the `perps-paper` plugin.
+
+Perpl DTOs include explicit funding history bounds, event provenance, estimates and completeness. Paper account DTOs retain optional valuation timestamps and sticky funding disputes for compatibility with the account milestone.
+
+`perps-study.ts` exports the strict portable local study configuration DTO with explicit identity,
+fixed USD 5 ceiling, model IDs and reviewed pricing sources. It contains no credentials. The paper
+account DTO accepts optional permanent admission closure without rewriting historical accounts.

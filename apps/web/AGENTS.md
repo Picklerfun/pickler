@@ -117,7 +117,7 @@ explicit **design preview**, and every one of those panels carries `DESIGN PREVI
 EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
 
 `features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
-— against the mirrored limits in `@pickler/api-schema`. It moves to core when an order is really
+— against the mirrored limits in `@pickler/api-schema`. It moves to trading when an order is really
 sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
 same way in both.
 
@@ -174,6 +174,11 @@ OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --w
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
 
+Worker branch previews use the explicit `previews` block in `wrangler.jsonc`. They retain the
+production Next.js runtime mode but deliberately have no service bindings, including API and
+self-reference. They validate the web build and presentation only; backend routes and features
+requiring those bindings are unavailable. A successful preview is not full-stack acceptance.
+
 ## Studio console integration
 
 The private console uses the Studio shell and sections under `features/console/sections`.
@@ -190,3 +195,7 @@ run its controlled-clock regression tests with `node --import tsx --test apps/we
 PRF account derivation is experimental until a real authenticator confirms address parity with
 the iOS implementation. Never present a derived address as authenticated server identity. Clear
 the PRF buffer and end the signing session before querying balances; keep provider failures visible.
+
+## Cloudflare trading pilot
+
+The console Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private console API DTOs and visibility-aware polling. Never import signer or infrastructure code.

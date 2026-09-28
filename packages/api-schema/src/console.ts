@@ -32,7 +32,16 @@ export const consoleOptionsSchema = z.object({
   }),
   plugins: z.array(
     z.object({
-      id: z.enum(["polymarket", "exa", "balldontlie", "the-odds-api", "paper-trading"]),
+      id: z.enum([
+        "polymarket",
+        "exa",
+        "balldontlie",
+        "the-odds-api",
+        "paper-trading",
+        "polymarket-trading",
+        "perpl",
+        "perps-paper",
+      ]),
       version: z.string(),
       tools: agentConfigSchema.shape.tools,
     }),

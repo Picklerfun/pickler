@@ -66,3 +66,13 @@ user authorization: PostgreSQL research access and workspace ownership remain ma
 the API and consumer flags aligned. New agents still start with scheduling disabled. For an
 emergency stop deploy both hosts with `--var ADMISSIONS_ENABLED:false`; restore only after checking
 queued jobs, active schedules and enabled users. Never enqueue a paid run as a deployment check.
+
+## Cloudflare trading pilot
+
+After a completed consumer invocation, the optional TRADING_QUEUE producer emits only a generic wakeup. Trading independently authorizes persisted candidates; notification failure never repeats research. No signer belongs here.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

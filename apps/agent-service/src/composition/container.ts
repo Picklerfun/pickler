@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { createRuntime } from "@pickler/agent-runtime";
 import { composeTrading } from "./trading";
 import { readEnv } from "../config/env";
+import { createFileObserver } from "../observation/capture";
 
 export async function createContainer(env = readEnv()) {
-  const runtime = createRuntime(env);
+  const observer = createFileObserver(env);
+  const runtime = createRuntime(env, undefined, observer ? { observer } : undefined);
   try {
     await runtime.repository.init();
     await runtime.repository.bindConnectionIdentity(

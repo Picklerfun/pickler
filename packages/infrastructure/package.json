@@ -16,6 +16,10 @@
     "./trading-operator": {
       "types": "./src/trading/operator.ts",
       "import": "./dist/trading/operator.js"
+    },
+    "./model-providers/jev": {
+      "types": "./src/model-providers/jev/client.ts",
+      "import": "./dist/model-providers/jev/client.js"
     }
   },
   "scripts": {
@@ -23,7 +27,8 @@
     "build": "tsc -p tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../apps/agent-service/.env --import tsx src/persistence/migrate.ts",
-    "research-access": "tsx src/console/operator.ts"
+    "research-access": "tsx src/console/operator.ts",
+    "trading-access": "tsx src/trading/access.ts"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*",
@@ -42,6 +47,7 @@
     "pg": "8.20.0",
     "viem": "2.56.8",
     "zod": "4.6.5",
+    "@pickler/trading": "*",
     "@pickler/chain": "*",
     "@pickler/api-schema": "*"
   },

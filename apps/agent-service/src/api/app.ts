@@ -4,11 +4,11 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
   MARKET_CATALOG,
-  type createTradingService,
   PilotError,
   type ResearchRepository,
   type MarketData,
 } from "@pickler/core";
+import { type createTradingService } from "@pickler/trading/polymarket";
 import {
   liveBuySchema,
   liveOrderSchema,
@@ -22,6 +22,7 @@ import {
   scheduleSchema,
   pauseSchema,
   paperOrderSchema,
+  paperSummarySchema,
 } from "@pickler/api-schema";
 
 function errorStatus(code: string): 400 | 404 | 409 | 429 | 502 {
@@ -49,6 +50,8 @@ export function createApi(deps: {
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
+    settle?(tenantId: string, runId: string): Promise<unknown>;
+    summary?(scope: { tenantId: string; agentId: string }): Promise<unknown>;
   };
   checkPlugin?(scope: { tenantId: string; agentId: string }, plugin: string): Promise<unknown>;
 }) {
@@ -128,6 +131,25 @@ export function createApi(deps: {
   api.get("/runs/:id", async (c) =>
     c.json(runResponseSchema.parse(await repo.run(c.get("tenant"), c.req.param("id")))),
   );
+  api.post("/runs/:id/paper-order/settle", async (c) => {
+    if (!deps.paper?.settle) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper settlement unavailable");
+    }
+    const raw = await c.req.text();
+    if (raw) {
+      z.object({}).strict().parse(JSON.parse(raw));
+    }
+    return c.json(
+      paperOrderSchema.parse(await deps.paper.settle(c.get("tenant"), c.req.param("id"))),
+    );
+  });
+  api.get("/agents/:id/paper-summary", async (c) => {
+    const scope = { tenantId: c.get("tenant"), agentId: c.req.param("id") };
+    if (!deps.paper?.summary) {
+      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper summary unavailable");
+    }
+    return c.json(paperSummarySchema.parse(await deps.paper.summary(scope)));
+  });
   api.post("/runs/:id/paper-order", async (c) => {
     if (!deps.paper) {
       throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper service unavailable");

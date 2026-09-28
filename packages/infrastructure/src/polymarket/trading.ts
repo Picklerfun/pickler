@@ -13,15 +13,15 @@ import { privateKey } from "@polymarket/client/viem";
 import { hashTypedData, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   moneyMicros,
   type TradingProvider,
   type BuyRequest,
   type LivePreview,
   type LiveOrder,
   type Reconciliation,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { PolymarketData } from "./market-data.js";
 
 export interface TradingCredentials {
@@ -77,7 +77,7 @@ export class PolymarketTrading implements TradingProvider {
   identity() {
     return { wallet: this.credentials.wallet, signer: this.credentials.signer };
   }
-  private async client(onHash?: (hash: string) => void) {
+  private async client(onHash?: (hash: string) => void, beforeSign?: () => Promise<void>) {
     if (this.clientFactory) {
       return this.clientFactory(onHash);
     }
@@ -94,6 +94,7 @@ export class PolymarketTrading implements TradingProvider {
     const signer = privateKey(this.credentials.privateKey);
     const signTypedData = signer.signTypedData.bind(signer);
     signer.signTypedData = async (payload) => {
+      await beforeSign?.();
       if (["Order", "TypedDataSign"].includes(payload.primaryType)) {
         onHash?.(tradingOrderHash(payload));
       }
@@ -173,7 +174,11 @@ export class PolymarketTrading implements TradingProvider {
         break;
       }
     }
-    if (remaining > 0.00001 || !shares || shares < Number(conditions.minimumNotional)) {
+    if (
+      remaining > 0.00001 ||
+      !shares ||
+      shares < Number(conditions.minimumShares ?? conditions.minimumNotional)
+    ) {
       throw new PilotError("TRADING_DEPTH", "Insufficient full-fill depth at the price limit");
     }
     return {
@@ -184,12 +189,19 @@ export class PolymarketTrading implements TradingProvider {
       observedAt: Date.parse(book.observedAt),
     };
   }
-  async sign(preview: LivePreview, signal: AbortSignal) {
+  async sign(preview: LivePreview, signal: AbortSignal, beforeSign?: () => Promise<void>) {
     signal.throwIfAborted();
     let hash = "";
-    const client = await this.client((value) => {
-      hash = value;
-    });
+    const client = await this.client(
+      (value) => {
+        hash = value;
+      },
+      async () => {
+        signal.throwIfAborted();
+        await beforeSign?.();
+        signal.throwIfAborted();
+      },
+    );
     signal.throwIfAborted();
     const payload = await client.createMarketOrder({
       tokenId: preview.outcomeId,

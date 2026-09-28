@@ -1,15 +1,14 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { DEFAULT_CONFIG, type Decision } from "@pickler/core";
 import {
-  DEFAULT_CONFIG,
   createTradingService,
   moneyMicros,
   assertLivePreview,
   type LivePreview,
   type TradingProvider,
   type Reconciliation,
-  type Decision,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { PostgresTradingStore } from "../src/persistence/trading-store.js";
 import { createTestStore } from "./database.js";
 
@@ -33,6 +32,7 @@ async function setup(t: TestContext) {
   });
   const repository = new PostgresTradingStore(store.pool, () => now);
   await repository.bind(scope, identity);
+  await repository.setEnabled(scope, true);
   const preview = (): LivePreview => ({
     marketId: "1",
     outcomeId: "2",
@@ -238,12 +238,118 @@ test("manual settlement precedes automatic admission and both share one persiste
   assert.equal((await f.repository.automaticCandidates()).length, 0);
   await f.service.tick();
   assert.equal(f.calls.submit, 2);
-  const another = await f.repository.prepare(
-    f.scope,
-    { ...f.preview(), marketId: "5", market: { ...f.preview().market, id: "5" } },
-    "third",
+  assert.equal((await f.repository.account(f.scope)).enabled, false);
+  await assert.rejects(
+    f.repository.prepare(
+      f.scope,
+      { ...f.preview(), marketId: "5", market: { ...f.preview().market, id: "5" } },
+      "third",
+    ),
+    { code: "TRADING_DISABLED" },
   );
-  await assert.rejects(f.repository.enqueue("alpha", another.id, "third"), {
-    code: "TRADING_BUDGET",
+});
+
+test("operator revocation blocks preparation without provider calls and preserves account identity", async (t) => {
+  const f = await setup(t);
+  await f.repository.setEnabled(f.scope, false);
+  await assert.rejects(f.prepare(), { code: "TRADING_DISABLED" });
+  assert.equal(f.calls.preview, 0);
+  await assert.rejects(f.repository.bind(f.scope, { ...identity, wallet: `0x${"c".repeat(40)}` }), {
+    code: "TRADING_IDENTITY_CHANGED",
   });
+});
+
+test("renewal extends ownership while a stale owner cannot write", async (t) => {
+  const f = await setup(t);
+  const order = await f.prepare();
+  await f.service.submit(f.scope.tenantId, order.id, "submit");
+  const claimed = await f.repository.claim();
+  assert.ok(claimed);
+  f.advance(15000);
+  await f.repository.renew(claimed);
+  await f.repository.guard(claimed);
+  f.advance(60000);
+  await assert.rejects(f.repository.renew(claimed), { code: "CONFIG_CHANGED" });
+  await f.repository.claim();
+  await assert.rejects(f.repository.markSubmitting(claimed, hash));
+});
+
+test("soccer winners require explicit timing rules and exclude non-match markets", async (t) => {
+  const f = await setup(t);
+  const original = await f.store.agent(f.scope);
+  const config = {
+    ...original.config,
+    marketScope: {
+      version: 1 as const,
+      category: "sports" as const,
+      subcategories: ["soccer" as const],
+    },
+  };
+  delete config.categoryIds;
+  delete config.researchProtocol;
+  const agent = { ...original, config };
+  const preview = f.preview();
+  preview.market.question = "Will Arsenal win against Chelsea?";
+  preview.market.rules =
+    "Resolves Yes if Arsenal wins after 90 minutes including stoppage time. A draw resolves No.";
+  preview.market.classification = {
+    version: 1,
+    category: "sports",
+    subcategory: "soccer",
+    temporalClass: "match",
+    provenance: {
+      provider: "polymarket",
+      mappingVersion: "1.0.0",
+      tagIds: ["soccer"],
+      temporalBasis: "gameStartTime",
+    },
+  };
+  assert.doesNotThrow(() => assertLivePreview(preview, agent, f.time()));
+  preview.market.rules = "Resolves Yes for the winning team including extra time and penalties.";
+  assert.doesNotThrow(() => assertLivePreview(preview, agent, f.time()));
+  preview.market.rules = "Overtime is excluded. The winner is decided later.";
+  assert.throws(() => assertLivePreview(preview, agent, f.time()), {
+    code: "TRADING_UNSUPPORTED_MARKET",
+  });
+  preview.market.classification.temporalClass = "award";
+  assert.throws(() => assertLivePreview(preview, agent, f.time()));
+});
+
+test("an automatic preparation failure is recorded and cannot be retried by another wakeup", async (t) => {
+  const f = await setup(t);
+  const manual = await f.prepare();
+  await f.service.submit("alpha", manual.id, "submit");
+  await f.service.tick();
+  const agent = await f.store.agent(f.scope);
+  await f.store.updateConfig(f.scope, agent.version, {
+    ...agent.config,
+    trading: { version: 1, mode: "automatic" },
+  });
+  await f.store.enqueue(f.scope, "research-failure", "3", f.time());
+  const run = (await f.store.claim(f.time()))!;
+  await f.store.finish(
+    run,
+    {
+      schemaVersion: 4,
+      protocol: "nfl-winner-v1",
+      action: "TRADE",
+      marketId: "3",
+      outcomeId: "4",
+      limitPrice: "0.5",
+      expiresAt: new Date(f.time() + 600000).toISOString(),
+      policyEvaluation: { finalAction: "TRADE" },
+    } as unknown as Decision,
+    null,
+    f.time(),
+  );
+  let failures = 0;
+  f.provider.preview = async () => {
+    failures++;
+    throw new Error("Controlled provider failure");
+  };
+  await f.service.tick();
+  await f.service.tick();
+  assert.equal(failures, 1);
+  assert.equal(f.calls.submit, 1);
+  assert.equal((await f.repository.automaticCandidates()).length, 0);
 });

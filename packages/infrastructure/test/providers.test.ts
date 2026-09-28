@@ -201,10 +201,13 @@ test("paper conditions require explicit per-market fees and constraints", async 
     feeSchedule: { rate: 0.05, exponent: 1, takerOnly: true },
     orderPriceMinTickSize: 0.01,
     orderMinSize: 5,
+    conditionId: "0x" + "a".repeat(64),
   };
   const result = await new PolymarketData(respond(market)).conditions("1", "2", signal());
   assert.equal(result.feeRate, "0.05");
-  assert.equal(result.minimumNotional, "5");
+  assert.equal(result.minimumNotional, "0");
+  assert.equal(result.minimumShares, "5");
+  assert.equal(result.resolution?.outcomeIndex, 0);
   await assert.rejects(
     new PolymarketData(respond({ ...market, feeSchedule: null })).conditions("1", "2", signal()),
     { code: "PAPER_INVALID_CONDITIONS" },

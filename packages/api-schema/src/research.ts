@@ -1,5 +1,11 @@
 import { z } from "zod";
+import { perplConfigSchema } from "./perps.js";
 export const toolNameSchema = z.enum([
+  "listPerpMarkets",
+  "getPerpSnapshot",
+  "getPerpOrderBook",
+  "getPerpCandles",
+  "getPerpFundingHistory",
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -20,7 +26,7 @@ export const discoveryPolicySchema = z
     version: z.literal(1),
     mode: z.enum(["open-market", "pre-event"]),
     minLeadMinutes: z.number().int().min(15).max(1440),
-    maxHorizonDays: z.number().int().min(1).max(7),
+    maxHorizonDays: z.number().int().min(1).max(8),
   })
   .strict();
 export const marketScopeSchema = z
@@ -71,7 +77,12 @@ export const agentConfigSchema = z
       .optional(),
     marketScope: marketScopeSchema.optional(),
     categoryIds: z.array(z.string().regex(/^\d+$/)).max(10).optional(),
-    tools: z.array(toolNameSchema).max(6),
+    perpl: perplConfigSchema.optional(),
+    perpsPaper: z
+      .object({ version: z.literal(1), policy: z.literal("conservative-1x-v1") })
+      .strict()
+      .optional(),
+    tools: z.array(toolNameSchema).max(11),
     plugins: z
       .object({
         version: z.literal(1),
@@ -84,9 +95,11 @@ export const agentConfigSchema = z
               "the-odds-api",
               "paper-trading",
               "polymarket-trading",
+              "perpl",
+              "perps-paper",
             ]),
           )
-          .max(6),
+          .max(8),
       })
       .strict()
       .optional(),

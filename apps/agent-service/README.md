@@ -4,6 +4,13 @@ Local Mastra Studio and a tenant-scoped HTTP API for research-only decisions. Po
 
 ## First local run
 
+For isolated Jev/model comparisons on frozen synthetic evidence, see
+[the decision evaluation laboratory](DECISION-EVALUATION.md). Its default command is offline.
+
+For opt-in capture from completed local research and separate Jev/DeepSeek observation, see
+[decision observation](DECISION-OBSERVATION.md). Capture makes no additional provider calls and
+does not change the primary decision. Paid replay requires its own explicit admission.
+
 Use Node **22.22+** (Node 24 also works) and npm 10.9.3. From the repository root:
 
 ```sh
@@ -267,3 +274,23 @@ See [MARKET-CATEGORIES.md](MARKET-CATEGORIES.md) for category/subcategory config
 ## Optional local trading integration
 
 See [LIVE-TRADING.md](LIVE-TRADING.md) for the separately disabled Node pilot, explicit operator wallet/setup commands, API/CLI contracts and controlled-test status. This does not enable trading for existing agents or establish live-provider acceptance.
+
+The isolated [Evaluator v2 laboratory](DECISION-EVALUATION-V2.md) adds explicit event context,
+stable evidence citations, a blind conditional backup and a jointly reviewed four-variant
+experiment. `prepare:decisions:v2` prepares private review packets; `evaluate:decisions:v2`
+defaults to offline preflight. Paid runs require reviewed references and a fixed bounded campaign.
+
+The [v3 evaluator revision](DECISION-EVALUATION-V3.md) separates event relevance from truth and
+skips backups that cannot pass the policy. `evaluate:decisions:v3` preserves v2 results and shares
+its remaining budget/call ceiling; its replay is not independent holdout validation.
+
+See [Evaluator v4](DECISION-EVALUATION-V4.md) for the isolated selective-backup revision,
+metadata-only provider diagnostic and bounded fresh-case experiment.
+
+## Continuous local paper studies
+
+See [PAPER-STUDY.md](PAPER-STUDY.md) for bounded BTC 5m/15m and sports sessions, explicit paid-call approval, virtual fills, finalized resolution and local HTML/CSV tracking. This operator laboratory is separate from production tenant research.
+
+The separate [perpetual comparison laboratory](PERPS-STUDY.md) uses the [unified evaluation host](EVALUATIONS.md) to initialize,
+preflight, run/resume, stop and report a prospective rules/DeepSeek/Jev comparison. It has dedicated
+virtual accounts, private PostgreSQL records and an independently authorized model budget.

@@ -1,24 +1,31 @@
 import {
   createResearchRunner,
-  createPaperService,
   effectivePlugins,
   PilotError,
   type PluginId,
+  type ResearchObserver,
 } from "@pickler/core";
+import { createPaperPlugin } from "../plugins/paper-trading/index.js";
 import {
   PostgresResearchStore,
   type DatabaseConnectionOptions,
   PostgresPaperStore,
   ExaResearch,
   PolymarketData,
+  PolymarketPaperResolution,
   BallDontLieSports,
   OddsApiSports,
   PostgresPublicDataCache,
 } from "@pickler/infrastructure";
 import type { Environment } from "../environment.js";
+import { createPerplSession } from "../plugins/perpl/index.js";
 import { createModel } from "./model.js";
 
-export function createRuntime(env: Environment, databaseOptions?: DatabaseConnectionOptions) {
+export function createRuntime(
+  env: Environment,
+  databaseOptions?: DatabaseConnectionOptions,
+  options?: { observer?: ResearchObserver },
+) {
   const model = createModel(env);
   const repository = new PostgresResearchStore(
     env.DATABASE_URL,
@@ -43,8 +50,15 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
     env,
     repository,
     markets,
-    paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
+    perpl: (scope: { tenantId: string; agentId: string }, signal: AbortSignal) =>
+      createPerplSession(repository, scope, signal),
+    paper: createPaperPlugin(
+      new PostgresPaperStore(repository.pool),
+      markets,
+      new PolymarketPaperResolution(),
+    ),
     execute: createResearchRunner({
+      ...(options?.observer ? { observer: options.observer } : {}),
       repository,
       search,
       reader: search,
@@ -60,7 +74,10 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
         throw new PilotError("PLUGIN_DISABLED", "Plugin is disabled");
       }
       const signal = AbortSignal.timeout(20000);
-      if (plugin === "balldontlie") {
+      if (plugin === "perpl") {
+        const session = await createPerplSession(repository, scope, signal);
+        await session.service.listPerpMarkets();
+      } else if (plugin === "balldontlie") {
         if (!sports) {
           throw new PilotError("PLUGIN_NOT_CONFIGURED", "Missing credentials");
         }

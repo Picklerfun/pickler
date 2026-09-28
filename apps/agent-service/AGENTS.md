@@ -42,7 +42,7 @@ The separate local background experiment lives in `src/cloudflare/background`; r
 
 Read [NFL-RESEARCH.md](NFL-RESEARCH.md) for configurable plugins, migration and bounded evaluation. `configure:nfl` explicitly updates both lab agents; `--sports` requires the optional operator keys. `evaluate:nfl -- --all-six` makes paid model calls on synthetic frozen evidence, never CI or production fallback data. The immutable NFL final prompt has its own snapshot and schema; legacy protocols retain their final prompt. Both Node and Cloudflare composition use the same plugin guards and adapters.
 
-Manual simulation is documented in [PAPER-TRADING.md](PAPER-TRADING.md). The composition root binds `PostgresPaperStore` and the core paper service into the same tenant API used by Node and Cloudflare. CLI commands `paper-buy` and `paper-result` require a run ID; requests remain manually initiated. The paper plugin has no LLM tool. Never detach this operation from its request or silently retry an interrupted attempt.
+Manual simulation is documented in [PAPER-TRADING.md](PAPER-TRADING.md). The composition root binds `PostgresPaperStore` and the trading paper service into the same tenant API used by Node and Cloudflare. CLI commands `paper-buy` and `paper-result` require a run ID; requests remain manually initiated. The paper plugin has no LLM tool. Never detach this operation from its request or silently retry an interrupted attempt.
 
 NFL context citations are produced by core's `researchReferences` and remain separate from retrieved sources. The final prompt lists their section restrictions; do not bypass attribution checks or turn plugin availability into sports evidence. Explicit evaluator `--attempt <label>` directories preserve previous results; `--case <id>` restricts a deliberate diagnostic. No default-ledger bypass or automatic paid retry is allowed. Read `NFL-LIVE-VALIDATION.md` for actual acceptance results and `NFL-SOURCES.md` before adding sports providers.
 
@@ -57,6 +57,115 @@ retains laboratory initialization; deployed composition never calls it. `validat
 explicit paid operator command for a managed tenant/agent and validates readiness for that
 configuration version. It does not initialize alpha/beta or change their global validation.
 
+## Decision evaluation laboratory
+
+`src/evaluate-decisions.ts` and `src/evaluation/decision-{cases,evaluation}.ts` implement the
+isolated local comparison documented in [DECISION-EVALUATION.md](DECISION-EVALUATION.md).
+`evaluate:decisions` defaults to an offline rules baseline; paid runs require an explicit unique
+attempt, call limit and cost budget. No retries, runtime routing changes, database access or orders
+are allowed. Never send expected labels to providers or treat missing usage as zero cost. Keep
+synthetic development and holdout results separate; preserve started requests and failed attempts.
+Version the rubric when its meaning changes. Monetary admission is an estimate, not a billing cap.
+
+`prepare:decision-evidence` prepares unreviewed private datasets from explicit saved exports.
+Graded `--dataset` evaluation requires recorded human labels, validates evidence timestamps/hashes and
+prevents event/source leakage across splits. Synthetic and captured rubrics are separately versioned.
+Never copy prior model judgments into reference labels or change historical paid evaluation records.
+Independent-answer consistency flags are diagnostic only, not a production routing policy.
+
+`--shadow --dataset` permits unscored captured replay with all provenance checks intact. It never
+emits grades, even for reviewed input; accuracy and unsafe-finalization counts are null. This is a
+laboratory replay, not runtime integration. Assistant annotations are not human-reviewed labels.
+
+`prepare:decision-evidence --public-collection` imports explicit public excerpt snapshots; these
+carry snapshot/event IDs rather than fabricated research run/market IDs. Optional
+`--merge-dataset` validates the combined corpus. Event IDs prevent leakage across markets for
+the same event. Public snapshots collected after a game are retrospective text tests, not pregame
+captures. Coverage reports count explicit events, missing event IDs and reviewed cases.
+
+`compare:decisions` reads only explicit local attempt directories, validates compatible rubric and
+dataset fingerprints, rejects duplicate provider results, and simulates an exploratory Jev-first
+cascade using paired responses. Missing pairs suppress savings projections; unknown research
+cost and accuracy remain null. It makes no provider calls and never changes runtime routing.
+
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Cloudflare trading pilot
+
+Trading setup requires explicit TRADING_TENANT_ID/TRADING_AGENT_ID; it no longer assigns alpha. Node trading uses the same wallet-filtered claims and operator enablement as Cloudflare. See ../../docs/polymarket-worker-pilot.md.
+
+## International Polymarket preproduction
+
+The explicit `polymarket:preproduction` agent-service command only probes fixed public GET
+routes. It loads no environment file, credentials, signer or database. The official environment
+inherits chain 137; never equate its availability with Amoy or dummy-fund order acceptance.
+See apps/agent-service/POLYMARKET-PREPRODUCTION.md from the repository root.
+
+## Evaluator v2 laboratory
+
+Read [DECISION-EVALUATION-V2.md](DECISION-EVALUATION-V2.md) for `prepare:decisions:v2` and
+`evaluate:decisions:v2`. `src/evaluation/v2` owns context/fragments, five-question adapters,
+evidence-backed blind fallback, fixed campaign accounting and per-event reports. All actual
+execution remains local and opt-in. V2 paid calls require the complete jointly reviewed packet;
+assistant proposals never count as human review. Preserve historical v1 text and attempt records.
+The fixed campaign allows at most 176 calls and USD 0.50 additional accounted spend within USD 1.00
+including historical reservations. Never reset its ledger, retry started calls, bypass unknown
+charges or claim offline checks establish live-provider accuracy. No database or runtime changes.
+
+V2 full-case reviews may explicitly use `kind: "assistant-delegated"` with an authorization record
+when the user delegates review and execution. These can be scored in paid laboratory runs but
+cannot pass the independent human-review acceptance gate. Never relabel delegated review as human.
+
+V3 laboratory revision lives in `src/evaluation/v3` and `evaluate:decisions:v3`.
+It preserves v2 files/results and closure checks, separates event relevance from truth, clarifies
+practice versus game-status conflicts, and skips backups that cannot pass a hard veto. The LLM
+control uses an explicitly versioned flat-JSON instruction, not the original v2 control prompt.
+V3 shares v2's lock, USD 0.50 additional ceiling and 176 total started-call ceiling including
+pending charges. Four selected development cases precede a 32-case replay; previously observed
+cases must not be described as independent holdout validation. A v3 failure stops continuation.
+
+V4 laboratory revision lives in `src/evaluation/v4` and `evaluate:decisions:v4`; read
+[DECISION-EVALUATION-V4.md](DECISION-EVALUATION-V4.md). It keeps v3 prompts and closes only through
+existing evidence checks. Coherent uncertainty skips backup. One synthetic diagnostic precedes
+12 fresh retrospective cases; this is not the original independent acceptance sample. Safe
+allowlisted metadata distinguishes failure stages; never persist raw diagnostic output. V4 reads
+both v2 and v3 ledgers under their shared lock before admission. All revisions share the original
+176-call/USD 0.50 ceilings and historical reservations. Any v4 failure stops further v4 calls.
+
+## Runtime decision observation
+
+`src/observation` and `observe:decisions` implement the separate opt-in local observation flow;
+read [DECISION-OBSERVATION.md](DECISION-OBSERVATION.md). `createContainer` injects a file observer
+only for explicit capture mode with a tenant/agent allowlist. It writes after the primary decision
+is persisted and never calls providers, changes outcomes or grants trading access. Default is off.
+Hosted Workers do not inject this observer. Keep exact original evidence hashes and unknown scope.
+
+Paid observation is an explicit offline consumer of real runtime captures, with pinned campaign
+configuration, carried-forward accounting, one control call, one Jev call and at most one blind
+backup. It uses v3 questions/v4 policy without changing historical evaluator files. Persist started
+calls before transport; unknown usage retains reservations and stops further work. Never auto-remove
+STOP/LOCK, retry a started case, or initialize new ledgers to reset existing authorizations. Local
+capture and paid replay are distinct modes, not autonomous production routing. No reference labels
+are sent to providers and no accuracy/acceptance claim is made from paired agreement alone.
+
+## Paper resolution
+
+Paper CLI adds `paper-settle alpha|beta RUN_ID` and `paper-summary alpha|beta`. Settlement is explicit, reads finalized public contract state and persists only virtual results. No wallet or real trading key is needed. See PAPER-TRADING.md for historical compatibility and current sports-only scope.
+
+## Continuous paper laboratory
+
+## Evaluations
+
+Read [EVALUATIONS.md](EVALUATIONS.md) and the [canonical architecture](../../docs/trading-architecture.md).
+The single evaluation command dispatches frozen protocols through `@pickler/trading/evaluation`.
+Local composition lives in `src/evaluation-host/local.ts`; shared scheduling, rounds and financial
+rules belong in trading. Historical protocols expose only their documented read/reconciliation
+commands. Never reintroduce old executable aliases or reset a paused session.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

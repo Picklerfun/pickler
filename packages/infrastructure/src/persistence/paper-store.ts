@@ -1,17 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { PilotError, PLUGINS, type Scope, type AgentRecord, type RunRecord } from "@pickler/core";
 import {
-  PilotError,
   assertPaperAllowed,
   assertPaperFillCurrent,
+  assertPaperSettlementAccess,
+  settlePaperOrder,
+  summarizePaperOrders,
+  type PaperResolution,
+  type PaperSettlementRepository,
   type PaperRepository,
   type PaperOrder,
   type PaperFill,
-  type AgentRecord,
-  type RunRecord,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 
-const projection = `id, tenant_id AS "tenantId", agent_id AS "agentId", run_id AS "runId", market_id AS "marketId", outcome_id AS "outcomeId", status, '10' AS "virtualBudget", created_at::double precision AS "createdAt", finished_at::double precision AS "finishedAt", reason, fill`;
+const projection = `id, tenant_id AS "tenantId", agent_id AS "agentId", run_id AS "runId", market_id AS "marketId", outcome_id AS "outcomeId", status, '10' AS "virtualBudget", created_at::double precision AS "createdAt", finished_at::double precision AS "finishedAt", reason, fill, settlement`;
 /** JSONB business documents stay unchanged; only database column names are mapped. */
 function camelColumns<T>(row: Record<string, unknown>): T {
   return Object.fromEntries(
@@ -21,7 +24,7 @@ function camelColumns<T>(row: Record<string, unknown>): T {
     ]),
   ) as T;
 }
-export class PostgresPaperStore implements PaperRepository {
+export class PostgresPaperStore implements PaperRepository, PaperSettlementRepository {
   private owners = new Map<string, string>();
   constructor(
     private readonly pool: Pool,
@@ -112,7 +115,7 @@ export class PostgresPaperStore implements PaperRepository {
           JSON.stringify({
             config: context.run.config,
             decision,
-            plugin: { id: "paper-trading", version: "1.0.0" },
+            plugin: PLUGINS.find((plugin) => plugin.id === "paper-trading"),
           }),
           owner,
         ],
@@ -134,6 +137,57 @@ export class PostgresPaperStore implements PaperRepository {
       }
       return result.rows[0];
     });
+  }
+  async authorizeSettlement(order: PaperOrder): Promise<number> {
+    return this.transaction(async (client) => {
+      const { agent } = await this.context(client, order.tenantId, order.runId);
+      assertPaperSettlementAccess(agent);
+      return agent.version;
+    });
+  }
+  async settle(
+    order: PaperOrder,
+    resolution: PaperResolution,
+    expectedVersion: number,
+  ): Promise<PaperOrder> {
+    return this.transaction(async (client) => {
+      const { agent } = await this.context(client, order.tenantId, order.runId);
+      assertPaperSettlementAccess(agent);
+      if (agent.version !== expectedVersion) {
+        throw new PilotError("CONFIG_CHANGED", "Paper authorization changed during resolution");
+      }
+      const result = await client.query<PaperOrder>(
+        `SELECT ${projection} FROM pickler.paper_orders WHERE tenant_id = $1 AND run_id = $2 AND id = $3 FOR UPDATE`,
+        [order.tenantId, order.runId, order.id],
+      );
+      const current = result.rows[0];
+      if (!current) {
+        throw new PilotError("NOT_FOUND", "Paper position not found");
+      }
+      if (current.settlement) {
+        return current;
+      }
+      const settlement = settlePaperOrder(current, resolution, await this.now(client));
+      const updated = await client.query<PaperOrder>(
+        `UPDATE pickler.paper_orders SET settlement = $3::jsonb WHERE tenant_id = $1 AND id = $2 RETURNING ${projection}`,
+        [order.tenantId, order.id, JSON.stringify(settlement)],
+      );
+      return updated.rows[0]!;
+    });
+  }
+  async summary(scope: Scope) {
+    const agent = await this.pool.query(
+      "SELECT id FROM pickler.agents WHERE tenant_id = $1 AND id = $2",
+      [scope.tenantId, scope.agentId],
+    );
+    if (!agent.rows.length) {
+      throw new PilotError("NOT_FOUND", "Agent not found");
+    }
+    const orders = await this.pool.query<PaperOrder>(
+      `SELECT ${projection} FROM pickler.paper_orders WHERE tenant_id = $1 AND agent_id = $2 AND status = 'filled'`,
+      [scope.tenantId, scope.agentId],
+    );
+    return summarizePaperOrders(orders.rows);
   }
   private async owned(client: PoolClient, order: PaperOrder, now: number) {
     const result = await client.query(

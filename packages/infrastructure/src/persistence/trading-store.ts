@@ -1,20 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { PilotError, type Scope, type AgentRecord, type RunRecord } from "@pickler/core";
 import {
-  PilotError,
   assertTradingAgent,
   assertTradingRun,
   assertLivePreview,
   moneyMicros,
-  type Scope,
   type TradingRepository,
   type TradingAccount,
   type LiveOrder,
   type LivePreview,
   type Reconciliation,
-  type AgentRecord,
-  type RunRecord,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 const projection = `id, tenant_id AS "tenantId", agent_id AS "agentId", run_id AS "runId", origin, status,
  config_version AS "configVersion", preview, created_at::double precision AS "createdAt",
  expires_at::double precision AS "expiresAt", order_hash AS "orderHash", reason, fill`;
@@ -31,6 +28,7 @@ export class PostgresTradingStore implements TradingRepository {
   constructor(
     private pool: Pool,
     private clock?: () => number,
+    private wallet?: string,
   ) {}
   private async time(c: PoolClient): Promise<number> {
     return this.clock
@@ -82,13 +80,8 @@ export class PostgresTradingStore implements TradingRepository {
     return mapped<RunRecord>(r.rows[0]);
   }
   async bind(scope: Scope, identity: { wallet: string; signer: string }): Promise<TradingAccount> {
-    if (
-      scope.tenantId !== "alpha" ||
-      scope.agentId !== "pickle-alpha" ||
-      !/^0x[0-9a-f]{40}$/i.test(identity.wallet) ||
-      !/^0x[0-9a-f]{40}$/i.test(identity.signer)
-    ) {
-      throw new PilotError("INVALID_INPUT", "Requires the dedicated alpha wallet");
+    if (!/^0x[0-9a-f]{40}$/i.test(identity.wallet) || !/^0x[0-9a-f]{40}$/i.test(identity.signer)) {
+      throw new PilotError("INVALID_INPUT", "Requires valid wallet and signer addresses");
     }
     await this.tx(async (c) => {
       await this.context(c, scope);
@@ -120,29 +113,103 @@ export class PostgresTradingStore implements TradingRepository {
   }
   async account(scope: Scope): Promise<TradingAccount> {
     const r = await this.pool.query(
-      `SELECT a.wallet,a.signer,
+      `SELECT a.wallet,a.signer,a.enabled,
       coalesce(sum(o.budget_micros) FILTER (WHERE o.status IN ('queued','submitting','unknown')),0)::integer AS reserved,
       coalesce(sum(o.budget_micros) FILTER (WHERE o.status='settled'),0)::integer AS spent
       FROM pickler.trading_accounts a LEFT JOIN pickler.live_orders o ON o.tenant_id=a.tenant_id AND o.agent_id=a.agent_id
-      WHERE a.tenant_id=$1 AND a.agent_id=$2 GROUP BY a.wallet,a.signer`,
+      WHERE a.tenant_id=$1 AND a.agent_id=$2 GROUP BY a.wallet,a.signer,a.enabled`,
       [scope.tenantId, scope.agentId],
     );
     if (!r.rows[0]) {
       throw new PilotError("NOT_FOUND", "Trading account not bound");
     }
+    const attempt = await this.pool.query(
+      'SELECT run_id AS "runId", reason, created_at::double precision AS "createdAt" FROM pickler.trading_attempts WHERE tenant_id=$1 AND agent_id=$2 ORDER BY created_at DESC LIMIT 1',
+      [scope.tenantId, scope.agentId],
+    );
     return {
       ...scope,
+      automaticAttempt: attempt.rows[0] ?? null,
       wallet: r.rows[0].wallet,
       signer: r.rows[0].signer,
+      enabled: r.rows[0].enabled,
       chainId: 137,
       budgetMicros: 10000000,
       reservedMicros: r.rows[0].reserved,
       spentMicros: r.rows[0].spent,
     };
   }
+  async setEnabled(scope: Scope, enabled: boolean): Promise<void> {
+    await this.tx(async (c) => {
+      await this.context(c, scope);
+      const updated = await c.query(
+        "UPDATE pickler.trading_accounts SET enabled=$3 WHERE tenant_id=$1 AND agent_id=$2 RETURNING wallet",
+        [scope.tenantId, scope.agentId, enabled],
+      );
+      if (!updated.rows.length) {
+        throw new PilotError("NOT_FOUND", "Trading account not bound");
+      }
+    });
+  }
+  private async enabled(c: PoolClient, scope: Scope) {
+    const account = await c.query(
+      "SELECT enabled FROM pickler.trading_accounts WHERE tenant_id=$1 AND agent_id=$2",
+      [scope.tenantId, scope.agentId],
+    );
+    if (!account.rows[0]?.enabled) {
+      throw new PilotError("TRADING_DISABLED", "Operator has not enabled this account");
+    }
+    const done = await c.query(
+      "SELECT 1 FROM pickler.live_orders WHERE tenant_id=$1 AND agent_id=$2 AND origin='agent' AND status='settled'",
+      [scope.tenantId, scope.agentId],
+    );
+    if (done.rows.length) {
+      throw new PilotError("TRADING_PILOT_COMPLETE", "Autonomous purchase already confirmed");
+    }
+  }
+  async admitAutomatic(run: RunRecord): Promise<boolean> {
+    return this.tx(async (c) => {
+      const agent = await this.context(c, { tenantId: run.tenantId, agentId: run.agentId });
+      await this.enabled(c, { tenantId: agent.tenantId, agentId: agent.id });
+      if (agent.config.trading?.mode !== "automatic") {
+        return false;
+      }
+      assertTradingRun(run, agent, await this.time(c));
+      const attempted = await c.query(
+        "SELECT 1 FROM pickler.trading_attempts WHERE tenant_id=$1 AND agent_id=$2 LIMIT 1",
+        [run.tenantId, run.agentId],
+      );
+      if (attempted.rows.length) {
+        return false;
+      }
+      const result = await c.query(
+        "INSERT INTO pickler.trading_attempts (run_id,tenant_id,agent_id,created_at) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING run_id",
+        [run.id, run.tenantId, run.agentId, await this.time(c)],
+      );
+      return result.rows.length > 0;
+    });
+  }
+  async recordAutomaticFailure(run: RunRecord, reason: string): Promise<void> {
+    await this.pool.query(
+      "UPDATE pickler.trading_attempts SET reason=$2 WHERE run_id=$1 AND tenant_id=$3",
+      [run.id, reason, run.tenantId],
+    );
+  }
+  async renew(order: LiveOrder): Promise<void> {
+    await this.tx(async (c) => {
+      const now = await this.time(c);
+      await this.authorized(c, order, now);
+      await this.owned(c, order, now);
+      await c.query("UPDATE pickler.live_orders SET lease_expires_at=$2 WHERE id=$1", [
+        order.id,
+        now + 60000,
+      ]);
+    });
+  }
   private async authorized(c: PoolClient, order: LiveOrder, now: number) {
     const agent = await this.context(c, order);
     assertTradingAgent(agent);
+    await this.enabled(c, { tenantId: agent.tenantId, agentId: agent.id });
     if (agent.version !== order.configVersion || now >= order.expiresAt) {
       throw new PilotError("CONFIG_CHANGED", "Order expired or configuration changed");
     }
@@ -163,12 +230,16 @@ export class PostgresTradingStore implements TradingRepository {
     preview: LivePreview,
     key: string,
     runId?: string,
+    expectedVersion?: number,
   ): Promise<LiveOrder> {
     if (!key || key.length > 128) {
       throw new PilotError("INVALID_INPUT", "Idempotency key required");
     }
     return this.tx(async (c) => {
       const agent = await this.context(c, scope);
+      if (expectedVersion !== undefined && agent.version !== expectedVersion) {
+        throw new PilotError("CONFIG_CHANGED", "Configuration changed during preparation");
+      }
       const existing = await c.query<LiveOrder>(
         `SELECT ${projection} FROM pickler.live_orders WHERE tenant_id=$1 AND request_key=$2`,
         [scope.tenantId, key],
@@ -187,6 +258,7 @@ export class PostgresTradingStore implements TradingRepository {
         return old;
       }
       const now = await this.time(c);
+      await this.enabled(c, scope);
       assertLivePreview(preview, agent, now);
       if (runId) {
         const row = await c.query(
@@ -292,16 +364,18 @@ export class PostgresTradingStore implements TradingRepository {
   }
   async claim(): Promise<LiveOrder | null> {
     return this.tx(async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(761204, 9)");
       const now = await this.time(c);
       await c.query(
         `UPDATE pickler.live_orders
         SET status='expired',reason='EXPIRED'
-        WHERE status IN ('prepared','queued') AND expires_at <= $1`,
+        WHERE status IN ('prepared','queued') AND (expires_at <= $1 OR (lease_owner IS NOT NULL AND lease_expires_at <= $1))`,
         [now],
       );
       const row = (
         await c.query<LiveOrder>(
-          `SELECT ${projection} FROM pickler.live_orders WHERE status='queued' AND lease_owner IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED`,
+          `SELECT ${projection} FROM pickler.live_orders o WHERE status='queued' AND lease_owner IS NULL AND EXISTS (SELECT 1 FROM pickler.trading_accounts a WHERE a.tenant_id=o.tenant_id AND a.agent_id=o.agent_id AND ($1::text IS NULL OR a.wallet=$1)) AND NOT EXISTS (SELECT 1 FROM pickler.live_orders active WHERE active.tenant_id=o.tenant_id AND active.agent_id=o.agent_id AND (active.status IN ('submitting','unknown') OR (active.status='queued' AND active.lease_owner IS NOT NULL))) ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED`,
+          [this.wallet ?? null],
         )
       ).rows[0];
       if (!row) {
@@ -370,7 +444,8 @@ export class PostgresTradingStore implements TradingRepository {
   async pending() {
     return (
       await this.pool.query<LiveOrder>(
-        `SELECT ${projection} FROM pickler.live_orders WHERE status IN ('submitting','unknown') ORDER BY created_at LIMIT 20`,
+        `SELECT ${projection} FROM pickler.live_orders o WHERE status IN ('submitting','unknown') AND EXISTS (SELECT 1 FROM pickler.trading_accounts a WHERE a.tenant_id=o.tenant_id AND a.agent_id=o.agent_id AND ($1::text IS NULL OR a.wallet=$1)) ORDER BY created_at LIMIT 20`,
+        [this.wallet ?? null],
       )
     ).rows;
   }
@@ -386,10 +461,10 @@ export class PostgresTradingStore implements TradingRepository {
       ) {
         throw new PilotError("INVALID_PROVIDER_RESPONSE", "Unverified fill");
       }
-      await c.query(
+      const updated = await c.query(
         `UPDATE pickler.live_orders
         SET status=$3,fill=$4,lease_owner=NULL,lease_expires_at=NULL
-        WHERE id=$1 AND tenant_id=$2 AND order_hash=$5 AND status IN ('submitting','unknown')`,
+        WHERE id=$1 AND tenant_id=$2 AND order_hash=$5 AND status IN ('submitting','unknown') RETURNING id`,
         [
           order.id,
           order.tenantId,
@@ -398,25 +473,33 @@ export class PostgresTradingStore implements TradingRepository {
           order.orderHash,
         ],
       );
+      if (updated.rowCount && result.status === "settled" && order.origin === "agent") {
+        await c.query(
+          "UPDATE pickler.trading_accounts SET enabled=false WHERE tenant_id=$1 AND agent_id=$2",
+          [order.tenantId, order.agentId],
+        );
+      }
     });
     this.owners.delete(order.id);
   }
+
   async automaticCandidates(): Promise<RunRecord[]> {
     return this.tx(async (c) => {
       const now = await this.time(c);
       const rows = await c.query(
         `SELECT r.* FROM pickler.runs r JOIN pickler.agents a ON a.tenant_id=r.tenant_id AND a.id=r.agent_id
-        WHERE r.tenant_id='alpha' AND r.agent_id='pickle-alpha' AND r.status='completed' AND r.config_version=a.version
+        WHERE EXISTS (SELECT 1 FROM pickler.trading_accounts account WHERE account.tenant_id=r.tenant_id AND account.agent_id=r.agent_id AND account.enabled AND ($2::text IS NULL OR account.wallet=$2)) AND r.status='completed' AND r.config_version=a.version
         AND a.config->'trading'->>'mode'='automatic' AND NOT a.paused AND r.decision->>'action'='TRADE'
         AND r.decision->'policyEvaluation'->>'finalAction'='TRADE'
         AND (r.decision->>'expiresAt')::timestamptz > to_timestamp($1::double precision / 1000)
         AND a.config->'plugins'->'enabled' ? 'polymarket-trading'
         AND a.config->'plugins'->'enabled' ? 'polymarket'
+        AND NOT EXISTS (SELECT 1 FROM pickler.trading_attempts attempt WHERE attempt.tenant_id=r.tenant_id AND attempt.agent_id=r.agent_id)
         AND NOT EXISTS (SELECT 1 FROM pickler.live_orders o WHERE o.run_id=r.id)
         AND EXISTS (SELECT 1 FROM pickler.live_orders o WHERE o.tenant_id=a.tenant_id AND o.agent_id=a.id AND o.origin='manual' AND o.status='settled')
-        AND NOT EXISTS (SELECT 1 FROM pickler.live_orders o WHERE o.tenant_id=a.tenant_id AND o.agent_id=a.id AND o.origin='agent' AND o.status IN ('queued','submitting','unknown','settled'))
+        AND NOT EXISTS (SELECT 1 FROM pickler.live_orders o WHERE o.tenant_id=a.tenant_id AND o.agent_id=a.id AND o.origin='agent')
         ORDER BY r.created_at LIMIT 1`,
-        [now],
+        [now, this.wallet ?? null],
       );
       return rows.rows.map((r) => mapped<RunRecord>(r));
     });
