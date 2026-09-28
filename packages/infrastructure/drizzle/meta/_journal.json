@@ -85,6 +85,13 @@
       "when": 1790501686335,
       "tag": "0011_cuddly_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790610379874,
+      "tag": "0012_stale_exiles",
+      "breakpoints": true
     }
   ]
 }

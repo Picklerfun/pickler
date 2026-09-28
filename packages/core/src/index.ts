@@ -158,3 +158,7 @@ export * from "./features/paper-study/study.js";
 
 export * from "./features/perps/types.js";
 export * from "./features/perps/service.js";
+
+export * from "./features/perps-paper/types.js";
+export * from "./features/perps-paper/decimal.js";
+export * from "./features/perps-paper/policy.js";

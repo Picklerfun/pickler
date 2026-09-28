@@ -40,6 +40,7 @@ export const consoleOptionsSchema = z.object({
         "paper-trading",
         "polymarket-trading",
         "perpl",
+        "perps-paper",
       ]),
       version: z.string(),
       tools: agentConfigSchema.shape.tools,

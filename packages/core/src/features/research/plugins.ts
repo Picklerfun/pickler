@@ -8,6 +8,7 @@ export const PLUGIN_IDS = [
   "paper-trading",
   "polymarket-trading",
   "perpl",
+  "perps-paper",
 ] as const;
 export type PluginId = (typeof PLUGIN_IDS)[number];
 export type PluginConfig = { version: 1; enabled: PluginId[] };
@@ -27,11 +28,13 @@ export const PLUGINS = PLUGIN_IDS.map((id) => ({
   id,
   version: id === "paper-trading" ? "1.1.0" : "1.0.0",
   coverage:
-    id === "perpl"
-      ? ["perps-data-v1"]
-      : id === "balldontlie" || id === "the-odds-api"
-        ? ["nfl-winner-v1"]
-        : ["all"],
+    id === "perps-paper"
+      ? ["perps-paper-v1"]
+      : id === "perpl"
+        ? ["perps-data-v1"]
+        : id === "balldontlie" || id === "the-odds-api"
+          ? ["nfl-winner-v1"]
+          : ["all"],
   tools: Object.entries(TOOL_PLUGIN)
     .filter(([, owner]) => owner === id)
     .map(([tool]) => tool as ToolName),

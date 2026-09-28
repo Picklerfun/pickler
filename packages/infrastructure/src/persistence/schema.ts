@@ -282,3 +282,73 @@ export const liveOrders = pickler
     ],
   )
   .enableRLS();
+
+export const perpsPaperAccounts = pickler
+  .table(
+    "perps_paper_accounts",
+    {
+      id: text("id").primaryKey(),
+      tenantId: text("tenant_id").notNull(),
+      agentId: text("agent_id").notNull(),
+      sessionId: text("session_id").notNull(),
+      network: text("network").notNull(),
+      document: jsonb("document").$type<import("@pickler/core").PerpsPaperAccount>().notNull(),
+    },
+    (t) => [
+      uniqueIndex("perps_paper_account_scope").on(t.tenantId, t.agentId, t.sessionId, t.network),
+      foreignKey({
+        columns: [t.tenantId, t.agentId],
+        foreignColumns: [agents.tenantId, agents.id],
+      }),
+      check("perps_paper_network", sql`${t.network} in ('mainnet','testnet')`),
+    ],
+  )
+  .enableRLS();
+export const perpsPaperAttempts = pickler
+  .table(
+    "perps_paper_attempts",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document").$type<import("@pickler/core").PerpsPaperAttempt>().notNull(),
+      owner: text("owner"),
+      expiresAt: milliseconds("expires_at"),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();
+export const perpsPaperPositions = pickler
+  .table(
+    "perps_paper_positions",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      id: text("id").notNull(),
+      symbol: text("symbol").notNull(),
+      closedAt: milliseconds("closed_at"),
+      document: jsonb("document").$type<import("@pickler/core").PerpsPaperPosition>().notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.accountId, t.id] }),
+      uniqueIndex("perps_paper_open_symbol")
+        .on(t.accountId, t.symbol)
+        .where(sql`${t.closedAt} is null`),
+    ],
+  )
+  .enableRLS();
+export const perpsPaperMovements = pickler
+  .table(
+    "perps_paper_movements",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document").$type<import("@pickler/core").PerpsPaperMovement>().notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();

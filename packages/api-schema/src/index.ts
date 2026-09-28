@@ -18,3 +18,4 @@ export * from "./console.js";
 export * from "./trading.js";
 
 export * from "./perps.js";
+export * from "./perps-paper.js";

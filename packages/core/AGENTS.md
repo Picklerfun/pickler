@@ -121,3 +121,7 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 ## Perpl public data plugin
 
 `features/perps` exports separate perpetual-data contracts and `createPerpReadService`. Perpl config is optional and opt-in; preserve historical tool/plugin defaults. The service pins config version and rechecks tenant, tool, plugin and market permissions around reads. No probability schema, SDK, signer or persistence belongs here.
+
+## Perpetual paper accounts
+
+`features/perps-paper` owns the opt-in virtual account contracts, exact decimal arithmetic, conservative 1x risk policy and trusted simulator fill transitions. Margin is reserved, never a cash expense; preserve negative balances and unknown marks. No signer, model tool or Polymarket decision dependency.

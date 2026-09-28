@@ -62,3 +62,7 @@ Paper DTOs now include optional nullable settlement evidence, buy-time resolutio
 ## Perpl public data plugin
 
 `src/perps.ts` exports independent Perpl data/config schemas with decimal strings, explicit network/provenance, candle gaps and bounded book depth. Do not reuse 0..1 prediction prices or the demo market DTOs. Research config accepts optional Perpl settings and four explicitly enabled tools; historical defaults remain unchanged.
+
+## Perpetual paper accounts
+
+`src/perps-paper.ts` exports virtual account, intent, position, ledger, status and risk DTOs. Monetary values are decimal strings; unknown valuation stays null. Lease owner tokens are deliberately excluded. Agent config accepts opt-in `perpsPaper` and the `perps-paper` plugin.

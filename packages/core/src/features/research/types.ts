@@ -34,6 +34,7 @@ export interface DiscoveryPolicy {
   maxHorizonDays: number;
 }
 export interface AgentConfig {
+  perpsPaper?: import("../perps-paper/types.js").PerpsPaperConfig | undefined;
   perpl?: PerplConfig | undefined;
   trading?: import("../trading/types.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
@@ -377,6 +378,12 @@ export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
 }
 
 export function assertConfig(config: AgentConfig): void {
+  if (
+    config.perpsPaper &&
+    (config.perpsPaper.version !== 1 || config.perpsPaper.policy !== "conservative-1x-v1")
+  ) {
+    throw new PilotError("INVALID_INPUT", "Invalid perpetual paper policy");
+  }
   if (config.perpl) {
     assertPerplConfig(config.perpl);
   }
@@ -432,6 +439,7 @@ export function assertConfig(config: AgentConfig): void {
             "paper-trading",
             "polymarket-trading",
             "perpl",
+            "perps-paper",
           ].includes(id),
       ))
   ) {
