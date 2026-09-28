@@ -130,3 +130,6 @@ control. Technical paid-stop blocks every variant's purchase. `benchmark-metrics
 forecast scores, realized-only economics, labeled review metrics and seeded paired hour-block
 bootstrap. Missing/pending/failed observations are never silently zero; synthetic labels are not
 human judgments. Preserve the older protocols and never alter quantitative formulas for this study.
+
+Explicit benchmark continuations carry prior v4 reservations and review counts into the original
+USD 1.25 / 386-call ceilings. Starting a new study does not reset these limits.
