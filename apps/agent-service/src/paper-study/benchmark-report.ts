@@ -256,6 +256,7 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
     files = new Set<string>();
   const summaries: unknown[] = [];
   const tableRows: unknown[][] = [];
+  const reviewerRows: unknown[][] = [];
   const benchmarkGroups = new Map<string, BenchmarkCase[]>();
   for (const file of paths) {
     const path = resolve(file),
@@ -305,7 +306,10 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
         filled: fills.length,
         pending: fills.length - settled.length,
         reservedUsd: state.cases.reduce((s, r) => s + r.reservedApiUsd, 0),
-        realizedPnl: settled.reduce((s, r) => s + Number(r.settlement!.realizedPnl), 0),
+        realizedPnl:
+          settled.length || state.cases.some((r) => r.status === "abstained")
+            ? settled.reduce((s, r) => s + Number(r.settlement!.realizedPnl), 0)
+            : null,
         brier: null,
         notice: "No compatible shared quantitative forecast; no reconstructed A/B/C/D results.",
         originalCases: state.cases,
@@ -340,6 +344,8 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
           reviewers: metadata?.reviewers ?? null,
           experiment: metadata?.experiment ?? null,
           commit: metadata?.commit ?? null,
+          permissions: metadata?.configuration?.plugins ?? null,
+          reservationPolicy: { maximum: state.maxNewReservedUsd, rate: state.jevInputPerMillion },
         }),
       );
       // Missing freeze metadata is visible but cannot establish an economic improvement.
@@ -394,7 +400,10 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
         reviewIds: [],
       }));
     }
-    const present = [...new Set(rows.flatMap((r) => r.variants.map((d) => d.variant)))];
+    const present: BenchmarkVariant[] =
+      state.version === 4
+        ? ["A", "B", "C", "D"]
+        : [...new Set(rows.flatMap((r) => r.variants.map((d) => d.variant)))];
     const variants = present.map((v) => variantMetrics(rows, v));
     for (const v of variants) {
       tableRows.push([id, state.version, ...metricRow(v)]);
@@ -412,11 +421,53 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
                 ? comparisonReviews(state)
                 : state.cases.map((c) => c.review).filter(Boolean),
           };
+    let evaluation: ReturnType<typeof benchmarkSummary> | null = null;
+    if (state.version === 4) {
+      const labels: BenchmarkScenario[] = await readFile(
+        join(dirname(path), "scenarios.json"),
+        "utf8",
+      )
+        .then(JSON.parse)
+        .catch((e: NodeJS.ErrnoException) => {
+          if (e.code === "ENOENT") {
+            return [];
+          }
+          throw e;
+        });
+      if (
+        labels.length &&
+        metadata?.scenariosHash &&
+        sha256(JSON.stringify(labels)) !== metadata.scenariosHash
+      ) {
+        throw new Error("IMPORTED_SCENARIOS_HASH_MISMATCH");
+      }
+      evaluation = benchmarkSummary(state, labels);
+      for (const r of evaluation.reviewers.filter((r) => r.reservedCalls)) {
+        reviewerRows.push([
+          id,
+          r.phase,
+          r.reviewer,
+          r.startedCalls,
+          r.valid,
+          r.detected,
+          r.materialCases,
+          r.falseVetos,
+          r.coherentCases,
+          r.uncertain,
+          r.technicalFailures,
+          r.meanLatencyMs,
+          r.inputTokens,
+          r.outputTokens,
+          r.validation,
+        ]);
+      }
+    }
     summaries.push({
       ...identity,
       variants,
       forecasts: forecastMetrics(rows),
       accounting,
+      evaluation,
       originalCases: rows,
     });
   }
@@ -447,11 +498,29 @@ export async function compareBenchmarkStudies(output: string, paths: string[]) {
     join(directory, "results.csv"),
     csv([["Study", "Version", ...metricHeaders], ...tableRows]),
   );
+  const reviewerHeaders = [
+    "Study",
+    "Phase",
+    "Reviewer",
+    "Started calls",
+    "Valid",
+    "Detected",
+    "Material denominator",
+    "False vetos",
+    "Coherent denominator",
+    "Uncertain",
+    "Technical failures",
+    "Mean ms",
+    "Input tokens",
+    "Output tokens",
+    "Validation",
+  ];
+  await atomicWrite(join(directory, "reviewers.csv"), csv([reviewerHeaders, ...reviewerRows]));
   await atomicWrite(
     join(directory, "index.html"),
     page(
       "BTC · cumulative decision laboratory",
-      `<p>Explicit immutable imports. Historical protocols are separate cohorts; absent compact/no-veto variants are never reconstructed. Economic comparisons pool only identical frozen v4 experiments. Unknown historical commits remain unknown.</p><p><a href="results.csv">Comparison CSV</a> · <a href="summary.json">Imported evidence and identities</a></p>${table(["Study", "Version", ...metricHeaders], tableRows)}<h2>Paired prospective effects</h2><pre>${esc(JSON.stringify(effects, null, 2))}</pre><details><summary>Study identities, forecasts and original cases</summary><pre>${esc(JSON.stringify(summaries, null, 2))}</pre></details>`,
+      `<p>Explicit immutable imports. Historical protocols are separate cohorts; absent compact/no-veto variants are never reconstructed. Zero-market v4 rows describe variants that have not run. Economic comparisons pool only identical frozen v4 experiments. Unknown historical commits remain unknown.</p><p><a href="results.csv">Comparison CSV</a> · <a href="reviewers.csv">Reviewer CSV</a> · <a href="summary.json">Imported evidence and identities</a></p>${table(["Study", "Version", ...metricHeaders], tableRows)}<h2>Observed reviewer results</h2><p>Development and heldout are separate. Synthetic labels are not human review. Incomplete and technical cases are excluded from valid-case denominators and listed separately.</p>${table(reviewerHeaders, reviewerRows)}<h2>Paired prospective effects</h2><pre>${esc(JSON.stringify(effects, null, 2))}</pre><details><summary>Study identities, forecasts and original cases</summary><pre>${esc(JSON.stringify(summaries, null, 2))}</pre></details>`,
     ),
   );
   return directory;
