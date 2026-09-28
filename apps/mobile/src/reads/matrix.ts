@@ -45,7 +45,7 @@ export function formatRemaining(ms: number): string {
   return h > 0 ? `${h} h ${m % 60} m` : `${m} m`;
 }
 
-export const formatProbability = (p: number): string => `${Math.round(p * 100)} %`;
+export const formatProbability = (p: number): string => `${Math.round(p * 100)}%`;
 
 // Hoja de la matriz (F2-matrix): steppers, distancia y puntos de reads previas. Puro.
 

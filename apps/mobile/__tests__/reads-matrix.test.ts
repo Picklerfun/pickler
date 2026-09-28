@@ -62,8 +62,8 @@ test("formatRemaining rounds down to hours and minutes", () => {
 });
 
 test("probability labels", () => {
-  expect(formatProbability(0.62)).toBe("62 %");
-  expect(formatProbability(0.075)).toBe("8 %");
+  expect(formatProbability(0.62)).toBe("62%");
+  expect(formatProbability(0.075)).toBe("8%");
 });
 
 test("steppers walk the matrix in spec order and stop at the edges (P6)", () => {
