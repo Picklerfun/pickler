@@ -156,14 +156,12 @@ export * from "./features/paper/sports.js";
 
 export * from "./features/paper-study/study.js";
 
-export * from "./features/perps/types.js";
-export * from "./features/perps/service.js";
+export * from "./features/paper-study/quant.js";
 
-export * from "./features/perps-paper/types.js";
-export * from "./features/perps-paper/decimal.js";
-export * from "./features/perps-paper/policy.js";
+export * from "./features/paper-study/quant-session.js";
 
-export * from "./features/perps-paper/simulation.js";
-export * from "./features/perps-paper/service.js";
-export * from "./features/perps-study/types.js";
-export * from "./features/perps-study/policy.js";
+export * from "./features/paper-study/comparison.js";
+
+export * from "./features/paper-study/benchmark.js";
+
+export * from "./features/paper-study/benchmark-metrics.js";

@@ -65,14 +65,18 @@ on failure, and never store raw rejected response fields. No automatic retry or 
 
 Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
 
-## Perpl public data plugin
+## Quantitative BTC paper pilot
 
-`composition/perpl` is a public export creating a fresh bounded Perpl read session and four Mastra tools, without constructing a model. Runtime exposes `perpl(scope, signal)` and a Perpl plugin check. These tools are separate from the Polymarket research workflow; no model tool can configure an agent, move funds or submit orders.
+`./composition/quant-review` exports the opt-in quantitative paper reviewer. Jev only vetoes high-confidence material contradictions; it never changes forecasts or invokes DeepSeek. Known usage and allowlisted answer diagnostics survive invalid responses. No paid retries.
 
-`composition/perps-paper` exports operator-only data/simulator composition. It creates fresh bounded Perpl sessions, hashes normalized frames and never exposes an execution tool or signer. Five Perpl data tools now include explicitly permitted funding history.
+Quantitative reviewer prompt 1.1.0 explicitly recognizes conservative and central policies. Negative sensitivity alone is not a material contradiction. Policy and both edges are data, not model-editable rules. The pinned model, strict answer validation, safe diagnostics, usage accounting and no-retry/no-fallback behavior remain unchanged.
 
-`./composition/perps-study-model` exports a separate local perpetual comparison adapter. Its two
-versioned prompts are independent of Polymarket. It uses bounded direct HTTP (20 seconds, 30,000
-request bytes, 1 MiB responses), no retries, persisted pre-transport request hashes and usage before
-output validation. Only coherent high-confidence material insufficiency can skip a blind DeepSeek
-fallback. Pin actual provider/model IDs and reviewed tariffs; no provider call occurs on import.
+`./composition/compact-quant-review` is a separate opt-in semantic reviewer 1.0.0 for local v4
+benchmarks. Keep the current reviewer intact. It supplies original rules, provenance and explicit
+system interpretation without books/candles, and asks four atomic consistency questions. Only a
+high-confidence contradiction vetoes; uncertainty is not approval. Both probability and confidence
+derive from the same distribution. Never include synthetic labels or extend this adapter to hosted
+research implicitly. Invalid answers retain usage and allowlisted diagnostics without retries.
+
+Quantitative reviewer diagnostics now distinguish PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM
+using fixed labels only. Thresholds, prompts, rejected-answer policy and usage retention are unchanged.

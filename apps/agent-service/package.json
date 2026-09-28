@@ -29,7 +29,10 @@
     "paper:study": "node --import tsx src/paper-study/main.ts",
     "perpl:data": "node --import tsx src/perpl-data.ts",
     "perps:paper": "node --import tsx src/perps-paper.ts",
-    "perps:study": "node --import tsx src/perps-study/main.ts"
+    "perps:study": "node --import tsx src/perps-study/main.ts",
+    "paper:quant": "node --import tsx src/paper-study/quant-main.ts",
+    "paper:compare": "node --import tsx src/paper-study/comparison-main.ts",
+    "paper:benchmark": "node --import tsx src/paper-study/benchmark-main.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",

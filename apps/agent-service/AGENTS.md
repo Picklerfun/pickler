@@ -165,22 +165,33 @@ PAPER-STUDY.md for the readiness gate, full-forecast fallback and historical res
 
 Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
 
-## Perpl public data plugin
+## Quantitative BTC paper pilot
 
-Read [PERPL-DATA.md](PERPL-DATA.md) for the opt-in `perpl:data configure|check|capture` operator command. It uses an existing scoped database agent, no model/key, and never seeds/migrates. Configure is version-checked and disables scheduling. Captures use exclusive private attempt directories, original bodies, hashes and incomplete manifests. `test/perpl-public.probe.ts` is an explicit public-network probe with an in-memory verification agent; it is excluded from automatic tests and never modifies real configurations.
+`paper:quant` implements the separate version-2 local BTC quantitative laboratory. Read QUANT-PAPER.md. It has explicit preflight/history/run/settle/report commands, a shared campaign lock and carried-forward $5 accounting. New paid reservations are capped at $0.10. Settle cannot discover, forecast or purchase. Preserve historical STOP files and snapshots; do not describe Coinbase proxy history as official Polymarket performance.
 
-## Perpetual paper accounts
+QUANT-PAPER-VALIDATION.md records controlled checks and the actual prospective study separately. The report may replay saved books to explain both outcome costs/edges, but it must not mutate decisions or create fills. Compare Brier against available market quotes on matched observations, and preserve explicit failed/pending cases.
 
-Read [PERPS-PAPER.md](PERPS-PAPER.md) for `perps:paper account-init|status|risk-check`. The local operator uses explicit tenant/agent/session/network and versioned opt-in. No provider/model calls or automatic migrations. `--enable-plugin` explicitly updates configuration and disables scheduling; historical sessions retain their original version and capital.
+## Paired BTC policy comparison
 
-`perps:paper` adds keyed open/close/tick and read-only report. `test/perps-public.probe.ts` explicitly tests actual public GETs with virtual fills in a disposable migrated database and private captures. It is excluded from default tests; do not describe it as real trading or change persistent alpha/beta configurations.
+`paper:compare` owns version-3 `btc-policy-comparison-v1`; read COMPARISON-PAPER.md. Replay is offline. A single paid synthetic Jev probe must pass before the two-hour run; probe plus run share a USD 0.25 reservation ceiling within the original USD 5. Freeze clean commit/configuration/prompts, preserve old studies, serialize reservations/writes and record missed slots without backfill. Paid-stop blocks reviews/fills but permits free forecasts and public settlement. Only actual virtual fills receive settlement arithmetic. Reports count shared forecasts/reviews once and keep synthetic acceptance separate. No hosted or real-trading changes.
 
-## Perpetual comparison
+## Four-variant BTC decision benchmark
 
-`src/perps-study` owns the local foreground comparison CLI, bounded observation/decision lifecycle,
-common public data packets and regenerable HTML/CSV reports. `perps:study` exposes init, preflight,
-run, resume, stop and report. Read PERPS-STUDY.md. Three explicitly dedicated agents receive virtual
-capital; never reuse alpha/beta, reset a session, or conflate virtual AUSD with model USD. Paid work
-requires `--allow-paid`, frozen reviewed prices and a joint USD 5 reservation ceiling. No retries or
-backfilled rounds. Model failures stop all new strategy decisions while sampled risk monitoring
-continues. No web endpoint, signer, real order or deployed runner is added.
+`paper:benchmark` implements local version 4; read [BTC-DECISION-BENCHMARK.md](BTC-DECISION-BENCHMARK.md).
+Preparation freezes 48 synthetic labeled scenarios and both reviewers before paid calls. Keep labels
+out of requests and heldout wording families separate. Evaluate/run share USD 1.25 new reservations
+within the original USD 5 and a 386-call ceiling; old command accounting must include v4 or refuse it.
+Valid poor judgments continue all virtual variants; technical Jev failures stop new paid calls and
+all purchases. No retries, fallback, prompt tuning, hosted changes or automatic follow-up campaigns.
+The six-hour run shares initial/refreshed snapshots across A/B/C/D and records fixed slots.
+Offline reports import explicit historical paths without reconstructing unobserved variants.
+
+An explicitly user-authorized benchmark continuation uses a new study, retaining all historical
+STOP files and reservations. `paper:benchmark diagnose CONFIG --case CASE_ID --allow-paid` makes
+one current-reviewer call in an otherwise empty frozen study; it cannot unlock a prospective run.
+All v4 studies share the original USD 1.25 and 386 reservations. No automatic failed-call retry.
+
+`invalidAnswerPolicy: "block-case"` is an explicit frozen opt-in for malformed, accounted Jev
+answers. Keep the default global stop unless the operator authorizes this change. Affected
+markets have no purchases in any variant; the next independent market may proceed without retry.
+Reports retain completed_with_errors and raw failure counts, not a reliability acceptance claim.

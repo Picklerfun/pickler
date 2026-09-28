@@ -1,4 +1,4 @@
-import { readFile, access } from "node:fs/promises";
+import { readFile, access, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { config as dotenv } from "dotenv";
@@ -28,6 +28,21 @@ const directory = resolve(".data/paper-studies", configuration.id);
 const original = JSON.stringify(configuration);
 let stopRequested = false;
 async function guard(kind: StudyKind, plugin?: StudyPlugin) {
+  if (command === "run") {
+    for (const name of await readdir(resolve(".data/paper-studies"))) {
+      const raw = await readFile(resolve(".data/paper-studies", name, "state.json"), "utf8").catch(
+        (e: NodeJS.ErrnoException) => {
+          if (e.code === "ENOENT" || e.code === "ENOTDIR") {
+            return "null";
+          }
+          throw e;
+        },
+      );
+      if ((JSON.parse(raw)?.version ?? 1) >= 4) {
+        throw new Error("LEGACY_RUN_CANNOT_ACCOUNT_FOR_V4_CAMPAIGN");
+      }
+    }
+  }
   if (stopRequested) {
     throw new PilotError("STUDY_STOPPED", "Operator stopped the study");
   }
