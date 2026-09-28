@@ -16,6 +16,7 @@ import {
   createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
   PostgresResearchStore,
+  PostgresLaunchReadModel,
   PostgresPaperStore,
   PolymarketData,
   PolymarketPaperResolution,
@@ -91,6 +92,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   return {
     authenticate,
     growth: createGrowthServices(env),
+    launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     console: {
