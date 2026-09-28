@@ -135,3 +135,17 @@ tests cover shared snapshots, independent fills, semantic failures, reservations
 synthetic label isolation, safe diagnostics and known reporting arithmetic. Controlled purchases
 do not establish live profitability. Record live acceptance separately in
 `BTC-DECISION-BENCHMARK-VALIDATION.md` after execution.
+
+## Explicit operator continuation and diagnosis
+
+After renewed user authorization, prepare a new study declaring every prior study. Never remove
+a historical STOP or rewrite prior results. Prior v4 money and review counts are carried into
+the original USD 1.25 and 386-call ceilings, including unused reservations. A fresh evaluation
+is a repeated development experiment, not a new independent sample. Prompts and heldout labels
+must remain frozen.
+
+`npm run paper:benchmark -- diagnose CONFIG --case CASE_ID --allow-paid` reserves and sends
+exactly one current-reviewer call for that frozen scenario. It preserves usage and distinguishes
+PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM without rejected values. The diagnostic study
+cannot pass the 98-review live gate. Any subsequent evaluation needs its own explicitly prepared
+study, accounting for the diagnostic reservation as history; no automatic retry occurs.
