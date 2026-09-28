@@ -50,7 +50,7 @@ export async function keepAwake() {
   };
 }
 export async function historicalReservations(root: string, current: string, declared: string[]) {
-  const known: { name: string; reserved: number }[] = [];
+  const known: { name: string; reserved: number; benchmarkReviews?: number }[] = [];
   for (const name of await readdir(root)) {
     if (name === current || name === "quant-campaign") {
       continue;
@@ -88,7 +88,11 @@ export async function historicalReservations(root: string, current: string, decl
     if (!Number.isFinite(reserved) || reserved < 0) {
       throw new Error("INVALID_HISTORICAL_BUDGET");
     }
-    known.push({ name, reserved });
+    known.push({
+      name,
+      reserved,
+      ...(raw.version === 4 ? { benchmarkReviews: raw.reviews.length } : {}),
+    });
   }
   if (declared.some((name) => !known.some((k) => k.name === name))) {
     throw new Error("MISSING_HISTORICAL_BUDGET");
