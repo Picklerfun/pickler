@@ -81,6 +81,7 @@ test("failed inputs without forecast render safely and HTML escapes external tex
     s.cases[0]!.status = "failed";
     await saveQuant(dir, s);
     assert.equal(quantRows(s)[0]!.up, null);
+    assert.equal(quantRows(s)[0]!.outcome, "not_evaluated");
   } finally {
     await rm(dir, { recursive: true });
   }
