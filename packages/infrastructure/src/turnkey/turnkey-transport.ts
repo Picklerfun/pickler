@@ -48,7 +48,13 @@ export async function sendStampedRequest<T>(
     const text = await response.text().catch(() => "");
     let message: string | undefined;
     try {
-      message = (JSON.parse(text) as { message?: string }).message;
+      const parsed = JSON.parse(text) as { message?: string; details?: unknown };
+      message = parsed.message;
+      // Turnkey's `message` is often just "invalid request"; the field that failed is in
+      // `details`. It describes the request we sent, never a credential, so it is safe to log.
+      if (parsed.details !== undefined) {
+        console.warn("Turnkey refused", response.status, message, JSON.stringify(parsed.details));
+      }
     } catch {
       // Non-JSON error body.
     }
