@@ -50,6 +50,7 @@ export const perpsPaperAccountSchema = z
     blocked: z.boolean(),
     fundingPending: z.boolean(),
     fundingDisputed: z.boolean().optional(),
+    admissionsClosed: z.boolean().optional(),
     lastValuationAt: time.optional(),
     positions: z.array(perpsPaperPositionSchema),
   })

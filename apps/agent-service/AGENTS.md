@@ -174,3 +174,13 @@ Read [PERPL-DATA.md](PERPL-DATA.md) for the opt-in `perpl:data configure|check|c
 Read [PERPS-PAPER.md](PERPS-PAPER.md) for `perps:paper account-init|status|risk-check`. The local operator uses explicit tenant/agent/session/network and versioned opt-in. No provider/model calls or automatic migrations. `--enable-plugin` explicitly updates configuration and disables scheduling; historical sessions retain their original version and capital.
 
 `perps:paper` adds keyed open/close/tick and read-only report. `test/perps-public.probe.ts` explicitly tests actual public GETs with virtual fills in a disposable migrated database and private captures. It is excluded from default tests; do not describe it as real trading or change persistent alpha/beta configurations.
+
+## Perpetual comparison
+
+`src/perps-study` owns the local foreground comparison CLI, bounded observation/decision lifecycle,
+common public data packets and regenerable HTML/CSV reports. `perps:study` exposes init, preflight,
+run, resume, stop and report. Read PERPS-STUDY.md. Three explicitly dedicated agents receive virtual
+capital; never reuse alpha/beta, reset a session, or conflate virtual AUSD with model USD. Paid work
+requires `--allow-paid`, frozen reviewed prices and a joint USD 5 reservation ceiling. No retries or
+backfilled rounds. Model failures stop all new strategy decisions while sampled risk monitoring
+continues. No web endpoint, signer, real order or deployed runner is added.

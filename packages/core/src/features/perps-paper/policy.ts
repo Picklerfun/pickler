@@ -85,6 +85,9 @@ export function paperRisk(
   if (equity === null) {
     reasons.push("UNKNOWN_MARKS");
   }
+  if (account.admissionsClosed) {
+    reasons.push("ADMISSIONS_CLOSED");
+  }
   if (account.fundingPending) {
     reasons.push("FUNDING_PENDING");
   }

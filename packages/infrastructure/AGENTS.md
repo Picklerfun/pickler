@@ -115,3 +115,10 @@ The study adapter reads the public crypto-price endpoint with exact window, vari
 `PostgresPerpsPaperStore` owns scoped private perpetual paper accounts, append-only movements, position projections and 60-second fenced attempts. Serialize with agent/account locks, never replay expired work, and keep original session config/capital. Migration 0012 adds four RLS-enabled tables without changing existing paper or real budgets.
 
 Perpl history adds bounded four-page funding reads and a distinct tool permission. Migration 0013 stores immutable paper observations; funding postings deduplicate by position/event block and preserve discrepancies. `observe` applies ledger/mark changes atomically and keeps replayable results.
+
+`PostgresPerpsStudyStore` owns private study identities, dedicated agents, 90-second process leases,
+three-lane atomic USD reservations, original round inputs and durable usage. Migration 0014 adds
+three RLS tables. Unknown costs retain reservations; interrupted calls/executions are never replayed.
+Paper observations retain compact account snapshots instead of copying all previous fill evidence
+into every observation; replay reads the current ledger. Explicit closeAdmissions is irreversible
+within a virtual session and does not prevent exits.

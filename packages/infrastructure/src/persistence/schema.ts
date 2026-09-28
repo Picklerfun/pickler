@@ -367,3 +367,47 @@ export const perpsPaperObservations = pickler
     (t) => [primaryKey({ columns: [t.accountId, t.key] })],
   )
   .enableRLS();
+
+export const perpsStudies = pickler
+  .table(
+    "perps_studies",
+    {
+      id: text("id").primaryKey(),
+      tenantId: text("tenant_id").notNull(),
+      sessionId: text("session_id").notNull(),
+      network: text("network").notNull(),
+      document: jsonb("document").$type<import("@pickler/core").PerpsStudyRecord>().notNull(),
+      owner: text("owner"),
+      expiresAt: milliseconds("expires_at"),
+    },
+    (t) => [uniqueIndex("perps_study_scope").on(t.tenantId, t.sessionId, t.network)],
+  )
+  .enableRLS();
+export const perpsStudyRounds = pickler
+  .table(
+    "perps_study_rounds",
+    {
+      studyId: text("study_id")
+        .notNull()
+        .references(() => perpsStudies.id),
+      key: text("key").notNull(),
+      document: jsonb("document").$type<import("@pickler/core").PerpsRound>().notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.studyId, t.key] })],
+  )
+  .enableRLS();
+export const perpsStudyEvents = pickler
+  .table(
+    "perps_study_events",
+    {
+      studyId: text("study_id")
+        .notNull()
+        .references(() => perpsStudies.id),
+      key: text("key").notNull(),
+      at: milliseconds("at").notNull(),
+      kind: text("kind").notNull(),
+      data: jsonb("data").notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.studyId, t.key] })],
+  )
+  .enableRLS();

@@ -75,6 +75,10 @@
     "./composition/perps-paper": {
       "types": "./src/composition/perps-paper.ts",
       "import": "./dist/composition/perps-paper.js"
+    },
+    "./composition/perps-study-model": {
+      "types": "./src/composition/perps-study-model.ts",
+      "import": "./dist/composition/perps-study-model.js"
     }
   },
   "scripts": {

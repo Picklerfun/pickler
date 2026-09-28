@@ -37,6 +37,7 @@ export interface PerpsPaperAccount {
   blocked: boolean;
   fundingPending: boolean;
   fundingDisputed?: boolean;
+  admissionsClosed?: boolean;
   lastValuationAt?: number;
   positions: PerpsPaperPosition[];
 }
@@ -97,6 +98,7 @@ export interface PerpsPaperFill {
   evidence: unknown;
 }
 export interface PerpsPaperRepository {
+  closeAdmissions(scope: PerpsPaperScope): Promise<void>;
   observed(scope: PerpsPaperScope, key: string): Promise<boolean>;
   observe(
     scope: PerpsPaperScope,
