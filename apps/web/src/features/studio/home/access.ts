@@ -35,11 +35,13 @@ export function menuAccess({
   /** The unfunded-agent lock's note, or "" when another agent may be created. */
   fundLock: string;
 }): MenuAccess {
+  // Research first: the API's canManage is false whenever research is off, even for the owner,
+  // so checking it first told an owner waiting on research that they were only a viewer.
   let createNote = "";
-  if (!canManage) {
-    createNote = VIEW_ONLY;
-  } else if (researchLock) {
+  if (researchLock) {
     createNote = researchLock;
+  } else if (!canManage) {
+    createNote = VIEW_ONLY;
   } else if (fundLock) {
     createNote = fundLock;
   }

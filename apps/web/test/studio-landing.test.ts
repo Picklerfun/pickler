@@ -62,13 +62,20 @@ test("research locked for someone who can manage gives the research reason, not 
   assert.equal(access.createNote, researchLock);
 });
 
-test("someone who cannot manage is told so, whatever else is locked", () => {
+test("research off wins over view-only: the API's canManage is false for an owner waiting on research", () => {
   const access = menuAccess({
     ...open,
     canManage: false,
     researchLock: "locked",
     fundLock: "fund",
   });
+
+  assert.equal(access.create, false);
+  assert.equal(access.createNote, "locked");
+});
+
+test("someone who cannot manage an enabled workspace is told they only view it", () => {
+  const access = menuAccess({ ...open, canManage: false, fundLock: "fund" });
 
   assert.equal(access.create, false);
   assert.equal(access.createNote, VIEW_ONLY);
