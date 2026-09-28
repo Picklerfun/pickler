@@ -47,6 +47,8 @@ export const C = {
   vioBg08: "#F3F0FF",
   vioBg07: "#F5F2FF",
   vioBg06: "#F6F4FF",
+  /** Violeta claro del Handoff como texto **sobre `vio`** (card THE QUESTION de Read, D14). */
+  onVio: "#D9D0FF",
 
   lime: "#C8F03A",
   /** Lima como texto o icono **sobre ink** (bloques oscuros, tarjeta de passkey): ahí sí se lee. */

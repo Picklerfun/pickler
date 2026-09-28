@@ -34,6 +34,10 @@ test("tokens come verbatim from the Handoff (light system)", () => {
   expect((C as Record<string, unknown>).bgBottom).toBeUndefined();
 });
 
+test("onVio is light text over the violet block (D14 THE QUESTION card)", () => {
+  expect(C.onVio).toBe("#D9D0FF");
+});
+
 test("lime is a fill, never text: onLime is ink and the selected pill is ink", () => {
   expect(C.onLime).toBe("#0B0D1A");
   expect(pill(true)).toEqual({ bd: C.ink, bg: C.ink, fg: C.onInk });

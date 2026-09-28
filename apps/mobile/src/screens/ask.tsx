@@ -23,7 +23,7 @@ const ASK: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
 const agentName = (agents: Agent[] | null, id: string): string => agents?.find((a) => a.id === id)?.name ?? id;
 
 /** Línea de estado bajo la card: cuenta regresiva o resultado. */
-function resolutionLine(read: Read, now: number): { text: string; fg: string } {
+export function resolutionLine(read: Read, now: number): { text: string; fg: string } {
   const pd = read.priceDecimals;
   switch (read.status) {
     case "open": return { text: `Resolves in ${formatRemaining(Date.parse(read.expiresAt) - now)}`, fg: C.dim };
