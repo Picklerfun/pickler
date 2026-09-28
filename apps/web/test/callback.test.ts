@@ -10,14 +10,27 @@ import {
 
 const STUDIO = "/studio";
 
-test("a new account goes straight to the handle step, never through the studio", () => {
-  assert.equal(callbackDestination({ profile: "missing", wallet: "missing" }, STUDIO), HANDLE_STEP);
-  assert.equal(HANDLE_STEP, "/signup?step=handle");
+test("a new account goes straight to the passkey step, never through the studio", () => {
+  assert.equal(
+    callbackDestination({ profile: "missing", wallet: "missing" }, STUDIO),
+    PASSKEY_STEP,
+  );
+  assert.equal(PASSKEY_STEP, "/signup?step=passkey");
 });
 
-test("a profile without a master wallet goes straight to the signup's passkey step", () => {
-  assert.equal(callbackDestination({ profile: "found", wallet: "missing" }, STUDIO), PASSKEY_STEP);
-  assert.equal(PASSKEY_STEP, "/signup?step=passkey");
+test("no master wallet goes to the passkey step first, whatever the profile", () => {
+  for (const profile of ["found", "missing", "failed"] as const) {
+    assert.equal(
+      callbackDestination({ profile, wallet: "missing" }, STUDIO),
+      PASSKEY_STEP,
+      profile,
+    );
+  }
+});
+
+test("a master wallet without a profile goes straight to the handle step", () => {
+  assert.equal(callbackDestination({ profile: "missing", wallet: "found" }, STUDIO), HANDLE_STEP);
+  assert.equal(HANDLE_STEP, "/signup?step=handle");
 });
 
 test("only a complete account goes to the studio", () => {
@@ -27,14 +40,13 @@ test("only a complete account goes to the studio", () => {
 
 test("a failed read never reaches the studio: the signup reads again and offers a retry", () => {
   for (const account of [
-    { profile: "failed", wallet: "found" },
-    { profile: "failed", wallet: "missing" },
     { profile: "found", wallet: "failed" },
+    { profile: "missing", wallet: "failed" },
+    { profile: "failed", wallet: "failed" },
+    { profile: "failed", wallet: "found" },
   ] as const) {
     assert.equal(callbackDestination(account, STUDIO), SIGNUP_RESUME, JSON.stringify(account));
   }
-  // No profile decides the step on its own, whatever the wallet read did.
-  assert.equal(callbackDestination({ profile: "missing", wallet: "failed" }, STUDIO), HANDLE_STEP);
 });
 
 test("statuses: 2xx found, 404 missing, anything else failed", () => {

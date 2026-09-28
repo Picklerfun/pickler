@@ -2,9 +2,10 @@
  * How `/signup` and `/signin` are entered.
  *
  * With a session already there — whatever the URL, `?step=passkey` (where every signed-in screen
- * sends a person without a master wallet), `?complete=1`, or neither — the flow reads the account
- * and lands on whatever it still needs: the handle step, the passkey step, or welcome. The email
- * form is only for someone with no session. `arrivalFor` is that decision.
+ * sends a person without a master wallet), `?step=handle` (a wallet and no profile), or neither —
+ * the flow reads the account and lands on whatever it still needs: the passkey step, the handle
+ * step, or welcome. The email form is only for someone with no session. `arrivalFor` is that
+ * decision.
  *
  * `?state=passkey` is a design preview of the signup at its passkey step, with no session and no
  * reads, so the design harness can measure the step. Outside production only, gated on the build

@@ -526,9 +526,10 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
-  // The signup's mandatory passkey step: its one prompt creates the sub-organization and the
-  // master wallet, and every signed-in screen sends a person without that wallet back to it. A
-  // real visit reaches it only with a session that has a profile and no wallet, which the harness
+  // The signup's mandatory passkey step, straight after the code and before the handle: its one
+  // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a
+  // person without that wallet back to it. A real visit reaches it only with a session that has
+  // no wallet, which the harness
   // cannot have — its cookie passes the middleware's presence check and is not a session
   // (render.mjs). `?state=passkey` opens the signup on that step with no session and no reads,
   // outside production only. The studio by hosts.ts's segments, and the (auth) layout is dark.

@@ -208,16 +208,31 @@ comparison would let duplicate JSON keys through. Its user id is stored on `wall
 that had it born with the first agent). The person's profile, top right of every studio screen,
 shows their master wallet from the first visit, with or without agents — so it has to exist then.
 
-- **Signup** is email → code → handle → **passkey**, and the passkey step is **mandatory**: its one
-  prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the
-  sub-organization with the passkey as its only root and the `Master Wallet`. Nobody finishes
-  signup without one.
-- **Nobody without a master wallet gets in.** The Supabase session exists from the code step, so
-  a signup closed at the passkey step leaves a signed-in person with no wallet. Every signed-in
-  screen that finds `GET /v1/signing/wallets/me` answering 404 — the studio, creation, `/account`,
-  `/passkey` — sends them back to **the signup's passkey step**, which resumes with account and
-  handle already done, and they stay there until the wallet exists. Signin ends at the same step
-  for such an account. `/passkey` only adds devices to an account that has a wallet.
+- **Signup: email → code → passkey (mandatory; creates the master wallet) → handle (creates the
+  profile and workspace) → welcome** (order decided 2026-09-28; it was handle before passkey). The
+  passkey step's one prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates
+  the sub-organization with the passkey as its only root and the `Master Wallet`; nobody finishes
+  signup without one. The handle step comes after it and writes the profile with
+  `POST /v1/profile` (`createProfile`, then the workspace's `onboard`), so the username is saved
+  only once the passkey and the master wallet exist.
+- **Naming the first passkey.** It is created before there is a handle, so WebAuthn's `user.name`
+  and `user.displayName` — stored in the device keychain — are the person's sign-in email from the
+  verified token (never a wallet account's synthetic email; with no usable email, `pickler-<id8>`).
+  Where a profile already exists they are its handle and display name. The Turnkey root user's
+  `userName` and the sub-organization's name are **never** the email: email is kept out of Turnkey,
+  so they are the handle where there is a profile, else `pickler-<id8>`.
+- **Nobody without a master wallet gets in, and nobody without a profile gets past signup.** The
+  Supabase session exists from the code step, so a signup closed at the passkey step leaves a
+  signed-in person with no wallet, and one closed at the handle step leaves a wallet with no
+  profile. Every signed-in screen — the studio, creation, `/account`, `/passkey` — sends a person
+  whose `GET /v1/signing/wallets/me` answers 404 to **the signup's passkey step**
+  (`/signup?step=passkey`), whatever the profile, and one with a wallet whose `GET /v1/profile`
+  answers 404 to **its handle step** (`/signup?step=handle`). `/signup` resumes from what the
+  account holds, whatever the URL says: no wallet → passkey; a wallet and no profile → handle;
+  both → welcome (or the new-device screen when this browser holds no passkey). An account made
+  before the order changed — a profile and no wallet — goes through the passkey step and on to
+  welcome, never asked for a second handle. Signin passes through the same steps for such accounts.
+  `/passkey` only adds devices to an account that has a wallet.
 - **One passkey is always a reason to add a second.** Wherever a screen already has the account's
   passkey list (`GET /v1/signing/passkeys`) and it holds exactly one — the signup's welcome right
   after the passkey is created, the studio home, `/account`'s passkeys — it suggests adding a second
@@ -244,7 +259,8 @@ no new credentials for the delegated user — plus, on the first agent only, the
 self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
 
 **Where the rule is enforced.** In the web: signup cannot complete without the passkey step, and
-every signed-in screen routes a person without a sub-organization back to it. The API does not
+every signed-in screen routes a person without a sub-organization back to it (and one with a
+wallet and no profile to the handle step). The API does not
 refuse studio calls from a person without one; the agent ceremony simply cannot run without a
 sub-organization (`prepareAgentWallet` needs it).
 
@@ -465,8 +481,9 @@ Four things close that gap, in order:
    `workers/api/.dev.vars`: `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`; in the agent service also
    `EXA_API_KEY`, `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY`. The delegated key pair is already in the
    local `.dev.vars`. Restart the API worker after editing it.
-2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, handle, then
-   the mandatory passkey — one prompt; the profile shows the master wallet with no agents. Then open
+2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, the
+   mandatory passkey — one prompt — then the handle; the profile shows the master wallet with no
+   agents. Then open
    `/studio/new`, describe an agent and create it: three prompts on this first agent (two on any
    later one). Confirm in the Turnkey dashboard that the sub-organization has the passkey as its only
    root, a non-root "Pickler" user, a master wallet and the agent's wallet, and three DENY policies

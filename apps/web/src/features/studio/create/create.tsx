@@ -187,18 +187,19 @@ export function CreateAgent({
           router.replace("/signin");
           return;
         }
-        const account = await ensureProfile(supabase);
-        if (account.kind !== "ready") {
-          router.replace("/signup?complete=1");
-          return;
-        }
         /* The same door the studio shell has, before a draft is written: the agent ceremony needs a
            sub-organization, and a person without one would otherwise fill in every step only to be
-           sent away by "Create and run it once". */
+           sent away by "Create and run it once". The wallet is read first and the profile only
+           once there is one, as in the shell; a wallet without a profile goes to the handle step. */
         const token = data.session.access_token;
-        const away = redirectFor(await readSubOrganization(() => readWallet(token)));
-        if (away) {
-          if (active) {
+        const wallet = await readSubOrganization(() => readWallet(token));
+        const account = wallet === null ? null : await ensureProfile(supabase);
+        const away = redirectFor({
+          wallet,
+          profile: account?.kind === "ready" ? account.profile : null,
+        });
+        if (away || account?.kind !== "ready") {
+          if (away && active) {
             router.replace(away);
           }
           return;

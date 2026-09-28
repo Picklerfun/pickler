@@ -184,7 +184,8 @@ export type Landing = "handle" | "passkey" | "recover" | "welcome";
 
 /**
  * Where to put somebody who has just proved an email address, from what the account actually
- * holds rather than from which link they arrived on.
+ * holds rather than from which link they arrived on. The master wallet comes first: no wallet is
+ * the passkey step whatever the profile, and only an account with a wallet is asked for a handle.
  *
  * `enrolledHere` is the one part that is not server truth. It is read only to choose between
  * `welcome` and `recover`, and `isEnrolledHere` says at length why it is a hint rather than a fact.
@@ -196,11 +197,11 @@ export function landing(account: {
   wallet: WalletDto | null;
   enrolledHere: boolean;
 }): Landing {
-  if (account.handle === null) {
-    return "handle";
-  }
   if (account.wallet === null) {
     return "passkey";
+  }
+  if (account.handle === null) {
+    return "handle";
   }
   return account.enrolledHere ? "welcome" : "recover";
 }
@@ -255,10 +256,19 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
 
 /**
  * Where a signed-in person without a master wallet is sent from every screen: the signup's own
- * passkey step, which `/signup` resumes for an existing session (landing on the handle step first
- * when there is no profile yet). Nobody gets in anywhere without the wallet.
+ * passkey step. Nobody gets in anywhere without the wallet.
  */
 export const SIGNUP_PASSKEY_STEP = "/signup?step=passkey";
+
+/**
+ * Where a signed-in person with a master wallet and no profile is sent: the signup's handle step.
+ *
+ * Both URLs are cosmetic. `/signup` resumes an existing session by reading the account and landing
+ * on whatever it still needs (`landing`), whatever the query says, so neither can send somebody to
+ * a step they do not need, and neither can loop: the step they land on is decided by the same two
+ * reads that sent them.
+ */
+export const SIGNUP_HANDLE_STEP = "/signup?step=handle";
 
 /**
  * The signed-in person's master wallet from GET /wallets/me, or null when there is no
@@ -278,13 +288,24 @@ export async function readSubOrganization<T>(read: () => Promise<T>): Promise<T 
 }
 
 /**
- * Where a signed-in screen sends a person, from `readSubOrganization`'s answer: the signup's
- * passkey step when there is no sub-organization (spec §4.1 — the master wallet comes before
- * anything else), and nowhere when there is one. The studio shell, the create screen, /account and
- * /passkey all ask this.
+ * Where a signed-in screen sends a person, from what the account holds: the signup's passkey step
+ * when there is no sub-organization (spec §4.1 — the master wallet comes before anything else),
+ * whatever the profile; its handle step when there is a wallet and no profile; and nowhere when
+ * there are both. The studio shell, the create screen, /account and /passkey all ask this, so
+ * nothing past signup renders without both.
+ *
+ * `null` means a 404 for either. Anything else — the record, or `undefined` for a read that failed
+ * some other way — is not a missing one, and decides nothing here: the screen reports its own
+ * failure rather than sending somebody who has a wallet to create another.
  */
-export function redirectFor(wallet: unknown): typeof SIGNUP_PASSKEY_STEP | null {
-  return wallet === null ? SIGNUP_PASSKEY_STEP : null;
+export function redirectFor(account: {
+  wallet: unknown;
+  profile: unknown;
+}): typeof SIGNUP_PASSKEY_STEP | typeof SIGNUP_HANDLE_STEP | null {
+  if (account.wallet === null) {
+    return SIGNUP_PASSKEY_STEP;
+  }
+  return account.profile === null ? SIGNUP_HANDLE_STEP : null;
 }
 
 /**
@@ -339,7 +360,7 @@ export function verifiedEvent(account: {
     case "handle":
       return { type: "profile_missing" };
     case "passkey":
-      return { type: "wallet_missing" };
+      return { type: "wallet_missing", profile: account.handle !== null };
     case "recover":
       return { type: "device_unknown" };
     case "welcome":

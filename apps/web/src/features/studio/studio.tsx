@@ -252,17 +252,20 @@ export function Studio({
           router.replace("/signin");
           return;
         }
-        const account = await ensureProfile(supabase);
-        if (account.kind !== "ready") {
-          router.replace("/signup?complete=1");
-          return;
-        }
         /* The master wallet exists before any agent (spec §4.1): the profile, top right, shows it
            from the first visit. A person without a sub-organization — a sign-up closed at the
            passkey step, an account from before it was mandatory — creates it before anything else
-           renders. A read that fails for another reason propagates like every other load error. */
+           renders, and the profile is not even read until there is one: signup saves the handle
+           only after the wallet, and `ensureProfile` could otherwise write one ahead of it. Then a
+           wallet without a profile finishes signup at the handle step. A read that fails for
+           another reason propagates like every other load error. */
         const token = data.session.access_token;
-        const away = redirectFor(await readSubOrganization(() => readWallet(token)));
+        const wallet = await readSubOrganization(() => readWallet(token));
+        const account = wallet === null ? null : await ensureProfile(supabase);
+        const away = redirectFor({
+          wallet,
+          profile: account?.kind === "ready" ? account.profile : null,
+        });
         if (away) {
           if (active) {
             router.replace(away);
