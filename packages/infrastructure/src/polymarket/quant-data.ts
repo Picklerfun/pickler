@@ -56,6 +56,8 @@ export class QuantData {
   }
   async input(item: StudyMarket, signal: AbortSignal): Promise<QuantInput> {
     const marketUrl = `https://gamma-api.polymarket.com/markets/${item.market.id}`;
+    const metadata = await this.get("polymarket", marketUrl, signal);
+    const metadataObservedAt = new Date(this.now()).toISOString();
     const raw = z
       .object({
         id: z.literal(item.market.id),
@@ -67,7 +69,7 @@ export class QuantData {
           twapLookbackSeconds: z.union([z.literal(30), z.literal(60)]),
         }),
       })
-      .safeParse(await this.get("polymarket", marketUrl, signal));
+      .safeParse(metadata);
     if (
       !raw.success ||
       raw.data.description !== item.market.rules ||
@@ -112,7 +114,13 @@ export class QuantData {
       conditions = [];
     for (const outcome of item.market.outcomes) {
       books.push(await markets.book(outcome.id, signal));
-      conditions.push(await markets.conditions(item.market.id, outcome.id, signal));
+      await this.guard("polymarket");
+      conditions.push(
+        await markets.conditions(item.market.id, outcome.id, signal, {
+          raw: metadata,
+          observedAt: metadataObservedAt,
+        }),
+      );
     }
     const now = this.now();
     const candles = (await this.candles(now - 63 * 60000, now, signal)).slice(-61);
