@@ -47,11 +47,6 @@ export function formatRemaining(ms: number): string {
 
 export const formatProbability = (p: number): string => `${Math.round(p * 100)} %`;
 
-export function recordLabel(r: { reads: number; resolved: number; right: number; brierAvg: number | null }): string {
-  if (r.resolved === 0 || r.brierAvg === null) return "No resolved reads yet";
-  return `${r.right}/${r.resolved} right · Brier ${r.brierAvg.toFixed(2)}`;
-}
-
 // Hoja de la matriz (F2-matrix): steppers, distancia y puntos de reads previas. Puro.
 
 /** «+» sube un nivel (hacia +2.5 %), «−» baja; tope en los extremos. La lista va de +2.5 % a −1.0 %, por eso i − dir. */

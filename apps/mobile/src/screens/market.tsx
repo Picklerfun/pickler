@@ -176,7 +176,8 @@ export function MarketScreen(ctx: AppCtx) {
   // en cuanto el contexto llegue, en vez de quedarse mostrando "isn't listed" (hooks siempre antes del early return).
   const fallbackId = S.perpsMarketId === undefined ? askMarketId(undefined, perpl.context?.markets ?? []) : undefined;
   useEffect(() => { if (fallbackId !== undefined) set({ perpsMarketId: fallbackId }); }, [fallbackId, set]);
-  if (S.perpsMarketId === undefined) return <MarketSkeleton />;
+  // Si el fetch del contexto falló, no hay fallbackId que resolver: cae al bloque !market, que ya muestra el error.
+  if (S.perpsMarketId === undefined && !perpl.contextError) return <MarketSkeleton />;
 
   if (!market) {
     if (perpl.context === null && !perpl.contextError) return <MarketSkeleton />;

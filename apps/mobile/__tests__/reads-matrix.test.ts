@@ -1,6 +1,6 @@
 import {
   callOf, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, isHorizon, isLevel, LEVELS_BPS,
-  levelLabel, outcomeOf, questionFor, readDots, readsForMarket, recordLabel, stepHorizon, stepLevel, targetFor,
+  levelLabel, outcomeOf, questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
 } from "../src/reads/matrix";
 
 test("the matrix is 5 levels × 4 horizons, in the spec order (D2)", () => {
@@ -61,11 +61,9 @@ test("formatRemaining rounds down to hours and minutes", () => {
   expect(formatRemaining(-5_000)).toBe("now");
 });
 
-test("probability and record labels", () => {
+test("probability labels", () => {
   expect(formatProbability(0.62)).toBe("62 %");
   expect(formatProbability(0.075)).toBe("8 %");
-  expect(recordLabel({ reads: 0, resolved: 0, right: 0, brierAvg: null })).toBe("No resolved reads yet");
-  expect(recordLabel({ reads: 12, resolved: 10, right: 7, brierAvg: 0.2144 })).toBe("7/10 right · Brier 0.21");
 });
 
 test("steppers walk the matrix in spec order and stop at the edges (P6)", () => {
