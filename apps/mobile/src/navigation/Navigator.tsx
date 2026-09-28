@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from "@react-navigation/native-stack";
-import { AgentsTab } from "../screens/agents";
+import { AgentsScreen } from "../screens/agents";
 import { ComingSoonScreen } from "../screens/comingSoon";
 import { MarkBadge, MarketScreen } from "../screens/market";
 import { MarketsScreen } from "../screens/markets";
@@ -12,6 +12,7 @@ import { SigninScreen } from "../screens/signin";
 import { DepositScreen, WalletScreen, WithdrawScreen } from "../screens/wallet";
 import { TabBar } from "../ui/TabBar";
 import { withPage } from "../ui/Page";
+import { Page, T } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { flushPending, navigationRef } from "./ref";
 import type { AgentsStackParamList, MarketsStackParamList, PortfolioStackParamList, RootParamList, SoloStackParamList, TabParamList, WalletStackParamList } from "./routes";
@@ -36,9 +37,9 @@ const Deposit = withPage("deposit", DepositScreen);
 const Withdraw = withPage("withdraw", WithdrawScreen);
 const Launchpad = withPage("launchpad", (ctx) => <ComingSoonScreen screen="launchpad" requireAccount={ctx.requireAccount} />);
 const Activity = withPage("activity", (ctx) => <ComingSoonScreen screen="activity" requireAccount={ctx.requireAccount} />);
-// Provisionales hasta Tasks 11–13:
-const AgentsList = withPage("agents", AgentsTab); // screens/agents.tsx (Task 11 la reescribe)
-const AgentProfile = withPage("agent", AgentsTab); // F2: perfil
+const AgentsList = withPage("agents", AgentsScreen);
+const AgentProfile = withPage("agent", () => <Page><T>Agent</T></Page>); // F2: perfil, stub en F1 (ruling Task 11)
+// Provisionales hasta Tasks 12–13:
 const Portfolio = withPage("portfolio", PortfolioScreen); // Task 12 reemplaza el stub de screens/portfolio.tsx
 const ReadView = withPage("read", ReadScreen); // Task 13 reemplaza el stub de screens/read.tsx
 const Signin = withPage("signin", SigninScreen);

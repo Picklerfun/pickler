@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, TextInput, View } from "react-native";
 import { formatUnits } from "viem";
 import { AUSD_DECIMALS, formatAusd, parseAusd } from "../config/chain";
@@ -7,7 +7,7 @@ import { useNow } from "../hooks/useNow";
 import { change24h, formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
 import { levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from "../reads/level";
 import { cellLabel } from "../reads/matrix";
-import type { TradeLevel } from "../store";
+import { askMarketId, type TradeLevel } from "../store";
 import { Btn, Card, Chip, InkBlock, KVList, type KVRow, Page, Segmented, Skeleton, T, Tag } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
 import { AskTab } from "./ask";
@@ -172,6 +172,11 @@ function MarketSkeleton() {
 export function MarketScreen(ctx: AppCtx) {
   const { S, set, perpl, nav } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId);
+  // Agents no está en PERPL_SCREENS: si se llega sin mercado elegido (perpl.context aún null), se resuelve
+  // en cuanto el contexto llegue, en vez de quedarse mostrando "isn't listed" (hooks siempre antes del early return).
+  const fallbackId = S.perpsMarketId === undefined ? askMarketId(undefined, perpl.context?.markets ?? []) : undefined;
+  useEffect(() => { if (fallbackId !== undefined) set({ perpsMarketId: fallbackId }); }, [fallbackId, set]);
+  if (S.perpsMarketId === undefined) return <MarketSkeleton />;
 
   if (!market) {
     if (perpl.context === null && !perpl.contextError) return <MarketSkeleton />;
