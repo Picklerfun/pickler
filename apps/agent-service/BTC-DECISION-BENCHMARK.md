@@ -149,3 +149,21 @@ exactly one current-reviewer call for that frozen scenario. It preserves usage a
 PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM without rejected values. The diagnostic study
 cannot pass the 98-review live gate. Any subsequent evaluation needs its own explicitly prepared
 study, accounting for the diagnostic reservation as history; no automatic retry occurs.
+
+## Optional per-case isolation (not enabled by default)
+
+A new frozen configuration may explicitly set `invalidAnswerPolicy: "block-case"` after operator
+approval to change the original stop rule. This does not repair Jev's answers or relax validation.
+Only `JEV_INVALID_ANSWERS` with known valid usage is isolated, and never during the initial contract
+probes. Both reviewer calls on a synthetic case are still observed; incomplete/invalid responses
+remain failures in their respective denominators. Evaluation finishes as `completed_with_errors`
+when applicable. It is not a successful technical acceptance of the reviewer.
+
+During prospective evaluation, an invalid review blocks every proposed purchase in that market,
+including the no-veto control. The next distinct market can proceed without resending the failed
+request. Budgets, unknown usage, transport errors, invalid contract probes and cancellations retain
+the global stop. This preserves matched execution comparisons but conditions economic results on
+markets where required reviews were valid; report the excluded failed markets separately.
+
+The default `stop-study` remains unchanged for existing configurations. Configuration and state
+must agree on the frozen policy. Never edit an existing study to enable it or remove its STOP.
