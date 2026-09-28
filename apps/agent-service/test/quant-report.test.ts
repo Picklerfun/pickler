@@ -133,6 +133,10 @@ test("saved-book costs explain abstention without creating a fill", async () => 
   };
   const before = structuredClone(s);
   const row = quantRows(s)[0]!;
+  assert.equal(row.attemptedAtUtc, "1970-01-01T00:00:00.000Z");
+  assert.equal(row.windowEndUtc, "1970-01-01T00:05:00.000Z");
+  assert.equal(row.lookbackSeconds, 60);
+  assert.equal(row.closedCandleAgeSeconds, null);
   assert.ok(row.quotedEffectiveCostUp! > 0.4);
   assert.ok(row.quotedConservativeEdgeUp! > 0.17 && row.quotedConservativeEdgeUp! < 0.19);
   assert.equal(row.cost, null);
