@@ -2,7 +2,12 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { comparisonReserved, type ComparisonState } from "@pickler/core";
+import {
+  benchmarkReserved,
+  comparisonReserved,
+  type BenchmarkState,
+  type ComparisonState,
+} from "@pickler/core";
 
 export function serialExecutor() {
   let tail: Promise<unknown> = Promise.resolve();
@@ -67,14 +72,19 @@ export async function historicalReservations(root: string, current: string, decl
     if (!declared.includes(name)) {
       throw new Error("UNDECLARED_HISTORICAL_BUDGET");
     }
+    if (![1, 2, 3, 4].includes(raw.version)) {
+      throw new Error("UNSUPPORTED_HISTORICAL_BUDGET");
+    }
     const reserved =
-      raw.version === 3
-        ? comparisonReserved(raw as ComparisonState)
-        : raw.cases.reduce(
-            (sum: number, c: { reservedApiUsd?: number; reservedUsd?: number }) =>
-              sum + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
-            0,
-          );
+      raw.version === 4
+        ? benchmarkReserved(raw as BenchmarkState)
+        : raw.version === 3
+          ? comparisonReserved(raw as ComparisonState)
+          : raw.cases.reduce(
+              (sum: number, c: { reservedApiUsd?: number; reservedUsd?: number }) =>
+                sum + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
+              0,
+            );
     if (!Number.isFinite(reserved) || reserved < 0) {
       throw new Error("INVALID_HISTORICAL_BUDGET");
     }
