@@ -6,6 +6,7 @@ import { config as dotenv } from "dotenv";
 import { z } from "zod";
 import {
   BENCHMARK_PROTOCOL,
+  benchmarkEvaluationReady,
   PilotError,
   comparisonSlots,
   markMissedSlots,
@@ -56,6 +57,7 @@ const configSchema = z
       .refine((p) => new Set(p).size === p.length),
     jevInputPerMillion: z.number().positive(),
     maxNewReservedUsd: z.number().positive().max(1.25),
+    invalidAnswerPolicy: z.enum(["stop-study", "block-case"]).optional(),
     historicalStudies: z
       .array(z.string().regex(/^[a-z0-9-]{1,60}$/))
       .refine((p) => new Set(p).size === p.length),
@@ -167,6 +169,7 @@ if (command === "compare") {
         maxNewReservedUsd: configuration.maxNewReservedUsd,
         jevInputPerMillion: configuration.jevInputPerMillion,
         paidStopped: null,
+        invalidAnswerPolicy: configuration.invalidAnswerPolicy ?? "stop-study",
         evaluation: "pending",
         reviews: [],
         cases: [],
@@ -182,7 +185,9 @@ if (command === "compare") {
         state.protocol !== BENCHMARK_PROTOCOL ||
         state.id !== configuration.id ||
         state.maxNewReservedUsd !== configuration.maxNewReservedUsd ||
-        state.jevInputPerMillion !== configuration.jevInputPerMillion
+        state.jevInputPerMillion !== configuration.jevInputPerMillion ||
+        (state.invalidAnswerPolicy ?? "stop-study") !==
+          (configuration.invalidAnswerPolicy ?? "stop-study")
       ) {
         throw new Error("BENCHMARK_STATE_MISMATCH");
       }
@@ -400,18 +405,20 @@ if (command === "compare") {
               break;
             }
           }
-          state.evaluation = state.paidStopped ? "failed" : "completed";
+          if (state.paidStopped) {
+            state.evaluation = "failed";
+          } else {
+            state.evaluation = state.reviews.some((r) => r.result?.status === "failed")
+              ? "completed_with_errors"
+              : "completed";
+          }
           await save();
           if (state.paidStopped) {
             await atomicWrite(join(directory, "STOP"), `${state.paidStopped}\n`);
             process.exitCode = 1;
           }
         } else {
-          if (
-            state.evaluation !== "completed" ||
-            state.reviews.length !== 98 ||
-            state.reviews.some((r) => r.result?.status !== "completed")
-          ) {
+          if (!benchmarkEvaluationReady(state)) {
             throw new Error("TECHNICAL_EVALUATION_NOT_COMPLETE");
           }
           if (state.deadline !== null) {
