@@ -68,3 +68,98 @@ node --import tsx --test packages/core/test/perps-paper.test.ts packages/infrast
 Database tests use separate temporary PostgreSQL databases and actual migrations. They exercise
 concurrent initialization/reservation, replay, lease expiry, revocation, isolation, full closes and
 ledger reconciliation. Fixture fills establish accounting behavior, not Perpl execution fidelity.
+
+## Simulator milestone
+
+Migration 0013 adds immutable observation records. The operator commands now include `open`,
+`close`, `tick` and `report`. Mutations require `--key`; opens/closes also require `--symbol BTC|ETH`
+and `--side long|short`. They use public GET requests and virtual money only. Run `tick` regularly
+while positions are open; a foreground operator command is not a background risk monitor.
+
+```sh
+npm run perps:paper --workspace=@pickler/agent-service -- tick --tenant TENANT --agent AGENT --session SESSION --network mainnet --key observation-001
+npm run perps:paper --workspace=@pickler/agent-service -- open --tenant TENANT --agent AGENT --session SESSION --network mainnet --key open-001 --symbol BTC --side long
+npm run perps:paper --workspace=@pickler/agent-service -- close --tenant TENANT --agent AGENT --session SESSION --network mainnet --key close-001 --symbol BTC --side long
+npm run perps:paper --workspace=@pickler/agent-service -- report --tenant TENANT --agent AGENT --session SESSION --network mainnet
+```
+
+The agent also needs the explicit `getPerpFundingHistory` Perpl tool permission. Add it before
+initializing a new session; old configurations are not silently upgraded. `perpl:data configure`
+includes all current data tools when explicitly invoked.
+
+Execution consumes asks for buys and bids for sells, with a 50-bps bound from the best observed
+price and venue size precision. Open quantity is conservatively sized from the worst upper price
+and the 100-AUSD ceiling. The entire quantity must fit the observed depth or the attempt fails.
+There are no resting orders, partial positions or fills at the mark. Public base-tier taker fees
+are charged on actual simulated notional. Unsupported negative taker fees fail explicitly.
+Open fees cannot exceed their reservation; reducing close fees can debit cash below zero rather
+than blocking an exit merely for insufficient capital.
+
+Both ticker and book must have known blocks/times, be at most 30 seconds old, no more than five
+seconds ahead, and differ by no more than five seconds. Fill evidence retains the complete normalized
+frame, its SHA-256, consumed levels, spread and slippage. Failed fills preserve the observed frame
+when available. A 55-second operation deadline fits inside its 60-second lease. Models have no tool
+for calling this service directly.
+
+`tick` persists marks and funding before requesting full closes for risk triggers. Failed exits
+remain explicit failed attempts; a later observation may deliberately request a new exit. Replaying
+an observation key never repeats provider calls or exit processing. Unknown/stale valuation blocks
+openings; risk exits still require admissible fresh execution evidence.
+
+The day baseline is the first observed equity around midnight UTC, admitted only within 90 seconds
+of midnight with an observation in the preceding 90 seconds. A gap leaves the new baseline unknown
+and blocks openings for that day. This sampled laboratory baseline and minute-level stops are not
+continuous exchange guarantees. Daily/session breaches latch; changing marks does not undo them.
+
+### Funding model
+
+`getPerpFundingHistory` queries at most four pages of 1,023 published funding intervals under the
+existing twelve-request transport session ceiling. It preserves event block, application time,
+index, signed rate, source provenance and unresolved estimates. Empty history is incomplete, not
+an assumed zero rate. A mature event must be behind the observed chain head and at least 60 seconds
+past its application timestamp before this simulator posts it.
+
+The versioned `quantity-index-rate-v1` estimate debits longs and credits shorts for positive rates,
+reversing the signs for negative rates. It is not a replica of Perpl's contract funding-sum arithmetic.
+Positions participate when `entryBlock < eventBlock <= exitBlock`, with no upper bound while open.
+This also reconciles closed positions. Each position/event pair is posted once. If a previously
+charged rate, index or application timestamp changes, the account retains a sticky funding dispute,
+stops further funding postings and blocks openings; historical ledger entries remain unchanged.
+Missing/incomplete history remains pending. Marks-only trusted host refreshes do not claim funding
+reconciliation and preserve the previous funding status.
+
+Official semantics: [funding history](https://github.com/PerplFoundation/api-docs/blob/main/rest-endpoints.md)
+and [funding event identity](https://github.com/PerplFoundation/api-docs/blob/main/types.md).
+
+### Explicit public simulation probe
+
+```sh
+node --import tsx apps/agent-service/test/perps-public.probe.ts mainnet UNIQUE_ATTEMPT
+node --import tsx apps/agent-service/test/perps-public.probe.ts testnet UNIQUE_ATTEMPT
+```
+
+This creates/migrates a disposable PostgreSQL test database, uses only its fixture identities, opens
+and closes virtual BTC-long and ETH-short positions against actual public books, and saves private
+results/original response hashes before deleting that database. It does not touch existing alpha/beta
+agents or sign/send orders. Captures live under `.data/perps-public-probes` in agent-service and
+existing attempts are never overwritten. This proves a public-data simulation path, not venue fills,
+a long-running funding settlement, profitability or on-chain activity.
+
+### Public acceptance record — 2026-09-28
+
+| Attempt             | Outcome                                                                      | Public GETs | Virtual positions                   | Final virtual cash |
+| ------------------- | ---------------------------------------------------------------------------- | ----------- | ----------------------------------- | ------------------ |
+| mainnet-20260928-01 | Opens/closes filled; reconciliation rejected a 6-second ticker/book mismatch | 19          | BTC long and ETH short, both closed | 999.853644 AUSD    |
+| mainnet-20260928-02 | Complete; no pending funding                                                 | 19          | BTC long and ETH short, both closed | 999.804719 AUSD    |
+| testnet-20260928-01 | Complete; no pending funding                                                 | 19          | BTC long and ETH short, both closed | 999.840180 AUSD    |
+
+The first incomplete attempt is preserved; the second was an explicit separate acceptance run,
+not an automatic retry. All trades above are virtual, brief round trips rather than strategies.
+No position spanned an eligible funding event in these probes; actual funding charges were validated
+with controlled histories. No model or on-chain calls occurred.
+
+Private `result.json` SHA-256 values:
+
+- mainnet-20260928-01: `95d9b0ee3b566f72adf14d4f1438d8b7374422de295cae42a9b9a6e7a1b32841`
+- mainnet-20260928-02: `849046c21e7436b46bf6c3bc4e5e1f38cf58570fbce095cf1464c6e0fe981b36`
+- testnet-20260928-01: `f5507a47e8c6e7d197e2a0d41243ffffbc56cb54f9e01f27d0f8e08439207e48`

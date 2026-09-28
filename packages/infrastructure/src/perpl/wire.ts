@@ -74,3 +74,10 @@ export const candlesSchema = z.object({
     )
     .max(1024),
 });
+
+export const fundingSeriesSchema = z.object({
+  mt: uint,
+  at: atSchema,
+  m: uint,
+  d: z.array(fundingSchema.extend({ idx: uint.positive() })).max(1025),
+});

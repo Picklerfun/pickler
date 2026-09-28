@@ -1,3 +1,4 @@
+import { createPerpsPaperRuntime } from "@pickler/agent-runtime/composition/perps-paper";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
@@ -22,19 +23,22 @@ async function main() {
       symbol: { type: "string" },
       side: { type: "string" },
       kind: { type: "string" },
+      key: { type: "string" },
       help: { type: "boolean" },
     },
   });
   if (values.help) {
     console.log(
-      "perps:paper account-init|status|risk-check --tenant ID --agent ID --session ID --network mainnet|testnet\naccount-init: --expected-version N [--enable-plugin]\nrisk-check: [--kind open|close --symbol BTC|ETH --side long|short]\nVirtual capital only. Existing agent and matching Perpl config required. No migrations or providers.",
+      "perps:paper account-init|status|risk-check|open|close|tick|report --tenant ID --agent ID --session ID --network mainnet|testnet\naccount-init: --expected-version N [--enable-plugin]\nrisk-check: [--kind open|close --symbol BTC|ETH --side long|short]\nVirtual capital only. Existing agent and matching Perpl config required. Market operations use public GET requests only. No models, migrations, wallet or real orders. --key is required for open/close/tick.",
     );
     return;
   }
   const action = positionals[0];
   if (
     positionals.length !== 1 ||
-    !["account-init", "status", "risk-check"].includes(action ?? "")
+    !["account-init", "status", "risk-check", "open", "close", "tick", "report"].includes(
+      action ?? "",
+    )
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown paper command");
   }
@@ -93,6 +97,40 @@ async function main() {
       console.log(
         JSON.stringify(
           perpsPaperViewSchema.parse(await repository.initialize(scope, version)),
+          null,
+          2,
+        ),
+      );
+    } else if (["open", "close", "tick", "report"].includes(action!)) {
+      const { service } = createPerpsPaperRuntime(repository, research);
+      const signal = AbortSignal.timeout(120000);
+      if (action === "report") {
+        console.log(JSON.stringify(await service.report(scope), null, 2));
+        return;
+      }
+      if (!values.key) {
+        throw new PilotError("INVALID_INPUT", "Mutations require --key");
+      }
+      if (action === "tick") {
+        console.log(JSON.stringify(await service.tick(scope, values.key, signal), null, 2));
+        return;
+      }
+      if (
+        (values.symbol !== "BTC" && values.symbol !== "ETH") ||
+        (values.side !== "long" && values.side !== "short")
+      ) {
+        throw new PilotError("INVALID_INPUT", "Use --symbol BTC|ETH --side long|short");
+      }
+      console.log(
+        JSON.stringify(
+          await service.trade(
+            scope,
+            values.key,
+            action as "open" | "close",
+            values.symbol,
+            values.side,
+            signal,
+          ),
           null,
           2,
         ),

@@ -36,6 +36,8 @@ export interface PerpsPaperAccount {
   dailyBlocked: boolean;
   blocked: boolean;
   fundingPending: boolean;
+  fundingDisputed?: boolean;
+  lastValuationAt?: number;
   positions: PerpsPaperPosition[];
 }
 export interface PerpsPaperIntent {
@@ -85,6 +87,7 @@ export interface PerpsPaperRisk {
   exposure: string | null;
 }
 export interface PerpsPaperFill {
+  mark?: { price: string; timestamp: number };
   quantity: string;
   price: string;
   notional: string;
@@ -94,6 +97,12 @@ export interface PerpsPaperFill {
   evidence: unknown;
 }
 export interface PerpsPaperRepository {
+  observed(scope: PerpsPaperScope, key: string): Promise<boolean>;
+  observe(
+    scope: PerpsPaperScope,
+    key: string,
+    observation: import("./simulation.js").PerpsPaperObservation,
+  ): Promise<PerpsPaperView>;
   initialize(scope: PerpsPaperScope, expectedVersion: number): Promise<PerpsPaperView>;
   view(scope: PerpsPaperScope): Promise<PerpsPaperView>;
   begin(
@@ -108,5 +117,10 @@ export interface PerpsPaperRepository {
     lease: PerpsPaperLease,
     fill: PerpsPaperFill,
   ): Promise<PerpsPaperView>;
-  fail(scope: PerpsPaperScope, lease: PerpsPaperLease, code: string): Promise<void>;
+  fail(
+    scope: PerpsPaperScope,
+    lease: PerpsPaperLease,
+    code: string,
+    evidence?: unknown,
+  ): Promise<void>;
 }

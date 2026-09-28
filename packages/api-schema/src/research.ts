@@ -5,6 +5,7 @@ export const toolNameSchema = z.enum([
   "getPerpSnapshot",
   "getPerpOrderBook",
   "getPerpCandles",
+  "getPerpFundingHistory",
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -81,7 +82,7 @@ export const agentConfigSchema = z
       .object({ version: z.literal(1), policy: z.literal("conservative-1x-v1") })
       .strict()
       .optional(),
-    tools: z.array(toolNameSchema).max(10),
+    tools: z.array(toolNameSchema).max(11),
     plugins: z
       .object({
         version: z.literal(1),

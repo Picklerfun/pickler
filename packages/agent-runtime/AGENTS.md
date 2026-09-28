@@ -68,3 +68,5 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 ## Perpl public data plugin
 
 `composition/perpl` is a public export creating a fresh bounded Perpl read session and four Mastra tools, without constructing a model. Runtime exposes `perpl(scope, signal)` and a Perpl plugin check. These tools are separate from the Polymarket research workflow; no model tool can configure an agent, move funds or submit orders.
+
+`composition/perps-paper` exports operator-only data/simulator composition. It creates fresh bounded Perpl sessions, hashes normalized frames and never exposes an execution tool or signer. Five Perpl data tools now include explicitly permitted funding history.

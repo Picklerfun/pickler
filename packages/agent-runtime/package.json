@@ -71,6 +71,10 @@
     "./composition/perpl": {
       "types": "./src/composition/perpl.ts",
       "import": "./dist/composition/perpl.js"
+    },
+    "./composition/perps-paper": {
+      "types": "./src/composition/perps-paper.ts",
+      "import": "./dist/composition/perps-paper.js"
     }
   },
   "scripts": {

@@ -49,6 +49,8 @@ export const perpsPaperAccountSchema = z
     dailyBlocked: z.boolean(),
     blocked: z.boolean(),
     fundingPending: z.boolean(),
+    fundingDisputed: z.boolean().optional(),
+    lastValuationAt: time.optional(),
     positions: z.array(perpsPaperPositionSchema),
   })
   .strict();
