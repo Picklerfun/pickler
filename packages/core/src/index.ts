@@ -138,6 +138,7 @@ export type {
 export {
   createProfileService,
   type HandleAvailability,
+  type ProfileAccount,
 } from "./features/profiles/application/profiles.js";
 
 export * from "./features/research/types.js";

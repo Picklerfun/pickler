@@ -51,6 +51,7 @@ function app(principal: unknown, wallets: ReadonlySet<string> = new Set(["ana-us
     profiles: createProfileService(repo, {
       hasCustodyAccount: async (userId) => wallets.has(userId),
     }),
+    walletEmailDomain: "wallet.pickler.fun",
   });
 }
 
@@ -137,6 +138,37 @@ test("a profile is refused with 409 wallet_required until the caller has a maste
   assert.equal((await json(refused)).error, "wallet_required");
 
   assert.equal((await create(new Set(["ana-user"]))).status, 201);
+});
+
+test("a wallet sign-in account claims a handle with no custody account; an email account still cannot", async () => {
+  const create = (principal: unknown, handle: string) =>
+    app(principal, new Set()).request(
+      "/v1/profile",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: "Night Owl", handle }),
+      },
+      env,
+    );
+  const walletAccount = buildUserPrincipal({
+    user: {
+      id: "wallet-user",
+      email:
+        "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun",
+    },
+  });
+  const emailAccount = buildUserPrincipal({ user: { id: "ana-user", email: "ana@x.io" } });
+
+  assert.equal((await create(walletAccount, "nightowl")).status, 201);
+  const refused = await create(emailAccount, "anarobles");
+  assert.equal(refused.status, 409);
+  assert.equal((await json(refused)).error, "wallet_required");
+  // An email account on a lookalike domain is still a studio account.
+  const lookalike = buildUserPrincipal({
+    user: { id: "other-user", email: "x@evilwallet.pickler.fun" },
+  });
+  assert.equal((await create(lookalike, "lookalike")).status, 409);
 });
 
 test("CORS allows configured origins only", async () => {

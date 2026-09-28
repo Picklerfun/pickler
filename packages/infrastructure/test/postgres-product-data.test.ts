@@ -104,19 +104,23 @@ test("the profile service maps the outcomes to its errors", async (t) => {
   const { pool } = await createTestStore(t);
   const profiles = createProfileService(new PostgresProfileRepository(pool), EVERYONE_HAS_A_WALLET);
   const [first, second] = [await newUser(pool), await newUser(pool)];
-  const created = await profiles.createProfile(first, { displayName: "Ana", handle: "anarobles" });
+  const created = await profiles.createProfile(
+    first,
+    { displayName: "Ana", handle: "anarobles" },
+    "studio",
+  );
 
   // The same request again is a safe retry.
   assert.deepEqual(
-    await profiles.createProfile(first, { displayName: "Ana", handle: "anarobles" }),
+    await profiles.createProfile(first, { displayName: "Ana", handle: "anarobles" }, "studio"),
     created,
   );
   await assert.rejects(
-    profiles.createProfile(second, { displayName: "Bo", handle: "anarobles" }),
+    profiles.createProfile(second, { displayName: "Bo", handle: "anarobles" }, "studio"),
     ProfileHandleTakenError,
   );
   await assert.rejects(
-    profiles.createProfile(first, { displayName: "Ana", handle: "another" }),
+    profiles.createProfile(first, { displayName: "Ana", handle: "another" }, "studio"),
     ProfileAlreadyExistsError,
   );
 });
@@ -128,7 +132,11 @@ test("onboarding succeeds on the same database right after the profile is create
   const workspaces = new PostgresWorkspaceDirectory(pool);
   const userId = await newUser(pool);
 
-  await profiles.createProfile(userId, { displayName: "Ana Robles", handle: "anarobles" });
+  await profiles.createProfile(
+    userId,
+    { displayName: "Ana Robles", handle: "anarobles" },
+    "studio",
+  );
   await directory.onboard(userId);
 
   const owned = await workspaces.findOwnedBy(userId);

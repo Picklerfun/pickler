@@ -1,4 +1,4 @@
-import type { createProfileService, Profile } from "@pickler/core";
+import { isWalletAccountEmail, type createProfileService, type Profile } from "@pickler/core";
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import { successEnvelope } from "../http/envelope";
@@ -9,6 +9,11 @@ export interface ProfileRouteServices {
   authenticate: Authenticate;
   profiles: ReturnType<typeof createProfileService>;
   onboard?(userId: string): Promise<void>;
+  /**
+   * `WALLET_EMAIL_DOMAIN`: a principal whose email is in it is a wallet sign-in account, exempt from
+   * the custody-account rule on POST. Undefined where wallet sign-in is off.
+   */
+  walletEmailDomain?: string | undefined;
 }
 
 const profileDto = (profile: Profile) => ({
@@ -49,10 +54,16 @@ export function profileRoutes(services: ProfileRouteServices) {
       if (!body || typeof body.display_name !== "string" || typeof body.handle !== "string") {
         throw badRequest("Fields 'display_name' and 'handle' must be strings");
       }
-      const profile = await services.profiles.createProfile(c.get("principal").id, {
-        displayName: body.display_name,
-        handle: body.handle,
-      });
+      const principal = c.get("principal");
+      // A studio (email or Google) account needs its master wallet first; a wallet sign-in account
+      // claiming a handle from the marketplace has its own wallet and never a custody account.
+      const email = principal.kind === "user" ? principal.email : undefined;
+      const account = isWalletAccountEmail(email, services.walletEmailDomain) ? "wallet" : "studio";
+      const profile = await services.profiles.createProfile(
+        principal.id,
+        { displayName: body.display_name, handle: body.handle },
+        account,
+      );
       await services.onboard?.(c.get("principal").id);
       return c.json(successEnvelope(profileDto(profile), c.req.path, "Profile created"), 201);
     });

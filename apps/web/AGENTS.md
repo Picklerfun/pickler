@@ -355,7 +355,9 @@ and workspace) → welcome. `lib/flow.ts` is the pure machine, pinned in `flow.t
 `passkey_created { profile }`, which goes to `handle` when there is no profile yet and to `welcome`
 when there is one (an account made before the order changed). The handle step's
 `POST /v1/profile` (`ensureProfile`) runs only after the wallet exists, and the API refuses it
-otherwise (409 `wallet_required`). Signin is
+otherwise (409 `wallet_required`) for a studio (email or Google) account. A wallet sign-in account
+is exempt and claims its handle from the marketplace portfolio (`wallet/components/claim-handle.tsx`)
+with no custody account; if it opens the studio, the gates send it to the passkey step. Signin is
 `auth → code → welcome`, or `auth → code → passkey → welcome` when the landing check (`landing` in
 `lib/custody.ts`, reading `GET /v1/signing/wallets/me` and `GET /v1/profile`) finds no
 sub-organization on an account with a profile and sends `wallet_missing { profile: true }`. The

@@ -59,9 +59,10 @@ export class ProfileHandleTakenError extends Error {
 }
 
 /**
- * The caller has no custody account — no Turnkey sub-organization and master wallet — yet. Signup
- * creates the wallet at the passkey step and only then the profile, so the username is saved only
- * once the wallet exists; this makes that a server rule rather than a screen's ordering.
+ * A studio account has no custody account — no Turnkey sub-organization and master wallet — yet.
+ * Signup creates the wallet at the passkey step and only then the profile, so the username is
+ * saved only once the wallet exists; this makes that a server rule rather than a screen's ordering.
+ * A wallet sign-in account is exempt: its own external wallet is its wallet (see `ProfileAccount`).
  */
 export class WalletRequiredError extends Error {
   constructor() {

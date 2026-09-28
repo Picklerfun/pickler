@@ -405,5 +405,6 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     }),
     budgets: new PostgresBudgetLedger(repository.pool),
     profiles,
+    walletEmailDomain: env.WALLET_EMAIL_DOMAIN,
   };
 }

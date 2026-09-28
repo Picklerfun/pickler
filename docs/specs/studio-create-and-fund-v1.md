@@ -214,8 +214,12 @@ shows their master wallet from the first visit, with or without agents — so it
   the sub-organization with the passkey as its only root and the `Master Wallet`; nobody finishes
   signup without one. The handle step comes after it and writes the profile with
   `POST /v1/profile` (`createProfile`, then the workspace's `onboard`). The username is saved only
-  once the passkey and the master wallet exist, and that is a server rule: `POST /v1/profile`
-  answers **409 `wallet_required`** (`WalletRequiredError`) to a caller with no custody account.
+  once the passkey and the master wallet exist, and that is a server rule for **studio accounts**
+  (email or Google): `POST /v1/profile` answers **409 `wallet_required`** (`WalletRequiredError`)
+  to one with no custody account. A wallet sign-in account — its synthetic auth email is in
+  `WALLET_EMAIL_DOMAIN` — is exempt: its own external wallet is its wallet, it never has a custody
+  account, and it claims a handle from the marketplace portfolio. If it opens the studio it is sent
+  to the passkey step like anyone without a master wallet.
 - **Naming the first passkey.** It is created before there is a handle, so WebAuthn's `user.name`
   and `user.displayName` — stored in the device keychain — are the person's sign-in email from the
   verified token (never a wallet account's synthetic email; with no usable email, `pickler-<id8>`).
@@ -261,9 +265,9 @@ self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
 
 **Where the rule is enforced.** In the web: signup cannot complete without the passkey step, and
 every signed-in screen routes a person without a sub-organization back to it (and one with a
-wallet and no profile to the handle step). In the API: `POST /v1/profile` refuses a caller with no
-custody account (409 `wallet_required`), so no profile — and no workspace — exists without the
-wallet. The API does not refuse other studio calls from a person without one; the agent ceremony simply cannot run without a
+wallet and no profile to the handle step). In the API: `POST /v1/profile` refuses a studio account
+with no custody account (409 `wallet_required`), so no studio profile — and no workspace — exists
+without the wallet; wallet sign-in accounts are exempt. The API does not refuse other studio calls from a person without one; the agent ceremony simply cannot run without a
 sub-organization (`prepareAgentWallet` needs it).
 
 **What this changes in the trust model, stated plainly.** Until now Pickler held no key that could

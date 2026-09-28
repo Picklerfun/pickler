@@ -80,3 +80,25 @@ export function caip2(namespace: Namespace, reference: number | string): string 
 type Assert<T extends true> = T;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- tsc checks it; nothing reads it
 type _BrandIsLoadBearing = Assert<string extends NormalizedAddress ? false : true>;
+
+/**
+ * Whether a verified token's email is a wallet sign-in account's synthetic one
+ * (`<namespace>-<digest>@<walletEmailDomain>`, minted by infrastructure's wallet-accounts.ts).
+ *
+ * This is the reliable marker of a wallet sign-in account in the token. The email claim is signed
+ * by Supabase, set once by the admin API when the account is created, and cannot be changed to
+ * that domain by the person, because confirming an address there is impossible — the domain never
+ * accepts mail. The alternatives are weaker: `user_metadata.wallet_namespace` is writable by the
+ * person through `updateUser`, `app_metadata.provider` is "email" for these accounts exactly as for
+ * an email-code one, and a row in `identity.wallet_links` also exists for an email account that
+ * linked a wallet. With no domain configured wallet sign-in is off, and no such account can exist.
+ */
+export function isWalletAccountEmail(
+  email: string | null | undefined,
+  walletEmailDomain: string | null | undefined,
+): boolean {
+  if (!email || !walletEmailDomain) {
+    return false;
+  }
+  return email.toLowerCase().endsWith(`@${walletEmailDomain.toLowerCase()}`);
+}

@@ -32,19 +32,19 @@ test/                       # Route and middleware tests with injected services
 
 Routes:
 
-| Route                                                                                          | Auth                                                                                         |
-| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `GET /health`                                                                                  | none (liveness only)                                                                         |
-| `GET /v1/auth/me`                                                                              | signed-in user; API keys refused                                                             |
-| `GET /v1/handles/:handle/availability`                                                         | none (sign-up form)                                                                          |
-| `GET /v1/profile`, `POST /v1/profile`                                                          | signed-in user (JWT); API keys refused; POST 409 `wallet_required` without a custody account |
-| `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                             | JWT or API key + `agent` module + `read Agent`                                               |
-| `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget`       | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent`                      |
-| `GET /v1/marketplace/{agents,directory,reads,profiles,personas,markets,analytics,leaderboard}` | none (public marketplace)                                                                    |
-| `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                       | signed-in user; API keys refused                                                             |
-| `GET /v1/signing/wallets/me`                                                                   | signed-in user; API keys refused                                                             |
-| `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}` | signed-in user; API keys refused                                                             |
-| `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                          | signed-in user; API keys refused                                                             |
+| Route                                                                                          | Auth                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                                                                  | none (liveness only)                                                                                                                               |
+| `GET /v1/auth/me`                                                                              | signed-in user; API keys refused                                                                                                                   |
+| `GET /v1/handles/:handle/availability`                                                         | none (sign-up form)                                                                                                                                |
+| `GET /v1/profile`, `POST /v1/profile`                                                          | signed-in user (JWT); API keys refused; POST 409 `wallet_required` for a studio account without a custody account (wallet sign-in accounts exempt) |
+| `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                             | JWT or API key + `agent` module + `read Agent`                                                                                                     |
+| `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget`       | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent`                                                                            |
+| `GET /v1/marketplace/{agents,directory,reads,profiles,personas,markets,analytics,leaderboard}` | none (public marketplace)                                                                                                                          |
+| `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                       | signed-in user; API keys refused                                                                                                                   |
+| `GET /v1/signing/wallets/me`                                                                   | signed-in user; API keys refused                                                                                                                   |
+| `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}` | signed-in user; API keys refused                                                                                                                   |
+| `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                          | signed-in user; API keys refused                                                                                                                   |
 
 Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`, `x-request-timestamp`; payload `METHOD + /v1/path + timestamp + sha256(JSON.stringify(body) or "")`, ±60 s. Agent secrets (`agents.agent_credentials`) are decrypted with `ENCRYPTION_KEY`; the format is byte-compatible with Relayer's, so the key only has to equal Relayer's when importing Relayer data. Agent write endpoints are not ported yet.
 
@@ -67,6 +67,14 @@ verified token's `email` claim (never a wallet account's synthetic email, recogn
 sub-organization's name, from `register` (`ownerLabel`), are never the email — email is kept out of
 Turnkey — but the handle where there is a profile, else `pickler-<id8>`. Neither is stored with the
 challenge; each route derives its own from the same profile read.
+
+`POST /v1/profile` refuses a studio (email or Google) account that has no custody account with
+409 `wallet_required`, so its username is saved only once the master wallet exists. A wallet
+sign-in account is exempt — its own wallet is its wallet — and is recognised by
+`isWalletAccountEmail` (core): the token's email is in `WALLET_EMAIL_DOMAIN`. That is the reliable
+marker: the email is set by the admin API and cannot be moved to a domain that never accepts mail,
+whereas `user_metadata` is writable by the person, `app_metadata.provider` is `email` for both
+kinds, and `identity.wallet_links` also holds wallets that email accounts linked.
 
 Responses deliberately withhold what the browser has no use for: register answers with
 `sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and

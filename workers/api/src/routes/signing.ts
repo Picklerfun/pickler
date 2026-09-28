@@ -14,6 +14,7 @@
 
 import {
   HANDLE_RULES,
+  isWalletAccountEmail,
   SUPPORTED_TRANSPORTS,
   type createCustodyService,
   type PasskeyAttestation,
@@ -233,13 +234,7 @@ function person(c: Context<AppEnv>): { id: string; email: string | null } {
  * store in anyone's password manager.
  */
 function keychainEmail(email: string | null, walletEmailDomain: string | undefined): string | null {
-  if (!email) {
-    return null;
-  }
-  if (walletEmailDomain && email.toLowerCase().endsWith(`@${walletEmailDomain.toLowerCase()}`)) {
-    return null;
-  }
-  return email;
+  return email && !isWalletAccountEmail(email, walletEmailDomain) ? email : null;
 }
 
 /**

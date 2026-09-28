@@ -71,31 +71,36 @@ test("handle availability explains why a handle cannot be used", async () => {
 test("creating a profile validates, normalizes and is idempotent per user", async () => {
   const repo = memoryRepo();
   const profiles = createProfileService(repo, EVERYONE_HAS_A_WALLET);
-  const created = await profiles.createProfile("u1", {
-    displayName: "  Ana   Robles ",
-    handle: "@AnaRobles",
-  });
+  const created = await profiles.createProfile(
+    "u1",
+    {
+      displayName: "  Ana   Robles ",
+      handle: "@AnaRobles",
+    },
+    "studio",
+  );
   assert.deepEqual([created.displayName, created.handle], ["Ana Robles", "anarobles"]);
   assert.equal(
-    (await profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" })).handle,
+    (await profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" }, "studio"))
+      .handle,
     "anarobles",
   );
   assert.equal(repo.rows.length, 1);
 
   await assert.rejects(
-    profiles.createProfile("u1", { displayName: "Ana", handle: "other" }),
+    profiles.createProfile("u1", { displayName: "Ana", handle: "other" }, "studio"),
     ProfileAlreadyExistsError,
   );
   await assert.rejects(
-    profiles.createProfile("u2", { displayName: "Bo", handle: "anarobles" }),
+    profiles.createProfile("u2", { displayName: "Bo", handle: "anarobles" }, "studio"),
     ProfileHandleTakenError,
   );
   await assert.rejects(
-    profiles.createProfile("u2", { displayName: "B", handle: "bo_bot" }),
+    profiles.createProfile("u2", { displayName: "B", handle: "bo_bot" }, "studio"),
     InvalidProfileError,
   );
   await assert.rejects(
-    profiles.createProfile("u2", { displayName: "Bo", handle: "admin" }),
+    profiles.createProfile("u2", { displayName: "Bo", handle: "admin" }, "studio"),
     InvalidProfileError,
   );
 });
@@ -112,7 +117,7 @@ test("a profile is refused until the user has a custody account, then created", 
   });
 
   await assert.rejects(
-    profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" }),
+    profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" }, "studio"),
     WalletRequiredError,
   );
   assert.deepEqual(asked, ["u1"], "the caller's own account is the one checked");
@@ -120,7 +125,35 @@ test("a profile is refused until the user has a custody account, then created", 
   assert.equal((await profiles.checkHandle("anarobles")).available, true);
 
   wallets.add("u1");
-  const created = await profiles.createProfile("u1", { displayName: "Ana", handle: "anarobles" });
+  const created = await profiles.createProfile(
+    "u1",
+    { displayName: "Ana", handle: "anarobles" },
+    "studio",
+  );
   assert.equal(created.handle, "anarobles");
   assert.equal(repo.rows.length, 1);
+});
+
+test("a wallet sign-in account creates its profile with no custody account, and is never asked", async () => {
+  const repo = memoryRepo();
+  const asked: string[] = [];
+  const profiles = createProfileService(repo, {
+    hasCustodyAccount: async (userId) => {
+      asked.push(userId);
+      return false;
+    },
+  });
+
+  const created = await profiles.createProfile(
+    "w1",
+    { displayName: "Owl", handle: "nightowl" },
+    "wallet",
+  );
+  assert.equal(created.handle, "nightowl");
+  assert.deepEqual(asked, [], "a wallet account's custody account is not looked up");
+
+  await assert.rejects(
+    profiles.createProfile("s1", { displayName: "Ana", handle: "anarobles" }, "studio"),
+    WalletRequiredError,
+  );
 });

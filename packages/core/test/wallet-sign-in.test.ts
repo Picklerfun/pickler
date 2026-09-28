@@ -11,6 +11,7 @@ import {
   type NonceStore,
   type WalletLink,
   type WalletLinkRepository,
+  isWalletAccountEmail,
 } from "../src/index.js";
 
 const NOW = new Date("2026-09-23T12:00:00Z");
@@ -252,4 +253,18 @@ test("a failed read of someone's links propagates rather than reading as none", 
   };
   const signIn = service({ links: broken });
   await assert.rejects(() => signIn.listLinks("user-1"), /connection reset/);
+});
+
+test("a wallet account is recognised by its synthetic email domain, and only by it", () => {
+  const synthetic =
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
+  assert.equal(isWalletAccountEmail(synthetic, "wallet.pickler.fun"), true);
+  assert.equal(isWalletAccountEmail(synthetic.toUpperCase(), "Wallet.Pickler.Fun"), true);
+  assert.equal(isWalletAccountEmail("ana@pickler.fun", "wallet.pickler.fun"), false);
+  // A lookalike is not the domain: the check is on the whole domain after the @.
+  assert.equal(isWalletAccountEmail("ana@evilwallet.pickler.fun", "wallet.pickler.fun"), false);
+  assert.equal(isWalletAccountEmail(undefined, "wallet.pickler.fun"), false);
+  // No domain configured: wallet sign-in is off, so nobody is a wallet account.
+  assert.equal(isWalletAccountEmail(synthetic, undefined), false);
+  assert.equal(isWalletAccountEmail(synthetic, ""), false);
 });
