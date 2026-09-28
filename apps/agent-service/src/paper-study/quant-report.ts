@@ -56,6 +56,10 @@ export function quantRows(state: QuantState) {
     return {
       market: c.marketId,
       kind: c.kind,
+      attemptedAtUtc: new Date(c.startedAt).toISOString(),
+      windowStartUtc:
+        input?.item.windowStart != null ? new Date(input.item.windowStart).toISOString() : null,
+      windowEndUtc: input ? new Date(input.item.windowEnd).toISOString() : null,
       status: c.status,
       reason: c.reason ?? "",
       up: p?.estimate ?? null,
@@ -65,7 +69,12 @@ export function quantRows(state: QuantState) {
       threshold: input?.opening.price ?? null,
       spot: input?.ticker.price ?? null,
       seconds: f?.horizonSeconds ?? null,
+      lookbackSeconds: f?.lookbackSeconds ?? null,
       tickerAgeSeconds: input && f ? (f.observedAt - input.ticker.observedAt) / 1000 : null,
+      closedCandleAgeSeconds:
+        input?.candles.length && f
+          ? (f.observedAt - input.candles.at(-1)!.time - 60000) / 1000
+          : null,
       upBid: upBook?.bids[0]?.price ?? null,
       upAsk: upBook?.asks[0]?.price ?? null,
       downBid: downBook?.bids[0]?.price ?? null,
