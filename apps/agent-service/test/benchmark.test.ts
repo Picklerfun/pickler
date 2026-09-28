@@ -247,3 +247,64 @@ test("offline imports reject duplicates, keep historical variants absent and acc
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("both reviewers distinguish normalization from selected-maximum failures without leaking values", async () => {
+  const c = prepareBenchmarkScenarios()[0]!;
+  for (const compact of [false, true]) {
+    for (const reason of ["PROBABILITY_SUM_INVALID", "CHOICE_NOT_MAXIMUM"]) {
+      const raw = compact
+        ? response()
+        : {
+            model: "jev-1.13.0",
+            usage: { input_tokens: 123, output_tokens: 42 },
+            answers: Object.fromEntries(
+              Object.entries({
+                readiness: ["READY", "INSUFFICIENT", "UNKNOWN"],
+                gap: ["NONE", "MISSING_BASIS", "CONFLICT", "UNKNOWN"],
+                scope: ["MATCH", "MISMATCH", "UNKNOWN"],
+              }).map(([key, labels]) => [
+                key,
+                {
+                  type: "choice",
+                  choice: labels[0],
+                  confidence: 1,
+                  probabilities: Object.fromEntries(
+                    [...labels].map((l, i) => [l, i === 0 ? 1 : 0]),
+                  ),
+                },
+              ]),
+            ),
+          };
+      const question = compact ? "price_basis" : "gap";
+      const a = raw.answers[question]!;
+      const keys = Object.keys(a.probabilities);
+      a.probabilities[keys[0]!] = reason === "PROBABILITY_SUM_INVALID" ? 0.5 : 0.25;
+      if (reason === "CHOICE_NOT_MAXIMUM") {
+        a.probabilities[keys[1]!] = 0.75;
+      }
+      let last: QuantReview | undefined;
+      const factory = compact ? createCompactQuantReviewer : createQuantReviewer;
+      const reviewer = factory(
+        "fixture",
+        async () => {},
+        async () => Response.json(raw),
+      );
+      await assert.rejects(
+        reviewer.review(
+          c.input,
+          c.forecast,
+          c.proposal,
+          new AbortController().signal,
+          async (r) => {
+            last = r;
+          },
+        ),
+      );
+      assert.deepEqual((last!.diagnostics as { probabilityIssues: unknown }).probabilityIssues, [
+        { question, reason },
+      ]);
+      assert.equal(last!.inputTokens, 123);
+      assert.equal(last!.answers, undefined);
+    }
+  }
+});
