@@ -1,0 +1,21 @@
+{
+  "name": "@pickler/indexer-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:worker": "wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler/build"
+  },
+  "dependencies": {
+    "@pickler/infrastructure": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@pickler/core": "*",
+    "@pickler/typescript-config": "*",
+    "@types/pg": "8.23.1",
+    "pg": "8.20.0",
+    "wrangler": "4.133.0"
+  }
+}

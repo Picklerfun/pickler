@@ -15,7 +15,10 @@ for (const file of tracked) {
     if (!text.includes("<!-- historical-evidence -->") && retired.test(text)) {
       failures.push(`${file}: retired evaluation command`);
     }
-    for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+    const prose = text
+      .replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "")
+      .replace(/`[^`\n]+`/g, "");
+    for (const match of prose.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
       const target = match[1].replace(/^<|>$/g, "").split("#")[0].split(/\s+"/)[0];
       if (
         !target ||

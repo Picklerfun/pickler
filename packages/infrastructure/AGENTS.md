@@ -140,3 +140,25 @@ remain caller-owned. Do not add independent Jev transports to active trading eva
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
 identity, configuration and research contracts. Infrastructure implements the trading ports;
 runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+## Launch indexer
+
+`src/chain/viem-chain-reader.ts` implements core's `ChainReader` over viem. It verifies the chain id against the node on first use rather than trusting configuration, and it raises `ChainUnavailableError` instead of returning an empty result when no endpoint answers — an indexer that reads an unreachable node as an empty block range skips history permanently and reports nothing. viem lives here and never in core or `chain`.
+
+`src/persistence/product/launch-index-store.ts` persists what the indexer reads — blocks, events, cursor and outbox in one transaction — and unwinds it on a reorg by orphaning rather than deleting. `src/persistence/product/launch-projector.ts` turns those stored events into the catalogue the API serves, reading only from `market.chain_events` and never from a node, which is what makes a projection disposable and rebuildable. Only canonical events are projected: an orphaned one describes a trade that did not happen.
+
+`market.tokens.agent_id` is nullable because the chain knows an `agentKey` that nothing reverses into our agent identifier. A launch the chain has and we cannot attribute is recorded with a null link and attributed later; requiring the link would mean inventing one or dropping the launch.
+
+Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`, `launch`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `launch` holds what only exists off chain — drafts, mirrored presets, metadata history, prepared transactions and the outbox — and is deliberately separate from `market`, which holds projections a replay can rebuild. Mixing them would make it impossible to say which tables may be truncated and rebuilt safely. `market.chain_blocks` and `market.chain_events` keep raw blocks and decoded logs keyed by full log identity, so a projection can be rebuilt and a reorg rolled back without re-reading the chain. `0016_launch_grants.sql` carries their grants, since Drizzle emits no privileges.
+
+`0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
+
+## Launch migration reconciliation
+
+Launch SQL migrations are numbered 0015/0016 after the current research and perpetual
+history. Their original SQL bytes and journal timestamps are preserved so the hash-based
+migrator recognizes databases created on the earlier launch branch. Never rewrite applied
+SQL or reset a database to resolve branch numbering. The combined latest snapshot includes
+both launch and current trading tables. Migration tests cover both predecessor histories.
+
+The Node-only migration runner is exported through `@pickler/infrastructure/migrations`, never the runtime barrel. Worker consumers must not import this operational entry point.

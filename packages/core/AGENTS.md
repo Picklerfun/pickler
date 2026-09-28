@@ -104,3 +104,5 @@ Trading rules, financial contracts, simulations and evaluation coordination are 
 `@pickler/trading`; read [its instructions](../trading/AGENTS.md). Core retains agent configuration,
 identity, research authorization and public Perpl market-data contracts. Never import trading
 from core. Consumers import trading subpaths directly; no compatibility exports remain here.
+
+`src/features/launch` holds the launchpad domain: `domain/curve-math.ts` previews curve pricing and is held to the Solidity library by a generated fixture, and `ports/chain-reader.ts` describes what the domain needs from a chain without naming one. No blockchain SDK is imported here.

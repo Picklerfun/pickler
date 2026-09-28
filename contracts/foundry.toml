@@ -6,5 +6,14 @@ solc_version = "0.8.30"
 optimizer = true
 optimizer_runs = 200
 
+# Reaches out of the Foundry root so CurveVectors.t.sol can write the parity fixture that
+# packages/core/test/curve-math.test.ts is checked against.
+fs_permissions = [{ access = "read-write", path = "../packages/core/test/fixtures" }]
+
 [fuzz]
 runs = 256
+
+[invariant]
+runs = 64
+depth = 128
+fail_on_revert = false

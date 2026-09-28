@@ -2,6 +2,8 @@
 
 Status: direction agreed on 2026-09-16; contracts not specified yet. On-chain logic belongs to the infra owner. This document records the research, the decision, what the backend expects from the contracts, and how the `market` schema models it.
 
+> **Superseded on two points (2026-09-21).** [The launchpad development specification](../specs/launchpad-monad-v1.md) targets **Monad** (143 / 10143), not Robinhood Chain, and treats **Uniswap V4 as the primary post-graduation venue** rather than a fallback behind Pons. The research summary below, the six requirements the backend places on the contracts, and the mapping to the `market` schema all remain current.
+
 ## Product split
 
 Keep these separate (see the extraction guide, section 3):

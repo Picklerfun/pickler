@@ -1,0 +1,47 @@
+name: Contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      # forge-std is a git submodule pinned by contracts/foundry.lock.
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm install --global npm@10.9.3
+      - run: npm ci
+
+      - name: Check Solidity formatting
+        run: forge fmt --root contracts --check
+
+      - name: Lint contracts
+        run: forge lint --root contracts
+
+      - name: Test contracts
+        run: npm run contracts:test
+
+      # A committed ABI that no longer matches the compiler would let consumers decode logs
+      # against a contract that does not exist.
+      - name: Verify generated ABIs are current
+        run: |
+          npm run contracts:abi
+          git diff --exit-code packages/chain/src/abi
+
+      # The preview in packages/core is only trustworthy while it agrees with the chain.
+      - name: Verify the curve parity fixture is current
+        run: |
+          forge test --root contracts --match-contract CurveVectorsTest
+          git diff --exit-code packages/core/test/fixtures/curve-vectors.json

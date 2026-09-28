@@ -5,6 +5,30 @@ export type { Clock } from "./ports/clock.js";
 export { createGetHealth } from "./application/get-health.js";
 export { DataSourceUnavailableError } from "./shared/errors.js";
 
+export {
+  remainingTokens,
+  tokensOutForQuoteIn,
+  type CurveConfig,
+} from "./features/launch/domain/curve-math.js";
+
+export {
+  nextRange,
+  planAdvance,
+  type AdvancePlan,
+  type IndexedBlock,
+  type IndexerCursor,
+} from "./features/launch/domain/indexing.js";
+
+export {
+  ChainMismatchError,
+  ChainUnavailableError,
+  type BlockRef,
+  type CallRequest,
+  type ChainLog,
+  type ChainReader,
+  type LogQuery,
+} from "./features/launch/ports/chain-reader.js";
+
 export * from "./features/landing/domain/landing.js";
 export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
 export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
