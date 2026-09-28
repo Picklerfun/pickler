@@ -14,6 +14,9 @@ import {
 import { ApiKeyStamper } from "@turnkey/api-key-stamper";
 import { TurnkeyClient } from "@turnkey/http";
 
+/** How much of a refusal's `details` is logged, in characters (about 2 KB). */
+const DETAILS_MAX = 2048;
+
 export const TURNKEY_API_BASE_URL = "https://api.turnkey.com";
 
 export interface TurnkeyTransportConfig {
@@ -52,8 +55,11 @@ export async function sendStampedRequest<T>(
       message = parsed.message;
       // Turnkey's `message` is often just "invalid request"; the field that failed is in
       // `details`. It describes the request we sent, never a credential, so it is safe to log.
+      // Capped, so an unexpectedly large body cannot flood the log.
       if (parsed.details !== undefined) {
-        console.warn("Turnkey refused", response.status, message, JSON.stringify(parsed.details));
+        const details = JSON.stringify(parsed.details);
+        const shown = details.length > DETAILS_MAX ? `${details.slice(0, DETAILS_MAX)}…` : details;
+        console.warn("Turnkey refused", response.status, message, shown);
       }
     } catch {
       // Non-JSON error body.

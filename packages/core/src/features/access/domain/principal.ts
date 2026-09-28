@@ -25,6 +25,12 @@ interface BasePrincipal {
 export interface UserPrincipal extends BasePrincipal {
   kind: "user";
   email?: string | undefined;
+  /**
+   * A wallet sign-in account, from the verified token's server-only
+   * `app_metadata.pickler_account === "wallet"`. The only signal that exempts an account from
+   * studio-only rules (`wallet_required`); the email's domain never does.
+   */
+  walletAccount: boolean;
   /** "admin" for the owner, the member's `internal_role` otherwise, null without a workspace. */
   memberRole: string | null;
   /** Informational only; super-admin routes enforce the allowlist separately. */
@@ -70,7 +76,7 @@ export function isAllowlistedEmail(
 }
 
 export interface BuildUserPrincipalInput {
-  user: { id: string; email?: string | undefined };
+  user: { id: string; email?: string | undefined; walletAccount?: boolean | undefined };
   integrator?: { id: string } | null;
   memberRole?: string | null;
   superAdminEmails?: readonly string[];
@@ -83,6 +89,7 @@ export function buildUserPrincipal(input: BuildUserPrincipalInput): UserPrincipa
     id: input.user.id,
     tenantId: input.integrator?.id ?? null,
     email: input.user.email,
+    walletAccount: input.user.walletAccount === true,
     memberRole,
     isSuperAdmin: isAllowlistedEmail(input.user.email, input.superAdminEmails ?? []),
     abilities: memberRole ? abilitiesForMemberRole(memberRole) : emptyAbility(),

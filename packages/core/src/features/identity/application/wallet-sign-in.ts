@@ -149,6 +149,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
       const { address, namespace, chainReference } = await proven(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing) {
+        await deps.accounts.markWalletAccount(existing.userId, namespace, address);
         return { userId: existing.userId, session: await deps.accounts.session(existing.userId) };
       }
       const { userId } = await deps.accounts.forAddress(namespace, address);
@@ -159,6 +160,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         verifiedChain: caip2(namespace, chainReference),
         kind: "external",
       });
+      await deps.accounts.markWalletAccount(userId, namespace, address);
       return { userId, session: await deps.accounts.session(userId) };
     },
 

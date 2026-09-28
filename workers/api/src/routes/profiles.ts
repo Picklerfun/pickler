@@ -1,4 +1,4 @@
-import { isWalletAccountEmail, type createProfileService, type Profile } from "@pickler/core";
+import type { createProfileService, Profile } from "@pickler/core";
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import { successEnvelope } from "../http/envelope";
@@ -9,11 +9,6 @@ export interface ProfileRouteServices {
   authenticate: Authenticate;
   profiles: ReturnType<typeof createProfileService>;
   onboard?(userId: string): Promise<void>;
-  /**
-   * `WALLET_EMAIL_DOMAIN`: a principal whose email is in it is a wallet sign-in account, exempt from
-   * the custody-account rule on POST. Undefined where wallet sign-in is off.
-   */
-  walletEmailDomain?: string | undefined;
 }
 
 const profileDto = (profile: Profile) => ({
@@ -56,9 +51,10 @@ export function profileRoutes(services: ProfileRouteServices) {
       }
       const principal = c.get("principal");
       // A studio (email or Google) account needs its master wallet first; a wallet sign-in account
-      // claiming a handle from the marketplace has its own wallet and never a custody account.
-      const email = principal.kind === "user" ? principal.email : undefined;
-      const account = isWalletAccountEmail(email, services.walletEmailDomain) ? "wallet" : "studio";
+      // claiming a handle from the marketplace has its own wallet and never a custody account. Only
+      // the token's server-only app_metadata marker says which — never the email's domain, which
+      // anyone can register while email sign-up is open.
+      const account = principal.kind === "user" && principal.walletAccount ? "wallet" : "studio";
       const profile = await services.profiles.createProfile(
         principal.id,
         { displayName: body.display_name, handle: body.handle },

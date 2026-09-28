@@ -1,6 +1,12 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import type { AccountProvisioner, Namespace, NormalizedAddress } from "@pickler/core";
+import {
+  WALLET_ACCOUNT_METADATA_KEY,
+  WALLET_ACCOUNT_METADATA_VALUE,
+  type AccountProvisioner,
+  type Namespace,
+  type NormalizedAddress,
+} from "@pickler/core";
 import type { SupabaseAdmin } from "./supabase-admin-client.js";
 
 /**
@@ -73,6 +79,11 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
         // belongs to, on every request, to anything that reads a user. `identity.wallet_links` is
         // the authoritative record of that link and nothing needs a second copy in a token.
         user_metadata: { wallet_namespace: namespace },
+        // The server-only marker that this is a wallet sign-in account. `app_metadata` is writable
+        // only with the secret key and is carried in the access token, so it is what the API reads
+        // to exempt the account from studio-only rules — never the email, whose domain anyone can
+        // register while email sign-up is open.
+        app_metadata: { [WALLET_ACCOUNT_METADATA_KEY]: WALLET_ACCOUNT_METADATA_VALUE },
       });
       if (created.data.user) {
         return { userId: created.data.user.id };
@@ -84,6 +95,31 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
         throw created.error ?? new Error("Could not create or find the account for that wallet");
       }
       return { userId: existing };
+    },
+
+    async markWalletAccount(userId, namespace, address) {
+      const { data, error } = await config.admin.auth.admin.getUserById(userId);
+      if (error || !data.user) {
+        throw error ?? new Error("Could not read the account for that wallet");
+      }
+      const metadata = (data.user.app_metadata ?? {}) as Record<string, unknown>;
+      if (metadata[WALLET_ACCOUNT_METADATA_KEY] === WALLET_ACCOUNT_METADATA_VALUE) {
+        return;
+      }
+      // Only the account this address's sign-in created, whose auth email is this address's
+      // synthetic one. An email account that linked the wallet signs in to itself and stays a
+      // studio account. An account registered by hand at exactly this address can only reach here
+      // by proving the address's signature, so marking it marks the wallet's own holder.
+      const own = syntheticEmail(namespace, address, config.emailDomain).toLowerCase();
+      if (data.user.email?.toLowerCase() !== own) {
+        return;
+      }
+      const updated = await config.admin.auth.admin.updateUserById(userId, {
+        app_metadata: { ...metadata, [WALLET_ACCOUNT_METADATA_KEY]: WALLET_ACCOUNT_METADATA_VALUE },
+      });
+      if (updated.error) {
+        throw updated.error;
+      }
     },
 
     async session(userId) {

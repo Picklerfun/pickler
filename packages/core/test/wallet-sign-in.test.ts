@@ -83,6 +83,7 @@ function service(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
     accounts: {
       forAddress: async () => ({ userId: "user-1" }),
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
+      markWalletAccount: async () => {},
     },
     randomNonce: () => "nonce-1",
     buildMessage: build,
@@ -223,6 +224,7 @@ test("signing in with an already-linked address returns that account, not a new 
     accounts: {
       forAddress: async () => ({ userId: "user-newly-made" }),
       session: async (userId) => ({ accessToken: `at:${userId}`, refreshToken: "rt" }),
+      markWalletAccount: async () => {},
     },
   });
   const result = await signIn.verify({ raw: signed(), signature: "0xsig" });
@@ -267,4 +269,44 @@ test("a wallet account is recognised by its synthetic email domain, and only by 
   // No domain configured: wallet sign-in is off, so nobody is a wallet account.
   assert.equal(isWalletAccountEmail(synthetic, undefined), false);
   assert.equal(isWalletAccountEmail(synthetic, ""), false);
+});
+
+/**
+ * The wallet-account marker is what the API trusts to exempt an account from studio-only rules, and
+ * accounts made before it existed get it on their next sign-in. So every sign-in — a new address and
+ * a returning one — asks for it, before the session is minted, so the token carries it.
+ */
+test("every sign-in marks the wallet account before minting its session", async () => {
+  for (const returning of [false, true]) {
+    const calls: string[] = [];
+    const existing: WalletLink = {
+      userId: "user-original",
+      namespace: "eip155",
+      address: normalizeAddress("eip155", ADDRESS),
+      verifiedChain: "eip155:10143",
+      kind: "external",
+      verifiedAt: NOW,
+    };
+    const signIn = service({
+      nonces: nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]])),
+      links: links(returning ? [existing] : []),
+      accounts: {
+        forAddress: async () => ({ userId: "user-new" }),
+        markWalletAccount: async (userId, namespace, address) => {
+          calls.push(`mark:${userId}:${namespace}:${address}`);
+        },
+        session: async (userId) => {
+          calls.push(`session:${userId}`);
+          return { accessToken: "at", refreshToken: "rt" };
+        },
+      },
+    });
+    await signIn.verify({ raw: signed(), signature: "0xsig" });
+    const user = returning ? "user-original" : "user-new";
+    assert.deepEqual(
+      calls,
+      [`mark:${user}:eip155:${normalizeAddress("eip155", ADDRESS)}`, `session:${user}`],
+      returning ? "returning" : "new",
+    );
+  }
 });

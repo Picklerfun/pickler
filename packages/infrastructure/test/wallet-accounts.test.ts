@@ -80,10 +80,10 @@ interface Route {
 
 /** A real admin client over a fake transport, so the assertions are about the requests it makes. */
 function clientOver(routes: Route[]) {
-  const requests: { method: string; url: string }[] = [];
+  const requests: { method: string; url: string; body: string }[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
-    requests.push({ method: request.method, url: request.url });
+    requests.push({ method: request.method, url: request.url, body: await request.text() });
     const route = routes.find((r) => r.match(request.method, request.url));
     return new Response(JSON.stringify(route ? route.body : { message: "no route" }), {
       status: route?.status ?? (route ? 200 : 500),
@@ -190,4 +190,84 @@ test("minting a session leaves no session on the shared admin client", async () 
 
   const { data } = await admin.auth.getSession();
   assert.equal(data.session, null);
+});
+
+const OWN_EMAIL = syntheticEmail("eip155", EVM, "wallet.pickler.fun");
+
+test("a new wallet account is created with the server-only wallet-account marker", async () => {
+  const { admin, requests } = clientOver([
+    {
+      match: (m, u) => m === "POST" && u.includes("/admin/users"),
+      body: { id: "user-new", email: OWN_EMAIL },
+    },
+  ]);
+  const accounts = createWalletAccounts({
+    admin,
+    emailDomain: "wallet.pickler.fun",
+    findUserIdByEmail: async () => null,
+    sessionClient: () => admin,
+  });
+  await accounts.forAddress("eip155", EVM);
+
+  const created = requests.find((r) => r.method === "POST" && r.url.includes("/admin/users"));
+  const body = JSON.parse(created!.body) as Record<string, unknown>;
+  assert.deepEqual(body["app_metadata"], { pickler_account: "wallet" });
+});
+
+/** The admin client over routes for one user record, answering an update with what it was sent. */
+function accountsFor(user: { email: string; app_metadata: Record<string, unknown> }) {
+  const client = clientOver([
+    {
+      match: (m, u) => m === "GET" && u.includes(`/admin/users/${USER_ID}`),
+      body: { id: USER_ID, ...user },
+    },
+    {
+      match: (m, u) => m === "PUT" && u.includes(`/admin/users/${USER_ID}`),
+      body: { id: USER_ID, ...user },
+    },
+  ]);
+  const accounts = createWalletAccounts({
+    admin: client.admin,
+    emailDomain: "wallet.pickler.fun",
+    findUserIdByEmail: async () => null,
+    sessionClient: () => client.admin,
+  });
+  const updates = () => client.requests.filter((r) => r.method === "PUT");
+  return { accounts, updates };
+}
+
+test("a wallet sign-in backfills the marker on an account made before it existed", async () => {
+  const { accounts, updates } = accountsFor({
+    email: OWN_EMAIL,
+    app_metadata: { provider: "email", providers: ["email"] },
+  });
+  await accounts.markWalletAccount(USER_ID, "eip155", EVM);
+
+  assert.equal(updates().length, 1);
+  assert.deepEqual(JSON.parse(updates()[0]!.body)["app_metadata"], {
+    provider: "email",
+    providers: ["email"],
+    pickler_account: "wallet",
+  });
+});
+
+test("an account that already carries the marker is not written again", async () => {
+  const { accounts, updates } = accountsFor({
+    email: OWN_EMAIL,
+    app_metadata: { provider: "email", pickler_account: "wallet" },
+  });
+  await accounts.markWalletAccount(USER_ID, "eip155", EVM);
+  assert.equal(updates().length, 0);
+});
+
+/**
+ * An email account can link a wallet and then sign in with it. That opens the email account, which
+ * is a studio account and must stay one: only the account this address's sign-in created is marked.
+ */
+test("an email account that linked the wallet is never marked", async () => {
+  for (const email of ["ana@x.io", syntheticEmail("solana", SOLANA, "wallet.pickler.fun")]) {
+    const { accounts, updates } = accountsFor({ email, app_metadata: { provider: "email" } });
+    await accounts.markWalletAccount(USER_ID, "eip155", EVM);
+    assert.equal(updates().length, 0, email);
+  }
 });

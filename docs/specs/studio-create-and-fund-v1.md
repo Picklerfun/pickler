@@ -216,10 +216,20 @@ shows their master wallet from the first visit, with or without agents — so it
   `POST /v1/profile` (`createProfile`, then the workspace's `onboard`). The username is saved only
   once the passkey and the master wallet exist, and that is a server rule for **studio accounts**
   (email or Google): `POST /v1/profile` answers **409 `wallet_required`** (`WalletRequiredError`)
-  to one with no custody account. A wallet sign-in account — its synthetic auth email is in
-  `WALLET_EMAIL_DOMAIN` — is exempt: its own external wallet is its wallet, it never has a custody
-  account, and it claims a handle from the marketplace portfolio. If it opens the studio it is sent
-  to the passkey step like anyone without a master wallet.
+  to one with no custody account. A wallet sign-in account is exempt: its own external wallet is its
+  wallet, it never has a custody account, and it claims a handle from the marketplace portfolio.
+  It is recognised **only** by the server-only claim `app_metadata.pickler_account = "wallet"` in
+  its access token, set when wallet sign-in creates the account and backfilled on every wallet
+  sign-in for accounts made before the claim existed — never by its email, whose synthetic domain
+  anyone can register while email sign-up is open. Consequence, accepted: a wallet account that has
+  not signed in since the claim was introduced has no marker yet, so claiming a handle answers 409
+  until it signs in again; claiming needs a session, and every new session comes from the wallet
+  sign-in that sets the marker. If a wallet account opens the studio it is sent to the passkey step
+  like anyone without a master wallet.
+- **Recommendation (not changed here):** the hosted Supabase project should have email
+  confirmations on. With them off, anyone can register any address, including one in the synthetic
+  wallet domain; the exemption above no longer depends on the email, but confirmations close the
+  door on every other rule that might.
 - **Naming the first passkey.** It is created before there is a handle, so WebAuthn's `user.name`
   and `user.displayName` — stored in the device keychain — are the person's sign-in email from the
   verified token (never a wallet account's synthetic email; with no usable email, `pickler-<id8>`).

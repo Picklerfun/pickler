@@ -302,10 +302,14 @@ bar ("No agent yet", the Menu, the profile), the second-passkey suggestion, and 
 "Nothing running yet.", one line on what an agent does, "Create your first agent" to
 `/studio/new` (disabled with the reason when research is not enabled or the person cannot manage).
 `HomeMenu` takes `agent: null` then: "+ New agent" is open (`createGate([])`) and every section is
-listed disabled with "After you create your agent", so any `?section=` lands on the empty home
-too. `lib/landing.ts` decides it, pure and pinned in `studio-landing.test.ts`: `studioLanding(loaded,
-agents)` is `board` for any agent, `empty` for none once read, and `loading` before the read, when
-the shell says "Reading your agents…". The wallet and profile gates run before it, unchanged.
+listed disabled with "After you create your agent". `home/access.ts` holds that decision, pure:
+`menuAccess` answers whether sections open and whether "+ New agent" is a link, with one reason
+(view-only, then research access, then the unfunded-agent lock), and the empty home's button reads
+the same answer, so a manager on a workspace without research sees the research reason in both.
+`lib/landing.ts` decides the screen: `studioLanding(loaded, agents, section)` is `home` or `section`
+with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
+read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The
+wallet and profile gates run before it, unchanged.
 
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
@@ -368,8 +372,10 @@ and workspace) → welcome. `lib/flow.ts` is the pure machine, pinned in `flow.t
 when there is one (an account made before the order changed). The handle step's
 `POST /v1/profile` (`ensureProfile`) runs only after the wallet exists, and the API refuses it
 otherwise (409 `wallet_required`) for a studio (email or Google) account. A wallet sign-in account
-is exempt and claims its handle from the marketplace portfolio (`wallet/components/claim-handle.tsx`)
-with no custody account; if it opens the studio, the gates send it to the passkey step. Signin is
+— only one whose token carries the server-only `app_metadata.pickler_account = "wallet"` — is
+exempt and claims its handle from the marketplace portfolio (`wallet/components/claim-handle.tsx`)
+with no custody account; one that has not signed in since the marker existed gets 409 until its
+next wallet sign-in sets it. If it opens the studio, the gates send it to the passkey step. Signin is
 `auth → code → welcome`, or `auth → code → passkey → welcome` when the landing check (`landing` in
 `lib/custody.ts`, reading `GET /v1/signing/wallets/me` and `GET /v1/profile`) finds no
 sub-organization on an account with a profile and sends `wallet_missing { profile: true }`. The

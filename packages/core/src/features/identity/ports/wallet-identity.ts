@@ -41,4 +41,16 @@ export interface AccountProvisioner {
   forAddress(namespace: Namespace, address: NormalizedAddress): Promise<{ userId: string }>;
   /** A session for an existing user, minted server-side. */
   session(userId: string): Promise<{ accessToken: string; refreshToken: string }>;
+  /**
+   * Puts the server-only wallet-account marker (`app_metadata.pickler_account = "wallet"`) on the
+   * account a wallet sign-in is about to open, if it is missing and the account is the one this
+   * address's sign-in created (its auth email is this address's synthetic one). An email account
+   * that merely linked this wallet is left alone. Called before `session`, so the token it mints
+   * carries the marker: accounts made before the marker existed heal on their next sign-in.
+   */
+  markWalletAccount(
+    userId: string,
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<void>;
 }

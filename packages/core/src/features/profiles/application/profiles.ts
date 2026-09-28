@@ -15,8 +15,8 @@ import type { CustodyAccountLookup, ProfileRepository } from "../ports/profile-r
  * Who is creating the profile. `studio` is an email or Google account, which must have its custody
  * account (the passkey's sub-organization and master wallet) first. `wallet` is a wallet sign-in
  * account, whose own external wallet is its wallet and which never has a custody account; it claims
- * a handle from the marketplace portfolio. The caller decides from the verified token
- * (`isWalletAccountEmail`), never from the request body.
+ * a handle from the marketplace portfolio. The caller decides from the verified token's server-only
+ * `app_metadata` marker (`UserPrincipal.walletAccount`), never from the email or the request body.
  */
 export type ProfileAccount = "studio" | "wallet";
 

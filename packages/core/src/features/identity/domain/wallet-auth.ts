@@ -82,16 +82,23 @@ type Assert<T extends true> = T;
 type _BrandIsLoadBearing = Assert<string extends NormalizedAddress ? false : true>;
 
 /**
- * Whether a verified token's email is a wallet sign-in account's synthetic one
+ * The server-only marker of a wallet sign-in account: `app_metadata.pickler_account = "wallet"`.
+ * Set by the admin API when wallet sign-in creates the account, and backfilled on every wallet
+ * sign-in for accounts made before it existed. `app_metadata` cannot be written by the person and
+ * is carried in the access token, so this — and only this — is what exempts an account from
+ * studio-only rules such as `wallet_required`.
+ */
+export const WALLET_ACCOUNT_METADATA_KEY = "pickler_account";
+export const WALLET_ACCOUNT_METADATA_VALUE = "wallet";
+
+/**
+ * Whether an email is in the domain of wallet sign-in accounts' synthetic emails
  * (`<namespace>-<digest>@<walletEmailDomain>`, minted by infrastructure's wallet-accounts.ts).
  *
- * This is the reliable marker of a wallet sign-in account in the token. The email claim is signed
- * by Supabase, set once by the admin API when the account is created, and cannot be changed to
- * that domain by the person, because confirming an address there is impossible — the domain never
- * accepts mail. The alternatives are weaker: `user_metadata.wallet_namespace` is writable by the
- * person through `updateUser`, `app_metadata.provider` is "email" for these accounts exactly as for
- * an email-code one, and a row in `identity.wallet_links` also exists for an email account that
- * linked a wallet. With no domain configured wallet sign-in is off, and no such account can exist.
+ * Cosmetic only — never an authorization signal. With email sign-up enabled and confirmations off,
+ * anyone can register an address in that domain and get a token with it; the exemption from studio
+ * rules reads `WALLET_ACCOUNT_METADATA_KEY` instead. This only keeps an internal key out of places a
+ * person reads, such as a passkey's keychain name. With no domain configured nothing matches.
  */
 export function isWalletAccountEmail(
   email: string | null | undefined,

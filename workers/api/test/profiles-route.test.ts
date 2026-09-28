@@ -51,7 +51,6 @@ function app(principal: unknown, wallets: ReadonlySet<string> = new Set(["ana-us
     profiles: createProfileService(repo, {
       hasCustodyAccount: async (userId) => wallets.has(userId),
     }),
-    walletEmailDomain: "wallet.pickler.fun",
   });
 }
 
@@ -151,24 +150,25 @@ test("a wallet sign-in account claims a handle with no custody account; an email
       },
       env,
     );
-  const walletAccount = buildUserPrincipal({
-    user: {
-      id: "wallet-user",
-      email:
-        "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun",
-    },
-  });
-  const emailAccount = buildUserPrincipal({ user: { id: "ana-user", email: "ana@x.io" } });
+  const synthetic =
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
 
+  // The token carries the server-only app_metadata marker: exempt.
+  const walletAccount = buildUserPrincipal({
+    user: { id: "wallet-user", email: synthetic, walletAccount: true },
+  });
   assert.equal((await create(walletAccount, "nightowl")).status, 201);
+
+  const emailAccount = buildUserPrincipal({ user: { id: "ana-user", email: "ana@x.io" } });
   const refused = await create(emailAccount, "anarobles");
   assert.equal(refused.status, 409);
   assert.equal((await json(refused)).error, "wallet_required");
-  // An email account on a lookalike domain is still a studio account.
-  const lookalike = buildUserPrincipal({
-    user: { id: "other-user", email: "x@evilwallet.pickler.fun" },
-  });
-  assert.equal((await create(lookalike, "lookalike")).status, 409);
+
+  // The spoof: an email sign-up at an address in the synthetic domain, with no marker.
+  const spoof = buildUserPrincipal({ user: { id: "spoof-user", email: synthetic } });
+  const spoofed = await create(spoof, "spoofer");
+  assert.equal(spoofed.status, 409);
+  assert.equal((await json(spoofed)).error, "wallet_required");
 });
 
 test("CORS allows configured origins only", async () => {
