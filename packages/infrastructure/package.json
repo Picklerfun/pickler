@@ -16,6 +16,10 @@
     "./trading-operator": {
       "types": "./src/trading/operator.ts",
       "import": "./dist/trading/operator.js"
+    },
+    "./model-providers/jev": {
+      "types": "./src/model-providers/jev/client.ts",
+      "import": "./dist/model-providers/jev/client.js"
     }
   },
   "scripts": {
