@@ -109,3 +109,7 @@ The study adapter reads the public crypto-price endpoint with exact window, vari
 ## Perpl public data plugin
 
 `src/perpl` exports `PerplMarketData`, a bounded public REST adapter for BTC/ETH on mainnet/testnet. Discover IDs/precision from context; preserve exact decimal strings, component provenance and unknowns. Fixed hosts, GET-only, no redirects/retries, 10-second/2-MiB limits, serial one-second starts and twelve requests per session. Context cache is scoped to adapter/network. Test hooks are trusted host injection, never agent configuration.
+
+## Perpetual paper accounts
+
+`PostgresPerpsPaperStore` owns scoped private perpetual paper accounts, append-only movements, position projections and 60-second fenced attempts. Serialize with agent/account locks, never replay expired work, and keep original session config/capital. Migration 0012 adds four RLS-enabled tables without changing existing paper or real budgets.

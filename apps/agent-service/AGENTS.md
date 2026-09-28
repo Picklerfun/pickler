@@ -168,3 +168,7 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 ## Perpl public data plugin
 
 Read [PERPL-DATA.md](PERPL-DATA.md) for the opt-in `perpl:data configure|check|capture` operator command. It uses an existing scoped database agent, no model/key, and never seeds/migrates. Configure is version-checked and disables scheduling. Captures use exclusive private attempt directories, original bodies, hashes and incomplete manifests. `test/perpl-public.probe.ts` is an explicit public-network probe with an in-memory verification agent; it is excluded from automatic tests and never modifies real configurations.
+
+## Perpetual paper accounts
+
+Read [PERPS-PAPER.md](PERPS-PAPER.md) for `perps:paper account-init|status|risk-check`. The local operator uses explicit tenant/agent/session/network and versioned opt-in. No provider/model calls or automatic migrations. `--enable-plugin` explicitly updates configuration and disables scheduling; historical sessions retain their original version and capital.
