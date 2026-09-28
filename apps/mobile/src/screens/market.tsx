@@ -12,43 +12,7 @@ import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleto
 import { C, pill, textStyle } from "../ui/theme";
 import { AskTab } from "./ask";
 import { BookCard } from "./book";
-
-export type OrderResult =
-  | { step: "sent" }
-  | { step: "filled"; title: string; detail: string; note?: string }
-  | { step: "failed"; text: string }
-  | { step: "unknown" };
-
-/** Tonos de D14: sent = hair2/slab, filled = lima, failed = down, unknown = warn. */
-const TONES = {
-  sent: { tag: "SENT", title: "Order accepted — waiting for the fill", tone: { bd: C.hair2, bg: C.slab, fg: C.dim } },
-  filled: { tag: "FILLED", title: "Filled", tone: { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk } },
-  failed: { tag: "FAILED", title: "Order failed", tone: { bd: C.downBd, bg: C.downBg, fg: C.down } },
-  unknown: { tag: "NO CONFIRMATION", title: "No confirmation yet", tone: { bd: C.warnBd, bg: C.warnBg, fg: C.warn } },
-} as const satisfies Record<OrderResult["step"], { tag: string; title: string; tone: Tone }>;
-
-/** Estados Sent / Filled / Failed / Unknown, compartidos por apertura (aquí) y cierre (markets.tsx). */
-export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResult; onBack: () => void; onEdit?: () => void }) {
-  const t = TONES[result.step];
-  const body = result.step === "filled" ? result.detail
-    : result.step === "failed" ? result.text
-    : result.step === "unknown" ? "Check your positions — the order may still have gone through."
-    : undefined;
-  return (
-    <View style={{ gap: 11 }}>
-      <StatusCard tag={t.tag} title={result.step === "filled" ? result.title : t.title} body={body} tone={t.tone}>
-        {result.step === "sent" ? <ActivityIndicator color={C.dim} style={{ alignSelf: "flex-start" }} /> : null}
-        {result.step === "filled" && result.note ? <T w={400} s={11.5} lh={1.4} color={C.dim} accessibilityLabel="order-note">{result.note}</T> : null}
-      </StatusCard>
-      {result.step !== "sent" ? (
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {result.step === "failed" && onEdit ? <Btn label="Edit" onPress={onEdit} variant="outline" flex={1} accessibilityLabel="edit-order" /> : null}
-          <Btn label="Back to Markets" onPress={onBack} variant="lime" flex={1} accessibilityLabel="back-to-markets" />
-        </View>
-      ) : null}
-    </View>
-  );
-}
+import { OrderResultCard, type OrderResult } from "./orderResult";
 
 type Step = { step: "edit" } | { step: "review" } | { step: "result"; result: OrderResult };
 
@@ -148,7 +112,7 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
   ];
 
   if (st.step === "result") {
-    return <Page top={13}><OrderResultCard result={st.result} onBack={() => nav("markets")} onEdit={() => setSt({ step: "edit" })} /></Page>;
+    return <Page top={13}><OrderResultCard result={st.result} primary={{ label: "Back to Markets", onPress: () => nav("markets") }} onEdit={() => setSt({ step: "edit" })} /></Page>;
   }
 
   if (st.step === "review") {
