@@ -1,5 +1,5 @@
-import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
-import { createPerpsPaperRuntime } from "@pickler/agent-runtime/composition/perps-paper";
+import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
+import { createPerpsPaperRuntime } from "@pickler/agent-runtime/plugins/perps-paper";
 import { PilotError, type AgentRecord, type Scope, type PerpCandles } from "@pickler/core";
 import { type PerpsPaperRepository } from "@pickler/trading/perps";
 import type { StudyData } from "@pickler/trading/evaluation";

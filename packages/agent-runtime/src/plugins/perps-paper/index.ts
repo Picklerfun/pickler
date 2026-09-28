@@ -6,7 +6,7 @@ import {
   assertPerpsPaperAgent,
 } from "@pickler/trading/perps";
 import { type AgentRecord, type Scope } from "@pickler/core";
-import { createPerplSession } from "./perpl.js";
+import { createPerplSession } from "../perpl/index.js";
 import type { PerplDataOptions } from "@pickler/infrastructure";
 /** Operator-only simulator. No Mastra trading tool or signer is exposed. */
 export function createPerpsPaperRuntime(

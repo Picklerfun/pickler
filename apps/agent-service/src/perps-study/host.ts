@@ -101,7 +101,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     }
     if (action === "settle") {
       const { createPerpsPaperRuntime } =
-        await import("@pickler/agent-runtime/composition/perps-paper");
+        await import("@pickler/agent-runtime/plugins/perps-paper");
       const runtime = createPerpsPaperRuntime(paper, research);
       for (const strategy of PERPS_STUDY_STRATEGIES) {
         await runtime.service.tick(

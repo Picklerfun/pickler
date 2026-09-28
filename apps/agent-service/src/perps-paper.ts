@@ -1,4 +1,4 @@
-import { createPerpsPaperRuntime } from "@pickler/agent-runtime/composition/perps-paper";
+import { createPerpsPaperRuntime } from "@pickler/agent-runtime/plugins/perps-paper";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";

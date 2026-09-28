@@ -104,3 +104,9 @@ request hashing and persisted usage hooks. No prompt/version change is implied b
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
 identity, configuration and research contracts. Infrastructure implements the trading ports;
 runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+## Plugin factories
+
+Every registered plugin has a directory in `src/plugins`; read its AGENTS.md. The registry binds
+core descriptors to factories without redefining metadata. Applications import public plugin
+subpaths. Execution factories remain operator-only; there is no application registry facade.

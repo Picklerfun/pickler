@@ -5,7 +5,7 @@ import {
   createProfileService,
   parseEmailAllowlist,
 } from "@pickler/core";
-import { createPaperService, createPaperSettlementService } from "@pickler/trading/polymarket";
+import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
 import {
   createSupabaseAdmin,
   createSupabaseAgentEventLog,
@@ -117,13 +117,11 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       authenticate,
       directory,
       repository,
-      paper: {
-        ...createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
-        ...createPaperSettlementService(
-          new PostgresPaperStore(repository.pool),
-          new PolymarketPaperResolution(),
-        ),
-      },
+      paper: createPaperPlugin(
+        new PostgresPaperStore(repository.pool),
+        new PolymarketData(),
+        new PolymarketPaperResolution(),
+      ),
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");
