@@ -1,14 +1,16 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { ActivityIndicator, Linking, TextInput, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { formatUnits, type Address, type Hex } from "viem";
 import { accountAddress } from "../account";
 import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL, shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import { tradingLineState } from "../store";
-import { Btn, Card, Chip, KV, Page, Reveal, Skeleton, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
+import { Btn, Card, Chip, InkBlock, InkTile, KV, Page, Reveal, Segmented, Skeleton, StatGrid, StatusCard, T, Tag, Touch, Warn, type Tone } from "../ui/primitives";
 import { C, textStyle } from "../ui/theme";
 import type { Movement } from "../wallet/explorer";
+import { splitMovements } from "../wallet/movements";
 import { describeError } from "../wallet/wallet";
 import { validateWithdraw } from "../wallet/withdraw";
 
@@ -22,19 +24,17 @@ function movementDate(when: number): string {
   return new Date(when * 1000).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).toUpperCase();
 }
 
-const STATUS_FG: Record<Movement["status"], string> = { Complete: C.up, Confirming: C.warn, Reverted: C.down };
-
 function MovementRow({ m }: { m: Movement }) {
+  const dot = m.status === "Confirming" ? C.pending : m.sign === "+" ? C.lime : C.vio;
   return (
-    <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(m.hash)); }} accessibilityLabel={`movement-${shortHash(m.hash)}`} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: C.hair12, backgroundColor: C.card }}>
+    <Touch onPress={() => { void Linking.openURL(EXPLORER_TX_URL(m.hash)); }} accessibilityLabel={`movement-${shortHash(m.hash)}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: C.card }}>
+      <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: dot }} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <T w={600} s={12.5} lh={1.25}>{m.kind}</T>
-        <T w={500} s={9.5} lh={1} mono color={C.faint} style={{ marginTop: 3 }}>{movementDate(m.when)} · {shortHash(m.hash).toUpperCase()}</T>
+        <T w={600} s={14} lh={1.25}>{m.kind}</T>
+        <T w={500} s={10} lh={1} mono color={C.faint} style={{ marginTop: 4 }}>{movementDate(m.when)} · {m.status.toUpperCase()}</T>
       </View>
-      <View style={{ alignItems: "flex-end", gap: 4 }}>
-        <T w={700} s={12} lh={1} mono color={m.sign === "+" ? C.up : C.ink}>{m.sign === "+" ? "+" : "−"}{formatAusd(m.amount)}</T>
-        <T w={500} s={9} lh={1} mono color={STATUS_FG[m.status]}>{m.status.toUpperCase()}</T>
-      </View>
+      <T w={700} s={13} lh={1} mono color={m.status === "Reverted" ? C.faint : m.sign === "+" ? C.up : C.ink}>{m.sign === "+" ? "+" : "−"}{formatAusd(m.amount)}</T>
     </Touch>
   );
 }
@@ -50,49 +50,64 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
   const unlocked = account.status === "unlocked";
   // Wallet no está en PERPL_SCREENS: el socket nunca corre aquí, así que sin dato la línea es «—», no skeleton (C1, revisión final F1).
   const trading = tradingLineState(perpl.live, perpl.lastBalance, false);
+  const [tab, setTab] = useState<"activity" | "pending">("activity");
+  const { activity, pending: pendingRows } = splitMovements(rows);
 
   return (
-    <Page gap={11}>
-      <Card pad={15}>
-        <Tag>AVAILABLE · AUSD</Tag>
+    <Page gap={14}>
+      <InkBlock gap={14}>
+        <Tag color={C.onInkDim}>AVAILABLE · AUSD</Tag>
         {treasury.balances === null && !treasury.rpcError
-          ? <Skeleton h={30} w="45%" style={{ marginTop: 6 }} />
-          : <Reveal><T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}>{available}</T></Reveal>}
-        <T w={500} s={10} lh={1} mono color={C.faint} style={{ marginTop: 6 }}>{address ? shortHash(address) : "—"} · CONNECTED</T>
-        <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}>{pending}</T>
+          ? <Skeleton h={44} w="55%" />
+          : <Reveal><T w={700} s={44} lh={1} ls={-0.03} mono color={C.onInk}>{available}</T></Reveal>}
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Btn label="Deposit" icon="down" onPress={() => nav("deposit")} variant="lime" flex={1} accessibilityLabel="deposit" />
+          <Btn label="Withdraw" icon="up" onPress={() => nav("withdraw")} variant="tile" flex={1} accessibilityLabel="withdraw" />
+        </View>
         {perpl.state.status === "ready" ? (
-          trading === "skeleton"
-            ? <Skeleton h={12} w="62%" style={{ marginTop: 4 }} />
-            : (
-              <Reveal>
-                <Touch onPress={() => nav("markets")} accessibilityLabel="in-trading">
-                  <T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}>
-                    {trading === "unknown" ? "—" : formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{trading === "lastSeen" ? " · last seen" : ""} · Markets
-                  </T>
-                </Touch>
-              </Reveal>
-            )
+          <Touch onPress={() => nav("perpsFunds", { fundsMode: "add" })} accessibilityLabel="in-trading">
+            <InkTile style={{ flex: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Tag color={C.onInkDim}>IN TRADING · AUSD</Tag>
+              {trading === "skeleton" ? <Skeleton h={14} w={80} /> : (
+                <T w={700} s={15} lh={1} mono color={C.onInk}>
+                  {trading === "unknown" ? "—" : formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)}{trading === "lastSeen" ? " · last seen" : ""}
+                </T>
+              )}
+            </InkTile>
+          </Touch>
         ) : null}
+      </InkBlock>
+
+      <Card style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <T w={600} s={15} lh={1.2}>Monad testnet</T>
+          <T w={500} s={11} lh={1.2} mono color={C.faint} style={{ marginTop: 3 }}>{address ? shortHash(address) : "—"}</T>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: C.up }} />
+          <Tag color={C.up}>CONNECTED</Tag>
+        </View>
       </Card>
 
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Btn label="Deposit" onPress={() => nav("deposit")} variant="outline2" flex={1} accessibilityLabel="deposit" />
-        <Btn label="Withdraw" onPress={() => nav("withdraw")} variant="outline2" flex={1} accessibilityLabel="withdraw" />
-      </View>
-
-      <Tag s={10}>MOVEMENTS</Tag>
+      <Segmented options={[["activity", "Activity"], ["pending", `Pending${confirming ? ` · ${confirming}` : ""}`]] as const} value={tab} onChange={setTab} />
       {treasury.movementsError ? (
         <Warn title="Couldn't load movements" body={treasury.movementsError}>
-          <Chip label="Retry" onPress={() => { void treasury.refreshMovements(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: "flex-start" }} />
+          <Chip label="Retry" onPress={() => { void treasury.refreshMovements(); }} style={{ alignSelf: "flex-start" }} />
         </Warn>
       ) : null}
-      {treasury.movements === null ? treasury.pending.map((m) => <MovementRow key={m.hash} m={m} />) : null}
-      {treasury.movements === null && !treasury.movementsError ? <><Skeleton.Row /><Skeleton.Row /><Skeleton.Row /></> : null}
-      {treasury.movements !== null && rows.length === 0 ? <T w={400} s={12} lh={1.4} color={C.faint}>Nothing has ever arrived in this wallet.</T> : null}
-      {treasury.movements !== null && rows.length > 0 ? <Reveal style={{ gap: 11 }}>{rows.map((m) => <MovementRow key={m.hash} m={m} />)}</Reveal> : null}
+      {tab === "pending" ? (
+        pendingRows.length === 0 ? <T w={400} s={13} lh={1.4} color={C.faint}>Nothing pending.</T> : <View style={{ gap: 8 }}>{pendingRows.map((m) => <MovementRow key={m.hash} m={m} />)}</View>
+      ) : treasury.movements === null && !treasury.movementsError ? (
+        <><Skeleton.Row /><Skeleton.Row /><Skeleton.Row /></>
+      ) : activity.length === 0 ? (
+        <T w={400} s={13} lh={1.4} color={C.faint}>Nothing has ever arrived in this wallet.</T>
+      ) : (
+        <Reveal style={{ gap: 8 }}>{activity.map((m) => <MovementRow key={m.hash} m={m} />)}</Reveal>
+      )}
+      <T w={400} s={12} lh={1.45} color={C.faint}>Withdrawals always ask for Face ID.</T>
 
       <Tag s={10} style={{ marginTop: 6 }}>TESTNET</Tag>
-      <Card gap={7} bg="transparent">
+      <Card gap={7}>
         <KV k="MON (GAS)" v={treasury.balances ? formatMon(treasury.balances.mon) : "—"} />
         <KV k="YOUR ADDRESS" v={address ? shortHash(address) : "—"} />
       </Card>
@@ -102,7 +117,7 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
       </View>
       {treasury.rpcError ? (
         <Warn title="RPC error" body={treasury.rpcError}>
-          <Chip label="Retry" onPress={() => { void treasury.refresh(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: "flex-start" }} />
+          <Chip label="Retry" onPress={() => { void treasury.refresh(); }} style={{ alignSelf: "flex-start" }} />
         </Warn>
       ) : null}
       {treasury.notice ? (
@@ -115,8 +130,8 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
       <Tag s={10} style={{ marginTop: 6 }}>SESSION</Tag>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <T w={400} s={12} color={C.faint} style={{ flex: 1 }}>{unlocked ? "Unlocked" : "Locked"}</T>
-        {unlocked ? <Chip label="Lock" onPress={lock} bd={C.hair22} fg={C.ink} accessibilityLabel="lock" /> : null}
-        <Chip label="Sign out" onPress={() => { void signOut().then(signedOut); }} bd={C.hair22} fg={C.ink} accessibilityLabel="sign-out" />
+        {unlocked ? <Chip label="Lock" onPress={lock} accessibilityLabel="lock" /> : null}
+        <Chip label="Sign out" onPress={() => { void signOut().then(signedOut); }} accessibilityLabel="sign-out" />
       </View>
     </Page>
   );
@@ -129,8 +144,8 @@ export function DepositScreen({ nav, account }: AppCtx) {
   return (
     <Page gap={11}>
       <StatGrid items={[{ label: "Asset", value: "AUSD" }, { label: "Network", value: "Monad" }]} />
-      <View style={{ height: 150, borderWidth: 1, borderColor: C.hair22, borderStyle: "dashed", borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: C.card04 }}>
-        <Tag>QR CODE · DEPOSIT ADDRESS</Tag>
+      <View style={{ alignSelf: "center", padding: 16, borderRadius: 22, backgroundColor: C.bg, borderWidth: 1, borderColor: C.hair08 }}>
+        {address ? <QRCode value={address} size={180} color={C.ink} backgroundColor={C.bg} /> : <Skeleton h={180} w={180} />}
       </View>
       <Card>
         <Tag>YOUR DEPOSIT ADDRESS</Tag>
@@ -147,7 +162,7 @@ export function DepositScreen({ nav, account }: AppCtx) {
 
 type WithdrawStep = { step: "edit" } | { step: "review"; to: Address; amount: bigint; fee: bigint | null } | { step: "sent"; hash: Hex } | { step: "done"; hash: Hex } | { step: "failed"; hash: Hex } | { step: "unknown"; hash: Hex };
 
-const inputBox = { paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: C.hair, borderRadius: 12, backgroundColor: C.deep } as const;
+const inputBox = { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: C.card } as const;
 
 export function WithdrawScreen({ nav, treasury }: AppCtx) {
   const ausd = treasury.balances?.ausd ?? 0n;
@@ -213,7 +228,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
         </Card>
         <Card pad={15} gap={9}>
           <Tag>YOU WITHDRAW · AUSD</Tag>
-          <T w={700} s={30} lh={1} ls={-0.02} display>{formatAusd(st.amount)}</T>
+          <T w={700} s={30} lh={1} ls={-0.02} mono>{formatAusd(st.amount)}</T>
           <View style={{ gap: 7, paddingTop: 9, borderTopWidth: 1, borderTopColor: C.hair12 }}>
             <KV k="NETWORK" v="MONAD" />
             <KV k="NETWORK FEE" v={st.fee !== null ? `~${formatMon(st.fee)} MON` : error ? "UNAVAILABLE" : "ESTIMATING…"} vFg={C.dim} />
@@ -257,7 +272,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
             placeholder="0.00"
             placeholderTextColor={C.faint}
             keyboardType="decimal-pad"
-            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, paddingVertical: 4 }]}
+            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, mono: true, color: C.ink }), { flex: 1, paddingVertical: 4 }]}
           />
           <Chip label="MAX" mono s={10} py={6} px={10} onPress={() => setAmount(formatUnits(ausd, AUSD_DECIMALS))} />
         </View>
