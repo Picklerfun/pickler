@@ -118,3 +118,40 @@ revision is required before further paid work. This study must not be restarted 
 
 The browser automation surface refused local `file:` URLs; no visual browser inspection is claimed.
 The report generation, escaping, historical compatibility and metric contents were checked offline.
+
+## Explicit continuation — 2026-09-28
+
+The user requested continued testing and fixes. Commit
+`745abbe5a602eed737c22f184ca6c3a783e220b5` separates normalization failures from selected-label
+inconsistency without changing prompts, thresholds, validation acceptance, model or quantitative
+policy. New studies account for prior v4 reservations toward the same USD 1.25 / 386-call caps.
+Historical STOP files, results and reservations were preserved.
+
+- `btc-benchmark-diagnostic-20260928-170635`: one explicitly requested repeat of the previously
+  failed development case. Valid response, 4,782 input / 137 output tokens; it does not explain
+  the original rejected values or establish reliability.
+- `btc-benchmark-continuation-20260928-170716`: two valid contract probes and seven valid
+  development pairs, followed by `development-averaging_window-0-conflict:current` failing with
+  **CHOICE_NOT_MAXIMUM**. The selected option was not the largest probability according to the
+  strict adapter guard. Reported usage survives: 4,780 input / 137 output tokens for that call.
+  The paired compact reservation was retained without sending it. This attempt has 18 reservations,
+  17 sent calls and 16 valid responses. Heldout and the prospective six-hour window did not start.
+
+The official API describes `choice` as the highest-probability option:
+https://docs.typesafe.ai/api . The observed failure violates that documented invariant. It is not
+an empty output or evidence of an output-token limit. No response was repaired or converted to
+approval. A separate, explicitly approved per-market failure policy would be required to continue
+prospective purchases after malformed responses without claiming the original global-stop protocol
+passed. That policy was requested from the user and was not enabled by these changes.
+
+Controlled benchmark tests: 22 passed. Shared compilation, formatting, lint and workspace types
+passed (an initial test-only tuple inference error was corrected before the diagnostic commit).
+The full PostgreSQL suite then passed 469 tests with one existing opt-in skip; Node and all
+Worker builds passed after granting npm cache access outside the sandbox.
+
+An optional `invalidAnswerPolicy: "block-case"` was prepared after identifying the failure. It
+remains disabled pending the user's explicit response to the policy-change question. Tests cover
+no purchases in any variant for a malformed reviewed market, continued evaluation of a different
+market, unknown-usage global stop, and mandatory valid contract probes. The revised controlled
+suite passes 472 tests with one opt-in skip, zero failures; all workspace types, lint and formatting
+pass. This is controlled acceptance, not a completed six-hour prospective study.
