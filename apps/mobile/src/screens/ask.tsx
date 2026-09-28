@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import type { AppCtx } from "../ctx";
 import { useNow } from "../hooks/useNow";
@@ -11,20 +11,11 @@ import {
   questionFor, readDots, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
 import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
-import type { Agent, Read, ReadStatus } from "../reads/types";
+import type { Agent, Read } from "../reads/types";
 import type { AskCell, TradeLevel } from "../store";
-import { Btn, Card, Chip, Reveal, Segmented, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from "../ui/primitives";
+import { Btn, Card, Chip, Reveal, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, Warn } from "../ui/primitives";
 import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from "../ui/theme";
 
-/** Tonos de D14: OPEN warn · RIGHT up · WRONG down · VOID/FAILED/PENDING faint. */
-const STATUS: Record<ReadStatus, { label: string; fg: string; bd: string }> = {
-  pending: { label: "READING", fg: C.faint, bd: C.hair18 },
-  open: { label: "OPEN", fg: C.warn, bd: C.warnBd },
-  right: { label: "RIGHT", fg: C.up, bd: C.limeBd },
-  wrong: { label: "WRONG", fg: C.down, bd: C.downBd },
-  void: { label: "VOID", fg: C.faint, bd: C.hair18 },
-  failed: { label: "FAILED", fg: C.faint, bd: C.hair18 },
-};
 const READING: Tone = { bd: C.warnBd, bg: C.warnBg, fg: C.warn };
 const FAILED: Tone = { bd: C.downBd, bg: C.downBg, fg: C.down };
 const ASK: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
@@ -204,27 +195,11 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
   );
 }
 
-function ReadRow({ read, name, now, onPress }: { read: Read; name: string; now: number; onPress: () => void }) {
-  const st = STATUS[read.status];
-  const line = resolutionLine(read, now);
-  return (
-    <TouchCard onPress={onPress} accessibilityLabel={`read-${read.id}`} style={{ gap: 6 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <T w={700} s={12.5} lh={1} mono style={{ flex: 1 }}>{cellLabel(read)}</T>
-        {read.probability !== null ? <T w={500} s={12} lh={1} mono color={C.dim}>{formatProbability(read.probability)}</T> : null}
-        <Chip label={st.label} mono s={9.5} py={5} px={8} fg={st.fg} bd={st.bd} />
-      </View>
-      <T w={400} s={11} lh={1.3} color={C.faint}>{name} · {line.text}</T>
-    </TouchCard>
-  );
-}
-
 export function AskTab(ctx: AppCtx) {
   const { S, set, perpl, reads, notifications } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const now = useNow(30_000);
   const pushOff = notifications.permission === "denied" || notifications.permission === "unavailable";
-  const focused = useMemo(() => (S.askFocusReadId ? (reads.reads ?? []).find((r) => r.id === S.askFocusReadId) : undefined), [S.askFocusReadId, reads.reads]);
 
   // D12: el nivel al store, lado sugerido y pill Trade. El resultado/lista de Ask se conservan (volver atrás no pierde nada).
   const tradeLevel = (level: TradeLevel) => set({ tradeLevel: level, perpsSide: sideFor(level.levelBps), marketTab: "trade" });
@@ -280,28 +255,9 @@ export function AskTab(ctx: AppCtx) {
     );
   };
 
-  const myReads = () => {
-    if (reads.session !== "ready") return <SessionGate reads={reads} />;
-    if (focused) {
-      return (
-        <ReadCard read={focused} agentName={agentName(reads.agents, focused.agentId)} now={now} pushOff={pushOff}
-          footer={cardFooter(focused, <Btn label="Back to list" onPress={() => set({ askFocusReadId: undefined })} variant="ghost" py={11} accessibilityLabel="read-back" />)} />
-      );
-    }
-    return (
-      <View style={{ gap: 7 }}>
-        {reads.listError ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
-        {reads.reads === null && !reads.listError ? <><Skeleton.Card lines={3} /><Skeleton.Card lines={3} /></> : null}
-        {reads.reads !== null && reads.reads.length === 0 ? <Reveal><T w={400} s={12} lh={1.4} color={C.faint}>No reads on {market.symbol} yet.</T></Reveal> : null}
-        {reads.reads !== null && reads.reads.length > 0 ? <Reveal style={{ gap: 7 }}>{reads.reads.map((r) => <ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() => set({ askFocusReadId: r.id })} />)}</Reveal> : null}
-      </View>
-    );
-  };
-
   return (
     <View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 11 }}>
-      <Segmented options={[["new", "New read"], ["mine", "My reads"]] as const} value={S.askView} onChange={(k) => set({ askView: k, askFocusReadId: undefined })} />
-      {S.askView === "new" ? newRead() : myReads()}
+      {newRead()}
     </View>
   );
 }

@@ -6,8 +6,7 @@ import { COMING_SOON_COPY, type ComingSoonTab } from "./screens/comingSoonCopy";
 
 // Pantalla y conjuntos puros viven en navigation/screens.ts (sin ciclo con routes.ts); se re-exportan desde aquí.
 export { CAN_BACK, GATED, ROOT_OF, type Screen, SHOW_TABS } from "./navigation/screens";
-export type MarketTab = "ask" | "trade" | "agents";
-export type AskView = "new" | "mine";
+export type MarketTab = "trade" | "ask";
 export type AskCell = { levelBps: number; horizonMin: number };
 /** Nivel elegido para «Trade this level» (D12; lo usa F3). */
 export type TradeLevel = { marketId: number; levelBps: number; horizonMin: number; target: number; expiresAt: string; readId?: string };
@@ -19,32 +18,34 @@ export type StoreState = {
   perpsSide?: "long" | "short";
   marketTab: MarketTab;
   fundsMode?: "add" | "withdraw";
-  /** Ask (D13): segmentado New read | My reads, celda armada, agente elegido, read abierta desde la lista o desde un push. */
-  askView: AskView;
+  /** Ask: celda armada y agente elegido. */
   askCell?: AskCell;
   askAgentId?: string;
-  askFocusReadId?: string;
+  /** Read abierta en la pantalla `read` (Portfolio → Reads, récord del perfil o push, D14/D22). */
+  readId?: string;
+  /** Perfil abierto en `agent` (F2). */
+  agentId?: string;
   tradeLevel?: TradeLevel;
 };
 
 export type Patch = Partial<StoreState>;
 
-export const INITIAL: StoreState = { marketTab: "trade", askView: "new" };
+export const INITIAL: StoreState = { marketTab: "trade" };
 
-/** Tabs que todavía no hacen nada real: su pestaña renderiza "Coming soon" (D5, D17). */
-export const COMING_SOON: readonly ComingSoonTab[] = ["launchpad", "activity", "portfolio"];
+/** Launchpad y Activity: pantallas coming soon registradas, fuera de la barra (D1). */
+export const COMING_SOON: readonly ComingSoonTab[] = ["launchpad", "activity"];
 
 export function isComingSoonTab(screen: Screen): screen is ComingSoonTab {
   return (COMING_SOON as readonly Screen[]).includes(screen);
 }
 
 /** Pantallas con pull-to-refresh y sello (mobile-loading D5). */
-export const REFRESHABLE: readonly Screen[] = ["wallet", "markets", "market"];
+export const REFRESHABLE: readonly Screen[] = ["wallet", "markets", "market", "portfolio"];
 
 /** Sign out: limpia el estado de Ask (revisión final F2, Minor 3): con otra cuenta no debe
- *  quedar una celda, agente o read enfocada de la sesión anterior. La pila la resetea el adaptador. */
+ *  quedar una celda, agente, read o perfil abiertos de la sesión anterior. La pila la resetea el adaptador. */
 export function signedOutState(s: StoreState): StoreState {
-  return { ...s, askView: "new", askCell: undefined, askAgentId: undefined, askFocusReadId: undefined, tradeLevel: undefined };
+  return { ...s, askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined };
 }
 
 /** Texto de la tarjeta "We kept what you were about to do" de Sign in (D18); null si el gate no retuvo nada. */
@@ -54,12 +55,18 @@ export function heldActionFor(next: Screen | undefined): string | null {
     case "perpsFunds": return "Moving trading funds";
     case "deposit": return "A deposit";
     case "withdraw": return "A withdrawal";
+    case "portfolio": return "Your portfolio";
+    case "read": return "A read";
+    case "agent": return "An agent's record";
     default: return null;
   }
 }
 
-/** Pill con el que se abre un mercado desde Markets: Trade con trading key, Ask sin ella (Ask y Agents no la necesitan; fix gate). */
-export const marketEntryTab = (hasKey: boolean): MarketTab => (hasKey ? "trade" : "ask");
+/** Mercado en el que "Ask" abre Market (D13): el último usado si sigue listado; si no, BTC; si no, el primero. */
+export function askMarketId(current: number | undefined, markets: readonly { id: number; symbol: string }[]): number | undefined {
+  if (current !== undefined && markets.some((m) => m.id === current)) return current;
+  return (markets.find((m) => m.symbol === "BTC") ?? markets[0])?.id;
+}
 
 // ---------------------------------------------------------------------------
 // Sello del pull-to-refresh (spec mobile-loading D5). Puros: useRefreshSeal los evalúa en un efecto.
@@ -79,7 +86,8 @@ export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
   switch (screen) {
     case "wallet": return !e.rpcError || !e.movementsError;
     case "markets": return !e.contextError;
-    case "market": return !e.contextError || (e.listError !== null && !e.listError);
+    case "market":
+    case "portfolio": return !e.contextError || (e.listError !== null && !e.listError);
     default: return false;
   }
 }
@@ -101,27 +109,26 @@ export function screenHasData(screen: Screen, d: { balances: unknown; context: u
   switch (screen) {
     case "wallet": return d.balances !== null;
     case "markets":
+    case "portfolio":
     case "market": return d.context !== null;
     default: return false;
   }
 }
 
-const MARKET_SUBTITLES: Record<MarketTab, string> = {
-  trade: "Perpl · isolated margin · market order",
-  ask: "Ask an agent · simulated credits",
-  agents: "Who reads this market",
-};
-
-export function headerFor(screen: Screen, perpsSymbol?: string, marketTab: MarketTab = "trade"): [string, string] {
+export function headerFor(screen: Screen, perpsSymbol?: string): [string, string] {
   switch (screen) {
-    case "markets": return ["Markets", "Perps on Perpl · Monad"];
-    case "market": return [perpsSymbol ? `${perpsSymbol} Perp` : "Perp", MARKET_SUBTITLES[marketTab]];
+    case "markets": return ["Markets", ""];
+    case "agents": return ["Agents", ""];
+    case "portfolio": return ["Portfolio", ""];
+    case "wallet": return ["Wallet", ""];
+    case "market": return [perpsSymbol ? `${perpsSymbol}-PERP` : "PERP", "Perpl · isolated margin"];
     case "perpsFunds": return ["Trading funds", "Between wallet and trading"];
-    case "wallet": return ["Wallet", "AUSD available and movements"];
-    case "deposit": return ["Deposit AUSD", "Monad network"];
-    case "withdraw": return ["Withdraw AUSD", "To an external address"];
-    case "signin": return ["Wallet access", "Passkey on this device"];
-    case "launchpad": case "activity": case "portfolio": return [COMING_SOON_COPY[screen].title, "Coming soon"];
+    case "deposit": return ["Deposit", "AUSD · Monad testnet"];
+    case "withdraw": return ["Withdraw", "AUSD to an external address"];
+    case "read": return ["Read", ""];
+    case "agent": return ["Agent", ""];
+    case "signin": return ["Pickler", ""];
+    case "launchpad": case "activity": return [COMING_SOON_COPY[screen].title, "Coming soon"];
   }
 }
 

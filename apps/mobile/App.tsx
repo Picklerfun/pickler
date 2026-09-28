@@ -19,7 +19,7 @@ import { useTreasury } from "./src/hooks/useTreasury";
 import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
 import type { PushTarget } from "./src/reads/push";
-import { patchForPush } from "./src/reads/push";
+import { pushTarget } from "./src/reads/push";
 import { type Screen, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
@@ -42,7 +42,7 @@ export default function App() {
   const scr = useCurrentScreen();
   const store = useAppStore({ hasAccount, scr });
   const { requireAccount } = store;
-  // Tap en un push (P7 de Ask): abre Market en la read (o en Trade para un recordatorio) respetando el gate.
+  // Tap en un push (D22): abre la pantalla Read en la read (o Market en Trade para un recordatorio) respetando el gate.
   // En frío, la última respuesta llega antes de que la cuenta cargue (account === null): se encola y se
   // navega cuando la cuenta se conoce, para que el gate no mande a Sign in a quien sí tiene wallet.
   // La cola por cuenta se conserva; el adaptador encola además hasta que el container está listo (isReady).
@@ -52,13 +52,15 @@ export default function App() {
   accountLoadedRef.current = accountLoaded;
   const onPushTarget = useCallback((t: PushTarget) => {
     if (!accountLoadedRef.current) { pendingPush.current = t; return; }
-    requireAccount("market", patchForPush(t));
+    const { screen, patch } = pushTarget(t);
+    requireAccount(screen, patch);
   }, [requireAccount]);
   useEffect(() => {
     if (!accountLoaded || pendingPush.current === null) return;
     const t = pendingPush.current;
     pendingPush.current = null;
-    requireAccount("market", patchForPush(t));
+    const { screen, patch } = pushTarget(t);
+    requireAccount(screen, patch);
   }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);

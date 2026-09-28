@@ -17,7 +17,7 @@ export function AgentsTab({ reads, set }: AppCtx) {
       {reads.agents !== null ? (
         <Reveal style={{ gap: 7 }}>
           {reads.agents.map((a) => (
-            <TouchCard key={a.id} onPress={() => set({ askAgentId: a.id, marketTab: "ask", askView: "new" })} accessibilityLabel={`agent-row-${a.id}`}
+            <TouchCard key={a.id} onPress={() => set({ askAgentId: a.id, marketTab: "ask" })} accessibilityLabel={`agent-row-${a.id}`}
               style={{ flexDirection: "row", alignItems: "center", gap: 11 }}>
               <Avatar initials={a.name.slice(0, 1).toUpperCase()} />
               <View style={{ flex: 1, minWidth: 0 }}>

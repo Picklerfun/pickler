@@ -16,7 +16,7 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
   const insets = useSafeAreaInsets();
   const { S, perpl, treasury, reads, seal, back, setControls } = ctx;
   const perpsSymbol = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId)?.symbol;
-  const [title, sub] = headerFor(screen, perpsSymbol, S.marketTab);
+  const [title, sub] = headerFor(screen, perpsSymbol);
   const isRoot = ROOT_OF[screen] === screen;
   const canBack = CAN_BACK.includes(screen) && navigation.canGoBack();
   const showTabs = SHOW_TABS.includes(screen);

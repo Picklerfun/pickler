@@ -13,7 +13,7 @@ export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; r
   const c = COMING_SOON_COPY[screen];
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 14 }}>
-      <View style={{ width: 72, height: 72, borderRadius: 999, backgroundColor: C.card, borderWidth: 1, borderColor: C.vioBd40, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: 72, height: 72, borderRadius: 999, backgroundColor: C.vioBg, alignItems: "center", justifyContent: "center" }}>
         <Icon name={c.icon} size={30} color={C.vio} />
       </View>
       <T w={700} s={22} lh={1.1} ls={-0.02} display>{c.title}</T>

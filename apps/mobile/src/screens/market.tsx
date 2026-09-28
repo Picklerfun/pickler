@@ -10,7 +10,6 @@ import { cellLabel } from "../reads/matrix";
 import type { TradeLevel } from "../store";
 import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, Skeleton, StatusCard, T, Tag, type Tone } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
-import { AgentsTab } from "./agents";
 import { AskTab } from "./ask";
 import { BookCard } from "./book";
 
@@ -237,9 +236,9 @@ export function MarketScreen(ctx: AppCtx) {
   return (
     <View>
       <View style={{ paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}>
-        <PillTabs options={[["ask", "Ask"], ["trade", "Trade"], ["agents", "Agents"]] as const} value={S.marketTab} onChange={(k) => set({ marketTab: k })} />
+        <PillTabs options={[["trade", "Trade it"], ["ask", "Ask an agent"]] as const} value={S.marketTab} onChange={(k) => set({ marketTab: k })} />
       </View>
-      {S.marketTab === "trade" ? <TradeTab {...ctx} /> : S.marketTab === "ask" ? <AskTab {...ctx} /> : <AgentsTab {...ctx} />}
+      {S.marketTab === "trade" ? <TradeTab {...ctx} /> : <AskTab {...ctx} />}
     </View>
   );
 }
