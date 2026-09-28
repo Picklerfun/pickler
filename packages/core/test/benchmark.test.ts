@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   runBenchmarkCase,
+  PilotError,
+  benchmarkEvaluationReady,
   recoverBenchmark,
   benchmarkReserved,
   settleBenchmarkCase,
@@ -445,4 +447,78 @@ test("explicit continuation retains previous benchmark money and call ceilings",
     assert.equal(f.state.paidStopped, "API_BUDGET_EXHAUSTED");
     assert.equal(benchmarkReserved(f.state), 0);
   }
+});
+
+test("opt-in invalid answers block all variant purchases only for the affected market", async () => {
+  const f = fixture();
+  f.state.invalidAnswerPolicy = "block-case";
+  const original = f.ports.review;
+  let malformed = true;
+  f.ports.review = async (...args) => {
+    if (malformed && args[0] === "current") {
+      await args[5]({
+        status: "failed",
+        reason: "JEV_INVALID_ANSWERS",
+        inputTokens: 100,
+        outputTokens: 5,
+      });
+      throw new PilotError("JEV_INVALID_ANSWERS", "Invalid answer");
+    }
+    return original(...args);
+  };
+  await runBenchmarkCase(f.state, f.input.item, f.ports);
+  assert.equal(f.state.paidStopped, null);
+  assert.equal(f.state.cases[0]!.status, "failed");
+  assert.ok(f.state.cases[0]!.variants.every((d) => d.status === "blocked" && !d.fill));
+  assert.equal(f.snapshots(), 1);
+  malformed = false;
+  f.input.item.market.id = "next-independent-market";
+  f.input.conditions.forEach((c) => {
+    c.marketId = f.input.item.market.id;
+  });
+  await runBenchmarkCase(f.state, f.input.item, f.ports);
+  assert.ok(f.state.cases[1]!.variants.every((d) => d.status === "filled"));
+  assert.equal(f.state.reviews.filter((r) => r.result?.status === "failed").length, 1);
+});
+
+test("unknown usage and transport failures still stop the entire opted-in study", async () => {
+  for (const reason of ["JEV_INVALID_ANSWERS", "JEV_HTTP_FAILURE"]) {
+    const f = fixture();
+    f.state.invalidAnswerPolicy = "block-case";
+    f.ports.review = async (...args) => {
+      await args[5]({ status: "failed", reason, inputTokens: null, outputTokens: null });
+      throw new PilotError(reason, "Failed");
+    };
+    await runBenchmarkCase(f.state, f.input.item, f.ports);
+    assert.equal(f.state.paidStopped, reason);
+    assert.ok(f.state.cases[0]!.variants.every((d) => !d.fill));
+  }
+});
+
+test("a completed evaluation with errors is explicit and requires two valid contract probes", () => {
+  const f = fixture();
+  f.state.invalidAnswerPolicy = "block-case";
+  f.state.evaluation = "completed_with_errors";
+  f.state.reviews = Array.from({ length: 98 }, (_, i) => ({
+    id: String(i),
+    phase: i < 2 ? "contract" : "heldout",
+    caseId: String(i),
+    reviewer: i % 2 ? "compact" : "current",
+    version: "fixture",
+    contextHash: "fixture",
+    reservedUsd: 0.003,
+    startedAt: f.now,
+    result: {
+      status: i === 2 ? "failed" : "completed",
+      reason: "JEV_INVALID_ANSWERS",
+      inputTokens: 100,
+      outputTokens: 5,
+    },
+  }));
+  assert.equal(benchmarkEvaluationReady(f.state), true);
+  f.state.invalidAnswerPolicy = "stop-study";
+  assert.equal(benchmarkEvaluationReady(f.state), false);
+  f.state.invalidAnswerPolicy = "block-case";
+  f.state.reviews[0]!.result!.status = "failed";
+  assert.equal(benchmarkEvaluationReady(f.state), false);
 });
