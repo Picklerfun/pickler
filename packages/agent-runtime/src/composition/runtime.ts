@@ -19,6 +19,7 @@ import {
   PostgresPublicDataCache,
 } from "@pickler/infrastructure";
 import type { Environment } from "../environment.js";
+import { createPerplSession } from "./perpl.js";
 import { createModel } from "./model.js";
 
 export function createRuntime(
@@ -50,6 +51,8 @@ export function createRuntime(
     env,
     repository,
     markets,
+    perpl: (scope: { tenantId: string; agentId: string }, signal: AbortSignal) =>
+      createPerplSession(repository, scope, signal),
     paper: {
       ...createPaperService(new PostgresPaperStore(repository.pool), markets),
       ...createPaperSettlementService(
@@ -74,7 +77,10 @@ export function createRuntime(
         throw new PilotError("PLUGIN_DISABLED", "Plugin is disabled");
       }
       const signal = AbortSignal.timeout(20000);
-      if (plugin === "balldontlie") {
+      if (plugin === "perpl") {
+        const session = await createPerplSession(repository, scope, signal);
+        await session.service.listPerpMarkets();
+      } else if (plugin === "balldontlie") {
         if (!sports) {
           throw new PilotError("PLUGIN_NOT_CONFIGURED", "Missing credentials");
         }

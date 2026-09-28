@@ -82,3 +82,6 @@ export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
 export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
 
 export { PolymarketStudyData } from "./polymarket/study-data.js";
+
+export { PerplMarketData } from "./perpl/data.js";
+export type { PerplDataOptions, PerplPublicResponse } from "./perpl/transport.js";
