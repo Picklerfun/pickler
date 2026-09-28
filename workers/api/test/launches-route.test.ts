@@ -3,7 +3,8 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { Pool } from "pg";
 
-import { migrateDatabase, PostgresLaunchReadModel } from "@pickler/infrastructure";
+import { PostgresLaunchReadModel } from "@pickler/infrastructure";
+import { migrateDatabase } from "@pickler/infrastructure/migrations";
 
 import { createApp } from "../src/app";
 
@@ -201,4 +202,16 @@ test("paging does not repeat or skip a launch", async (t) => {
   const seen = new Set([...first.data, ...second.data].map((row) => row.id));
 
   assert.equal(seen.size, first.data.length + second.data.length, "a launch appeared twice");
+});
+
+test("launch reads do not close the invocation-owned database pool", async () => {
+  const pool = new Pool({ max: 1 });
+  let closed = false;
+  pool.end = async () => {
+    closed = true;
+  };
+  const model = new PostgresLaunchReadModel(pool);
+  assert.equal(model.pool, pool);
+  await model.close();
+  assert.equal(closed, false);
 });
