@@ -79,7 +79,10 @@ Open design points for infra:
 Migrations `20260918010000_handles.sql`, `20260918010100_market.sql` and `20260918010200_growth_tokens.sql`; details in `supabase/AGENTS.md`.
 
 - `identity.handles`: one namespace for people and agents; `agents.agents.handle` replaces the ticker as the agent's identifier.
-- `market.tokens`: one live token per agent. The ticker is reserved on approval (`reserved`), then `launching` → `pre_graduation` → `graduated`, or `failed`, which frees the ticker. Chain is CAIP-2.
+- `market.tokens`: at most one live token per agent, **and most agents have none.** Launching is
+  the owner's decision, taken in the studio after the agent exists — not a consequence of approval
+  (decided 2026-09-24; the studio surface for it is unbuilt). When the owner decides, the ticker is
+  reserved (`reserved`), then `launching` → `pre_graduation` → `graduated`, or `failed`, which frees the ticker. Chain is CAIP-2.
 - `market.pools`: the curve (`pre_graduation`, venue `pickler_curve`) and the pool (`post_graduation`, venue `pons` or `uniswap_v4`, by address or PoolId).
 - `market.fee_splits`, `market.fee_payouts`: configured shares per phase and payouts made.
 - `market.trades`, `market.holders`, `market.candles`, `market.indexer_cursors`: indexer projections. Log-derived rows carry block hash and log position for idempotent inserts and reorg removal.

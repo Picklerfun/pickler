@@ -15,7 +15,7 @@ import {
 } from "@pickler/core";
 import { PerplMarketData } from "@pickler/infrastructure";
 import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
-import { agentConfigSchema, consoleOptionsSchema } from "@pickler/api-schema";
+import { agentConfigSchema, studioOptionsSchema } from "@pickler/api-schema";
 import { PLUGINS } from "@pickler/core";
 import { capturePerplData } from "../src/perpl/capture.js";
 
@@ -138,7 +138,7 @@ test("Perpl registry/config is additive and does not enable tools in historical 
     false,
   );
   assert.equal(effectivePlugins(DEFAULT_CONFIG).enabled.includes("perpl"), false);
-  consoleOptionsSchema.parse({ defaults: DEFAULT_CONFIG, plugins: PLUGINS });
+  studioOptionsSchema.parse({ defaults: DEFAULT_CONFIG, plugins: PLUGINS });
   assert.throws(() =>
     assertConfig({ ...config, perpl: { version: 1, network: "mainnet", markets: ["BTC", "BTC"] } }),
   );

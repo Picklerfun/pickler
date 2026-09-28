@@ -6,6 +6,8 @@ import {
 } from "./market-scope.js";
 import type { PluginConfig } from "./plugins.js";
 import type { ResearchReport, SportsContext, ResearchReference } from "./nfl.js";
+import type { Skill } from "./brief.js";
+import { isBookKey, type BookKey } from "./books.js";
 import { PERP_TOOLS, type PerplConfig } from "../perps/types.js";
 import { assertPerplConfig } from "../perps/service.js";
 export const RESEARCH_TOOL_NAMES = [
@@ -33,6 +35,15 @@ export interface DiscoveryPolicy {
   minLeadMinutes: number;
   maxHorizonDays: number;
 }
+export type WebMode = "anywhere" | "prefer" | "only";
+export interface AgentSources {
+  web: { mode: WebMode; sites: string[] } | null;
+  /** `SPORTSBOOKS` keys the odds plugin may quote; empty means all. */
+  books: BookKey[];
+}
+export const MAX_SKILLS = 8;
+export const MAX_SKILL_PROMPT = 600;
+export const MAX_SITES = 20;
 export interface AgentConfig {
   perpsPaper?: import("./trading-config.js").PerpsPaperConfig | undefined;
   perpl?: PerplConfig | undefined;
@@ -47,6 +58,58 @@ export interface AgentConfig {
   tools: ToolName[];
   intervalHours: number;
   uncertaintyPolicy?: UncertaintyPolicy | undefined;
+  /** What it reads beyond market data. `web: null` means the web is off. */
+  sources?: AgentSources | undefined;
+  /** Routines the person added; appended to the brief at run time (see brief.ts). */
+  skills?: Skill[] | undefined;
+  /**
+   * What the person allows it to spend, in AUSD. Stored and shown, not enforced yet: nothing spends
+   * today, and the trading work enforces it (a per-call and daily ledger period, or a Turnkey
+   * value cap). Absent until the person sets it.
+   */
+  spend?: SpendLimits | undefined;
+}
+
+export interface SpendLimits {
+  perCallAusd: number;
+  perDayAusd: number;
+}
+
+/** Bounds of `SpendLimits`, in AUSD. A day's cap is never below one call's. */
+export const SPEND_BOUNDS = {
+  perCallAusd: { min: 1, max: 1_000 },
+  perDayAusd: { min: 1, max: 10_000 },
+} as const;
+
+/** False until the trading work enforces `spend`; the DTO says so rather than implying a guard. */
+export const SPEND_ENFORCED = false;
+
+/** Bounds and the day ≥ call rule; `assertConfig` and `updateSpend` both apply it. */
+export function assertSpendLimits(spend: SpendLimits): void {
+  const within = (value: unknown, bounds: { min: number; max: number }) =>
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= bounds.min &&
+    value <= bounds.max;
+  if (
+    !within(spend.perCallAusd, SPEND_BOUNDS.perCallAusd) ||
+    !within(spend.perDayAusd, SPEND_BOUNDS.perDayAusd)
+  ) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Spend limits must stay within 1–1000 a call and 1–10000 a day",
+    );
+  }
+  if (spend.perDayAusd < spend.perCallAusd) {
+    throw new PilotError("INVALID_INPUT", "A day's spend cannot be below one call's");
+  }
+}
+
+/** How often a scheduled agent runs: whole hours, 1–168, the same bounds `assertConfig` applies. */
+export function assertIntervalHours(hours: number): void {
+  if (!Number.isInteger(hours) || hours < 1 || hours > 168) {
+    throw new PilotError("INVALID_INPUT", "The interval must be 1–168 whole hours");
+  }
 }
 
 export interface AgentRecord {
@@ -276,6 +339,12 @@ export interface ResearchModel {
   };
 }
 
+/** What persistence knows about an agent's readiness for its current configuration version. */
+export interface ScheduleReadiness {
+  connectionsChecked: boolean;
+  manualSucceeded: boolean;
+}
+
 export interface DecisionInputSnapshot {
   observedAt: string;
   market: Market;
@@ -302,8 +371,21 @@ export interface ResearchRepository {
   agents(tenantId: string): Promise<AgentRecord[]>;
   agent(scope: Scope): Promise<AgentRecord>;
   updateConfig(scope: Scope, expectedVersion: number, config: AgentConfig): Promise<AgentRecord>;
+  /**
+   * Writes only `config.spend`. Unlike `updateConfig` it keeps the version, the schedule and so
+   * readiness: spend limits do not change how the agent researches.
+   */
+  updateSpend(scope: Scope, spend: SpendLimits): Promise<AgentRecord>;
+  /**
+   * Writes only `config.intervalHours`. Like `updateSpend` it keeps the version, the schedule and
+   * readiness: the person tunes it right before turning the schedule on. When the schedule is on,
+   * the next run moves to `now` plus the new interval, as turning the schedule on computes it.
+   */
+  updateInterval(scope: Scope, hours: number, now: number): Promise<AgentRecord>;
   pause(scope: Scope, paused: boolean): Promise<void>;
   schedule(scope: Scope, enabled: boolean, now: number): Promise<void>;
+  /** The facts `isReadyToSchedule` reads, for the agent's current configuration version. */
+  readiness(scope: Scope): Promise<ScheduleReadiness>;
   enqueue(scope: Scope, key: string, marketId: string | null, now: number): Promise<RunRecord>;
   run(tenantId: string, runId: string): Promise<RunRecord>;
   events(tenantId: string, runId: string): Promise<RunEvent[]>;
@@ -360,6 +442,8 @@ export const DEFAULT_CONFIG: AgentConfig = {
   intervalHours: 4,
   limits: { ...MAX_LIMITS },
   uncertaintyPolicy: { ...DEFAULT_UNCERTAINTY_POLICY },
+  sources: { web: { mode: "anywhere", sites: [] }, books: [] },
+  skills: [],
 };
 
 export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
@@ -446,6 +530,44 @@ export function assertConfig(config: AgentConfig): void {
     throw new PilotError("INVALID_INPUT", "Invalid plugin configuration");
   }
   assertUncertaintyPolicy(config.uncertaintyPolicy ?? DEFAULT_UNCERTAINTY_POLICY);
+  if (config.sources) {
+    const web = config.sources.web;
+    if (web) {
+      if (!["anywhere", "prefer", "only"].includes(web.mode)) {
+        throw new PilotError("INVALID_INPUT", "Invalid web mode");
+      }
+      if ((web.mode === "prefer" || web.mode === "only") && web.sites.length === 0) {
+        throw new PilotError("INVALID_INPUT", "Prefer and only need at least one site");
+      }
+      if (
+        web.sites.length > MAX_SITES ||
+        web.sites.some((site) => !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(site))
+      ) {
+        throw new PilotError("INVALID_INPUT", "Sites must be bare hostnames");
+      }
+    }
+    if (!Array.isArray(config.sources.books) || !config.sources.books.every(isBookKey)) {
+      throw new PilotError("INVALID_INPUT", "Invalid sportsbook list");
+    }
+  }
+  if (config.spend !== undefined) {
+    assertSpendLimits(config.spend);
+  }
+  if (config.skills) {
+    if (config.skills.length > MAX_SKILLS) {
+      throw new PilotError("INVALID_INPUT", `At most ${MAX_SKILLS} skills`);
+    }
+    for (const skill of config.skills) {
+      const name = skill.name.trim();
+      const prompt = skill.prompt.trim();
+      if (!name || name.length > 40 || !prompt || prompt.length > MAX_SKILL_PROMPT) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          `A skill needs a name (≤ 40) and a prompt (≤ ${MAX_SKILL_PROMPT})`,
+        );
+      }
+    }
+  }
   if (
     !config.limits ||
     Object.entries(MAX_LIMITS).some(([key, cap]) => {

@@ -67,7 +67,7 @@ npm run agent -- paper-summary alpha
 ```
 
 The same endpoints are exposed through authenticated local `/pilot` and deployed
-`/api/v1/console` transports:
+`/api/v1/studio` transports:
 
 - `POST /runs/:id/paper-order/settle`: empty body; idempotent by the persisted position.
 - `GET /agents/:id/paper-summary`: read-only virtual results for the authorized agent.

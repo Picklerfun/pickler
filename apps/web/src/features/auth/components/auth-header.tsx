@@ -2,8 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "../auth.module.css";
 
-export function AuthHeader({ view }: { view: "signup" | "signin" | "done" }) {
-  const toSignIn = view !== "signin";
+/**
+ * The brand, the network it is on, and nothing else.
+ *
+ * It used to carry a "Sign in" link beside a form whose first control is a sign-up / sign-in
+ * toggle. Two ways to say the same thing is one way too many, and the link was the worse of them:
+ * it navigated, which threw away an email already typed into the field below it.
+ */
+export function AuthHeader() {
   return (
     <header className={styles.header}>
       <Link href="/" className={styles.brand}>
@@ -20,16 +26,6 @@ export function AuthHeader({ view }: { view: "signup" | "signin" | "done" }) {
       </Link>
       <span className={styles.pill}>TESTNET</span>
       <span className={styles.spacer} />
-      {view !== "done" && (
-        <>
-          <span className={styles.switchNote}>
-            {toSignIn ? "Already have an account?" : "New here?"}
-          </span>
-          <Link href={toSignIn ? "/signin" : "/signup"} className={styles.switchButton}>
-            {toSignIn ? "Sign in" : "Create one"}
-          </Link>
-        </>
-      )}
     </header>
   );
 }

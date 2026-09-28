@@ -4,6 +4,7 @@ import {
   PilotError,
   type PluginId,
   type ResearchObserver,
+  type RunRecord,
 } from "@pickler/core";
 import { createPaperPlugin } from "../plugins/paper-trading/index.js";
 import {
@@ -20,6 +21,7 @@ import {
 import type { Environment } from "../environment.js";
 import { createPerplSession } from "../plugins/perpl/index.js";
 import { createModel } from "./model.js";
+import { scopeRun } from "./run-scope.js";
 
 export function createRuntime(
   env: Environment,
@@ -57,17 +59,17 @@ export function createRuntime(
       markets,
       new PolymarketPaperResolution(),
     ),
-    execute: createResearchRunner({
-      ...(options?.observer ? { observer: options.observer } : {}),
-      repository,
-      search,
-      reader: search,
-      markets,
-      model,
-      configured: { exa: Boolean(env.EXA_API_KEY) },
-      ...(sports ? { sports } : {}),
-      ...(odds ? { odds } : {}),
-    }),
+    execute(run: RunRecord, signal?: AbortSignal) {
+      const execute = createResearchRunner({
+        ...(options?.observer ? { observer: options.observer } : {}),
+        repository,
+        markets,
+        configured: { exa: Boolean(env.EXA_API_KEY) },
+        ...(sports ? { sports } : {}),
+        ...scopeRun({ repository, model, exa: search, ...(odds ? { odds } : {}) }, run),
+      });
+      return execute(run, signal);
+    },
     async checkPlugin(scope: { tenantId: string; agentId: string }, plugin: string) {
       const agent = await repository.agent(scope);
       if (!effectivePlugins(agent.config).enabled.includes(plugin as PluginId)) {

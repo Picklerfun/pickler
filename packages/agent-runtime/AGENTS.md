@@ -34,6 +34,31 @@ operator connection. Admission controls remain independent of transport.
 Worker supplies Hyperdrive options and its binding URL; local Node callers retain direct/session
 connections. Never derive the transport choice from model input or public agent configuration.
 
+## Sources and skills
+
+`AgentConfig` carries two person-authored fields. `sources.web` is `{ mode, sites }` or `null`
+(web off); `sources.books` lists sportsbooks, empty meaning all. `skills` are `{ name, prompt }`
+rules. `composition/run-scope.ts` binds them to each run inside `createRuntime().execute`; every
+host that runs research through the runtime passes through it.
+
+- The model reads `composeBrief(profile, skills)` in selection, research and the final decision.
+- `plugins/exa.ts` keeps the studio's promise. `only` sends `includeDomains`, drops any result
+  outside the list and never retries. `prefer` sends `includeDomains` and, when that finds
+  nothing, searches once without it and records a `sources.fallback` run event. `anywhere`
+  sends exactly the pre-existing request. A site matches itself and its subdomains.
+- Off-list reads throw `INVALID_INPUT` "Outside the agent's site list" in the model's tool,
+  before the runner's provider call, so a refusal is an answer rather than a provider failure.
+  The reader refuses too, without calling Exa.
+- In `only` mode, off-list market resolution-rule URLs are refused too; the list has no exceptions.
+- `allowedHost` first requires a public http(s) URL without credentials (core's `publicSourceUrl`).
+- With the web off, search returns no sources without calling Exa and no page reader is
+  offered. Search stays offered because core requires supporting and contradicting searches.
+- `plugins/odds.ts` keeps only chosen books. Books are core `SPORTSBOOKS` keys, which are The
+  Odds API bookmaker keys, compared exactly; no match means `no_coverage`. An empty list leaves
+  the adapter as is.
+
+Tests live in `test`; the root `npm test` discovers them after building shared packages.
+
 ## Optional decision observation
 
 `createRuntime` accepts a third options argument with an optional core `ResearchObserver`.

@@ -94,11 +94,13 @@ export interface DirectoryAgent {
   venue: Venue;
   /** How it decides, in its own terms. */
   decides: string;
-  score: number;
+  /** Null until settlement exists: the score needs a calibration gap. */
+  score: number | null;
   hitRate: number | null;
   resolved: number;
   net: number;
-  service: ReadService;
+  /** Null until paid reads exist. */
+  service: ReadService | null;
 }
 
 /** Pons settles the prediction markets; Perpl is where the perps trade. */

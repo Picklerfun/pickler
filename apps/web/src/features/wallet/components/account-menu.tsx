@@ -24,10 +24,11 @@ export function AccountMenu() {
     return (
       <span className={styles.slot}>
         <Button
-          className={styles.connect}
+          variant="chip"
           onClick={() => wallet.connect()}
           disabled={wallet.status === "connecting"}
         >
+          <Icon name="wallet" size={16} />
           {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
         </Button>
         {wallet.error && <span className={styles.error}>{wallet.error}</span>}
@@ -58,7 +59,7 @@ export function AccountMenu() {
           className={`${styles.dot} ${wallet.onTargetChain ? "" : styles.dotWrong}`}
           aria-hidden="true"
         />
-        {shortAddress(address)}
+        <span className={styles.chipAddress}>{shortAddress(address)}</span>
         <Icon name={open ? "chevronUp" : "chevronDown"} size={13} />
       </button>
 
@@ -89,11 +90,9 @@ export function AccountMenu() {
               </button>
             )}
 
-            {/* Two different accounts can be connected here, so the menu never leaves you
-                guessing which one the portfolio below belongs to. */}
-            <p className={styles.kind}>
-              {wallet.kind === "mera" ? "PICKLER APP ACCOUNT" : "BROWSER WALLET"}
-            </p>
+            {/* The Pickler wallet is custodied in Turnkey and is not what this menu shows, so
+                the menu names whose money the portfolio below is. */}
+            <p className={styles.kind}>BROWSER WALLET</p>
 
             <button type="button" className={styles.address} onClick={() => void copy()}>
               {copied ? "COPIED" : shortAddress(address)}

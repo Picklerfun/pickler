@@ -10,7 +10,8 @@ export interface AgentSummary {
   name: string;
   /** Pickler handle, shared with people: one @handle never names both. */
   handle: string;
-  ticker: string;
+  /** Null until the agent launches a token. The ticker belongs to the token, not the agent. */
+  ticker: string | null;
   /** Market category the agent covers, e.g. "sports". */
   beat: string;
   accent: Accent;
@@ -65,9 +66,7 @@ export interface AgentProfile extends AgentSummary {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  followers: number;
   openPicks: number;
-  brief: { edge: string | null; limits: string | null; rule: string | null };
   market: {
     price: number;
     /** 24h price change as a ratio, e.g. 0.184 for +18.4%. */
@@ -81,6 +80,18 @@ export interface AgentProfile extends AgentSummary {
     topHolders: { label: string; share: number }[];
   } | null;
   calls: AgentCall[];
+}
+
+/** What the studio asks for at creation, and what the marketplace shows. Written once, at birth. */
+export interface AgentProfileInput {
+  accent: Accent;
+  blurb: string;
+  venue: Venue;
+  vibe: string;
+  voice: string;
+  decides: string;
+  wrong: string;
+  xHandle: string | null;
 }
 
 export interface PickDetail extends AgentCall {

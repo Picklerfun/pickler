@@ -5,14 +5,18 @@ import type { AccentDto, PickOutcomeDto, PickTrailStepDto } from "./landing.js";
 
 export type ChartRangeDto = "5m" | "1h" | "4h" | "1d";
 
-export type VenueDto = "predictions" | "perps" | "both";
+// Mirrors `VENUES` in core, which this package may not import; a drift test in workers/api pins it.
+export const VENUES = ["predictions", "perps", "both"] as const;
+export type VenueDto = (typeof VENUES)[number];
 export type ActivityKindDto = "call" | "position" | "settlement" | "pass" | "answer" | "perp";
 
 export interface AgentSummaryDto {
-  slug: string;
+  /** Null until the agent launches a token; the slug names the token's page. */
+  slug: string | null;
   name: string;
   handle: string;
-  ticker: string;
+  /** Null until the agent launches a token. */
+  ticker: string | null;
   beat: string;
   accent: AccentDto;
   venue: VenueDto;
@@ -36,8 +40,8 @@ export interface AgentSummaryDto {
 export interface ActivityAgentDto {
   name: string;
   handle: string;
-  ticker: string;
-  slug: string;
+  ticker: string | null;
+  slug: string | null;
   accent: AccentDto;
 }
 
@@ -55,8 +59,8 @@ export interface ActivityEventDto {
 export interface AgentPersonaDto {
   name: string;
   handle: string;
-  ticker: string;
-  slug: string;
+  ticker: string | null;
+  slug: string | null;
   accent: AccentDto;
   beat: string;
   venue: VenueDto;
@@ -65,26 +69,26 @@ export interface AgentPersonaDto {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  calibrationGap: number;
+  /** Null until settlement exists. */
+  calibrationGap: number | null;
   resolved: number;
   hitRate: number | null;
   net: number;
-  followers: number;
   openPicks: number;
   aliveDays: number;
-  marketCap: number;
-  stage: "pre-graduation" | "graduated";
+  /** Null until a token is launched. */
+  marketCap: number | null;
+  stage: "pre-graduation" | "graduated" | null;
   meters: { label: string; value: number }[];
   decides: string;
   wrong: string;
-  rules: string[];
-  brief: { label: string; value: string }[];
-  askPrice: string;
+  askPrice: string | null;
   answers: { question: string; answer: string; meta: string }[];
   decisions: ActivityEventDto[];
-  /** 0–100, the same score the leaderboard ranks by. */
-  score: number;
-  service: ReadServiceDto;
+  /** 0–100, the same score the leaderboard ranks by. Null until settlement exists. */
+  score: number | null;
+  /** Null until paid reads exist. */
+  service: ReadServiceDto | null;
   reads: AgentReadDto[];
 }
 
@@ -136,11 +140,13 @@ export interface DirectoryAgentDto {
   beat: string;
   venue: VenueDto;
   decides: string;
-  score: number;
+  /** Null until settlement exists. */
+  score: number | null;
   hitRate: number | null;
   resolved: number;
   net: number;
-  service: ReadServiceDto;
+  /** Null until paid reads exist. */
+  service: ReadServiceDto | null;
 }
 
 export type AnalyticsRangeDto = "7d" | "30d" | "90d";
@@ -213,9 +219,7 @@ export interface AgentProfileDto extends AgentSummaryDto {
   blurb: string;
   xHandle: string | null;
   creatorHandle: string | null;
-  followers: number;
   openPicks: number;
-  brief: { edge: string | null; limits: string | null; rule: string | null };
   market: {
     price: number;
     change24h: number;
@@ -233,9 +237,9 @@ export interface AgentProfileDto extends AgentSummaryDto {
 
 export interface PickDetailDto extends AgentCallDto {
   agent: {
-    slug: string;
+    slug: string | null;
     name: string;
-    ticker: string;
+    ticker: string | null;
     beat: string;
     accent: AccentDto;
     xHandle: string | null;

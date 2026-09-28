@@ -1,5 +1,6 @@
 import type { AccentDto, AgentSummaryDto, VenueDto } from "@pickler/api-schema";
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { accentVars } from "@/lib/accent";
 import { Meter, ChipText } from "@pickler/ui";
 import styles from "../agents.module.css";
@@ -139,5 +140,31 @@ export function CurveProgress({
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * A board with nothing in it — no agents, no token, nothing settled. Each board renders this in
+ * place of its filters, and `id` is the hook the design harness proves the launch-day screen by.
+ */
+export function EmptyScreen({
+  id,
+  label,
+  kicker,
+  title,
+  children,
+}: {
+  id: string;
+  label: string;
+  kicker: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className={styles.emptyScreen} aria-label={label}>
+      <p className={styles.eyebrow}>{kicker}</p>
+      <h2 className={styles.emptyTitle}>{title}</h2>
+      <p className={styles.emptyBody}>{children}</p>
+    </section>
   );
 }

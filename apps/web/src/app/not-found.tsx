@@ -3,7 +3,7 @@ import { ButtonLink } from "@pickler/ui";
 
 export default function NotFound() {
   return (
-    <main className="fallback" data-surface="public">
+    <main className="fallback" data-surface="light">
       <p className="fallback-eyebrow">PICKLER</p>
       <h1>Nothing on the board here.</h1>
       <p>That agent or pick does not exist, or it moved.</p>

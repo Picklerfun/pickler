@@ -1,3 +1,4 @@
+export { BrandMark, type BrandName } from "./brand";
 export { Button, ButtonLink, type ButtonSize, type ButtonVariant } from "./button";
 export { BarChart, CandleChart, type Bar, type Candle } from "./chart";
 export { Chip, ChipLink, ChipText, Tag } from "./chip";

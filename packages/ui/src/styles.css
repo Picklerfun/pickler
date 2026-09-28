@@ -1,19 +1,26 @@
 /* Pickler control system. One set of shapes, two surfaces.
  *
- * The public site (landing, tokens, agents) and the creator console share the same radii, control
- * sizes and button variants. What changes between them is tone: typeface, background and density.
- * Pick a surface with `data-surface="public"` or `data-surface="console"` on any wrapper; the
- * public surface is the default.
+ * The marketplace (landing, tokens, agents, markets, portfolio, leaderboard, reads) is light; the
+ * studio (the creator dashboard, account and auth) is night blue. They share radii, control sizes
+ * and button variants; what changes is the ground and the ink that reads on it. Put
+ * `data-surface="light"` or `data-surface="dark"` on any wrapper — light is the default, and a
+ * subtree may take the opposite value of the page it sits in.
  *
- * Shapes: pill for actions, chips and status; 16 for cards and panels; 12 for inputs and tiles;
- * 6 for small marks. Nothing square.
+ * Shapes run on one scale, mark through 3xl, and a step means a role rather than a number: marks
+ * and dots, then chips and tiles, rail and menu rows, stat tiles, cards, panels, sections. Every
+ * action, chip and status is a pill. Nothing square.
  */
 
 :root {
-  --pk-radius-sm: 6px;
-  --pk-radius-md: 12px;
+  /* Marks and dots take mark; chips and tiles sm; rail and menu rows md; stat tiles lg; cards xl;
+   * panels 2xl; full-width sections 3xl. Every action, chip and status is a pill. Nothing square. */
+  --pk-radius-mark: 4px;
+  --pk-radius-sm: 12px;
+  --pk-radius-md: 14px;
   --pk-radius-lg: 16px;
-  --pk-radius-xl: 24px;
+  --pk-radius-xl: 20px;
+  --pk-radius-2xl: 24px;
+  --pk-radius-3xl: 28px;
   --pk-radius-pill: 999px;
 
   /* Control padding and type, by size. */
@@ -24,82 +31,378 @@
   --pk-control-font-md: 600 14px/1;
   --pk-control-font-lg: 600 15px/1;
 
-  /* Accents are the same hue on both surfaces; only the ink and the ground change. */
+  /* The hue is the same on both surfaces. What changes per surface is the ink that has to read
+   * against it, which is why violet, magenta, win and loss are set down there and not here. */
   --pk-lime: #c8f03a;
   --pk-lime-hover: #d6f95c;
-  --pk-on-lime: #0b1200;
-  --pk-violet: #9b7bff;
-  --pk-violet-ink: #b9aeff;
-  --pk-on-violet: #0b0618;
-  --pk-magenta: #ff5fa2;
-  --pk-cyan: #5ad8ff;
-  --pk-cyan-ink: #7fe3ff;
-  --pk-pink-ink: #ff9ec6;
   --pk-amber: #ffc93f;
+  --pk-orange: #ff7a3d;
+  --pk-blue: #5b8cff;
+  --pk-magenta: #ff5fa2;
 
-  /* Tints: the same accent as a quiet ground and an edge, for badges, banners and status rows.
-   * A tinted object reads as a state, not as a control, so it never borrows a button's fill. */
-  --pk-lime-tint: rgba(200, 240, 58, 0.1);
-  --pk-lime-edge: rgba(200, 240, 58, 0.36);
-  --pk-magenta-tint: rgba(255, 95, 162, 0.1);
-  --pk-magenta-edge: rgba(255, 95, 162, 0.36);
-  --pk-amber-tint: rgba(255, 201, 63, 0.1);
-  --pk-amber-edge: rgba(255, 201, 63, 0.36);
-  --pk-cyan-tint: rgba(90, 216, 255, 0.08);
-  --pk-cyan-edge: rgba(90, 216, 255, 0.4);
-  --pk-violet-tint: rgba(155, 123, 255, 0.1);
-  --pk-violet-edge: rgba(155, 123, 255, 0.4);
+  /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
+  --pk-on-lime: #0b1200;
 
-  --pk-font-display: var(--font-display), "Chakra Petch", sans-serif;
+  /* The night sky the dark shells paint behind their content: a core, a middle and an edge, read
+   * outward from the top of the page. Two features drew it from the same three literals — the
+   * marketplace's agent routes and /apply — which is a ground the product depends on and had never
+   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are the
+   * same colour at a fraction, so a change to it that reached only the gradient would leave the
+   * scrims behind. They now read it through the triple below rather than retyping it.
+   *
+   * These sit here rather than under the dark surface for the reason the agent fills do: a scene
+   * does not become a different scene because the page around it changed. Nothing paints them on
+   * light — both `.space` elements render only when their shell is dark. */
+  --pk-space-core: #1b1f6b;
+  --pk-space-mid: #0a0b2e;
+  --pk-space-edge: #05061a;
+
+  /* The edge again, as an `r, g, b` triple, because the eight scrims above could not be written
+   * from `--pk-space-edge`: rgba() will not take a custom property for its first three arguments.
+   * That is the same constraint `accentVars` documents for `--accent-rgb` and the same workaround,
+   * so this applies a precedent rather than setting one. It is written down twice on purpose, and
+   * a value that drifts apart shows up as a scrim that no longer matches the sky behind it.
+   *
+   * `color: var(--pk-space-edge-rgb)` is not a colour, so probe.mjs's sentinel excludes this from
+   * the values tokens.mjs compares against. The triple makes the scrims track the palette; the two
+   * veils below are what a check can recognise, because they hold the composited value and the
+   * check keys on alpha as well as hue. */
+  --pk-space-edge-rgb: 5, 6, 26;
+
+  /* The edge as a scrim, at the two weights the scene can actually tell apart.
+   *
+   * There were five: 0.45, 0.5, 0.55 and 0.6 across seven places, plus a 0.4 in markets that turned
+   * out not to belong to this scene at all. Nobody chose 0.45 over 0.5, and naming all five would
+   * have made a drift permanent by giving it the look of a decision — a literal is obviously
+   * unconsidered, a token is not.
+   *
+   * Two rather than three or one, decided by measuring rather than by eye. Every sky pixel /apply
+   * paints was sampled — 1.36M of them, from #05061A out to the brightest point of the core — and
+   * each alpha composited against every one. Adjacent fifths of an alpha differ by at most dE 1.9
+   * to 2.1, under the ~2.3 just-noticeable threshold, so 0.45 folds into 0.5 and 0.55 into 0.6 with
+   * nothing visible moving. The two that remain differ by dE 4.05, which is above it, so both names
+   * are earned. One weight was tested and refused: it lands 3.87 from the far end, which is a
+   * difference somebody could point at.
+   *
+   * Why these are colours and not an `opacity`, when .trailLine took the opposite route: that line
+   * IS the thing being painted and has no children, so weighting the element weights only it. A
+   * scrim sits *under* content — fading .header would fade the brand and the nav with it. */
+  --pk-space-veil: rgba(var(--pk-space-edge-rgb), 0.5);
+  --pk-space-veil-strong: rgba(var(--pk-space-edge-rgb), 0.6);
+
+  /* The rim a lit element carries: a bright hairline on a saturated fill against the night sky.
+   * Three places wanted it — the glow button below, and the two accent pixels in /apply — and all
+   * three had typed the same value, which is agreement by coincidence rather than by contract.
+   *
+   * Not `--pk-border-strong`, which is 0.32 on dark and deliberately quieter: the edge of a panel
+   * and the rim of something lit are different questions, and answering one with the other is what
+   * makes a rim look like a border. */
+  --pk-glow-rim: rgba(255, 255, 255, 0.5);
+
+  /* The palette's third member: the hue itself, for anything filled rather than written.
+   *
+   * Each agent colour has a `-bg` and an `-ink`, which are a tint and something legible on it, and
+   * neither is the colour. A 12px square exists to be told from the six beside it, so it wants the
+   * accent — not the tint, and not the ink, which is drawn dark enough to read on white and would
+   * put two swatches a rounding error apart. A fill's contrast against the page measures nothing:
+   * lime is 1.31 on white and is correct, which is the reason each accent splits in two at all.
+   *
+   * These sit here rather than per surface because a swatch does not change identity when the page
+   * around it changes. The seventh, `violet`, is the light violet that no semantic token holds —
+   * `--pk-violet` is `#5B3CE0` on light, right for ink and wrong for a dot — so before this a mark
+   * wanting it nested `data-surface="dark"`, which is a token lookup wearing the mechanism's
+   * clothes: a childless span has nothing in its subtree to invert. */
+  --pk-agent-lime-fill: #c8f03a;
+  --pk-agent-indigo-fill: #5b3ce0;
+  --pk-agent-amber-fill: #ffc93f;
+  --pk-agent-orange-fill: #ff7a3d;
+  --pk-agent-magenta-fill: #ff5fa2;
+  --pk-agent-blue-fill: #5b8cff;
+  --pk-agent-violet-fill: #9b7bff;
+
+  --pk-font-display: var(--font-display), Archivo, sans-serif;
+  --pk-font: var(--font-body), "Instrument Sans", sans-serif;
+  /* The display face is only itself with its width axis set. Archivo at the right weight and the
+   * wrong width is a different typeface, and nothing on screen says so. */
+  --pk-display-wdth: "wdth" 112;
 
   --pk-duration: 140ms;
 }
 
-/* Public surface: the landing, token and agent pages. Playful and roomier. */
-[data-surface="public"],
+/* One dark in the product and one light, and either can appear inside the other. A surface is not
+ * a page theme: it is a property any subtree takes with data-surface, so nesting the opposite value
+ * inverts everything inside it. That is how the landing's dark panels and the account's white
+ * wallet card work, with no rule of their own. Light is the default. */
+[data-surface="light"],
 :root {
-  --pk-font: var(--font-body), Manrope, sans-serif;
-  --pk-font-mono: var(--font-mono), "JetBrains Mono", monospace;
-  --pk-bg: #05061a;
-  --pk-ink: #f5f6ff;
-  --pk-ink-soft: #dde1f5;
-  --pk-ink-dim: #c3c9e4;
-  --pk-ink-muted: #a9b0d0;
-  --pk-ink-faint: #8891b5;
-  --pk-ink-placeholder: #6c7398;
-  --pk-panel: rgba(245, 246, 255, 0.05);
-  --pk-field: rgba(5, 6, 26, 0.65);
-  --pk-field-autofill: #05061a;
-  --pk-surface: rgba(245, 246, 255, 0.05);
-  --pk-surface-strong: rgba(245, 246, 255, 0.09);
-  --pk-border: rgba(245, 246, 255, 0.18);
-  --pk-border-strong: rgba(245, 246, 255, 0.45);
-  /* Hairlines that separate content, quieter than a control's border. */
-  --pk-rule: rgba(245, 246, 255, 0.16);
-  --pk-rule-strong: rgba(245, 246, 255, 0.24);
-  --pk-focus: var(--pk-cyan);
+  /* Not a token: it tells the browser what to paint scrollbars, autofill and native controls
+   * against. A subtree that inverts the ground has to invert this with it. */
+  color-scheme: light;
+  --pk-bg: #ffffff;
+  --pk-ink: #0b0d1a;
+  /* Light has no softened ink: body copy inside a white card is full strength, and the step below
+   * is already the muted grey. The slot exists for components that read it and does nothing here. */
+  --pk-ink-soft: var(--pk-ink);
+  --pk-ink-muted: #5a5f78;
+  /* Light has no faint ink either, for the same reason it has no soft one — there is no room for
+   * the level. The canvas value #6B7186 measures 4.85:1 on white but 3.85:1 on --pk-panel-3, and
+   * the darkening that would clear 4.6 there lands on #5F6578: five channel steps from the muted
+   * grey above it, which is one level with a rounding error rather than two. So faint resolves to
+   * muted and is legible on every ground the product paints. Light has two ink levels; the slots
+   * exist for components that read them. */
+  --pk-ink-faint: var(--pk-ink-muted);
+  --pk-panel: #f5f6fa;
+  --pk-panel-2: #f1f2f7;
+  --pk-panel-3: #e2e5ee;
+  --pk-rule: rgba(11, 13, 26, 0.08);
+  --pk-rule-strong: rgba(11, 13, 26, 0.12);
+  --pk-nav-bg: rgba(255, 255, 255, 0.88);
+  --pk-popover: #ffffff;
+  --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
+  --pk-violet: #5b3ce0;
+  /* A filled violet control under the cursor. It moves the same 6.3 points of lightness the dark
+   * surface's hover moves, with hue and saturation held — and in the opposite direction, because
+   * direction is set by the ink the fill carries, not by taste. `--pk-lime-hover` goes lighter
+   * because lime carries dark ink; violet here carries white, so lighter is the one move that
+   * makes it harder to read. White on the base is 6.63 and on this is 8.42. Before this token the
+   * hover was written as a literal at one call site, and it was the *dark* surface's hover: had
+   * that control ever rendered on light it would have jumped from 6.63 to 2.31 on hover. */
+  --pk-violet-hover: #4523d9;
+  --pk-violet-ink: #5b3ce0;
+  --pk-magenta-ink: #bb2a5d;
+  /* Every accent splits into the colour and the ink of that colour, because an accent bright enough
+   * to carry a fill is never dark enough to be read on white. A lime button stays lime; the word
+   * "lime" set in lime is 1.3:1 and is not there at all. These two are the light surface's own lime
+   * and amber, which is to say the good and caution state inks. */
+  --pk-lime-ink: #3f6b00;
+  --pk-amber-ink: #855e00;
+  /* Lime and pink read on black and vanish on white, so the money colours are a green and a red
+   * chosen to survive this ground. They are the one accent pair that is not the same hue on both.
+   *
+   * Both are darkened from the canvas, and the reason generalises past them: an ink is only as
+   * legible as its worst ground, and the worst ground here is --pk-panel-3 rather than the page or
+   * the state's own tint. #2E7D32 read 4.46:1 on its tint and 4.07:1 on that panel; #C62C62 read
+   * 4.42:1 and 4.23:1. Each moved by the least that reaches 4.6:1 on --pk-panel-3, hue and
+   * saturation held, which clears every lighter ground with it. Every token holding one of these
+   * colours moved together — a state ink a few steps from the accent it names is one colour with a
+   * rounding error, not two. Do not restore them from the canvas. */
+  --pk-win: #2b732e;
+  --pk-loss: #bb2a5d;
+  /* Violet is dark enough here to carry white. */
+  --pk-on-violet: #ffffff;
+
+  /* Every state is a tint and an ink legible on that tint. A tinted object reads as a state, never
+   * as a control, so it never takes a button's fill.
+   *
+   * These mean something about an outcome. Telling one agent from another is a different job and has
+   * its own pairs below. What both have in common is the shape: a tinted ground and an ink chosen
+   * for it. Setting an accent on a wash of itself is not an option that needs retinting — it has no
+   * light form at all, because over white a 14% wash is very nearly white and the letter on it is
+   * the accent. */
+  --pk-state-good-bg: #edf7ce;
+  --pk-state-good-ink: #3f6b00;
+  --pk-state-win-bg: #e4f3e5;
+  --pk-state-win-ink: #2b732e;
+  --pk-state-caution-bg: #fbf0d4;
+  --pk-state-caution-ink: #855e00;
+  --pk-state-loss-bg: #fbe4ec;
+  --pk-state-loss-ink: #bb2a5d;
+  --pk-state-info-bg: #f1eeff;
+  --pk-state-info-ink: #5b3ce0;
+  --pk-state-cool-bg: #eaf0ff;
+  --pk-state-cool-ink: #2f55c8;
+  /* Derived, not observed: orange is in the accent palette and no canvas in this set gives it a
+   * pair. Same method as the derived dark tints — the accent at roughly 18% over the ground, and an
+   * ink landing inside the range the observed pairs occupy. Check against a canvas that uses it. */
+  --pk-state-warm-bg: #ffe6da;
+  --pk-state-warm-ink: #a04010;
+
+  /* The agent palette, and a separate thing from the states above it.
+   *
+   * A state means something about an outcome. These mean "this agent, not that one", and nothing
+   * more — an avatar is magenta because the agent is, not because anything was lost. They were the
+   * same tokens for one commit and the collision showed immediately: two accents pointing at one
+   * state render alike, and an avatar's whole job is to not do that.
+   *
+   * Six carry the values the canvases gave the matching state, which is where those values came
+   * from. Orange and violet are derived — the accent at roughly 19% over the ground, with an ink
+   * landing inside the range the observed pairs occupy. Values may drift apart from the states'
+   * now, and that is the point of their being separate. */
+  --pk-agent-lime-bg: #edf7ce;
+  --pk-agent-lime-ink: #3f6b00;
+  --pk-agent-amber-bg: #fbf0d4;
+  --pk-agent-amber-ink: #8a6200;
+  --pk-agent-orange-bg: #ffe6da;
+  --pk-agent-orange-ink: #a04010;
+  --pk-agent-magenta-bg: #fbe4ec;
+  /* Darkened from the canvas's #C62C62, which reads 4.42:1 on its own tint. An ink that cannot be
+   * read on the tint it is paired with fails the one thing a pair exists to guarantee, and this one
+   * is carrying an agent's initials rather than a word you can guess. */
+  --pk-agent-magenta-ink: #bf2a5f;
+  --pk-agent-blue-bg: #eaf0ff;
+  --pk-agent-blue-ink: #2f55c8;
+  --pk-agent-indigo-bg: #f1eeff;
+  --pk-agent-indigo-ink: #5b3ce0;
+  /* The palette holds one hue twice, a deep violet and a light one, and at the wash the other tiles
+   * use the two are 9 apart and read as one colour. Both keep the violet the design chose; what
+   * moves is how far it is washed toward the ground, which is a system parameter rather than a
+   * colour. At 42% the tiles separate by 47 and the inks by 46, against the 12 and 44 that amber and
+   * orange — the palette's closest honest pair — sit at. */
+  --pk-agent-violet-bg: #d5c8ff;
+  --pk-agent-violet-ink: #4a2eb8;
+
+  --pk-focus: var(--pk-violet);
+
+  /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
+   * names, and every one of them was written against a ground that is now white. So each resolves
+   * onto the new palette instead of being deleted out from under a page nobody has touched yet.
+   * They retire as those pages are redrawn, not before. */
+  --pk-ink-dim: var(--pk-ink-muted);
+  --pk-ink-placeholder: var(--pk-ink-faint);
+  --pk-surface: var(--pk-panel);
+  --pk-surface-strong: var(--pk-panel-2);
+  --pk-field: var(--pk-panel);
+  --pk-field-autofill: var(--pk-panel);
+  --pk-border: var(--pk-rule-strong);
+  /* A control's edge has to be seen, and a 12% hairline on white is not seen. */
+  --pk-border-strong: rgba(11, 13, 26, 0.28);
+  /* The accent tints predate the state pairs and say the same thing less precisely, so each one
+   * resolves to the state it was always naming. The edge is that state's ink, held back. */
+  --pk-cyan: var(--pk-blue);
+  --pk-cyan-ink: var(--pk-state-cool-ink);
+  --pk-pink-ink: var(--pk-magenta-ink);
+  --pk-lime-tint: var(--pk-state-good-bg);
+  --pk-lime-edge: rgba(63, 107, 0, 0.28);
+  --pk-magenta-tint: var(--pk-state-loss-bg);
+  --pk-magenta-edge: rgba(187, 42, 93, 0.28);
+  --pk-amber-tint: var(--pk-state-caution-bg);
+  --pk-amber-edge: rgba(133, 94, 0, 0.28);
+  --pk-cyan-tint: var(--pk-state-cool-bg);
+  --pk-cyan-edge: rgba(47, 85, 200, 0.28);
+  --pk-violet-tint: var(--pk-state-info-bg);
+  --pk-violet-edge: rgba(91, 60, 224, 0.28);
 }
 
-/* Console surface: the creator dashboard. Denser and quieter. */
-[data-surface="console"] {
-  --pk-font: var(--font-body), Manrope, sans-serif;
-  --pk-bg: #08080a;
-  --pk-ink: #f3f1ec;
-  --pk-ink-soft: #b9b9b4;
-  --pk-ink-dim: #c9c6bf;
-  --pk-ink-muted: #8c8c88;
-  --pk-ink-faint: #8b8880;
-  --pk-ink-placeholder: #6f6f6a;
-  --pk-panel: #0d0d10;
-  --pk-field: #121216;
-  --pk-field-autofill: #121216;
-  --pk-surface: rgba(243, 241, 236, 0.04);
-  --pk-surface-strong: rgba(243, 241, 236, 0.09);
-  --pk-border: rgba(243, 241, 236, 0.14);
-  --pk-border-strong: rgba(243, 241, 236, 0.36);
-  --pk-rule: rgba(243, 241, 236, 0.12);
-  --pk-rule-strong: rgba(243, 241, 236, 0.18);
+/* The studio, the account and the auth screens. Night blue, not black: #0B0D1A carries a clear blue
+ * dominant, and its panels are navy. Pure white body copy on it is harsh, which is what ink-soft is
+ * for — the level light does not need. */
+[data-surface="dark"] {
+  color-scheme: dark;
+  --pk-bg: #0b0d1a;
+  --pk-ink: #ffffff;
+  --pk-ink-soft: #c7cad8;
+  --pk-ink-muted: #9aa0b8;
+  /* Lightened from the canvas, twice. #5A5F78 measures 3.08:1 on this ground and fails AA for body
+   * text; #757B97 cleared 4.6 on the ground but still failed on every panel (3.44 on --pk-panel-3),
+   * which is where small labels actually sit. This is the least lightening that reaches 4.6:1 on
+   * --pk-panel-3, the worst ground it lands on, with hue and saturation held. Do not restore it
+   * from the canvas: the canvas was drawn by eye and eyes do not compute ratios. */
+  --pk-ink-faint: #8c91a9;
+  --pk-panel: #15182a;
+  --pk-panel-2: #1c2036;
+  --pk-panel-3: #25293d;
+  --pk-rule: rgba(255, 255, 255, 0.08);
+  --pk-rule-strong: rgba(255, 255, 255, 0.12);
+  /* Opaque. The landing's nav is translucent over a scrolling page; the studio's top bar sits on a
+   * fixed layout and is solid. */
+  --pk-nav-bg: #0b0d1a;
+  --pk-popover: #15182a;
+  --pk-popover-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  --pk-violet: #9b7bff;
+  /* Lighter here, for the mirror of the reason it is darker on light: this fill carries near-black
+   * ink, which reads 6.33 on the base and 8.61 on this. */
+  --pk-violet-hover: #b49bff;
+  --pk-violet-ink: #b9a6ff;
+  --pk-magenta-ink: #ff9ec6;
+  /* On this ground the accent already reads, so the ink is the accent. The split still has to
+   * exist, or the light surface has nowhere to differ. */
+  --pk-lime-ink: #c8f03a;
+  --pk-amber-ink: #ffc93f;
+  --pk-win: #c8f03a;
+  --pk-loss: #ff9ec6;
+  --pk-on-violet: #0b0618;
+
+  --pk-state-good-bg: #2a3a0f;
+  --pk-state-good-ink: #c8f03a;
+  --pk-state-win-bg: #2a3a0f;
+  --pk-state-win-ink: #c8f03a;
+  --pk-state-caution-bg: #3a2e0b;
+  --pk-state-caution-ink: #ffc93f;
+  --pk-state-loss-bg: #3a1626;
+  --pk-state-loss-ink: #ff9ec6;
+  /* Derived, not observed: no canvas in this set shows these two on dark. Same method as the pairs
+   * above — the accent at roughly 18% over the ground. Check against a canvas that uses them. */
+  --pk-state-info-bg: #231b3e;
+  --pk-state-info-ink: #b9a6ff;
+  --pk-state-cool-bg: #141c33;
+  --pk-state-cool-ink: #5b8cff;
+  --pk-state-warm-bg: #372120;
+  --pk-state-warm-ink: #ff7a3d;
+
+  /* The agent palette on this ground. Same separation, same derivation. */
+  --pk-agent-lime-bg: #2a3a0f;
+  --pk-agent-lime-ink: #c8f03a;
+  --pk-agent-amber-bg: #3a2e0b;
+  --pk-agent-amber-ink: #ffc93f;
+  --pk-agent-orange-bg: #372120;
+  --pk-agent-orange-ink: #ff7a3d;
+  --pk-agent-magenta-bg: #3a1626;
+  --pk-agent-magenta-ink: #ff9ec6;
+  --pk-agent-blue-bg: #141c33;
+  --pk-agent-blue-ink: #5b8cff;
+  --pk-agent-indigo-bg: #231b3e;
+  --pk-agent-indigo-ink: #b9a6ff;
+  /* Same separation on this ground: a heavier wash, and an ink lifted to stay legible on it. */
+  --pk-agent-violet-bg: #3c3268;
+  --pk-agent-violet-ink: #d2c6ff;
+
   --pk-focus: var(--pk-lime);
+
+  /* Carried forward, as above. */
+  --pk-ink-dim: var(--pk-ink-soft);
+  --pk-ink-placeholder: var(--pk-ink-faint);
+  --pk-surface: var(--pk-panel);
+  --pk-surface-strong: var(--pk-panel-2);
+  --pk-field: var(--pk-panel);
+  --pk-field-autofill: var(--pk-panel);
+  --pk-border: var(--pk-rule-strong);
+  --pk-border-strong: rgba(255, 255, 255, 0.32);
+  --pk-cyan: var(--pk-blue);
+  --pk-cyan-ink: var(--pk-state-cool-ink);
+  --pk-pink-ink: var(--pk-magenta-ink);
+  --pk-lime-tint: var(--pk-state-good-bg);
+  --pk-lime-edge: rgba(200, 240, 58, 0.4);
+  --pk-magenta-tint: var(--pk-state-loss-bg);
+  --pk-magenta-edge: rgba(255, 158, 198, 0.4);
+  --pk-amber-tint: var(--pk-state-caution-bg);
+  --pk-amber-edge: rgba(255, 201, 63, 0.4);
+  --pk-cyan-tint: var(--pk-state-cool-bg);
+  --pk-cyan-edge: rgba(91, 140, 255, 0.4);
+  --pk-violet-tint: var(--pk-state-info-bg);
+  --pk-violet-edge: rgba(185, 166, 255, 0.4);
+}
+
+/* Anything set in the display face carries its width axis. Declaring the axis and forgetting to
+ * apply it is the failure this rule exists to make impossible. */
+.pk-display,
+h1,
+h2 {
+  font-family: var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+
+/* The way out, for a heading that means to be in the body face.
+ *
+ * A heading is a structural thing and the display face is a stylistic one, and the two do not
+ * always coincide: a ticket's phrase is a sentence you read, and it is an `h2` because it names its
+ * section, not because it wants to look like a title. Without this, such a heading can only escape
+ * by writing a `font:` shorthand, which resets `font-family` and beats the rule above from another
+ * file with nothing to notice — an exit that leaves no record that it was deliberate. A system whose
+ * only exit is accidental gets exited accidentally, so the intent goes on the element where the next
+ * reader finds it, and the type check skips what has said so rather than failing something correct. */
+[data-face="body"] {
+  font-family: var(--pk-font);
+  font-variation-settings: normal;
 }
 
 /* ---------- Button ---------- */
@@ -130,15 +433,8 @@
 }
 
 .pk-button:focus-visible {
-  outline: 2px solid var(--pk-lime);
+  outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
-}
-
-.pk-button:disabled,
-.pk-button[aria-disabled="true"] {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
 }
 
 /* One filled lime action per view. Never two filled buttons side by side. */
@@ -169,7 +465,7 @@
   color: var(--pk-ink);
 }
 
-/* Tile: a rectangular action inside a grid, like the console's quick actions. A tile reads as a
+/* Tile: a rectangular action inside a grid, like the studio's quick actions. A tile reads as a
    row, so its label starts at the left rather than sitting in the middle like an action's does. */
 .pk-button[data-variant="tile"] {
   justify-content: flex-start;
@@ -177,11 +473,26 @@
   padding: 14px 16px;
   background: var(--pk-surface);
   border-color: var(--pk-border);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
 }
 
 .pk-button[data-variant="tile"]:hover:not(:disabled) {
   border-color: var(--pk-border-strong);
+}
+
+/* Chip: the quiet pill a navigation bar carries — the wallet, an account. It is a panel step rather
+   than a fill, because the bar already has one action and this is not it. */
+.pk-button[data-variant="chip"] {
+  height: 45px;
+  padding: 0 18px;
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.pk-button[data-variant="chip"]:hover:not(:disabled) {
+  background: var(--pk-panel-3);
 }
 
 .pk-button[data-size="sm"] {
@@ -197,7 +508,7 @@
 /* Glow: the marketing call to action, lit from inside. One per page, and only where the page is
    asking for something — the hero, the waitlist, the application. */
 .pk-button[data-glow="true"] {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: var(--pk-glow-rim);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.3),
     0 0 24px rgba(200, 240, 58, 0.32);
@@ -218,9 +529,35 @@
   transform: none;
 }
 
-/* Mono labels: the uppercase micro type used for navigation and utility actions. */
+/* Disabled says so in colour, not by fading its own label out of legibility.
+ *
+ * `opacity: 0.4` composites the label and the ground together against whatever happens to be behind
+ * the control, so one declaration measured 1.83:1 as a ghost on white and 2.78:1 on navy — the same
+ * fault the alpha literals had, and the reason three screens repaired it separately. A pair resolves
+ * per surface and can be read: 5.62:1 on light and 6.18:1 on dark. The edge is what keeps the shape
+ * when the control sits on a panel, where a fill alone is eleven values from its ground.
+ *
+ * No incidental-control exemption. WCAG excuses a disabled control on the reasoning that it is not
+ * actionable, so its label need not be read — but the studio's Top up and Withdraw are disabled
+ * permanently, because the thing they do is not built. That is not a state anyone is waiting out; it
+ * is a label describing what this product does not do yet, and there is every reason to read it.
+ *
+ * It sits after the variants because at equal specificity source order decides, and a disabled
+ * primary has to lose its lime fill rather than keep it at four tenths. */
+.pk-button:disabled,
+.pk-button[aria-disabled="true"] {
+  background: var(--pk-panel-2);
+  border-color: var(--pk-rule-strong);
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* The uppercase micro label used for navigation and utility actions. It was a monospace; the
+ * canvases have none, and what they use in its place is this face tracked wide. `data-mono` keeps
+ * its name because that is what it has always meant on screen. */
 .pk-button[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -252,7 +589,8 @@
   border-radius: var(--pk-radius-pill);
   background: transparent;
   color: var(--pk-ink-dim);
-  font: 500 12px/1 var(--pk-font-mono);
+  font: 500 12px/1 var(--pk-font);
+  letter-spacing: 0.08em;
   cursor: pointer;
   transition:
     background var(--pk-duration),
@@ -267,9 +605,9 @@
 
 .pk-chip[aria-pressed="true"],
 .pk-chip[data-selected="true"] {
-  background: rgba(200, 240, 58, 0.14);
-  border-color: rgba(200, 240, 58, 0.45);
-  color: var(--pk-lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--pk-state-good-ink);
 }
 
 /* Read-only status, not a control. */
@@ -282,8 +620,8 @@
   padding: 4px 9px;
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-pill);
-  font: 700 9.5px/1 var(--pk-font-mono);
-  letter-spacing: 0.06em;
+  font: 700 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
   color: var(--pk-ink-dim);
 }
 
@@ -302,7 +640,7 @@
   display: block;
   height: 100%;
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-cyan);
+  background: var(--pk-blue);
   transition: width var(--pk-duration);
 }
 
@@ -347,7 +685,7 @@
 }
 
 .pk-segment:focus-visible {
-  outline: 2px solid var(--pk-lime);
+  outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }
 
@@ -372,7 +710,7 @@
 .pk-field-label {
   display: block;
   margin-bottom: 7px;
-  font: 500 10.5px/1 var(--pk-font-mono);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.1em;
   color: var(--pk-ink-muted);
 }
@@ -380,20 +718,20 @@
 .pk-field-note {
   display: block;
   margin-top: 8px;
-  font: 500 11.5px/1.4 var(--pk-font-mono);
+  font: 500 11.5px/1.4 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 
 .pk-field-note[data-tone="good"] {
-  color: var(--pk-lime);
+  color: var(--pk-state-good-ink);
 }
 
 .pk-field-note[data-tone="warn"] {
-  color: var(--pk-amber);
+  color: var(--pk-state-caution-ink);
 }
 
 .pk-field-note[data-tone="bad"] {
-  color: var(--pk-magenta);
+  color: var(--pk-state-loss-ink);
 }
 
 .pk-input {
@@ -402,7 +740,7 @@
   min-width: 0;
   padding: 13px 15px;
   border: 1px solid var(--pk-border);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   background: var(--pk-field);
   color: var(--pk-ink);
   font: 400 14.5px/1.3 var(--pk-font);
@@ -420,11 +758,14 @@
 }
 
 .pk-input[aria-invalid="true"] {
-  border-color: var(--pk-magenta);
+  border-color: var(--pk-loss);
 }
 
+/* A field holding an address, a hash or an amount: the face is the same, and what the monospace was
+ * really doing here was keeping figures in a column. */
 .pk-input[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
+  font-variant-numeric: tabular-nums;
 }
 
 .pk-input[data-size="sm"] {
@@ -458,7 +799,7 @@
 .pk-input-prefix {
   flex: none;
   padding-left: 15px;
-  font: 500 14.5px/1.3 var(--pk-font-mono);
+  font: 500 14.5px/1.3 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 
@@ -474,7 +815,8 @@
 }
 
 .pk-input-inner[data-mono="true"] {
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Autofill paints the editable input only. Match its opaque fill to the entire frame. */
@@ -522,40 +864,42 @@
 /* ---------- Tint ---------- */
 
 /* A state, not a control. Anything marked `data-tint` gets a foreground, a ground and an edge that
- * belong together, so a badge, a banner, a status row and a dot all say "amber" the same way. Use
- * it for what something *is*; a button's fill still comes from its variant. */
+ * belong together, so a badge, a banner, a status row and a dot all say "caution" the same way. Use
+ * it for what something *is*; a button's fill still comes from its variant. The names are the old
+ * accent names because that is what the features write, but each one resolves to the state pair it
+ * was always describing, which is the reason a tint stays legible when the ground turns white. */
 [data-tint] {
   --tint-fg: var(--pk-ink-muted);
   --tint-bg: transparent;
   --tint-bd: var(--pk-border);
 }
 [data-tint="lime"] {
-  --tint-fg: var(--pk-lime);
-  --tint-bg: var(--pk-lime-tint);
+  --tint-fg: var(--pk-state-good-ink);
+  --tint-bg: var(--pk-state-good-bg);
   --tint-bd: var(--pk-lime-edge);
 }
 [data-tint="magenta"] {
-  --tint-fg: var(--pk-pink-ink);
-  --tint-bg: var(--pk-magenta-tint);
+  --tint-fg: var(--pk-state-loss-ink);
+  --tint-bg: var(--pk-state-loss-bg);
   --tint-bd: var(--pk-magenta-edge);
 }
 [data-tint="amber"] {
-  --tint-fg: var(--pk-amber);
-  --tint-bg: var(--pk-amber-tint);
+  --tint-fg: var(--pk-state-caution-ink);
+  --tint-bg: var(--pk-state-caution-bg);
   --tint-bd: var(--pk-amber-edge);
 }
 [data-tint="cyan"] {
-  --tint-fg: var(--pk-cyan-ink);
-  --tint-bg: var(--pk-cyan-tint);
+  --tint-fg: var(--pk-state-cool-ink);
+  --tint-bg: var(--pk-state-cool-bg);
   --tint-bd: var(--pk-cyan-edge);
 }
 [data-tint="violet"] {
-  --tint-fg: var(--pk-violet-ink);
-  --tint-bg: var(--pk-violet-tint);
+  --tint-fg: var(--pk-state-info-ink);
+  --tint-bg: var(--pk-state-info-bg);
   --tint-bd: var(--pk-violet-edge);
 }
 [data-tint="grey"] {
   --tint-fg: var(--pk-ink-muted);
-  --tint-bg: var(--pk-surface);
+  --tint-bg: var(--pk-panel);
   --tint-bd: var(--pk-border);
 }

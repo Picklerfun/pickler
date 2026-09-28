@@ -16,6 +16,8 @@ for (const history of [
   "pre-settlement",
   "main-before-launch",
   "launch-branch",
+  "main-before-custody",
+  "custody-branch",
 ] as const) {
   test(`merged migration history upgrades ${history} without losing data`, async (t) => {
     const url = new URL(
@@ -39,15 +41,19 @@ for (const history of [
         await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"),
       );
       journal.entries = journal.entries.filter((entry: { idx: number }) =>
-        history === "main-before-launch"
-          ? entry.idx <= 14
-          : history === "launch-branch"
-            ? entry.idx <= 9 || entry.idx >= 15
-            : history === "pre-settlement"
-              ? entry.idx <= 10
-              : history === "research"
-                ? entry.idx <= 4
-                : [0, 5, 6].includes(entry.idx),
+        history === "main-before-custody"
+          ? entry.idx <= 16
+          : history === "custody-branch"
+            ? entry.idx <= 11 || entry.idx >= 17
+            : history === "main-before-launch"
+              ? entry.idx <= 14
+              : history === "launch-branch"
+                ? entry.idx <= 9 || (entry.idx >= 15 && entry.idx <= 16)
+                : history === "pre-settlement"
+                  ? entry.idx <= 10
+                  : history === "research"
+                    ? entry.idx <= 4
+                    : [0, 5, 6].includes(entry.idx),
       );
       await mkdir(join(folder, "meta"));
       await writeFile(join(folder, "meta/_journal.json"), JSON.stringify(journal));
@@ -73,6 +79,8 @@ for (const history of [
       "growth.waitlist",
       "pickler.perps_paper_accounts",
       "launch.drafts",
+      "wallets.agent_wallets",
+      "identity.siwe_nonces",
     ]) {
       const result = await pool.query("SELECT to_regclass($1) AS name", [table]);
       assert.ok(result.rows[0].name, table);

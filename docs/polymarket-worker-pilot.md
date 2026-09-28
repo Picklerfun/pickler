@@ -2,11 +2,11 @@
 
 ## Delivery boundary
 
-This integrates the existing Deposit Wallet adapter with a private trading Worker and the console.
+This integrates the existing Deposit Wallet adapter with a private trading Worker and the studio.
 Controlled validation is not live-order acceptance. No model receives a signer or an executable
 trading tool. Launchpad contracts and agent-evaluation work are independent.
 
-Browser → web Service Binding → Hono console API → trading Queue → trading Worker → Polymarket.
+Browser → web Service Binding → Hono studio API → trading Queue → trading Worker → Polymarket.
 The research Worker sends generic wakeups after completion; Cron recovers lost wakeups each minute.
 PostgreSQL remains authoritative. Queue concurrency is one; a short database transaction fences
 competing consumers. API and research contain no signer or CLOB credentials.
@@ -51,13 +51,13 @@ agent does not disable reconciliation of submitted orders.
 is not resolution of the sports event. Persisted transaction hashes and shares remain readable.
 This release has no sales, withdrawals, event settlement or continuous autonomous purchases.
 
-## Console and HTTP
+## Studio and HTTP
 
 The Limits & funding section shows the bound public wallet, reserved/debited maximums, account
 check, mode controls, manual preview/confirmation and order history. Active orders use the existing
 three-second polling helper, suspended while hidden. Read results are private and uncached.
 
-Paths below are under `/api/v1/console`; writes require user JWT, workspace owner access and an
+Paths below are under `/api/v1/studio`; writes require user JWT, workspace owner access and an
 `Idempotency-Key`. Service Bindings do not replace authentication. Reuse keys after ambiguous HTTP
 responses; a new key is a new intent, not a safe submission retry.
 

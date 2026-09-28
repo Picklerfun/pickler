@@ -9,11 +9,15 @@ import {
   effectivePlugins,
   PilotError,
   assertConfig,
+  assertSpendLimits,
+  assertIntervalHours,
   assertCanQueue,
   assertCanSchedule,
   nextOccurrence,
   type AgentConfig,
   type AgentRecord,
+  type ScheduleReadiness,
+  type SpendLimits,
   type Scope,
   type RunRecord,
   type Decision,
@@ -215,16 +219,66 @@ export class PostgresResearchStore implements ResearchRepository {
     expectedVersion: number,
     config: AgentConfig,
   ): Promise<AgentRecord> {
-    assertConfig(config);
-    config = { ...config, plugins: effectivePlugins(config) };
+    // `spend` is not this method's to write: `updateSpend` is its only writer, and it does not
+    // bump the version, so a config saved at that same version must not drop or replace it.
+    const rest: AgentConfig = { ...config };
+    delete rest.spend;
+    assertConfig(rest);
+    const incoming: AgentConfig = { ...rest, plugins: effectivePlugins(rest) };
     return this.db.transaction(async (tx) => {
       const agent = await this.getAgent(scope, tx, true);
       if (agent.version !== expectedVersion) {
         throw new PilotError("CONFLICT", "Configuration version changed");
       }
+      const stored = agent.config.spend;
+      const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;
       const [updated] = await tx
         .update(agents)
-        .set({ config, version: agent.version + 1, scheduleEnabled: false, nextDueAt: null })
+        .set({
+          config: next,
+          version: agent.version + 1,
+          scheduleEnabled: false,
+          nextDueAt: null,
+        })
+        .where(agentScope(scope))
+        .returning();
+      return updated!;
+    });
+  }
+
+  async updateSpend(scope: Scope, spend: SpendLimits): Promise<AgentRecord> {
+    assertSpendLimits(spend);
+    const value = JSON.stringify({ perCallAusd: spend.perCallAusd, perDayAusd: spend.perDayAusd });
+    return this.db.transaction(async (tx) => {
+      await this.getAgent(scope, tx, true);
+      // Only the spend key: version, schedule and next due stay, so readiness for this
+      // configuration version survives.
+      const [updated] = await tx
+        .update(agents)
+        .set({ config: sql`jsonb_set(${agents.config}, '{spend}', ${value}::jsonb)` })
+        .where(agentScope(scope))
+        .returning();
+      return updated!;
+    });
+  }
+
+  async updateInterval(scope: Scope, hours: number, now: number): Promise<AgentRecord> {
+    assertIntervalHours(hours);
+    return this.db.transaction(async (tx) => {
+      // Same lock order as `schedule`, which also writes next_due_at.
+      await tx.execute(sql`select pg_advisory_xact_lock(761204, 2)`);
+      const agent = await this.getAgent(scope, tx, true);
+      // Only the interval key and, when the schedule is on, the next due time: the version stays,
+      // so readiness for this configuration version survives.
+      const nextDueAt = agent.scheduleEnabled
+        ? nextOccurrence({ ...agent, config: { ...agent.config, intervalHours: hours } }, now)
+        : agent.nextDueAt;
+      const [updated] = await tx
+        .update(agents)
+        .set({
+          config: sql`jsonb_set(${agents.config}, '{intervalHours}', ${JSON.stringify(hours)}::jsonb)`,
+          nextDueAt,
+        })
         .where(agentScope(scope))
         .returning();
       return updated!;
@@ -250,25 +304,8 @@ export class PostgresResearchStore implements ResearchRepository {
       await tx.execute(sql`select pg_advisory_xact_lock(761204, 2)`);
       const agent = await this.getAgent(scope, tx, true);
       if (enabled) {
-        const managed = await tx.execute(sql`select 1 from pickler.product_agents
-          where tenant_id=${scope.tenantId} and runtime_agent_id=${scope.agentId}`);
-        const readinessKey = managed.rows.length
-          ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
-          : "connections_checked";
-        const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
-        const success = await tx
-          .select({ id: runs.id })
-          .from(runs)
-          .where(
-            and(
-              runScope(scope),
-              eq(runs.configVersion, agent.version),
-              eq(runs.trigger, "manual"),
-              eq(runs.status, "completed"),
-            ),
-          )
-          .limit(1);
-        assertCanSchedule(agent, checked?.value === "true", success.length > 0);
+        const readiness = await this.readinessOf(tx, scope, agent);
+        assertCanSchedule(agent, readiness.connectionsChecked, readiness.manualSucceeded);
       }
       await tx
         .update(agents)
@@ -281,6 +318,41 @@ export class PostgresResearchStore implements ResearchRepository {
           .where(and(runScope(scope), eq(runs.status, "queued"), eq(runs.trigger, "schedule")));
       }
     });
+  }
+
+  async readiness(scope: Scope): Promise<ScheduleReadiness> {
+    return this.db.transaction(async (tx) => {
+      const agent = await this.getAgent(scope, tx, false);
+      return this.readinessOf(tx, scope, agent);
+    });
+  }
+
+  /** Connections validated and one completed manual run, both for the current config version. */
+  private async readinessOf(
+    tx: Transaction,
+    scope: Scope,
+    agent: AgentRecord,
+  ): Promise<ScheduleReadiness> {
+    const managed = await tx.execute(sql`select 1 from pickler.product_agents
+      where tenant_id=${scope.tenantId} and runtime_agent_id=${scope.agentId}`);
+    const readinessKey = managed.rows.length
+      ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
+      : "connections_checked";
+    const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
+    const success = await tx
+      .select({ id: runs.id })
+      .from(runs)
+      .where(
+        and(
+          runScope(scope),
+          eq(runs.configVersion, agent.version),
+          eq(runs.trigger, "manual"),
+          eq(runs.status, "completed"),
+        ),
+      )
+      .limit(1);
+
+    return { connectionsChecked: checked?.value === "true", manualSucceeded: success.length > 0 };
   }
 
   /** Caller holds the agent row lock: admission and rolling quotas serialize per agent. */

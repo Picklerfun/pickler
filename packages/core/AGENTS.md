@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) first. Read the local instructions
 
 `@pickler/core` owns the business layer: domain entities and invariants, application use cases, authorization rules, and ports for external capabilities. It must remain usable without Next.js or any specific provider.
 
-Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,markets,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
+Current source includes `application/get-health.ts`, `ports/clock.ts`, `features/research/{types,policy,decision-policy,run-research,style,brief}.ts` and the public product features ported from Relayer: `features/{access,agent-registry,budget,signing,profiles,agents,landing,markets,waitlist,applications}`. Public exports include research capability/repository ports, entities, configuration and schedule policy, decimal price comparison and `createResearchRunner`.
 
 The runner owns permission rechecks, evidence attribution, bounded capability use and final quote verification. It accepts trusted scope from persisted jobs. API, Studio and scheduling share the same queue/runner. Core never accepts a model-supplied tenant or grants permissions from external content. Research failures and valid abstentions remain separate states.
 
@@ -54,9 +54,62 @@ the actual commit period and reset generation. A refund may reduce current spend
 match; legacy unknown-period charges cannot credit the active balance. This product ledger is not
 the research quota authority.
 
-## Unified console access
+`features/research/style.ts` names three decision styles — careful, balanced and bold — each a fixed
+`minProbabilityMargin`/`maxProbabilityRangeWidth` pair layered onto `UncertaintyPolicy`;
+`policyForStyle` and `styleForPolicy` convert between a style and the policy, the latter by closest
+distance so a hand-edited policy still reads as a style. `AgentConfig` gained `sources` (what an
+agent reads beyond market data — web mode/sites and an allowed sportsbook list, validated in
+`assertConfig`; books are keys of `SPORTSBOOKS` in `features/research/books.ts`, which are The Odds
+API bookmaker keys, and anything else is rejected) and `skills` (routines the person added, capped and length-checked the same way).
+Skills are stored apart from the brief text; `features/research/brief.ts`'s pure `composeBrief`
+appends them to the edge as numbered rules at run time.
 
-`features/console/access.ts` owns user-session-only research authorization and the console directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+## Unified studio access
+
+`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+
+Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.ts`) beside the name,
+handle and configuration: the public profile is authored at birth and the directory adapter writes
+it in the same transaction as the agent, with the beat taken from `marketScope.category`.
+
+Creating an agent also takes a required `wallet: AgentWalletLink` (`{ walletId }` — no policy ids:
+those are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
+`features/wallets` already recorded on the wallet's row, never from the caller). An agent is
+created with its wallet, or not at all.
+
+`features/studio/draft.ts` owns the vocabulary of drafting an agent from one line: `VENUES_ON_MAP`
+and `BEATS` (each beat's accent and subcategory labels, with the runtime `SportId` a label maps to,
+or `null`), `SOON_VENUES`/`SOON_BEATS` for what is drawn but cannot run yet (Perpl; every beat but
+Sports), `SUGGESTED_SKILLS`, the `AgentDraft` shape and the `AgentDrafter` port. `unsupported`
+lists what a draft names that cannot run (`venue:<x>`, `beat:<x>`) so nothing is silently dropped;
+`draftToConfig` refuses such a draft, refuses an unknown subcategory label, keeps only the beat's
+suggested skills and builds a scoped config that passes `assertConfig` (no legacy `categoryIds`,
+web on, style policy, six-hour interval). api-schema mirrors these lists; a workers/api test pins them.
+
+`features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
+§6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
+reasons in `LOCK_REASONS`). `canSchedule({ ready, balanceAusd })` answers `first_run` until `ready`
+and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances)` answers
+`unfunded_agent` unless every balance reaches the minimum; no agents is open. `ready` is
+`isReadyToSchedule(agent, readiness)` in `features/research/policy.ts`, the same predicate
+`assertCanSchedule` refuses with `NOT_READY`; its facts (`ScheduleReadiness`: connections checked
+and a completed manual run, both for the current config version) come from the new
+`ResearchRepository.readiness(scope)`. api-schema mirrors `LOCK_REASONS`; a workers/api test pins it.
+
+`AgentConfig.spend` (`SpendLimits { perCallAusd, perDayAusd }`, absent by default) holds the
+person's "max per call / max a day" in AUSD. `assertConfig` bounds it by `SPEND_BOUNDS` (1–1000 a
+call, 1–10000 a day, finite) and refuses a day below a call. It is stored and shown, not enforced:
+`SPEND_ENFORCED` is false. The budget ledger is not used because its categories are monthly caps
+with no per-call ceiling and no daily period. The trading work enforces these limits, through a
+per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
+`ResearchRepository.updateSpend(scope, spend)` writes only `config.spend`, checked by
+`assertSpendLimits`. Unlike `updateConfig`, it keeps the version, the schedule and readiness.
+`ResearchRepository.updateInterval(scope, hours, now)` does the same for `config.intervalHours`,
+checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
+person picks it right before turning the schedule on. With the schedule on, the next run moves to
+`nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
+`StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
+idempotency key made, so a retry can be recognised before any lock is applied.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
@@ -66,6 +119,102 @@ terminal result; the existing lease recovery path remains authoritative.
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Agent wallets
+
+`features/wallets` also owns the agent wallet ceremony (docs/specs/studio-create-and-fund-v1.md
+§4.1). `domain/agent-wallet-policies.ts` writes each agent wallet's Turnkey policies as plain
+strings: an ALLOW for the delegated user to sign from that wallet only to `VENUE_CONTRACTS` (left
+out while the list is empty, which it is until live trading — then the delegated user can sign
+nothing), a DENY on ERC-20 `transfer`/`approve` calldata from the wallet, a DENY on any
+`POLICY` activity, and a DENY for the delegated user on every `activity.type` in
+`DELEGATED_CREDENTIAL_ACTIVITY_TYPES` (new API keys, passkeys and OAuth providers, user updates,
+email recovery, and the logins that mint session keys; every version listed, since Turnkey does
+not document the `activity.resource` names for keys and authenticators; deletions are not
+listed, so the delegated user can still remove credentials and itself). When @turnkey/http is bumped,
+review new credential/login activity types — the DENY list is explicit and the SDK pin only
+catches removals. Between the delegated user's creation and the first policies' approval that user has no
+credential DENY; it can still sign nothing, and the studio's retry resumes at the policies step. `delegatedSelfDeletePolicy` lets the delegated user delete itself and no one
+else. Every id and address is checked against a strict alphabet before it is interpolated, and a
+malformed one throws. Turnkey has no policy order: the root quorum (the passkey) bypasses policies,
+and otherwise any matching DENY beats every ALLOW.
+
+`createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
+`AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
+`AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version
+@turnkey/http 6.5 lets that endpoint take) and the caller's own sub-organization, and treats any
+status short of completed as a failure. Before forwarding, each confirm reads the stamped body's
+`timestampMs` (digits only), rebuilds the activity its prepare built — same builder, same inputs,
+that timestamp — and refuses (`InvalidSignedActivityError`, 400) unless the URL and body are
+byte-identical. Bytes, not parsed JSON: a body with a key given twice parses to Pickler's value
+here and may be read as the other by Turnkey. `confirmPolicies` requires exactly one id per
+prepared policy, and — once Turnkey's count matches — calls `agentWallets.saveApprovedPolicies`
+before returning them, so the wallet's row in `wallets.wallets` carries the ids the person's
+passkey actually confirmed. This is the only writer of that column: the studio's create-agent
+transaction reads it rather than trusting a client-supplied list, so a request can never claim
+approval for rules nobody confirmed. `confirmDelegatedUser` refuses (`DelegatedUserExistsError`)
+before forwarding when a delegated user is already recorded.
+Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
+from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
+confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` (`ExistingAgentWallet`) for an unlinked
+wallet already named after the handle, so a retry never mints a second one; its
+`policiesApproved` is true when the store's `approvedPolicyIds` (`OrphanAgentWallet`) hold at least
+`MIN_AGENT_WALLET_POLICIES` (3, the DENYs every wallet is written with, exported from
+`domain/agent-wallet-policies.ts` and also the link floor the studio directory requires), so a retry
+skips the rules prompt too. The link to an agent
+(`agent_wallets`) is not written here. Ports: `AgentWalletActivityBuilders` and
+`AgentWalletRepository` (which now also carries `saveApprovedPolicies`); errors:
+`DelegatedKeyNotConfiguredError`, `DelegatedUserExistsError`, `DelegatedUserMissingError`,
+`AgentWalletNotFoundError` (also thrown by `saveApprovedPolicies` when no row of the caller's own
+`kind='agent'` wallet matched). `MONAD_ACCOUNT_PATH` is the one account path every Pickler wallet
+uses.
+
+Known limitation: two confirms of the delegated user racing past that check can both complete in
+Turnkey, leaving two "Pickler" users in the person's sub-organization. The store records the first
+and refuses the second (`DelegatedUserExistsError`); the confirm then calls
+`reportUnrecordedDelegatedUser` with the ids (the API logs it with `console.error`) before
+refusing. The second user has no policy naming it, so it can sign nothing, but nothing removes it
+automatically.
+
+## Deposits
+
+`createCustodyService` also funds an agent (spec §6.2): `prepareDeposit(userId, agentId,
+amountAusd)` and `confirmDeposit(userId, agentId, amountAusd, signed)`. The amount must be one of
+`DEPOSIT_AMOUNTS_AUSD` (10, 25, 50, 100; else `InvalidDepositAmountError`). The agent's wallet
+comes from `findAgentWallet` and must also be the caller's own through `findOwnedAgentWallet`
+(else `AgentWalletNotFoundError`), whatever the route already checked. Prepare asks the
+`DepositChain` port (optional dep `deposits`; absent is `DepositsUnavailableError`) for the
+unsigned transfer from the master address and wraps it in `signTransaction` with the master as
+`signWith`. It answers the activity plus `amountMicroUsd`.
+
+Confirm cannot rebuild the transaction, because its nonce and fees move. It reads the stamped
+body's `parameters.unsignedTransaction` and has the port inspect it. It refuses with
+`InvalidSignedActivityError` before forwarding unless the chain id and token are the port's, the
+native value is zero, the gas limit is at most `MAX_DEPOSIT_GAS` (Monad charges the limit), and
+the recipient and amount are this agent's wallet and this deposit. It then asks the port for a
+fresh fee quote (`quoteFees`, the one prepare builds with) and refuses with
+`DepositFeeTooHighError` when the stamped `maxFeePerGas` or `maxPriorityFeePerGas` exceeds
+`MAX_FEE_MULTIPLE` (2) times the quote. It refuses with `DepositNonceError` only when the stamped
+nonce is above the master's `pendingNonce`, a gap that would sit queued. A nonce at or below
+pending flows on. A repeated confirm of a sent deposit then meets the recorded-hash check (409). A
+retry after a failed record finds the node already holding the transaction and records it.
+Anything else is refused by the node. A nonce between the latest and the pending nonce could
+replace a master transaction still in the pool. The checks above still hold for it: it pays only
+this agent, only this amount. It then rebuilds the whole activity around that
+transaction with the stamped timestamp and compares bytes. It forwards with only
+`ACTIVITY_TYPE_SIGN_TRANSACTION_V2` allowed and reads `signTransactionResult.signedTransaction`.
+
+Before broadcasting, confirm has the port's `verifySignedTransfer` check that the signed
+transaction carries exactly the stamped transaction's fields and that its recovered signer is the
+master address. A mismatch is `SignedTransactionMismatchError`, and nothing is sent. Confirm then
+hashes the signed transaction locally (`transactionHash`). If
+`depositRecorded` already holds that hash, it refuses with `DepositAlreadyRecordedError` and sends
+nothing. It then broadcasts through the port, forgets the agent's cached balance, and calls
+`saveDeposit`. A broadcast failure propagates and records nothing. When `saveDeposit` fails after
+a broadcast for any reason other than a duplicate, confirm calls the optional
+`reportUnrecordedDeposit` dep with the agent id, hash and amount, then rethrows. The API logs that
+with `console.error`. `DepositNotSendableError` (a failed gas estimate) and
+`DepositAlreadyRecordedError` (a hash recorded twice) also come from adapters.
 
 ## Markets
 

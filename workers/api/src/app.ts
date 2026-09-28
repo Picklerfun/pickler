@@ -13,15 +13,22 @@ import { handleRoutes, profileRoutes, type ProfileRouteServices } from "./routes
 import type { PostgresLaunchReadModel } from "@pickler/infrastructure";
 
 import { launchRoutes } from "./launches/routes";
-import { demoRoutes } from "./routes/demo";
 import { growthRoutes } from "./routes/growth";
+import { marketplaceRoutes } from "./routes/marketplace";
 import type { createGrowthServices } from "./growth/services";
-import { consoleRoutes, type ConsoleServices } from "./routes/console";
+import { studioRoutes, type StudioServices } from "./routes/studio";
+import { signingRoutes, type SigningRouteServices } from "./routes/signing";
+import { walletAuthRoutes, type WalletAuthServices } from "./routes/wallet-auth";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
-  console?: ConsoleServices;
+  studio?: StudioServices;
   growth?: ReturnType<typeof createGrowthServices>;
+  /** Absent when the deployment has no Turnkey bindings; the rest of the API still serves. */
+  custody?: SigningRouteServices;
+  /** Absent when SIWE_DOMAIN or WALLET_EMAIL_DOMAIN is missing; the rest of the API still serves. */
+  walletAuth?: WalletAuthServices;
+
   /** Absent until a database binding exists; the routes are not mounted without one. */
   launches?: PostgresLaunchReadModel;
 }
@@ -41,15 +48,24 @@ export function createApp(services: Services) {
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
-  if (services.console) {
-    app.route("/v1/console", consoleRoutes(services.console));
+  if (services.studio) {
+    app.route("/v1/studio", studioRoutes(services.studio));
+    app.route("/v1/console", studioRoutes(services.studio));
+  }
+  if (services.custody) {
+    app.route("/v1/signing", signingRoutes(services.custody));
+  }
+  if (services.walletAuth) {
+    app.route("/v1/auth/wallet", walletAuthRoutes(services.walletAuth));
   }
   if (services.launches) {
     app.route("/v1/launches", launchRoutes(services.launches));
   }
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
-    app.route("/v1/demo", demoRoutes(services.growth));
+    // Under its own prefix: /v1/agents is the authenticated workspace list ported from Relayer.
+    app.route("/v1/marketplace", marketplaceRoutes(services.growth));
+    app.route("/v1/demo", marketplaceRoutes(services.growth));
   }
   return app;
 }

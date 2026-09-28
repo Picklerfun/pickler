@@ -1,6 +1,22 @@
 // Ported from Relayer apps/api/src/kits/signing/turnkey/turnkey-activity-forwarder.service.ts types
 // (commit bb6bb1226e92).
 
+/**
+ * The one status that means Turnkey did the thing, rather than merely accepting the request.
+ *
+ * It is a named constant, not a literal at the comparison, because `TurnkeyActivity.status` is
+ * `string`: a typo or a vendor rename compiles and the `===` is silently false forever. That
+ * fails in the worst direction — `confirmAddPasskey` would return the activity while never
+ * recording the credential, so Turnkey holds the new device and Pickler does not. The device
+ * signs perfectly well, the device list omits it, and `excludeCredentials` stops excluding it,
+ * which re-opens the double-enrolment the exclusion defence exists to close. Nothing errors.
+ *
+ * Core cannot import @turnkey/http to check the value — this package depends on no vendor, which
+ * is what the ports are for — so the assertion that it is a real Turnkey status lives next to the
+ * adapter in @pickler/infrastructure, as ADD_PASSKEY_ACTIVITY_TYPE does.
+ */
+export const COMPLETED_ACTIVITY_STATUS = "ACTIVITY_STATUS_COMPLETED";
+
 export const TERMINAL_ACTIVITY_STATUSES = [
   "ACTIVITY_STATUS_COMPLETED",
   "ACTIVITY_STATUS_FAILED",

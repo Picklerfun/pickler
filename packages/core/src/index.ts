@@ -165,11 +165,99 @@ export {
 
 export * from "./features/research/types.js";
 export * from "./features/research/policy.js";
+export * from "./features/research/style.js";
+export * from "./features/research/brief.js";
+export * from "./features/research/books.js";
 export { evaluateDecision } from "./features/research/decision-policy.js";
 export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
-export * from "./features/console/access.js";
+export * from "./features/studio/access.js";
+export * from "./features/studio/draft.js";
+export * from "./features/studio/locks.js";
+
+export {
+  ADD_PASSKEY_ACTIVITY_TYPE,
+  ChallengeNotUsableError,
+  NoCustodyAccountError,
+  SUPPORTED_TRANSPORTS,
+  type DisplayIdentity,
+  deviceTypeFromTransports,
+  toTurnkeyTransports,
+  type ChallengeOptions,
+  type DeviceType,
+  type PasskeyAttestation,
+  AGENT_WALLET_ACTIVITY_TYPES,
+  AgentWalletNotFoundError,
+  DelegatedKeyNotConfiguredError,
+  DelegatedUserExistsError,
+  DelegatedUserMissingError,
+  MONAD_ACCOUNT_PATH,
+} from "./features/wallets/domain/passkey.js";
+export {
+  DEPOSIT_AMOUNTS_AUSD,
+  DepositAlreadyRecordedError,
+  DepositFeeTooHighError,
+  DepositNonceError,
+  DepositNotSendableError,
+  DepositsUnavailableError,
+  InvalidDepositAmountError,
+  isDepositAmount,
+  MAX_DEPOSIT_GAS,
+  MAX_FEE_MULTIPLE,
+  SignedTransactionMismatchError,
+  type DepositAmountAusd,
+} from "./features/wallets/domain/deposit.js";
+export {
+  agentWalletPolicies,
+  delegatedSelfDeletePolicy,
+  DELEGATED_CREDENTIAL_ACTIVITY_TYPES,
+  MIN_AGENT_WALLET_POLICIES,
+  VENUE_CONTRACTS,
+  type TurnkeyPolicy,
+} from "./features/wallets/domain/agent-wallet-policies.js";
+export type {
+  AddPasskeyActivityBuilder,
+  AgentWallet,
+  AgentWalletActivityBuilders,
+  ExistingAgentWallet,
+  AgentWalletRepository,
+  ChallengeStore,
+  CustodyAccount,
+  CustodyRepository,
+  DepositChain,
+  OrphanAgentWallet,
+  Passkey,
+  RegistrationInput,
+  StoredChallenge,
+  SubOrganizationCreator,
+  TransferInspection,
+  UnsignedActivity,
+} from "./features/wallets/ports/custody.js";
+export {
+  createCustodyService,
+  type CustodyServiceDeps,
+} from "./features/wallets/application/custody.js";
+
+export * from "./features/identity/domain/wallet-auth.js";
+export type {
+  AccountProvisioner,
+  NonceStore,
+  SignatureVerifier,
+  WalletLink,
+  WalletLinkRepository,
+} from "./features/identity/ports/wallet-identity.js";
+export {
+  AddressTakenError,
+  BadSignatureError,
+  createWalletSignIn,
+  ExpiredNonceError,
+  NONCE_TTL_MS,
+  UnknownNonceError,
+  WrongDomainError,
+  type Presented,
+  type SignedMessage,
+} from "./features/identity/application/wallet-sign-in.js";
 
 export * from "./features/perps/types.js";
 export * from "./features/perps/service.js";

@@ -1,3 +1,4 @@
+import type { ReadDto, LaunchSummaryDto } from "@pickler/api-schema";
 import "server-only";
 import type {
   LandingResponse,
@@ -12,8 +13,6 @@ import type {
   LeaderboardDto,
   PerpMarketDto,
   MarketDetailDto,
-  LaunchSummaryDto,
-  ReadDto,
 } from "@pickler/api-schema";
 import { apiJson, apiFetch } from "./api-client";
 
@@ -21,15 +20,7 @@ import { apiJson, apiFetch } from "./api-client";
 export const services = {
   clock: { now: () => new Date() },
   getLanding: () => apiJson<LandingResponse>("/landing"),
-  listAgents: () => apiJson<AgentSummaryDto[]>("/demo/agents"),
-  /**
-   * The real launch catalogue.
-   *
-   * Returns null when the API has no launch surface mounted, which is what happens without a
-   * database binding. Null and an empty list mean different things — "we cannot ask" against
-   * "we asked and there is nothing" — and the page says which one it is rather than showing
-   * the same emptiness for both.
-   */
+  listAgents: () => apiJson<AgentSummaryDto[]>("/marketplace/agents"),
   listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
     const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
 
@@ -43,23 +34,26 @@ export const services = {
 
     return response.json() as Promise<ReadDto<LaunchSummaryDto[]>>;
   },
-  listDirectory: () => apiJson<DirectoryAgentDto[]>("/demo/directory"),
-  listReads: () => apiJson<AgentReadDto[]>("/demo/reads"),
-  getRead: (id: string) => apiJson<AgentReadDto | null>(`/demo/reads/${encodeURIComponent(id)}`),
-  listMarkets: () => apiJson<PerpMarketDto[]>("/demo/markets"),
+  listDirectory: () => apiJson<DirectoryAgentDto[]>("/marketplace/directory"),
+  listReads: () => apiJson<AgentReadDto[]>("/marketplace/reads"),
+  getRead: (id: string) =>
+    apiJson<AgentReadDto | null>(`/marketplace/reads/${encodeURIComponent(id)}`),
+  listMarkets: () => apiJson<PerpMarketDto[]>("/marketplace/markets"),
   getMarket: (symbol: string) =>
-    apiJson<MarketDetailDto | null>(`/demo/markets/${encodeURIComponent(symbol)}`),
+    apiJson<MarketDetailDto | null>(`/marketplace/markets/${encodeURIComponent(symbol)}`),
   getAgentProfile: (ticker: string) =>
-    apiJson<AgentProfileDto | null>(`/demo/profiles/${encodeURIComponent(ticker)}`),
+    apiJson<AgentProfileDto | null>(`/marketplace/profiles/${encodeURIComponent(ticker)}`),
   getPickDetail: (ticker: string, id: string) =>
     apiJson<PickDetailDto | null>(
-      `/demo/profiles/${encodeURIComponent(ticker)}/picks/${encodeURIComponent(id)}`,
+      `/marketplace/profiles/${encodeURIComponent(ticker)}/picks/${encodeURIComponent(id)}`,
     ),
   getAgentPersona: (handle: string) =>
-    apiJson<AgentPersonaDto | null>(`/demo/personas/${encodeURIComponent(handle)}`),
+    apiJson<AgentPersonaDto | null>(`/marketplace/personas/${encodeURIComponent(handle)}`),
   getPlatformAnalytics: (range?: string) =>
-    apiJson<PlatformAnalyticsDto>(`/demo/analytics?range=${encodeURIComponent(range ?? "30d")}`),
-  getLeaderboard: () => apiJson<LeaderboardDto>("/demo/leaderboard"),
+    apiJson<PlatformAnalyticsDto>(
+      `/marketplace/analytics?range=${encodeURIComponent(range ?? "30d")}`,
+    ),
+  getLeaderboard: () => apiJson<LeaderboardDto>("/marketplace/leaderboard"),
   async getApplicant(token: string | null): Promise<ApplicantResponse | null> {
     if (!token) {
       return null;

@@ -1,0 +1,1 @@
+ALTER TABLE "wallets"."wallets" ADD COLUMN "approved_policy_ids" text[];

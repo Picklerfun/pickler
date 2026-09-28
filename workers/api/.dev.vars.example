@@ -8,4 +8,47 @@ ALLOWED_ORIGINS=http://localhost:3000
 ENCRYPTION_KEY=
 ADMISSIONS_ENABLED=true
 
+# Turnkey. The API keys are the parent organisation's and are secrets; the rest is configuration.
+# Without all five, /v1/signing is not mounted and the rest of the API serves as before.
+TURNKEY_API_PUBLIC_KEY=
+TURNKEY_API_PRIVATE_KEY=
+TURNKEY_PARENT_ORG_ID=
+# The WebAuthn relying party. `localhost` here; `studio.pickler.fun` in every deployed
+# environment, and it is a one-way door: changing it orphans every passkey already enrolled.
+# See docs/specs/product-hosts-v1.md §3.
+TURNKEY_RPID=localhost
+TURNKEY_APP_NAME=Pickler
+# Pickler's delegated API key pair: the only credential of the non-root user a person creates in
+# their own sub-organization when they make their first agent. Generate a pair with
+# `npm run turnkey:delegated-key`. The public key is optional here — without it the agent wallet
+# ceremony answers 503 — and the private key is held by Pickler, unused until live trading, and
+# never logged. Both are secrets in deployed environments.
+TURNKEY_DELEGATED_API_PUBLIC_KEY=
+TURNKEY_DELEGATED_API_PRIVATE_KEY=
+# Balance reads: the signing routes' wallet balances and each studio agent's AUSD balance, which
+# decides its schedule and "+ New agent" locks. Absent CHAIN_ID means Monad testnet (10143).
+# Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
+CHAIN_ID=10143
+MONAD_RPC_URL=
+
+# Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
+# is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.
+# SIWE_DOMAIN is the domain a signature is accepted for — a signature made for another site is
+# refused against it, so it must match the host people actually sign on.
+# `app.pickler.fun` in every deployed environment (the marketplace host; the phone signs the same
+# domain). See docs/specs/product-hosts-v1.md §4.
+SIWE_DOMAIN=
+# The domain of the synthetic, non-deliverable address a wallet account is created under. It is an
+# internal key and never a contact, so this domain must never be made to accept mail.
+WALLET_EMAIL_DOMAIN=
+
+# The same model the research worker uses; the studio drafts an agent from one line with it.
+# Without all three, POST /v1/studio/agents/draft answers 503 DRAFT_UNAVAILABLE.
+MODEL_BASE_URL=
+MODEL_ID=
+MODEL_API_KEY=
+
+# Comma-separated. Empty means nobody; this is not a fallback that opens up when unset.
+SUPER_ADMIN_EMAILS=
+
 # DATABASE_URL is local-only. Hosted API uses the DATABASE Hyperdrive binding.

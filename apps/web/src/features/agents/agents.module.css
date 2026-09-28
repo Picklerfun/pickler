@@ -8,13 +8,16 @@
   --faint: var(--pk-ink-faint);
   --cyan-ink: var(--pk-cyan-ink);
   --lime: var(--pk-lime);
+  --lime-ink: var(--pk-lime-ink);
   --cyan: var(--pk-cyan);
   --pink-ink: var(--pk-pink-ink);
   --magenta: var(--pk-magenta);
   --rule: var(--pk-rule);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
-  --mono: var(--pk-font-mono);
+  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
+     sizes with wide tracking, so the alias stops claiming to be a monospace. */
+  --label: var(--pk-font);
 
   position: relative;
   /* A column so a short page still puts its footer on the floor rather than mid-screen. */
@@ -39,7 +42,7 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
@@ -52,7 +55,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 70% at 50% 0%, #1b1f6b 0%, #0a0b2e 45%, #05061a 100%);
+  background: radial-gradient(
+    120% 70% at 50% 0%,
+    var(--pk-space-core) 0%,
+    var(--pk-space-mid) 45%,
+    var(--pk-space-edge) 100%
+  );
 }
 
 .stars {
@@ -66,26 +74,26 @@
 
 .label {
   margin: 0;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
   letter-spacing: 0.12em;
   color: var(--faint);
 }
 
 .panel {
   composes: pk-panel from global;
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 .glass {
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 246, 255, 0.2);
+  border: 1px solid var(--pk-rule-strong);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   border-radius: var(--pk-radius-lg);
 }
 
 .toneWin {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 .toneLoss {
   color: var(--pink-ink);
@@ -101,8 +109,8 @@
   display: inline-block;
   margin-bottom: 14px;
   padding: 9px 13px;
-  border: 1px solid rgba(245, 246, 255, 0.2);
-  font: 500 11.5px/1 var(--mono);
+  border: 1px solid var(--pk-rule-strong);
+  font: 500 11.5px/1 var(--label);
   letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
@@ -122,9 +130,9 @@
 
 .page a.navTabActive,
 .page a.navTabActive:hover {
-  background: rgba(200, 240, 58, 0.12);
+  background: var(--pk-state-good-bg);
   border-bottom: 2px solid var(--lime);
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* ---------- Board ---------- */
@@ -149,7 +157,7 @@
 
 .eyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--cyan-ink);
 }
@@ -157,6 +165,7 @@
 .boardTitle {
   margin: 0 0 10px;
   font: 700 clamp(30px, 5vw, 52px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -173,8 +182,8 @@
 
 .sortButton {
   padding: 10px 14px;
-  background: rgba(5, 6, 26, 0.5);
-  border-color: rgba(245, 246, 255, 0.2);
+  background: var(--pk-field);
+  border-color: var(--pk-rule-strong);
   font: 600 13px/1 var(--body);
 }
 
@@ -199,7 +208,7 @@
 
 /* A stage is where a token is, not a filter you switch on, so it lights in ink, not in lime. */
 .stageButton[aria-pressed="true"] {
-  background: rgba(245, 246, 255, 0.14);
+  background: var(--pk-panel-2);
   border-color: var(--ink);
   color: var(--ink);
 }
@@ -211,7 +220,8 @@
 .resultCount {
   align-self: center;
   margin-left: auto;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -229,12 +239,12 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
   overflow: hidden;
 }
 
 .card:hover {
-  border-color: rgba(245, 246, 255, 0.45);
+  border-color: var(--pk-border-strong);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -270,11 +280,11 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  background: rgba(var(--accent-rgb), 0.14);
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
-  border-radius: var(--pk-radius-md);
-  font: 700 13px/1 var(--mono);
-  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: var(--pk-radius-sm);
+  font: 700 13px/1 var(--label);
+  letter-spacing: 0.08em;
+  color: var(--accent-ink);
 }
 
 /* A logo fills the frame the initials had, cropped to it rather than letterboxed. */
@@ -289,6 +299,7 @@
   width: 62px;
   height: 62px;
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
 }
 
 .cardName {
@@ -308,32 +319,33 @@
 .cardName > span {
   display: block;
   margin-top: 2px;
-  font: 500 12px/1.3 var(--mono);
+  font: 500 12px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
 .stage {
   flex: none;
   padding: 4px 9px;
-  background: rgba(255, 201, 63, 0.12);
-  border: 1px solid rgba(255, 201, 63, 0.45);
+  background: var(--pk-state-caution-bg);
+  border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-pill);
-  font: 700 9.5px/1 var(--mono);
+  font: 700 9.5px/1 var(--label);
   letter-spacing: 0.06em;
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
   white-space: nowrap;
 }
 
 .stageGraduated {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.45);
-  color: var(--lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
   border-radius: var(--pk-radius-pill);
 }
 
 .stageNone {
-  background: rgba(245, 246, 255, 0.06);
-  border-color: rgba(245, 246, 255, 0.2);
+  background: var(--pk-panel);
+  border-color: var(--pk-rule-strong);
   color: var(--faint);
   border-radius: var(--pk-radius-pill);
 }
@@ -342,8 +354,8 @@
   display: flex;
   flex-wrap: wrap;
   margin: 0 0 13px;
-  border-top: 1px solid rgba(245, 246, 255, 0.12);
-  border-bottom: 1px solid rgba(245, 246, 255, 0.12);
+  border-top: 1px solid var(--pk-rule);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .cardStat {
@@ -367,14 +379,15 @@
 .cardStat dd {
   margin: 5px 0 0;
   overflow: hidden;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cardStat dt {
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -394,7 +407,8 @@
 .curveNote {
   display: block;
   margin-top: 6px;
-  font: 500 11.5px/1.4 var(--mono);
+  font: 500 11.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -404,8 +418,8 @@
   align-items: center;
   gap: 9px;
   padding: 13px 18px;
-  background: rgba(90, 216, 255, 0.1);
-  border: 1px solid rgba(90, 216, 255, 0.5);
+  background: var(--pk-state-cool-bg);
+  border: 1px solid var(--pk-cyan-edge);
   border-radius: var(--pk-radius-pill);
   font: 600 12.5px/1 var(--body);
   letter-spacing: 0;
@@ -435,6 +449,7 @@
 .heroTitle {
   margin: 0;
   font: 700 clamp(26px, 3.6vw, 36px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -453,7 +468,7 @@
 
 .chip {
   padding: 6px 11px;
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
   border-color: var(--rule);
 }
 
@@ -472,7 +487,8 @@
 
 .change {
   margin: 0 0 6px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .record {
@@ -486,18 +502,18 @@
   flex-direction: column-reverse;
   min-width: 0;
   padding: 15px 18px;
-  border-right: 1px solid rgba(245, 246, 255, 0.14);
-  border-bottom: 1px solid rgba(245, 246, 255, 0.14);
+  border-right: 1px solid var(--pk-rule);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .recordItem dd {
   margin: 0 0 5px;
-  font: 700 21px/1 var(--mono);
+  font: 700 21px/1 var(--label);
   letter-spacing: -0.03em;
 }
 
 .recordItem dt {
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -531,12 +547,13 @@
   align-items: center;
   gap: 10px;
   padding: 13px 16px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.14);
+  border-bottom: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-lg);
 }
 
 .panelHeadValue {
-  font: 700 14px/1 var(--mono);
+  font: 700 14px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .panelHeadNote {
@@ -561,7 +578,8 @@
   display: grid;
   place-items: center;
   height: 100%;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -577,18 +595,19 @@
   align-items: center;
   gap: 13px;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .page a.callRow:hover {
   color: var(--ink);
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
 }
 
 .callWhen {
   flex: none;
   min-width: 26px;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -605,7 +624,8 @@
 .callText span {
   display: block;
   margin-top: 3px;
-  font: 500 12px/1.35 var(--mono);
+  font: 500 12px/1.35 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -613,25 +633,26 @@
   flex: none;
   padding: 6px 10px;
   border: 1px solid;
-  font: 700 12px/1 var(--mono);
+  font: 700 12px/1 var(--label);
+  letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
 
 .resultWon {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 
 .resultLost {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .resultOpen {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
@@ -663,18 +684,20 @@
 }
 
 .quoteRow strong {
-  font: 700 14px/1.3 var(--mono);
+  font: 700 14px/1.3 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .quoteRow span:last-child:not(:first-child) {
-  font: 500 13.5px/1.3 var(--mono);
+  font: 500 13.5px/1.3 var(--label);
+  font-variant-numeric: tabular-nums;
   color: var(--faint);
 }
 
 .backCurve .bar {
   height: 8px;
-  border-color: rgba(245, 246, 255, 0.2);
+  border-color: var(--pk-rule-strong);
 }
 
 .backCurve .barFill {
@@ -698,20 +721,22 @@
   gap: 10px;
   margin: 0 0 9px;
   padding-bottom: 9px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .keyValue dt {
   min-width: 0;
   overflow-wrap: anywhere;
-  font: 500 13px/1.3 var(--mono);
+  font: 500 13px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
 
 .keyValue dd {
   flex: none;
   margin: 0;
-  font: 500 13px/1.3 var(--mono);
+  font: 500 13px/1.3 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -753,6 +778,7 @@
 .pickTitle {
   margin: 0 0 12px;
   font: 700 clamp(26px, 3.6vw, 38px)/1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
@@ -773,20 +799,21 @@
 .receiptItem {
   min-width: 0;
   padding: 14px 16px;
-  border-right: 1px solid rgba(245, 246, 255, 0.12);
-  border-bottom: 1px solid rgba(245, 246, 255, 0.12);
+  border-right: 1px solid var(--pk-rule);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .receiptItem dt {
   margin-bottom: 5px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
 
 .receiptItem dd {
   margin: 0;
-  font: 700 16px/1 var(--mono);
+  font: 700 16px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .trailCard {
@@ -827,10 +854,19 @@
   border-radius: var(--pk-radius-pill);
 }
 
+/* The connector takes its step's accent, like the dot above it — each <li> carries its own
+   accentVars, so the hue changes down the rail and the line stays with its dot. It is the accent at
+   a subordinate weight, not a rule that happens to be coloured, which is why --pk-rule-strong is
+   the wrong answer here: it would flatten four connectors to one grey.
+   The weight is the element's opacity rather than an alpha mixed into the colour. Same pixels — the
+   element is the line and has no children for the opacity to reach — but the painted colour now
+   traces back to --pk-agent-<hue>-fill like every other accent use, instead of being a triple
+   hand-mixed at a literal alpha that no token can hold. */
 .trailLine {
   flex: 1 1 auto;
   width: 2px;
-  background: rgba(var(--accent-rgb), 0.4);
+  background: var(--accent);
+  opacity: 0.4;
 }
 
 .trailStep:last-child .trailLine {
@@ -855,7 +891,8 @@
 }
 
 .trailTime {
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -877,7 +914,8 @@
 
 .postMeta {
   margin: 0;
-  font: 500 12px/1.4 var(--mono);
+  font: 500 12px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -923,7 +961,7 @@
 }
 
 .page a.navItem:hover {
-  background: rgba(245, 246, 255, 0.07);
+  background: var(--pk-panel);
   color: var(--ink);
 }
 
@@ -931,8 +969,8 @@
 
 .filterCard {
   margin: 8px 0 16px;
-  border: 1px solid rgba(245, 246, 255, 0.14);
-  background: rgba(245, 246, 255, 0.04);
+  border: 1px solid var(--pk-rule);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -945,25 +983,25 @@
 }
 
 .filterRowSplit {
-  border-top: 1px solid rgba(245, 246, 255, 0.12);
+  border-top: 1px solid var(--pk-rule);
 }
 
 .filterLabel {
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
 
 .viewToggle {
   gap: 2px;
-  border: 1px solid rgba(245, 246, 255, 0.16);
+  border: 1px solid var(--pk-rule-strong);
   background: transparent;
 }
 
 .viewButton {
   flex: none;
   padding: 7px 13px;
-  font: 600 11px/1 var(--mono);
+  font: 600 11px/1 var(--label);
   letter-spacing: 0.06em;
   color: var(--faint);
 }
@@ -982,9 +1020,9 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  background: rgba(5, 6, 26, 0.55);
-  border: 1px solid rgba(245, 246, 255, 0.22);
-  border-radius: var(--pk-radius-sm);
+  background: var(--pk-field);
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-mark);
   overflow: hidden;
 }
 
@@ -999,19 +1037,19 @@
   align-items: center;
   gap: 7px;
   padding: 4px 12px 4px 4px;
-  border-color: rgba(90, 216, 255, 0.4);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
   border-radius: var(--pk-radius-pill);
 }
 
 .page a.meetChip {
-  border-color: rgba(200, 240, 58, 0.45);
-  color: var(--lime);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 
 .curveLabel {
   display: block;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
   white-space: nowrap;
@@ -1020,27 +1058,29 @@
 .curve strong {
   display: block;
   margin: 6px 0 8px;
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .toneCurve {
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 .toneQuiet {
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .avatarSmall {
   width: 26px;
   height: 26px;
-  font: 700 9.5px/1 var(--mono);
+  font: 700 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   border-radius: var(--pk-radius-pill);
 }
 
 /* ---------- Tables ---------- */
 
 .tableWrap {
-  border: 1px solid rgba(245, 246, 255, 0.16);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
   overflow: hidden;
 }
@@ -1051,7 +1091,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .tableRow:last-child {
@@ -1059,8 +1099,8 @@
 }
 
 .tableHead {
-  background: rgba(245, 246, 255, 0.06);
-  font: 500 9.5px/1 var(--mono);
+  background: var(--pk-panel);
+  font: 500 9.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -1093,7 +1133,8 @@
 .tableName > span:not(.avatar):not(.tableNameText) {
   display: block;
   margin-top: 3px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1105,7 +1146,8 @@
   flex: none;
   width: 74px;
   text-align: right;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 .tableCta {
   flex: none;
@@ -1118,15 +1160,16 @@
   place-items: center;
   width: 34px;
   height: 26px;
-  border: 1px solid rgba(245, 246, 255, 0.2);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .rankFirst {
-  background: rgba(200, 240, 58, 0.14);
-  border-color: rgba(200, 240, 58, 0.5);
-  color: var(--lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 
 .tableScore {
@@ -1137,7 +1180,8 @@
 .tableScore strong {
   display: block;
   margin-top: 5px;
-  font: 700 11px/1 var(--mono);
+  font: 700 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Activity feed ---------- */
@@ -1149,7 +1193,7 @@
 }
 
 .feed > li + li {
-  border-top: 1px solid rgba(245, 246, 255, 0.1);
+  border-top: 1px solid var(--pk-rule);
 }
 
 .activityRow {
@@ -1163,7 +1207,8 @@
 .activityWhen {
   flex: none;
   min-width: 34px;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1178,36 +1223,36 @@
 .kind {
   flex: none;
   padding: 4px 9px;
-  border: 1px solid rgba(245, 246, 255, 0.3);
+  border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-pill);
-  background: rgba(245, 246, 255, 0.1);
-  font: 700 9px/1 var(--mono);
+  background: var(--pk-panel-2);
+  font: 700 9px/1 var(--label);
   letter-spacing: 0.06em;
 }
 
 .kindCALL {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 .kindPOSITION {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 .kindPASS {
-  background: rgba(255, 201, 63, 0.12);
-  border-color: rgba(255, 201, 63, 0.4);
-  color: #ffc93f;
+  background: var(--pk-state-caution-bg);
+  border-color: var(--pk-amber-edge);
+  color: var(--pk-amber-ink);
 }
 .kindANSWER {
-  background: rgba(155, 123, 255, 0.14);
-  border-color: rgba(155, 123, 255, 0.45);
-  color: #b49bff;
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
+  color: var(--pk-violet-ink);
 }
 .kindPERP {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
@@ -1222,13 +1267,15 @@
 .activityMeta {
   display: block;
   margin-top: 4px;
-  font: 500 11.5px/1.4 var(--mono);
+  font: 500 11.5px/1.4 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
 .activityAmount {
   flex: none;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1236,7 +1283,7 @@
   display: inline-block;
   padding: 10px 14px;
   background: transparent;
-  border: 1px solid rgba(245, 246, 255, 0.22);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   font: 600 12px/1 var(--body);
   color: var(--ink-dim);
@@ -1246,7 +1293,7 @@
 .page a.ghostButton:hover,
 .ghostButton:hover {
   border-color: var(--lime);
-  color: var(--lime);
+  color: var(--lime-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -1281,7 +1328,8 @@
 }
 
 .tab span {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tab[aria-selected="true"] {
@@ -1307,7 +1355,8 @@
 }
 
 .meter dt span {
-  font: 500 11.5px/1.2 var(--mono);
+  font: 500 11.5px/1.2 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1326,16 +1375,17 @@
 .volumeCard {
   padding: 24px;
   margin-bottom: 20px;
-  border-color: rgba(200, 240, 58, 0.35);
-  background: rgba(200, 240, 58, 0.07);
+  border-color: var(--pk-lime-edge);
+  background: var(--pk-state-good-bg);
   border-radius: var(--pk-radius-lg);
 }
 
 .volumeValue {
   margin: 10px 0 8px;
   font: 700 clamp(30px, 6vw, 52px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .analyticsGroup {
@@ -1358,7 +1408,8 @@
 
 .statValue {
   margin: 9px 0 0;
-  font: 700 24px/1 var(--mono);
+  font: 700 24px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .splitBar {
@@ -1371,7 +1422,11 @@
 }
 
 .splitPredictions {
-  background: #9b7bff;
+  /* A bar segment is a mark, not writing: it has to be told from the cyan beside it and there is
+     nothing set on it to read. That is the fill's job, and the fill is the value already here —
+     the ink would put this and its neighbour a rounding error apart on the light ground this
+     page ships on. */
+  background: var(--pk-agent-violet-fill);
 }
 .splitPerps {
   flex: 1;
@@ -1383,7 +1438,8 @@
   flex-wrap: wrap;
   gap: 18px;
   margin: 0;
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Calibration ---------- */
@@ -1401,7 +1457,8 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 2px 0;
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1410,11 +1467,11 @@
   flex: 1 1 auto;
   min-width: 0;
   height: 200px;
-  border: 1px solid rgba(245, 246, 255, 0.18);
-  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
   background-image:
-    linear-gradient(rgba(245, 246, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 246, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(var(--pk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);
   background-size: 20% 20%;
 }
 
@@ -1424,7 +1481,7 @@
   background: linear-gradient(
     to bottom right,
     transparent calc(50% - 1px),
-    rgba(245, 246, 255, 0.32) 50%,
+    var(--pk-border-strong) 50%,
     transparent calc(50% + 1px)
   );
 }
@@ -1436,18 +1493,19 @@
 }
 
 .calDotGood {
-  background: rgba(200, 240, 58, 0.35);
-  border: 1.5px solid var(--lime);
+  background: var(--pk-state-good-bg);
+  border: 1.5px solid var(--pk-state-good-ink);
 }
 .calDotBad {
-  background: rgba(255, 95, 162, 0.3);
-  border: 1.5px solid var(--magenta);
+  background: var(--pk-state-loss-bg);
+  border: 1.5px solid var(--pk-state-loss-ink);
 }
 
 .calAxisX {
   display: flex;
   margin: 7px 0 0 34px;
-  font: 500 9.5px/1 var(--mono);
+  font: 500 9.5px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1464,7 +1522,7 @@
 .calSummary {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(245, 246, 255, 0.14);
+  border-top: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -1510,7 +1568,7 @@
 
 .pairLine {
   margin: 0 0 10px;
-  font: 500 13px/1 var(--mono);
+  font: 500 13px/1 var(--label);
   letter-spacing: 0.14em;
   color: var(--faint);
 }
@@ -1523,7 +1581,7 @@
 .sideToggle {
   display: flex;
   margin-bottom: 18px;
-  background: rgba(5, 6, 26, 0.55);
+  background: var(--pk-field);
 }
 
 .sideButton {
@@ -1546,6 +1604,7 @@
   border: none;
   outline: none;
   font: 700 clamp(30px, 5vw, 42px)/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   color: var(--ink);
 }
@@ -1557,15 +1616,17 @@
 .unitChip {
   flex: none;
   padding: 9px 12px;
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-field);
   border: 1px solid var(--rule);
-  border-radius: var(--pk-radius-md);
-  font: 700 13px/1 var(--mono);
+  border-radius: var(--pk-radius-sm);
+  font: 700 13px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .balanceRow {
   margin: 0 0 14px;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -1573,7 +1634,7 @@
    input radius rather than the pill every other action wears. */
 .page .ctaButton {
   padding: 16px;
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font-weight: 700;
 }
 
@@ -1591,9 +1652,9 @@
   flex: 1 1 60px;
   justify-content: center;
   padding: 10px 6px;
-  background: rgba(5, 6, 26, 0.5);
+  background: var(--pk-field);
   border-color: var(--rule);
-  border-radius: var(--pk-radius-md);
+  border-radius: var(--pk-radius-sm);
   font-weight: 600;
 }
 
@@ -1605,13 +1666,13 @@
 .quoteList {
   margin: 14px 0 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(245, 246, 255, 0.12);
+  border-top: 1px solid var(--pk-rule);
 }
 
 .curveBlock {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(245, 246, 255, 0.12);
+  border-top: 1px solid var(--pk-rule);
 }
 
 .curveHead {
@@ -1619,7 +1680,7 @@
   justify-content: space-between;
   gap: 10px;
   margin: 0 0 8px;
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   color: var(--faint);
 }
@@ -1640,14 +1701,15 @@
 
 .tokenStat dt {
   margin: 0;
-  font: 500 10px/1 var(--mono);
+  font: 500 10px/1 var(--label);
   letter-spacing: 0.1em;
   color: var(--faint);
 }
 
 .tokenStat dd {
   margin: 8px 0 0;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .buybacksRow {
@@ -1659,13 +1721,14 @@
 }
 
 .buybacksRow strong {
-  font: 700 22px/1 var(--mono);
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .keyValues {
   margin: 12px 0 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(245, 246, 255, 0.12);
+  border-top: 1px solid var(--pk-rule);
 }
 
 .srOnly {
@@ -1684,7 +1747,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  background: rgba(5, 6, 26, 0.55);
+  background: var(--pk-field);
   border-radius: var(--pk-radius-pill);
   overflow: hidden;
 }
@@ -1696,7 +1759,7 @@
 }
 
 .page a.cardCta:hover {
-  background: rgba(90, 216, 255, 0.2);
+  background: var(--pk-state-cool-bg);
   border-color: var(--cyan);
   color: var(--cyan-ink);
 }
@@ -1715,19 +1778,19 @@
   padding: 8px 10px 4px;
 }
 
-/* Licence credit for the charting library, quiet enough to read as a footer and still be a link. */
+/* The page footer. It carries the charting library's licence credit on the two routes that draw one
+   — quiet enough to read as a footer and still be a link — and the year on all of them. */
 .credit {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   width: 100%;
   max-width: 1200px;
   margin: auto auto 0;
   padding: 26px 24px 34px;
   border-top: 1px solid var(--rule);
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--faint);
@@ -1743,7 +1806,10 @@
   border-bottom-color: var(--rule);
 }
 
+/* Pinned right whether or not the credit is beside it, so the footer does not change shape between
+   a page that draws a chart and a page that does not. */
 .creditNote {
+  margin-left: auto;
   color: var(--faint);
 }
 
@@ -1762,9 +1828,9 @@
 
 /* Availability is not a filter like the others: it is the violet of a paid read. */
 .availableChip[aria-pressed="true"] {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.5);
-  color: #b49bff;
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
+  color: var(--pk-violet-ink);
 }
 
 .directory {
@@ -1786,12 +1852,12 @@
   gap: 14px;
   padding: 20px;
   border-color: var(--rule);
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
 }
 
 /* An agent that is not taking questions steps back rather than disappearing. */
 .agentCard[data-open="false"] {
-  border-color: rgba(245, 246, 255, 0.1);
+  border-color: var(--pk-rule);
 }
 
 .page a.agentCardHead {
@@ -1802,7 +1868,7 @@
 }
 
 .page a.agentCardHead:hover strong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .agentCardName {
@@ -1827,7 +1893,8 @@
 
 .agentCardScore strong {
   display: block;
-  font: 700 18px/1 var(--mono);
+  font: 700 18px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .agentCardScore .label {
@@ -1850,8 +1917,8 @@
   gap: 10px;
   margin: 0;
   padding: 12px 0;
-  border-top: 1px solid rgba(245, 246, 255, 0.1);
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-top: 1px solid var(--pk-rule);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .agentStat {
@@ -1860,7 +1927,8 @@
 
 .agentStat dd {
   margin: 0;
-  font: 600 13.5px/1.2 var(--mono);
+  font: 600 13.5px/1.2 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .agentStat dt {
@@ -1879,17 +1947,27 @@
   gap: 8px;
 }
 
-/* A paid read is violet everywhere it appears: asking is not backing. */
-.page .askButton,
-.page a.askButton {
+/* A paid read is violet everywhere it appears: asking is not backing.
+ *
+ * The attribute and the two :not()s are what make that true rather than merely stated. Every
+ * pk-button carries data-variant, so matching on it costs nothing and buys the specificity to
+ * clear `.pk-button[data-variant="..."]:hover:not(:disabled)` at (0,4,0), which used to win here.
+ * These buttons are a primary in the ask flow and a secondary in the directory and on a persona,
+ * so the hover painted lime on one and the dark surface on the other while the ink stayed
+ * --pk-on-violet: #0B0618 on #15182A is 1.14, a label nobody can read, and lime is the backing
+ * colour on the one button whose point is that asking is not backing. The rest state only ever
+ * won by source order, which is the same rule one bundling change away from breaking.
+ *
+ * The :not()s also keep a disabled ask button out of this rule, so `.pk-button:disabled` takes it
+ * back to the muted fill instead of being out-specified into staying violet. */
+.page .askButton[data-variant]:not(:disabled):not([aria-disabled="true"]) {
   background: var(--pk-violet);
   color: var(--pk-on-violet);
   font-weight: 700;
 }
 
-.page .askButton:hover,
-.page a.askButton:hover {
-  background: #b49bff;
+.page .askButton[data-variant]:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--pk-violet-hover);
   color: var(--pk-on-violet);
 }
 
@@ -1938,7 +2016,8 @@
 
 .keyStat dd {
   margin: 0;
-  font: 700 20px/1 var(--mono);
+  font: 700 20px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .keyStat dt {
@@ -1955,53 +2034,53 @@
 .beatChip {
   letter-spacing: 0.06em;
   color: var(--accent);
-  border-color: rgba(var(--accent-rgb), 0.45);
+  border-color: var(--accent-ink);
 }
 
 .page .followingButton {
-  border-color: rgba(200, 240, 58, 0.5);
-  color: var(--lime);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 
 /* ---------- Reads ---------- */
 
 .deliveryTag[data-state="preparing"] {
-  border-color: rgba(90, 216, 255, 0.4);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
 .deliveryTag[data-state="delivered"] {
-  border-color: rgba(245, 246, 255, 0.3);
+  border-color: var(--pk-border-strong);
   color: var(--ink);
 }
 
 .deliveryTag[data-state="failed"] {
-  border-color: rgba(255, 95, 162, 0.4);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .evalTag[data-state="pending"] {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   color: var(--cyan-ink);
 }
 
 .evalTag[data-state="happened"] {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
-  color: var(--lime);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
+  color: var(--lime-ink);
 }
 
 .evalTag[data-state="missed"] {
-  background: rgba(255, 95, 162, 0.12);
-  border-color: rgba(255, 95, 162, 0.4);
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
   color: var(--pink-ink);
 }
 
 .evalTag[data-state="not_evaluable"] {
-  background: rgba(255, 201, 63, 0.12);
-  border-color: rgba(255, 201, 63, 0.4);
-  color: #ffc93f;
+  background: var(--pk-state-caution-bg);
+  border-color: var(--pk-amber-edge);
+  color: var(--pk-amber-ink);
 }
 
 .chipCount {
@@ -2009,13 +2088,13 @@
 }
 
 .page a.newReadButton {
-  border: 1px solid rgba(155, 123, 255, 0.5);
-  color: #b49bff;
+  border: 1px solid var(--pk-violet-edge);
+  color: var(--pk-violet-ink);
 }
 
 .page a.newReadButton:hover {
-  background: rgba(155, 123, 255, 0.16);
-  color: #b49bff;
+  background: var(--pk-state-info-bg);
+  color: var(--pk-violet-ink);
 }
 
 /* The answers list on a profile: the number it stated, the question, the verdict. */
@@ -2026,19 +2105,20 @@
   gap: 14px;
   padding: 16px 18px;
   border: 1px solid var(--rule);
-  background: rgba(245, 246, 255, 0.03);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-lg);
 }
 
 .page a.readRow:hover {
-  border-color: rgba(155, 123, 255, 0.5);
+  border-color: var(--pk-violet-edge);
   color: var(--ink);
 }
 
 .readProb {
   flex: none;
-  font: 700 22px/1 var(--mono);
-  color: #b49bff;
+  font: 700 22px/1 var(--label);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-violet-ink);
 }
 
 .readQuestion {
@@ -2057,12 +2137,12 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid var(--pk-rule);
   color: var(--ink);
 }
 
 .page a.readsRow:hover {
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
   color: var(--ink);
 }
 
@@ -2100,7 +2180,8 @@
   flex: none;
   width: 56px;
   text-align: right;
-  font: 500 12px/1 var(--mono);
+  font: 500 12px/1 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .tonePink {
@@ -2116,8 +2197,8 @@
 }
 
 .readCard {
-  border: 1px solid rgba(155, 123, 255, 0.45);
-  background: rgba(245, 246, 255, 0.03);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-lg);
   overflow: hidden;
 }
@@ -2128,14 +2209,15 @@
   align-items: center;
   gap: 9px;
   padding: 14px 20px;
-  background: rgba(155, 123, 255, 0.08);
-  border-bottom: 1px solid rgba(155, 123, 255, 0.3);
+  background: var(--pk-state-info-bg);
+  border-bottom: 1px solid var(--pk-violet-edge);
   font: 700 14px/1 var(--body);
 }
 
 .readCardWhen {
   margin-left: auto;
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--label);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 
@@ -2156,15 +2238,16 @@
   align-items: stretch;
   padding: 18px;
   margin-bottom: 20px;
-  border: 1px solid rgba(245, 246, 255, 0.14);
-  background: rgba(5, 6, 26, 0.45);
-  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-rule);
+  background: var(--pk-field);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readAnswerProb strong {
   display: block;
-  font: 700 52px/1 var(--mono);
-  color: #b49bff;
+  font: 700 52px/1 var(--label);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-violet-ink);
 }
 
 .readAnswerProb .label {
@@ -2183,7 +2266,8 @@
 
 .readFacts dd {
   margin: 0;
-  font: 600 13px/1.2 var(--mono);
+  font: 600 13px/1.2 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .readFacts dt {
@@ -2221,7 +2305,10 @@
   top: 8px;
   width: 6px;
   height: 6px;
-  background: #b49bff;
+  /* The bullet on a line of body text, which is punctuation and takes the ink. This was the dark
+     surface's violet ink hard-coded onto a page that ships light, where it composited to 2.31
+     against white and was very nearly not drawn at all. */
+  background: var(--pk-violet-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -2234,8 +2321,8 @@
 
 .readBox {
   padding: 14px;
-  border: 1px solid rgba(245, 246, 255, 0.12);
-  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readSources {
@@ -2247,8 +2334,9 @@
   justify-content: space-between;
   gap: 10px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.08);
-  font: 500 12px/1.3 var(--mono);
+  border-bottom: 1px solid var(--pk-rule);
+  font: 500 12px/1.3 var(--label);
+  letter-spacing: 0.08em;
 }
 
 .readSources dt {
@@ -2275,13 +2363,14 @@
   gap: 18px;
   align-items: center;
   padding: 16px 18px;
-  border: 1px solid rgba(245, 246, 255, 0.16);
-  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
 }
 
 .readOutcome strong {
   display: block;
   font: 700 20px/1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
 }
 
 .readOutcome .quiet {
@@ -2289,18 +2378,23 @@
   margin-top: 5px;
 }
 
+/* These were an accent at 0.07, which is not a faint tint but a different colour on every ground it
+   lands on — over the dark page it lifted visibly, over white it composited to #FBFEF1, four values
+   from white in one channel and no tint at all. A pair resolves to one value per surface and can be
+   read; alpha resolves to whatever happens to be underneath. The light rendering is stronger than a
+   literal port of 0.07 because 0.07 on light was never a tint. */
 .readOutcome[data-tone="win"] {
-  border-color: rgba(200, 240, 58, 0.4);
-  background: rgba(200, 240, 58, 0.07);
+  border-color: var(--pk-lime-edge);
+  background: var(--pk-state-good-bg);
 }
 
 .readOutcome[data-tone="win"] strong {
-  color: var(--lime);
+  color: var(--lime-ink);
 }
 
 .readOutcome[data-tone="loss"] {
-  border-color: rgba(255, 95, 162, 0.4);
-  background: rgba(255, 95, 162, 0.07);
+  border-color: var(--pk-magenta-edge);
+  background: var(--pk-state-loss-bg);
 }
 
 .readOutcome[data-tone="loss"] strong {
@@ -2308,12 +2402,12 @@
 }
 
 .readOutcome[data-tone="curve"] {
-  border-color: rgba(255, 201, 63, 0.4);
-  background: rgba(255, 201, 63, 0.07);
+  border-color: var(--pk-amber-edge);
+  background: var(--pk-state-caution-bg);
 }
 
 .readOutcome[data-tone="curve"] strong {
-  color: #ffc93f;
+  color: var(--pk-amber-ink);
 }
 
 .readCardFoot {
@@ -2322,7 +2416,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  border-top: 1px solid rgba(245, 246, 255, 0.1);
+  border-top: 1px solid var(--pk-rule);
 }
 
 /* ---------- Ask flow ---------- */
@@ -2330,14 +2424,14 @@
 /* Connecting is the step before paying, so it wears the violet as an outline rather than a fill. */
 .page .askConnect {
   border-color: var(--pk-violet);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
   font-weight: 700;
 }
 
 .page .askConnect:hover:not(:disabled) {
-  background: rgba(155, 123, 255, 0.16);
+  background: var(--pk-state-info-bg);
   border-color: var(--pk-violet);
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 /* Going back a step is the same shape as the link that goes back a page. */
@@ -2346,7 +2440,7 @@
   margin-bottom: 14px;
   padding: 9px 13px;
   font-size: 11.5px;
-  border-color: rgba(245, 246, 255, 0.2);
+  border-color: var(--pk-rule-strong);
 }
 
 .askMain {
@@ -2367,20 +2461,20 @@
   align-items: center;
   gap: 7px;
   padding: 7px 11px;
-  border: 1px solid rgba(245, 246, 255, 0.12);
+  border: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-pill);
-  font: 600 10px/1 var(--mono);
+  font: 600 10px/1 var(--label);
   letter-spacing: 0.08em;
-  color: #5c6484;
+  color: var(--pk-ink-faint);
 }
 
 .askStep[data-state="on"] {
-  border-color: rgba(155, 123, 255, 0.6);
+  border-color: var(--pk-violet-edge);
   color: var(--ink);
 }
 
 .askStep[data-state="done"] {
-  color: #b49bff;
+  color: var(--pk-violet-ink);
 }
 
 .askStepNumber {
@@ -2389,9 +2483,10 @@
   width: 15px;
   height: 15px;
   border-radius: var(--pk-radius-pill);
-  background: rgba(245, 246, 255, 0.1);
-  font: 700 9px/1 var(--mono);
-  color: #5c6484;
+  background: var(--pk-panel-2);
+  font: 700 9px/1 var(--label);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
 }
 
 .askStep[data-state="on"] .askStepNumber,
@@ -2407,7 +2502,7 @@
   padding: 14px 16px;
   margin-bottom: 14px;
   border: 1px solid var(--rule);
-  background: rgba(245, 246, 255, 0.04);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -2433,8 +2528,9 @@
 }
 
 .askAgentPrice strong {
-  font: 700 15px/1 var(--mono);
-  color: #b49bff;
+  font: 700 15px/1 var(--label);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-violet-ink);
 }
 
 .askStack {
@@ -2456,9 +2552,9 @@
 
 /* A market is chosen in violet, like everything else a paid read touches. */
 .askChip[aria-pressed="true"] {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.55);
-  color: #b49bff;
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
+  color: var(--pk-violet-ink);
 }
 
 .askChip {
@@ -2469,27 +2565,27 @@
 }
 
 .askChipOn {
-  background: rgba(155, 123, 255, 0.16);
-  border-color: rgba(155, 123, 255, 0.55);
-  color: #b49bff;
+  background: var(--pk-state-info-bg);
+  border-color: var(--pk-violet-edge);
+  color: var(--pk-violet-ink);
   padding: 10px 14px;
-  font: 600 12px/1 var(--mono);
+  font: 600 12px/1 var(--label);
   letter-spacing: 0;
 }
 
 .askChipSoon {
   padding: 10px 14px;
-  border-color: rgba(245, 246, 255, 0.1);
-  font: 600 12px/1 var(--mono);
+  border-color: var(--pk-rule);
+  font: 600 12px/1 var(--label);
   letter-spacing: 0;
-  color: #5c6484;
+  color: var(--pk-ink-faint);
 }
 
 /* The question is the agent's, not the asker's, so it gets the violet frame. */
 .askQuestion {
   padding: 18px;
-  border: 1px solid rgba(155, 123, 255, 0.45);
-  background: rgba(155, 123, 255, 0.07);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-state-info-bg);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -2513,7 +2609,7 @@
   flex-wrap: wrap;
   gap: 8px 18px;
   padding: 13px 0;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.1);
+  border-bottom: 1px solid var(--pk-rule);
 }
 
 .askReviewRow:last-child {
@@ -2541,8 +2637,8 @@
   align-items: center;
   gap: 14px;
   padding: 18px;
-  border: 1px solid rgba(155, 123, 255, 0.45);
-  background: rgba(155, 123, 255, 0.07);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-state-info-bg);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -2552,7 +2648,8 @@
 
 .askPayPrice strong {
   display: block;
-  font: 700 26px/1 var(--mono);
+  font: 700 26px/1 var(--label);
+  font-variant-numeric: tabular-nums;
 }
 
 .askPayPrice .quiet {
@@ -2571,5 +2668,46 @@
 .platformTitle {
   margin: 0 0 6px;
   font: 700 clamp(22px, 3vw, 30px) / 1 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
+}
+
+/* ---------- Launch day ----------
+   Each public board has a screen for having nothing in it — no agents, no token, nothing settled —
+   drawn instead of a filter with nothing under it. It borrows the dashed frame of `.emptyNote` and
+   the type of the board heads, so it reads as the page's own and not as an error. */
+
+.emptyScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 64px 22px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--pk-radius-xl);
+  text-align: center;
+}
+
+/* The kicker keeps its bottom margin on the board heads; here the gap governs the three spacings. */
+.emptyScreen .eyebrow {
+  margin: 0;
+}
+
+.emptyTitle {
+  max-width: 560px;
+  margin: 0;
+  font: 700 clamp(26px, 4vw, 40px) / 1.05 var(--display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.emptyBody {
+  max-width: 520px;
+  margin: 0;
+  font: 400 16px/1.5 var(--body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
 }

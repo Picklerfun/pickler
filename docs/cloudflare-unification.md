@@ -13,7 +13,7 @@ Supabase Auth are hosted in a separate staging project. API and research use DAT
 ## Identity and ownership
 
 Completing a profile provisions one personal workspace idempotently. Existing completed
-profiles can use `POST /api/v1/console/onboard`. The operation never enables research.
+profiles can use `POST /api/v1/studio/onboard`. The operation never enables research.
 The operator explicitly runs, with a direct/session PostgreSQL connection:
 
 ```sh

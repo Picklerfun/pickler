@@ -131,7 +131,7 @@ export function TradeTicket({ market, square, now, state, actions }: TradeTicket
         ]}
       />
 
-      <h2 id="ticket-title" className={styles.ticketPhrase}>
+      <h2 id="ticket-title" className={styles.ticketPhrase} data-face="body">
         {phrase}
       </h2>
       <p className={styles.ticketRule}>

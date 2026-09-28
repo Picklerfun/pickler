@@ -92,6 +92,11 @@ cost and accuracy remain null. It makes no provider calls and never changes runt
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
 
+Person-authored `sources` and `skills` are honoured by `@pickler/agent-runtime`'s per-run scope
+inside `createRuntime().execute`; read that package's AGENTS.md. The Cloudflare probe and
+ephemeral-research entry points call core's runner directly on operator configuration and do not
+apply them. Composed skills reach the model inside the profile, which prompts treat as data.
+
 ## Cloudflare trading pilot
 
 Trading setup requires explicit TRADING_TENANT_ID/TRADING_AGENT_ID; it no longer assigns alpha. Node trading uses the same wallet-filtered claims and operator enablement as Cloudflare. See ../../docs/polymarket-worker-pilot.md.

@@ -1,17 +1,17 @@
 /**
  * What the site needs from whatever holds the person's keys.
  *
- * Two unlike things sit behind this one shape. A wallet the person brought is injected by the
- * browser, can be pointed at the wrong chain, and changes under the page when they switch account.
- * A passkey account is derived by the page itself: it has no chain of its own, nothing to switch,
- * and nobody else can change it while you look at it.
- *
- * The rest of the site should not have to know which one it is talking to, so everything a page
- * needs is required here and everything peculiar to one of them is optional. A page that wants to
+ * One thing sits behind this shape: the wallet the person brought, injected by their browser. It
+ * can be pointed at the wrong chain and it changes under the page when they switch account, so the
+ * verbs for following it and for moving it stay optional on the contract — a page that wants to
  * offer "switch network" asks whether the verb exists rather than asking which wallet this is.
+ *
+ * The person's own Pickler wallet is not one of these and is never derived in the page. It is
+ * custodied in Turnkey — the key lives in the enclave, the passkey is the only root user of their
+ * sub-organization — and the site reaches it through the signing API, never by holding a key here.
  */
 
-export type SignerKind = "injected" | "mera";
+export type SignerKind = "injected";
 
 export interface SignerAccount {
   address: string;

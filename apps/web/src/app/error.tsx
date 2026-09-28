@@ -9,7 +9,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <main className="fallback" data-surface="public">
+    <main className="fallback" data-surface="light">
       <p className="fallback-eyebrow">PICKLER</p>
       <h1>We could not load the board.</h1>
       <p>The data source did not answer. Try again in a moment.</p>

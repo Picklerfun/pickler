@@ -37,7 +37,15 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
+/**
+ * The one fetch layer for the Pickler API: bearer token on, envelope off, and every non-2xx or
+ * `success: false` answer turned into an ApiError that keeps the status, the error code and the
+ * reason. Exported so the signing client can build on it rather than growing a second one.
+ */
+export async function call<T>(
+  path: string,
+  init: RequestInit & { token?: string } = {},
+): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.token) {
     headers.set("Authorization", `Bearer ${init.token}`);

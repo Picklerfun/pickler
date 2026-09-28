@@ -1,0 +1,132 @@
+// Every ink level against every ground it could sit on, read straight out of the token file.
+//
+// This is the check that would have caught both faint inks before either reached the spec. It needs
+// no browser and no dev server, because it asks a question that has nothing to do with any page:
+// given these levels and these grounds, is there a pair that cannot be read? contrast.mjs answers
+// the harder question — which pairs a component actually puts on screen — and it is the one that
+// found these. This one just makes the same mistake impossible to write down again.
+//
+// What it cannot know is which pairs are really used. It therefore judges all of them, which is
+// stricter than the product needs and is the point: a level that cannot survive the darkest panel
+// is a level with a footnote, and footnotes are what both of these defects were.
+import assert from "node:assert/strict";
+import test from "node:test";
+import { ratio } from "./lib/colour.mjs";
+import { resolve, surface } from "./lib/tokens-file.mjs";
+
+// The values live here and only here. colour.test.mjs proves the arithmetic against answers that are
+// public knowledge; pinning token values there as well let a level drift out from under its own
+// test the moment the token changed.
+
+const rgb = (value) => {
+  const hex = /^#([0-9a-f]{6})$/i.exec(value);
+  assert.ok(hex, `${value} is not a plain hex colour, so this check cannot judge it`);
+  return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)).concat(1);
+};
+
+/* Every token used as text on one of the grounds below: the ink ramp, the two money colours, and
+ * the `-ink` half of each accent — that half exists precisely because the accent itself cannot be
+ * read on a surface, so it is text by definition.
+ *
+ * `--pk-on-*` is deliberately absent. Those are the ink for a filled accent, never for a page
+ * ground, and `--pk-on-violet` is white: judging it against --pk-bg would report 1:1 and be wrong
+ * about it. An ink belongs here when the grounds below are the grounds it lands on. */
+// The ink ramp alone, in order, lightest-contrast last. "Is this level distinct from the next one"
+// is a question about a ramp and only about a ramp: two accents of different hues are not levels,
+// and asking it of --pk-win and --pk-loss would be asking whether green differs from red.
+const RAMP = ["--pk-ink", "--pk-ink-soft", "--pk-ink-muted", "--pk-ink-faint"];
+
+const INKS = [
+  ...RAMP,
+  "--pk-win",
+  "--pk-loss",
+  "--pk-lime-ink",
+  "--pk-amber-ink",
+  "--pk-violet-ink",
+  "--pk-magenta-ink",
+  "--pk-cyan-ink",
+  "--pk-pink-ink",
+];
+const GROUNDS = ["--pk-bg", "--pk-panel", "--pk-panel-2", "--pk-panel-3"];
+const BODY = 4.5; // WCAG AA for body text. Every one of these levels is used as text.
+
+/** The state pairs, discovered rather than listed: `--pk-state-<name>-bg` and its `-ink`. Finding
+ *  them by shape means a pair added later is covered the day it is added, which is the only way a
+ *  check like this stays true — a hand-written list is a list someone forgets to extend. */
+function pairs(tokens, prefix) {
+  const names = new Set();
+  for (const key of Object.keys(tokens)) {
+    const match = new RegExp(`^${prefix}(.+)-(?:bg|ink)$`).exec(key);
+    if (match && tokens[`${prefix}${match[1]}-bg`] && tokens[`${prefix}${match[1]}-ink`]) {
+      names.add(match[1]);
+    }
+  }
+  return [...names].sort();
+}
+
+for (const name of ["light", "dark"]) {
+  test(`every ${name} ink is legible on every ${name} ground`, () => {
+    const tokens = surface(name);
+    const unreadable = [];
+    for (const ink of INKS) {
+      for (const ground of GROUNDS) {
+        const measured = ratio(rgb(resolve(tokens, ink)), rgb(resolve(tokens, ground)));
+        if (measured < BODY) {
+          unreadable.push(
+            `${ink} (${resolve(tokens, ink)}) on ${ground} (${resolve(tokens, ground)}) is ${measured.toFixed(2)}, needs ${BODY}`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(unreadable, []);
+  });
+}
+
+// A state is a tinted ground with an ink chosen to be legible on it — that legibility is the whole
+// contract, and it is the one thing a pair exists to guarantee. Unlike the ink ramp, each pair has
+// exactly one ground: its own tint. Nothing else is asserted here, because nothing else is promised.
+for (const name of ["light", "dark"]) {
+  test(`every ${name} state ink is legible on its own tint`, () => {
+    const tokens = surface(name);
+    const found = pairs(tokens, "--pk-state-");
+    assert.ok(
+      found.length >= 6,
+      `only ${found.length} state pairs found — the walk matched nothing`,
+    );
+    const unreadable = [];
+    for (const state of found) {
+      const ink = resolve(tokens, `--pk-state-${state}-ink`);
+      const tint = resolve(tokens, `--pk-state-${state}-bg`);
+      const measured = ratio(rgb(ink), rgb(tint));
+      if (measured < BODY) {
+        unreadable.push(
+          `${state}: ink ${ink} on tint ${tint} is ${measured.toFixed(2)}, needs ${BODY}`,
+        );
+      }
+    }
+    assert.deepEqual(unreadable, []);
+  });
+}
+
+test("the ink levels stay distinct rather than collapsing silently", () => {
+  // A level that resolves to another is a deliberate collapse and says so in the token file. Two
+  // levels that merely land on near-identical literals are the failure this catches: they read as
+  // two levels in the spec and paint as one on screen.
+  const tooClose = [];
+  for (const name of ["light", "dark"]) {
+    const tokens = surface(name);
+    for (let i = 0; i < RAMP.length - 1; i += 1) {
+      const [a, b] = [resolve(tokens, RAMP[i]), resolve(tokens, RAMP[i + 1])];
+      if (a === b) {
+        continue; // an explicit fallback, not an accident
+      }
+      const apart = rgb(a)
+        .slice(0, 3)
+        .reduce((total, channel, c) => total + Math.abs(channel - rgb(b)[c]), 0);
+      if (apart < 20) {
+        tooClose.push(`${name}: ${RAMP[i]} ${a} and ${RAMP[i + 1]} ${b} differ by ${apart}/765`);
+      }
+    }
+  }
+  assert.deepEqual(tooClose, []);
+});

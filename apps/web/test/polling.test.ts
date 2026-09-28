@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { startPolling } from "../src/features/console/lib/polling";
+import { startPolling } from "../src/features/studio/lib/polling";
 
 class Page extends EventTarget {
   hidden = false;
@@ -13,12 +13,17 @@ const flush = async () => {
   await Promise.resolve();
   await Promise.resolve();
 };
+/**
+ * startPolling's onError takes `unknown`, which none of assert.fail's overloads accept.
+ * Passing it bare only compiled while this directory sat outside the typecheck.
+ */
+const noFailureExpected = (error: unknown): never => assert.fail(`read failed: ${String(error)}`);
 
 test("polls active reads every three seconds and stops after a terminal read", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const page = new Page();
   let calls = 0;
-  const stop = startPolling(async () => (++calls < 3 ? 3000 : null), assert.fail, page);
+  const stop = startPolling(async () => (++calls < 3 ? 3000 : null), noFailureExpected, page);
   await flush();
   assert.equal(calls, 1);
   t.mock.timers.tick(3000);
@@ -41,7 +46,7 @@ test("hiding or leaving aborts reads; stale completions cannot restart the loop"
       signals.push(signal);
       return new Promise((resolve) => finish.push(resolve));
     },
-    assert.fail,
+    noFailureExpected,
     page,
   );
   page.hide(true);

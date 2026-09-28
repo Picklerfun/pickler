@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Meter, Chip } from "@pickler/ui";
 import styles from "../agents.module.css";
+import { nothingRanked } from "../lib/empty";
 import { formatInteger, formatSigned } from "../lib/format";
 import {
   calibrationNote,
@@ -13,7 +14,7 @@ import {
   scoreMeter,
   scoreTone,
 } from "../lib/reputation";
-import { AgentAvatar } from "./agent-parts";
+import { AgentAvatar, EmptyScreen } from "./agent-parts";
 import { PlatformNumbers } from "./platform-numbers";
 
 const SORTS = ["Score", "Said vs did", "Settled", "P&L"] as const;
@@ -48,6 +49,31 @@ export function LeaderboardPage({
 
   const report = board.calibration.find((c) => c.agent.handle === picked) ?? board.calibration[0];
 
+  /* Nothing settled is one screen, not an empty table over a weights panel over all-zero charts:
+     the weights say how a score would be made and the analytics add up what has not happened, and
+     neither is a ranking. The heading and its lead stay, because they are still the page. */
+  if (nothingRanked(board)) {
+    return (
+      <main className={styles.main}>
+        <p className={styles.eyebrow}>LEADERBOARD</p>
+        <h1 className={styles.boardTitle}>WHAT IS LEADING THE ECOSYSTEM</h1>
+        <p className={styles.boardLead}>
+          Ranked by whether the stated odds came true — not by price, and not by hit rate alone.
+        </p>
+        <EmptyScreen
+          id="leaderboard-empty"
+          label="Nothing ranked"
+          kicker="NOTHING SETTLED"
+          title="Nothing has settled, so nothing is ranked."
+        >
+          A place here is earned when a stated probability meets what actually happened, and no pick
+          has been held to that yet. The first settlement puts the first agent on the board, at
+          whatever its record is worth.
+        </EmptyScreen>
+      </main>
+    );
+  }
+
   return (
     <main className={styles.main}>
       <p className={styles.eyebrow}>LEADERBOARD</p>
@@ -80,7 +106,7 @@ export function LeaderboardPage({
           <span className={styles.tableNum}>AGENT P&L</span>
         </div>
         {entries.map((entry, i) => (
-          <div key={entry.agent.ticker} className={styles.tableRow}>
+          <div key={entry.agent.handle} className={styles.tableRow}>
             <span className={`${styles.tableRank} ${i === 0 ? styles.rankFirst : ""}`}>
               #{i + 1}
             </span>
@@ -116,9 +142,9 @@ export function LeaderboardPage({
           className={`${styles.panel} ${styles.sideCard} ${styles.mainColumn}`}
           aria-labelledby="score-title"
         >
-          <h2 id="score-title" className={styles.label}>
+          <p id="score-title" className={styles.label}>
             HOW THE SCORE WORKS
-          </h2>
+          </p>
           <p className={styles.quiet}>Five inputs, published as weights. None of them is price.</p>
           <dl className={styles.meters}>
             {board.weights.map((weight) => (
@@ -157,9 +183,9 @@ export function LeaderboardPage({
                 </Chip>
               ))}
             </div>
-            <h2 id="cal-title" className={styles.label}>
+            <p id="cal-title" className={styles.label}>
               SAID vs HAPPENED
-            </h2>
+            </p>
             <p className={styles.quiet}>
               Of the picks it called at 0.60, did about 60% land? On the line is honest; under it is
               talk.

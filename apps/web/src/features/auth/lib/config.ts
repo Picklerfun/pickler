@@ -4,8 +4,12 @@ export const authConfig = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
   apiUrl: "/api",
-  /** Chain id put in Sign-In with Ethereum messages. */
-  siweChainId: Number(process.env.NEXT_PUBLIC_SIWE_CHAIN_ID ?? "10143"),
+  /**
+   * Whether the Supabase project has X (Supabase still calls it `twitter`) credentials on it.
+   * The account screen leaves the button out when it does not: a button that cannot work is
+   * worse than an absent one.
+   */
+  xOAuthEnabled: process.env.NEXT_PUBLIC_OAUTH_X_ENABLED === "true",
 };
 
 export const isAuthConfigured = () =>

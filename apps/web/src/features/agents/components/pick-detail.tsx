@@ -38,7 +38,10 @@ export function PickDetail({ pick, nowMs }: { pick: PickDetailDto; nowMs: number
 
   return (
     <main className={`${styles.main} ${styles.mainNarrow}`}>
-      <Link href={`/tokens/${pick.agent.slug}`} className={styles.backLink}>
+      <Link
+        href={pick.agent.slug === null ? "/tokens" : `/tokens/${pick.agent.slug}`}
+        className={styles.backLink}
+      >
         <Icon name="arrowLeft" size={14} /> {pick.agent.name.toUpperCase()}
       </Link>
 
@@ -77,9 +80,9 @@ export function PickDetail({ pick, nowMs }: { pick: PickDetailDto; nowMs: number
 
       <div className={styles.columns}>
         <section className={`${styles.panel} ${styles.trailCard}`} aria-labelledby="trail-title">
-          <h2 id="trail-title" className={styles.label}>
+          <p id="trail-title" className={styles.label}>
             THE TRAIL
-          </h2>
+          </p>
           <ol className={styles.trail}>
             {pick.steps.map((step, i) => {
               const last = i === pick.steps.length - 1;
@@ -117,9 +120,9 @@ export function PickDetail({ pick, nowMs }: { pick: PickDetailDto; nowMs: number
         <div className={`${styles.sideColumn} ${styles.pickSide}`}>
           {pick.post && (
             <section className={`${styles.panel} ${styles.sideCard}`} aria-labelledby="post-title">
-              <h2 id="post-title" className={styles.label}>
+              <p id="post-title" className={styles.label}>
                 POSTED ON X
-              </h2>
+              </p>
               <p className={styles.postText}>“{pick.post.text}”</p>
               <p className={styles.postMeta}>
                 {[
@@ -142,9 +145,9 @@ export function PickDetail({ pick, nowMs }: { pick: PickDetailDto; nowMs: number
           )}
           {chain.length > 0 && (
             <section className={`${styles.panel} ${styles.sideCard}`} aria-labelledby="chain-title">
-              <h2 id="chain-title" className={styles.label}>
+              <p id="chain-title" className={styles.label}>
                 ON CHAIN
-              </h2>
+              </p>
               <dl style={{ margin: 0 }}>
                 {chain.map(([label, value]) => (
                   <div key={label} className={`${styles.keyValue} ${styles.keyValueText}`}>
