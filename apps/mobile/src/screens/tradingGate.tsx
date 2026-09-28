@@ -171,7 +171,7 @@ export function PositionsPanel(ctx: AppCtx) {
     const pnl = positionPnl(closing.p, closing.market.mark, closing.market.priceDecimals, closing.market.sizeDecimals);
     const isLive = live?.status === "live";
     return (
-      <Page gap={11}>
+      <View style={{ gap: 11 }}>
         {closing.result ? (
           <OrderResultCard result={closing.result} primary={{ label: "Back to Portfolio", onPress: () => setClosing(null), accessibilityLabel: "back-to-portfolio" }} />
         ) : (
@@ -185,7 +185,7 @@ export function PositionsPanel(ctx: AppCtx) {
             </View>
           </Card>
         )}
-      </Page>
+      </View>
     );
   }
   if (live === null) return <Skeleton.Card lines={3} />;

@@ -28,6 +28,7 @@ test("tokens come verbatim from the Handoff (light system)", () => {
   expect([C.bg, C.card, C.ctl, C.tile]).toEqual(["#FFFFFF", "#F5F6FA", "#F1F2F7", "#15182A"]);
   expect(C.limeOnInk).toBe("#C8F03A");
   expect(C.downOnInk).toBe("#FF8FB8");
+  expect(C.vioOnInk).toBe("#B9A5FF");
   expect([C.lime, C.limeInk, C.vio, C.up, C.down, C.short, C.pending, C.warn, C.agentDot])
     .toEqual(["#C8F03A", "#3F6B00", "#5B3CE0", "#2E7D32", "#C62C62", "#FF5FA2", "#FFC93F", "#8A6200", "#9B7BFF"]);
   expect((C as Record<string, unknown>).bgBottom).toBeUndefined();

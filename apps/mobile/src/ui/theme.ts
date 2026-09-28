@@ -67,6 +67,8 @@ export const C = {
   downBg: "#FDF0F5",
   /** Pérdida como texto **sobre ink** (resumen de la orden): `down` no se lee sobre #0B0D1A. */
   downOnInk: "#FF8FB8",
+  /** Violeta claro del Handoff **sobre ink** (baldosa BACKED de Portfolio): `vio` no se lee sobre #0B0D1A. */
+  vioOnInk: "#B9A5FF",
   warn: "#8A6200",
   pending: "#FFC93F",
   warnBd: "rgba(255,201,63,0.6)",
