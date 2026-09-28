@@ -133,3 +133,8 @@ human judgments. Preserve the older protocols and never alter quantitative formu
 
 Explicit benchmark continuations carry prior v4 reservations and review counts into the original
 USD 1.25 / 386-call ceilings. Starting a new study does not reset these limits.
+
+The optional local benchmark `invalidAnswerPolicy: "block-case"` isolates only
+JEV_INVALID_ANSWERS with known bounded usage outside contract probes. All variants are blocked
+for that market; transport, usage, contract and budget failures still stop the study. The default
+remains stop-study. Evaluation with isolated failures is completed_with_errors, never a pass.
