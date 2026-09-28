@@ -98,7 +98,7 @@ export function variantMetrics(rows: BenchmarkCase[], variant: BenchmarkVariant)
     settledCost,
     openCost: cost - settledCost,
     payout: settled.reduce((s, d) => s + Number(d.settlement!.payout), 0),
-    realizedPnl: pnl,
+    realizedPnl: settled.length || ds.some((d) => d.status === "abstained") ? pnl : null,
     returnOnSettledCost: settledCost > 0 ? pnl / settledCost : null,
     maxRealizedDrawdown: drawdown,
     curve,
