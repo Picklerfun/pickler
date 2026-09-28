@@ -43,7 +43,6 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
   const address = accountAddress(account) ?? "";
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) : "—";
   const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
-  const pending = confirming === 0 ? "Nothing pending." : `${confirming} transfer${confirming === 1 ? "" : "s"} confirming`;
   const seen = new Set(treasury.pending.map((m) => m.hash));
   const rows = [...treasury.pending, ...(treasury.movements ?? []).filter((m) => !seen.has(m.hash))];
   const txHash = treasury.notice.split(": ")[1];

@@ -135,6 +135,5 @@ export const GRID_ACCENT: Record<"ask" | "trade", GridAccent> = {
   ask: { fg: C.vio, on: "rgba(91,60,224,0.18)", soft: "rgba(91,60,224,0.06)" },
   trade: { fg: C.limeInk, on: "#EDF7CE", soft: "#F3F8E0" },
 };
-/** Punto de una celda con reads ("Violet, always") y regla del mark (banda ink del board). */
+/** Punto de una celda con reads ("Violet, always"). */
 export const GRID_DOT = C.agentDot;
-export const GRID_MARK_RULE = C.ink;

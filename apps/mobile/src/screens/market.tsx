@@ -154,12 +154,12 @@ function TradeTab(ctx: AppCtx) {
   );
 }
 
-/** Market sin contexto de Perpl todavía (arranque en frío por push): pills + créditos + escalera en skeleton (spec D3, P2 del plan F1). */
+/** Market sin contexto de Perpl todavía (arranque en frío por push): segmentado + créditos + escalera en skeleton (spec D3, P2 del plan F1). */
 function MarketSkeleton() {
   return (
     <View>
-      <View style={{ flexDirection: "row", gap: 8, paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}>
-        <Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} /><Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} /><Skeleton h={36} w="30%" r={999} style={{ flex: 1 }} />
+      <View style={{ paddingTop: 4, paddingHorizontal: 18, paddingBottom: 6 }}>
+        <Skeleton h={41} r={999} />
       </View>
       <Page top={13} gap={11}>
         <Skeleton.Card lines={1} />

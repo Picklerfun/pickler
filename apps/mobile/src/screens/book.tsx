@@ -22,7 +22,7 @@ function Row({ level, max, side, pd, sd }: { level: BookLevel; max: number; side
   );
 }
 
-/** Order book L2 (D11), plegado por defecto: 5 asks (el mejor pegado al spread), spread en bps, 5 bids; línea del target si hay nivel (P2). */
+/** Order book L2 (D11), plegado por defecto: 5 asks (el mejor pegado al spread), spread en bps, 5 bids; línea del target si hay nivel (P2), visible también plegada para quien llega desde Ask sin abrir el book. */
 export function BookCard({ market, data, target }: { market: Market; data: MarketData; target?: number }) {
   const { book } = data;
   const pd = market.priceDecimals, sd = market.sizeDecimals;
@@ -46,6 +46,9 @@ export function BookCard({ market, data, target }: { market: Market; data: Marke
           <Icon name={open ? "up" : "down"} size={14} color={C.faint} />
         </View>
       </Touch>
+      {!open && target !== undefined ? (
+        <T w={500} s={10.5} lh={1.4} mono color={C.limeInk} accessibilityLabel="book-target">Target {formatPrice(target, pd)} · {pos === null ? "book not loaded" : POSITION_COPY[pos]}</T>
+      ) : null}
       {!open ? null : book === null ? (
         <View style={{ gap: 6 }}>{Array.from({ length: 4 }, (_, i) => <Skeleton.Line key={i} s={11} w="100%" />)}</View>
       ) : (

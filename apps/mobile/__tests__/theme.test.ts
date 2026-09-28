@@ -1,4 +1,4 @@
-import { C, fam, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE, pill, TAB_TINT, textStyle } from "../src/ui/theme";
+import { C, fam, GRID_ACCENT, GRID_DOT, pill, TAB_TINT, textStyle } from "../src/ui/theme";
 
 test("body weights map to Instrument Sans; 800 collapses to 700", () => {
   expect(fam(400)).toBe("InstrumentSans_400Regular");
@@ -48,9 +48,8 @@ test("tab tints are the Handoff tab bar's, not the nav map's", () => {
   expect(TAB_TINT).toEqual({ markets: "#3F6B00", agents: "#5B3CE0", portfolio: "#8A6200", wallet: "#C62C62" });
 });
 
-test("the matrix: violet for Ask, lime tint for Trade, agent dot violet always, mark rule ink", () => {
+test("the matrix: violet for Ask, lime tint for Trade, agent dot violet always", () => {
   expect(GRID_ACCENT.ask).toEqual({ fg: C.vio, on: "rgba(91,60,224,0.18)", soft: "rgba(91,60,224,0.06)" });
   expect(GRID_ACCENT.trade).toEqual({ fg: C.limeInk, on: "#EDF7CE", soft: "#F3F8E0" });
   expect(GRID_DOT).toBe("#9B7BFF");
-  expect(GRID_MARK_RULE).toBe("#0B0D1A");
 });

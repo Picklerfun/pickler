@@ -214,7 +214,7 @@ export function AskTab(ctx: AppCtx) {
 
   const cardFooter = (read: Read, ghost: ReactNode) => (
     <View style={{ flexDirection: "row", gap: 7 }}>
-      {read.status === "open" ? <Btn label="Trade this level" onPress={() => tradeLevel(levelFromRead(read))} variant="outline" fg={C.limeInk} bd={C.limeBd} flex={1} py={11} accessibilityLabel="trade-level" /> : null}
+      {read.status === "open" ? <Btn label="Trade this level" onPress={() => tradeLevel(levelFromRead(read))} variant="lime" flex={1} py={11} accessibilityLabel="trade-level" /> : null}
       {ghost}
     </View>
   );

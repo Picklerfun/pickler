@@ -122,7 +122,7 @@ export function Chip({ label, fg = C.dim, bd = C.ctl, bg = C.ctl, onPress, mono,
   return <View style={[box, style]}>{inner}</View>;
 }
 
-/** Avatar cuadrado con iniciales: hairline .28, mono bold. */
+/** Avatar cuadrado con iniciales: fondo vioBg10, iniciales mono bold en violeta. */
 export function Avatar({ initials, size = 36, radius = 12, s = 11 }: { initials: string; size?: number; radius?: number; s?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: C.vioBg10, alignItems: "center", justifyContent: "center" }}>
@@ -190,7 +190,7 @@ export function Btn({ label, onPress, variant = "outline", arrow, icon, s = 15, 
 // Selectores.
 export type SegmentedProps<K extends string> = {
   options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) => void;
-  /** Colores del segmento activo por clave (Long lima / Short rosa). Sin `tone`, activo = card10 + ink. */
+  /** Colores del segmento activo por clave (Long lima / Short rosa). Sin `tone`, activo = ink + onInk. */
   tone?: (k: K) => { bg: string; fg: string };
 };
 
@@ -223,7 +223,7 @@ export function Sparkline({ points, stroke = C.spark, style }: { points: readonl
 
 /** Par «−»/«+» con el valor mono en medio (hoja de la matriz). `width` fija el ancho; sin él, flex 1. */
 export function Stepper({ value, onDown, onUp, width, accessibilityLabel }: { value: string; onDown: () => void; onUp: () => void; width?: number; accessibilityLabel: string }) {
-  const btn: ViewStyle = { width: 26, height: 26, borderRadius: 8, borderWidth: 1, borderColor: "rgba(245,246,255,0.2)", alignItems: "center", justifyContent: "center" };
+  const btn: ViewStyle = { width: 26, height: 26, borderRadius: 8, borderWidth: 1, borderColor: C.hair22, alignItems: "center", justifyContent: "center" };
   return (
     <View style={{ flex: width ? 0 : 1, width, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 9, borderRadius: 10, borderWidth: 1, borderColor: C.hair }}>
       <Touch onPress={onDown} style={btn} accessibilityLabel={`${accessibilityLabel}-down`}><T w={700} s={13} lh={1}>−</T></Touch>

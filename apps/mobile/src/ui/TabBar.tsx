@@ -36,6 +36,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
 
   const select = (name: TabName) => {
     const route = state.routes.find((r) => r.name === name)!;
+    // tabPress siempre se emite (D11): el listener de native-stack es quien hace popToTop en la pila anidada al re-tocar la pestaña ya enfocada.
     const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
     if (route.key !== focusedTab.key && !e.defaultPrevented) switchTab(name);
   };
