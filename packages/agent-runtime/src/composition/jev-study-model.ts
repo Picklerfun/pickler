@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { modelAssessmentSchema } from "@pickler/api-schema";
-import { PilotError, type StudyUsage, type StudyRouting } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { type StudyUsage, type StudyRouting } from "@pickler/trading/strategies";
 import { definePrompt } from "../prompts/define-prompt.js";
-import { answerDiagnostics } from "./jev-answer-diagnostics.js";
+import {
+  evaluateJev,
+  JevClientError,
+  jevChoiceSchema,
+} from "@pickler/infrastructure/model-providers/jev";
 import { createStudyModel } from "./paper-study-model.js";
 
 export const jevStudyPrompt = definePrompt({
@@ -55,40 +60,18 @@ const questions = {
     },
   },
 };
-function choice<const T extends readonly [string, ...string[]]>(labels: T) {
-  return z
-    .object({
-      type: z.literal("choice"),
-      choice: z.enum(labels),
-      confidence: z.number().min(0).max(1),
-      probabilities: z.record(z.enum(labels), z.number().min(0).max(1)),
-    })
-    .strict()
-    .superRefine((answer, ctx) => {
-      const values = Object.values(answer.probabilities) as number[];
-      const selected = (answer.probabilities as Record<string, number>)[answer.choice]!;
-      if (
-        Math.abs(values.reduce((a, b) => a + b, 0) - 1) > 0.001 ||
-        selected + 0.000001 < Math.max(...values)
-      ) {
-        ctx.addIssue({ code: "custom", message: "Invalid choice probabilities" });
-      }
-    });
-}
-const responseSchema = z.object({
-  model: z.literal(MODEL),
-  usage: z.object({
-    input_tokens: z.number().int().nonnegative(),
-    output_tokens: z.number().int().nonnegative(),
-  }),
-  answers: z
-    .object({
-      readiness: choice(["READY", "INSUFFICIENT", "UNKNOWN"]),
-      gap: choice(["NONE", "MISSING_BASIS", "CONFLICT", "UNKNOWN"]),
-      scope: choice(["MATCH", "MISMATCH", "UNKNOWN"]),
-    })
-    .strict(),
-});
+const labels = {
+  readiness: ["READY", "INSUFFICIENT", "UNKNOWN"],
+  gap: ["NONE", "MISSING_BASIS", "CONFLICT", "UNKNOWN"],
+  scope: ["MATCH", "MISMATCH", "UNKNOWN"],
+} as const;
+const answersSchema = z
+  .object({
+    readiness: jevChoiceSchema(labels.readiness),
+    gap: jevChoiceSchema(labels.gap),
+    scope: jevChoiceSchema(labels.scope),
+  })
+  .strict();
 type Environment = Parameters<typeof createStudyModel>[0] & { TYPESAFE_API_KEY: string };
 type Guard = Parameters<typeof createStudyModel>[1];
 
@@ -158,48 +141,36 @@ export function createJevStudyModel(
       try {
         await guard(item.kind);
         signal.throwIfAborted();
-        const response = await transport("https://api.typesafe.ai/v1/systemone", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${env.TYPESAFE_API_KEY}`,
-            "content-type": "application/json",
-          },
-          body,
+        const result = await evaluateJev({
+          apiKey: env.TYPESAFE_API_KEY,
+          payload: JSON.parse(body),
+          answersSchema,
+          labels,
           signal,
-          redirect: "manual",
+          timeoutMs: 180000,
+          maxRequestBytes: MAX_BYTES,
+          maxResponseBytes: 1024 * 1024,
+          maxInputTokens: 65536,
+          transport,
+          stage: (stage) => {
+            routing.jev.validationStage = stage;
+          },
+          usage: async (usage) => {
+            routing.jev.inputTokens = usage.input_tokens;
+            routing.jev.outputTokens = usage.output_tokens;
+            await persist();
+          },
         });
-        if (!response.ok) {
-          throw new PilotError("JEV_HTTP_FAILURE", "Jev rejected the request");
-        }
-        const raw: unknown = await response.json();
-        routing.jev.validationStage = "usage";
-        const envelope = responseSchema.pick({ model: true, usage: true }).safeParse(raw);
-        if (!envelope.success) {
-          throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev model or token usage");
-        }
-        routing.jev.inputTokens = envelope.data.usage.input_tokens;
-        routing.jev.outputTokens = envelope.data.usage.output_tokens;
-        await persist(); // Preserve known consumption even if answer validation fails.
-        routing.jev.validationStage = "reservation";
-        if (envelope.data.usage.input_tokens > 65536) {
-          throw new PilotError("JEV_INVALID_RESPONSE", "Jev input usage exceeds its reservation");
-        }
-        routing.jev.validationStage = "answers";
-        const result = responseSchema.safeParse(raw);
-        if (!result.success) {
-          routing.jev.answerDiagnostics = answerDiagnostics(raw, result.error.issues);
-          throw new PilotError("JEV_INVALID_RESPONSE", "Invalid Jev answers");
-        }
         routing.jev = {
           model: MODEL,
           status: "completed",
           validationStage: "complete",
-          inputTokens: result.data.usage.input_tokens,
-          outputTokens: result.data.usage.output_tokens,
-          answers: result.data.answers,
+          inputTokens: result.usage.input_tokens,
+          outputTokens: result.usage.output_tokens,
+          answers: result.answers,
         };
         await persist();
-        const a = result.data.answers;
+        const a = result.answers;
         const abstain =
           a.readiness.choice === "INSUFFICIENT" &&
           ["MISSING_BASIS", "CONFLICT"].includes(a.gap.choice) &&
@@ -238,10 +209,31 @@ export function createJevStudyModel(
           return assessment;
         }
       } catch (error) {
+        if (error instanceof JevClientError && error.code === "INVALID_ANSWERS") {
+          routing.jev.answerDiagnostics = error.diagnostics as NonNullable<
+            StudyRouting["jev"]["answerDiagnostics"]
+          >;
+        }
         if (routing.jev.status === "started") {
           routing.jev.status = "failed";
         }
         await persist();
+        if (error instanceof JevClientError) {
+          const failures = {
+            HTTP_FAILURE: ["JEV_HTTP_FAILURE", "Jev rejected the request"],
+            INVALID_USAGE: ["JEV_INVALID_RESPONSE", "Invalid Jev model or token usage"],
+            RESERVATION_EXCEEDED: [
+              "JEV_INVALID_RESPONSE",
+              "Jev input usage exceeds its reservation",
+            ],
+            INVALID_ANSWERS: ["JEV_INVALID_RESPONSE", "Invalid Jev answers"],
+            INPUT_TOO_LARGE: ["STUDY_INPUT_TOO_LARGE", "Jev request exceeds its reservation"],
+            INVALID_RESPONSE: ["JEV_CALL_FAILED", "Jev transport or persistence failed"],
+            RESPONSE_LIMIT: ["JEV_CALL_FAILED", "Jev response exceeds its bound"],
+          } as const;
+          const [code, message] = failures[error.code];
+          throw new PilotError(code, message);
+        }
         throw error instanceof PilotError
           ? error
           : new PilotError("JEV_CALL_FAILED", "Jev transport or persistence failed");

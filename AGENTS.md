@@ -17,6 +17,7 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 | `workers/api`                | Public API on Cloudflare Workers, ported from Relayer | [AGENTS.md](workers/api/AGENTS.md)                |
 | `workers/research`           | Queue/Cron research execution                         | [AGENTS.md](workers/research/AGENTS.md)           |
 | `packages/agent-runtime`     | Shared Mastra library and host lifecycle              | [AGENTS.md](packages/agent-runtime/AGENTS.md)     |
+| `packages/trading`           | Trading rules, financial ports and evaluation engine  | [AGENTS.md](packages/trading/AGENTS.md)           |
 | `packages/core`              | Business rules, use cases, and ports                  | [AGENTS.md](packages/core/AGENTS.md)              |
 | `packages/infrastructure`    | Implementations of business ports                     | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
 | `packages/api-schema`        | Public HTTP DTOs                                      | [AGENTS.md](packages/api-schema/AGENTS.md)        |
@@ -30,7 +31,7 @@ See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.m
 
 ## Architecture invariants
 
-- Maintain three layers: presentation (`apps/web`), business (`packages/core`), and infrastructure (`packages/infrastructure`). Code dependencies point toward business: presentation → business ← infrastructure.
+- Maintain three layers: presentation (`apps/web`), business (`packages/core` and `packages/trading`), and infrastructure (`packages/infrastructure`). Code dependencies point toward business: presentation → business ← infrastructure.
 - Hono composes business adapters in `workers/api/src/container.ts`. `apps/web/src/server` is a server-only HTTP client facade. `packages/agent-runtime` is the shared Node/Workers research library; local Studio composition alone initializes laboratory presets. No Next.js guard belongs in shared runtime.
 - Keep Next.js, React, transport objects, database clients, and provider SDKs out of core. Use business-owned interfaces and dependency injection.
 - Keep HTTP DTOs in `api-schema`; keep public on-chain artifacts in `chain`. Neither package carries credentials or server implementation details.
@@ -125,3 +126,12 @@ The opt-in Polymarket pilot remains disabled by default. Read `apps/agent-servic
 ## Cloudflare trading pilot
 
 The Cloudflare pilot adds `workers/trading` (read its AGENTS.md) and `docs/polymarket-worker-pilot.md`. It holds the signer exclusively, uses the trusted DATABASE binding, and starts with trading admissions closed. Do not confuse controlled signature tests with live financial acceptance.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+The canonical trading boundaries and plugin extension rules are in [Trading architecture](docs/trading-architecture.md).
+Run `npm run check:architecture` to reject retired commands, imports and broken documentation links.

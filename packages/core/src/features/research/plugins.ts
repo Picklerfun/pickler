@@ -36,6 +36,20 @@ export const PLUGINS = PLUGIN_IDS.map((id) => ({
         : id === "balldontlie" || id === "the-odds-api"
           ? ["nfl-winner-v1"]
           : ["all"],
+  credentialVariables:
+    id === "exa"
+      ? ["EXA_API_KEY"]
+      : id === "balldontlie"
+        ? ["BALLDONTLIE_API_KEY"]
+        : id === "the-odds-api"
+          ? ["THE_ODDS_API_KEY"]
+          : [],
+  limits:
+    id === "balldontlie"
+      ? { requestsPerRun: 6, requestsPerMinute: 5 }
+      : id === "the-odds-api"
+        ? { requestsPerRun: 2, monthlyCredits: 500 }
+        : {},
   tools: Object.entries(TOOL_PLUGIN)
     .filter(([, owner]) => owner === id)
     .map(([tool]) => tool as ToolName),

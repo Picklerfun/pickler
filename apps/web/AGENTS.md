@@ -117,7 +117,7 @@ explicit **design preview**, and every one of those panels carries `DESIGN PREVI
 EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
 
 `features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
-— against the mirrored limits in `@pickler/api-schema`. It moves to core when an order is really
+— against the mirrored limits in `@pickler/api-schema`. It moves to trading when an order is really
 sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
 same way in both.
 

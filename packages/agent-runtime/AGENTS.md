@@ -67,6 +67,46 @@ Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers:
 
 ## Perpl public data plugin
 
-`composition/perpl` is a public export creating a fresh bounded Perpl read session and four Mastra tools, without constructing a model. Runtime exposes `perpl(scope, signal)` and a Perpl plugin check. These tools are separate from the Polymarket research workflow; no model tool can configure an agent, move funds or submit orders.
+`plugins/perpl` is a public export creating a fresh bounded Perpl read session and four Mastra tools, without constructing a model. Runtime exposes `perpl(scope, signal)` and a Perpl plugin check. These tools are separate from the Polymarket research workflow; no model tool can configure an agent, move funds or submit orders.
 
-`composition/perps-paper` exports operator-only data/simulator composition. It creates fresh bounded Perpl sessions, hashes normalized frames and never exposes an execution tool or signer. Five Perpl data tools now include explicitly permitted funding history.
+`plugins/perps-paper` exports operator-only data/simulator composition. It creates fresh bounded Perpl sessions, hashes normalized frames and never exposes an execution tool or signer. Five Perpl data tools now include explicitly permitted funding history.
+
+`./composition/perps-study-model` exports a separate local perpetual comparison adapter. Its two
+versioned prompts are independent of Polymarket. It uses bounded direct HTTP (20 seconds, 30,000
+request bytes, 1 MiB responses), no retries, persisted pre-transport request hashes and usage before
+output validation. Only coherent high-confidence material insufficiency can skip a blind DeepSeek
+fallback. Pin actual provider/model IDs and reviewed tariffs; no provider call occurs on import.
+
+## Quantitative BTC paper pilot
+
+`./composition/quant-review` exports the opt-in quantitative paper reviewer. Jev only vetoes high-confidence material contradictions; it never changes forecasts or invokes DeepSeek. Known usage and allowlisted answer diagnostics survive invalid responses. No paid retries.
+
+Quantitative reviewer prompt 1.1.0 explicitly recognizes conservative and central policies. Negative sensitivity alone is not a material contradiction. Policy and both edges are data, not model-editable rules. The pinned model, strict answer validation, safe diagnostics, usage accounting and no-retry/no-fallback behavior remain unchanged.
+
+`./composition/compact-quant-review` is a separate opt-in semantic reviewer 1.0.0 for local v4
+benchmarks. Keep the current reviewer intact. It supplies original rules, provenance and explicit
+system interpretation without books/candles, and asks four atomic consistency questions. Only a
+high-confidence contradiction vetoes; uncertainty is not approval. Both probability and confidence
+derive from the same distribution. Never include synthetic labels or extend this adapter to hosted
+research implicitly. Invalid answers retain usage and allowlisted diagnostics without retries.
+
+Quantitative reviewer diagnostics now distinguish PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM
+using fixed labels only. Thresholds, prompts, rejected-answer policy and usage retention are unchanged.
+
+The trading evaluation adapters use `@pickler/infrastructure/model-providers/jev` for
+transport, usage validation and choice validation. Keep instrument-specific prompts and
+routing here; do not recreate the HTTP endpoint or probability schema in each adapter.
+The Perpl adapter retains its 20-second, 30,000-byte request and 1 MiB response limits,
+request hashing and persisted usage hooks. No prompt/version change is implied by extraction.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+## Plugin factories
+
+Every registered plugin has a directory in `src/plugins`; read its AGENTS.md. The registry binds
+core descriptors to factories without redefining metadata. Applications import public plugin
+subpaths. Execution factories remain operator-only; there is no application registry facade.

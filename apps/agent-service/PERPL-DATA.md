@@ -39,7 +39,7 @@ new directories 0700. Keep captures private and ignored by Git.
 
 ## Harness contract
 
-`@pickler/agent-runtime/composition/perpl` exports `createPerplSession(repository, scope, signal)`.
+`@pickler/agent-runtime/plugins/perpl` exports `createPerplSession(repository, scope, signal)`.
 It returns a guarded service and five Mastra read tools. Runtime composition exposes the same
 session through `runtime.perpl(scope, signal)` and the public context check through
 `checkPlugin(scope, "perpl")`. No Perpl tools are injected into Polymarket research.

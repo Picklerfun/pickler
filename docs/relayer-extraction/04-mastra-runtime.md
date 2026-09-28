@@ -1,3 +1,8 @@
+<!-- historical-evidence -->
+
+> Archived extraction design; not current implementation guidance.
+> See [Trading architecture](../trading-architecture.md) for current ownership.
+
 # 04 — Mastra agent runtime and agent SDK
 
 Status: research report. Nothing here is implemented in Pickler yet. Code blocks under "Proposed" are design sketches, not existing code.

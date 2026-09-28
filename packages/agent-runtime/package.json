@@ -68,13 +68,33 @@
       "types": "./src/composition/jev-study-model.ts",
       "import": "./dist/composition/jev-study-model.js"
     },
-    "./composition/perpl": {
-      "types": "./src/composition/perpl.ts",
-      "import": "./dist/composition/perpl.js"
+    "./composition/perps-study-model": {
+      "types": "./src/composition/perps-study-model.ts",
+      "import": "./dist/composition/perps-study-model.js"
     },
-    "./composition/perps-paper": {
-      "types": "./src/composition/perps-paper.ts",
-      "import": "./dist/composition/perps-paper.js"
+    "./composition/quant-review": {
+      "types": "./src/composition/quant-review.ts",
+      "import": "./dist/composition/quant-review.js"
+    },
+    "./composition/compact-quant-review": {
+      "types": "./src/composition/compact-quant-review.ts",
+      "import": "./dist/composition/compact-quant-review.js"
+    },
+    "./plugins/perpl": {
+      "types": "./src/plugins/perpl/index.ts",
+      "import": "./dist/plugins/perpl/index.js"
+    },
+    "./plugins/perps-paper": {
+      "types": "./src/plugins/perps-paper/index.ts",
+      "import": "./dist/plugins/perps-paper/index.js"
+    },
+    "./plugins/paper-trading": {
+      "types": "./src/plugins/paper-trading/index.ts",
+      "import": "./dist/plugins/paper-trading/index.js"
+    },
+    "./plugins/polymarket-trading": {
+      "types": "./src/plugins/polymarket-trading/index.ts",
+      "import": "./dist/plugins/polymarket-trading/index.js"
     }
   },
   "scripts": {
@@ -87,7 +107,8 @@
     "@pickler/core": "*",
     "@pickler/infrastructure": "*",
     "@pickler/api-schema": "*",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@pickler/trading": "*"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*"

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { PilotError, type AgentRecord } from "@pickler/core";
 import {
-  PilotError,
   applyPaperObservation,
   type PerpsPaperObservation,
   assertPerpsPaperAgent,
@@ -11,7 +11,6 @@ import {
   assertPaperIntent,
   paperDecimal,
   paperUnits,
-  type AgentRecord,
   type PerpsPaperScope,
   type PerpsPaperView,
   type PerpsPaperAccount,
@@ -21,7 +20,7 @@ import {
   type PerpsPaperLease,
   type PerpsPaperMovement,
   type PerpsPaperRepository,
-} from "@pickler/core";
+} from "@pickler/trading/perps";
 interface Locked {
   id: string;
   view: PerpsPaperView;
@@ -107,6 +106,17 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       },
     };
   }
+  async closeAdmissions(scope: PerpsPaperScope) {
+    await this.transaction(async (client) => {
+      const locked = await this.lock(client, scope);
+      assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
+      locked.view.account.admissionsClosed = true;
+      await client.query("UPDATE pickler.perps_paper_accounts SET document=$2 WHERE id=$1", [
+        locked.id,
+        locked.view.account,
+      ]);
+    });
+  }
   async observed(scope: PerpsPaperScope, key: string) {
     return this.transaction(async (client) => {
       const locked = await this.lock(client, scope);
@@ -128,7 +138,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         [locked.id, key],
       );
       if (old.rows[0]) {
-        return old.rows[0].result;
+        return locked.view;
       }
       assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
       for (const frame of observation.frames) {
@@ -147,7 +157,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       const view = (await this.lock(client, scope)).view;
       await client.query(
         "INSERT INTO pickler.perps_paper_observations(account_id,key,document,result) VALUES($1,$2,$3,$4)",
-        [locked.id, key, observation, view],
+        [locked.id, key, observation, { account: view.account, attempts: [], movements: [] }],
       );
       return view;
     });

@@ -26,9 +26,9 @@
     "prepare:decisions:v2": "node --import tsx src/prepare-decisions-v2.ts",
     "evaluate:decisions:v3": "node --import tsx src/evaluate-decisions-v3.ts",
     "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts",
-    "paper:study": "node --import tsx src/paper-study/main.ts",
     "perpl:data": "node --import tsx src/perpl-data.ts",
-    "perps:paper": "node --import tsx src/perps-paper.ts"
+    "perps:paper": "node --import tsx src/perps-paper.ts",
+    "evaluate": "node --import tsx src/evaluate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
@@ -40,7 +40,8 @@
     "dotenv": "17.4.2",
     "hono": "4.13.8",
     "zod": "4.6.5",
-    "@pickler/agent-runtime": "*"
+    "@pickler/agent-runtime": "*",
+    "@pickler/trading": "*"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*",

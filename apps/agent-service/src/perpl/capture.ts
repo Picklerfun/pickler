@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile, rename } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
+import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
 import {
   PilotError,
   PERPL_PLUGIN_VERSION,

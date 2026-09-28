@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { PaperOrder } from "@pickler/core";
+import type { PaperOrder } from "@pickler/trading/polymarket";
 import { PolymarketPaperResolution } from "../src/polymarket/paper-resolution.js";
 
 const order = {
@@ -82,4 +82,18 @@ test("revocation between RPC reads stops further requests", async () => {
     /permission revoked/,
   );
   assert.equal(f.calls.length, 1);
+});
+
+test("a forecast resolves from public identity without constructing an order", async () => {
+  const f = rpc(["0x89", { number: "0x10", hash: blockHash }, uint(1), uint(2), uint(1)]);
+  const identity = { ...order.fill!.conditions.resolution!, marketId: "1", outcomeId: "2" };
+  const result = await f.provider.resolutionFor(identity, AbortSignal.timeout(1000));
+  assert.equal(result?.marketId, "1");
+  assert.equal(result?.outcomeId, "2");
+  assert.equal(result?.numerator, "1");
+  const invalid = rpc([]);
+  await assert.rejects(
+    invalid.provider.resolutionFor({ ...identity, outcomeIndex: -1 }, AbortSignal.timeout(1000)),
+  );
+  assert.equal(invalid.calls.length, 0);
 });

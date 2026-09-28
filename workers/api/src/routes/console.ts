@@ -11,8 +11,8 @@ import {
   AuthenticationRequiredError,
   type ConsoleDirectory,
   type ResearchRepository,
-  type TradingRepository,
 } from "@pickler/core";
+import { type TradingRepository } from "@pickler/trading/polymarket";
 import {
   createAgentSchema,
   consoleOptionsSchema,

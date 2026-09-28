@@ -4,15 +4,15 @@ Read [the root instructions](../../AGENTS.md) and [core instructions](../core/AG
 
 ## Responsibility and current state
 
-`@pickler/infrastructure` implements interfaces owned by core. It exports `systemClock`, `ExaResearch` (`WebSearch`/`PageReader`), `PolymarketData` (`MarketData`) and `PostgresResearchStore` (scoped configuration, runs, evidence, decisions and job persistence). Constructors accept configuration; no credentials are embedded.
+`@pickler/infrastructure` implements interfaces owned by core and trading. It exports `systemClock`, `ExaResearch` (`WebSearch`/`PageReader`), `PolymarketData` (`MarketData`) and `PostgresResearchStore` (scoped configuration, runs, evidence, decisions and job persistence). Constructors accept configuration; no credentials are embedded.
 
 It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), Supabase admin adapters for workspaces, API keys, agents, budgets and profiles, the PostgREST client used by the growth functions, and Turnkey stamping and activity forwarding. `createSampleAgentDirectory`, `createSampleMarketBoard`, `createSampleLandingReadModel` and `createInMemoryApplicantStore` serve labelled sample content for the public pages until an indexer exists. `createSampleMarketBoard` (`src/markets/sample-market-board.ts`) holds the six perpetual markets, the squares agents have a public call on, and a deterministic 24-hour trail derived from each mark and its change; it polls no venue and reads no chain. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
 
-Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
+Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core and trading; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
 
 ## Rules
 
-- Depend on `@pickler/core` ports; never make core depend on this package.
+- Depend on core and trading ports; neither business package may depend on infrastructure.
 - Keep provider SDK types, queries, protocol details, and technical response validation inside adapters. Return values matching business-owned interfaces.
 - No Next.js, React, web app imports, HTTP response construction, or UI behavior.
 - Accept validated configuration through constructors/factories. The application's protected composition root selects and instantiates adapters. Do not require Next.js-specific `server-only` inside this framework-independent package.
@@ -115,3 +115,28 @@ The study adapter reads the public crypto-price endpoint with exact window, vari
 `PostgresPerpsPaperStore` owns scoped private perpetual paper accounts, append-only movements, position projections and 60-second fenced attempts. Serialize with agent/account locks, never replay expired work, and keep original session config/capital. Migration 0012 adds four RLS-enabled tables without changing existing paper or real budgets.
 
 Perpl history adds bounded four-page funding reads and a distinct tool permission. Migration 0013 stores immutable paper observations; funding postings deduplicate by position/event block and preserve discrepancies. `observe` applies ledger/mark changes atomically and keeps replayable results.
+
+`PostgresPerpsStudyStore` owns private study identities, dedicated agents, 90-second process leases,
+three-lane atomic USD reservations, original round inputs and durable usage. Migration 0014 adds
+three RLS tables. Unknown costs retain reservations; interrupted calls/executions are never replayed.
+Paper observations retain compact account snapshots instead of copying all previous fill evidence
+into every observation; replay reads the current ledger. Explicit closeAdmissions is irreversible
+within a virtual session and does not prevent exits.
+
+## Quantitative BTC paper pilot
+
+`QuantData` reads explicit per-market cryptoMarketConfig and matching stream rules, opening reference, Coinbase ticker and consecutive candles. Plugins guard each request. `PolymarketPaperResolution.resolutionFor` reads immutable identities without fabricating an order. Historical proxy data is never a runtime fallback.
+
+`comparisonTransport` is an opt-in public transport for the paired local laboratory: serial per-provider calls, 500ms minimum start spacing, 429 cooldown without retries, bounded bodies and allowlisted diagnostics. QuantData reuses raw market metadata only within one input snapshot for conditions, rechecking permission and preserving its timestamp. The transport is not a hosted fallback or global provider behavior change.
+
+`@pickler/infrastructure/model-providers/jev` exports the shared fixed-endpoint Jev client,
+choice validation and sanitized diagnostics. Callers provide prompts, limits and awaited
+usage persistence hooks; the client never retries, stores credentials or selects a strategy.
+BTC adapters now enforce a 1 MiB response bound; request limits and protocol-specific timeouts
+remain caller-owned. Do not add independent Jev transports to active trading evaluation adapters.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

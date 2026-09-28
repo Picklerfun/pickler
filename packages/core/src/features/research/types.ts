@@ -34,9 +34,9 @@ export interface DiscoveryPolicy {
   maxHorizonDays: number;
 }
 export interface AgentConfig {
-  perpsPaper?: import("../perps-paper/types.js").PerpsPaperConfig | undefined;
+  perpsPaper?: import("./trading-config.js").PerpsPaperConfig | undefined;
   perpl?: PerplConfig | undefined;
-  trading?: import("../trading/types.js").TradingConfig | undefined;
+  trading?: import("./trading-config.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
   plugins?: PluginConfig | undefined;
   researchProtocol?: "nfl-winner-v1" | undefined;

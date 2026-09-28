@@ -1,11 +1,12 @@
 import { encodeFunctionData, parseAbi } from "viem";
 import { z } from "zod";
+import { PilotError } from "@pickler/core";
 import {
-  PilotError,
   type PaperOrder,
+  type PaperResolutionIdentity,
   type PaperResolution,
   type PaperResolutionProvider,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { providerJson } from "../research/http.js";
 
 // Official Polygon CTF, shared by standard and negative-risk markets.
@@ -66,6 +67,30 @@ export class PolymarketPaperResolution implements PaperResolutionProvider {
         "A buy-time condition and outcome snapshot is required; historical positions are not guessed",
       );
     }
+    return this.resolutionFor(
+      { ...identity, marketId: order.marketId, outcomeId: order.outcomeId },
+      signal,
+      beforeCall,
+    );
+  }
+  async resolutionFor(
+    identity: PaperResolutionIdentity,
+    signal: AbortSignal,
+    beforeCall?: () => Promise<void>,
+  ): Promise<PaperResolution | null> {
+    if (
+      !/^0x[0-9a-f]{64}$/.test(identity.conditionId) ||
+      !Number.isInteger(identity.outcomeIndex) ||
+      !Number.isInteger(identity.outcomeCount) ||
+      identity.outcomeCount < 2 ||
+      identity.outcomeCount > 10 ||
+      identity.outcomeIndex < 0 ||
+      identity.outcomeIndex >= identity.outcomeCount ||
+      !identity.marketId ||
+      !identity.outcomeId
+    ) {
+      throw new PilotError("PAPER_RESOLUTION_IDENTITY_MISSING", "Invalid resolution identity");
+    }
     const query = async (method: string, params: unknown[]) => {
       signal.throwIfAborted();
       await beforeCall?.();
@@ -117,8 +142,8 @@ export class PolymarketPaperResolution implements PaperResolutionProvider {
       throw new PilotError("PAPER_RESOLUTION_UNAVAILABLE", "Invalid payout fraction");
     }
     return {
-      marketId: order.marketId,
-      outcomeId: order.outcomeId,
+      marketId: identity.marketId,
+      outcomeId: identity.outcomeId,
       conditionId: identity.conditionId,
       outcomeIndex: identity.outcomeIndex,
       numerator: String(numerator),

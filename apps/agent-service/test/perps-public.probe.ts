@@ -4,10 +4,11 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { createHash } from "node:crypto";
-import { DEFAULT_CONFIG, PERP_TOOLS, type PerpNetwork, type PerpsPaperScope } from "@pickler/core";
+import { DEFAULT_CONFIG, PERP_TOOLS, type PerpNetwork } from "@pickler/core";
+import { type PerpsPaperScope } from "@pickler/trading/perps";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import { PostgresPerpsPaperStore } from "@pickler/infrastructure";
-import { createPerpsPaperRuntime } from "@pickler/agent-runtime/composition/perps-paper";
+import { createPerpsPaperRuntime } from "@pickler/agent-runtime/plugins/perps-paper";
 const network = process.argv[2],
   attempt = process.argv[3];
 if (
