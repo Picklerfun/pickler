@@ -27,7 +27,7 @@ export function DevControls({ visible, onClose, ctx }: { visible: boolean; onClo
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
         <Touch onPress={onClose} style={{ flex: 1 }}><View /></Touch>
-        <View style={{ backgroundColor: C.bgMid, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: C.hair, padding: 18, paddingBottom: 28, maxHeight: "85%" }}>
+        <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: C.hair, padding: 18, paddingBottom: 28, maxHeight: "85%" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <T w={700} s={18} ls={-0.01} display>Dev controls</T>
             <Touch onPress={onClose} accessibilityLabel="dev-close"><T w={600} s={13} color={C.faint}>Close</T></Touch>

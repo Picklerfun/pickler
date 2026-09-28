@@ -209,7 +209,7 @@ export function PillTabs<K extends string>({ options, value, onChange, flex = tr
         return (
           <Chip
             key={k} label={label} onPress={() => onChange(k)} accessibilityLabel={`pill-${k}`}
-            fg={on ? C.lime : C.dim} bd={on ? C.limeBd : C.hair18} bg={on ? C.limeBg14 : "transparent"}
+            fg={on ? C.limeInk : C.dim} bd={on ? C.limeBd : C.hair18} bg={on ? C.limeBg14 : "transparent"}
             s={11.5} py={8} px={flex ? 6 : 12} style={flex ? { flex: 1 } : null}
           />
         );

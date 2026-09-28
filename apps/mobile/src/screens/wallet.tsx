@@ -13,7 +13,7 @@ import { describeError } from "../wallet/wallet";
 import { validateWithdraw } from "../wallet/withdraw";
 
 const TONES = {
-  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime },
+  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk },
   failed: { bd: C.downBd, bg: C.downBg, fg: C.down },
   pending: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
 } as const satisfies Record<string, Tone>;
@@ -199,7 +199,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
           </Touch>
           {st.step === "unknown" && error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}
         </StatusCard>
-        {st.step !== "sent" ? <Btn label="Back to wallet" onPress={() => nav("wallet")} variant="lime" s={13.5} py={15} /> : <ActivityIndicator color={C.lime} />}
+        {st.step !== "sent" ? <Btn label="Back to wallet" onPress={() => nav("wallet")} variant="lime" s={13.5} py={15} /> : <ActivityIndicator color={C.limeInk} />}
       </Page>
     );
   }
@@ -218,7 +218,7 @@ export function WithdrawScreen({ nav, treasury }: AppCtx) {
             <KV k="NETWORK" v="MONAD" />
             <KV k="NETWORK FEE" v={st.fee !== null ? `~${formatMon(st.fee)} MON` : error ? "UNAVAILABLE" : "ESTIMATING…"} vFg={C.dim} />
             <KV k="PLATFORM FEE" v="0.00 AUSD" vFg={C.dim} />
-            <KV k="YOU RECEIVE" v={`${formatAusd(st.amount)} AUSD`} vFg={C.lime} />
+            <KV k="YOU RECEIVE" v={`${formatAusd(st.amount)} AUSD`} vFg={C.limeInk} />
           </View>
         </Card>
         {error ? <T w={400} s={12} lh={1.4} color={C.down}>{error}</T> : null}

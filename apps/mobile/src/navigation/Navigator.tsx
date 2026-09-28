@@ -14,7 +14,7 @@ import { flushPending, navigationRef } from "./ref";
 import type { MarketsStackParamList, RootParamList, SoloStackParamList, TabParamList, WalletStackParamList } from "./routes";
 
 // Cabecera propia y gesto estándar de iOS (spec D6/D8).
-const STACK: NativeStackNavigationOptions = { headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: false, animation: "default", contentStyle: { backgroundColor: C.bgBottom } };
+const STACK: NativeStackNavigationOptions = { headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: false, animation: "default", contentStyle: { backgroundColor: C.bg } };
 
 const Root = createNativeStackNavigator<RootParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
@@ -65,7 +65,7 @@ function TabsNav() {
       initialRouteName="WalletTab"
       backBehavior="none"
       tabBar={(p) => <TabBar {...p} />}
-      screenOptions={{ headerShown: false, animation: "none", sceneStyle: { backgroundColor: C.bgBottom } }}
+      screenOptions={{ headerShown: false, animation: "none", sceneStyle: { backgroundColor: C.bg } }}
     >
       <Tabs.Screen name="MarketsTab" component={MarketsTab} />
       <Tabs.Screen name="LaunchpadTab" component={LaunchpadTab} />

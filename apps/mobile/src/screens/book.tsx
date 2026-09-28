@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<MarketData["status"], string> = { idle: "", connectin
 const POSITION_COPY = { above: "above the book", inside: "inside the book", below: "below the book" } as const;
 
 function Row({ level, max, side, pd, sd }: { level: BookLevel; max: number; side: "bid" | "ask"; pd: number; sd: number }) {
-  const fg = side === "bid" ? C.lime : C.down;
+  const fg = side === "bid" ? C.limeInk : C.down;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }} accessibilityLabel={`${side}-${level.p}`}>
       <T w={500} s={11} lh={1.2} mono color={fg} style={{ width: 84 }}>{formatPrice(level.p, pd)}</T>
@@ -40,7 +40,7 @@ export function BookCard({ market, data, target }: { market: Market; data: Marke
     <Card bd={C.hair14} bg={C.card} gap={7}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
         <Tag>ORDER BOOK · L2 · {BOOK_DEPTH} PER SIDE</Tag>
-        <Tag color={live ? C.lime : data.rejected || data.status === "closed" ? C.faint : C.warn}>{STATUS_LABEL[data.status]}</Tag>
+        <Tag color={live ? C.limeInk : data.rejected || data.status === "closed" ? C.faint : C.warn}>{STATUS_LABEL[data.status]}</Tag>
       </View>
       {book === null ? (
         <View style={{ gap: 6 }}>{Array.from({ length: 4 }, (_, i) => <Skeleton.Line key={i} s={11} w="100%" />)}</View>

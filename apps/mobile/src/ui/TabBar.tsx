@@ -30,8 +30,8 @@ const HIDE_MS = 220;
  * Tab bar custom de bottom-tabs (spec mobile-nav D11/D13). Siempre montada y absoluta: se esconde deslizando
  * hacia abajo cuando la pantalla enfocada no es raíz (D13). La pastilla lima sigue a `state.index` con resorte y
  * se puede arrastrar sin despegar el dedo; la pestaña cambia sólo al soltar (D11). El tap sigue siendo tap.
- * Fondo opaco (`C.bgBottom`, el mismo del final del gradiente): al ser absoluta el contenido pasa por debajo y sin
- * blur nativo un fondo translúcido dejaba leer el texto entre los iconos (F2-R2).
+ * Fondo opaco (`C.bg`): al ser absoluta el contenido pasa por debajo y sin blur nativo un fondo translúcido
+ * dejaba leer el texto entre los iconos (F2-R2).
  */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { switchTab } = useAppCtx();
@@ -106,7 +106,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   return (
     <Animated.View
       pointerEvents={visible ? "auto" : "none"}
-      style={[{ position: "absolute", left: 0, right: 0, bottom: 0, height, paddingTop: ROW_TOP, paddingBottom: insets.bottom + ROW_BOTTOM, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.bgBottom }, barStyle]}
+      style={[{ position: "absolute", left: 0, right: 0, bottom: 0, height, paddingTop: ROW_TOP, paddingBottom: insets.bottom + ROW_BOTTOM, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.bg }, barStyle]}
     >
       <GestureDetector gesture={pan}>
         <View onLayout={onLayout} style={{ flexDirection: "row", height: ROW_H, paddingHorizontal: ROW_PAD_X }}>
@@ -116,7 +116,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           {state.routes.map((route, i) => {
             const root = TAB_ROOT[route.name as TabName];
             const [, label, icon] = TABS.find(([k]) => k === root)!;
-            const fg = ROOT_OF[focusedScreen] === root ? C.lime : C.faint;
+            const fg = ROOT_OF[focusedScreen] === root ? C.limeInk : C.faint;
             return (
               <Touch key={route.key} onPress={() => select(i)} accessibilityLabel={`tab-${root}`} style={{ flex: 1, alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}>
                 <Icon name={icon} size={19} color={fg} />

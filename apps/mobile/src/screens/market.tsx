@@ -23,7 +23,7 @@ export type OrderResult =
 /** Tonos de D14: sent = hair2/slab, filled = lima, failed = down, unknown = warn. */
 const TONES = {
   sent: { tag: "SENT", title: "Order accepted — waiting for the fill", tone: { bd: C.hair2, bg: C.slab, fg: C.dim } },
-  filled: { tag: "FILLED", title: "Filled", tone: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime } },
+  filled: { tag: "FILLED", title: "Filled", tone: { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk } },
   failed: { tag: "FAILED", title: "Order failed", tone: { bd: C.downBd, bg: C.downBg, fg: C.down } },
   unknown: { tag: "NO CONFIRMATION", title: "No confirmation yet", tone: { bd: C.warnBd, bg: C.warnBg, fg: C.warn } },
 } as const satisfies Record<OrderResult["step"], { tag: string; title: string; tone: Tone }>;
@@ -53,11 +53,11 @@ export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResul
 
 type Step = { step: "edit" } | { step: "review" } | { step: "result"; result: OrderResult };
 
-const TRADE_GATE: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+const TRADE_GATE: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
 
 /** Sin trading key en este teléfono: el gate de Perpl vive aquí, no en Markets (fix gate, P3). El flujo real de Enable/Reconnect sigue en Markets. El botón navega a Markets (`nav("markets")`, no `back()`, porque Market también se abre desde un push). */
 function TradeGate({ perpl, nav }: Pick<AppCtx, "perpl" | "nav">) {
-  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.lime} /></Page>;
+  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.limeInk} /></Page>;
   const existing = perpl.existingAccountId;
   const reconnect = existing !== null && existing > 0n;
   return (
@@ -73,7 +73,7 @@ function TradeGate({ perpl, nav }: Pick<AppCtx, "perpl" | "nav">) {
   );
 }
 
-const LEVEL: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+const LEVEL: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
 
 /** Nivel elegido en Ask (D12): target, vencimiento, lado sugerido y qué pasará tras la orden. Nada cierra la posición. */
 function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level: TradeLevel; pd: number; now: number; onRemove: () => void }) {
@@ -86,7 +86,7 @@ function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level
       <KVList rows={[
         { label: "TARGET", value: formatPrice(level.target, pd) },
         { label: "RESOLVES", value: resolvesLabel(level, now).replace("Resolves ", "") },
-        { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.lime : C.down },
+        { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.limeInk : C.down },
       ]} top />
       <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Markets.`}</T>
       <Btn label="Remove level" onPress={onRemove} variant="ghost" py={8} accessibilityLabel="level-remove" />
@@ -145,7 +145,7 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
     { label: "EST. PRICE", value: formatPrice(market.mark, market.priceDecimals) },
     { label: "FEE · TAKER", value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
     { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: lvUsed > 1 ? C.down : C.dim },
-    ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.lime }] : []),
+    ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.limeInk }] : []),
   ];
 
   if (st.step === "result") {
@@ -156,7 +156,7 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
     return (
       <Page top={13} gap={11}>
         <Card bd={side === "long" ? C.limeBd : C.downBd} bg={side === "long" ? C.limeBg06 : C.downBg} gap={8}>
-          <Tag color={side === "long" ? C.lime : C.down}>YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET</Tag>
+          <Tag color={side === "long" ? C.limeInk : C.down}>YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET</Tag>
           <T w={700} s={22} lh={1.1} ls={-0.02} display>{formatAusd(units ?? 0n)} AUSD</T>
           <KVList rows={rows} top />
         </Card>
@@ -175,7 +175,7 @@ function TradeTab({ S, set, perpl, reads, marketData, nav }: AppCtx) {
         options={[["long", "Long"], ["short", "Short"]] as const}
         value={side}
         onChange={(k) => set({ perpsSide: k })}
-        tone={(k) => ({ bg: k === "long" ? C.lime : C.down, fg: C.onLime })}
+        tone={(k) => ({ bg: k === "long" ? C.lime : C.short, fg: C.onLime })}
       />
       <BookCard market={market} data={marketData} target={level?.target} />
       <Card bd={C.hair2} bg={C.deep} gap={6}>

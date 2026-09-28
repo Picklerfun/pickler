@@ -1,8 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { type ReactElement, type ReactNode, useCallback, useState } from "react";
-import { Image, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
+import { Image, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppCtx } from "../ctx";
 import { useAppCtx } from "../navigation/context";
@@ -10,23 +8,6 @@ import { CAN_BACK, headerFor, REFRESHABLE, ROOT_OF, type Screen, SHOW_TABS } fro
 import { Icon, T, Tag, Touch } from "./primitives";
 import { tabBarHeight } from "./tabBarLayout";
 import { C } from "./theme";
-
-/** Fondo del teléfono: gradiente + campo de puntos (D10 del hi-fi). Va dentro de cada Page: opaco, tapa la página de abajo durante el gesto (spec mobile-nav D6). */
-export function Backdrop() {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient colors={[C.bgTop, C.bgMid, C.bgBottom]} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} />
-      <Svg width="100%" height="100%" style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}>
-        <Defs>
-          <Pattern id="dots" patternUnits="userSpaceOnUse" width="130" height="130">
-            <Circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.7)" />
-          </Pattern>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#dots)" />
-      </Svg>
-    </View>
-  );
-}
 
 /** Una página de react-navigation: cabecera propia (viaja con el gesto), ScrollView con pull-to-refresh y sello, fondo opaco. */
 export function Page({ screen, children }: { screen: Screen; children: ReactNode }) {
@@ -61,8 +42,7 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
   const failed = refreshable && seal.failedOn(screen);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bgBottom }}>
-      <Backdrop />
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <SafeAreaView style={{ flex: 1 }} edges={showTabs ? ["top"] : ["top", "bottom"]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 9, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair, backgroundColor: C.deep50 }}>
           {canBack ? (
@@ -87,7 +67,7 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
           contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.lime} /> : undefined}
+          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.limeInk} /> : undefined}
         >
           {failed || label !== null ? (
             <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>

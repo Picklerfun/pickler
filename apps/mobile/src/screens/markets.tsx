@@ -16,7 +16,7 @@ import { describeError } from "../wallet/wallet";
 import { OrderResultCard, type OrderResult } from "./market";
 
 const CONNECTION = {
-  live: { label: "LIVE", fg: C.lime, bd: C.limeBd },
+  live: { label: "LIVE", fg: C.limeInk, bd: C.limeBd },
   connecting: { label: "CONNECTING", fg: C.warn, bd: C.warnBd },
   reconnecting: { label: "RECONNECTING", fg: C.warn, bd: C.warnBd },
   closed: { label: "OFFLINE", fg: C.faint, bd: C.hair18 },
@@ -68,7 +68,7 @@ function PositionRow({ p, market, onClose }: { p: Position; market: Market; onCl
   return (
     <Card gap={8}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Chip label={long ? "LONG" : "SHORT"} mono s={9.5} py={4} px={8} fg={long ? C.lime : C.down} bd={long ? C.limeBd : C.downBd} />
+        <Chip label={long ? "LONG" : "SHORT"} mono s={9.5} py={4} px={8} fg={long ? C.limeInk : C.down} bd={long ? C.limeBd : C.downBd} />
         <T w={600} s={13} style={{ flex: 1 }}>{formatSize(p.s, market.sizeDecimals)} {market.symbol} · {lv}x</T>
         <T w={700} s={13} mono color={pnl <= -10_000n ? C.down : C.up}>{formatPnl(pnl)} AUSD</T>
       </View>
@@ -125,7 +125,7 @@ function Gate({ perpl, treasury, nav }: AppCtx) {
               const state = n < ob.step ? "done" : n === ob.step ? (ob.error ? "error" : "busy") : "todo";
               return (
                 <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  {state === "busy" ? <ActivityIndicator size="small" color={C.lime} /> : <T w={700} s={13} mono color={state === "done" ? C.up : state === "error" ? C.down : C.faint}>{state === "done" ? "✓" : state === "error" ? "×" : "·"}</T>}
+                  {state === "busy" ? <ActivityIndicator size="small" color={C.limeInk} /> : <T w={700} s={13} mono color={state === "done" ? C.up : state === "error" ? C.down : C.faint}>{state === "done" ? "✓" : state === "error" ? "×" : "·"}</T>}
                   <T w={state === "todo" ? 400 : 600} s={13} color={state === "todo" ? C.faint : C.ink}>{label}</T>
                 </View>
               );
@@ -151,7 +151,7 @@ export function MarketsScreen(ctx: AppCtx) {
     try { await action(); } catch (e) { setActionError(describeError(e)); }
   };
 
-  if (perpl.state.status === "loading") return <Page><ActivityIndicator color={C.lime} /></Page>;
+  if (perpl.state.status === "loading") return <Page><ActivityIndicator color={C.limeInk} /></Page>;
   if (perpl.state.status === "none" || perpl.state.status === "onboarding") return <Gate {...ctx} />;
 
   const live = perpl.live;

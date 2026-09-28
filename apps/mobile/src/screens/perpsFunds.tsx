@@ -12,7 +12,7 @@ type Step = { step: "edit" } | { step: "review"; amount: bigint } | { step: "sen
 
 const TONES = {
   sent: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
-  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime },
+  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk },
   failed: { bd: C.downBd, bg: C.downBg, fg: C.down },
   unknown: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
 } as const satisfies Record<string, Tone>;

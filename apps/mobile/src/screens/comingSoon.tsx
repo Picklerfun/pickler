@@ -17,7 +17,7 @@ export function ComingSoonScreen({ screen, requireAccount }: { screen: Screen; r
         <Icon name={c.icon} size={30} color={C.vio} />
       </View>
       <T w={700} s={22} lh={1.1} ls={-0.02} display>{c.title}</T>
-      <Chip label="COMING SOON" mono s={10} fg={C.lime} bd={C.limeBd} dashed />
+      <Chip label="COMING SOON" mono s={10} fg={C.limeInk} bd={C.limeBd} dashed />
       <T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center", maxWidth: 260 }}>{c.copy}</T>
       <Btn label="Go to Wallet" onPress={() => requireAccount("wallet")} variant="outline" py={14} style={{ marginTop: 6, paddingHorizontal: 22 }} accessibilityLabel="go-to-wallet" />
     </View>

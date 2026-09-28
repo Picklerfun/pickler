@@ -27,7 +27,7 @@ const STATUS: Record<ReadStatus, { label: string; fg: string; bd: string }> = {
 };
 const READING: Tone = { bd: C.warnBd, bg: C.warnBg, fg: C.warn };
 const FAILED: Tone = { bd: C.downBd, bg: C.downBg, fg: C.down };
-const ASK: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+const ASK: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk };
 
 const agentName = (agents: Agent[] | null, id: string): string => agents?.find((a) => a.id === id)?.name ?? id;
 
@@ -55,7 +55,7 @@ export function ReadCard({ read, agentName: name, now, pushOff, footer }: { read
       {p !== null ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <T w={700} s={30} lh={1.1} ls={-0.02} display>{formatProbability(p)}</T>
-          <Chip label={yes ? "YES" : "NO"} mono s={10} fg={yes ? C.lime : C.down} bd={yes ? C.limeBd : C.downBd} accessibilityLabel={`call-${yes ? "yes" : "no"}`} />
+          <Chip label={yes ? "YES" : "NO"} mono s={10} fg={yes ? C.limeInk : C.down} bd={yes ? C.limeBd : C.downBd} accessibilityLabel={`call-${yes ? "yes" : "no"}`} />
           <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>probability of yes · mark {formatPrice(read.markAtRequest, read.priceDecimals)} at request</T>
         </View>
       ) : null}
@@ -198,7 +198,7 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
           arrow flex={1} py={12} disabled={noCredits || !agent} accessibilityLabel="ask" />
         <Btn label="Clear" onPress={onClear} variant="ghost" py={12} accessibilityLabel="ask-clear" />
       </View>
-      <Btn label="Trade this level" onPress={onTrade} variant="outline" fg={C.lime} bd={C.limeBd} py={11} accessibilityLabel="trade-level" />
+      <Btn label="Trade this level" onPress={onTrade} variant="outline" fg={C.limeInk} bd={C.limeBd} py={11} accessibilityLabel="trade-level" />
       <T w={400} s={10.5} lh={1.4} color={C.faint}>{noCredits ? "Credits are simulated for the testnet." : "Nothing charged yet."}</T>
     </Card>
   );
@@ -231,7 +231,7 @@ export function AskTab(ctx: AppCtx) {
 
   const cardFooter = (read: Read, ghost: ReactNode) => (
     <View style={{ flexDirection: "row", gap: 7 }}>
-      {read.status === "open" ? <Btn label="Trade this level" onPress={() => tradeLevel(levelFromRead(read))} variant="outline" fg={C.lime} bd={C.limeBd} flex={1} py={11} accessibilityLabel="trade-level" /> : null}
+      {read.status === "open" ? <Btn label="Trade this level" onPress={() => tradeLevel(levelFromRead(read))} variant="outline" fg={C.limeInk} bd={C.limeBd} flex={1} py={11} accessibilityLabel="trade-level" /> : null}
       {ghost}
     </View>
   );

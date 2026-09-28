@@ -1,6 +1,5 @@
-import { ChakraPetch_600SemiBold, ChakraPetch_700Bold } from "@expo-google-fonts/chakra-petch";
+import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold } from "@expo-google-fonts/instrument-sans";
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
-import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,9 +31,9 @@ SplashScreen.setOptions({ fade: true, duration: 200 });
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold,
+    InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold,
     JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold,
-    ChakraPetch_600SemiBold, ChakraPetch_700Bold,
+    "ArchivoPickler-Bold": require("./assets/fonts/ArchivoPickler-Bold.ttf"),
   });
   const { account, onWallet, lock, signOut } = useAccount();
   const treasury = useTreasury(account ?? NONE, onWallet);
@@ -95,7 +94,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle="dark-content" />
         <AppCtxProvider value={ctx}>
           <Navigator initial={initial.current} />
           {__DEV__ ? <DevControls visible={controls} onClose={() => setControls(false)} ctx={ctx} /> : null}
