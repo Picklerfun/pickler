@@ -74,6 +74,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
   try {
+    signal?.throwIfAborted();
     if (action === "init") {
       const view = await study.initialize(config, models.metadata);
       console.log(

@@ -92,3 +92,9 @@ research implicitly. Invalid answers retain usage and allowlisted diagnostics wi
 
 Quantitative reviewer diagnostics now distinguish PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM
 using fixed labels only. Thresholds, prompts, rejected-answer policy and usage retention are unchanged.
+
+The trading evaluation adapters use `@pickler/infrastructure/model-providers/jev` for
+transport, usage validation and choice validation. Keep instrument-specific prompts and
+routing here; do not recreate the HTTP endpoint or probability schema in each adapter.
+The Perpl adapter retains its 20-second, 30,000-byte request and 1 MiB response limits,
+request hashing and persisted usage hooks. No prompt/version change is implied by extraction.

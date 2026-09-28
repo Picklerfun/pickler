@@ -115,7 +115,9 @@ export async function runBtcBenchmark(
     process.on("SIGINT", stop);
     process.on("SIGTERM", stop);
     try {
+      options.signal?.throwIfAborted();
       const guard = async (plugin: QuantPlugin) => {
+        options.signal?.throwIfAborted();
         if (
           JSON.stringify(benchmarkConfigSchema.parse(JSON.parse(await readFile(path, "utf8")))) !==
           original

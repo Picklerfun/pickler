@@ -45,3 +45,13 @@ A shared model transport is not evidence of strategy quality. Controlled replay 
 compatibility; a new prospective comparison must record its commit and frozen configuration,
 retain outstanding reservations, and remain within the previously authorized budget. Do not
 remove STOP files or reset an old session to restart it. Old incomplete results remain incomplete.
+
+## Shared Jev client
+
+The active quantitative, compact, evidence-routing and Perpl readiness adapters all use
+`@pickler/infrastructure/model-providers/jev`. It owns the fixed endpoint, bounded transport,
+usage envelope, probability validation and sanitized diagnostics. Runtime adapters retain
+prompts, payloads, thresholds and historical error mapping. Usage is persisted before answer
+validation; an invalid answer cannot erase a charge. No retries or automatic repairs are added.
+BTC responses now have an explicit 1 MiB bound. Existing caller timeouts remain 30 seconds for
+quantitative review, 180 seconds for legacy evidence routing and 20 seconds for Perpl.

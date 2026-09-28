@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
+  evaluateJev,
+  jevChoiceSchema,
+  JevClientError,
+} from "@pickler/infrastructure/model-providers/jev";
+import {
   PilotError,
   type PerpsDecisionContext,
   type PerpsProposal,
@@ -27,30 +32,11 @@ const proposalSchema = z
   })
   .strict();
 const proposalsSchema = z.object({ actions: z.array(proposalSchema).length(2) }).strict();
-function choice<const T extends readonly [string, ...string[]]>(labels: T) {
-  return z
-    .object({
-      type: z.literal("choice"),
-      choice: z.enum(labels),
-      confidence: z.number().min(0).max(1),
-      probabilities: z.record(z.enum(labels), z.number().min(0).max(1)),
-    })
-    .strict()
-    .superRefine((a, ctx) => {
-      const values = Object.values(a.probabilities) as number[];
-      if (
-        Math.abs(values.reduce((x, y) => x + y, 0) - 1) > 0.001 ||
-        (a.probabilities as Record<string, number>)[a.choice]! + 0.000001 < Math.max(...values)
-      ) {
-        ctx.addIssue({ code: "custom", message: "Inconsistent probabilities" });
-      }
-    });
-}
 const answersSchema = z
   .object({
-    readiness: choice(["READY", "INSUFFICIENT", "UNKNOWN"]),
-    gap: choice(["NONE", "MISSING", "CONFLICT", "UNKNOWN"]),
-    scope: choice(["MATCH", "MISMATCH", "UNKNOWN"]),
+    readiness: jevChoiceSchema(["READY", "INSUFFICIENT", "UNKNOWN"]),
+    gap: jevChoiceSchema(["NONE", "MISSING", "CONFLICT", "UNKNOWN"]),
+    scope: jevChoiceSchema(["MATCH", "MISMATCH", "UNKNOWN"]),
   })
   .strict();
 const questions = {
@@ -305,31 +291,47 @@ export function createPerpsStudyModels(
       return proposals.data.actions;
     },
     async readiness(context, parent, hooks) {
-      const raw = await post(
-        "https://api.typesafe.ai/v1/systemone",
-        credentials.jev,
-        { model: config.jev.model, state: perpsModelState(context), questions },
-        parent,
-        hooks,
-      );
-      const envelope = z
-        .object({
-          model: z.literal(config.jev.model),
-          usage: z.object({
-            input_tokens: z.number().int().nonnegative(),
-            output_tokens: z.number().int().nonnegative(),
-          }),
-        })
-        .safeParse(raw);
-      if (!envelope.success) {
-        throw new PilotError("MODEL_USAGE_INVALID", "Cannot verify Jev usage");
+      let a: z.infer<typeof answersSchema>;
+      try {
+        const result = await evaluateJev({
+          apiKey: credentials.jev,
+          payload: { model: config.jev.model, state: perpsModelState(context), questions },
+          answersSchema,
+          labels: {
+            readiness: ["READY", "INSUFFICIENT", "UNKNOWN"],
+            gap: ["NONE", "MISSING", "CONFLICT", "UNKNOWN"],
+            scope: ["MATCH", "MISMATCH", "UNKNOWN"],
+          },
+          signal: parent,
+          timeoutMs: 20000,
+          maxRequestBytes: 30000,
+          maxResponseBytes: 1024 * 1024,
+          // The persisted usage hook enforces the existing session reservation first.
+          maxInputTokens: Number.MAX_SAFE_INTEGER,
+          before: async ({ body, bytes }) =>
+            hooks.before({ sha256: createHash("sha256").update(body).digest("hex"), bytes }),
+          usage: async (usage) => hooks.usage(usage.input_tokens, usage.output_tokens),
+          transport,
+        });
+        a = result.answers;
+      } catch (error) {
+        if (error instanceof JevClientError) {
+          const codes = {
+            INPUT_TOO_LARGE: "MODEL_INPUT_TOO_LARGE",
+            HTTP_FAILURE: "MODEL_HTTP_FAILURE",
+            INVALID_RESPONSE: "MODEL_RESPONSE_INVALID",
+            INVALID_USAGE: "MODEL_USAGE_INVALID",
+            RESERVATION_EXCEEDED: "MODEL_USAGE_INVALID",
+            INVALID_ANSWERS: "JEV_ANSWERS_INVALID",
+            RESPONSE_LIMIT: "MODEL_RESPONSE_LIMIT",
+          } as const;
+          throw new PilotError(
+            codes[error.code],
+            "Jev evaluation failed; usage and reservations remain recorded",
+          );
+        }
+        throw error;
       }
-      await hooks.usage(envelope.data.usage.input_tokens, envelope.data.usage.output_tokens);
-      const parsed = z.object({ answers: answersSchema }).safeParse(raw);
-      if (!parsed.success) {
-        throw new PilotError("JEV_ANSWERS_INVALID", "Invalid Jev answers");
-      }
-      const a = parsed.data.answers;
       const confident = (v: {
         choice: string;
         confidence: number;

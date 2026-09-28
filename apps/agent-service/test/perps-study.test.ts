@@ -459,3 +459,43 @@ test("missing decision slots are not filled retrospectively; public failures cre
   assert.equal(view.rounds.length, 0);
   assert.equal(view.events.filter((e) => e.kind === "observation-failed").length, 2);
 });
+
+test("shared Jev transport preserves request evidence and records usage before rejecting answers", async () => {
+  let calls = 0;
+  const events: string[] = [];
+  const models = createPerpsStudyModels(
+    studyConfig,
+    { deepseek: "test", jev: "test" },
+    async (url, options) => {
+      calls++;
+      events.push("transport");
+      assert.equal(url, "https://api.typesafe.ai/v1/systemone");
+      assert.equal(options?.redirect, "manual");
+      const body = JSON.parse(String(options?.body));
+      assert.equal(body.model, studyConfig.jev.model);
+      assert.deepEqual(Object.keys(body.questions), ["readiness", "gap", "scope"]);
+      assert.equal(body.state.observedAt, studyContext().evidence.observedAt);
+      return Response.json({
+        model: studyConfig.jev.model,
+        usage: { input_tokens: 100, output_tokens: 10 },
+        answers: {},
+      });
+    },
+  );
+  await assert.rejects(
+    models.readiness(studyContext(), new AbortController().signal, {
+      before: async ({ sha256, bytes }) => {
+        assert.match(sha256, /^[a-f0-9]{64}$/);
+        assert.ok(bytes > 0);
+        events.push("persist");
+      },
+      usage: async (input, output) => {
+        assert.deepEqual([input, output], [100, 10]);
+        events.push("usage");
+      },
+    }),
+    { code: "JEV_ANSWERS_INVALID" },
+  );
+  assert.equal(calls, 1);
+  assert.deepEqual(events, ["persist", "transport", "usage"]);
+});

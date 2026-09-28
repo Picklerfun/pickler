@@ -128,3 +128,9 @@ within a virtual session and does not prevent exits.
 `QuantData` reads explicit per-market cryptoMarketConfig and matching stream rules, opening reference, Coinbase ticker and consecutive candles. Plugins guard each request. `PolymarketPaperResolution.resolutionFor` reads immutable identities without fabricating an order. Historical proxy data is never a runtime fallback.
 
 `comparisonTransport` is an opt-in public transport for the paired local laboratory: serial per-provider calls, 500ms minimum start spacing, 429 cooldown without retries, bounded bodies and allowlisted diagnostics. QuantData reuses raw market metadata only within one input snapshot for conditions, rechecking permission and preserving its timestamp. The transport is not a hosted fallback or global provider behavior change.
+
+`@pickler/infrastructure/model-providers/jev` exports the shared fixed-endpoint Jev client,
+choice validation and sanitized diagnostics. Callers provide prompts, limits and awaited
+usage persistence hooks; the client never retries, stores credentials or selects a strategy.
+BTC adapters now enforce a 1 MiB response bound; request limits and protocol-specific timeouts
+remain caller-owned. Do not add independent Jev transports to active trading evaluation adapters.
