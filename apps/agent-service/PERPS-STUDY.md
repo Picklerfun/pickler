@@ -152,3 +152,19 @@ one opt-in integration test skipped; ten focused comparison tests passed. Type, 
 shared-library, service and Worker builds passed. Public preflight returned 60 closed candles per
 asset and both configured model catalogs without paid inference. This checkpoint is not a completed
 24-hour prospective result; session output remains private and is reported separately.
+
+## Continuations and rejected data
+
+The USD 5 ceiling covers all sessions in the same tenant/network/database, including historical
+costs and reservations. A new session does not renew authorization. Unknown started usage in an
+older session stops admission with `CAMPAIGN_USAGE_UNVERIFIED`. Do not change scope or database
+to bypass that authorization. Trading returns and per-session model costs remain separate.
+
+The engine validates frames again after candle preparation and before paying models. It retains
+common refreshed execution frames in `execution-input` events even if the simulator rejects them.
+Inspect provider timestamps, blocks and hashes there; a historical error without a saved execution
+frame is not enough to establish its root cause. No timestamp is rewritten and no retry is added.
+
+Paper acquisition reads the book before the ticker to reduce added delay when ticker state lags.
+This does not guarantee synchronized exchange data. Both provider timestamps must still satisfy
+the unchanged bounds; failed public captures and interrupted studies remain evidence, not passes.

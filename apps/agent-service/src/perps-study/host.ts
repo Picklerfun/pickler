@@ -14,7 +14,7 @@ import {
   type PerpsStrategy,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
-import { type PerpsPaperView } from "@pickler/trading/perps";
+import { validatePaperFrame, type PerpsPaperView } from "@pickler/trading/perps";
 import { perpsStudyConfigSchema } from "@pickler/api-schema";
 import { createPerpsStudyModels } from "@pickler/agent-runtime/composition/perps-study-model";
 
@@ -36,7 +36,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   });
   if (values.help) {
     console.log(
-      "evaluate prepare|preflight|run|resume|stop|settle|report --config FILE [--env-file FILE] [--output DIRECTORY] [--allow-paid]\nLocal virtual capital only. Run/resume require explicit paid authorization (maximum USD 5 per session). No migrations, wallet, real orders, alpha/beta initialization or automatic retries.",
+      "evaluate prepare|preflight|run|resume|stop|settle|report --config FILE [--env-file FILE] [--output DIRECTORY] [--allow-paid]\nLocal virtual capital only. Run/resume require explicit paid authorization (maximum USD 5 across sessions in the same tenant/network). No migrations, wallet, real orders, alpha/beta initialization or automatic retries.",
     );
     return;
   }
@@ -171,6 +171,9 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]);
       const observation = await data.observe(view.record, signal);
       const evidence = await data.evidence(view.record, observation, signal);
+      for (const frame of evidence.frames) {
+        validatePaperFrame(frame, config.network, frame.snapshot.market.symbol, Date.now());
+      }
       for (const [url, key, id] of [
         [
           `${config.deepseek.baseUrl.replace(/\/$/, "")}/models`,

@@ -350,6 +350,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     rules: PerpsProposal[],
   ) {
     return this.tx(async (c) => {
+      // One authorization covers every session in this tenant/network, including history.
+      // Serialize admissions before locking a study so concurrent new sessions cannot reset it.
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        JSON.stringify(["perps-study-budget", scope.tenantId, scope.network]),
+      ]);
       const x = await this.lock(c, scope);
       this.owned(x, lease);
       await this.permissions(c, x);
@@ -391,8 +396,27 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         (sum, call) => sum + paperUnits(call.reservationUsd),
         0n,
       );
+      const campaign = await c.query<{ document: PerpsRound }>(
+        `SELECT r.document FROM pickler.perps_study_rounds r
+         JOIN pickler.perps_studies s ON s.id = r.study_id
+         WHERE s.tenant_id = $1 AND s.network = $2`,
+        [scope.tenantId, scope.network],
+      );
+      const rounds = campaign.rows.map((row) => row.document);
       if (
-        paperUnits(perpsAccountedUsd(await this.rounds(c, x.id))) + reserved >
+        rounds.some((round) =>
+          Object.values(round.calls).some(
+            (call) => call.startedAt !== null && call.costUsd === null,
+          ),
+        )
+      ) {
+        x.record.decisionStopReason = "CAMPAIGN_USAGE_UNVERIFIED";
+        x.record.status = "monitoring";
+        await this.save(c, x);
+        return null;
+      }
+      if (
+        paperUnits(perpsAccountedUsd(rounds)) + reserved >
         paperUnits(x.record.config.budgetUsd)
       ) {
         x.record.decisionStopReason = "BUDGET_EXHAUSTED";

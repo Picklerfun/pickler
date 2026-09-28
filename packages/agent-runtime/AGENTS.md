@@ -135,3 +135,7 @@ runtime composes adapters and models. Hosts must not duplicate risk, fills or ac
 Every registered plugin has a directory in `src/plugins`; read its AGENTS.md. The registry binds
 core descriptors to factories without redefining metadata. Applications import public plugin
 subpaths. Execution factories remain operator-only; there is no application registry facade.
+
+Perpetual paper data reads the order book before the ticker in each bounded session. The ticker
+can lag the book; reading it last avoids adding the book request delay to that lag. This is not an
+atomic exchange snapshot: the trading engine still rejects excessive skew without retries.

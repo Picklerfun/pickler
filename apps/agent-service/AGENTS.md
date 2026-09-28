@@ -174,3 +174,6 @@ commands. Never reintroduce old executable aliases or reset a paused session.
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
 identity, configuration and research contracts. Infrastructure implements the trading ports;
 runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+Perpl continuation runs retain the same tenant/network/database campaign budget. Read
+[PERPS-STUDY.md](PERPS-STUDY.md) before starting one; never reset scope to obtain a fresh ceiling.

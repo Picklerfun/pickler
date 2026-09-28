@@ -13,6 +13,7 @@ import { perpsRules } from "../perps-study/policy.js";
 import { PilotError } from "@pickler/core";
 import {
   createPerpsPaperService,
+  validatePaperFrame,
   paperRisk,
   type PerpsPaperRepository,
   type PerpsPaperData,
@@ -214,6 +215,10 @@ export function createPerpsStudyRunner(deps: {
     let evidence: PerpsEvidence;
     try {
       evidence = await data.evidence(record, observation, signal);
+      signal.throwIfAborted();
+      for (const frame of evidence.frames) {
+        validatePaperFrame(frame, record.config.network, frame.snapshot.market.symbol, now());
+      }
     } catch (error) {
       signal.throwIfAborted();
       await study.event(scope, lease, `${key}:candles`, "evidence-failed", {
@@ -283,6 +288,12 @@ export function createPerpsStudyRunner(deps: {
     try {
       await study.guard(scope, lease, true);
       const frames = await data.execution(record, signal);
+      signal.throwIfAborted();
+      // Persist the common execution input even if validation rejects it before any fill.
+      await study.event(scope, lease, `${round.key}:execution-input`, "execution-input", {
+        observedAt: now(),
+        frames,
+      });
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
         await paper.observe(accountScope(record, strategy), `${round.key}:execution-marks`, {
