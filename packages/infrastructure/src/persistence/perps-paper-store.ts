@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   PilotError,
+  applyPaperObservation,
+  type PerpsPaperObservation,
   assertPerpsPaperAgent,
   initialPaperAccount,
   paperRisk,
@@ -104,6 +106,51 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         movements: movements.rows.map((r) => r.document),
       },
     };
+  }
+  async observed(scope: PerpsPaperScope, key: string) {
+    return this.transaction(async (client) => {
+      const locked = await this.lock(client, scope);
+      const result = await client.query(
+        "SELECT 1 FROM pickler.perps_paper_observations WHERE account_id=$1 AND key=$2",
+        [locked.id, key],
+      );
+      return !!result.rowCount;
+    });
+  }
+  async observe(scope: PerpsPaperScope, key: string, observation: PerpsPaperObservation) {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(key)) {
+      throw new PilotError("INVALID_INPUT", "Invalid observation key");
+    }
+    return this.transaction(async (client) => {
+      const locked = await this.lock(client, scope);
+      const old = await client.query<{ result: PerpsPaperView }>(
+        "SELECT result FROM pickler.perps_paper_observations WHERE account_id=$1 AND key=$2",
+        [locked.id, key],
+      );
+      if (old.rows[0]) {
+        return old.rows[0].result;
+      }
+      assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
+      for (const frame of observation.frames) {
+        if (!locked.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
+          throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
+        }
+      }
+      const result = applyPaperObservation(
+        locked.view.account,
+        locked.view.movements,
+        observation,
+        key,
+        locked.now,
+      );
+      await this.persist(client, locked.id, result.account, result.movements);
+      const view = (await this.lock(client, scope)).view;
+      await client.query(
+        "INSERT INTO pickler.perps_paper_observations(account_id,key,document,result) VALUES($1,$2,$3,$4)",
+        [locked.id, key, observation, view],
+      );
+      return view;
+    });
   }
   async initialize(scope: PerpsPaperScope, expectedVersion: number) {
     return this.transaction(async (client) => {
@@ -278,7 +325,12 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       return (await this.lock(client, scope)).view;
     });
   }
-  async fail(scope: PerpsPaperScope, lease: PerpsPaperLease, code: string) {
+  async fail(
+    scope: PerpsPaperScope,
+    lease: PerpsPaperLease,
+    code: string,
+    evidence: unknown = null,
+  ) {
     if (!/^[A-Z_]{1,80}$/.test(code)) {
       throw new PilotError("INVALID_INPUT", "Use a safe failure code");
     }
@@ -295,6 +347,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
             reserved: "0",
             finishedAt: locked.now,
             reason: code,
+            evidence,
           },
         ],
       );

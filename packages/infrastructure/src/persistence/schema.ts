@@ -352,3 +352,18 @@ export const perpsPaperMovements = pickler
     (t) => [primaryKey({ columns: [t.accountId, t.key] })],
   )
   .enableRLS();
+
+export const perpsPaperObservations = pickler
+  .table(
+    "perps_paper_observations",
+    {
+      accountId: text("account_id")
+        .notNull()
+        .references(() => perpsPaperAccounts.id),
+      key: text("key").notNull(),
+      document: jsonb("document").notNull(),
+      result: jsonb("result").$type<import("@pickler/core").PerpsPaperView>().notNull(),
+    },
+    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+  )
+  .enableRLS();

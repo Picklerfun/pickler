@@ -208,7 +208,8 @@ export function applyPaperFill(
     attempt.status !== "pending" ||
     u(fill.quantity) <= 0n ||
     u(fill.price) <= 0n ||
-    u(fill.notional) !== u(paperProduct(fill.quantity, fill.price)) ||
+    u(fill.notional) - u(paperProduct(fill.quantity, fill.price)) < 0n ||
+    u(fill.notional) - u(paperProduct(fill.quantity, fill.price)) > 1000000n ||
     !Number.isSafeInteger(fill.block) ||
     fill.block < 0 ||
     !Number.isSafeInteger(fill.timestamp) ||
@@ -217,8 +218,19 @@ export function applyPaperFill(
   ) {
     throw new PilotError("INVALID_FILL", "Invalid or stale paper fill");
   }
+  if (
+    fill.mark &&
+    (u(fill.mark.price) <= 0n ||
+      now - fill.mark.timestamp > 30000 ||
+      fill.mark.timestamp > now + 5000)
+  ) {
+    throw new PilotError("INVALID_FILL", "Invalid fill mark");
+  }
   const fee = paperCash(d(-u(fill.fee)));
-  if (u(fill.fee) > u(attempt.intent.feeReserve) || u(fill.fee) < 0n) {
+  if (
+    (attempt.intent.kind === "open" && u(fill.fee) > u(attempt.intent.feeReserve)) ||
+    u(fill.fee) < 0n
+  ) {
     throw new PilotError("INVALID_FILL", "Fee exceeds reservation");
   }
   const movements: PerpsPaperMovement[] = [
@@ -240,8 +252,8 @@ export function applyPaperFill(
       entryNotional: fill.notional,
       openedAt: now,
       entryBlock: fill.block,
-      mark: null,
-      markAt: null,
+      mark: fill.mark?.price ?? null,
+      markAt: fill.mark?.timestamp ?? null,
       closedAt: null,
       exitPrice: null,
       exitBlock: null,

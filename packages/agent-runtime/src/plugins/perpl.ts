@@ -2,6 +2,8 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
   perpSymbolSchema,
+  perpFundingRequestSchema,
+  perpFundingHistorySchema,
   perpMarketsSchema,
   perpSnapshotSchema,
   perpOrderBookSchema,
@@ -13,6 +15,15 @@ import type { PerpReadTools } from "@pickler/core";
 /** These read tools are separate from prediction-market research tools. */
 export function buildPerplTools(service: PerpReadTools) {
   return {
+    getPerpFundingHistory: createTool({
+      id: "getPerpFundingHistory",
+      description:
+        "Read bounded Perpl funding history. Events may have estimated application times; repeated blocks identify corrections, not new payments.",
+      inputSchema: perpFundingRequestSchema,
+      outputSchema: perpFundingHistorySchema,
+      execute: async (input) =>
+        perpFundingHistorySchema.parse(await service.getPerpFundingHistory(input)),
+    }),
     listPerpMarkets: createTool({
       id: "listPerpMarkets",
       description:

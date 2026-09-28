@@ -72,6 +72,10 @@ export function createPerpReadService(deps: {
       return result;
     }
     return {
+      getPerpFundingHistory: (input) =>
+        read("getPerpFundingHistory", input.symbol, (ctx) =>
+          deps.data.funding(frozen.network, input, ctx),
+        ),
       listPerpMarkets: () =>
         read("listPerpMarkets", undefined, (ctx) =>
           deps.data.list(frozen.network, frozen.markets, ctx),

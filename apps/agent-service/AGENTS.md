@@ -172,3 +172,5 @@ Read [PERPL-DATA.md](PERPL-DATA.md) for the opt-in `perpl:data configure|check|c
 ## Perpetual paper accounts
 
 Read [PERPS-PAPER.md](PERPS-PAPER.md) for `perps:paper account-init|status|risk-check`. The local operator uses explicit tenant/agent/session/network and versioned opt-in. No provider/model calls or automatic migrations. `--enable-plugin` explicitly updates configuration and disables scheduling; historical sessions retain their original version and capital.
+
+`perps:paper` adds keyed open/close/tick and read-only report. `test/perps-public.probe.ts` explicitly tests actual public GETs with virtual fills in a disposable migrated database and private captures. It is excluded from default tests; do not describe it as real trading or change persistent alpha/beta configurations.

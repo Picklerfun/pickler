@@ -66,3 +66,5 @@ Paper DTOs now include optional nullable settlement evidence, buy-time resolutio
 ## Perpetual paper accounts
 
 `src/perps-paper.ts` exports virtual account, intent, position, ledger, status and risk DTOs. Monetary values are decimal strings; unknown valuation stays null. Lease owner tokens are deliberately excluded. Agent config accepts opt-in `perpsPaper` and the `perps-paper` plugin.
+
+Perpl DTOs include explicit funding history bounds, event provenance, estimates and completeness. Paper account DTOs retain optional valuation timestamps and sticky funding disputes for compatibility with the account milestone.

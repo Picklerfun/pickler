@@ -13,6 +13,7 @@ export const PLUGIN_IDS = [
 export type PluginId = (typeof PLUGIN_IDS)[number];
 export type PluginConfig = { version: 1; enabled: PluginId[] };
 export const TOOL_PLUGIN: Record<ToolName, PluginId> = {
+  getPerpFundingHistory: "perpl",
   listPerpMarkets: "perpl",
   getPerpSnapshot: "perpl",
   getPerpOrderBook: "perpl",
@@ -26,7 +27,7 @@ export const TOOL_PLUGIN: Record<ToolName, PluginId> = {
 };
 export const PLUGINS = PLUGIN_IDS.map((id) => ({
   id,
-  version: id === "paper-trading" ? "1.1.0" : "1.0.0",
+  version: id === "paper-trading" || id === "perpl" || id === "perps-paper" ? "1.1.0" : "1.0.0",
   coverage:
     id === "perps-paper"
       ? ["perps-paper-v1"]
