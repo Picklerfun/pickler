@@ -53,10 +53,20 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 `/v1/signing` is mounted only when `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`,
 `TURNKEY_PARENT_ORG_ID`, `TURNKEY_RPID` and `TURNKEY_APP_NAME` are all bound; without them the
 rest of the API serves unchanged. The decisions are `createCustodyService` in `@pickler/core`;
-the routes validate and map. The email that names the Turnkey sub-organization and identifies
-the user to the authenticator comes from the verified token, never from the body, and an
+the routes validate and map. Nothing that names a passkey comes from the body, and an
 attestation is refused at the door unless it is three base64url strings and transports Turnkey
 has a name for (`SUPPORTED_TRANSPORTS`).
+
+Signup: email → code → passkey (mandatory; creates the master wallet) → handle (creates the profile
+and workspace) → welcome. The first passkey is therefore usually registered before any profile
+exists, and `identity()` in `routes/signing.ts` gives it two deliberately different names. The
+WebAuthn `user.name` / `user.displayName` from `challenge`, stored in the device keychain, are the
+profile's handle and display name where there is a profile, else the sign-in email from the
+verified token's `email` claim (never a wallet account's synthetic email, recognised by
+`WALLET_EMAIL_DOMAIN`), else `pickler-<id8>`. The Turnkey root user's `userName` and the
+sub-organization's name, from `register` (`ownerLabel`), are never the email — email is kept out of
+Turnkey — but the handle where there is a profile, else `pickler-<id8>`. Neither is stored with the
+challenge; each route derives its own from the same profile read.
 
 Responses deliberately withhold what the browser has no use for: register answers with
 `sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and

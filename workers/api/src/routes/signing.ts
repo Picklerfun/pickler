@@ -1,8 +1,9 @@
 // The HTTP surface of the passkey custody flow in @pickler/core. Replaces Relayer
 // apps/api/src/kits/signing/passkeys/passkey.controller.ts (commit bb6bb1226e92).
 // Behaviour changes:
-// - The caller is a Supabase user, not an integrator, and the email the sub-organization is
-//   named after comes from the verified token rather than from the request body.
+// - The caller is a Supabase user, not an integrator, and everything the passkey is named after
+//   comes from the verified token and the profile rather than from the request body. The
+//   sub-organization is never named after an email.
 // - Every field is validated here, before it reaches core: an attestation is three base64url
 //   strings and a list of transports Turnkey has a name for. Relayer forwarded what it was given
 //   and learned about malformed ones from Turnkey, after the person's biometric ceremony.
@@ -37,8 +38,14 @@ export interface BalanceReader {
 
 export interface SigningRouteServices {
   authenticate: Authenticate;
-  /** Supplies the passkey's display name, which must never come from the auth email. */
+  /** Supplies the passkey's name and the Turnkey root user's, where there is a profile. */
   profiles: ReturnType<typeof createProfileService>;
+  /**
+   * The domain of wallet accounts' synthetic auth emails (`WALLET_EMAIL_DOMAIN`), so `identity`
+   * can tell one from a real address. Undefined where wallet sign-in is not configured, and then
+   * no such account can exist.
+   */
+  walletEmailDomain?: string | undefined;
   /**
    * Built per request, so the orphaned-sub-organization report a lost registration race produces
    * can name the request that caused it. Everything expensive is composed once behind this.
@@ -208,42 +215,73 @@ function unsignedDto(unsigned: {
  * from a bearer token would otherwise reach them silently.
  *
  * The id is the one the token proves; nothing is taken from the body, which would let a caller
- * choose whose passkey they were registering.
+ * choose whose passkey they were registering. So is the email, the Supabase JWT's `email` claim,
+ * which only `identity` reads.
  */
-function person(c: Context<AppEnv>): { id: string } {
+function person(c: Context<AppEnv>): { id: string; email: string | null } {
   const principal = c.get("principal");
   if (principal.kind !== "user") {
     throw new HttpError(401, "Bearer JWT required");
   }
-  return { id: principal.id };
+  return { id: principal.id, email: principal.email ?? null };
 }
 
 /**
- * What the passkey will be called, in the operating system's credential picker and in Turnkey's
- * dashboard. It comes from the profile, and never from `principal.email`.
- *
- * The auth email cannot be used here. For a wallet account it is synthetic and derived from the
- * wallet, and WebAuthn's `user.name` is stored inside the authenticator and synced to iCloud
- * Keychain or Google Password Manager — so labelling a credential with it would put a wallet
- * address in someone's password manager permanently, uneditable by them or by us. That is on the
- * ordinary "trade first, build an agent later" path, not a corner of it.
- *
- * It is deliberately not given the request context: with no access to the principal there is no
- * email in reach, so the leak cannot be reintroduced by someone reaching for the nearest value.
- *
- * Someone with no profile is labelled by an opaque fragment of their user id rather than refused.
- * Requiring a profile would be defensible for wallet accounts but would newly lock out existing
- * email accounts that never made one, and a passkey is not the place to discover that. The id is
- * random, so the fallback discloses nothing — it is merely unfriendly, which is the right way for
- * a fallback to be bad.
+ * The token's email when it is one a person would recognise in their keychain, else null. A wallet
+ * account's auth email is synthetic (`<namespace>-<digest>@WALLET_EMAIL_DOMAIN`, see
+ * infrastructure's wallet-accounts.ts): an internal key, never a contact, and not something to
+ * store in anyone's password manager.
  */
-async function identity(services: SigningRouteServices, userId: string): Promise<DisplayIdentity> {
-  const profile = await services.profiles.getProfile(userId);
-  if (profile) {
-    return { name: profile.handle, displayName: profile.displayName };
+function keychainEmail(email: string | null, walletEmailDomain: string | undefined): string | null {
+  if (!email) {
+    return null;
   }
-  const fallback = `pickler-${userId.slice(0, 8)}`;
-  return { name: fallback, displayName: fallback };
+  if (walletEmailDomain && email.toLowerCase().endsWith(`@${walletEmailDomain.toLowerCase()}`)) {
+    return null;
+  }
+  return email;
+}
+
+/**
+ * The two names a first passkey is given, which are deliberately not the same value:
+ *
+ * - `passkey` is WebAuthn's `user.name` / `user.displayName`, stored inside the authenticator and
+ *   synced to iCloud Keychain or Google Password Manager, uneditable afterwards by the person or by
+ *   us. It is the profile's handle and display name where there is a profile. Signup creates the
+ *   passkey before the handle, so there usually is none yet, and then it is the person's sign-in
+ *   email — what they will recognise the keychain entry by. Never a wallet account's synthetic
+ *   email (`keychainEmail`); with no usable email it is the opaque fallback below.
+ * - `ownerLabel` is the Turnkey root user's `userName`, and the sub-organization's name. It is
+ *   NEVER an email: email is kept out of Turnkey on purpose. The handle where there is a profile,
+ *   the fallback otherwise.
+ *
+ * The fallback is an opaque fragment of the user id rather than a refusal. The id is random, so it
+ * discloses nothing — it is merely unfriendly, which is the right way for a fallback to be bad.
+ *
+ * Nothing here is persisted with the challenge. `issueChallenge` uses only `passkey`, `register`
+ * only `ownerLabel`, and each is derived again from the same profile when its route runs; the
+ * WebAuthn name never reaches Turnkey (it is not in the attestation), so a profile made between the
+ * two calls changes the Turnkey label to the handle and leaves nothing inconsistent.
+ */
+async function identity(
+  services: SigningRouteServices,
+  user: { id: string; email: string | null },
+): Promise<{ passkey: DisplayIdentity; ownerLabel: string }> {
+  const profile = await services.profiles.getProfile(user.id);
+  if (profile) {
+    return {
+      passkey: { name: profile.handle, displayName: profile.displayName },
+      ownerLabel: profile.handle,
+    };
+  }
+  const fallback = `pickler-${user.id.slice(0, 8)}`;
+  const email = keychainEmail(user.email, services.walletEmailDomain);
+  return {
+    passkey: email
+      ? { name: email, displayName: email }
+      : { name: fallback, displayName: fallback },
+    ownerLabel: fallback,
+  };
 }
 
 export function signingRoutes(services: SigningRouteServices) {
@@ -260,7 +298,7 @@ export function signingRoutes(services: SigningRouteServices) {
   api.post("/passkeys/challenge", async (c) => {
     const user = person(c);
     const custody = services.custody(c.get("requestId"));
-    const options = await custody.issueChallenge(user.id, await identity(services, user.id));
+    const options = await custody.issueChallenge(user.id, (await identity(services, user)).passkey);
     return c.json(successEnvelope(options, c.req.path, "Challenge issued"));
   });
 
@@ -270,7 +308,7 @@ export function signingRoutes(services: SigningRouteServices) {
     const user = person(c);
     const body = await jsonBody(c);
     const input = {
-      identity: await identity(services, user.id),
+      ownerLabel: (await identity(services, user)).ownerLabel,
       label: text(body, "label", MAX.label),
       challenge: base64url(body, "challenge", MAX.challenge),
       attestation: attestation(body),

@@ -161,6 +161,7 @@ function custodyServices(
   return {
     authenticate,
     profiles,
+    walletEmailDomain: env.WALLET_EMAIL_DOMAIN,
     balances: createBalanceReader({
       chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
       ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),

@@ -273,8 +273,9 @@ function harness(
     return { principal: principal as never, workspace: null };
   };
 
-  // A real profile service over a fake repository: the passkey's display name comes from here,
-  // and never from the principal's email.
+  // A real profile service over a fake repository: the passkey's names come from here where there
+  // is a profile. Without one, the WebAuthn name is the principal's real email (never a synthetic
+  // one) and the Turnkey root user is the opaque fallback.
   const profileRow: {
     value: { userId: string; displayName: string; handle: string; createdAt: Date } | null;
   } = { value: { userId: ANA, displayName: "Ana Robles", handle: "anarobles", createdAt: NOW } };
@@ -295,7 +296,14 @@ function harness(
     agentQueries: {} as never,
     budgets: {} as never,
     profiles: {} as never,
-    custody: { authenticate, custody, balances, profiles },
+    custody: {
+      authenticate,
+      custody,
+      balances,
+      profiles,
+      // As container.ts wires WALLET_EMAIL_DOMAIN: wallet accounts' synthetic emails end in it.
+      walletEmailDomain: "wallet.pickler.fun",
+    },
   });
 
   return {
@@ -833,12 +841,12 @@ test("a token with no email address can open a wallet, labelled from the profile
 });
 
 /**
- * The rule the whole change exists for. A wallet account's auth email is synthetic and derived from
- * the wallet, and WebAuthn's `user.name` is stored in the authenticator and synced to a password
- * manager — so if the email ever reached this field, the address would be in someone's keychain
- * permanently. Asserts the absence directly rather than trusting the positive assertion above.
+ * A wallet account's auth email is synthetic and derived from the wallet, and WebAuthn's
+ * `user.name` is stored in the authenticator and synced to a password manager — so if that email
+ * ever reached this field, an internal key would be in someone's keychain permanently. A real
+ * email may be used (see below); a synthetic one never. Asserts the absence directly.
  */
-test("the passkey is never labelled with the caller's auth email", async () => {
+test("the passkey is never labelled with a wallet account's synthetic email", async () => {
   const synthetic =
     "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
 
@@ -885,6 +893,66 @@ test("a caller with no profile is labelled opaquely, never by their address", as
   const options = (await json(res))["data"] as { user: { name: string; displayName: string } };
   assert.equal(options.user.name, "pickler-11111111");
   assert.equal(options.user.displayName, "pickler-11111111");
+});
+
+/**
+ * Signup creates the passkey before the handle, so the first passkey usually has no profile to be
+ * named after. The keychain entry is then the person's sign-in email, which they recognise — but
+ * the Turnkey root user and sub-organization are named with the opaque fallback, because email is
+ * kept out of Turnkey on purpose.
+ */
+test("with no profile, the WebAuthn name is the email and the Turnkey user name never is", async () => {
+  const h = harness();
+  h.profileRow.value = null;
+
+  const issued = await data(await post(h, "/v1/signing/passkeys/challenge"));
+  assert.deepEqual(issued["user"], { id: "r2", name: EMAIL, displayName: EMAIL });
+
+  const res = await post(h, "/v1/signing/passkeys/register", {
+    label: "Touch ID on This Mac",
+    challenge: issued["challenge"],
+    attestation: ATTESTATION,
+  });
+  assert.equal(res.status, 200, await res.text());
+  assert.equal(h.creations.length, 1);
+  assert.equal(h.creations[0]?.ownerLabel, "pickler-11111111");
+  assert.equal(
+    JSON.stringify(h.creations).includes(EMAIL),
+    false,
+    "the email reached the Turnkey sub-organization",
+  );
+});
+
+test("with a profile, both names are the handle and the email is used for neither", async () => {
+  const h = harness();
+
+  const issued = await data(await post(h, "/v1/signing/passkeys/challenge"));
+  assert.deepEqual(issued["user"], { id: "r2", name: "anarobles", displayName: "Ana Robles" });
+  await post(h, "/v1/signing/passkeys/register", {
+    label: "Touch ID on This Mac",
+    challenge: issued["challenge"],
+    attestation: ATTESTATION,
+  });
+  assert.equal(h.creations[0]?.ownerLabel, "anarobles");
+  assert.equal(JSON.stringify(h.creations).includes(EMAIL), false);
+});
+
+test("with no profile and no email, both names are the opaque fallback", async () => {
+  const h = harness(buildUserPrincipal({ user: { id: ANA } }));
+  h.profileRow.value = null;
+
+  const issued = await data(await post(h, "/v1/signing/passkeys/challenge"));
+  assert.deepEqual(issued["user"], {
+    id: "r2",
+    name: "pickler-11111111",
+    displayName: "pickler-11111111",
+  });
+  await post(h, "/v1/signing/passkeys/register", {
+    label: "Touch ID on This Mac",
+    challenge: issued["challenge"],
+    attestation: ATTESTATION,
+  });
+  assert.equal(h.creations[0]?.ownerLabel, "pickler-11111111");
 });
 
 test("the orphan of a lost race is logged against the request that caused it", async () => {
