@@ -46,7 +46,7 @@ export function BookCard({ market, data, target }: { market: Market; data: Marke
           <Icon name={open ? "up" : "down"} size={14} color={C.faint} />
         </View>
       </Touch>
-      {!open && target !== undefined ? (
+      {target !== undefined ? (
         <T w={500} s={10.5} lh={1.4} mono color={C.limeInk} accessibilityLabel="book-target">Target {formatPrice(target, pd)} · {pos === null ? "book not loaded" : POSITION_COPY[pos]}</T>
       ) : null}
       {!open ? null : book === null ? (
@@ -61,9 +61,6 @@ export function BookCard({ market, data, target }: { market: Market; data: Marke
           {bids.map((l) => <Row key={`b${l.p}`} level={l} max={max} side="bid" pd={pd} sd={sd} />)}
         </View>
       )}
-      {open && target !== undefined ? (
-        <T w={500} s={10.5} lh={1.4} mono color={C.limeInk} accessibilityLabel="book-target">Target {formatPrice(target, pd)} · {pos === null ? "book not loaded" : POSITION_COPY[pos]}</T>
-      ) : null}
       {open && data.rejected ? <T w={400} s={11} lh={1.4} color={C.faint}>Perpl doesn't publish a book for this market right now.</T> : null}
     </Card>
   );
