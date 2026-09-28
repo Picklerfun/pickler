@@ -10,7 +10,7 @@ import { tabBarHeight } from "./tabBarLayout";
 import { C } from "./theme";
 
 /** Una página de react-navigation: cabecera propia (viaja con el gesto), ScrollView con pull-to-refresh y sello, fondo opaco. */
-export function Page({ screen, children }: { screen: Screen; children: ReactNode }) {
+export function Page({ screen, children, headerRight }: { screen: Screen; children: ReactNode; headerRight?: ReactNode }) {
   const ctx = useAppCtx();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -29,7 +29,7 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
     try {
       await Promise.allSettled(
         screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()]
-        : screen === "market" ? [perpl.refreshContext(), reads.refresh()]
+        : screen === "market" || screen === "portfolio" ? [perpl.refreshContext(), reads.refresh()]
         : [perpl.refreshContext()],
       );
     } finally {
@@ -44,17 +44,20 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <SafeAreaView style={{ flex: 1 }} edges={showTabs ? ["top"] : ["top", "bottom"]}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 9, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair, backgroundColor: C.deep50 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 10, paddingHorizontal: 18, paddingBottom: 12, backgroundColor: C.bg }}>
           {canBack ? (
-            <Touch onPress={back} accessibilityLabel="back" style={{ width: 31, height: 31, borderRadius: 999, borderWidth: 1, borderColor: C.hair22, alignItems: "center", justifyContent: "center" }}>
-              <Icon name="back" size={16} color={C.ink} />
+            <Touch onPress={back} accessibilityLabel="back" style={{ width: 38, height: 38, borderRadius: 999, backgroundColor: C.ctl, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="back" size={17} color={C.ink} />
             </Touch>
           ) : null}
-          {isRoot ? <Image source={require("../../assets/pickler-mark.png")} style={{ width: 24, height: 24 }} resizeMode="contain" /> : null}
+          {isRoot ? <Image source={require("../../assets/pickler-mark.png")} style={{ width: 26, height: 26 }} resizeMode="contain" /> : null}
           <View style={{ flex: 1, minWidth: 0 }}>
-            <T w={700} s={16.5} lh={1.15} ls={-0.01} display numberOfLines={1}>{title}</T>
-            <T w={400} s={11} lh={1.2} color={C.faint} numberOfLines={1} style={{ marginTop: 2 }}>{sub}</T>
+            {isRoot
+              ? <T w={700} s={30} lh={1} ls={-0.045} display numberOfLines={1}>{title.toUpperCase()}</T>
+              : <T w={700} s={22} lh={1.05} ls={-0.03} display numberOfLines={1}>{title.toUpperCase()}</T>}
+            {!isRoot && sub ? <T w={500} s={10.5} lh={1.2} ls={0.08} mono color={C.faint} numberOfLines={1} style={{ marginTop: 3 }}>{sub.toUpperCase()}</T> : null}
           </View>
+          {headerRight}
           {__DEV__ ? (
             <Touch onPress={() => setControls(true)} hitSlop={12} accessibilityLabel="dev-controls">
               <T w={500} s={13} lh={1} mono color={C.faint}>⚙</T>
@@ -67,10 +70,10 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
           contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.limeInk} /> : undefined}
+          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.faint} /> : undefined}
         >
           {failed || label !== null ? (
-            <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>
+            <View style={{ paddingHorizontal: 18, paddingTop: 10 }}>
               <Tag color={failed ? C.down : C.faint}>{failed ? "COULDN'T REFRESH" : label}</Tag>
             </View>
           ) : null}
@@ -82,10 +85,14 @@ export function Page({ screen, children }: { screen: Screen; children: ReactNode
 }
 
 /** Registra una pantalla existente como ruta: recibe el ctx por contexto y lo pasa como props (P2). */
-export function withPage(screen: Screen, Component: (ctx: AppCtx) => ReactElement): () => ReactElement {
+export function withPage(
+  screen: Screen,
+  Component: (ctx: AppCtx) => ReactElement,
+  opts?: { headerRight?: (ctx: AppCtx) => ReactNode },
+): () => ReactElement {
   const Wrapped = () => {
     const ctx = useAppCtx();
-    return <Page screen={screen}><Component {...ctx} /></Page>;
+    return <Page screen={screen} headerRight={opts?.headerRight?.(ctx)}><Component {...ctx} /></Page>;
   };
   Wrapped.displayName = `Page(${screen})`;
   return Wrapped;
