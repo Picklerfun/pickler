@@ -29,6 +29,19 @@ window.DOCS = [
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-28',
+    title: 'Rediseño light del Handoff',
+    summary: 'La app adopta el diseño claro del Handoff (4 pestañas, board nivel × tiempo, Agents, Portfolio y Read) como tema de UI/UX, sin tocar la lógica.',
+    file: '2026-09-28-mobile-light.html',
+    types: ['spec', 'plan'],
+    status: 'active',
+    tags: ['mobile', 'design', 'ui'],
+    phases: [
+      { num: 1, status: 'plan_ready' },
+      { num: 2, status: 'pending' },
+    ],
+  },
+  {
+    date: '2026-09-28',
     title: 'TestFlight build 10',
     summary: 'Build 0.1.0 (10): Ask F3 completo — order book L2 vivo, «Trade this level» y recordatorios— más el Worker AASA ya desplegado incorporado a Git. VALID en App Store Connect y en el grupo «Equipo»; humo completo aprobado en iPhone físico.',
     file: 'dev/2026-09-28-testflight-build10.html',

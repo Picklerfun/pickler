@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rediseño light del Handoff · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-light">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-light</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>Rediseño light <span class="accent">del Handoff</span></h1>
+    <p class="lede">La app adopta el diseño claro del Handoff de Claude Design (4 pestañas, board nivel × tiempo, Agents, Portfolio y Read) como tema de UI/UX, sin tocar la lógica de Perpl, wallet ni reads.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="">—</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Tema claro con Archivo, Instrument Sans y JetBrains Mono. Pestañas MARKETS · AGENTS · PORTFOLIO · WALLET; Launchpad y Activity salen de la barra pero se quedan en el código. Se conservan los dos saldos (wallet y trading) y Enable trading pasa a Market. Market es un solo board con Trade it / Ask an agent, con los niveles y horizontes del backend; la orden sigue siendo de mercado con recordatorios. El perfil de agente usa tus reads y calcula la calibración en la app. Sin backend nuevo. F1 re-viste todo y agrega Portfolio y Read; F2 trae el board, el perfil y el onboarding.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <article class="phase-card" data-phase="1" data-status="plan_ready">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Sistema y re-vestido</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready" selected>plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Tokens, fuentes, primitivas y tab bar de 4 botones; pilas nuevas; re-vestir Sign in, Wallet, Deposit (con QR), Withdraw, Trading funds y Markets (con búsqueda); crear Agents (lista), Portfolio (Positions / Reads / Backed) y la pantalla Read. Market queda con el ticket y el Ask actuales re-vestidos.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">App completa en el tema claro, con 4 pestañas y la lógica intacta</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Spec aprobado</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan · <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html">plan F1</a></span>
+              <span class="progress-pill" data-tasks-counter>0/16</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> T0 · Bootstrap, dependencias y fuente display</label></li>
+              <li><label><input type="checkbox"> T1 · ui/theme.ts — tokens claros, fuentes y reasignación de texto lima (D3, D4, D5)</label></li>
+              <li><label><input type="checkbox"> T2 · Primitivas re-vestidas (D5, D6)</label></li>
+              <li><label><input type="checkbox"> T3 · Navegación — 4 pestañas visibles, pilas nuevas y destino de los pushes (D1, D13, D19, D22, D23)</label></li>
+              <li><label><input type="checkbox"> T4 · Tab bar de 4 botones fijos (D2)</label></li>
+              <li><label><input type="checkbox"> T5 · Cabecera de página clara (D5)</label></li>
+              <li><label><input type="checkbox"> T6 · Cableado de datos — reads sin filtro, sockets por pantalla, fetchOne (D26)</label></li>
+              <li><label><input type="checkbox"> T7 · Sign in (D20)</label></li>
+              <li><label><input type="checkbox"> T8 · Wallet, Deposit (QR), Withdraw y Trading funds (D7, D18, D19)</label></li>
+              <li><label><input type="checkbox"> T9 · Markets — búsqueda y tarjetas; el gate sale a tradingGate.tsx (D7, D8, D9)</label></li>
+              <li><label><input type="checkbox"> T10 · Market — segmentado Trade it / Ask an agent, Enable dentro de Trade, ticket y Ask re-vestidos (D7, D8, D10 parcial, D11, D12)</label></li>
+              <li><label><input type="checkbox"> T11 · Pestaña Agents (D13, D15)</label></li>
+              <li><label><input type="checkbox"> T12 · Portfolio — totales, Positions, Reads y Backed (D7, D8, D17)</label></li>
+              <li><label><input type="checkbox"> T13 · Pantalla Read (D14)</label></li>
+              <li><label><input type="checkbox"> T14 · Barrido de restos oscuros y copy</label></li>
+              <li><label><input type="checkbox"> T15 · Rebuild nativo, verificación en el simulador, README, overview y audit</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <article class="phase-card" data-phase="2" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F2</span>
+            <h3 class="phase-title">Board y perfil de agente</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 2 status">
+              <option value="pending" selected>pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Board nivel × tiempo unificado para Trade it y Ask an agent, perfil de agente con calibración y récord, y onboarding de 3 hojas tras crear la wallet.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Market con el board del Handoff, ruta <code>agent</code> y ruta <code>onboarding</code></div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1</div></div>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pestañas MARKETS · AGENTS · PORTFOLIO · WALLET; Launchpad y Activity fuera de la barra, conservadas en el código</td>
+            <td>Se integran después (C1).</td>
+          </tr>
+          <tr>
+            <td>Dos saldos: AVAILABLE de la wallet + baldosa IN TRADING; Enable trading dentro de Market</td>
+            <td>Un saldo sumado engañaría: withdraw sólo saca lo de la wallet (C2, opción A).</td>
+          </tr>
+          <tr>
+            <td>Board único Trade it / Ask an agent con niveles y horizontes del backend (4 columnas)</td>
+            <td>Las reads y los recordatorios ya se guardan con esos valores (C3).</td>
+          </tr>
+          <tr>
+            <td>La orden sigue siendo de mercado con recordatorios; sin TP ni cierre por deadline</td>
+            <td>La lógica incompatible se conserva; el copy no promete "three orders".</td>
+          </tr>
+          <tr>
+            <td>Perfil de agente con tus reads y calibración calculada en la app</td>
+            <td>Sin backend nuevo (C4, opción A); el récord es personal.</td>
+          </tr>
+          <tr>
+            <td>Créditos simulados; sin "BOOK IS AT" ni SOURCES</td>
+            <td>No hay pago en AUSD ni esos datos (C5).</td>
+          </tr>
+          <tr>
+            <td>Búsqueda local sí; categorías, magic link y Back it no</td>
+            <td>Perpl sólo lista crypto; lo demás no existe en la app (C6).</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <a href="../superpowers/specs/2026-09-28-mobile-light-design.html"><code>docs/superpowers/specs/2026-09-28-mobile-light-design.md</code></a> ·
+       planes en <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f1.md</code></a></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

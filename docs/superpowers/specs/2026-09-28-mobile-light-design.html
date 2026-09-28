@@ -1,0 +1,325 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-28-mobile-light-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Rediseño light (Handoff): 4 pestañas, board nivel × tiempo, Agents y Portfolio · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-28-mobile-light-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-28-mobile-light-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Rediseño light (Handoff): 4 pestañas, board nivel × tiempo, Agents y Portfolio</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-28-mobile-light-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-decisiones">1. Decisiones</a></li><li><a href="#2-rutas-y-pilas-resultantes">2. Rutas y pilas resultantes</a></li><li><a href="#3-logica-nueva-pura-y-con-tests">3. Lógica nueva (pura y con tests)</a></li><li><a href="#4-fases">4. Fases</a></li><li><a href="#5-fuera-de-alcance">5. Fuera de alcance</a></li><li><a href="#6-riesgos">6. Riesgos</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-28-mobile-light-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-rediseno-light-handoff-4-pestanas-board-nivel-tiempo-agents-y-portfolio">App móvil Pickler — Rediseño light (Handoff): 4 pestañas, board nivel × tiempo, Agents y Portfolio</h1>
+<p><strong>Fecha</strong>: 2026-09-28 <strong>Estado</strong>: spec en revisión; sin planes <strong>Slug</strong>: <code>mobile-light</code> <strong>Rama</strong>: <code>feat/mobile-light</code>, base <code>main</code> (<code>4041315</code>), worktree <code>.claude/worktrees/mobile-light</code> <strong>Contexto</strong>: el 2026-09-22 el equipo subió a <code>jjesusaf/pickler-mobile</code> (<code>781f0ed</code>, visor en <code>1808d5b</code>, carpeta <code>design/</code>) el prototipo de Claude Design <strong>Pickler Mobile Handoff</strong>. Es la iteración siguiente del hi-fi que la app adoptó en <code>mobile-hifi</code> (<code>a0e353e</code>, navy + Chakra Petch). Trae un sistema <strong>claro</strong> (Archivo + Instrument Sans + JetBrains Mono), 4 pestañas y 9 pantallas. Versión viva: https://claude.ai/design/p/c03aadb4-7bb2-429e-aa49-98ae4218bc1f. Los datos del prototipo son de ejemplo y sus botones no hacen nada.</p>
+<p>Jesús pidió <strong>adoptar este diseño como tema de UI/UX sin cambiar la lógica</strong>: donde el diseño supone algo que no tenemos, se conserva la lógica actual y el diseño se adapta. Los conflictos (C1–C6) se resolvieron uno por uno el 2026-09-28. Quedan 15 días para el bounty (13 oct 2026, 21:59 CST).</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ol>
+<li><strong>Tema claro del Handoff</strong> en toda la app: tokens, fuentes, primitivas y tab bar de 4 botones fijos.</li>
+<li><strong>Pestañas</strong>: MARKETS · AGENTS · PORTFOLIO · WALLET. Launchpad y Activity **salen de la barra, pero</li>
+<p>se quedan en el código** para integrarlas después.</p>
+<li><strong>Dos saldos, como hoy</strong>: Wallet muestra AVAILABLE (la wallet) con una baldosa IN TRADING.</li>
+<p>Portfolio reparte POSITIONS / AVAILABLE (trading) / BACKED (coming soon). Enable trading y Reconnect viven en Market, donde se toca Trade.</p>
+<li><strong>Market = un solo board</strong> nivel × tiempo con segmentado <em>Trade it / Ask an agent</em>. Se conservan los</li>
+<p>niveles y horizontes del backend (4 columnas). La orden sigue siendo de mercado con recordatorios.</p>
+<li><strong>Agents</strong> con datos reales. El <strong>perfil</strong> usa tus reads con ese agente y calcula la calibración en</li>
+<p>la app. Sin backend nuevo.</p>
+<li><strong>Read</strong> es una pantalla propia con el diseño del Handoff; créditos simulados como hoy.</li>
+<li><strong>Sin backend nuevo, sin DDL, sin cambios en Perpl.</strong></li>
+<li>Dos fases con checkpoint; un spike de velas de Perpl va aparte.</li>
+</ol>
+<hr>
+<h2 id="1-decisiones">1. Decisiones</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Valor</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>D1</td><td>Pestañas (C1)</td><td><code>TAB_ORDER</code> = MARKETS (<code>grid</code>) · AGENTS (<code>user</code>) · PORTFOLIO (<code>chart</code>) · WALLET (<code>wallet</code>), los iconos de la barra del Handoff. Corrección del 2026-09-28 al escribir el plan F1: decía <code>chart</code> / <code>layers</code>, heredados de la barra anterior. Launchpad y Activity <strong>se quitan de <code>TAB_ORDER</code></strong>, pero sus pantallas (<code>comingSoon.tsx</code>), su copy (<code>comingSoonCopy.ts</code>) y sus nombres de ruta se conservan, con un comentario que las marca como &quot;a integrar&quot;.</td><td>Jesús: &quot;no lo elimines por completo, lo vamos a integrar después&quot;.</td></tr>
+<tr><td>D2</td><td>Tab bar</td><td>4 botones fijos: icono lucide de 19 px (stroke 1.9) y etiqueta mono de 10.5 px. Activo: fondo <code>#F1F2F7</code> y color por pestaña según la barra del Handoff (MARKETS <code>#3F6B00</code>, AGENTS <code>#5B3CE0</code>, PORTFOLIO <code>#8A6200</code>, WALLET <code>#C62C62</code>). Inactivo: <code>#6B7186</code>. Barra blanca al 96 % <strong>sin blur</strong> (evita <code>expo-blur</code>) y con una hairline arriba. <strong>Se retira la pastilla arrastrable</strong> (<code>TabBar.tsx</code> / <code>tabBarLayout.ts</code>). Se sigue ocultando en pantallas que no son raíz.</td><td>Es la barra del diseño. El mapa del Handoff usa otros colores para Wallet y Portfolio; manda la barra hi-fi.</td></tr>
+<tr><td>D3</td><td>Tokens</td><td><code>ui/theme.ts</code> adopta la paleta del Handoff:&lt;br&gt;• Superficies y tinta: ink <code>#0B0D1A</code>; texto <code>#5A5F78</code> / <code>#6B7186</code>; fondo <code>#FFFFFF</code>; tarjeta <code>#F5F6FA</code>; control <code>#F1F2F7</code>; bloque oscuro <code>#0B0D1A</code> con baldosa <code>#15182A</code> y texto <code>#9AA0B8</code> / <code>#C7CAD8</code>.&lt;br&gt;• Acentos: money/lima <code>#C8F03A</code>; ask/violeta <code>#5B3CE0</code>; win <code>#2E7D32</code>; loss <code>#C62C62</code>; pending <code>#FFC93F</code>; short <code>#FF5FA2</code>; punto de agente <code>#9B7BFF</code>.&lt;br&gt;• Tintes: <code>#F3F8E0</code>, <code>#EDF7CE</code>, <code>#EEEAFF</code>, <code>#FBF0D4</code>, <code>#FDF0F5</code>; tintas <code>#3F6B00</code> y <code>#8A6200</code>.&lt;br&gt;• Grises: <code>#E2E5EE</code>, <code>#D3D6E2</code>; hairlines <code>rgba(11,13,26,.06/.08/.1)</code>.&lt;br&gt;Los nombres viejos que ya no correspondan desaparecen y <code>theme.test.ts</code> fija los valores nuevos.</td><td>Portar 1:1 desde el diseño evita inventar equivalencias, igual que en <code>mobile-hifi</code> D8.</td></tr>
+<tr><td>D4</td><td>Fuentes</td><td>Display: <strong>Archivo 700</strong> con ancho ~112 (<code>wdth 112</code> en el diseño). Se usa la instancia estática más cercana al ancho 112 de los archivos de Google Fonts; si no hay una, Archivo 700 normal. El plan lo verifica renderizado. Cuerpo: <strong>Instrument Sans</strong> 400/500/600. Mono: <strong>JetBrains Mono</strong> 500/700 (ya cargada). <strong>Sale Chakra Petch; Manrope sale</strong> si no queda ningún consumidor.</td><td>RN no garantiza ejes variables en iOS; una instancia estática es predecible.</td></tr>
+<tr><td>D5</td><td>Forma</td><td>Pill en todo control; radio 20 en tarjetas, 22 en bloques oscuros y 12–16 en baldosas; padding de pantalla 18; casi sin sombras. <strong>Se retira el <code>Backdrop</code></strong> (gradiente navy con puntos). Status bar oscura y <code>expo-system-ui</code> en blanco.</td><td>Reglas de forma del Handoff.</td></tr>
+<tr><td>D6</td><td>Primitivas</td><td>Las primitivas de <code>ui/primitives.tsx</code> se re-visten con el vocabulario del Handoff; mismos nombres donde ya coinciden. Botones: primario lima, Ask (<code>#EEEAFF</code> / <code>#5B3CE0</code> con burbuja), oscuro, atrás circular de 38 px y la flecha → final. Chips de filtro, segmentado ink sobre <code>#F1F2F7</code>, barra de progreso de 8 px.</td><td>Diff legible contra el diseño.</td></tr>
+<tr><td>D7</td><td>Dos saldos (C2, opción A)</td><td><strong>Wallet</strong>: bloque ink &quot;AVAILABLE · AUSD&quot; = saldo de la wallet, con Deposit (lima) y Withdraw (<code>#15182A</code>). Debajo, la baldosa &quot;IN TRADING · X AUSD&quot;, que abre Trading funds (Add / Withdraw, la <code>perpsFunds</code> actual). <strong>Portfolio</strong>: bloque ink con TOTAL = valor de la cuenta de trading (margen en posiciones + libre + PnL no realizado) y 3 baldosas: POSITIONS, AVAILABLE y BACKED (coming soon, &quot;—&quot;). AVAILABLE es el libre <strong>con la fórmula del ticket</strong> (<code>b − lb</code>, <code>market.tsx</code>). POSITIONS usa el <code>locked</code> que hoy muestra la card de Markets, más el PnL no realizado. El plan fija la suma exacta y la verifica con la cuenta #620. Hoy la card de Markets rotula <code>b</code> como &quot;free&quot; y eso no coincide con el ticket; desde aquí manda <code>b − lb</code>. El saldo de la wallet <strong>no</strong> se suma: vive en Wallet. <strong>Enable trading / Reconnect</strong> aparecen como card dentro de Market en modo Trade, en lugar del <code>TradeGate</code> que mandaba a Markets. <strong>Markets queda solo con la lista.</strong></td><td>Jesús eligió A. Un saldo sumado engañaría: withdraw sólo saca lo que está en la wallet.</td></tr>
+<tr><td>D8</td><td>Avisos de trading</td><td>Desfase de reloj, key rechazada (Reset / Open Perpl) y forwarding apagado se muestran en Market (modo Trade) y en Portfolio → Positions, con el estilo de aviso nuevo.</td><td>Hoy viven en la card de Markets, que desaparece.</td></tr>
+<tr><td>D9</td><td>Markets</td><td>Cabecera &quot;MARKETS&quot; y buscador <strong>local</strong> por símbolo y nombre. Cada tarjeta lleva avatar con símbolo, par, &quot;MAX N× · 3 AGENTS&quot; (agentes reales), mark, cambio 24h con color según signo, sparkline y los botones <strong>Ask</strong> (abre Market en modo Ask) y <strong>Trade</strong> (abre Market en modo Trade); al tocar la tarjeta se abre Trade. <strong>Sin chips de categoría.</strong> Sparkline: marks acumulados en memoria (<code>perpl/marks.ts</code>), vacía al abrir y crece con el polling; su color sigue el cambio 24h real.</td><td>C6. Perpl sólo lista crypto, así que las categorías no filtrarían nada. No hay API de historial en la app.</td></tr>
+<tr><td>D10</td><td>Market: board (C3)</td><td>Cabecera: atrás, par, &quot;N AGENTS · MAX N×&quot;, mark en vivo, % 24h y segmentado <strong>Trade it / Ask an agent</strong>, que reemplaza a los PillTabs Ask/Trade/Agents. <code>S.marketTab</code> queda en `trade \</td><td>ask`; <strong>esta parte entra en F1</strong> porque la pill Agents se va con D15. Board del Handoff (F2): banda ink del MARK en medio, filas de nivel con precio absoluto (verde arriba, rojo abajo) y % de distancia, celdas de 48 px, trayectoria de precio al fondo con los marks en memoria y punto &quot;now&quot;. Puntos violeta donde ya hay reads tuyas. <strong>Niveles y horizontes del backend</strong>: +2.5 / +1 / +0.5 / −0.5 / −1 % × 1H / 4H / 12H / 24H.</td><td>Jesús aprobó 4 columnas. <code>reads.level_bps</code> y <code>horizon_min</code> ya tienen CHECK con esos valores.</td></tr>
+<tr><td>D11</td><td>Market: Trade it</td><td>Al tocar un cuadro se infiere el lado (arriba del mark = long) y se prellena el ticket actual con el nivel (LevelCard) y el horizonte. Ticket del Handoff: segmentado &quot;Long · up / Short · down&quot;, MARGIN AUSD con Max, chips de apalancamiento <strong>del mercado</strong> y KV SIZE / IF IT HITS / LIQUIDATION ≈ con <strong>nuestros</strong> cálculos (notional, precio estimado, fee taker). Barra fija &quot;Long to X within 4H&quot; + &quot;Review · X AUSD&quot;. Review en tinta y resultado en lima (sent / filled / failed / unknown), según los wireframes. <strong>La lógica no cambia</strong>: orden de mercado firmada por WS más <code>reminder-set</code>. <strong>No hay</strong> TP ni cierre por deadline, y el copy no dice &quot;three orders&quot;. El <strong>order book L2</strong> (<code>book.tsx</code>) queda como card plegable bajo el ticket.</td><td>&quot;Si hay lógica que no es compatible, dejamos la lógica&quot;.</td></tr>
+<tr><td>D12</td><td>Market: Ask an agent</td><td>Al tocar un cuadro se abre el <code>AskSheet</code> actual re-vestido: chip del agente con &quot;Change&quot; (es el &quot;agent picker&quot; del diseño), pregunta generada, steppers y &quot;Ask · 1 credit&quot; con el saldo de créditos. <code>SessionGate</code> (Face ID diario) re-vestido. El resultado se sigue mostrando <strong>inline</strong> en Market (<code>ReadCard</code> con el estilo de D14), sin empujar otra pantalla. <strong>Se retira el segmentado New / My reads</strong> de Ask: la lista vive en Portfolio → Reads (D17).</td><td>C5.</td></tr>
+<tr><td>D13</td><td>Entradas a Ask (C5)</td><td>&quot;Ask&quot; desde una tarjeta de Agents o desde el perfil: cambia a la pestaña Markets y abre <code>market</code> en modo Ask con ese agente elegido, en el último mercado usado o, si no hay, BTC. &quot;Ask&quot; desde Markets abre ese mercado en modo Ask.</td><td>Una read exige mercado, nivel y horizonte; no se le pregunta a un agente en abstracto.</td></tr>
+<tr><td>D14</td><td>Pantalla Read</td><td>Ruta nueva <code>read</code>, <strong>sólo en la pila de Portfolio</strong>, porque <code>TAB_OF</code> asigna una pestaña por pantalla. Desde el récord del perfil se cambia a Portfolio y se abre <code>read</code>. Datos: la read se busca por id en la lista de <code>useReads</code>; si no está (llegó por push), se pide con <code>fetchRead</code> (<code>reads/api.ts</code>, hoy sin consumidor). Cabecera: atrás, avatar, agente, &quot;READ · N CREDITS&quot;. Bloque violeta THE QUESTION con la pregunta y la probabilidad en 64 px. Relojes DELIVERED / EVALUATES, ITS READ, WHY (las <code>reasons</code>) y LIMITS (bloque ámbar). Estado como etiqueta: READING / OPEN / RIGHT / WRONG / VOID / FAILED. <strong>No van</strong> &quot;BOOK IS AT&quot; ni SOURCES. Barra fija &quot;Trade this market&quot;, que abre Market en Trade con el nivel de la read ya marcado.</td><td>Coincide casi 1:1 con <code>ReadCard</code>. Book % no aplica a perps y no guardamos fuentes.</td></tr>
+<tr><td>D15</td><td>Agents (C4)</td><td>Pestaña con la lista de <code>agents-list</code>: avatar con iniciales, nombre, &quot;by owner&quot;, una línea de descripción, baldosas HIT % · N RESOLVED y BRIER, y botón &quot;Ask · N credits&quot;. Al tocar la tarjeta se abre el perfil. <strong>Sin</strong> etapa, curva, mcap, net AUSD, &quot;Back it&quot;, &quot;Trade it&quot; ni chips de beat. La descripción es un <strong>mapa en la app</strong> por <code>agent.id</code>; la <code>persona</code> no se expone.</td><td>Datos reales disponibles. Back it y los tokens van con Launchpad.</td></tr>
+<tr><td>D16</td><td>Perfil de agente (C4, opción A)</td><td>Ruta nueva <code>agent</code> (pila de Agents). Cabecera con avatar, nombre, owner. Stats de <code>agent_records</code>. ITS BEAT = la descripción de D15. <strong>CALIBRATION</strong> se calcula en la app con <strong>tus</strong> reads resueltas de ese agente: 5 buckets de probabilidad, con la tasa real frente a la diagonal prometida. Con menos de 5 resueltas muestra un estado vacío. <strong>THE RECORD</strong> muestra tus reads con ese agente (ALL / RIGHT / WRONG / OPEN), filtradas en la app por <code>agent_id</code> sobre la lista de <code>useReads</code> (D26). <code>reads-list</code> devuelve como máximo 50, así que el récord y la calibración salen de esa ventana. Cada fila abre la Read (Portfolio → <code>read</code>). Barra fija &quot;Ask · N credits&quot;.</td><td>Jesús eligió A: sin backend nuevo. El récord es personal, no público.</td></tr>
+<tr><td>D17</td><td>Portfolio</td><td>Ruta <code>portfolio</code> real (deja de ser coming soon). Bloque ink de D7 y segmentado <strong>Positions / Reads / Backed</strong>. <strong>Positions</strong>: las posiciones de Perpl que hoy están en Markets, con la tarjeta del diseño (lado y tamaño, lv, PnL, ENTRY / MARK / LIQ. EST.) y <strong>Close</strong> con su confirmación inline actual. <strong>Sin</strong> la barra &quot;TO THE LEVEL&quot;: la posición no guarda su nivel (<code>tradeLevel</code> se borra tras <code>reminder-set</code>) y no hay endpoint de reminders. El resultado de Close se queda en Portfolio. Sin trading key: una card &quot;Trading not enabled&quot; que abre Market en Trade. <strong>Reads</strong>: la lista &quot;My reads&quot; actual (<code>reads-list</code>, polling 15 s) con la tarjeta del diseño; al tocar, Read. <strong>Backed</strong>: coming soon.</td><td>C1. Mueve lo que ya existe; no inventa datos.</td></tr>
+<tr><td>D18</td><td>Wallet</td><td>Bloque ink de D7, tarjeta de red (&quot;Monad testnet&quot;, dirección, CONNECTED) y segmentado <strong>Activity / Pending</strong> sobre los movimientos actuales (Complete en Activity; Confirming en Pending; Reverted en Activity, marcado). Al final, TESTNET (MON, &quot;Get test AUSD&quot;, &quot;Get test MON&quot;) y SESSION (Lock, Sign out) re-vestidos. Pie: &quot;Withdrawals always ask for Face ID.&quot; Pull-to-refresh y el sello UPDATED se conservan.</td><td>C6-8. Sin faucets no se puede probar en TestFlight.</td></tr>
+<tr><td>D19</td><td>Deposit / Withdraw / Trading funds</td><td>Siguen siendo <strong>pantallas push</strong> (no bottom sheet), re-vestidas. Deposit gana un <strong>QR real</strong> de la dirección con <code>react-native-qrcode-svg</code> (JS puro sobre <code>react-native-svg</code>, que ya está instalado). <code>perpsFunds</code> pasa a la pila de Wallet; su botón de vuelta (hoy &quot;Back to Markets&quot;, <code>nav(&quot;markets&quot;)</code>) vuelve a <code>wallet</code>.</td><td>Pasar a sheet es cambio de navegación sin mucha ganancia. El QR es barato y hoy es placeholder.</td></tr>
+<tr><td>D20</td><td>Sign in</td><td>Cabecera con logo y &quot;PICKLER&quot;, segmentado <strong>Sign in / Sign up</strong>. Títulos &quot;GET IN.&quot; y &quot;BUILD AN AGENT.&quot;. Tarjeta ink de passkey con estados idle / &quot;Waiting on Face ID…&quot; / done (dirección), que llama al <code>signIn</code> / <code>createAccount</code> actuales; al terminar, banner &quot;ACCOUNT CREATED&quot; / &quot;WELCOME BACK&quot; durante ~1 s y después <code>finishSignin()</code>, que hoy navega de inmediato. Se conserva la card &quot;We kept what you were about to do&quot;. <strong>Sin</strong> email, magic link ni NAME.</td><td>C6-6.</td></tr>
+<tr><td>D21</td><td>Onboarding</td><td>Ruta nueva <code>onboarding</code> en el RootStack. <strong>Sólo después de <code>createAccount</code></strong>, nunca al recuperar la cuenta. 3 hojas del Handoff sobre Markets desenfocado, con SKIP (salta a la última), puntos tocables y CTA &quot;Next&quot; / &quot;Go to markets&quot;. Copy <strong>reescrito</strong> para lo que la app hace: (1) los agentes leen el mercado, (2) &quot;PICK A SQUARE.&quot; el board, (3) &quot;ASK, OR TRADE.&quot; — sin deportes ni &quot;Back it&quot;. Un flag persistido evita que vuelva a salir. Si había una acción retenida (<code>next</code>), se ejecuta al cerrar. Si no, termina en Markets. La pestaña inicial al arrancar sigue siendo <strong>Wallet</strong>, como hoy (<code>Navigator.tsx</code>).</td><td>C6-5.</td></tr>
+<tr><td>D22</td><td>Deep links de push</td><td><code>read</code> → pestaña Portfolio → <code>read</code>. <code>reminder</code> → Markets → <code>market</code> en Trade <strong>sin nivel</strong>, como hoy: el payload no trae target ni vencimiento (<code>reads/push.ts</code>) y agregarlo sería tocar el backend. El encolado en arranque en frío se conserva.</td><td>Las rutas cambian de lugar.</td></tr>
+<tr><td>D23</td><td>Gates de cuenta</td><td><code>GATED</code> = los de hoy (markets, market, perpsFunds, wallet, deposit, withdraw) <strong>más</strong> portfolio, read y agent. <strong>Agents (lista) sigue siendo pública</strong>: al tocar un agente sin cuenta, <code>requireAccount(&quot;agent&quot;, …)</code> desvía a Sign in y vuelve al perfil.</td><td>&quot;Reading and following never need an account&quot; aplica a la lista.</td></tr>
+<tr><td>D24</td><td>Estados sin diseño</td><td>Vacío, carga (los <code>Skeleton</code> actuales) y error se derivan del sistema nuevo. Ninguna pantalla queda sin sus tres estados.</td><td>El Handoff no los trae.</td></tr>
+<tr><td>D25</td><td>Verificación visual</td><td>Cada pantalla se compara renderizada en el simulador contra su archivo <code>* Mobile Light.dc.html</code>, con capturas en el audit. También se revisa con Dynamic Type grande.</td><td>Regla del repo: mirar antes de afirmar.</td></tr>
+<tr><td>D26</td><td>Datos: cambios de cableado (declarados)</td><td>Para que Portfolio, Agents y el perfil tengan datos, se cambia <strong>sólo el cableado</strong>, no la lógica de negocio:&lt;br&gt;• <code>useReads</code> pide <code>reads-list</code> <strong>sin filtro de mercado</strong> (hoy filtra por <code>perpsMarketId</code>, <code>App.tsx</code>); el board filtra por mercado en la app.&lt;br&gt;• El polling de reads corre en <code>market</code> (Ask), <code>portfolio</code> y <code>agent</code>, no sólo en Market/Ask.&lt;br&gt;• <code>PERPL_SCREENS</code> suma <code>portfolio</code>, para que el socket y el contexto corran ahí (hoy sólo markets, market y perpsFunds). Wallet sigue usando el último saldo de trading visto.&lt;br&gt;• Markets pide <code>agents-list</code> para el &quot;N AGENTS&quot;.</td><td>Sin esto, Portfolio y el perfil cargarían vacíos (hallazgo de la revisión del spec).</td></tr>
+<tr><td>D27</td><td>Dependencias nuevas</td><td><code>@expo-google-fonts/instrument-sans</code> y <code>@expo-google-fonts/archivo</code> (o los <code>.ttf</code> de la instancia de D4 en <code>assets/fonts</code>), <code>react-native-qrcode-svg</code> y la instancia local de Archivo. <code>expo-system-ui</code> ya estaba instalada (<code>57.0.4</code>): basta con cambiar los fondos de <code>app.config.ts</code>, y eso exige <code>prebuild --clean</code> y <code>expo run:ios</code>. Corrección del 2026-09-28, al escribir el plan F1: la versión anterior de esta fila la daba por nueva. <strong>No</strong> <code>expo-blur</code>. Salen <code>@expo-google-fonts/chakra-petch</code> y, si queda sin uso, <code>manrope</code>.</td><td>Lista cerrada para el plan.</td></tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-rutas-y-pilas-resultantes">2. Rutas y pilas resultantes</h2>
+<table>
+<thead>
+<tr><th>Pila</th><th>Rutas</th></tr>
+</thead>
+<tbody>
+<tr><td>Root</td><td><code>Tabs</code>, <code>signin</code>, <code>onboarding</code></td></tr>
+<tr><td>MarketsTab</td><td><code>markets</code> → <code>market</code></td></tr>
+<tr><td>AgentsTab</td><td><code>agents</code> → <code>agent</code> (Ask cambia a MarketsTab/<code>market</code>; una fila del récord cambia a PortfolioTab/<code>read</code>)</td></tr>
+<tr><td>PortfolioTab</td><td><code>portfolio</code> → <code>read</code> (→ &quot;Trade this market&quot; cambia a MarketsTab/<code>market</code>)</td></tr>
+<tr><td>WalletTab</td><td><code>wallet</code> → <code>deposit</code> · <code>withdraw</code> · <code>perpsFunds</code></td></tr>
+</tbody>
+</table>
+<p>Siguen existiendo sin pestaña: <code>launchpad</code>, <code>activity</code> (D1). <code>perpsFunds</code> pasa de la pila de Markets a la de Wallet. Las reglas de <code>mobile-nav</code> siguen vigentes: navegar con <code>{pop:true}</code>, usar <code>ctx.nav</code> / <code>requireAccount</code> y no llamar <code>navigationRef</code> directo.</p>
+<h2 id="3-logica-nueva-pura-y-con-tests">3. Lógica nueva (pura y con tests)</h2>
+<ul>
+<li><code>calibration(reads)</code> → 5 buckets <code>{promised, actual, n}</code>; con menos de 5 resueltas, vacío.</li>
+<li><code>portfolioTotals(trading)</code> → total, positions, available (sin saldo de wallet).</li>
+<li><code>filterMarkets(markets, query)</code>.</li>
+<li>Flag de onboarding (leer / escribir) y la regla de cuándo mostrarlo (sólo tras crear).</li>
+<li>Mapeo del board: nivel → fila/precio absoluto, lado inferido y celda con read.</li>
+<li><code>routes</code> / <code>TAB_ORDER</code> / <code>GATED</code> actualizados en <code>navigation.test</code> y <code>routes.test</code>.</li>
+</ul>
+<p>Aparte del cableado de D26, la lógica de Perpl, wallet, reads y push <strong>no se toca</strong>.</p>
+<h2 id="4-fases">4. Fases</h2>
+<ul>
+<li><strong>F1 — Sistema y re-vestido.</strong> D2–D9, D13–D15, D17–D20 y D22–D27, más la parte de D10 que corresponde al segmentado y a <code>marketTab</code>. Tokens, fuentes,</li>
+<p>primitivas, tab bar de 4, pilas nuevas, Sign in, Wallet, Deposit (QR), Withdraw, Trading funds, Markets con búsqueda, Agents (lista), Portfolio (Positions / Reads / Backed) y la pantalla Read. Market queda funcional con el segmentado Trade it / Ask an agent y con el ticket y el Ask (con la <code>MatrixGrid</code> actual) re-vestidos, pero sin el board nuevo. <strong>Read entra en F1</strong> porque Portfolio → Reads la necesita.</p>
+<li><strong>F2 — Board y perfil.</strong> El resto de D10, más D11–D12 (board unificado), D16 (perfil con calibración) y D21 (onboarding).</li>
+<li><strong>Aparte (spike)</strong>: ¿Perpl expone velas o historial de precio? Si sí, la sparkline de Markets y la</li>
+<p>trayectoria del board se conectan después. No bloquea F1 ni F2.</p>
+</ul>
+<p>Cada fase termina con su audit y un checkpoint. Una subida a TestFlight sólo ocurre con autorización explícita.</p>
+<h2 id="5-fuera-de-alcance">5. Fuera de alcance</h2>
+<p>Back it, tokens de agente, bonding curve, Launchpad y Activity (se integran después). Magic link / email / NAME de creadores. Chips de categoría y de beat. Pago de reads en AUSD. &quot;BOOK IS AT&quot; y SOURCES. TP y cierre por deadline (&quot;three orders&quot;). Bottom sheets para Deposit / Withdraw / Ask / Back. Récord público de agentes (necesita <code>agent-get</code>). Cualquier cambio en backend, DDL o Perpl.</p>
+<h2 id="6-riesgos">6. Riesgos</h2>
+<ul>
+<li><strong>Fuente display</strong>: la instancia estática de Archivo puede verse distinta al <code>wdth 112</code>. Mitigación:</li>
+<p>comparación visual en F1 y fallback documentado (D4).</p>
+<li><strong>Tema claro</strong>: pueden quedar colores oscuros sueltos (status bar, fondo nativo, teclado, alertas).</li>
+<p>Mitigación: <code>expo-system-ui</code> y revisar cada pantalla (D25). Requiere <code>prebuild --clean</code> y <code>expo run:ios</code>.</p>
+<li><strong>Socket de Perpl en Portfolio</strong> (D26): arrancarlo en otra pestaña cambia cuándo se conecta.</li>
+<p>Hay que verificar que reconecta bien al cambiar de pestaña y que no abre dos sockets.</p>
+<li><strong>Calibración con pocos datos</strong>: con 3 agentes y reads personales, casi siempre queda vacía. Está</li>
+<p>aceptado (D16).</p>
+<li><strong>Tests sólo de lógica</strong>: no hay tests de componentes. La verificación visual es manual y queda</li>
+<p>con capturas.</p>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-28-mobile-light-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-28-mobile-light-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
