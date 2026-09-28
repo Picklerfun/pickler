@@ -232,6 +232,12 @@ test("offline imports reject duplicates, keep historical variants absent and acc
     await compareBenchmarkStudies(output, paths);
     const report = JSON.parse(await readFile(join(output, "summary.json"), "utf8"));
     assert.deepEqual(report.studies[0].variants, []);
+    assert.equal(report.studies[1].variants.length, 4);
+    assert.ok(report.studies[1].variants.every((v: { markets: number }) => v.markets === 0));
+    assert.equal(report.studies[1].evaluation.accounting.reservedCalls, 1);
+    assert.ok(
+      (await readFile(join(output, "reviewers.csv"), "utf8")).includes("Material denominator"),
+    );
     await assert.rejects(compareBenchmarkStudies(output, [...paths, paths[0]!]), /DUPLICATE/);
     const summary = benchmarkSummary(state);
     assert.equal(summary.accounting.reservedUsd, 0.01);
