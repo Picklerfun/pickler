@@ -52,6 +52,7 @@ export function perpsStudyReport(
           ]?.risk,
       )
       .filter(Boolean);
+    metrics.push(risk);
     let peak = u("1000"),
       maxDrawdown = 0n,
       maxExposure = 0n;
