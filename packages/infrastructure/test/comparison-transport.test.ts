@@ -66,6 +66,30 @@ test("429 honors Retry-After, defaults to sixty seconds and never retries", asyn
     assert.equal(JSON.stringify(records).includes("secret"), false);
   }
 });
+test("early timer wakeups cannot start requests before the spacing deadline", async () => {
+  let now = 0;
+  const starts: number[] = [];
+  const waits: number[] = [];
+  const transport = comparisonTransport({
+    now: () => now,
+    wait: async (ms) => {
+      waits.push(ms);
+      now += Math.max(1, ms - 1);
+    },
+    guard: async () => {},
+    report: async () => {},
+    fetcher: async () => {
+      starts.push(now);
+      return Response.json({ ok: true });
+    },
+  });
+
+  await transport("https://clob.polymarket.com/book");
+  await transport("https://clob.polymarket.com/book");
+
+  assert.deepEqual(waits, [500, 1]);
+  assert.deepEqual(starts, [0, 500]);
+});
 test("diagnostics distinguish public operations and reject revoked permissions", async () => {
   const records: PublicRequestDiagnostic[] = [];
   let revoked = false,
