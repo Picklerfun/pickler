@@ -233,10 +233,63 @@
 .menuItem:focus-visible {
   background: var(--pk-panel-2);
 }
+/* A section before the first agent: listed, so the Menu can be explored, and not reachable. */
+.menuItem:disabled {
+  color: var(--pk-ink-muted);
+  background: transparent;
+  cursor: not-allowed;
+}
+.menuHint {
+  margin: 0;
+  padding: 0 10px;
+  font: 500 11.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
 .menuNote {
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
   color: var(--pk-ink-muted);
+}
+
+/* ---------- No agent yet ---------- */
+
+/* The empty home: the board's measure, one narrow column where its three would be. */
+.first {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 56px 22px 60px;
+}
+.firstBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 520px;
+}
+.firstTitle {
+  margin: 0;
+  font: 700 clamp(30px, 6vw, 44px) / 1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+.firstTitle span {
+  color: var(--pk-lime);
+}
+.firstLine {
+  margin: 0;
+  font: 400 15px/1.55 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.firstActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
 }
 
 /* ---------- Live strip ---------- */

@@ -359,6 +359,16 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-schedule",
   },
+  // The home before the first agent (`?stage=empty`): the top bar and Menu around an empty state
+  // instead of a redirect to /studio/new. It proves the empty state, which no staged run has.
+  {
+    path: "/studio?stage=empty",
+    name: "studio-home-empty",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-empty",
+  },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
   {

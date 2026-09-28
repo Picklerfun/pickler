@@ -13,7 +13,7 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio: opens on the home; no agents sends you to /studio/new
+  studio/page.tsx           # The studio: opens on the home; no agents opens its empty state
   studio/new/page.tsx       # Creating an agent: `?step=` names the screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
@@ -236,8 +236,9 @@ way regardless of which family a request belongs to.
 
 ## Creating an agent
 
-`/studio/new` is the only place an agent is created, and `/studio` sends a person with no agents
-there (the old empty studio, its stepped flow and `AgentForm` are gone). `create/create.tsx` owns the
+`/studio/new` is the only place an agent is created. `/studio` no longer sends a person with no
+agents there: they land on the empty home and choose to go (the old stepped flow and `AgentForm`
+are gone). `create/create.tsx` owns the
 screen: a `useReducer` over `flowReducer` (`create/flow.ts`, pure and tested in
 `studio-create-flow.test.ts`) holding the `Draft`, the screen, `auto`/`manual` mode and the Edit
 snapshot that Cancel restores. `?step=` mirrors the screen through `router.replace`; `describe` is
@@ -296,6 +297,16 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 
 ## The studio home
 
+With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`): the home's top
+bar ("No agent yet", the Menu, the profile), the second-passkey suggestion, and an empty state —
+"Nothing running yet.", one line on what an agent does, "Create your first agent" to
+`/studio/new` (disabled with the reason when research is not enabled or the person cannot manage).
+`HomeMenu` takes `agent: null` then: "+ New agent" is open (`createGate([])`) and every section is
+listed disabled with "After you create your agent", so any `?section=` lands on the empty home
+too. `lib/landing.ts` decides it, pure and pinned in `studio-landing.test.ts`: `studioLanding(loaded,
+agents)` is `board` for any agent, `empty` for none once read, and `loading` before the read, when
+the shell says "Reading your agents…". The wallet and profile gates run before it, unchanged.
+
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
 instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
@@ -334,7 +345,8 @@ from the DTO's `accent` through `accentVars`, like every other agent on the site
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, the canvas's run built from real event types on a fixed clock so the server's
+`home/fixture.ts`, and `?stage=empty` renders the empty home with no fixture (`StudioStage`);
+the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
 HTML matches the browser's. It is gated on the build alone, like the creation flow's sample, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
 nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id

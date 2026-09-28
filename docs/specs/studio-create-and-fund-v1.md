@@ -329,6 +329,19 @@ voice, X, publish) is §10.
 - **Next up:** one item today, "Fund its wallet".
 - **Menu:** "+ New agent" with its lock (§6.3); the groups link to the sections that exist.
 
+### 5.1 Before the first agent
+
+A person with no agents is not sent to `/studio/new`. `/studio` opens on the home with the same top
+bar ("No agent yet" where the agent chip would be, the Menu, the profile), the second-passkey
+suggestion when it applies, and an empty state where the board would be (`#home-empty`): "Nothing
+running yet.", one line on what an agent does, and "Create your first agent" to `/studio/new`,
+disabled with the reason when research is not enabled or the person cannot manage the workspace.
+The Menu still opens: "+ New agent" is open (with no agents the §6.3 lock has nothing to fund), and
+every section is listed but disabled — "Every section opens after you create your agent", the
+"Pickler Studio Empty" canvas's hint. A `?section=` deep link lands on the same empty home. The
+account gates stay first: no master wallet → `/signup?step=passkey`, a wallet without a profile →
+the handle step. `?stage=empty` stages this home outside production.
+
 ---
 
 ## 6. Funding, limits and locks
@@ -437,7 +450,7 @@ Without them the studio still builds and every screen still renders; the draft r
   `canCreateAnother` reasons.
 - **Exa adapter:** `only` mode refuses a host outside the list; `prefer` falls back.
 - **Web:** the pure pieces (`draft.ts` successors) as today; the design harness gets a route per
-  creation step (`/studio/new?step=…`) and per home stage (`?stage=live|researching|decided`),
+  creation step (`/studio/new?step=…`) and per home stage (`?stage=live|researching|decided|empty`),
   each proving its own selector, so every state the canvas reaches is measured.
 - **One real agent:** created through this flow on the local stack with the runner up, its first
   run's trace real, its paper order real, its balance read from the chain after a testnet deposit.
@@ -488,9 +501,9 @@ Four things close that gap, in order:
    `EXA_API_KEY`, `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY`. The delegated key pair is already in the
    local `.dev.vars`. Restart the API worker after editing it.
 2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, the
-   mandatory passkey — one prompt — then the handle; the profile shows the master wallet with no
-   agents. Then open
-   `/studio/new`, describe an agent and create it: three prompts on this first agent (two on any
+   mandatory passkey — one prompt — then the handle; the studio opens on its empty home and the
+   profile shows the master wallet with no agents. Then choose "Create your first agent" (or open
+   `/studio/new`), describe an agent and create it: three prompts on this first agent (two on any
    later one). Confirm in the Turnkey dashboard that the sub-organization has the passkey as its only
    root, a non-root "Pickler" user, a master wallet and the agent's wallet, and three DENY policies
    plus the self-delete ALLOW.

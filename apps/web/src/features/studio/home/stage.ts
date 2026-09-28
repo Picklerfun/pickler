@@ -1,6 +1,7 @@
 /**
  * `?stage=live|researching|decided`: the three moments of the "Pickler Studio v5" canvas's first
- * run, so the design harness can put each one on the home without a runner or a database.
+ * run, so the design harness can put each one on the home without a runner or a database, and
+ * `?stage=empty`: the home of a person with no agents yet, drawn with no fixture at all.
  *
  * Outside production only, and pure, like `sectionFromSearch`: `nodeEnv` is an argument so the
  * guard can be pinned in both positions. It is gated on the build alone, the way the creation
@@ -14,13 +15,19 @@ export const STAGES = ["live", "researching", "decided"] as const;
 
 export type HomeStage = (typeof STAGES)[number];
 
+/** A run stage, or the empty home, which has no run to stage. */
+export type StudioStage = HomeStage | "empty";
+
 export function stageFromSearch(
   nodeEnv: string | undefined,
   asked: string | string[] | undefined,
-): HomeStage | undefined {
+): StudioStage | undefined {
   if (nodeEnv === "production") {
     return undefined;
   }
   const value = Array.isArray(asked) ? asked[0] : asked;
+  if (value === "empty") {
+    return "empty";
+  }
   return STAGES.find((stage): stage is HomeStage => stage === value);
 }

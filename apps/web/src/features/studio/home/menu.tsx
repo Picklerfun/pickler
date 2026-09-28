@@ -3,9 +3,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
+import { createGate } from "../create/gate";
 import type { SectionKey } from "../sections/keys";
 import { MIN_FUNDED_AUSD } from "./status";
 import styles from "./home.module.css";
+
+/** The hint on every section before the first agent exists. */
+const NEEDS_AGENT = "After you create your agent";
 
 interface Item {
   key: SectionKey;
@@ -17,6 +21,10 @@ interface Item {
  * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
  * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
  * person's other agents when there is more than one.
+ *
+ * With no agent yet the Menu still opens, so a person can see everything an agent gets before
+ * making one: "+ New agent" is open (the lock needs an agent to fund) and each section is listed
+ * but disabled, with the "Pickler Studio Empty" canvas's hint.
  */
 export function HomeMenu({
   agent,
@@ -27,7 +35,7 @@ export function HomeMenu({
   onSection,
   onSwitch,
 }: {
-  agent: Agent;
+  agent: Agent | null;
   agents: Agent[];
   calls: number;
   running: boolean;
@@ -36,12 +44,13 @@ export function HomeMenu({
   onSwitch(agentId: string): void;
 }) {
   const [open, setOpen] = useState(false);
-  const name = agent.name ?? "this agent";
-  const unfundedHere = (agent.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD;
+  const name = agent?.name ?? "this agent";
+  const unfundedHere = (agent?.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD;
+  const canCreate = agent ? agent.canCreateAnother.ok : createGate(agents).open;
   const lockNote = unfundedHere
     ? `Fund ${name} first. One unfunded agent at a time.`
     : "Fund your other agent first. One unfunded agent at a time.";
-  const plugins = agent.config.plugins?.enabled.length ?? 0;
+  const plugins = agent?.config.plugins?.enabled.length ?? 0;
   const groups: { title: string; items: Item[] }[] = [
     {
       title: "RUN",
@@ -72,9 +81,9 @@ export function HomeMenu({
       ],
     },
   ];
-  const others = agents.filter(
-    (other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id),
-  );
+  const others = agent
+    ? agents.filter((other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id))
+    : [];
 
   useEffect(() => {
     if (!open) {
@@ -113,7 +122,7 @@ export function HomeMenu({
       </button>
       {open && (
         <div className={styles.menu} id="home-menu-panel">
-          {agent.canCreateAnother.ok && canManage ? (
+          {canCreate && canManage ? (
             <Link href="/studio/new" className={styles.newAgent}>
               + New agent
             </Link>
@@ -125,6 +134,9 @@ export function HomeMenu({
               </span>
             </div>
           )}
+          {!agent && (
+            <p className={styles.menuHint}>Every section opens {NEEDS_AGENT.toLowerCase()}.</p>
+          )}
           {groups.map((group) => (
             <div key={group.title} className={styles.menuGroup}>
               <p className={styles.menuTitle}>{group.title}</p>
@@ -133,13 +145,15 @@ export function HomeMenu({
                   key={item.key}
                   type="button"
                   className={styles.menuItem}
+                  disabled={!agent}
+                  title={agent ? undefined : NEEDS_AGENT}
                   onClick={() => {
                     setOpen(false);
                     onSection(item.key);
                   }}
                 >
                   <span className={styles.grow}>{item.label}</span>
-                  {item.note && <span className={styles.menuNote}>{item.note}</span>}
+                  {agent ? item.note && <span className={styles.menuNote}>{item.note}</span> : null}
                 </button>
               ))}
             </div>

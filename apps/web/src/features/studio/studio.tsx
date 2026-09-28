@@ -38,8 +38,10 @@ import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
 import { Home } from "./home/home";
+import { EmptyHome } from "./home/empty";
 import { homeFixture } from "./home/fixture";
-import type { HomeStage } from "./home/stage";
+import type { StudioStage } from "./home/stage";
+import { studioLanding } from "./lib/landing";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -144,17 +146,23 @@ export function Studio({
   openSection?: SectionKey | undefined;
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
-  /** `?stage=`, outside production only: the home at one moment of the canvas's first run. */
-  stage?: HomeStage | undefined;
+  /** `?stage=`, outside production only: the home at one moment of the canvas's first run, or
+      `empty`, the home before any agent. */
+  stage?: StudioStage | undefined;
 }) {
   const router = useRouter();
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
-  const [staged] = useState(() => (stage ? homeFixture(stage) : null));
+  const [staged] = useState(() => (stage && stage !== "empty" ? homeFixture(stage) : null));
+  const [stagedEmpty] = useState(stage === "empty");
+  /* Either staged home stands alone: no session is read and nothing is fetched. */
+  const staging = staged !== null || stagedEmpty;
   const [section, setSection] = useState<View>(openSection ?? "home");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
-    staged ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
+    staging ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
   );
+  /* Whether the agents have been read, so an empty list means "none yet" rather than "not read". */
+  const [loaded, setLoaded] = useState(staging);
   const [agents, setAgents] = useState<Agent[]>(staged ? [staged.agent] : []);
   const [agentId, setAgentId] = useState<string | null>(staged ? staged.agent.id : null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -169,13 +177,13 @@ export function Studio({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
-  const [preview, setPreview] = useState(staged !== null);
+  const [preview, setPreview] = useState(staging);
   /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
      read is `failed`, which suggests nothing and never fails the studio. */
   const [passkeys, setPasskeys] = useState<PasskeysKnown>(
     /* The staged home is the canvas's account: one passkey, so the design harness measures the
        suggestion on a route it can reach. Nothing is read. */
-    staged ? { kind: "ready", passkeys: [{ id: "staged" }] } : { kind: "loading" },
+    staging ? { kind: "ready", passkeys: [{ id: "staged" }] } : { kind: "loading" },
   );
   const requestKeys = useRef(new Map<string, string>());
 
@@ -206,8 +214,7 @@ export function Studio({
   }, []);
 
   useEffect(() => {
-    if (staged) {
-      // The staged home stands alone: no session is read and nothing is fetched.
+    if (staging) {
       return;
     }
     let active = true;
@@ -226,14 +233,10 @@ export function Studio({
           if (!active) {
             return;
           }
-          /* No agents is not an empty studio: it is the creation flow, which has its own route. */
-          if (fixture.agents.length === 0) {
-            router.replace("/studio/new");
-            return;
-          }
           setPreview(true);
           setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
           setAgents(fixture.agents);
+          setLoaded(true);
           setCatalog(fixture.catalog);
           setOptions(fixture.options);
           /* The empty studio's fixture has neither, and indexing into it threw where the catch
@@ -286,10 +289,8 @@ export function Studio({
           return;
         }
         setPasskeys(keys);
-        if (list.length === 0) {
-          router.replace("/studio/new");
-          return;
-        }
+        /* No agents lands on the empty home, not on /studio/new: the person explores first. */
+        setLoaded(true);
         setCatalog(cat);
         setOptions(opts);
         setAgentId(selectAgent(list, openAgent));
@@ -303,7 +304,7 @@ export function Studio({
     return () => {
       active = false;
     };
-  }, [router, loadAgents, staged, openAgent]);
+  }, [router, loadAgents, staging, openAgent]);
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
@@ -449,6 +450,20 @@ export function Studio({
     }
     setSection(next);
     setMenu(null);
+  }
+
+  /* With no agent every section would be empty, so any section asked for lands on the empty home;
+     its Menu lists them disabled. */
+  if (studioLanding(loaded, agents) === "empty") {
+    return (
+      <EmptyHome
+        passkeys={passkeys}
+        canManage={canManage}
+        preview={preview}
+        locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
+        error={error}
+      />
+    );
   }
 
   if (section === "home" && agent) {
@@ -739,20 +754,9 @@ export function Studio({
           )}
 
           {!agent ? (
-            <div className={styles.section} data-narrow="true">
-              <div className={styles.sectionHead}>
-                <h1>No agent yet</h1>
-              </div>
-              <p className={styles.stubBody}>
-                An agent is a standing brief plus the plugins it may reach. Create one and the
-                studio fills in around it: its runs, its decisions and the trace behind each.
-              </p>
-              <div className={styles.row}>
-                <Button disabled={!canManage} onClick={() => router.push("/studio/new")}>
-                  Create an agent
-                </Button>
-              </div>
-            </div>
+            /* Only while the agents are read, or when that read failed: none at all is the empty
+               home, above. */
+            !error && <p className={styles.stubBody}>Reading your agents…</p>
           ) : section === "overview" ? (
             <Overview
               agent={agent}
