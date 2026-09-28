@@ -177,3 +177,5 @@ export * from "./features/paper-study/comparison.js";
 export * from "./features/paper-study/benchmark.js";
 
 export * from "./features/paper-study/benchmark-metrics.js";
+
+export * from "./features/evaluation/coordinator.js";

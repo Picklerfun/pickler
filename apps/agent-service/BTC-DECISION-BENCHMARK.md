@@ -23,11 +23,11 @@ Build shared packages at the repository root. Run subsequent commands from `apps
 npm run build:shared # from the repository root
 cd apps/agent-service
 cp benchmark-paper.example.json .data/benchmark.json
-npm run paper:benchmark -- prepare .data/benchmark.json
-npm run paper:benchmark -- evaluate .data/benchmark.json --allow-paid
-npm run paper:benchmark -- run .data/benchmark.json --allow-paid
-npm run paper:benchmark -- settle .data/benchmark.json
-npm run paper:benchmark -- report .data/benchmark.json
+npm run evaluate -- prepare --config .data/benchmark.json
+npm run evaluate -- validate --config .data/benchmark.json --allow-paid
+npm run evaluate -- run --config .data/benchmark.json --allow-paid
+npm run evaluate -- settle --config .data/benchmark.json
+npm run evaluate -- report --config .data/benchmark.json
 npm run paper:benchmark -- compare .data/benchmark-comparison \
   .data/paper-studies/OLD_ID/state.json .data/paper-studies/NEW_ID/state.json
 ```
@@ -136,7 +136,10 @@ synthetic label isolation, safe diagnostics and known reporting arithmetic. Cont
 do not establish live profitability. Record live acceptance separately in
 `BTC-DECISION-BENCHMARK-VALIDATION.md` after execution.
 
-## Explicit operator continuation and diagnosis
+## Historical operator continuation and diagnosis
+
+New paid diagnosis through the legacy CLI is disabled. Use the unified host described in
+[EVALUATIONS.md](EVALUATIONS.md); do not restart existing paused sessions.
 
 After renewed user authorization, prepare a new study declaring every prior study. Never remove
 a historical STOP or rewrite prior results. Prior v4 money and review counts are carried into
@@ -144,7 +147,7 @@ the original USD 1.25 and 386-call ceilings, including unused reservations. A fr
 is a repeated development experiment, not a new independent sample. Prompts and heldout labels
 must remain frozen.
 
-`npm run paper:benchmark -- diagnose CONFIG --case CASE_ID --allow-paid` reserves and sends
+The retired `paper:benchmark diagnose` command historically reserved and sent
 exactly one current-reviewer call for that frozen scenario. It preserves usage and distinguishes
 PROBABILITY_SUM_INVALID from CHOICE_NOT_MAXIMUM without rejected values. The diagnostic study
 cannot pass the 98-review live gate. Any subsequent evaluation needs its own explicitly prepared

@@ -13,7 +13,7 @@ explicitly to the intended private local PostgreSQL database, then build shared 
 ```sh
 DATABASE_MIGRATION_URL=... npm run db:migrate
 npm run build:shared
-npm run perps:study --workspace=@pickler/agent-service -- --help
+npm run evaluate -- --help
 ```
 
 Startup does not apply migrations or seed alpha/beta. `init` creates exactly three dedicated agents
@@ -64,9 +64,9 @@ The private environment file must contain `DATABASE_URL`, `MODEL_API_KEY`, `MODE
 in JSON configuration, reports, source control or command arguments.
 
 ```sh
-npm run perps:study --workspace=@pickler/agent-service -- init --config /absolute/private/study.json --env-file /absolute/private/study.env
-npm run perps:study --workspace=@pickler/agent-service -- preflight --config /absolute/private/study.json --env-file /absolute/private/study.env
-npm run perps:study --workspace=@pickler/agent-service -- run --config /absolute/private/study.json --env-file /absolute/private/study.env --allow-paid
+npm run evaluate -- prepare --config /absolute/private/study.json --env-file /absolute/private/study.env
+npm run evaluate -- preflight --config /absolute/private/study.json --env-file /absolute/private/study.env
+npm run evaluate -- run --config /absolute/private/study.json --env-file /absolute/private/study.env --allow-paid
 ```
 
 `preflight` reads public market data and authenticated model catalogs; it does not perform inference.
@@ -74,9 +74,9 @@ Catalog availability does not establish paid-provider acceptance or validate a t
 The runner is a foreground local process. Keep the host awake and PostgreSQL available.
 
 ```sh
-npm run perps:study --workspace=@pickler/agent-service -- resume --config /absolute/private/study.json --env-file /absolute/private/study.env --allow-paid
-npm run perps:study --workspace=@pickler/agent-service -- stop --config /absolute/private/study.json --env-file /absolute/private/study.env
-npm run perps:study --workspace=@pickler/agent-service -- report --config /absolute/private/study.json --env-file /absolute/private/study.env --output /absolute/private/report
+npm run evaluate -- resume --config /absolute/private/study.json --env-file /absolute/private/study.env --allow-paid
+npm run evaluate -- stop --config /absolute/private/study.json --env-file /absolute/private/study.env
+npm run evaluate -- report --config /absolute/private/study.json --env-file /absolute/private/study.env --output /absolute/private/report
 ```
 
 `stop` durably ends the decision window and allows up to 15 minutes of controlled exits. An active

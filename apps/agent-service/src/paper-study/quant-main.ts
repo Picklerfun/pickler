@@ -1,3 +1,5 @@
+import { assertLegacyRead } from "../evaluation-host/legacy.js";
+assertLegacyRead(process.argv[2], ["history", "settle", "report"]);
 import { readFile, mkdir, readdir, access } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout } from "node:timers/promises";

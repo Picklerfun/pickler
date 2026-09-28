@@ -215,3 +215,11 @@ All v4 studies share the original USD 1.25 and 386 reservations. No automatic fa
 answers. Keep the default global stop unless the operator authorizes this change. Affected
 markets have no purchases in any variant; the next independent market may proceed without retry.
 Reports retain completed_with_errors and raw failure counts, not a reliability acceptance claim.
+
+## Unified evaluation host
+
+`npm run evaluate -- COMMAND --config FILE` is the canonical local evaluation entry point.
+Read [EVALUATIONS.md](EVALUATIONS.md). `src/evaluation-host/service.ts` delegates to the
+existing protocol hosts after core admission checks. Legacy study CLIs permit historical
+reads/reconciliation only; do not add an alternate paid entry point. Protocol-specific
+schedulers, strategies and accounting remain versioned and retain existing persistence.

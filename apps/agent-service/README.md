@@ -291,6 +291,6 @@ metadata-only provider diagnostic and bounded fresh-case experiment.
 
 See [PAPER-STUDY.md](PAPER-STUDY.md) for bounded BTC 5m/15m and sports sessions, explicit paid-call approval, virtual fills, finalized resolution and local HTML/CSV tracking. This operator laboratory is separate from production tenant research.
 
-The separate [perpetual comparison laboratory](PERPS-STUDY.md) uses `perps:study` to initialize,
+The separate [perpetual comparison laboratory](PERPS-STUDY.md) uses the [unified evaluation host](EVALUATIONS.md) to initialize,
 preflight, run/resume, stop and report a prospective rules/DeepSeek/Jev comparison. It has dedicated
 virtual accounts, private PostgreSQL records and an independently authorized model budget.

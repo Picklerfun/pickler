@@ -153,3 +153,7 @@ The optional local benchmark `invalidAnswerPolicy: "block-case"` isolates only
 JEV_INVALID_ANSWERS with known bounded usage outside contract probes. All variants are blocked
 for that market; transport, usage, contract and budget failures still stop the study. The default
 remains stop-study. Evaluation with isolated failures is completed_with_errors, never a pass.
+
+`features/evaluation/coordinator.ts` owns the frozen evaluation protocol registry and shared
+command/paid admission boundary. Hosts inject protocol adapters; core does not access files,
+providers or process arguments. Binary and perpetual accounting policies remain distinct.

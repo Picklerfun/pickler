@@ -1,3 +1,5 @@
+import { assertLegacyRead } from "../evaluation-host/legacy.js";
+assertLegacyRead(process.argv[2], ["replay", "settle", "report"]);
 import { readFile, mkdir, access } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { execFileSync } from "node:child_process";
