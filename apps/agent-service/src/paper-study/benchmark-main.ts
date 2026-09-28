@@ -81,10 +81,10 @@ const reviewers = {
 const [command, argument, ...extra] = process.argv.slice(2);
 if (
   !argument ||
-  !["prepare", "evaluate", "run", "settle", "report", "compare"].includes(command ?? "")
+  !["prepare", "diagnose", "evaluate", "run", "settle", "report", "compare"].includes(command ?? "")
 ) {
   throw new Error(
-    "Usage: paper:benchmark prepare|evaluate|run|settle|report CONFIG [--allow-paid] | compare OUTPUT_DIRECTORY STATE...",
+    "Usage: paper:benchmark prepare|evaluate|run|settle|report CONFIG [--allow-paid] | diagnose CONFIG --case CASE_ID --allow-paid | compare OUTPUT_DIRECTORY STATE...",
   );
 }
 if (command === "compare") {
@@ -114,7 +114,7 @@ if (command === "compare") {
       if (!configuration.plugins.includes(plugin)) {
         throw new PilotError("PLUGIN_DISABLED", plugin);
       }
-      if (command === "evaluate" || command === "run") {
+      if (command === "diagnose" || command === "evaluate" || command === "run") {
         if (stopping) {
           throw new PilotError("STUDY_STOPPED", "Stopped");
         }
@@ -253,12 +253,23 @@ if (command === "compare") {
         await settlement();
         await save();
       } else {
-        if (extra.length !== 1 || extra[0] !== "--allow-paid") {
+        if (
+          command === "diagnose"
+            ? extra.length !== 3 ||
+              extra[0] !== "--case" ||
+              !scenarios.some((c) => c.id === extra[1]) ||
+              extra[2] !== "--allow-paid"
+            : extra.length !== 1 || extra[0] !== "--allow-paid"
+        ) {
           throw new Error("EXPLICIT_PAID_APPROVAL_REQUIRED");
         }
         campaignRelease = await lockStudy(join(root, "quant-campaign"));
         const known = await historicalReservations(root, state.id, configuration.historicalStudies);
         state.priorReservedUsd = known.reduce((s, k) => s + k.reserved, 0);
+        state.priorBenchmarkReservedUsd = known
+          .filter((k) => k.benchmarkReviews !== undefined)
+          .reduce((s, k) => s + k.reserved, 0);
+        state.priorBenchmarkReviewCount = known.reduce((s, k) => s + (k.benchmarkReviews ?? 0), 0);
         if (state.priorReservedUsd + state.maxNewReservedUsd > 5 + 1e-12) {
           throw new Error("CAMPAIGN_BUDGET_EXCEEDED");
         }
@@ -325,7 +336,7 @@ if (command === "compare") {
           review: (name, i, f, p, s, report) =>
             (name === "current" ? current : compact).review(i, f, p, s, report),
         };
-        if (command === "evaluate") {
+        if (command === "evaluate" || command === "diagnose") {
           if (state.evaluation !== "pending" || state.reviews.length) {
             throw new Error("EVALUATION_ALREADY_ATTEMPTED_NO_RETRY");
           }
@@ -334,14 +345,19 @@ if (command === "compare") {
           const input = comparisonProbeInput(Date.now()),
             forecast = quantForecast(input, input.observedAt),
             proposal = quantProposal(input, forecast, input.observedAt, "central-v1").proposal!;
-          const cases = [
-            { id: "contract", split: "contract" as const, input, forecast, proposal },
-            ...scenarios,
-          ];
+          const cases =
+            command === "diagnose"
+              ? [scenarios.find((c) => c.id === extra[1])!]
+              : [
+                  { id: "contract", split: "contract" as const, input, forecast, proposal },
+                  ...scenarios,
+                ];
           for (const c of cases) {
-            const requests = (["current", "compact"] as const).map((reviewer) => ({
+            const names: ("current" | "compact")[] =
+              command === "diagnose" ? ["current"] : ["current", "compact"];
+            const requests = names.map((reviewer) => ({
               id: `${c.id}:${reviewer}`,
-              phase: c.split,
+              phase: command === "diagnose" ? ("contract" as const) : c.split,
               caseId: c.id,
               reviewer,
               version: ports.versions[reviewer],
