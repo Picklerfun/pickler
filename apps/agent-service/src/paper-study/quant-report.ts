@@ -53,6 +53,12 @@ export function quantRows(state: QuantState) {
     const reference = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : null;
     const upQuote = quotedEdge(c, "Up"),
       downQuote = quotedEdge(c, "Down");
+    let outcome = f ? "pending" : "not_evaluated";
+    if (binary) {
+      outcome = y === 1 ? "Up" : "Down";
+    } else if (settled) {
+      outcome = "nonbinary";
+    }
     return {
       market: c.marketId,
       kind: c.kind,
@@ -95,7 +101,7 @@ export function quantRows(state: QuantState) {
       averagePrice: c.fill?.averagePrice ?? null,
       fees: c.fill?.fees ?? null,
       cost: c.fill?.totalCost ?? null,
-      outcome: binary ? (y === 1 ? "Up" : "Down") : settled ? "nonbinary" : "pending",
+      outcome,
       payout: c.settlement?.payout ?? null,
       pnl: c.settlement?.realizedPnl ?? null,
       brier: y !== null && p ? (p.estimate - y) ** 2 : null,
