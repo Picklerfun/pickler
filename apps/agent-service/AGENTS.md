@@ -190,3 +190,8 @@ An explicitly user-authorized benchmark continuation uses a new study, retaining
 STOP files and reservations. `paper:benchmark diagnose CONFIG --case CASE_ID --allow-paid` makes
 one current-reviewer call in an otherwise empty frozen study; it cannot unlock a prospective run.
 All v4 studies share the original USD 1.25 and 386 reservations. No automatic failed-call retry.
+
+`invalidAnswerPolicy: "block-case"` is an explicit frozen opt-in for malformed, accounted Jev
+answers. Keep the default global stop unless the operator authorizes this change. Affected
+markets have no purchases in any variant; the next independent market may proceed without retry.
+Reports retain completed_with_errors and raw failure counts, not a reliability acceptance claim.
