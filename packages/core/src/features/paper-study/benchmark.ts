@@ -59,6 +59,8 @@ export interface BenchmarkState {
   deadline: number | null;
   settlementDeadline: number | null;
   priorReservedUsd: number;
+  priorBenchmarkReservedUsd?: number;
+  priorBenchmarkReviewCount?: number;
   maxNewReservedUsd: number;
   jevInputPerMillion: number;
   paidStopped: string | null;
@@ -144,8 +146,9 @@ export async function reserveBenchmarkReviews(
       state.paidStopped ||
       !(perCall > 0) ||
       total > Math.min(1.25, state.maxNewReservedUsd) + 1e-12 ||
+      total + (state.priorBenchmarkReservedUsd ?? 0) > 1.25 + 1e-12 ||
       state.priorReservedUsd + total > 5 + 1e-12 ||
-      state.reviews.length + requests.length > 386
+      state.reviews.length + requests.length + (state.priorBenchmarkReviewCount ?? 0) > 386
     ) {
       state.paidStopped ??= "API_BUDGET_EXHAUSTED";
       await ports.save();
