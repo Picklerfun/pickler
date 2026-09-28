@@ -14,6 +14,7 @@ const read = (path) => {
 const web = read("apps/web/wrangler.jsonc");
 const api = read("workers/api/wrangler.staging.jsonc");
 const research = read("workers/research/wrangler.jsonc");
+const trading = read("workers/trading/wrangler.jsonc");
 const requireProvisioned = process.argv.includes("--provisioned");
 assert.equal(web.name, "pickler-web-staging");
 assert.equal(api.name, "pickler-api-staging");
@@ -60,3 +61,29 @@ console.log(
     ? "Staging topology and identifiers checked; remote secrets and connectivity remain unverified."
     : "Staging topology checked (resource provisioning is not asserted).",
 );
+
+assert.equal(trading.name, "pickler-trading-staging");
+assert.equal(trading.workers_dev, false);
+assert.equal(trading.preview_urls, false);
+assert.equal(trading.routes, undefined);
+assert.equal(trading.hyperdrive[0].id, api.hyperdrive[0].id);
+assert.equal(trading.account_id, api.account_id);
+assert.equal(trading.vars.TRADING_ADMISSIONS_ENABLED, api.vars.TRADING_ADMISSIONS_ENABLED);
+assert.ok(["true", "false"].includes(trading.vars.TRADING_ADMISSIONS_ENABLED));
+assert.equal(
+  api.services.find((binding) => binding.binding === "TRADING_EXECUTOR")?.service,
+  trading.name,
+);
+for (const worker of [api, research, trading]) {
+  assert.equal(
+    worker.queues.producers.find((binding) => binding.binding === "TRADING_QUEUE")?.queue,
+    "pickler-trading-queue-staging",
+  );
+  for (const key of Object.keys(worker.vars)) {
+    assert.ok(!/PRIVATE_KEY|CLOB|BUILDER/.test(key), "Trading credentials must be secrets");
+  }
+}
+assert.equal(trading.queues.consumers[0].queue, "pickler-trading-queue-staging");
+assert.equal(trading.queues.consumers[0].max_batch_size, 1);
+assert.equal(trading.queues.consumers[0].max_concurrency, 1);
+assert.deepEqual(trading.triggers.crons, ["* * * * *"]);

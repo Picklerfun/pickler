@@ -32,6 +32,7 @@ import { Picks } from "./sections/picks";
 import { Activity } from "./sections/activity";
 import { Skills } from "./sections/skills";
 import { Brief } from "./sections/brief";
+import { Trading } from "./sections/trading";
 import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
@@ -578,7 +579,7 @@ export function Studio({
           </span>
         )}
         <span className={styles.pill} data-quiet="true">
-          TESTNET
+          STAGING
         </span>
 
         <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
@@ -817,13 +818,21 @@ export function Studio({
               onSave={saveConfig}
             />
           ) : section === "limits" ? (
-            <Limits
-              key={`limits-${agentId}-${agent.version}`}
-              agent={agent}
-              busy={busy}
-              canManage={canManage}
-              onSave={saveConfig}
-            />
+            <>
+              <Trading
+                key={`trading-${agentId}-${agent.version}`}
+                agent={agent}
+                canManage={canManage}
+                onSave={saveConfig}
+              />
+              <Limits
+                key={`limits-${agentId}-${agent.version}`}
+                agent={agent}
+                busy={busy}
+                canManage={canManage}
+                onSave={saveConfig}
+              />
+            </>
           ) : section === "context" ? (
             <Context agent={agent} go={go} />
           ) : section === "home" ? null : (

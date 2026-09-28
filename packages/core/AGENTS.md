@@ -46,7 +46,7 @@ NFL research adds provider-neutral `SportsData`, versioned plugin permissions an
 
 `researchReferences` produces citable market, quote and plugin-availability context, distinct from external `Source` evidence. `validateReport` accepts these only in their declared sections; context cannot substantiate injuries or sporting advantage. The runner persists these references and retains the original provider events. Top-level decision source IDs still require retrieved sources. Keep historical reports readable without requiring a context-reference backfill.
 
-`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization remains NFL-only.
+`features/research/market-scope.ts` owns the version-1 two-level sports catalog, legacy-aware scope checks and automatic NFL/general protocol selection. Match versus award/season timing is enforced before selection, manual loading and final trade refresh. New scoped runs produce decision v4; legacy configs retain their protocols. General reports have eight sections, NFL nine. Provider classification is trusted only from the injected market adapter; model text never grants scope. Paper finalization supports reviewed NFL/soccer full-game winners through `features/paper/sports.ts`; general reports do not authorize arbitrary market types.
 
 Product API-key authorization is deny-by-default for every key kind. `read:agents` grants read-only
 product agent access; legacy broad labels grant no implied permissions. Budget reservations record
@@ -232,3 +232,41 @@ market stay comparable. `readQuestionAtLevel` in `features/agents` writes that s
 The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
 today, so it lives in the web feature that draws it against the mirrored limits in
 `@pickler/api-schema`. It belongs here the day an order is placed, because then it decides money.
+
+## Cloudflare trading pilot
+
+Trading uses operator-enabled immutable accounts and provider-neutral NFL/soccer winner eligibility. The sign port accepts a final ownership guard. Automatic attempts are durably admitted once; confirmed autonomous purchases close the pilot. See ../../docs/polymarket-worker-pilot.md.
+
+## Optional research observation
+
+The model port may report `DecisionInputSnapshot` for the exact tool-free finalizer evidence.
+The runner clones it and publishes `ResearchObservation` through an injected `ResearchObserver`
+only after a successful final decision write. Observer failure and diagnostics cannot re-enter
+research failure handling, mutate the primary result or create an abstention. Missing snapshots
+are diagnostic gaps, never reconstructed from later evidence. Host observers must remain bounded
+capture-only operations; paid comparison is a separately admitted operation. Core owns no files,
+provider credentials or observer pricing, and the observer is not a decision-policy input.
+
+## Paper resolution
+
+Paper settlement lives in `features/paper/settlement.ts`; it applies finalized payout fractions to immutable fills, calculates virtual P&L with integer arithmetic and never signs or sends orders. `features/paper/sports.ts` restricts new scoped buys to reviewed NFL/soccer game winners. Settlement is explicit, idempotent and permission-checked; open costs are not realized losses.
+
+## Local paper studies
+
+`features/paper-study` exports provider-independent study contracts, BTC window eligibility, bounded prospective attempts and settlement coordination. This operator laboratory does not expand the production sports catalog or tenant permissions. Reuse conservative decision and virtual-fill policies. Persist before paid calls, never replay started cases, and never infer payouts from prices or elapsed time.
+
+Each new local study case snapshots its model/prompt metadata so an explicit operator upgrade can retain historical attribution without resetting the ledger.
+
+Paper study reservations include one Jev screen and one possible full forecast plus sports search
+costs. Jev pricing must be supplied explicitly for new runs. `StudyUsage.routing` attributes providers
+separately; `hasUnsettledStudyRouting` blocks further admission after incomplete/unknown routed
+calls. Keep historical cases/configuration readable without rewriting their reservations.
+
+Study routing records may carry an allowlisted Jev validation stage. Token counts and prices are
+distinct: free output can have nonzero tokens, and known usage survives rejected answers.
+
+Routing adapter 1.0.2 adds optional `answerDiagnostics` on rejected Jev answers: fixed question/field/error-code labels, value shapes and key counts, capped at 16 issues. Never persist rejected values, unknown key names, raw paths or provider error messages. Validation, routing and stop rules are unchanged; this diagnostic change does not establish live-provider acceptance.
+
+## Perpl public data plugin
+
+`features/perps` exports separate perpetual-data contracts and `createPerpReadService`. Perpl config is optional and opt-in; preserve historical tool/plugin defaults. The service pins config version and rechecks tenant, tool, plugin and market permissions around reads. No probability schema, SDK, signer or persistence belongs here.

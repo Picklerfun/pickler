@@ -163,7 +163,7 @@ test("only verified NFL game winners select the NFL protocol", () => {
     "general-market-v1",
   );
 });
-test("a general v4 trade cannot enter manual paper trading", () => {
+test("a general v4 protocol alone cannot authorize a paper trade", () => {
   const agent = {
     paused: false,
     version: 1,
@@ -183,7 +183,7 @@ test("a general v4 trade cannot enter manual paper trading", () => {
         agent as never,
         now,
       ),
-    { code: "PAPER_UNSUPPORTED_PROTOCOL" },
+    { code: "PAPER_NOT_ELIGIBLE" },
   );
 });
 test("sources and skills are validated", () => {

@@ -1,6 +1,6 @@
 {
-  "id": "8478d486-50c7-4555-9345-cd7503c4a76a",
-  "prevId": "ba7955ce-ab05-4240-aa66-dcd7e0bd0222",
+  "id": "5e9d735a-6bf3-466b-891d-6614751c36db",
+  "prevId": "90b67070-9468-4928-8c7b-17ef48768417",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -567,6 +567,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "settlement": {
+          "name": "settlement",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "snapshot": {
           "name": "snapshot",
           "type": "jsonb",
@@ -646,7 +652,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"pickler\".\"paper_orders\".\"status\" in ('pending', 'filled')",
+          "where": "\"pickler\".\"paper_orders\".\"status\" = 'pending' OR (\"pickler\".\"paper_orders\".\"status\" = 'filled' AND \"pickler\".\"paper_orders\".\"settlement\" IS NULL)",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -678,6 +684,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "paper_settlement_requires_fill": {
+          "name": "paper_settlement_requires_fill",
+          "value": "\"pickler\".\"paper_orders\".\"settlement\" IS NULL OR (\"pickler\".\"paper_orders\".\"status\" = 'filled' AND \"pickler\".\"paper_orders\".\"fill\" IS NOT NULL)"
+        },
         "paper_status": {
           "name": "paper_status",
           "value": "\"pickler\".\"paper_orders\".\"status\" in ('pending','filled','not_filled','failed','interrupted')"
@@ -1026,6 +1036,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "wallet": {
           "name": "wallet",
           "type": "text",
@@ -1080,6 +1097,60 @@
           "columns": ["tenant_id", "agent_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.trading_attempts": {
+      "name": "trading_attempts",
+      "schema": "pickler",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "trading_attempts_run_id_runs_id_fk": {
+          "name": "trading_attempts_run_id_runs_id_fk",
+          "tableFrom": "trading_attempts",
+          "tableTo": "runs",
+          "schemaTo": "pickler",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1793,41 +1864,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "venue": {
-          "name": "venue",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'predictions'"
-        },
-        "vibe": {
-          "name": "vibe",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "voice": {
-          "name": "voice",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "decides": {
-          "name": "decides",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "wrong": {
-          "name": "wrong",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -1881,26 +1917,6 @@
         "agent_profiles_x_handle_format": {
           "name": "agent_profiles_x_handle_format",
           "value": "\"agents\".\"agent_profiles\".\"x_handle\" ~ '^@[A-Za-z0-9_]{1,15}$'"
-        },
-        "agent_profiles_venue": {
-          "name": "agent_profiles_venue",
-          "value": "\"agents\".\"agent_profiles\".\"venue\" in ('predictions', 'perps', 'both')"
-        },
-        "agent_profiles_vibe_length": {
-          "name": "agent_profiles_vibe_length",
-          "value": "char_length(\"agents\".\"agent_profiles\".\"vibe\") <= 120"
-        },
-        "agent_profiles_voice_length": {
-          "name": "agent_profiles_voice_length",
-          "value": "char_length(\"agents\".\"agent_profiles\".\"voice\") <= 120"
-        },
-        "agent_profiles_decides_length": {
-          "name": "agent_profiles_decides_length",
-          "value": "char_length(\"agents\".\"agent_profiles\".\"decides\") <= 280"
-        },
-        "agent_profiles_wrong_length": {
-          "name": "agent_profiles_wrong_length",
-          "value": "char_length(\"agents\".\"agent_profiles\".\"wrong\") <= 280"
         }
       },
       "isRLSEnabled": true
@@ -3341,47 +3357,6 @@
           "value": "\"identity\".\"profiles\".\"handle\" ~ '^[a-z0-9_]{3,15}$'"
         }
       },
-      "isRLSEnabled": true
-    },
-    "identity.siwe_nonces": {
-      "name": "siwe_nonces",
-      "schema": "identity",
-      "columns": {
-        "nonce": {
-          "name": "nonce",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "siwe_nonces_expiry_idx": {
-          "name": "siwe_nonces_expiry_idx",
-          "columns": [
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "identity.wallet_links": {

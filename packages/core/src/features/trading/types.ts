@@ -13,6 +13,8 @@ export type LiveStatus =
   | "failed"
   | "expired";
 export interface TradingAccount extends Scope {
+  enabled: boolean;
+  automaticAttempt?: { runId: string; reason: string | null; createdAt: number } | null;
   wallet: string;
   signer: string;
   chainId: 137;
@@ -56,7 +58,11 @@ export interface TradingProvider {
   identity(): { wallet: string; signer: string };
   check(signal: AbortSignal): Promise<{ balance: string; approved: boolean; blocked: boolean }>;
   preview(request: BuyRequest, signal: AbortSignal): Promise<LivePreview>;
-  sign(preview: LivePreview, signal: AbortSignal): Promise<{ hash: string; payload: unknown }>;
+  sign(
+    preview: LivePreview,
+    signal: AbortSignal,
+    beforeSign?: () => Promise<void>,
+  ): Promise<{ hash: string; payload: unknown }>;
   submit(payload: unknown, signal: AbortSignal): Promise<void>;
   reconcile(order: LiveOrder, signal: AbortSignal): Promise<Reconciliation>;
 }
@@ -65,12 +71,21 @@ export interface TradingRepository {
   bind(scope: Scope, identity: { wallet: string; signer: string }): Promise<TradingAccount>;
   agent(scope: Scope): Promise<AgentRecord>;
   run(tenantId: string, id: string): Promise<RunRecord>;
-  prepare(scope: Scope, preview: LivePreview, key: string, runId?: string): Promise<LiveOrder>;
+  prepare(
+    scope: Scope,
+    preview: LivePreview,
+    key: string,
+    runId?: string,
+    expectedVersion?: number,
+  ): Promise<LiveOrder>;
   enqueue(tenantId: string, id: string, key: string): Promise<LiveOrder>;
   get(tenantId: string, id: string): Promise<LiveOrder>;
   list(scope: Scope): Promise<LiveOrder[]>;
   claim(): Promise<LiveOrder | null>;
   guard(order: LiveOrder): Promise<void>;
+  renew(order: LiveOrder): Promise<void>;
+  admitAutomatic(run: RunRecord): Promise<boolean>;
+  recordAutomaticFailure(run: RunRecord, reason: string): Promise<void>;
   markSubmitting(order: LiveOrder, hash: string, preview?: LivePreview): Promise<void>;
   complete(order: LiveOrder, result: Reconciliation): Promise<void>;
   failUnsent(order: LiveOrder, reason: string): Promise<void>;

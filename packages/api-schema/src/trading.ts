@@ -30,7 +30,11 @@ export const liveOrderSchema = z.object({
   orderHash: z.string().nullable(),
   reason: z.string().nullable(),
   preview: liveBuySchema.extend({
-    market: z.object({ id: z.string(), question: z.string() }),
+    market: z.object({
+      id: z.string(),
+      question: z.string(),
+      outcomes: z.array(z.object({ id: z.string(), label: z.string() })).optional(),
+    }),
     estimatedFee: decimal,
     estimatedShares: decimal,
     observedAt: z.number(),
@@ -40,6 +44,11 @@ export const liveOrderSchema = z.object({
     .nullable(),
 });
 export const tradingAccountSchema = z.object({
+  enabled: z.boolean(),
+  automaticAttempt: z
+    .object({ runId: z.string(), reason: z.string().nullable(), createdAt: z.number() })
+    .nullable()
+    .optional(),
   tenantId: z.string(),
   agentId: z.string(),
   wallet: z.string(),

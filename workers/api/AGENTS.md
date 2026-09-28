@@ -238,3 +238,11 @@ user authorization: PostgreSQL research access and workspace ownership remain ma
 the API and consumer flags aligned. New agents still start with scheduling disabled. For an
 emergency stop deploy both hosts with `--var ADMISSIONS_ENABLED:false`; restore only after checking
 queued jobs, active schedules and enabled users. Never enqueue a paid run as a deployment check.
+
+## Cloudflare trading pilot
+
+Studio trading routes use user sessions and owner checks, the TRADING_EXECUTOR private binding and generic TRADING_QUEUE notifications. Keep signer/CLOB secrets exclusively in workers/trading. TRADING_ADMISSIONS_ENABLED is independent of research admission. See ../../docs/polymarket-worker-pilot.md.
+
+## Paper resolution
+
+Studio paper endpoints also expose POST /runs/:id/paper-order/settle (empty body, owner authorization, idempotent by position) and GET /agents/:id/paper-summary (workspace-scoped read). Settlement uses finalized public CTF data and never forwards a request to the live trading executor.

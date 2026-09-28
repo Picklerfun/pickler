@@ -173,6 +173,11 @@ OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --w
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
 
+Worker branch previews use the explicit `previews` block in `wrangler.jsonc`. They retain the
+production Next.js runtime mode but deliberately have no service bindings, including API and
+self-reference. They validate the web build and presentation only; backend routes and features
+requiring those bindings are unavailable. A successful preview is not full-stack acceptance.
+
 ## Studio integration
 
 The private studio uses the Studio shell and sections under `features/studio/sections`, reached
@@ -398,3 +403,7 @@ on the studio home (`#home-second-passkey`, from one read in the shell's load pa
 `?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit
 needs a session with a profile and no wallet and the design harness has none;
 `scripts/design/routes.mjs` measures it as `signup-passkey`.
+
+## Cloudflare trading pilot
+
+The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.

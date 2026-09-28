@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "first-paper-study",
+  "hours": 2,
+  "settlementGraceHours": 24,
+  "maxCases": 40,
+  "maxApiUsd": 5,
+  "pricing": null,
+  "agents": [
+    { "kind": "btc-5m", "enabled": true, "plugins": ["polymarket", "coinbase"] },
+    { "kind": "btc-15m", "enabled": true, "plugins": ["polymarket", "coinbase"] },
+    { "kind": "sports", "enabled": true, "plugins": ["polymarket", "exa"] }
+  ]
+}

@@ -3,6 +3,10 @@ import { config } from "dotenv";
 import { z } from "zod";
 config({ path: resolve(process.cwd(), ".env"), quiet: true });
 const schema = z.object({
+  JEV_OBSERVATION_MODE: z.enum(["off", "capture"]).optional(),
+  JEV_OBSERVATION_DIRECTORY: z.string().optional(),
+  JEV_OBSERVATION_TENANT_ID: z.string().optional(),
+  JEV_OBSERVATION_AGENT_ID: z.string().optional(),
   POLYMARKET_SIGNER_ADDRESS: z.string().optional(),
   POLYMARKET_SIGNER_PRIVATE_KEY: z.string().optional(),
   POLYMARKET_WALLET_ADDRESS: z.string().optional(),

@@ -136,7 +136,15 @@ export const studioOptionsSchema = z.object({
   }),
   plugins: z.array(
     z.object({
-      id: z.enum(["polymarket", "exa", "balldontlie", "the-odds-api", "paper-trading"]),
+      id: z.enum([
+        "polymarket",
+        "exa",
+        "balldontlie",
+        "the-odds-api",
+        "paper-trading",
+        "polymarket-trading",
+        "perpl",
+      ]),
       version: z.string(),
       tools: agentConfigSchema.shape.tools,
     }),

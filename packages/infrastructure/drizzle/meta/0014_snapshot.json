@@ -1,6 +1,6 @@
 {
-  "id": "5c3335b1-0ac3-48b8-aa55-547842affa9a",
-  "prevId": "f567071c-7be5-40a4-a5fb-7a54ca77c0df",
+  "id": "8478d486-50c7-4555-9345-cd7503c4a76a",
+  "prevId": "ba7955ce-ab05-4240-aa66-dcd7e0bd0222",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -567,6 +567,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "settlement": {
+          "name": "settlement",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "snapshot": {
           "name": "snapshot",
           "type": "jsonb",
@@ -646,7 +652,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"pickler\".\"paper_orders\".\"status\" in ('pending', 'filled')",
+          "where": "\"pickler\".\"paper_orders\".\"status\" = 'pending' OR (\"pickler\".\"paper_orders\".\"status\" = 'filled' AND \"pickler\".\"paper_orders\".\"settlement\" IS NULL)",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -678,6 +684,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "paper_settlement_requires_fill": {
+          "name": "paper_settlement_requires_fill",
+          "value": "\"pickler\".\"paper_orders\".\"settlement\" IS NULL OR (\"pickler\".\"paper_orders\".\"status\" = 'filled' AND \"pickler\".\"paper_orders\".\"fill\" IS NOT NULL)"
+        },
         "paper_status": {
           "name": "paper_status",
           "value": "\"pickler\".\"paper_orders\".\"status\" in ('pending','filled','not_filled','failed','interrupted')"
@@ -1026,6 +1036,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "wallet": {
           "name": "wallet",
           "type": "text",
@@ -1080,6 +1097,60 @@
           "columns": ["tenant_id", "agent_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.trading_attempts": {
+      "name": "trading_attempts",
+      "schema": "pickler",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "trading_attempts_run_id_runs_id_fk": {
+          "name": "trading_attempts_run_id_runs_id_fk",
+          "tableFrom": "trading_attempts",
+          "tableTo": "runs",
+          "schemaTo": "pickler",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4865,182 +4936,6 @@
       },
       "isRLSEnabled": true
     },
-    "wallets.agent_wallets": {
-      "name": "agent_wallets",
-      "schema": "wallets",
-      "columns": {
-        "agent_id": {
-          "name": "agent_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "wallet_id": {
-          "name": "wallet_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "policy_ids": {
-          "name": "policy_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "agent_wallets_wallet_key": {
-          "name": "agent_wallets_wallet_key",
-          "columns": [
-            {
-              "expression": "wallet_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "agent_wallets_agent_id_agents_id_fk": {
-          "name": "agent_wallets_agent_id_agents_id_fk",
-          "tableFrom": "agent_wallets",
-          "tableTo": "agents",
-          "schemaTo": "agents",
-          "columnsFrom": ["agent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "agent_wallets_wallet_id_wallets_wallet_id_fk": {
-          "name": "agent_wallets_wallet_id_wallets_wallet_id_fk",
-          "tableFrom": "agent_wallets",
-          "tableTo": "wallets",
-          "schemaTo": "wallets",
-          "columnsFrom": ["wallet_id"],
-          "columnsTo": ["wallet_id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "agent_wallets_policies": {
-          "name": "agent_wallets_policies",
-          "value": "cardinality(\"wallets\".\"agent_wallets\".\"policy_ids\") >= 2"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "wallets.deposits": {
-      "name": "deposits",
-      "schema": "wallets",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "agent_id": {
-          "name": "agent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tx_hash": {
-          "name": "tx_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_micro_usd": {
-          "name": "amount_micro_usd",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "deposits_tx_key": {
-          "name": "deposits_tx_key",
-          "columns": [
-            {
-              "expression": "tx_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "deposits_agent_idx": {
-          "name": "deposits_agent_idx",
-          "columns": [
-            {
-              "expression": "agent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "deposits_agent_id_agents_id_fk": {
-          "name": "deposits_agent_id_agents_id_fk",
-          "tableFrom": "deposits",
-          "tableTo": "agents",
-          "schemaTo": "agents",
-          "columnsFrom": ["agent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "deposits_tx_format": {
-          "name": "deposits_tx_format",
-          "value": "\"wallets\".\"deposits\".\"tx_hash\" ~ '^0x[0-9a-f]{64}$'"
-        },
-        "deposits_amount_positive": {
-          "name": "deposits_amount_positive",
-          "value": "\"wallets\".\"deposits\".\"amount_micro_usd\" > 0"
-        }
-      },
-      "isRLSEnabled": true
-    },
     "wallets.passkeys": {
       "name": "passkeys",
       "schema": "wallets",
@@ -5163,12 +5058,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "delegated_user_id": {
-          "name": "delegated_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -5330,12 +5219,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "approved_policy_ids": {
-          "name": "approved_policy_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",

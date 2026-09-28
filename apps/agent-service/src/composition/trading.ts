@@ -24,7 +24,11 @@ export function composeTrading(env: Environment, research: PostgresResearchStore
     );
   }
   return createTradingService(
-    new PostgresTradingStore(research.pool),
+    new PostgresTradingStore(
+      research.pool,
+      undefined,
+      env.POLYMARKET_WALLET_ADDRESS!.toLowerCase(),
+    ),
     new PolymarketTrading({
       privateKey: env.POLYMARKET_SIGNER_PRIVATE_KEY!,
       signer: env.POLYMARKET_SIGNER_ADDRESS!,

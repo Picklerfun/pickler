@@ -168,6 +168,7 @@ export const paperOrders = pickler
       finishedAt: milliseconds("finished_at"),
       reason: text("reason"),
       fill: jsonb("fill").$type<import("@pickler/core").PaperFill>(),
+      settlement: jsonb("settlement").$type<import("@pickler/core").PaperSettlement>(),
       snapshot: jsonb("snapshot").notNull(),
       leaseOwner: text("lease_owner"),
       leaseExpiresAt: milliseconds("lease_expires_at"),
@@ -181,7 +182,13 @@ export const paperOrders = pickler
       uniqueIndex("paper_request_identity").on(t.tenantId, t.requestKey),
       uniqueIndex("one_open_paper_position")
         .on(t.tenantId, t.agentId, t.marketId)
-        .where(sql`${t.status} in ('pending', 'filled')`),
+        .where(
+          sql`${t.status} = 'pending' OR (${t.status} = 'filled' AND ${t.settlement} IS NULL)`,
+        ),
+      check(
+        "paper_settlement_requires_fill",
+        sql`${t.settlement} IS NULL OR (${t.status} = 'filled' AND ${t.fill} IS NOT NULL)`,
+      ),
       check(
         "paper_status",
         sql`${t.status} in ('pending','filled','not_filled','failed','interrupted')`,
@@ -194,12 +201,25 @@ export const paperOrders = pickler
   )
   .enableRLS();
 
+export const tradingAttempts = pickler
+  .table("trading_attempts", {
+    runId: text("run_id")
+      .primaryKey()
+      .references(() => runs.id),
+    tenantId: text("tenant_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    reason: text("reason"),
+    createdAt: milliseconds("created_at").notNull(),
+  })
+  .enableRLS();
+
 export const tradingAccounts = pickler
   .table(
     "trading_accounts",
     {
       tenantId: text("tenant_id").notNull(),
       agentId: text("agent_id").notNull(),
+      enabled: boolean("enabled").notNull().default(false),
       wallet: text("wallet").notNull(),
       signer: text("signer").notNull(),
       createdAt: milliseconds("created_at").notNull(),

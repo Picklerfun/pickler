@@ -108,3 +108,15 @@ never rewrites the wording.
 
 `SPORTSBOOKS` in `research.ts` mirrors core's list, labels included, for the web. `sourcesSchema`
 accepts only its keys. `workers/api/test/accent-venue-mirror.test.ts` pins the mirror.
+
+## Cloudflare trading pilot
+
+Trading account DTOs include operator enablement; order previews optionally include outcome labels for historical compatibility. Public responses never contain lease tokens, signed payloads or secrets. See ../../docs/polymarket-worker-pilot.md.
+
+## Paper resolution
+
+Paper DTOs now include optional nullable settlement evidence, buy-time resolution identity and minimumShares. `paperSummarySchema` reports virtual costs, payouts, realized P&L and net cash flow; it is not a wallet balance. Existing orders without settlement remain readable. Scoped paper market snapshots include their classification.
+
+## Perpl public data plugin
+
+`src/perps.ts` exports independent Perpl data/config schemas with decimal strings, explicit network/provenance, candle gaps and bounded book depth. Do not reuse 0..1 prediction prices or the demo market DTOs. Research config accepts optional Perpl settings and four explicitly enabled tools; historical defaults remain unchanged.

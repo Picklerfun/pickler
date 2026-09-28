@@ -75,7 +75,21 @@ export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";
-export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
+export {
+  PolymarketTrading,
+  tradingOrderHash,
+  type TradingCredentials,
+} from "./polymarket/trading.js";
+
+export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
+
+export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
+
+export { PolymarketStudyData } from "./polymarket/study-data.js";
+
+export { PerplMarketData } from "./perpl/data.js";
+export type { PerplDataOptions, PerplPublicResponse } from "./perpl/transport.js";
+
 export {
   createAddPasskeyActivityBuilder,
   createSubOrganizationCreator,

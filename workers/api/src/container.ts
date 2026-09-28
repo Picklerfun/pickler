@@ -3,6 +3,7 @@ import {
   createAgentQueries,
   createCustodyService,
   createPaperService,
+  createPaperSettlementService,
   createAuthenticateAgent,
   createAuthenticateRequest,
   createProfileService,
@@ -21,6 +22,7 @@ import {
   PostgresResearchStore,
   PostgresPaperStore,
   PolymarketData,
+  PolymarketPaperResolution,
   PostgresStudioDirectory,
   PostgresBudgetLedger,
   PostgresCustodyStore,
@@ -38,6 +40,7 @@ import {
   parseSiweMessage,
   PostgresWalletIdentityStore,
   createOpenAiCompatibleDrafter,
+  PostgresTradingStore,
 } from "@pickler/infrastructure";
 import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
@@ -341,6 +344,25 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     onboard: (userId) => directory.onboard(userId),
     studio: {
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
+      trading: {
+        repository: new PostgresTradingStore(repository.pool),
+        admissionsEnabled: env.TRADING_ADMISSIONS_ENABLED === "true",
+        async invoke(path, input) {
+          if (!env.TRADING_EXECUTOR) {
+            throw new Error("Trading executor unavailable");
+          }
+          return env.TRADING_EXECUTOR.fetch(
+            new Request(`https://trading.internal${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(input),
+            }),
+          );
+        },
+        async notify() {
+          await env.TRADING_QUEUE?.send({ kind: "trading-wakeup" });
+        },
+      },
       authenticate,
       drafter: drafter(env),
       directory,
@@ -348,7 +370,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       wallets: new PostgresCustodyStore(repository.pool),
       balances: ausdBalances(env),
       ...(custody ? { custody: custody.custody } : {}),
-      paper: createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
+      paper: {
+        ...createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),
+        ...createPaperSettlementService(
+          new PostgresPaperStore(repository.pool),
+          new PolymarketPaperResolution(),
+        ),
+      },
       notifyQueued: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");

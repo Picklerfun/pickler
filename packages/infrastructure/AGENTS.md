@@ -232,3 +232,28 @@ and `saveDeposit` (lowercases the hash for the column check).
 verifies). `npm run turnkey:delegated-key --workspace=@pickler/infrastructure` prints only the
 public key of a fresh pair; `-- --append <file>` appends a pair to a local `.dev.vars` without
 printing it, and `-- --print-private` prints both halves for an operator's `wrangler secret put`.
+
+## Cloudflare trading pilot
+
+Migration 0010 adds disabled-by-default trading account enablement and private automatic attempts. Trading stores may restrict claims/reconciliation to the configured wallet. `trading-access` is an explicit operator command; bindings are immutable. SDK signing rechecks ownership. See ../../docs/polymarket-worker-pilot.md.
+
+## International Polymarket preproduction
+
+The explicit `polymarket:preproduction` agent-service command only probes fixed public GET
+routes. It loads no environment file, credentials, signer or database. The official environment
+inherits chain 137; never equate its availability with Amoy or dummy-fund order acceptance.
+See apps/agent-service/POLYMARKET-PREPRODUCTION.md from the repository root.
+
+## Paper resolution
+
+Migration 0011 adds nullable paper settlement snapshots and releases the open-position constraint after virtual resolution. PostgresPaperStore serializes settlement under agent/position locks and rechecks current plugin permissions/version. PolymarketPaperResolution reads only finalized CTF payout data via public Polygon RPC; it never loads signer credentials. Buy-time condition/outcome identity is mandatory for resolution; never infer legacy identities or winners from prices. Gamma orderMinSize is a share quantity, exposed separately from legacy minimumNotional.
+
+## Paper study data
+
+`PolymarketStudyData` is a public export for the local operator laboratory. Discover exact current BTC interval slugs or existing classified sports markets. Guard every provider request, including Coinbase reference candles and Exa. Preserve the distinction between Coinbase reference prices and the Chainlink resolution feed; no silent replacement or official price-to-beat claim. No paid initialization.
+
+The study adapter reads the public crypto-price endpoint with exact window, variant and explicit 60-second TWAP parameters from Polymarket's public client. Validate opening value and timestamp before any model call. This is a frontend endpoint, not a promised stable API; fail closed on changes. Never label it as an independently verified signed Chainlink report.
+
+## Perpl public data plugin
+
+`src/perpl` exports `PerplMarketData`, a bounded public REST adapter for BTC/ETH on mainnet/testnet. Discover IDs/precision from context; preserve exact decimal strings, component provenance and unknowns. Fixed hosts, GET-only, no redirects/retries, 10-second/2-MiB limits, serial one-second starts and twelve requests per session. Context cache is scoped to adapter/network. Test hooks are trusted host injection, never agent configuration.

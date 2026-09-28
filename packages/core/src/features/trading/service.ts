@@ -15,12 +15,6 @@ export function moneyMicros(value: string): number {
   return Number(amount);
 }
 export function assertTradingAgent(agent: AgentRecord): void {
-  if (agent.tenantId !== "alpha" || agent.id !== "pickle-alpha") {
-    throw new PilotError(
-      "TRADING_ACCOUNT_UNAVAILABLE",
-      "Only the dedicated alpha pilot is supported",
-    );
-  }
   if (agent.paused || !agent.config.trading || agent.config.trading.mode === "off") {
     throw new PilotError("TRADING_DISABLED", "Trading is disabled");
   }
@@ -33,8 +27,22 @@ export function assertTradingAgent(agent: AgentRecord): void {
 export function assertLivePreview(preview: LivePreview, agent: AgentRecord, now: number): void {
   assertTradingAgent(agent);
   assertConfiguredMarket(preview.market, agent.config, now);
-  if (protocolForMarket(preview.market, agent.config) !== "nfl-winner-v1") {
-    throw new PilotError("TRADING_UNSUPPORTED_MARKET", "Only NFL full-game winners are supported");
+  const market = preview.market;
+  const regulationTime = /\b(?:90 minutes|regular time|regulation time)\b/i.test(market.rules);
+  const includesExtraTime = /\b(?:including|includes|after|with) (?:extra time|overtime)\b/i.test(
+    market.rules,
+  );
+  const soccer =
+    market.classification?.subcategory === "soccer" &&
+    market.classification.temporalClass === "match" &&
+    ["moneyline", "match_winner"].includes(market.sportsMarketType ?? "") &&
+    (regulationTime || includesExtraTime) &&
+    !/(?:first half|second half|handicap|spread|total goals|qualif)/i.test(market.question);
+  if (protocolForMarket(market, agent.config) !== "nfl-winner-v1" && !soccer) {
+    throw new PilotError(
+      "TRADING_UNSUPPORTED_MARKET",
+      "Only verified NFL or soccer full-game winners are supported",
+    );
   }
   if (
     preview.marketId !== preview.market.id ||
@@ -74,10 +82,9 @@ export function assertTradingRun(run: RunRecord, agent: AgentRecord, now: number
     !Number.isFinite(Date.parse(d.expiresAt)) ||
     Date.parse(d.expiresAt) <= now ||
     !("schemaVersion" in d) ||
-    ![3, 4].includes(d.schemaVersion) ||
-    (d.schemaVersion === 4 && d.protocol !== "nfl-winner-v1")
+    ![3, 4].includes(d.schemaVersion)
   ) {
-    throw new PilotError("TRADING_RUN_INELIGIBLE", "Requires a current policy-approved NFL trade");
+    throw new PilotError("TRADING_RUN_INELIGIBLE", "Requires a current policy-approved trade");
   }
   return { marketId: d.marketId, outcomeId: d.outcomeId, limitPrice: d.limitPrice, budget: "5" };
 }
@@ -90,6 +97,9 @@ export function createTradingService(
     const agent = await repository.agent(scope);
     assertTradingAgent(agent);
     const account = await repository.account(scope);
+    if (!account.enabled) {
+      throw new PilotError("TRADING_DISABLED", "Operator has not enabled this account");
+    }
     const identity = provider.identity();
     if (
       identity.wallet.toLowerCase() !== account.wallet.toLowerCase() ||
@@ -122,7 +132,7 @@ export function createTradingService(
     }
     const preview = await provider.preview(request, signal);
     assertLivePreview(preview, agent, now());
-    return repository.prepare(scope, preview, key, runId);
+    return repository.prepare(scope, preview, key, runId, agent.version);
   }
   return {
     async check(scope: Scope) {
@@ -142,7 +152,7 @@ export function createTradingService(
       const order = await prepare(scope, request, key, id);
       return repository.enqueue(tenant, order.id, key);
     },
-    async tick() {
+    async tick(admissionsEnabled = true) {
       // Recovery is read-only at the provider. It must run even after plugin revocation.
       for (const order of await repository.pending()) {
         try {
@@ -159,11 +169,20 @@ export function createTradingService(
           /* Keep unresolved reservations; do not infer failure from an unavailable provider. */
         }
       }
+      if (!admissionsEnabled) {
+        return;
+      }
       for (const run of await repository.automaticCandidates()) {
         try {
+          if (!(await repository.admitAutomatic(run))) {
+            continue;
+          }
           await this.fromRun(run.tenantId, run.id, `automatic:${run.id}`);
-        } catch {
-          /* No fallback decision or external write retry. */
+        } catch (error) {
+          await repository.recordAutomaticFailure(
+            run,
+            error instanceof PilotError ? error.code : "TRADING_PROVIDER_FAILURE",
+          );
         }
       }
       const order = await repository.claim();
@@ -171,9 +190,21 @@ export function createTradingService(
         return;
       }
       let submitting = false;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+      let renewal = Promise.resolve();
+      const timer = setInterval(() => {
+        renewal = renewal
+          .then(async () => {
+            if (!submitting) {
+              await repository.renew(order);
+            }
+          })
+          .catch(() => controller.abort());
+      }, 15000);
       try {
         const agent = await inspect(order);
-        const signal = AbortSignal.timeout(45000);
+        const signal = controller.signal;
         await repository.guard(order);
         const state = await provider.check(signal);
         if (
@@ -187,7 +218,15 @@ export function createTradingService(
         const fresh = await provider.preview(order.preview, signal);
         assertLivePreview(fresh, agent, now());
         await repository.guard(order);
-        const signed = await provider.sign(fresh, signal);
+        signal.throwIfAborted();
+        const signed = await provider.sign(fresh, signal, async () => {
+          signal.throwIfAborted();
+          await repository.guard(order);
+          signal.throwIfAborted();
+        });
+        clearInterval(timer);
+        await renewal;
+        signal.throwIfAborted();
         await repository.markSubmitting(order, signed.hash, fresh);
         // Durable handoff: never send a newly created order after this point on recovery.
         submitting = true;
@@ -198,11 +237,19 @@ export function createTradingService(
         );
       } catch (error) {
         if (!submitting) {
-          await repository.failUnsent(
-            order,
-            error instanceof PilotError ? error.code : "TRADING_PROVIDER_FAILURE",
-          );
+          try {
+            await repository.failUnsent(
+              order,
+              error instanceof PilotError ? error.code : "TRADING_PROVIDER_FAILURE",
+            );
+          } catch {
+            /* Lost ownership is recovered by the next claim; never overwrite it. */
+          }
         }
+      } finally {
+        clearInterval(timer);
+        clearTimeout(timeout);
+        await renewal;
       }
     },
   };

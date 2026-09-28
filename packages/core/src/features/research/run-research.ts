@@ -32,10 +32,14 @@ import {
   type OrderBook,
   type ToolName,
   type ResearchTools,
+  type ResearchObserver,
+  type ResearchObservation,
+  type DecisionInputSnapshot,
 } from "./types.js";
 
 /** The only research entry point: API, worker and Studio all dispatch through it. */
 export function createResearchRunner(deps: {
+  observer?: ResearchObserver;
   repository: Pick<ResearchRepository, "agent" | "event" | "finish" | "assertOwnership">;
   model: ResearchModel;
   search: WebSearch;
@@ -49,6 +53,9 @@ export function createResearchRunner(deps: {
   const { repository: repo } = deps;
   const now = deps.now ?? Date.now;
   return async function execute(run: RunRecord, parentSignal?: AbortSignal): Promise<void> {
+    let observation: ResearchObservation | undefined;
+    let primaryCompleted = false;
+    let decisionInput: DecisionInputSnapshot | undefined;
     const signal = parentSignal
       ? AbortSignal.any([parentSignal, AbortSignal.timeout(run.config.limits.durationMs)])
       : AbortSignal.timeout(run.config.limits.durationMs);
@@ -366,6 +373,17 @@ export function createResearchRunner(deps: {
       }
       await guard();
       const result = await deps.model.research({
+        ...(deps.observer
+          ? {
+              onDecisionInput: (input: DecisionInputSnapshot) => {
+                try {
+                  decisionInput = structuredClone(input);
+                } catch {
+                  decisionInput = undefined;
+                }
+              },
+            }
+          : {}),
         ...(protocol ? { protocol } : {}),
         availability,
         beforeStep: async () => {
@@ -486,6 +504,28 @@ export function createResearchRunner(deps: {
         : evaluated;
       await event("policy_evaluation", finalDecision.policyEvaluation);
       await repo.finish(run, finalDecision, null, now());
+      primaryCompleted = true;
+      if (deps.observer && decisionInput) {
+        try {
+          observation = {
+            schemaVersion: 1,
+            ...decisionInput,
+            scope: {
+              tenantId: run.tenantId,
+              agentId: run.agentId,
+              runId: run.id,
+              configVersion: run.configVersion,
+            },
+            primary: {
+              decision: structuredClone(finalDecision),
+              usage: structuredClone(result.usage),
+              metadata: structuredClone(deps.model.metadata()),
+            },
+          };
+        } catch {
+          /* A capture failure cannot rewrite the completed primary run. */
+        }
+      }
     } catch (error) {
       if (error instanceof PilotError && error.code === "LEASE_LOST") {
         throw error;
@@ -504,6 +544,21 @@ export function createResearchRunner(deps: {
             ? "DEADLINE_OR_CANCELLED"
             : "PROVIDER_OR_MODEL_FAILURE";
       await repo.finish(run, null, code, now());
+    }
+    // Observation cannot enter the runner's failure path or rewrite its completed decision.
+    if (primaryCompleted && deps.observer) {
+      try {
+        if (!observation) {
+          throw new Error("Missing finalizer snapshot");
+        }
+        await deps.observer.completed(observation);
+      } catch {
+        try {
+          await deps.observer.failed?.();
+        } catch {
+          /* Diagnostics cannot affect research. */
+        }
+      }
     }
   };
 }

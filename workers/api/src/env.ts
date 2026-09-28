@@ -4,6 +4,9 @@ import type { AgentLedger } from "./budget/agent-ledger";
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
   APP_ENV: string;
+  TRADING_EXECUTOR?: Fetcher;
+  TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
+  TRADING_ADMISSIONS_ENABLED?: string;
   ADMISSIONS_ENABLED?: string;
   DATABASE?: Hyperdrive;
   /** Loopback development only; hosted requests require DATABASE. */

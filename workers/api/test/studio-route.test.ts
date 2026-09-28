@@ -46,6 +46,60 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
   const app = studioRoutes({
     directory,
     repository,
+    paper: {
+      create: async () => {
+        throw new Error("Not used");
+      },
+      get: async () => {
+        throw new Error("Not used");
+      },
+      settle: async (tenantId, runId) => {
+        calls++;
+        assert.equal(tenantId, "trusted");
+        if (runId !== "run") {
+          throw new PilotError("NOT_FOUND", "Missing");
+        }
+        return {
+          id: "paper",
+          tenantId,
+          agentId: "agent",
+          runId,
+          marketId: "1",
+          outcomeId: "2",
+          status: "filled",
+          virtualBudget: "10",
+          createdAt: 1,
+          finishedAt: 2,
+          reason: null,
+          fill: null,
+          settlement: null,
+        };
+      },
+      summary: async (scope) => {
+        calls++;
+        assert.deepEqual(scope, { tenantId: "trusted", agentId: "agent" });
+        return {
+          filled: 0,
+          open: 0,
+          settled: 0,
+          totalCost: "0",
+          openCost: "0",
+          payouts: "0",
+          realizedPnl: "0",
+          netCashFlow: "0",
+        };
+      },
+    },
+    trading: {
+      repository: {} as import("@pickler/core").TradingRepository,
+      admissionsEnabled: true,
+      notify: async () => {},
+      invoke: async (_path, input) => {
+        calls++;
+        assert.equal((input as { scope: { tenantId: string } }).scope.tenantId, "trusted");
+        return Response.json({ ok: true });
+      },
+    },
     notifyQueued: async () => {},
     wallets: { findAgentWallet: async () => null },
     balances: {
@@ -143,4 +197,42 @@ test("a client-sent policyIds is refused before anything is created; the server 
   );
   assert.equal(response.status, 400);
   assert.equal(calls(), 0);
+});
+
+test("trading requires a user owner and rejects tenant or credential injection before the executor", async () => {
+  for (const mode of [{ key: true }, { enabled: false }, { owner: false }]) {
+    const { app, calls } = fixture(mode);
+    const response = await app.request("/agents/agent/trading/check", request({}));
+    assert.equal(response.status, mode.key ? 401 : 403);
+    assert.equal(calls(), 0);
+  }
+  const { app, calls } = fixture();
+  for (const body of [{ tenantId: "victim" }, { privateKey: "secret" }]) {
+    assert.equal((await app.request("/agents/agent/trading/check", request(body))).status, 400);
+  }
+  assert.equal((await app.request("/agents/other/trading/check", request({}))).status, 404);
+  assert.equal(calls(), 0);
+  assert.equal((await app.request("/agents/agent/trading/check", request({}))).status, 200);
+  assert.equal(calls(), 1);
+});
+
+test("paper settlement is owner-only, accepts no authority overrides, and summary resolves mapped scope", async () => {
+  for (const mode of [{ key: true }, { enabled: false }, { owner: false }]) {
+    const { app, calls } = fixture(mode);
+    assert.equal(
+      (await app.request("/runs/run/paper-order/settle", request({}))).status,
+      mode.key ? 401 : 403,
+    );
+    assert.equal(calls(), 0);
+  }
+  const { app, calls } = fixture();
+  assert.equal(
+    (await app.request("/runs/run/paper-order/settle", request({ numerator: "1" }))).status,
+    400,
+  );
+  assert.equal(calls(), 0);
+  assert.equal((await app.request("/runs/run/paper-order/settle", request({}))).status, 200);
+  assert.equal((await app.request("/runs/other/paper-order/settle", request({}))).status, 404);
+  assert.equal((await app.request("/agents/agent/paper-summary")).status, 200);
+  assert.equal((await app.request("/agents/other/paper-summary")).status, 404);
 });

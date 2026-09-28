@@ -121,3 +121,7 @@ required to run the explicit rollback-only database probe.
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
+
+## Cloudflare trading pilot
+
+The Cloudflare pilot adds `workers/trading` (read its AGENTS.md) and `docs/polymarket-worker-pilot.md`. It holds the signer exclusively, uses the trusted DATABASE binding, and starts with trading admissions closed. Do not confuse controlled signature tests with live financial acceptance.

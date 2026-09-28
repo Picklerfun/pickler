@@ -19,3 +19,5 @@ export * from "./paper.js";
 export * from "./studio.js";
 export * from "./trading.js";
 export * from "./profiles.js";
+
+export * from "./perps.js";
