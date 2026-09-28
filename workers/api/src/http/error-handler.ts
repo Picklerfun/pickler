@@ -135,6 +135,10 @@ export function handleError(error: unknown, c: Context<AppEnv>) {
   const { status, message, extras } = classify(error, isProduction);
   if (status >= 500) {
     console.error(`[${traceId}] ${c.req.method} ${c.req.path}`, `HTTP ${status}`);
+  } else if (extras?.error === "activity_rejected") {
+    // Turnkey's refusal is the only clue to a custody failure, and the browser alone saw it.
+    // Its text names no secret: it is what the envelope already hands back to the caller.
+    console.warn(`[${traceId}] ${c.req.method} ${c.req.path}`, `HTTP ${status}`, message);
   }
   return c.json(errorEnvelope(message, status, c.req.path, traceId, extras), status);
 }
