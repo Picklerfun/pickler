@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   PilotError,
   comparisonReserved,
+  benchmarkReserved,
   runQuantCase,
   settlePaperOrder,
   type QuantState,
@@ -191,15 +192,20 @@ try {
       }
       try {
         const s = JSON.parse(await readFile(join(root, name, "state.json"), "utf8"));
+        if (![1, 2, 3, 4].includes(s.version)) {
+          throw new Error("UNSUPPORTED_HISTORICAL_BUDGET");
+        }
         known.push({
           name,
           reserved:
-            s.version === 3
-              ? comparisonReserved(s)
-              : (s.cases as { reservedApiUsd?: number; reservedUsd?: number }[]).reduce(
-                  (a, c) => a + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
-                  0,
-                ),
+            s.version === 4
+              ? benchmarkReserved(s)
+              : s.version === 3
+                ? comparisonReserved(s)
+                : (s.cases as { reservedApiUsd?: number; reservedUsd?: number }[]).reduce(
+                    (a, c) => a + (c.reservedApiUsd ?? c.reservedUsd ?? 0),
+                    0,
+                  ),
         });
       } catch (error) {
         if (!(
