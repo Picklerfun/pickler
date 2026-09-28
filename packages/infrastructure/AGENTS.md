@@ -160,3 +160,5 @@ history. Their original SQL bytes and journal timestamps are preserved so the ha
 migrator recognizes databases created on the earlier launch branch. Never rewrite applied
 SQL or reset a database to resolve branch numbering. The combined latest snapshot includes
 both launch and current trading tables. Migration tests cover both predecessor histories.
+
+The Node-only migration runner is exported through `@pickler/infrastructure/migrations`, never the runtime barrel. Worker consumers must not import this operational entry point.
