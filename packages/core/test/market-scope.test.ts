@@ -163,7 +163,7 @@ test("only verified NFL game winners select the NFL protocol", () => {
     "general-market-v1",
   );
 });
-test("a general v4 trade cannot enter manual paper trading", () => {
+test("a general v4 protocol alone cannot authorize a paper trade", () => {
   const agent = {
     paused: false,
     version: 1,
@@ -183,6 +183,56 @@ test("a general v4 trade cannot enter manual paper trading", () => {
         agent as never,
         now,
       ),
-    { code: "PAPER_UNSUPPORTED_PROTOCOL" },
+    { code: "PAPER_NOT_ELIGIBLE" },
+  );
+});
+test("sources and skills are validated", () => {
+  assertConfig({
+    ...config,
+    sources: { web: { mode: "only", sites: ["espn.com"] }, books: [] },
+    skills: [],
+  });
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: { mode: "only", sites: [] }, books: [] },
+        skills: [],
+      }),
+    /at least one site/,
+  );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: [] },
+        skills: Array.from({ length: 9 }, (_, i) => ({ name: `s${i}`, prompt: "p" })),
+      }),
+    /At most 8 skills/,
+  );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: [] },
+        skills: [{ name: "x", prompt: "p".repeat(601) }],
+      }),
+    /600/,
+  );
+  assert.throws(
+    () =>
+      assertConfig({
+        ...config,
+        sources: { web: null, books: ["DraftKings" as never] },
+        skills: [],
+      }),
+    /Invalid sportsbook list/,
+  );
+  assert.doesNotThrow(() =>
+    assertConfig({
+      ...config,
+      sources: { web: null, books: ["draftkings", "williamhill_us"] },
+      skills: [],
+    }),
   );
 });

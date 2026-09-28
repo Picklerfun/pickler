@@ -23,7 +23,9 @@
     "build": "tsc -p tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../apps/agent-service/.env --import tsx src/persistence/migrate.ts",
-    "research-access": "tsx src/console/operator.ts"
+    "research-access": "tsx src/studio/operator.ts",
+    "trading-access": "tsx src/trading/access.ts",
+    "turnkey:delegated-key": "tsx src/turnkey/delegated-key-cli.ts"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*",

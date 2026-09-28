@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Icon } from "@pickler/ui";
+import Link from "next/link";
+import { Button, ButtonLink, Icon } from "@pickler/ui";
 import { MONAD_TESTNET } from "@pickler/chain";
 import { addressButtonLabel, type CopyState } from "../../auth/lib/address";
 import { formatBalance } from "../../auth/lib/balance";
+import { SIGNUP_PASSKEY_STEP } from "../../auth/lib/custody";
 import type { BalanceDto, WalletDto } from "../../auth/lib/custody-api";
 import { NotYet } from "../components/not-yet";
 import styles from "../account.module.css";
@@ -67,10 +69,20 @@ export function WalletSection({ state }: { state: WalletState }) {
         <p className={styles.cardLabel}>MASTER WALLET · AVAILABLE</p>
         {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
         {state.kind === "none" && (
-          <p className={styles.cardNote}>
-            No wallet yet. One is created with your first passkey, and its key never leaves the
-            enclave it is made in.
-          </p>
+          <>
+            {/* Signed in, the account screen sends a person without a sub-organization to the signup's passkey step
+                before this renders (spec §4.1: the wallet is made at signup, with a passkey nobody
+                can skip). This stays for anything that reaches the state anyway. */}
+            <p className={styles.cardNote}>
+              No wallet yet. Create it with your passkey — it comes before anything else. Its key
+              never leaves the enclave it is made in.
+            </p>
+            <div className={styles.cardActions}>
+              <ButtonLink as={Link} href={SIGNUP_PASSKEY_STEP} variant="primary" arrow>
+                Create my wallet
+              </ButtonLink>
+            </div>
+          </>
         )}
         {state.kind === "error" && <p className={styles.cardNote}>{state.reason}</p>}
         {wallet && (

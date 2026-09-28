@@ -14,8 +14,10 @@ import {
   type Sort,
   type StageFilter,
 } from "../lib/board-filters";
+import { noAgents } from "../lib/empty";
 import { formatChange, formatCompact, formatInteger } from "../lib/format";
-import { AgentAvatar, CurveProgress, StageBadge, VenueMarks } from "./agent-parts";
+import { hasToken } from "../lib/token-profile";
+import { AgentAvatar, CurveProgress, EmptyScreen, StageBadge, VenueMarks } from "./agent-parts";
 
 const comparators: Record<Sort, (a: AgentSummaryDto, b: AgentSummaryDto) => number> = {
   Mcap: (a, b) => (b.token?.marketCap ?? 0) - (a.token?.marketCap ?? 0),
@@ -29,9 +31,23 @@ const stageLabel: Record<StageFilter, string> = {
   graduated: "GRADUATED",
 };
 
-const pair = (agent: AgentSummaryDto) =>
-  agent.token?.stage === "graduated" ? `${agent.ticker}/MON` : agent.ticker;
-const cta = (agent: AgentSummaryDto) => (agent.token?.stage === "graduated" ? "TRADE" : "BACK IT");
+function pair(agent: AgentSummaryDto): string {
+  if (!hasToken(agent)) {
+    return "—";
+  }
+  return agent.token?.stage === "graduated" ? `${agent.ticker}/MON` : agent.ticker;
+}
+
+function cta(agent: AgentSummaryDto): string {
+  if (!hasToken(agent)) {
+    return "PROFILE";
+  }
+  return agent.token?.stage === "graduated" ? "TRADE" : "BACK IT";
+}
+
+/** Without a token there is no token page; the card leads to the agent instead. */
+const cardHref = (agent: AgentSummaryDto) =>
+  hasToken(agent) ? `/tokens/${agent.slug}` : `/agents/${agent.handle}`;
 
 // Filters live in the URL so a filtered board can be shared.
 function writeUrl(filters: BoardFilters) {
@@ -57,17 +73,36 @@ export function TokenBoard({
     const q = filters.query.trim().toLowerCase();
     return agents
       .filter((a) => filters.stage === "all" || a.token?.stage === filters.stage)
-      .filter((a) => !q || `${a.name} ${a.ticker} ${a.beat}`.toLowerCase().includes(q))
+      .filter((a) => !q || `${a.name} ${a.ticker ?? ""} ${a.beat}`.toLowerCase().includes(q))
       .sort(comparators[filters.sort]);
   }, [agents, filters]);
+
+  // The page hands this board only the agents with a token, so none here means none has launched.
+  if (noAgents(agents)) {
+    return (
+      <main className={styles.main}>
+        <p className={styles.eyebrow}>TOKENS</p>
+        <h1 className={styles.boardTitle}>EVERY AGENT TOKEN.</h1>
+        <EmptyScreen
+          id="tokens-empty"
+          label="No tokens yet"
+          kicker="NO TOKEN YET"
+          title="No token has launched."
+        >
+          A token is born on the curve, and none has been born yet. The first one appears here when
+          it launches, with nothing raised and the whole curve ahead of it.
+        </EmptyScreen>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.main}>
       <p className={styles.eyebrow}>TOKENS</p>
       <h1 className={styles.boardTitle}>EVERY AGENT TOKEN.</h1>
       <p className={styles.boardLead}>
-        Every agent launches with a token. Buy it on the curve, or trade it in the pool once it
-        graduates.
+        An agent may launch a token; its owner decides. Buy it on the curve, or trade it in the pool
+        once it graduates.
       </p>
 
       <div className={styles.filterCard}>
@@ -130,9 +165,9 @@ export function TokenBoard({
       ) : filters.view === "grid" ? (
         <ul className={styles.grid}>
           {shown.map((agent) => (
-            <li key={agent.ticker}>
+            <li key={agent.handle}>
               <article className={styles.card}>
-                <Link href={`/tokens/${agent.slug}`} className={styles.cardTop}>
+                <Link href={cardHref(agent)} className={styles.cardTop}>
                   <span className={styles.cardHead}>
                     <AgentAvatar name={agent.name} accent={agent.accent} />
                     <span className={styles.cardName}>
@@ -184,7 +219,7 @@ export function TokenBoard({
                       No token launched yet
                     </span>
                   )}
-                  <Link href={`/tokens/${agent.slug}`} className={styles.cardCta}>
+                  <Link href={cardHref(agent)} className={styles.cardCta}>
                     {cta(agent)} <Icon name="arrow" size={14} />
                   </Link>
                 </div>
@@ -203,11 +238,11 @@ export function TokenBoard({
             <span className={styles.tableCta} />
           </div>
           {shown.map((agent) => (
-            <div key={agent.ticker} className={styles.tableRow}>
+            <div key={agent.handle} className={styles.tableRow}>
               <span className={styles.tableMark}>
                 <AgentAvatar name={agent.name} accent={agent.accent} small />
               </span>
-              <Link href={`/tokens/${agent.slug}`} className={styles.tableName}>
+              <Link href={cardHref(agent)} className={styles.tableName}>
                 <strong>{agent.name}</strong>
                 <span>{pair(agent)}</span>
               </Link>
@@ -220,10 +255,7 @@ export function TokenBoard({
               <span className={styles.tableNum}>
                 {agent.token ? formatCompact(agent.token.volume24h) : "—"}
               </span>
-              <Link
-                href={`/tokens/${agent.slug}`}
-                className={`${styles.tableCta} ${styles.cardCta}`}
-              >
+              <Link href={cardHref(agent)} className={`${styles.tableCta} ${styles.cardCta}`}>
                 {cta(agent)} <Icon name="arrow" size={14} />
               </Link>
             </div>

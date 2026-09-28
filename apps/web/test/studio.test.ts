@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { previewAllowed, studioPreview } from "../src/features/console/preview";
-import { SECTIONS, sectionFromSearch } from "../src/features/console/sections/keys";
+import { previewAllowed, studioPreview } from "../src/features/studio/preview";
+import { SECTIONS, sectionFromSearch } from "../src/features/studio/sections/keys";
 import {
   forgetRail,
   railOnServer,
   railSnapshot,
   setRail,
   subscribeRail,
-} from "../src/features/console/lib/rail";
+} from "../src/features/studio/lib/rail";
 
 /* One behaviour per test. An assert after a failing assert never runs, so a test that checked all
    four gate positions at once would report the first failure and hide the other three. */

@@ -14,8 +14,9 @@
     "dev": "turbo run dev --filter=@pickler/web",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "typecheck:design": "tsc -p scripts/design/tsconfig.json",
     "lint": "eslint .",
-    "test": "npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts apps/web/test/*.test.ts",
+    "test": "npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts packages/agent-runtime/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts workers/trading/test/*.test.ts apps/web/test/*.test.ts",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",
@@ -33,7 +34,7 @@
     "supabase:status": "supabase status",
     "test:supabase": "TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54522/postgres npm test",
     "check:staging": "node scripts/check-staging.mjs",
-    "build:workers": "npm run build:shared && npm run build:worker --workspace=@pickler/api && npm run build:worker --workspace=@pickler/research-worker && npm run build:worker --workspace=@pickler/web",
+    "build:workers": "npm run build:shared && npm run build:worker --workspace=@pickler/api && npm run build:worker --workspace=@pickler/research-worker && npm run build:worker --workspace=@pickler/trading-worker && npm run build:worker --workspace=@pickler/web",
     "test:workers-local": "node --import tsx --test workers/research/test/worker-flow.test.ts"
   },
   "devDependencies": {

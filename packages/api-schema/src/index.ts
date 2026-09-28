@@ -5,14 +5,19 @@ export interface HealthResponse {
 }
 
 export type * from "./landing.js";
+export { ACCENTS } from "./landing.js";
 export type * from "./waitlist.js";
 export * from "./applications.js";
 export type * from "./agents.js";
+export { VENUES } from "./agents.js";
 export * from "./markets.js";
 export type * from "./errors.js";
 
 export * from "./research.js";
 
 export * from "./paper.js";
-export * from "./console.js";
+export * from "./studio.js";
 export * from "./trading.js";
+export * from "./profiles.js";
+
+export * from "./perps.js";

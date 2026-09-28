@@ -19,6 +19,18 @@
  */
 export const ADD_PASSKEY_ACTIVITY_TYPE = "ACTIVITY_TYPE_CREATE_AUTHENTICATORS_V2";
 
+/**
+ * The activity types each confirm may forward, one each. The builders in @pickler/infrastructure
+ * are typed against @turnkey/http, whose request types pin these literals; a test there asserts
+ * each builder's `type` equals the constant here, as ADD_PASSKEY_ACTIVITY_TYPE is asserted.
+ */
+export const AGENT_WALLET_ACTIVITY_TYPES = {
+  createDelegatedUser: "ACTIVITY_TYPE_CREATE_USERS_V4",
+  createAgentWallet: "ACTIVITY_TYPE_CREATE_WALLET",
+  createPolicies: "ACTIVITY_TYPE_CREATE_POLICIES",
+  signTransaction: "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
+} as const;
+
 /** What `navigator.credentials.create()` gives us, base64url-encoded. */
 export interface PasskeyAttestation {
   credentialId: string;
@@ -28,6 +40,24 @@ export interface PasskeyAttestation {
 }
 
 export type DeviceType = "platform" | "cross_device" | "security_key";
+
+/**
+ * What a passkey is labelled with, in the operating system's credential picker and in Turnkey's
+ * dashboard. Deliberately not an email.
+ *
+ * WebAuthn's `user.name` and `user.displayName` are stored inside the authenticator and sync to
+ * iCloud Keychain and Google Password Manager, so whatever goes here outlives the account and
+ * cannot be edited afterwards by us or by the person. An auth identifier must therefore never be
+ * passed in: for a wallet account that identifier is synthetic and derived from the wallet, and
+ * labelling a credential with it would put a wallet address in someone's password manager for
+ * good. The profile is the right source — it is the name the person chose to be known by.
+ */
+export interface DisplayIdentity {
+  /** WebAuthn `user.name`: short and stable, the handle where there is one. */
+  name: string;
+  /** WebAuthn `user.displayName`: what a person recognises themselves as. */
+  displayName: string;
+}
 
 export interface ChallengeOptions {
   challenge: string;
@@ -94,5 +124,47 @@ export class NoCustodyAccountError extends Error {
   constructor() {
     super("No wallet exists for this account yet");
     this.name = "NoCustodyAccountError";
+  }
+}
+
+/**
+ * The derivation path of the one account every Pickler wallet has, master or agent. Monad is EVM,
+ * so it is Ethereum's first account. The Turnkey adapter builds its account parameters from this,
+ * and the store records it, so the two cannot disagree.
+ */
+export const MONAD_ACCOUNT_PATH = "m/44'/60'/0'/0/0";
+
+/**
+ * Pickler's delegated API public key is not configured, so no delegated user can be created
+ * (HTTP 503). A deployment without it still serves everything else.
+ */
+export class DelegatedKeyNotConfiguredError extends Error {
+  constructor() {
+    super("Agent wallets are not available on this deployment");
+    this.name = "DelegatedKeyNotConfiguredError";
+  }
+}
+
+/** A delegated user is already recorded for this sub-organization (HTTP 409). */
+export class DelegatedUserExistsError extends Error {
+  constructor() {
+    super("Pickler already has its seat in this wallet");
+    this.name = "DelegatedUserExistsError";
+  }
+}
+
+/** The policies name the delegated user, which has not been created yet (HTTP 409). */
+export class DelegatedUserMissingError extends Error {
+  constructor() {
+    super("Pickler has no seat in this wallet yet");
+    this.name = "DelegatedUserMissingError";
+  }
+}
+
+/** No agent wallet with this id belongs to the caller (HTTP 404). */
+export class AgentWalletNotFoundError extends Error {
+  constructor() {
+    super("Agent wallet not found");
+    this.name = "AgentWalletNotFoundError";
   }
 }

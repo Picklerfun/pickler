@@ -106,6 +106,9 @@ export const walletLinks = identity
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [
+      // The name says address; the index is on the pair. One address can therefore be held in
+      // both chain families at once, which is the intended rule — a duplicate-key error citing
+      // `wallet_links_address_key` is about (namespace, address), not about the address alone.
       uniqueIndex("wallet_links_address_key").on(t.namespace, t.address),
       index("wallet_links_user_idx").on(t.userId),
       check("wallet_links_namespace", sql`${t.namespace} in ('eip155', 'solana')`),
@@ -124,6 +127,25 @@ export const walletLinks = identity
         sql`(${t.namespace} = 'eip155' and ${t.address} ~ '^0x[0-9a-f]{40}$') or (${t.namespace} = 'solana' and ${t.address} ~ '^[1-9A-HJ-NP-Za-km-z]{32,44}$')`,
       ),
     ],
+  )
+  .enableRLS();
+
+/**
+ * Single-use, five-minute TTL, consumed with DELETE ... RETURNING — the same shape and the same
+ * reasoning as wallets.webauthn_challenges, because Workers has no Redis and KV cannot promise a
+ * single consumer.
+ *
+ * It carries no address. The nonce is issued before anyone knows which wallet will answer, and
+ * binding it to an address the client claims would bind it to something unverified.
+ */
+export const siweNonces = identity
+  .table(
+    "siwe_nonces",
+    {
+      nonce: text("nonce").primaryKey(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    },
+    (t) => [index("siwe_nonces_expiry_idx").on(t.expiresAt)],
   )
   .enableRLS();
 

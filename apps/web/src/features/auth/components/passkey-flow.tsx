@@ -1,47 +1,53 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useEffect, useEffectEvent, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
+import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
 import {
   CUSTODY_API,
   SessionExpired,
   addPasskey,
   alreadyEnrolled,
   createWallet,
+  afterFailedCreate,
   describeCustodyFailure,
+  enrolmentOutcome,
   isEnrolledHere,
-  landing,
   markEnrolled,
   openChallenge,
+  readSubOrganization,
+  redirectFor,
+  verifiedEvent,
   type CustodyDeps,
 } from "../lib/custody";
-import { wallet as readWallet } from "../lib/custody-api";
-import type { ChallengeOptionsDto, WalletDto } from "../lib/custody-api";
+import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
+import type { ChallengeOptionsDto, PasskeyDto, WalletDto } from "../lib/custody-api";
 import { describeDevice } from "../lib/device";
 import { INITIAL, next, rail } from "../lib/flow";
 import { ApiError, getProfile } from "../lib/pickler-api";
+import { Button } from "@pickler/ui";
 import type { Ceremony, SheetPhase } from "../lib/sheet";
+import { useStudioHref } from "@/features/site/studio-href";
 import { getSupabase } from "../lib/supabase-browser";
 import { AuthHeader } from "./auth-header";
 import { PasskeySheet } from "./passkey-sheet";
+import { SecondPasskey } from "./second-passkey";
+import type { PasskeysKnown } from "../lib/second-passkey";
 import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
+import { AddPasskeyStep, type PasskeysRead } from "./steps/add-passkey-step";
 import { CodeStep } from "./steps/code-step";
+import { CreateWalletStep } from "./steps/create-wallet-step";
 import { HandleStep } from "./steps/handle-step";
 import { NewDeviceStep, RecoveredStep } from "./steps/new-device-step";
-import { PasskeyStep } from "./steps/passkey-step";
-import { WalletStep } from "./steps/wallet-step";
 import { WelcomeStep } from "./steps/welcome-step";
 
-/** What a backup is called in the account's list of passkeys; the device it lands on is not ours. */
+/** What a second passkey is called in the account's list, wherever this file adds one. */
 const BACKUP_LABEL = "Backup passkey";
-
-/** Where "Open the studio" goes from every screen that offers it. */
-const STUDIO = "/console";
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
 
@@ -58,6 +64,103 @@ function enrolmentStore() {
   }
 }
 
+/**
+ * The access token and the person it belongs to. supabase-js refreshes an expired session as it
+ * answers, so this is read again after every prompt rather than carried across one. Shared by
+ * both flows below: neither closes over component state to get it.
+ */
+async function session(): Promise<{ token: string; userId: string }> {
+  const supabase = getSupabase();
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+  if (!data.session) {
+    throw new SessionExpired();
+  }
+  return { token: data.session.access_token, userId: data.session.user.id };
+}
+
+/** Every ceremony either flow below runs is stamped the same way, against the same token. */
+function custody(): CustodyDeps {
+  return {
+    token: async () => (await session()).token,
+    credentials: navigator.credentials,
+    api: CUSTODY_API,
+    stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
+  };
+}
+
+/** The account's passkeys, or null when the list could not be read — never `[]` for a failure. */
+async function passkeyList(): Promise<PasskeyDto[] | null> {
+  try {
+    return await readPasskeys((await session()).token);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * After a create ceremony failed: the wallet, if the sub-organization exists now anyway (another
+ * tab finished, and this one's authenticator refused a duplicate), else null. A read that fails is
+ * "no" here — the step stays, with its retry.
+ */
+async function walletAfterFailedCreate(): Promise<WalletDto | null> {
+  try {
+    const now = await readSubOrganization(async () => readWallet((await session()).token));
+    return afterFailedCreate(now !== null) === "advance" ? now : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A 404 from the profile or the wallet route is an ordinary state, not a failure. */
+function absent<T>(error: unknown): T | null {
+  if (error instanceof ApiError && error.status === 404) {
+    return null;
+  }
+  throw error;
+}
+
+/**
+ * The form column and the board, on whichever of the two flows the route asked for.
+ *
+ * `up` and `in` — /signup and /signin — run `lib/flow.ts`'s machine, whose sign-up rail ends on
+ * the mandatory passkey step and whose sign-in rail passes through it when the account has no
+ * sub-organization (spec §4.1). Every signed-in screen sends a person without a master wallet to
+ * the signup's passkey step (`?step=passkey`, which resumes their session), and nowhere else.
+ * `add` — /passkey — is `PasskeyAddFlow`, a smaller component with no rail, only for adding a
+ * device to a sub-organization that exists.
+ */
+export function PasskeyFlow({
+  board,
+  mode,
+  destination,
+  preview,
+}: {
+  board: AuthBoardData;
+  /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
+  mode: "up" | "in" | "add";
+  /**
+   * Where every screen that offers a way out of this flow goes. The route supplies it from the
+   * `next` the guard wrote when it turned an anonymous request away, already checked by `returnTo`
+   * — someone bounced from /account has to come back to /account, not be dropped on the studio.
+   * Undefined when nobody was turned away, and then the studio's own home is the destination.
+   */
+  destination?: string | undefined;
+  /** `up` only, outside production: open on this step without a session or any read. */
+  preview?: SignupPreview | undefined;
+}) {
+  if (mode === "add") {
+    return <PasskeyAddFlow board={board} destination={destination} />;
+  }
+  return (
+    <SignFlow
+      board={board}
+      mode={mode}
+      destination={destination}
+      preview={mode === "up" ? preview : undefined}
+    />
+  );
+}
+
 /** Everything the sheet needs to draw itself, and the challenge the ceremony behind it will use. */
 interface SheetState {
   ceremony: Ceremony;
@@ -71,58 +174,58 @@ interface SheetState {
 }
 
 /**
- * The form column and the board, with the flow machine driving which screen is in the column.
+ * The sign-up and sign-in rail: `auth/code/handle/passkey/welcome` and its sign-in cousin, plus
+ * the new-device recovery rail entered from either. Two ceremonies open from here: `create`, the
+ * mandatory passkey step's enrolment (challenge → WebAuthn → register), which creates the
+ * sub-organization and its master wallet; and `here`, which lends a browser that has never seen
+ * the account a passkey for it.
  *
  * The division of labour is the whole design here. A screen owns what only it does — sending a
  * code, verifying one, checking a handle — and holds its own busy and error while it does it. The
- * shell owns what crosses screens, which is the custody ceremony: it is the one piece of work
- * whose failure halfway through matters to a screen other than the one that started it, and it is
- * the reason `lib/custody.ts` exists rather than a `useCallback` here. This file is the wiring.
+ * shell owns what crosses screens, which is the new-device ceremony: it is the one piece of work
+ * whose failure halfway through matters to a screen other than the one that started it.
  */
-export function PasskeyFlow({
+function SignFlow({
   board,
   mode,
+  destination,
+  preview,
 }: {
   board: AuthBoardData;
-  /**
-   * Which rail the route opens: `up` for /signup, `in` for /signin. It is the route's to give,
-   * never defaulted here, because it is what decides whether a verified code goes on to the
-   * handle screen or straight to welcome. `recover` is entered by `device_unknown`, never opened.
-   */
   mode: "up" | "in";
+  destination?: string | undefined;
+  preview: SignupPreview | undefined;
 }) {
   const router = useRouter();
-  const [state, dispatch] = useReducer(next, { ...INITIAL, mode });
+  const studio = useStudioHref();
+  const target = destination ?? studio;
+  // A preview opens on its step with nothing read; everything else starts on the account screen,
+  // and a resumed session moves on from there once the account has been read.
+  const [state, dispatch] = useReducer(
+    next,
+    preview === "passkey" ? { ...INITIAL, mode, step: "passkey" as const } : { ...INITIAL, mode },
+  );
+  /**
+   * Until the session is known, the form column waits rather than asking for an email: a session
+   * that already exists is resumed (`arrivalFor`), and only without one does the form appear.
+   */
+  const [resuming, setResuming] = useState(preview === undefined);
   const [sheet, setSheet] = useState<SheetState | null>(null);
-  /** Only ever the sign-in rail's: nothing reaches the welcome screen from the sign-up rail. */
   const [profileHandle, setProfileHandle] = useState("");
   const [wallet, setWallet] = useState<WalletDto | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+  /** A `create` ceremony on the passkey step ended without a wallet; the step offers it again. */
+  const [createFailed, setCreateFailed] = useState(false);
+  /**
+   * The passkey list read right after the create ceremony, reused for the welcome screen's
+   * second-passkey suggestion. Loading everywhere else, which suggests nothing.
+   */
+  const [createdPasskeys, setCreatedPasskeys] = useState<PasskeysKnown>({ kind: "loading" });
+  /** The account could not be read after a verified code; the code screen says so, with a retry. */
+  const [readFailed, setReadFailed] = useState(false);
 
   const device = describeDevice(userAgent());
-
-  /**
-   * The access token and the person it belongs to. supabase-js refreshes an expired session as it
-   * answers, so this is read again after every prompt rather than carried across one.
-   */
-  async function session() {
-    const supabase = getSupabase();
-    const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-    if (!data.session) {
-      throw new SessionExpired();
-    }
-    return { token: data.session.access_token, userId: data.session.user.id };
-  }
-
-  function custody(): CustodyDeps {
-    return {
-      token: async () => (await session()).token,
-      credentials: navigator.credentials,
-      api: CUSTODY_API,
-      stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
-    };
-  }
 
   /**
    * A ceremony that did not finish — including one the person dismissed, which is why the null
@@ -135,6 +238,9 @@ export function PasskeyFlow({
    * their money, and an empty screen does not answer that.
    */
   function failed(current: SheetState, caught: unknown) {
+    if (current.ceremony === "create") {
+      setCreateFailed(true);
+    }
     setSheet({ ...current, phase: "error", error: describeCustodyFailure(caught) });
   }
 
@@ -165,9 +271,22 @@ export function PasskeyFlow({
     setSheet(running);
     void (async () => {
       try {
-        await runCeremony(current.ceremony, options);
-        setSheet({ ...running, phase: "ok" });
+        const orphan = await runCeremony(current.ceremony, options);
+        setSheet(orphan ? null : { ...running, phase: "ok" });
       } catch (caught) {
+        // A failed create is not always a missing wallet: another tab may have finished signup
+        // meanwhile, and this authenticator then refuses a duplicate through excludeCredentials.
+        // "Try again" would fail the same way for ever, so the account is read again first.
+        if (current.ceremony === "create") {
+          const now = await walletAfterFailedCreate();
+          if (now) {
+            setWallet(now);
+            setCreateFailed(false);
+            setSheet(null);
+            dispatch({ type: "passkey_created" });
+            return;
+          }
+        }
         // The new-device screen is shown on a hint that this browser holds no passkey. Refusing a
         // duplicate is the authenticator saying that hint was wrong, and it is the only thing in
         // reach that knows — so the mark is corrected and the person goes to the wallet they were
@@ -198,55 +317,108 @@ export function PasskeyFlow({
   }
 
   /**
-   * The three ceremonies, and what each one tells the flow machine when it lands.
-   *
-   * Note what is not here: the address is handed to `passkey_created` and read back from
-   * `state.address` afterwards. The register response carries it, but the screens have one copy
-   * of it and this is the only line that puts it there.
+   * The ceremony behind a confirmed sheet. `credentials.create()` is the first thing either one
+   * awaits: the challenge was fetched when the sheet opened, so the click on the sheet's confirm
+   * is still the user activation Safari requires when the prompt is raised.
    */
-  async function runCeremony(ceremony: Ceremony, options: ChallengeOptionsDto) {
+  async function runCeremony(ceremony: Ceremony, options: ChallengeOptionsDto): Promise<boolean> {
     if (ceremony === "create") {
       const created = await createWallet(custody(), { options, label: device });
-      await remember();
-      dispatch({ type: "passkey_created", address: created.address });
-      return;
+      setCreateFailed(false);
+      // `register` answers an account another tab created as readily as the one this call made.
+      // Only a credential the account actually holds marks this browser enrolled; one it does not
+      // hold authorises nothing, so the person goes to /passkey, whose add-device screen lists
+      // what the account really has and can add this device properly.
+      const list = await passkeyList();
+      setCreatedPasskeys(list ? { kind: "ready", passkeys: list } : { kind: "failed" });
+      const outcome = enrolmentOutcome(created.credentialId, list);
+      if (outcome === "orphan") {
+        router.push("/passkey");
+        return true;
+      }
+      if (outcome === "enrolled") {
+        await remember();
+      }
+      dispatch({ type: "passkey_created" });
+      // The welcome screen's balance. A read that fails leaves it saying so; the wallet exists.
+      try {
+        setWallet(await readWallet((await session()).token));
+      } catch {
+        setWallet(null);
+      }
+      return false;
     }
-
-    const backup = ceremony === "backup";
     await addPasskey(custody(), {
       options,
-      // A backup goes on a phone or a security key, which is what "cross-platform" asks the
-      // operating system for; a new device saves one on itself and the phone only stamps.
-      attachment: backup ? "cross-platform" : "platform",
-      label: backup ? BACKUP_LABEL : device,
+      attachment: "platform",
+      label: device,
       onStep: (step) => {
         setSheet((current) => (current ? { ...current, step } : current));
-        if (!backup && step === 2) {
+        if (step === 2) {
           // The rail moves to APPROVE as the phone is asked, not after it answers.
           dispatch({ type: "approve_started" });
         }
       },
     });
     await remember();
-    dispatch(backup ? { type: "backup_added" } : { type: "device_added" });
+    dispatch({ type: "device_added" });
+    return false;
   }
 
   /**
-   * A verified code on the sign-in rail, where the next screen depends on what the account holds:
-   * a name, a wallet, and whether this browser has ever made a passkey for it.
+   * A verified code, where the next screen depends on what the account holds: a name, a
+   * sub-organization, and whether this browser has ever made a passkey for it. Both rails read it:
+   * sign-in so that an account without a sub-organization goes through the passkey step, sign-up so
+   * that an account that is already complete is not asked to create a second passkey for a wallet
+   * it has.
    *
-   * The sign-up rail does none of this — it goes to the handle screen, which is what its own
-   * `code_verified` does. Anything that cannot be read here falls through to the welcome screen,
-   * which says plainly that it could not read the balance rather than guessing at a path.
+   * A 404 is an answer (`verifiedEvent` turns it into the next step). Any other failure is not,
+   * so the code screen says the account could not be read and offers to read it again.
    */
   function verified() {
-    if (state.mode !== "in") {
-      dispatch({ type: "code_verified" });
-      return;
+    readAccount();
+  }
+
+  /* Every arrival without a preview reads the session once: `readAccount` resumes one that exists
+     and shows the email form otherwise. An effect event, so the read sees the current state
+     without the effect re-running as it changes. */
+  const resumeOnArrival = useEffectEvent(() => {
+    if (resuming) {
+      readAccount();
     }
+  });
+  useEffect(() => {
+    resumeOnArrival();
+  }, []);
+
+  /**
+   * The landing check, shared by a verified code and a resumed session: the same reads, the same
+   * `verifiedEvent`. A resumed session with no session behind it after all starts at the account
+   * screen like any other signup.
+   */
+  function readAccount() {
+    setReadFailed(false);
     void (async () => {
       try {
-        const { token, userId } = await session();
+        let signedIn: { token: string; userId: string } | null;
+        try {
+          signedIn = await session();
+        } catch (caught) {
+          if (!(caught instanceof SessionExpired)) {
+            throw caught;
+          }
+          signedIn = null;
+        }
+        // Only an arrival turns "no session" into the email form. After a verified code there must
+        // be one, and its absence is a failure the screen reports like any other.
+        if (resuming && arrivalFor({ preview, signedIn: signedIn !== null }) === "form") {
+          setResuming(false);
+          return;
+        }
+        if (!signedIn) {
+          throw new SessionExpired();
+        }
+        const { token, userId } = signedIn;
         const [handle, found] = await Promise.all([
           getProfile(token).then(
             (profile) => profile.handle,
@@ -260,26 +432,13 @@ export function PasskeyFlow({
         setWallet(found);
         setProfileHandle(handle ?? "");
         const enrolledHere = isEnrolledHere(enrolmentStore(), userId);
-        switch (landing({ handle, wallet: found, enrolledHere })) {
-          case "handle":
-            // No profile yet: finish signing up rather than welcoming somebody to an empty account.
-            dispatch({ type: "mode_chosen", mode: "up" });
-            dispatch({ type: "code_verified" });
-            return;
-          case "passkey":
-            dispatch({ type: "mode_chosen", mode: "up" });
-            dispatch({ type: "code_verified" });
-            dispatch({ type: "handle_claimed", handle: handle ?? "" });
-            return;
-          case "recover":
-            dispatch({ type: "device_unknown" });
-            return;
-          case "welcome":
-            dispatch({ type: "code_verified" });
-            return;
-        }
+        dispatch(verifiedEvent({ handle, wallet: found, enrolledHere }));
+        setResuming(false);
       } catch {
-        dispatch({ type: "code_verified" });
+        // Not a welcome: a wallet that could not be read may be a missing one, and guessing would
+        // let a person without a sub-organization past the passkey step. The code is verified and
+        // the session stands, so trying again only reads the account again.
+        setReadFailed(true);
       }
     })();
   }
@@ -300,6 +459,7 @@ export function PasskeyFlow({
           return;
         }
         // The server's handle, not the typed one: an account that already had a profile keeps it.
+        setProfileHandle(result.profile.handle);
         dispatch({ type: "handle_claimed", handle: result.profile.handle });
       } catch (caught) {
         setClaimError(caught instanceof Error ? caught.message : "Could not claim that handle.");
@@ -309,7 +469,6 @@ export function PasskeyFlow({
     })();
   }
 
-  const busy = sheet !== null;
   const phase: "idle" | "creating" | "verifying" =
     sheet?.ceremony === "here" && sheet.phase === "busy"
       ? sheet.step === 2
@@ -341,7 +500,18 @@ export function PasskeyFlow({
             ))}
           </ol>
 
-          {state.step === "auth" && (
+          {resuming && !readFailed && <p className={styles.flowLead}>READING YOUR ACCOUNT…</p>}
+          {resuming && readFailed && (
+            <div className={styles.flowActions}>
+              <p className={styles.alert} role="alert">
+                Your account could not be read just now. Nothing was created.
+              </p>
+              <Button className={styles.primary} onClick={readAccount}>
+                Try again
+              </Button>
+            </div>
+          )}
+          {!resuming && state.step === "auth" && (
             <AccountStep
               mode={state.mode === "in" ? "in" : "up"}
               email={state.email}
@@ -358,6 +528,17 @@ export function PasskeyFlow({
               onChangeEmail={() => dispatch({ type: "change_email" })}
             />
           )}
+          {state.step === "code" && readFailed && (
+            <div className={styles.flowActions}>
+              <p className={styles.alert} role="alert">
+                Your code is right, but your account could not be read just now. Nothing was
+                created.
+              </p>
+              <Button className={styles.primary} onClick={verified}>
+                Try again
+              </Button>
+            </div>
+          )}
           {state.step === "handle" && (
             <HandleStep
               handle={state.handle}
@@ -366,18 +547,19 @@ export function PasskeyFlow({
               onClaimed={claim}
             />
           )}
-          {state.step === "passkey" && <PasskeyStep busy={busy} onCreate={() => open("create")} />}
-          {state.step === "wallet" && state.address !== null && (
-            <WalletStep
-              address={state.address}
-              deviceLabel={device}
-              hasBackup={state.hasBackup}
-              busy={busy}
-              onAddBackup={() => open("backup")}
-              onFinish={() => router.push(STUDIO)}
+          {state.step === "passkey" && (
+            <CreateWalletStep
+              busy={sheet !== null}
+              retry={createFailed}
+              onCreate={() => open("create")}
             />
           )}
-          {state.step === "welcome" && <WelcomeStep handle={profileHandle} wallet={wallet} />}
+          {state.step === "welcome" && (
+            <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
+          )}
+          {state.step === "welcome" && (
+            <SecondPasskey passkeys={createdPasskeys} id="welcome-second-passkey" />
+          )}
           {/* One screen for both steps: `approve` is the same page with the rail moved on, and a
               form column that emptied itself behind the sheet would strand a failed ceremony. */}
           {(state.step === "recover" || state.step === "approve") && (
@@ -387,7 +569,7 @@ export function PasskeyFlow({
               onOpenWallet={() => dispatch({ type: "device_skipped" })}
             />
           )}
-          {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(STUDIO)} />}
+          {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(target)} />}
         </div>
 
         <SpawnBoard board={board} />
@@ -395,7 +577,7 @@ export function PasskeyFlow({
 
       <PasskeySheet
         open={sheet !== null}
-        ceremony={sheet?.ceremony ?? "create"}
+        ceremony={sheet?.ceremony ?? "here"}
         phase={sheet?.phase ?? "idle"}
         error={sheet?.error ?? null}
         rpId={sheet?.options?.rp.id ?? null}
@@ -405,16 +587,171 @@ export function PasskeyFlow({
         // A fresh challenge and back to the question: the one the ceremony failed on is spent or
         // expired either way, and confirming from the sheet is what keeps the prompt a click away.
         onRetry={() => sheet && open(sheet.ceremony)}
-        onCancel={() => setSheet(null)}
+        // Closing the sheet on the passkey step leaves the person on it: there is no way past the
+        // step but a wallet, so a sheet closed before one exists counts as an attempt to retry.
+        onCancel={() => {
+          if (sheet?.ceremony === "create" && sheet.phase !== "ok") {
+            setCreateFailed(true);
+          }
+          setSheet(null);
+        }}
       />
     </>
   );
 }
 
-/** A 404 from the profile or the wallet route is an ordinary state, not a failure. */
-function absent<T>(error: unknown): T | null {
-  if (error instanceof ApiError && error.status === 404) {
-    return null;
+/** What `PasskeyAddFlow` has read about the account. */
+type AddFlowScreen = "loading" | "error" | "add";
+
+/** The ceremony sheet `PasskeyAddFlow` runs, always the same one: adding another passkey. */
+interface AddSheetState {
+  phase: SheetPhase;
+  error: string | null;
+  options: ChallengeOptionsDto | null;
+  step?: 1 | 2;
+}
+
+/**
+ * `/passkey`, reached only by a signed-in person, and only ever for adding a device: another
+ * passkey on a sub-organization that exists, and the list of what is on it.
+ *
+ * A person without a sub-organization does not get in here, or anywhere: the first read
+ * (GET /wallets/me, a 404 is none) sends them through `redirectFor` to the signup's own passkey
+ * step, which is where the master wallet is created and where they stay until it is.
+ */
+function PasskeyAddFlow({
+  board,
+  destination,
+}: {
+  board: AuthBoardData;
+  destination?: string | undefined;
+}) {
+  const router = useRouter();
+  const studio = useStudioHref();
+  const target = destination ?? studio;
+  const [screen, setScreen] = useState<AddFlowScreen>("loading");
+  const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
+  const [sheet, setSheet] = useState<AddSheetState | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const { token } = await session();
+        const [found, keys] = await Promise.all([
+          readSubOrganization(() => readWallet(token)),
+          readPasskeys(token).then(
+            (value): PasskeysRead => ({ kind: "ready", passkeys: value }),
+            (): PasskeysRead => ({ kind: "failed" }),
+          ),
+        ]);
+        if (!live) {
+          return;
+        }
+        const away = redirectFor(found);
+        if (away) {
+          router.replace(away);
+          return;
+        }
+        setScreen("add");
+        setPasskeysState(keys);
+      } catch {
+        if (live) {
+          setScreen("error");
+        }
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [router]);
+
+  /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
+  function refreshPasskeys() {
+    void (async () => {
+      const keys = await passkeyList();
+      setPasskeysState(keys ? { kind: "ready", passkeys: keys } : { kind: "failed" });
+    })();
   }
-  throw error;
+
+  /** Opens the sheet and fetches its challenge first, so confirming reaches WebAuthn directly. */
+  function openSheet() {
+    const opening: AddSheetState = { phase: "busy", error: null, options: null };
+    setSheet(opening);
+    void (async () => {
+      try {
+        setSheet({ ...opening, phase: "idle", options: await openChallenge(custody()) });
+      } catch (caught) {
+        setSheet({ ...opening, phase: "error", error: describeCustodyFailure(caught) });
+      }
+    })();
+  }
+
+  function confirm() {
+    const current = sheet;
+    const options = current?.options;
+    if (!current || !options) {
+      return;
+    }
+    const running: AddSheetState = { ...current, phase: "busy", error: null };
+    setSheet(running);
+    void (async () => {
+      try {
+        await addPasskey(custody(), {
+          options,
+          // A second key belongs on something other than the device in your hand, which is what
+          // "cross-platform" asks the operating system for.
+          attachment: "cross-platform",
+          label: BACKUP_LABEL,
+          onStep: (step) => setSheet((now) => (now ? { ...now, step } : now)),
+        });
+        try {
+          markEnrolled(enrolmentStore(), (await session()).userId);
+        } catch {
+          // The ceremony already succeeded; a session that expired on this last read changes
+          // nothing it did.
+        }
+        setSheet({ ...running, phase: "ok" });
+        refreshPasskeys();
+      } catch (caught) {
+        setSheet({ ...running, phase: "error", error: describeCustodyFailure(caught) });
+      }
+    })();
+  }
+
+  return (
+    <>
+      <AuthHeader />
+      <main className={styles.signup}>
+        <div className={styles.formColumn}>
+          {screen === "loading" && <p className={styles.flowLead}>READING YOUR ACCOUNT…</p>}
+          {screen === "error" && (
+            <p className={styles.flowLead}>YOUR ACCOUNT COULD NOT BE READ · RELOAD TO TRY AGAIN</p>
+          )}
+          {screen === "add" && (
+            <AddPasskeyStep
+              passkeys={passkeysState}
+              busy={sheet !== null}
+              onAdd={openSheet}
+              destination={target}
+            />
+          )}
+        </div>
+
+        <SpawnBoard board={board} />
+      </main>
+
+      <PasskeySheet
+        open={sheet !== null}
+        ceremony="backup"
+        phase={sheet?.phase ?? "idle"}
+        error={sheet?.error ?? null}
+        rpId={sheet?.options?.rp.id ?? null}
+        userAgent={userAgent()}
+        onConfirm={confirm}
+        onRetry={openSheet}
+        onCancel={() => setSheet(null)}
+      />
+    </>
+  );
 }

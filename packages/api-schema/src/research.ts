@@ -1,5 +1,10 @@
 import { z } from "zod";
+import { perplConfigSchema } from "./perps.js";
 export const toolNameSchema = z.enum([
+  "listPerpMarkets",
+  "getPerpSnapshot",
+  "getPerpOrderBook",
+  "getPerpCandles",
   "searchWeb",
   "readPage",
   "getMarketRules",
@@ -37,6 +42,41 @@ export const marketScopeSchema = z
     ]),
   })
   .strict();
+/** Mirror of core's `SPORTSBOOKS`; `workers/api/test/accent-venue-mirror.test.ts` pins it. */
+export const SPORTSBOOKS = [
+  { label: "DraftKings", key: "draftkings" },
+  { label: "FanDuel", key: "fanduel" },
+  { label: "Pinnacle", key: "pinnacle" },
+  { label: "BetMGM", key: "betmgm" },
+  { label: "Caesars", key: "williamhill_us" },
+] as const;
+type BookKey = (typeof SPORTSBOOKS)[number]["key"];
+const BOOK_KEYS = SPORTSBOOKS.map((book) => book.key) as [BookKey, ...BookKey[]];
+
+export const skillSchema = z
+  .object({ name: z.string().trim().min(1).max(40), prompt: z.string().trim().min(1).max(600) })
+  .strict();
+export const sourcesSchema = z
+  .object({
+    web: z
+      .object({
+        mode: z.enum(["anywhere", "prefer", "only"]),
+        sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(20),
+      })
+      .strict()
+      .nullable(),
+    books: z.array(z.enum(BOOK_KEYS)),
+  })
+  .strict()
+  .superRefine((sources, ctx) => {
+    if (sources.web && sources.web.mode !== "anywhere" && sources.web.sites.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Prefer and only need at least one site",
+        path: ["web", "sites"],
+      });
+    }
+  });
 export const marketCatalogSchema = z.object({
   version: z.literal(1),
   categories: z.array(
@@ -52,6 +92,22 @@ export const marketCatalogSchema = z.object({
     }),
   ),
 });
+/**
+ * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Stored and shown; not enforced until the
+ * trading work does it, which `spendEnforced` on the studio agent DTO states.
+ */
+export const spendLimitsSchema = z
+  .object({
+    perCallAusd: z.number().min(1).max(1_000),
+    perDayAusd: z.number().min(1).max(10_000),
+  })
+  .strict()
+  .refine((spend) => spend.perDayAusd >= spend.perCallAusd, {
+    message: "A day's spend cannot be below one call's",
+    path: ["perDayAusd"],
+  });
+export type SpendLimitsDto = z.infer<typeof spendLimitsSchema>;
+
 export const agentConfigSchema = z
   .object({
     limits: z
@@ -71,7 +127,8 @@ export const agentConfigSchema = z
       .optional(),
     marketScope: marketScopeSchema.optional(),
     categoryIds: z.array(z.string().regex(/^\d+$/)).max(10).optional(),
-    tools: z.array(toolNameSchema).max(6),
+    perpl: perplConfigSchema.optional(),
+    tools: z.array(toolNameSchema).max(10),
     plugins: z
       .object({
         version: z.literal(1),
@@ -84,9 +141,10 @@ export const agentConfigSchema = z
               "the-odds-api",
               "paper-trading",
               "polymarket-trading",
+              "perpl",
             ]),
           )
-          .max(6),
+          .max(7),
       })
       .strict()
       .optional(),
@@ -94,6 +152,9 @@ export const agentConfigSchema = z
     intervalHours: z.number().int().min(1).max(168),
     uncertaintyPolicy: uncertaintyPolicySchema.optional(),
     discoveryPolicy: discoveryPolicySchema.optional(),
+    sources: sourcesSchema.optional(),
+    skills: z.array(skillSchema).max(8).optional(),
+    spend: spendLimitsSchema.optional(),
   })
   .strict()
   .refine(
@@ -112,6 +173,20 @@ export const runRequestSchema = z
   .object({ marketId: z.string().regex(/^\d+$/).optional() })
   .strict();
 export const scheduleSchema = z.object({ enabled: z.boolean() }).strict();
+/**
+ * `PUT /v1/studio/agents/:id/limits`. No version: saving limits writes only `config.spend` and
+ * keeps the version, the schedule and readiness.
+ */
+export const limitsUpdateSchema = z
+  .object({
+    perCallAusd: z.number().min(1).max(1_000),
+    perDayAusd: z.number().min(1).max(10_000),
+  })
+  .strict()
+  .refine((limits) => limits.perDayAusd >= limits.perCallAusd, {
+    message: "A day's spend cannot be below one call's",
+    path: ["perDayAusd"],
+  });
 const price = z.string().regex(/^(0(\.\d{1,8})?|1(\.0{1,8})?)$/);
 export const legacyDecisionSchema = z
   .object({

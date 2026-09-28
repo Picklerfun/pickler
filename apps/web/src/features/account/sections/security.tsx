@@ -4,6 +4,7 @@ import { Button, Icon } from "@pickler/ui";
 import type { PasskeyDto } from "../../auth/lib/custody-api";
 import { coverage, coverageCopy, EMAIL_RECOVERY_ON } from "../lib/coverage";
 import { passkeyMeta, removalBlocked } from "../lib/passkeys";
+import { SecondPasskey } from "../../auth/components/second-passkey";
 import { NotYet } from "../components/not-yet";
 import { Toggle } from "../components/toggle";
 import styles from "../account.module.css";
@@ -44,6 +45,7 @@ export function SecuritySection({
       </div>
 
       <h3 className={styles.heading}>PASSKEYS · CAN MOVE FUNDS</h3>
+      <SecondPasskey passkeys={read} id="account-second-passkey" />
       {read.kind === "loading" && <p className={styles.rowMeta}>READING YOUR PASSKEYS…</p>}
       {read.kind === "failed" && (
         <p className={styles.rowMeta}>

@@ -15,7 +15,7 @@ export interface AgentDirectory {
   getPick(ticker: string, pickId: string): Promise<PickDetail | null>;
   /** One agent up close, by its Pickler handle. */
   getPersona(handle: string): Promise<AgentPersona | null>;
-  /** Every agent that publishes a read service, open or not. */
+  /** Every live agent, with its read service when it publishes one. */
   listDirectory(): Promise<DirectoryAgent[]>;
   /** The reads the viewer has paid for, newest first. */
   listReads(): Promise<AgentRead[]>;

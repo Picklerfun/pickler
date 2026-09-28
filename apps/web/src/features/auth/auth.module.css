@@ -9,13 +9,22 @@
   --muted: var(--pk-ink-muted);
   --line: var(--pk-rule);
   --line-strong: var(--pk-rule-strong);
+  /* The strongest edge the dark surface has. It is the same white as --line-strong at a heavier
+     alpha, which is why it is the token for an edge meant to be seen — a bevel on a bright fill,
+     a control's own outline — rather than a hairline meant to divide. */
+  --border-strong: var(--pk-border-strong);
   --lime: var(--pk-lime);
   --lime-ink: var(--pk-lime-ink);
   --on-lime: var(--pk-on-lime);
   --cyan-ink: var(--pk-cyan-ink);
+  --cyan-tint: var(--pk-cyan-tint);
+  --cyan-edge: var(--pk-cyan-edge);
   --amber: var(--pk-amber);
   --amber-ink: var(--pk-amber-ink);
   --magenta: var(--pk-magenta);
+  --magenta-ink: var(--pk-magenta-ink);
+  --magenta-tint: var(--pk-magenta-tint);
+  --magenta-edge: var(--pk-magenta-edge);
   --violet: var(--pk-violet);
   --display: var(--pk-font-display);
   --body: var(--pk-font);
@@ -42,7 +51,7 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: #5ad8ff;
+  color: var(--cyan-ink);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
@@ -123,7 +132,7 @@
   display: inline-flex;
   align-items: center;
   padding: 7px 12px;
-  border: 1px solid rgba(243, 241, 236, 0.14);
+  border: 1px solid var(--line-strong);
   border-radius: var(--pk-radius-pill);
   font: 500 10px/1 var(--label);
   letter-spacing: 0.12em;
@@ -154,7 +163,8 @@
 
 .primary {
   padding: 16px 22px;
-  border-color: rgba(255, 255, 255, 0.45);
+  /* The rim of a lit fill, which is what this is; 0.45 folds into the token's 0.5 (styles.css). */
+  border-color: var(--pk-glow-rim);
   font: 700 13px/1 var(--body);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
@@ -169,8 +179,8 @@
 
 .primary:disabled {
   opacity: 1;
-  border-color: rgba(243, 241, 236, 0.12);
-  background: rgba(243, 241, 236, 0.06);
+  border-color: var(--line-strong);
+  background: var(--panel);
   color: var(--muted);
   cursor: not-allowed;
   box-shadow: none;
@@ -196,17 +206,20 @@
 .alert {
   margin: 0 0 16px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 95, 162, 0.4);
+  border: 1px solid var(--magenta-edge);
   border-radius: var(--pk-radius-sm);
-  background: rgba(255, 95, 162, 0.08);
+  background: var(--magenta-tint);
   font: 500 13px/1.45 var(--body);
-  color: #ffc2da;
+  color: var(--magenta-ink);
 }
 
+/* The cool pair, not a cyan mixed by hand. The palette's cool hue is --pk-blue rather than the
+   #5ad8ff this reached for, so the edge and the wash shift with it; the ink is --cyan-ink, which
+   reads 5.34:1 on --cyan-tint where the old #c9f2ff was chosen against the page instead. */
 .info {
-  border-color: rgba(127, 227, 255, 0.35);
-  background: rgba(90, 216, 255, 0.07);
-  color: #c9f2ff;
+  border-color: var(--cyan-edge);
+  background: var(--cyan-tint);
+  color: var(--cyan-ink);
 }
 
 /* ---------- Sign up ---------- */
@@ -266,7 +279,7 @@
   align-items: center;
   gap: 9px;
   padding: 8px 14px;
-  border: 1px solid rgba(243, 241, 236, 0.14);
+  border: 1px solid var(--line-strong);
   border-radius: var(--pk-radius-pill);
   font: 600 12.5px/1 var(--body);
   color: var(--muted);
@@ -449,7 +462,7 @@
   flex: 1 1 300px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(243, 241, 236, 0.14);
+  border: 1px solid var(--line-strong);
   border-radius: var(--pk-radius-lg);
   background: var(--panel);
 }
@@ -535,7 +548,7 @@
   padding: 6px;
   overflow: hidden;
   list-style: none;
-  border: 1px solid rgba(243, 241, 236, 0.14);
+  border: 1px solid var(--line-strong);
   border-radius: var(--pk-radius-sm);
   background-color: var(--bg);
   background-image:
@@ -585,7 +598,7 @@
 }
 
 .cellOn {
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border-strong);
   background: var(--accent);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.4),
@@ -615,7 +628,7 @@
 .boardFoot {
   margin: 0;
   padding: 14px 20px;
-  border-top: 1px solid rgba(243, 241, 236, 0.1);
+  border-top: 1px solid var(--line);
   font: 400 13px/1.5 var(--body);
   color: var(--ink-soft);
   text-wrap: pretty;
@@ -1073,7 +1086,9 @@
   display: block;
   height: 4px;
   border-radius: var(--pk-radius-pill);
-  background: rgba(243, 241, 236, 0.14);
+  /* The unfilled half of the rail: a divider's weight as a fill, which is what --line-strong is.
+     0.14 of #f3f1ec painted rgb(44, 45, 55) here and the token paints rgb(40, 42, 53). */
+  background: var(--line-strong);
 }
 
 .railLabel {
@@ -1153,6 +1168,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* The field is wrapped in a <label> that carries its screen-reader text, so the label is this
+   row's flex item and the field is not. The rule below therefore sat on an element flex never
+   looked at: the field kept its intrinsic 228px in a 531px row and left 188px of it empty, beside
+   a Google tile and an alert that both span the column. Nothing in scripts/design can see that —
+   those checks read colour, and this is geometry. Give the label the flex the field was asking
+   for, and the field fills it. */
+.emailRow > label {
+  display: flex;
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .emailRow :global(.pk-input) {

@@ -1,0 +1,8 @@
+{
+  "extends": "@pickler/typescript-config/base.json",
+  "include": ["fixtures/*.mts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  }
+}

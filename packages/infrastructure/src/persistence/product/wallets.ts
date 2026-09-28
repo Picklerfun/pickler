@@ -7,7 +7,17 @@
 //     promise a single consumer (blocker W2).
 
 import { sql } from "drizzle-orm";
-import { check, index, pgSchema, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  check,
+  index,
+  pgSchema,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { agents } from "./agents";
 
 export const wallets = pgSchema("wallets");
 
@@ -20,6 +30,8 @@ export const turnkeyOrgs = wallets
       subOrganizationId: text("sub_organization_id").notNull(),
       masterWalletId: text("master_wallet_id").notNull(),
       rootUserId: text("root_user_id").notNull(),
+      /** Pickler's non-root user inside this person's sub-organization; set in the first agent's ceremony. */
+      delegatedUserId: text("delegated_user_id"),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [uniqueIndex("turnkey_orgs_sub_organization_key").on(t.subOrganizationId)],
@@ -36,6 +48,12 @@ export const walletRecords = wallets
       subOrganizationId: text("sub_organization_id").notNull(),
       kind: text("kind").notNull(),
       name: text("name").notNull(),
+      /**
+       * The policy ids Turnkey actually created after the person's passkey confirmed them, set
+       * once by `confirmPolicies`. Null until then. An agent's creation reads this column, never
+       * a client-supplied list, so the server is the only source of which rules a wallet carries.
+       */
+      approvedPolicyIds: text("approved_policy_ids").array(),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [
@@ -62,6 +80,50 @@ export const walletAccounts = wallets
       uniqueIndex("wallet_accounts_wallet_path_key").on(t.walletId, t.path),
       check("wallet_accounts_chain", sql`${t.chain} in ('monad')`),
       check("wallet_accounts_address_format", sql`${t.address} ~ '^0x[0-9a-fA-F]{40}$'`),
+    ],
+  )
+  .enableRLS();
+
+/** One wallet per agent, linked only once its policies were approved. */
+export const agentWallets = wallets
+  .table(
+    "agent_wallets",
+    {
+      agentId: uuid("agent_id")
+        .primaryKey()
+        .references(() => agents.id, { onDelete: "cascade" }),
+      walletId: text("wallet_id")
+        .notNull()
+        .references(() => walletRecords.walletId),
+      /** Turnkey policy ids the person approved for this wallet, in the order created. */
+      policyIds: text("policy_ids").array().notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex("agent_wallets_wallet_key").on(t.walletId),
+      check("agent_wallets_policies", sql`cardinality(${t.policyIds}) >= 2`),
+    ],
+  )
+  .enableRLS();
+
+/** What the person sent from the master wallet to an agent's. The chain is the truth; this is the receipt. */
+export const deposits = wallets
+  .table(
+    "deposits",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      agentId: uuid("agent_id")
+        .notNull()
+        .references(() => agents.id, { onDelete: "cascade" }),
+      txHash: text("tx_hash").notNull(),
+      amountMicroUsd: bigint("amount_micro_usd", { mode: "bigint" }).notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex("deposits_tx_key").on(t.txHash),
+      index("deposits_agent_idx").on(t.agentId),
+      check("deposits_tx_format", sql`${t.txHash} ~ '^0x[0-9a-f]{64}$'`),
+      check("deposits_amount_positive", sql`${t.amountMicroUsd} > 0`),
     ],
   )
   .enableRLS();

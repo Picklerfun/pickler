@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Instrument_Sans } from "next/font/google";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import "@pickler/ui/styles.css";
 import "./globals.css";
+import { ProductProvider } from "@/features/site/studio-href";
+import { PRODUCT_HOSTS, productFor } from "@/server/hosts";
 import { WalletProvider } from "@/features/wallet/lib/wallet-context";
 
 // Archivo is variable and the canvases set its width axis, so the weight range has to load as a
@@ -32,11 +35,17 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Read once, here, because every link across products below this point needs the same answer and
+  // only a server component can see the host. Nineteen of the twenty pages under this layout are
+  // already `force-dynamic`, so this costs the static rendering of one: /apply.
+  const host = (await headers()).get("host");
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
-        <WalletProvider>{children}</WalletProvider>
+        <ProductProvider product={productFor(host, PRODUCT_HOSTS)}>
+          <WalletProvider>{children}</WalletProvider>
+        </ProductProvider>
       </body>
     </html>
   );

@@ -6,7 +6,6 @@ export const systemClock: Clock = {
   now: () => new Date(),
 };
 
-export { createSampleAgentDirectory } from "./agents/sample-agent-directory.js";
 export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
   createSampleLandingReadModel,
@@ -61,17 +60,36 @@ export {
   type ActivityForwarderConfig,
 } from "./turnkey/turnkey-activity-forwarder.js";
 export { createSupabaseProfileRepository } from "./supabase/profiles/supabase-profile-repository.js";
+export {
+  createWalletAccounts,
+  syntheticEmail,
+  type WalletAccountsConfig,
+} from "./supabase/wallet-accounts.js";
 
 export { PostgresResearchStore } from "./persistence/research-store.js";
-export { ExaResearch } from "./research/exa.js";
+export { ExaResearch, exaSearchRequest } from "./research/exa.js";
 export { PolymarketData } from "./polymarket/market-data.js";
 export { PostgresPaperStore } from "./persistence/paper-store.js";
-export { PostgresConsoleDirectory } from "./console/directory.js";
-export { PostgresBudgetLedger } from "./console/budget.js";
+export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
 export { PostgresTradingStore } from "./persistence/trading-store.js";
-export { PolymarketTrading, type TradingCredentials } from "./polymarket/trading.js";
+export {
+  PolymarketTrading,
+  tradingOrderHash,
+  type TradingCredentials,
+} from "./polymarket/trading.js";
+
+export { probePolymarketPreproduction } from "./polymarket/preproduction.js";
+
+export { PolymarketPaperResolution } from "./polymarket/paper-resolution.js";
+
+export { PolymarketStudyData } from "./polymarket/study-data.js";
+
+export { PerplMarketData } from "./perpl/data.js";
+export type { PerplDataOptions, PerplPublicResponse } from "./perpl/transport.js";
+
 export {
   createAddPasskeyActivityBuilder,
   createSubOrganizationCreator,
@@ -80,6 +98,52 @@ export {
   type SubOrganizationCreatorConfig,
 } from "./turnkey/turnkey-sub-organization.js";
 
+export {
+  createActivityBuilders,
+  DELEGATED_API_KEY_NAME,
+  DELEGATED_USER_NAME,
+} from "./turnkey/turnkey-activities.js";
+
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
+export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
+export { PostgresAgentDirectory } from "./persistence/agent-directory.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
+export {
+  createAusdBalanceReader,
+  createJsonRpc,
+  createTokenBalanceReader,
+  erc20Balance,
+  JsonRpcError,
+  toDisplay,
+  transferCalldata,
+  type AusdBalanceReaderConfig,
+  type Rpc,
+  type TokenBalanceReader,
+} from "./chain/erc20.js";
+export {
+  broadcastTransaction,
+  buildTransferTx,
+  createAusdDepositChain,
+  inspectTransfer,
+  pendingNonce,
+  quoteFees,
+  verifySignedTransfer,
+  transactionHash,
+  type AusdDepositChainConfig,
+  type FeeQuote,
+  type TransferTx,
+  type TransferTxInput,
+} from "./chain/deposit-tx.js";
+export {
+  buildSiweMessage,
+  createSignatureVerifier,
+  MalformedMessageError,
+  parseSiweMessage,
+  type SiweFields,
+} from "./chain/siwe.js";
+export {
+  createOpenAiCompatibleDrafter,
+  DraftUnavailableError,
+  type OpenAiCompatibleDrafterConfig,
+} from "./model/openai-compatible-drafter.js";

@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { MONAD_TESTNET } from "@pickler/chain";
@@ -11,6 +13,8 @@ import {
   SessionExpired,
   addPasskey,
   describeCustodyFailure,
+  readSubOrganization,
+  redirectFor,
   openChallenge,
   type CustodyDeps,
 } from "../auth/lib/custody";
@@ -20,7 +24,7 @@ import {
   type ChallengeOptionsDto,
 } from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
-import { ApiError, getProfile, type ProfileDto } from "../auth/lib/pickler-api";
+import { getProfile, type ProfileDto } from "../auth/lib/pickler-api";
 import type { SheetPhase } from "../auth/lib/sheet";
 import { getSupabase } from "../auth/lib/supabase-browser";
 import { coverage } from "./lib/coverage";
@@ -68,6 +72,8 @@ function Mark({ className }: { className: string | undefined }) {
 }
 
 export function Account({ opening }: { opening: SectionKey }) {
+  const studio = useStudioHref();
+  const router = useRouter();
   const [section, setSection] = useState<SectionKey>(opening);
   /**
    * The fixture, decided once at the first render rather than from an effect.
@@ -115,17 +121,15 @@ export function Account({ opening }: { opening: SectionKey }) {
           (value) => value,
           () => null,
         ),
-        readWallet(token).then(
-          (value): WalletState => ({ kind: "ready", wallet: value }),
-          // A 404 is an account with no wallet yet, which is a state and not a fault. Anything else
-          // is a fault, and says so rather than drawing an empty wallet card that reads as broke.
-          (error: unknown): WalletState =>
-            error instanceof ApiError && error.status === 404
-              ? { kind: "none" }
-              : {
-                  kind: "error",
-                  reason: "Your balances could not be read just now. Nothing has moved.",
-                },
+        readSubOrganization(() => readWallet(token)).then(
+          (read): WalletState => (read ? { kind: "ready", wallet: read } : { kind: "none" }),
+          // Only a 404 is "no sub-organization". Anything else is a fault, and says so rather than
+          // drawing an empty wallet card that reads as broke — or sending somebody who has a
+          // wallet to create another.
+          (): WalletState => ({
+            kind: "error",
+            reason: "Your balances could not be read just now. Nothing has moved.",
+          }),
         ),
         // A rejection becomes `failed`, never an empty list. Everything from the repository method
         // down exists to keep those apart, and this is the last place it could be undone: `[]`
@@ -138,6 +142,14 @@ export function Account({ opening }: { opening: SectionKey }) {
       if (!live) {
         return;
       }
+      /* This is where the master wallet is shown, so it is the most visible place for the rule
+         (spec §4.1): a signed-in person without a sub-organization creates it before anything
+         else, on the signup's passkey step. Every section redirects, not only the wallet. */
+      const away = redirectFor(dto.kind === "none" ? null : dto);
+      if (away) {
+        router.replace(away);
+        return;
+      }
       setProfile(found);
       setWallet(dto);
       setPasskeys(keys);
@@ -145,7 +157,7 @@ export function Account({ opening }: { opening: SectionKey }) {
     return () => {
       live = false;
     };
-  }, [preview]);
+  }, [preview, router]);
 
   function custody(): CustodyDeps {
     return {
@@ -254,7 +266,7 @@ export function Account({ opening }: { opening: SectionKey }) {
               )}
             </button>
           ))}
-          <Link href="/console" className={styles.back}>
+          <Link href={studio} className={styles.back}>
             ← Back to studio
           </Link>
         </nav>

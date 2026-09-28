@@ -87,7 +87,7 @@ const ATTESTATION = {
 };
 
 const INPUT = {
-  ownerEmail: "ada@example.com",
+  ownerLabel: "adalovelace",
   discriminator: "u_7f3a",
   label: "MacBook",
   challenge: "chal-1",
@@ -158,11 +158,11 @@ test("creates a sub-organization whose only root credential is the user's passke
     timestampMs: body.timestampMs,
     organizationId: "parent-org-1",
     parameters: {
-      subOrganizationName: "ada@example.com · u_7f3a",
+      subOrganizationName: "adalovelace · u_7f3a",
       rootQuorumThreshold: 1,
       rootUsers: [
         {
-          userName: "ada@example.com",
+          userName: "adalovelace",
           apiKeys: [],
           oauthProviders: [],
           authenticators: [
@@ -222,7 +222,7 @@ test("names the sub-organization after its owner so the Turnkey dashboard is sca
   const { subOrganizationName } = (
     calls[0]!.body as { parameters: { subOrganizationName: string } }
   ).parameters;
-  assert.ok(subOrganizationName.includes("ada@example.com"), subOrganizationName);
+  assert.ok(subOrganizationName.includes("adalovelace"), subOrganizationName);
   assert.ok(subOrganizationName.includes("u_7f3a"), subOrganizationName);
 });
 

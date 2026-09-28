@@ -673,9 +673,38 @@
   color: var(--placeholder);
 }
 
-/* A column Ask cannot use is dimmed, not hidden: the position side still has it. */
-.column[data-off] {
-  opacity: 0.4;
+/* A column Ask cannot use is marked, not hidden: the position side still has it.
+ *
+ * It was `opacity: 0.4`, and this element holds nothing but its two labels — so the multiplier
+ * landed entirely on text that was already the dim ink, and put "1H" and "18:45" at 1.80:1 where
+ * 4.5 is wanted. That is the third time on this project a state has been written as a multiplier
+ * instead of a colour, and it is the same failure each time: an opacity composites against whatever
+ * ink it lands on, so one declaration is a different result on every element it touches, and
+ * multiplying an ink that is already dim is that at its worst.
+ *
+ * These are column headings, not controls. WCAG excuses an inactive component; a heading is not
+ * something anyone activates, so that exemption was never available here. It also matters more than
+ * the usual disabled label: in Ask the heading names a horizon the product will not answer a read
+ * on, and the person reading it is deciding whether to switch to Trade — where these columns are
+ * live. A state one toggle away is a state worth being able to read.
+ *
+ * So the state is left where it is already stated, and stated on something that is not text: every
+ * square in the column carries `.cell[data-blocked]`, which paints it --pk-panel where a live cell
+ * shows --pk-panel-3 through it. Measured off the page that is dE 6.5, well above the ~2.3 the eye
+ * resolves, so the column still reads as dead from its whole body — and it reads that way without
+ * touching a glyph. The labels go from 1.80:1 to 5.82:1.
+ *
+ * The ink is named rather than inherited so the declaration says what it means. Nothing dimmer is
+ * available: on light `--pk-ink-faint`, `--pk-ink-muted`, `--pk-ink-dim` and `--pk-ink-placeholder`
+ * all resolve to #5A5F78, and the palette explains why there is no level below it — a value that
+ * clears 4.6 on --pk-panel-3 lands five channel steps from muted, which is one level with a
+ * rounding error rather than two. */
+.column[data-off] .columnLabel {
+  color: var(--ink-dim);
+}
+
+.column[data-off] .columnTime {
+  color: var(--placeholder);
 }
 
 /* ---------- Under the surface ---------- */
@@ -849,12 +878,18 @@
   color: var(--ink-soft);
 }
 
+/* The rim that separates each swatch from the panel it sits on. It was white at half alpha, which
+   is not a colour but a compositing instruction: on the dark ground this legend was drawn against
+   it lifted a lime or pink square off the night blue, and on the #F5F6FA panel the ticket actually
+   paints it does the opposite — it washes the swatch's own edge out into the panel. The token is
+   surface-aware and so does the one job on both: rgba(11, 13, 26, 0.28) on light, and on dark
+   rgba(255, 255, 255, 0.32), which is within a hair of what was typed here. */
 .legendMark {
   flex: none;
   width: 14px;
   height: 14px;
   margin-top: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-mark);
 }
 
@@ -981,7 +1016,16 @@
   padding: 10px 12px;
   border: 1px solid var(--rule);
   border-radius: var(--pk-radius-sm);
-  background: rgba(5, 6, 26, 0.4);
+  /* The eighth scrim, and the one that is not the night sky. This renders only in the trade
+     ticket's review phase, which sits behind two clicks and no check has reached, and it sits on
+     the ticket's #F5F6FA panel rather than on the dark scene /apply paints. So it takes the triple
+     and not a veil: the veils are weights measured against that scene, and against a light panel
+     this composites to a mid grey around (149, 150, 160) — a 0.1 step here is dE 9.3 where the same
+     step on the sky is 2, so it would be a different decision wearing a name that promises this one.
+     That it shares a literal with seven night-sky scrims is a strong hint it is a dark-ground
+     leftover, the way .legendMark was. It cannot be confirmed until the review phase is measurable,
+     so it is left alone and said out loud rather than converted on a guess. */
+  background: rgba(var(--pk-space-edge-rgb), 0.4);
   font: 700 13px/1.3 var(--body);
 }
 

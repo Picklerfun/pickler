@@ -11,7 +11,9 @@
  * accents are stored data, so correcting the word costs a migration and buys nothing a reader of
  * this comment does not already have. The mapping lives in `apps/web/src/lib/accent.ts`.
  */
-export type AccentDto = "lime" | "cyan" | "amber" | "orange" | "magenta" | "violet" | "blue";
+// Mirrors `ACCENTS` in core, which this package may not import; a drift test in workers/api pins it.
+export const ACCENTS = ["lime", "cyan", "amber", "orange", "magenta", "violet", "blue"] as const;
+export type AccentDto = (typeof ACCENTS)[number];
 export type PickOutcomeDto = "open" | "won" | "lost";
 
 export interface AgentRefDto {

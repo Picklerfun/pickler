@@ -1,9 +1,12 @@
 import {
   createResearchRunner,
   createPaperService,
+  createPaperSettlementService,
   effectivePlugins,
   PilotError,
   type PluginId,
+  type ResearchObserver,
+  type RunRecord,
 } from "@pickler/core";
 import {
   PostgresResearchStore,
@@ -11,14 +14,21 @@ import {
   PostgresPaperStore,
   ExaResearch,
   PolymarketData,
+  PolymarketPaperResolution,
   BallDontLieSports,
   OddsApiSports,
   PostgresPublicDataCache,
 } from "@pickler/infrastructure";
 import type { Environment } from "../environment.js";
+import { createPerplSession } from "./perpl.js";
 import { createModel } from "./model.js";
+import { scopeRun } from "./run-scope.js";
 
-export function createRuntime(env: Environment, databaseOptions?: DatabaseConnectionOptions) {
+export function createRuntime(
+  env: Environment,
+  databaseOptions?: DatabaseConnectionOptions,
+  options?: { observer?: ResearchObserver },
+) {
   const model = createModel(env);
   const repository = new PostgresResearchStore(
     env.DATABASE_URL,
@@ -43,24 +53,36 @@ export function createRuntime(env: Environment, databaseOptions?: DatabaseConnec
     env,
     repository,
     markets,
-    paper: createPaperService(new PostgresPaperStore(repository.pool), markets),
-    execute: createResearchRunner({
-      repository,
-      search,
-      reader: search,
-      markets,
-      model,
-      configured: { exa: Boolean(env.EXA_API_KEY) },
-      ...(sports ? { sports } : {}),
-      ...(odds ? { odds } : {}),
-    }),
+    perpl: (scope: { tenantId: string; agentId: string }, signal: AbortSignal) =>
+      createPerplSession(repository, scope, signal),
+    paper: {
+      ...createPaperService(new PostgresPaperStore(repository.pool), markets),
+      ...createPaperSettlementService(
+        new PostgresPaperStore(repository.pool),
+        new PolymarketPaperResolution(),
+      ),
+    },
+    execute(run: RunRecord, signal?: AbortSignal) {
+      const execute = createResearchRunner({
+        ...(options?.observer ? { observer: options.observer } : {}),
+        repository,
+        markets,
+        configured: { exa: Boolean(env.EXA_API_KEY) },
+        ...(sports ? { sports } : {}),
+        ...scopeRun({ repository, model, exa: search, ...(odds ? { odds } : {}) }, run),
+      });
+      return execute(run, signal);
+    },
     async checkPlugin(scope: { tenantId: string; agentId: string }, plugin: string) {
       const agent = await repository.agent(scope);
       if (!effectivePlugins(agent.config).enabled.includes(plugin as PluginId)) {
         throw new PilotError("PLUGIN_DISABLED", "Plugin is disabled");
       }
       const signal = AbortSignal.timeout(20000);
-      if (plugin === "balldontlie") {
+      if (plugin === "perpl") {
+        const session = await createPerplSession(repository, scope, signal);
+        await session.service.listPerpMarkets();
+      } else if (plugin === "balldontlie") {
         if (!sports) {
           throw new PilotError("PLUGIN_NOT_CONFIGURED", "Missing credentials");
         }

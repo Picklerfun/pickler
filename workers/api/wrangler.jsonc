@@ -18,8 +18,21 @@
     "JWT_ISSUER": "",
     "JWT_AUDIENCE": "authenticated",
     "SUPER_ADMIN_EMAILS": "",
-    "ALLOWED_ORIGINS": "http://localhost:3000",
-    // /v1/signing is mounted only when the Turnkey bindings above and below are all present.
+    // Both local ports, because the two products share one origin in development and the dev
+    // server lands on whichever is free. In a deployment this must carry both real origins —
+    // https://pickler.fun and https://app.pickler.fun. A missing origin fails only in a browser:
+    // never in a test, never in a curl, so it ships. See "Before this works in a deployment" in
+    // docs/specs/user-profiles-and-products-v1.md.
+    "ALLOWED_ORIGINS": "http://localhost:3000,http://localhost:3001",
+    // /v1/auth/wallet is mounted only when both of these are set, the same way /v1/signing is
+    // gated below — empty here so a development API serves everything else rather than throwing on
+    // the Supabase secret the wallet routes need. SIWE_DOMAIN is the host the browser signs
+    // against and must equal the origin the page is served from, or every signature is rejected as
+    // replayed from elsewhere. WALLET_EMAIL_DOMAIN is the domain of the synthetic, non-deliverable
+    // key each wallet account gets, and that subdomain must never be made to accept mail.
+    "SIWE_DOMAIN": "",
+    "WALLET_EMAIL_DOMAIN": "",
+    // /v1/signing is mounted only when the Turnkey bindings below are all present.
     "TURNKEY_PARENT_ORG_ID": "",
     "TURNKEY_RPID": "localhost",
     "TURNKEY_APP_NAME": "Pickler",

@@ -43,6 +43,62 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
+  /* The night sky the dark shells paint behind their content: a core, a middle and an edge, read
+   * outward from the top of the page. Two features drew it from the same three literals — the
+   * marketplace's agent routes and /apply — which is a ground the product depends on and had never
+   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are the
+   * same colour at a fraction, so a change to it that reached only the gradient would leave the
+   * scrims behind. They now read it through the triple below rather than retyping it.
+   *
+   * These sit here rather than under the dark surface for the reason the agent fills do: a scene
+   * does not become a different scene because the page around it changed. Nothing paints them on
+   * light — both `.space` elements render only when their shell is dark. */
+  --pk-space-core: #1b1f6b;
+  --pk-space-mid: #0a0b2e;
+  --pk-space-edge: #05061a;
+
+  /* The edge again, as an `r, g, b` triple, because the eight scrims above could not be written
+   * from `--pk-space-edge`: rgba() will not take a custom property for its first three arguments.
+   * That is the same constraint `accentVars` documents for `--accent-rgb` and the same workaround,
+   * so this applies a precedent rather than setting one. It is written down twice on purpose, and
+   * a value that drifts apart shows up as a scrim that no longer matches the sky behind it.
+   *
+   * `color: var(--pk-space-edge-rgb)` is not a colour, so probe.mjs's sentinel excludes this from
+   * the values tokens.mjs compares against. The triple makes the scrims track the palette; the two
+   * veils below are what a check can recognise, because they hold the composited value and the
+   * check keys on alpha as well as hue. */
+  --pk-space-edge-rgb: 5, 6, 26;
+
+  /* The edge as a scrim, at the two weights the scene can actually tell apart.
+   *
+   * There were five: 0.45, 0.5, 0.55 and 0.6 across seven places, plus a 0.4 in markets that turned
+   * out not to belong to this scene at all. Nobody chose 0.45 over 0.5, and naming all five would
+   * have made a drift permanent by giving it the look of a decision — a literal is obviously
+   * unconsidered, a token is not.
+   *
+   * Two rather than three or one, decided by measuring rather than by eye. Every sky pixel /apply
+   * paints was sampled — 1.36M of them, from #05061A out to the brightest point of the core — and
+   * each alpha composited against every one. Adjacent fifths of an alpha differ by at most dE 1.9
+   * to 2.1, under the ~2.3 just-noticeable threshold, so 0.45 folds into 0.5 and 0.55 into 0.6 with
+   * nothing visible moving. The two that remain differ by dE 4.05, which is above it, so both names
+   * are earned. One weight was tested and refused: it lands 3.87 from the far end, which is a
+   * difference somebody could point at.
+   *
+   * Why these are colours and not an `opacity`, when .trailLine took the opposite route: that line
+   * IS the thing being painted and has no children, so weighting the element weights only it. A
+   * scrim sits *under* content — fading .header would fade the brand and the nav with it. */
+  --pk-space-veil: rgba(var(--pk-space-edge-rgb), 0.5);
+  --pk-space-veil-strong: rgba(var(--pk-space-edge-rgb), 0.6);
+
+  /* The rim a lit element carries: a bright hairline on a saturated fill against the night sky.
+   * Three places wanted it — the glow button below, and the two accent pixels in /apply — and all
+   * three had typed the same value, which is agreement by coincidence rather than by contract.
+   *
+   * Not `--pk-border-strong`, which is 0.32 on dark and deliberately quieter: the edge of a panel
+   * and the rim of something lit are different questions, and answering one with the other is what
+   * makes a rim look like a border. */
+  --pk-glow-rim: rgba(255, 255, 255, 0.5);
+
   /* The palette's third member: the hue itself, for anything filled rather than written.
    *
    * Each agent colour has a `-bg` and an `-ink`, which are a tint and something legible on it, and
@@ -104,6 +160,14 @@
   --pk-popover: #ffffff;
   --pk-popover-shadow: 0 1px 0 rgba(11, 13, 26, 0.08), 0 24px 60px -20px rgba(11, 13, 26, 0.35);
   --pk-violet: #5b3ce0;
+  /* A filled violet control under the cursor. It moves the same 6.3 points of lightness the dark
+   * surface's hover moves, with hue and saturation held — and in the opposite direction, because
+   * direction is set by the ink the fill carries, not by taste. `--pk-lime-hover` goes lighter
+   * because lime carries dark ink; violet here carries white, so lighter is the one move that
+   * makes it harder to read. White on the base is 6.63 and on this is 8.42. Before this token the
+   * hover was written as a literal at one call site, and it was the *dark* surface's hover: had
+   * that control ever rendered on light it would have jumped from 6.63 to 2.31 on hover. */
+  --pk-violet-hover: #4523d9;
   --pk-violet-ink: #5b3ce0;
   --pk-magenta-ink: #bb2a5d;
   /* Every accent splits into the colour and the ink of that colour, because an accent bright enough
@@ -245,6 +309,9 @@
   --pk-popover: #15182a;
   --pk-popover-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
   --pk-violet: #9b7bff;
+  /* Lighter here, for the mirror of the reason it is darker on light: this fill carries near-black
+   * ink, which reads 6.33 on the base and 8.61 on this. */
+  --pk-violet-hover: #b49bff;
   --pk-violet-ink: #b9a6ff;
   --pk-magenta-ink: #ff9ec6;
   /* On this ground the accent already reads, so the ink is the accent. The split still has to
@@ -398,7 +465,7 @@ h2 {
   color: var(--pk-ink);
 }
 
-/* Tile: a rectangular action inside a grid, like the console's quick actions. A tile reads as a
+/* Tile: a rectangular action inside a grid, like the studio's quick actions. A tile reads as a
    row, so its label starts at the left rather than sitting in the middle like an action's does. */
 .pk-button[data-variant="tile"] {
   justify-content: flex-start;
@@ -441,7 +508,7 @@ h2 {
 /* Glow: the marketing call to action, lit from inside. One per page, and only where the page is
    asking for something — the hero, the waitlist, the application. */
 .pk-button[data-glow="true"] {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: var(--pk-glow-rim);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.3),
     0 0 24px rgba(200, 240, 58, 0.32);

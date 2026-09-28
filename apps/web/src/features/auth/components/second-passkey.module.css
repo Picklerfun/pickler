@@ -1,0 +1,26 @@
+/* The second-passkey suggestion. The caution pair every surface already defines, so it reads the
+   same on the auth column, the studio home and the account page, light or dark. */
+.callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--pk-amber-edge);
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-amber-tint);
+  color: var(--pk-ink);
+  font: 500 13px/1.45 var(--pk-font);
+}
+
+.text {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

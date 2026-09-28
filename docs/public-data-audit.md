@@ -168,7 +168,7 @@ palettes, filter lists and formatting — those are right where they are. Two ot
 - `features/apply/lib/options.ts:66` — `BATCH = { invitesPerBatch: 40, nextBatch: "FRI" }`, rendered
   on the submitted screen as "INVITES PER BATCH" and "NEXT BATCH". The file admits it: _"Product
   copy, not computed."_ Real applicants read an operational fact nothing drives.
-- `features/console/sections/overview.tsx:154` — a `0.00 MON` agent wallet balance marked "NOT WIRED
+- `features/studio/sections/overview.tsx:154` — a `0.00 MON` agent wallet balance marked "NOT WIRED
   YET". Honest today; it will keep reading zero after the wallet exists unless someone remembers.
 
 ### Business rules written as literals in the presentation layer

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { startPolling } from "../src/features/console/lib/polling";
+import { startPolling } from "../src/features/studio/lib/polling";
 
 class Page extends EventTarget {
   hidden = false;

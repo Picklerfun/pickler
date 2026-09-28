@@ -21,6 +21,17 @@ const responseSchema = z.object({
   costDollars: z.unknown().optional(),
 });
 const MAX_CONTENT = 6000;
+
+/** The Exa search request. Without domains it is exactly the body sent before site lists existed. */
+export function exaSearchRequest(query: string, includeDomains?: readonly string[]) {
+  return {
+    query,
+    numResults: 5,
+    contents: { text: true },
+    ...(includeDomains ? { includeDomains: [...includeDomains] } : {}),
+  };
+}
+
 export class ExaResearch implements WebSearch, PageReader {
   constructor(
     private readonly apiKey: string,
@@ -70,11 +81,16 @@ export class ExaResearch implements WebSearch, PageReader {
     });
     return { sources, usage: parsed.data.costDollars ?? null };
   }
-  search(query: string, signal: AbortSignal): Promise<SearchResult> {
+  /** `includeDomains` restricts results to those sites; omit it to search the whole web. */
+  search(
+    query: string,
+    signal: AbortSignal,
+    includeDomains?: readonly string[],
+  ): Promise<SearchResult> {
     if (!query.trim() || query.length > 1000) {
       throw new PilotError("INVALID_INPUT", "Invalid search query");
     }
-    return this.call("search", { query, numResults: 5, contents: { text: true } }, signal);
+    return this.call("search", exaSearchRequest(query, includeDomains), signal);
   }
 
   async read(url: string, signal: AbortSignal): Promise<Source> {

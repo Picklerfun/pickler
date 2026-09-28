@@ -243,3 +243,29 @@ Deploy the consumer and then API using their explicit configs. Until this operat
 merged, deploying older main configs requires `--var ADMISSIONS_ENABLED:true` to preserve manual
 access. Emergency closure uses `--var ADMISSIONS_ENABLED:false` on both hosts and must be recorded
 so an ordinary deployment does not accidentally reopen admissions. No migration is required.
+
+## Web Worker Builds configuration
+
+The `pickler-web-staging` Git integration has separate production and preview build settings.
+Both should build only the API schema and OpenNext web bundle from the repository root:
+
+```sh
+npm run build --workspace=@pickler/api-schema && npm run build:worker --workspace=@pickler/web
+```
+
+Production uses `npx wrangler deploy --config apps/web/wrangler.jsonc`; previews use
+`npx wrangler preview --config apps/web/wrangler.jsonc`. Keep the existing branch controls,
+secrets, bindings and access policies. Do not use the root `npm run build` for this web-only
+pipeline: it also builds the local Mastra host, which is not deployed by this integration.
+
+The PR #45 preview failed during Mastra workspace packaging with `HOME: unbound variable` in
+Cloudflare's npm shim. Production already had the web-only command. The Previews Base settings
+and the existing `codex/jev-deepseek-evaluation` preview were corrected separately: existing
+previews retain their own build settings after the base changes, including on new pushes.
+Check the specific preview's settings and verify the commands on the newly triggered build.
+
+The web configuration includes the required `previews` block with `NEXTJS_ENV=production`
+for the compiled Next.js runtime and an empty service-binding list. Branch previews are
+presentation-only: they do not connect to the staging API or the main web Worker's self-reference.
+Backend-dependent routes remain unavailable, and a successful preview does not verify research,
+authentication or trading end to end. See the [Cloudflare preview configuration documentation](https://developers.cloudflare.com/workers/previews/configuration/).

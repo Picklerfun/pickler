@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import styles from "../landing.module.css";
 import { formatInteger } from "../lib/format";
+import { useStudioUrl } from "@/features/site/studio-href";
 import { useLanding } from "../lib/landing-data";
 
 type Status =
@@ -26,6 +27,7 @@ export function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const router = useRouter();
+  const apply = useStudioUrl("/apply");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +53,13 @@ export function WaitlistForm() {
       const placement = (await response.json()) as JoinWaitlistResponse;
       setStatus({ kind: "joined", position: placement.position, continuing: placement.canApply });
       if (placement.canApply) {
-        router.push("/apply");
+        // `/apply` is a studio route and this form is on the marketplace landing, so from the
+        // marketplace host it is another origin — which the app router cannot push to.
+        if (apply.startsWith("/")) {
+          router.push(apply);
+        } else {
+          window.location.assign(apply);
+        }
       }
     } catch {
       setStatus({ kind: "error", message: "Network error. Try again." });

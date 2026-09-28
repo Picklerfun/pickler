@@ -255,26 +255,35 @@ export function createModel(env: Environment): ResearchModel & {
           model,
         });
         finalizer.__setLogger(noopLogger);
+        const finalInput = {
+          now: new Date().toISOString(),
+          market: input.market,
+          profile: input.profile,
+          protocol: input.protocol,
+          availability: input.availability,
+          evidence: input.evidence?.(),
+          untrustedResearchSummary: research.text,
+        };
+        if (finalInput.evidence) {
+          try {
+            input.onDecisionInput?.({
+              observedAt: finalInput.now,
+              market: structuredClone(finalInput.market),
+              evidence: structuredClone(finalInput.evidence),
+            });
+          } catch {
+            // Core reports a missing snapshot separately after primary completion.
+          }
+        }
         const result = await validatedModelOutput(
           () =>
-            finalizer.generate(
-              JSON.stringify({
-                now: new Date().toISOString(),
-                market: input.market,
-                profile: input.profile,
-                protocol: input.protocol,
-                availability: input.availability,
-                evidence: input.evidence?.(),
-                untrustedResearchSummary: research.text,
-              }),
-              {
-                maxSteps: 1,
-                abortSignal: input.signal,
-                modelSettings: { maxOutputTokens: input.limits.outputTokens },
-                ...callbacks("decision"),
-                structuredOutput: { schema: assessmentSchema, logger: noopLogger },
-              },
-            ),
+            finalizer.generate(JSON.stringify(finalInput), {
+              maxSteps: 1,
+              abortSignal: input.signal,
+              modelSettings: { maxOutputTokens: input.limits.outputTokens },
+              ...callbacks("decision"),
+              structuredOutput: { schema: assessmentSchema, logger: noopLogger },
+            }),
           assessmentSchema,
           "decision",
           input.signal,

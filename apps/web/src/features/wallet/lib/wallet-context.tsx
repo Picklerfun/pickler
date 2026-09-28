@@ -12,7 +12,11 @@ import {
 import type { ReactNode } from "react";
 import { ConnectModal } from "../components/connect-modal";
 import { injectedSigner } from "./injected-signer";
-import { TARGET_CHAIN } from "./provider";
+import { getProvider, TARGET_CHAIN } from "./provider";
+import { signIn } from "./connect";
+import { fromInjectedProvider } from "./signer-adapters";
+import { signInWords } from "./sign-in-words";
+import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
 /**
@@ -35,6 +39,17 @@ import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
  * which names what is missing rather than presenting a dead button.
  */
 export type WalletStatus = "disconnected" | "connecting" | "connected";
+
+/**
+ * Whether there is an account behind the connection.
+ *
+ * Connecting and signing in are two things on purpose, and the chooser says so on itself:
+ * "Connecting is not signing." Signing in costs a wallet prompt, so it happens when something
+ * actually needs an account — claiming a handle, linking a second wallet — and never as a surprise
+ * on top of connecting. A signature prompt nobody asked for is how people learn to approve
+ * prompts without reading them.
+ */
+export type SessionStatus = "none" | "signing" | "active";
 
 const SIGNERS: SignerAdapter[] = [injectedSigner];
 
@@ -89,6 +104,16 @@ interface WalletState {
   /** Whether this signer can be moved to another chain at all. */
   canSwitchChain: boolean;
   error: string | null;
+  /** Whether this wallet has an account behind it yet. */
+  session: SessionStatus;
+  /** What went wrong signing in, in words for a screen, or null when nothing did. */
+  sessionError: string | null;
+  /**
+   * Sign in with the connected wallet: one signature over a string the server built. Answers with
+   * the access token, or null when it did not happen — including when the person simply closed the
+   * prompt, which is an answer rather than a failure.
+   */
+  signInWithWallet: () => Promise<string | null>;
   /**
    * Opens the chooser. `holding` is what the person was about to do, shown while they pick so the
    * action they came for is not lost behind the wallet.
@@ -107,6 +132,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("none");
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
@@ -175,6 +203,50 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signInWithWallet = useCallback(async (): Promise<string | null> => {
+    // Already signed in: hand back what we have rather than spend another prompt on a signature
+    // that would prove the same thing twice.
+    if (sessionStatus === "active" && token) {
+      return token;
+    }
+    const provider = getProvider();
+    const supabase = getSupabase();
+    if (!provider || !account) {
+      setSessionError("Connect a wallet before signing in.");
+      return null;
+    }
+    if (!supabase) {
+      // No Supabase in this build: there is nowhere to put a session, so asking for a signature
+      // would spend somebody's prompt on nothing.
+      setSessionError("Signing in is not configured in this build.");
+      return null;
+    }
+    setSessionStatus("signing");
+    setSessionError(null);
+    try {
+      const signer = fromInjectedProvider(
+        provider,
+        account.address,
+        account.chainId ?? TARGET_CHAIN.chainId,
+      );
+      const result = await signIn(signer);
+      const { error: refused } = await supabase.auth.setSession({
+        access_token: result.session.accessToken,
+        refresh_token: result.session.refreshToken,
+      });
+      if (refused) {
+        throw new Error(refused.message);
+      }
+      setToken(result.session.accessToken);
+      setSessionStatus("active");
+      return result.session.accessToken;
+    } catch (caught) {
+      setSessionStatus("none");
+      setSessionError(signInWords(caught));
+      return null;
+    }
+  }, [account, sessionStatus, token]);
+
   const connect = useCallback((held?: string) => {
     setHolding(held ?? null);
     setError(null);
@@ -218,11 +290,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       onTargetChain: account?.chainId == null || account.chainId === TARGET_CHAIN.chainId,
       canSwitchChain: adapter?.switchChain !== undefined,
       error,
+      session: sessionStatus,
+      sessionError,
+      signInWithWallet,
       connect,
       disconnect,
       switchChain,
     };
-  }, [account, adapter, connect, connecting, disconnect, error, kind, switchChain]);
+  }, [
+    account,
+    adapter,
+    connect,
+    connecting,
+    disconnect,
+    error,
+    kind,
+    sessionError,
+    sessionStatus,
+    signInWithWallet,
+    switchChain,
+  ]);
 
   return (
     <WalletContext.Provider value={value}>

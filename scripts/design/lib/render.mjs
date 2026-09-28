@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -20,6 +20,96 @@ if (!BASE) {
       "  DESIGN_BASE_URL=http://localhost:3001 node scripts/design/<check>.mjs\n",
   );
   process.exit(2);
+}
+
+/* Two products, and in a deployment two origins. One base URL still works and is what development
+ * uses, because the middleware is inert on localhost and both products answer on 3001 — so this is
+ * a no-op here and only has an effect once the two are split.
+ *
+ * DESIGN_BASE_URL stays required and still refuses to guess, for both of them. The reason is
+ * unchanged and gets worse rather than better with two hosts: another checkout of this repository
+ * serves the same application under the same title on a neighbouring port, so a default measures
+ * somebody else's branch and prints plausible numbers. Two defaults would be two chances at that. */
+const BASE_FOR = {
+  marketplace: process.env.DESIGN_MARKETPLACE_URL ?? BASE,
+  studio: process.env.DESIGN_STUDIO_URL ?? BASE,
+};
+const baseFor = (route) => BASE_FOR[route.product] ?? BASE;
+
+/* The studio's session guard, and why a design check passes it with a cookie that is not a session.
+ *
+ * With Supabase configured, apps/web/src/middleware.ts answers every /studio, /account and /passkey
+ * request that carries no `sb-<project-ref>-auth-token` cookie with a 307 to /signin. It checks the
+ * cookie's *name* only (apps/web/src/server/guard.ts): authentication itself happens in the browser
+ * and in the API, on a JWT the API verifies. So a cookie with that name and a dummy value passes the
+ * middleware's presence check and nothing else — it is not a session, it signs nobody in, and every
+ * API call behind it is still refused. What it buys is the screen, which is all a design check reads.
+ *
+ * Only on a loopback base URL, and only for routes whose `product` is the studio. A deployed origin
+ * is never sent a forged cookie by this harness, whatever it is pointed at.
+ *
+ * The name is derived the way the guard derives it — the first label of NEXT_PUBLIC_SUPABASE_URL's
+ * hostname — read from the environment or apps/web/.env.local. DESIGN_SESSION_COOKIE overrides it.
+ * With neither, no cookie is added and a guarded route reports as the sign-in stub it then renders. */
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const isLoopback = (base) => {
+  try {
+    return LOOPBACK.has(new URL(base).hostname);
+  } catch {
+    return false;
+  }
+};
+
+function supabaseUrl() {
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL;
+  }
+  try {
+    const file = fileURLToPath(new URL("../../../apps/web/.env.local", import.meta.url));
+    const line = readFileSync(file, "utf8")
+      .split("\n")
+      .find((l) => /^\s*NEXT_PUBLIC_SUPABASE_URL\s*=/.test(l));
+    return line
+      ? line
+          .split("=")
+          .slice(1)
+          .join("=")
+          .trim()
+          .replace(/^["']|["']$/g, "")
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function sessionCookieName() {
+  if (process.env.DESIGN_SESSION_COOKIE) {
+    return process.env.DESIGN_SESSION_COOKIE;
+  }
+  const url = supabaseUrl();
+  if (!url) {
+    return null;
+  }
+  try {
+    const ref = new URL(url).hostname.split(".")[0];
+    return ref ? `sb-${ref}-auth-token` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Adds the presence-check cookie to this page's context when the route is the studio's and the
+ *  host is this machine. See the comment above: this is not a session. */
+async function passGuard(page, route) {
+  const base = baseFor(route);
+  if (route.product !== "studio" || !isLoopback(base)) {
+    return;
+  }
+  const name = sessionCookieName();
+  if (!name) {
+    return;
+  }
+  await page.context().addCookies([{ name, value: "design-harness-not-a-session", url: base }]);
 }
 
 /* Playwright is installed globally and deliberately not a repository dependency, so `playwright`
@@ -118,7 +208,7 @@ const START_FIXTURE = "node --import tsx scripts/design/fixture-api.mjs 8799";
  * different currency. */
 const KINDS = {
   "server-down": {
-    line: (route, detail) => `${route.path} — nothing answered at ${BASE} (${detail})`,
+    line: (route, detail) => `${route.path} — nothing answered at ${baseFor(route)} (${detail})`,
     remedy:
       `The dev server is down, so nothing was measured and no design conclusion follows. Start it:\n` +
       `    ${START_APP}\n` +
@@ -144,13 +234,30 @@ const KINDS = {
     remedy:
       "The page answered 200 and rendered something other than the screen — a sign-in stub, a gate,\n" +
       "  a half-mounted client component. Measuring it would report green for a screen nobody looked\n" +
-      "  at, which is what happened to /console for the whole of this change. Not measured, not passed.",
+      "  at, which is what happened to /studio for the whole of this change. Not measured, not passed.",
+  },
+  "click-missed": {
+    line: (route, detail) => `${route.path} — loaded and proved, but ${detail}`,
+    remedy:
+      "The route reaches its screen through a click and the click landed somewhere else. Almost\n" +
+      "  always the selector: a renamed aria-label, a control that moved, a square the sample data\n" +
+      "  no longer makes takeable. Nothing here is a design failure — but nothing was measured\n" +
+      "  either, because measuring the screen before the click would report green for the half this\n" +
+      "  route exists to reach.",
   },
   "no-floor": {
     line: (route) => `${route.path} — declares no \`proves\` selector and no \`floor\``,
     remedy:
       "Add one to routes.mjs. A route with no floor cannot be told from a stub, and a route nobody\n" +
       "  wrote a floor for is exactly the route the floor exists to catch, so it is not measured.",
+  },
+  "no-product": {
+    line: (route) => `${route.path} — declares no \`product\`, so no host owns it`,
+    remedy:
+      "Add one to routes.mjs: `marketplace` or `studio`. Falling back to DESIGN_BASE_URL would\n" +
+      "  measure the route against whichever host happened to be named, and once the two products\n" +
+      "  sit on different origins that is a number about the wrong server — which is the one\n" +
+      "  failure this whole file is built to refuse.",
   },
   "error-boundary": {
     line: (route) =>
@@ -260,14 +367,22 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
   const browser = await launch(chromium);
   const results = [];
   const blocked = [];
-  let checked = false;
+  // Which base URLs have been fingerprinted. A set rather than a flag because the two products can
+  // sit on two origins, and verifying one of them while measuring both is the same mistake in a
+  // smaller form. In development both resolve to DESIGN_BASE_URL, so this still runs exactly once.
+  const checked = new Set();
   try {
     for (const route of routes) {
+      if (!route.product) {
+        blocked.push({ route, kind: "no-product" });
+        continue;
+      }
       const page = await browser.newPage({ viewport: { width, height } });
       try {
+        await passGuard(page, route);
         let response;
         try {
-          response = await page.goto(BASE + route.path, { waitUntil: "networkidle" });
+          response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
         } catch (error) {
           blocked.push({
             route,
@@ -291,15 +406,15 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           blocked.push({ route, kind: "error-boundary" });
           continue;
         }
-        if (!checked) {
-          checked = true;
+        if (!checked.has(baseFor(route))) {
+          checked.add(baseFor(route));
           const differs = await serving(page);
           if (differs.length) {
             // packages/ui/src being edited is the innocent explanation: the file on disk is ahead
             // of what the server last compiled. Anything else means the wrong server.
             const editing = held().has("ALWAYS");
             process.stderr.write(
-              `${editing ? "warning" : "refusing to measure"}: the server at ${BASE} is not painting this tree's tokens.\n` +
+              `${editing ? "warning" : "refusing to measure"}: the server at ${baseFor(route)} is not painting this tree's tokens.\n` +
                 differs.map((line) => `  ${line}\n`).join("") +
                 (editing
                   ? "  packages/ui/src has uncommitted changes, so the server may simply not have\n" +
@@ -337,6 +452,59 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         } else {
           blocked.push({ route, kind: "no-floor" });
           continue;
+        }
+
+        /* Some screens are a click deep, and a click is not a door.
+         *
+         * ?state=connected and ?section= exist because a wallet connection and a Supabase session
+         * are states no click produces — there was no other way in, so a dev-guarded parameter was
+         * worth its cost in shipped code. That reasoning does not extend to everything hidden: the
+         * market's ticket only fills once a square is picked, and picking is what a browser does.
+         * Playwright already has clicks, so reaching it needs nothing added to the product. Anyone
+         * about to add a query parameter for a state a person reaches by clicking should use this
+         * instead.
+         *
+         * `act.proves` is not decoration and the hook must never take a bare selector. A click that
+         * quietly stops matching — a renamed label, a moved control — would leave the route
+         * measuring the screen *before* the click and reporting green for it, which is the stub
+         * failure this file exists to catch, one layer deeper and in the place hardest to notice.
+         * So the click asserts its own result exactly as `proves` does, and a miss is reported as a
+         * route that was never measured. */
+        if (route.act) {
+          await page.click(route.act.click);
+          /* Let the click's transitions finish before anything reads a colour.
+           *
+           * This is not caution, it is a defect that was caught. `.cell` carries
+           * `transition: background 140ms`, so the first run measured eleven lit squares mid-fade
+           * and reported #EDF7CE — a solid token with no alpha — as "at 0.106 alpha, in no token".
+           * A plausible, specific, entirely false finding, and one that would have sent somebody
+           * looking for a literal nobody typed.
+           *
+           * Waiting on the animations rather than on a duration, because a duration is a guess that
+           * ages: --pk-duration is a token and can change. Transitions only, and bounded, since a
+           * looping decoration never finishes and waiting on one would hang the run rather than
+           * measure it. */
+          await page
+            .waitForFunction(
+              () =>
+                document
+                  .getAnimations()
+                  .filter((a) => a.constructor.name === "CSSTransition")
+                  .every((a) => a.playState === "finished"),
+              null,
+              { timeout: 2000 },
+            )
+            .catch(() => {});
+          const landed = await page.locator(route.act.proves).count();
+          if (!landed) {
+            blocked.push({
+              route,
+              kind: "click-missed",
+              detail: `clicked ${route.act.click}, then nothing matched ${route.act.proves}`,
+            });
+            continue;
+          }
+          proof = `${proof} → ${route.act.proves}`;
         }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {

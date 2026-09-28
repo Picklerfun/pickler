@@ -8,11 +8,16 @@
 //   and learned about malformed ones from Turnkey, after the person's biometric ceremony.
 // - The register response omits the root user id, and confirm answers with the activity's id and
 //   status rather than the whole Turnkey activity.
+// - New: the agent wallet ceremony under /agents (docs/specs/studio-create-and-fund-v1.md §4.1).
+//   Relayer had no equivalent; each step is prepare → passkey stamp in the browser → confirm.
 
 import {
+  HANDLE_RULES,
   SUPPORTED_TRANSPORTS,
   type createCustodyService,
   type PasskeyAttestation,
+  type createProfileService,
+  type DisplayIdentity,
 } from "@pickler/core";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -32,6 +37,8 @@ export interface BalanceReader {
 
 export interface SigningRouteServices {
   authenticate: Authenticate;
+  /** Supplies the passkey's display name, which must never come from the auth email. */
+  profiles: ReturnType<typeof createProfileService>;
   /**
    * Built per request, so the orphaned-sub-organization report a lost registration race produces
    * can name the request that caused it. Everything expensive is composed once behind this.
@@ -58,6 +65,9 @@ const MAX = {
   transports: 8,
 };
 
+/** A Turnkey wallet id: letters, digits and hyphens, as core's policy writer requires. */
+const WALLET_ID = /^[A-Za-z0-9-]{1,128}$/;
+
 /** base64url with optional padding. Rejects the `+` and `/` of standard base64, and whitespace. */
 const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
 
@@ -69,6 +79,28 @@ async function jsonBody(c: Context<AppEnv>): Promise<Body> {
     throw badRequest("A JSON object body is required");
   }
   return parsed as Body;
+}
+
+/** No body, or `{}`. Anything else is a caller passing something this route does not take. */
+async function emptyBody(c: Context<AppEnv>): Promise<void> {
+  const raw = await c.req.text();
+  if (raw.trim() === "") {
+    return;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw badRequest("This request takes no body");
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    Object.keys(parsed).length > 0
+  ) {
+    throw badRequest("This request takes no body");
+  }
 }
 
 function text(body: Body, field: string, max: number): string {
@@ -138,27 +170,80 @@ function signedActivity(body: Body) {
   };
 }
 
+/** An agent handle, by the same rule as a profile handle; the wallet is named after it. */
+function handle(body: Body): string {
+  const value = body["handle"];
+  if (
+    typeof value !== "string" ||
+    value.length < HANDLE_RULES.min ||
+    value.length > HANDLE_RULES.max ||
+    !HANDLE_RULES.pattern.test(value)
+  ) {
+    throw badRequest(
+      `Field 'handle' must be ${HANDLE_RULES.min} to ${HANDLE_RULES.max} lowercase letters, digits or underscores`,
+    );
+  }
+  return value;
+}
+
+/** The unsigned activity as the Turnkey stamper consumes it, exactly as add/prepare answers. */
+function unsignedDto(unsigned: {
+  url: string;
+  body: string;
+  timestampMs: string;
+  organizationId: string;
+}) {
+  return {
+    url: unsigned.url,
+    body: unsigned.body,
+    timestampMs: unsigned.timestampMs,
+    organizationId: unsigned.organizationId,
+  };
+}
+
 /**
  * `userOnly` already refuses API keys inside core's authenticate, before it ever looks at one.
  * This is the second check anyway: these routes move custody of a wallet, the principal type is
  * a union of four kinds, and a future authenticate that resolves a service or agent principal
  * from a bearer token would otherwise reach them silently.
  *
- * The email is the one the token proves. It names the sub-organization in Turnkey's dashboard
- * and identifies the user to the authenticator, and a body-supplied one would let a caller
- * choose both.
+ * The id is the one the token proves; nothing is taken from the body, which would let a caller
+ * choose whose passkey they were registering.
  */
-function person(c: Context<AppEnv>): { id: string; email: string } {
+function person(c: Context<AppEnv>): { id: string } {
   const principal = c.get("principal");
   if (principal.kind !== "user") {
     throw new HttpError(401, "Bearer JWT required");
   }
-  if (!principal.email) {
-    throw badRequest("This account has no email address, which a passkey wallet needs", {
-      error: "email_required",
-    });
+  return { id: principal.id };
+}
+
+/**
+ * What the passkey will be called, in the operating system's credential picker and in Turnkey's
+ * dashboard. It comes from the profile, and never from `principal.email`.
+ *
+ * The auth email cannot be used here. For a wallet account it is synthetic and derived from the
+ * wallet, and WebAuthn's `user.name` is stored inside the authenticator and synced to iCloud
+ * Keychain or Google Password Manager — so labelling a credential with it would put a wallet
+ * address in someone's password manager permanently, uneditable by them or by us. That is on the
+ * ordinary "trade first, build an agent later" path, not a corner of it.
+ *
+ * It is deliberately not given the request context: with no access to the principal there is no
+ * email in reach, so the leak cannot be reintroduced by someone reaching for the nearest value.
+ *
+ * Someone with no profile is labelled by an opaque fragment of their user id rather than refused.
+ * Requiring a profile would be defensible for wallet accounts but would newly lock out existing
+ * email accounts that never made one, and a passkey is not the place to discover that. The id is
+ * random, so the fallback discloses nothing — it is merely unfriendly, which is the right way for
+ * a fallback to be bad.
+ */
+async function identity(services: SigningRouteServices, userId: string): Promise<DisplayIdentity> {
+  const profile = await services.profiles.getProfile(userId);
+  if (profile) {
+    return { name: profile.handle, displayName: profile.displayName };
   }
-  return { id: principal.id, email: principal.email };
+  const fallback = `pickler-${userId.slice(0, 8)}`;
+  return { name: fallback, displayName: fallback };
 }
 
 export function signingRoutes(services: SigningRouteServices) {
@@ -175,7 +260,7 @@ export function signingRoutes(services: SigningRouteServices) {
   api.post("/passkeys/challenge", async (c) => {
     const user = person(c);
     const custody = services.custody(c.get("requestId"));
-    const options = await custody.issueChallenge(user.id, user.email);
+    const options = await custody.issueChallenge(user.id, await identity(services, user.id));
     return c.json(successEnvelope(options, c.req.path, "Challenge issued"));
   });
 
@@ -185,7 +270,7 @@ export function signingRoutes(services: SigningRouteServices) {
     const user = person(c);
     const body = await jsonBody(c);
     const input = {
-      email: user.email,
+      identity: await identity(services, user.id),
       label: text(body, "label", MAX.label),
       challenge: base64url(body, "challenge", MAX.challenge),
       attestation: attestation(body),
@@ -297,5 +382,117 @@ export function signingRoutes(services: SigningRouteServices) {
     );
   });
 
+  // ─── The agent wallet ceremony ────────────────────────────────────────────────────────────
+  // Three steps, each prepared here, stamped by the person's passkey and confirmed here: Pickler's
+  // delegated user (first agent only), the agent's wallet, and that wallet's policies. The link
+  // to an agent is written by the create-agent transaction, not by these routes.
+
+  /** Which steps the browser still has to run. */
+  api.get("/agents/state", async (c) => {
+    const user = person(c);
+    const state = await services.custody(c.get("requestId")).agentWalletState(user.id);
+    return c.json(
+      successEnvelope(
+        {
+          has_sub_organization: state.hasSubOrganization,
+          has_delegated_user: state.hasDelegatedUser,
+        },
+        c.req.path,
+        "Agent wallet state",
+      ),
+    );
+  });
+
+  api.post("/agents/delegated/prepare", async (c) => {
+    const user = person(c);
+    const unsigned = await services.custody(c.get("requestId")).prepareDelegatedUser(user.id);
+    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/delegated/confirm", async (c) => {
+    const user = person(c);
+    const signed = signedActivity(await jsonBody(c));
+    const saved = await services.custody(c.get("requestId")).confirmDelegatedUser(user.id, signed);
+    return c.json(
+      successEnvelope(
+        { delegated_user_id: saved.delegatedUserId },
+        c.req.path,
+        "Pickler has its seat",
+      ),
+    );
+  });
+
+  // A wallet already minted under this handle and never linked is answered as `existing`, and
+  // the browser skips the stamp: a retry never leaves a second wallet behind. `policies_approved`
+  // says its rules were approved too, so the browser skips that prompt as well.
+  api.post("/agents/wallet/prepare", async (c) => {
+    const user = person(c);
+    const body = await jsonBody(c);
+    const prepared = await services
+      .custody(c.get("requestId"))
+      .prepareAgentWallet(user.id, handle(body));
+    if ("existing" in prepared) {
+      return c.json(
+        successEnvelope(
+          {
+            existing: {
+              wallet_id: prepared.existing.walletId,
+              address: prepared.existing.address,
+              policies_approved: prepared.existing.policiesApproved,
+            },
+          },
+          c.req.path,
+          "Wallet already exists",
+        ),
+      );
+    }
+    return c.json(successEnvelope(unsignedDto(prepared.unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/wallet/confirm", async (c) => {
+    const user = person(c);
+    const body = await jsonBody(c);
+    const wallet = await services
+      .custody(c.get("requestId"))
+      .confirmAgentWallet(user.id, handle(body), signedActivity(body));
+    return c.json(
+      successEnvelope(
+        { wallet_id: wallet.walletId, address: wallet.address },
+        c.req.path,
+        "Wallet created",
+      ),
+    );
+  });
+
+  // Whether this is the person's first agent — and so whether Pickler's self-delete policy rides
+  // along — is decided by core from what is linked, never by the caller. The body must be empty
+  // or `{}`: a field here (the old `first_agent` included) is refused rather than ignored.
+  api.post("/agents/wallet/:walletId/policies/prepare", async (c) => {
+    const user = person(c);
+    const walletId = walletIdParam(c.req.param("walletId"));
+    await emptyBody(c);
+    const unsigned = await services.custody(c.get("requestId")).preparePolicies(user.id, walletId);
+    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+  });
+
+  api.post("/agents/wallet/:walletId/policies/confirm", async (c) => {
+    const user = person(c);
+    const walletId = walletIdParam(c.req.param("walletId"));
+    const signed = signedActivity(await jsonBody(c));
+    const confirmed = await services
+      .custody(c.get("requestId"))
+      .confirmPolicies(user.id, walletId, signed);
+    return c.json(
+      successEnvelope({ policy_ids: confirmed.policyIds }, c.req.path, "Policies approved"),
+    );
+  });
+
   return api;
+}
+
+function walletIdParam(value: string): string {
+  if (!WALLET_ID.test(value)) {
+    throw badRequest("Invalid wallet id");
+  }
+  return value;
 }

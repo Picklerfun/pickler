@@ -1,0 +1,4 @@
+DROP INDEX "pickler"."one_open_paper_position";--> statement-breakpoint
+ALTER TABLE "pickler"."paper_orders" ADD COLUMN "settlement" jsonb;--> statement-breakpoint
+CREATE UNIQUE INDEX "one_open_paper_position" ON "pickler"."paper_orders" USING btree ("tenant_id","agent_id","market_id") WHERE "pickler"."paper_orders"."status" = 'pending' OR ("pickler"."paper_orders"."status" = 'filled' AND "pickler"."paper_orders"."settlement" IS NULL);--> statement-breakpoint
+ALTER TABLE "pickler"."paper_orders" ADD CONSTRAINT "paper_settlement_requires_fill" CHECK ("pickler"."paper_orders"."settlement" IS NULL OR ("pickler"."paper_orders"."status" = 'filled' AND "pickler"."paper_orders"."fill" IS NOT NULL));

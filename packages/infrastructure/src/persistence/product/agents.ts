@@ -84,6 +84,16 @@ export const agentProfiles = agentsSchema
       beat: text("beat"),
       accent: accent("accent").notNull().default("lime"),
       xHandle: text("x_handle"),
+      /** Which venue the agent trades on. Public; the runtime's config is not. */
+      venue: text("venue").notNull().default("predictions"),
+      /**
+       * The persona's prose: how it sounds (vibe, voice), how it decides, and what it does when it
+       * is wrong. Authored at creation.
+       */
+      vibe: text("vibe").notNull().default(""),
+      voice: text("voice").notNull().default(""),
+      decides: text("decides").notNull().default(""),
+      wrong: text("wrong").notNull().default(""),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [
@@ -93,6 +103,11 @@ export const agentProfiles = agentsSchema
       check("agent_profiles_blurb_length", sql`char_length(${t.blurb}) <= 280`),
       check("agent_profiles_beat_length", sql`char_length(${t.beat}) <= 40`),
       check("agent_profiles_x_handle_format", sql`${t.xHandle} ~ '^@[A-Za-z0-9_]{1,15}$'`),
+      check("agent_profiles_venue", sql`${t.venue} in ('predictions', 'perps', 'both')`),
+      check("agent_profiles_vibe_length", sql`char_length(${t.vibe}) <= 120`),
+      check("agent_profiles_voice_length", sql`char_length(${t.voice}) <= 120`),
+      check("agent_profiles_decides_length", sql`char_length(${t.decides}) <= 280`),
+      check("agent_profiles_wrong_length", sql`char_length(${t.wrong}) <= 280`),
     ],
   )
   .enableRLS();

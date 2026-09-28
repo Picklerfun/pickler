@@ -40,7 +40,7 @@ test(
     };
     await withFixtureUserCleanup(db, async (trackCreatedUser) => {
       await assertControlledDatabase(db, process.env.CONTROLLED_TEST_DATABASE_ID);
-      assert.equal((await request("/console/agents")).status, 401);
+      assert.equal((await request("/studio/agents")).status, 401);
       for (const index of [0, 1]) {
         const email = `direct-${suffix}-${index}@example.com`;
         const password = randomUUID() + "aA1!";
@@ -73,22 +73,48 @@ test(
           ).status,
           201,
         );
-        assert.equal((await request("/console/me", token)).body.enabled, false);
-        const config = (await request("/console/options", token)).body.defaults;
+        assert.equal((await request("/studio/me", token)).body.enabled, false);
+        const config = (await request("/studio/options", token)).body.defaults;
         Object.assign(config, {
           marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
           plugins: { version: 1, enabled: ["polymarket", "exa"] },
         });
-        const body = { name: "Controlled agent", handle: `a${suffix}${index}`, config };
-        assert.equal((await request("/console/agents", token, body)).status, 403);
+        // An agent is created with its wallet, or not at all: seed the wallet this person owns,
+        // with the approved policy ids `confirmPolicies` would have recorded, so the create
+        // request below has one to link. The request itself carries only the wallet's id — the
+        // server is the only source of which policies it links.
+        const walletId = `wallet-${randomUUID().replaceAll("-", "")}`;
+        await db.query(
+          `INSERT INTO wallets.wallets
+             (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
+           VALUES ($1, $2, $3, 'agent', 'Controlled agent', $4)`,
+          [user.id, walletId, `sub-${randomUUID().replaceAll("-", "")}`, ["p1", "p2"]],
+        );
+        const body = {
+          name: "Controlled agent",
+          handle: `a${suffix}${index}`,
+          config,
+          profile: {
+            accent: "lime",
+            blurb: "",
+            venue: "predictions",
+            vibe: "",
+            voice: "",
+            decides: "",
+            wrong: "",
+            xHandle: null,
+          },
+          wallet: { walletId },
+        };
+        assert.equal((await request("/studio/agents", token, body)).status, 403);
         await db.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
           user.id,
         ]);
         const key = randomUUID();
-        const agent = await request("/console/agents", token, body, "POST", key);
+        const agent = await request("/studio/agents", token, body, "POST", key);
         assert.equal(agent.status, 201);
         assert.equal(
-          (await request("/console/agents", token, body, "POST", key)).body.id,
+          (await request("/studio/agents", token, body, "POST", key)).body.id,
           agent.body.id,
         );
         assert.equal(agent.body.scheduleEnabled, false);
@@ -98,7 +124,7 @@ test(
         const actor = actors[index % 2]!;
         const key = randomUUID();
         const queued = await request(
-          `/console/agents/${actor.agent}/runs`,
+          `/studio/agents/${actor.agent}/runs`,
           actor.token,
           { marketId: String(index + 1) },
           "POST",
@@ -109,7 +135,7 @@ test(
         assert.equal(
           (
             await request(
-              `/console/agents/${actor.agent}/runs`,
+              `/studio/agents/${actor.agent}/runs`,
               actor.token,
               { marketId: String(index + 1) },
               "POST",
@@ -119,13 +145,13 @@ test(
           runId,
         );
         assert.equal(
-          (await request(`/console/runs/${runId}`, actors[(index + 1) % 2]!.token)).status,
+          (await request(`/studio/runs/${runId}`, actors[(index + 1) % 2]!.token)).status,
           404,
         );
         let result;
         const deadline = Date.now() + 30000;
         do {
-          const polled = await request(`/console/runs/${runId}`, actor.token);
+          const polled = await request(`/studio/runs/${runId}`, actor.token);
           assert.equal(polled.status, 200);
           assert.match(polled.headers.get("cache-control")!, /no-store/);
           result = polled.body;
@@ -140,11 +166,11 @@ test(
         } else {
           assert.equal(result.decision.action, scenario.toUpperCase());
         }
-        const events = await request(`/console/runs/${runId}/events`, actor.token);
+        const events = await request(`/studio/runs/${runId}/events`, actor.token);
         assert.equal(events.status, 200);
         assert.ok(events.body.events.length > 0);
         assert.equal(
-          (await request(`/console/runs/${runId}/events`, actors[(index + 1) % 2]!.token)).status,
+          (await request(`/studio/runs/${runId}/events`, actors[(index + 1) % 2]!.token)).status,
           404,
         );
         console.log(
@@ -165,7 +191,7 @@ test(
         });
         assert.equal(refreshed.status, 200);
         const session = await refreshed.json();
-        assert.equal((await request("/console/me", session.access_token)).status, 200);
+        assert.equal((await request("/studio/me", session.access_token)).status, 200);
         const logout = await fetch(status.API_URL + "/auth/v1/logout", {
           method: "POST",
           headers: { apikey: status.ANON_KEY, Authorization: `Bearer ${session.access_token}` },
@@ -175,7 +201,7 @@ test(
           actor.id,
         ]);
         assert.equal(
-          (await request(`/console/agents/${actor.agent}/runs`, session.access_token, {})).status,
+          (await request(`/studio/agents/${actor.agent}/runs`, session.access_token, {})).status,
           403,
         );
       }

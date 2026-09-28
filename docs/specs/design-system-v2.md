@@ -219,13 +219,13 @@ from `-0.02em` to `-0.05em`. Small labels run 10–12px at weight 600 with `lett
 
 ## 5. The five screens
 
-| Canvas                     | Route                   | Surface                              |
-| -------------------------- | ----------------------- | ------------------------------------ |
-| `Pickler Landing Waitlist` | `/`                     | light                                |
-| `Portfolio Light`          | `/portfolio`            | light, with a dark total-value panel |
-| `Pickler Studio v4`        | `/console`              | dark                                 |
-| `Pickler Studio Empty`     | `/console`, empty state | dark                                 |
-| `Pickler Account`          | `/account`              | dark, with a light wallet card       |
+| Canvas                     | Route                  | Surface                              |
+| -------------------------- | ---------------------- | ------------------------------------ |
+| `Pickler Landing Waitlist` | `/`                    | light                                |
+| `Portfolio Light`          | `/portfolio`           | light, with a dark total-value panel |
+| `Pickler Studio v4`        | `/studio`              | dark                                 |
+| `Pickler Studio Empty`     | `/studio`, empty state | dark                                 |
+| `Pickler Account`          | `/account`             | dark, with a light wallet card       |
 
 The landing is shorter than the one it replaces: a ticker tape, a nav, a one-word hero, a three-part
 hero row, a "runs on" strip, four steps, the waitlist form and a footer. Sections present in the
@@ -293,7 +293,7 @@ colours and the ratio.
 routes and assert each one resolves to a value in §4. A colour that appears on screen and is in no
 token is a literal someone typed, wherever it lives.
 
-**Both surfaces, and inversion.** Assert `/` and `/portfolio` paint a white ground and `/console`
+**Both surfaces, and inversion.** Assert `/` and `/portfolio` paint a white ground and `/studio`
 and `/account` a night-blue one. Then assert the nested case, which is the mechanism the whole
 system rests on: the landing's "FOUR MOVES" panel must compute to the dark ground while its parent
 computes to white, and Account's wallet card the reverse. If nesting does not invert, the system is
@@ -485,7 +485,77 @@ pairs against a composition that is about to change. The order that works when t
 is to convert first and design against what the pairs actually paint. The 5 remaining literals in
 `styles.css` are the `--pk-*-edge` definitions and belong there.
 
-Every colour in both products that any route or interaction can reach resolves to a token.
+**Correction, made later and from outside this work.** The sentence that stood here said every
+colour in both products that any route or interaction can reach resolves to a token. It was false,
+and it contradicted the paragraph directly above it: `auth` and `apply` are reachable routes, their
+39 literals were recorded as deferred, and the blanket claim was written anyway.
+
+The measurement makes it worse. **No route in the `(auth)` group has ever been in the design
+checks** — `scripts/design/routes.mjs` has 15 routes and none of them is `/signin` or `/signup`. So
+those screens were not merely unconverted, they were never measured. Pointing a route at `/signup`
+finds eight violation classes, including `#5AD8FF` used as a raw background and `#FFFFFF` at 0.45
+alpha as a border.
+
+**Closed afterwards.** `/signin` and `/signup` are now in `routes.mjs` and the four checks are clean
+over **seventeen** routes, with no literal colour left in any declaration in the product — only in
+comments explaining why the tokens exist.
+
+Measuring those two screens for the first time found nine violation classes and two defects nothing
+else could have reported.
+
+`apps/web/src/lib/accent.ts` held `#5AD8FF` for `cyan`, a value in no token in the palette, while
+`ACCENT_PALETTE` already routed cyan's ground and ink to `indigo` — so a cyan agent painted a cyan
+tetromino over an indigo tint. The value had drifted from a palette that no longer contained it.
+
+And the shared button's hover **never painted**. `.pk-button[data-variant="…"]:hover:not(:disabled)`
+is a specificity of (0,4,0) against a feature rule's (0,3,0), so the "Ask · \$25" button hovered to
+lime in the ask flow and to the dark surface in the directory, while its ink stayed
+`--pk-on-violet`: **1.14:1 on `/agents`**, a label that all but vanishes under the cursor. No check
+found that. Someone opened the screenshot.
+
+A dark-surface ink was also hard-coded onto a light page — `#b49bff` on a bullet at **2.31:1**
+against white, very nearly not drawn. And the duplicated background gradient turned out to matter
+more than its two copies suggested: its outermost stop is the base of eight `rgba(5, 6, 26, α)`
+scrims elsewhere, so it was a ground the product leant on in nine places and had never named.
 
 The studio's rail truncates "Public profile" to "Public pro…" at 1400px. Left as drawn; it is a
 layout question for the next pass rather than a token one.
+
+### Fifteen routes became thirty-two
+
+Two sweeps after the auth gap closed the rest of the unmeasured ground: twelve marketplace screens
+that nothing had ever rendered, then the filled market ticket.
+
+**`.legendMark` was doing the opposite of its job.** `1px solid rgba(255, 255, 255, 0.5)` on a
+`rgb(245, 246, 250)` panel — a dark-ground leftover on a light surface, washing each swatch's edge
+into the panel instead of lifting it off. The same declaration that separates on one ground erases
+on the other, and only compositing against the real ground shows it.
+
+**Five scrim weights collapsed to two, decided by measurement rather than taste.** The eight
+`rgba(5, 6, 26, α)` scrims used five alphas. Sampled against 1.36M real sky pixels and composited
+in Lab, every adjacent step falls under the just-noticeable threshold while the span does not —
+0.45≈0.5, 0.55≈0.6, and 0.45≠0.6 at dE 4.05. A greedy reading of "collapse what nobody can point
+at" gives one weight and a timid one gives three; the non-transitivity is what decides it, and only
+measuring shows that. The eighth scrim turned out not to belong to that scene at all: it sits on
+the ticket's light panel, where the same alpha step is dE 9.3 rather than 2.
+
+**A hook to click before measuring, and the hazard it introduced.** `/markets/[symbol]`'s ticket
+is behind a grid-square click, so `act: { click, proves }` reaches it with no production code — the
+squares already carry stable `aria-label`s. It carries its own proof because the empty ticket shares
+the filled one's title id and reads "PICK A SQUARE.", so a bare title selector would have proved
+itself.
+
+Its first run reported `#EDF7CE at 0.106 alpha`. That value is impossible — the token is a solid hex
+— **and the impossibility is what prompted looking rather than fixing**. `.cell` carries a 140ms
+background transition and the hook had measured eleven squares mid-fade. It now waits on
+`document.getAnimations()` filtered to transitions, bounded, rather than on a duration, because the
+duration is a token and a hard-coded wait ages. Every other route measures long after `networkidle`;
+clicking immediately before measuring is new, and any future `act` inherits the fix.
+
+The filled ticket measures **335 paints and 107 text elements** against 213 and 71 empty — roughly a
+third of that screen had never been rendered by anything — and it is clean on all four checks.
+
+Two roughnesses are flagged rather than fixed, both wrapping rather than tokens: the take-profit and
+time steppers sit at unequal heights because one label wraps, and the four preview pills have very
+uneven text. The review phase behind them needs a connected wallet and stays unmeasured, so
+`markets .order` keeps its literal with a comment rather than being converted on a resemblance.

@@ -1,15 +1,22 @@
 "use client";
 
-import type { DirectoryAgentDto } from "@pickler/api-schema";
+import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { ButtonLink, Chip, Tag } from "@pickler/ui";
 import { useMemo, useState } from "react";
 import styles from "../agents.module.css";
+import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
-import { AgentAvatar } from "./agent-parts";
+import { AgentAvatar, EmptyScreen } from "./agent-parts";
 
 const scoreTone = (score: number) =>
   score >= 70 ? styles.toneWin : score >= 45 ? styles.toneCurve : styles.toneLoss;
+
+/** An agent with no read service is not taking questions. */
+const takingQuestions = (
+  entry: DirectoryAgentDto,
+): entry is DirectoryAgentDto & { service: ReadServiceDto } =>
+  entry.service !== null && entry.service.open;
 
 /**
  * Who takes a paid read, on what, for how much. The order comes from the API — open agents first,
@@ -30,9 +37,27 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
     () =>
       agents
         .filter((entry) => beat === "all" || entry.beat === beat)
-        .filter((entry) => !openOnly || entry.service.open),
+        .filter((entry) => !openOnly || takingQuestions(entry)),
     [agents, beat, openOnly],
   );
+
+  // Nobody yet is a screen of its own, not a beat filter with nothing under it.
+  if (noAgents(agents)) {
+    return (
+      <main className={styles.main}>
+        <h1 className={styles.boardTitle}>AGENTS</h1>
+        <EmptyScreen
+          id="agents-empty"
+          label="No agents yet"
+          kicker="NOBODY HERE YET"
+          title="The first agents are being built."
+        >
+          When one goes live it appears here with its beat, its colour and its record. The record
+          starts at nothing, which is the honest place to start.
+        </EmptyScreen>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.main}>
@@ -66,7 +91,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
           <article
             key={entry.agent.handle}
             className={styles.agentCard}
-            data-open={entry.service.open}
+            data-open={takingQuestions(entry)}
           >
             <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
               <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
@@ -75,7 +100,11 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
                 <span className={styles.label}>{entry.beat.toUpperCase()}</span>
               </span>
               <span className={styles.agentCardScore}>
-                <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                {entry.score === null ? (
+                  <strong>—</strong>
+                ) : (
+                  <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                )}
                 <span className={styles.label}>SCORE</span>
               </span>
             </Link>
@@ -101,12 +130,12 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
               </div>
               <div className={styles.agentStat}>
                 <dt className={styles.label}>REPLIES IN</dt>
-                <dd>{entry.service.typical}</dd>
+                <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
               </div>
             </dl>
 
             <div className={styles.agentCardActions}>
-              {entry.service.open ? (
+              {takingQuestions(entry) ? (
                 <ButtonLink
                   as={Link}
                   href={`/agents/${entry.agent.handle}/ask`}

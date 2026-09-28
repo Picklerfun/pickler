@@ -24,6 +24,11 @@ export function createResearchWorker(deps: {
               await env.RESEARCH_QUEUE.send(body);
             },
           });
+          try {
+            await env.TRADING_QUEUE?.send({ kind: "trading-wakeup" });
+          } catch {
+            console.error("Trading wakeup awaits reconciliation");
+          }
           message.ack();
         } catch {
           console.error("Research wakeup failed; durable state will be reconciled");

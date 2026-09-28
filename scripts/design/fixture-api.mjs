@@ -3,9 +3,11 @@
  *
  * Every marketplace and auth route renders on the server and asks the API for its data, so without
  * one they answer 500 and a surface check reads a stack trace instead of a page. This serves the
- * same endpoints the real worker serves, and it invents nothing: the sample adapters, the use cases
- * and the DTO mappers are the product's own, imported from where the worker imports them. If a
- * response shape changes, this changes with it or fails to start.
+ * same endpoints the real worker serves. The invented agents are the harness's own, in ./fixtures:
+ * the product reads its agents from the database, and a marketplace with nothing in it is what a
+ * person sees at launch, not what a design check should be measuring. The market board, the landing
+ * model, the use cases and the DTO mappers are still the product's own, imported from where the
+ * worker imports them, so if a response shape changes this changes with it or fails to start.
  *
  * It is a verification fixture, not product code. Nothing ships against it, and the only thing that
  * points at it is PICKLER_API_LOCAL_URL, which api-client.ts already refuses unless it is loopback.
@@ -34,11 +36,11 @@ import {
   createListReads,
 } from "@pickler/core";
 import {
-  createSampleAgentDirectory,
   createSampleLandingReadModel,
   createSampleMarketBoard,
   systemClock,
 } from "@pickler/infrastructure";
+import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
 import { toLandingResponse } from "../../workers/api/src/growth/landing-response.ts";
 import {
   toAgentPersonaDto,
@@ -79,31 +81,37 @@ const one = (value, map) => (value ? map(value) : null);
 /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
 const routes = [
   [/^\/v1\/landing$/, async () => toLandingResponse(await services.getLanding())],
-  [/^\/v1\/demo\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+  [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
   [
-    /^\/v1\/demo\/directory$/,
+    /^\/v1\/marketplace\/directory$/,
     async () => (await services.listDirectory()).map(toDirectoryAgentDto),
   ],
-  [/^\/v1\/demo\/reads$/, async () => (await services.listReads()).map(toAgentReadDto)],
-  [/^\/v1\/demo\/reads\/([^/]+)$/, async (id) => one(await services.getRead(id), toAgentReadDto)],
+  [/^\/v1\/marketplace\/reads$/, async () => (await services.listReads()).map(toAgentReadDto)],
   [
-    /^\/v1\/demo\/profiles\/([^/]+)$/,
+    /^\/v1\/marketplace\/reads\/([^/]+)$/,
+    async (id) => one(await services.getRead(id), toAgentReadDto),
+  ],
+  [
+    /^\/v1\/marketplace\/profiles\/([^/]+)$/,
     async (ticker) => one(await services.getAgentProfile(ticker), toAgentProfileDto),
   ],
   [
-    /^\/v1\/demo\/profiles\/([^/]+)\/picks\/([^/]+)$/,
+    /^\/v1\/marketplace\/profiles\/([^/]+)\/picks\/([^/]+)$/,
     async (ticker, id) => one(await services.getPickDetail(ticker, id), toPickDetailDto),
   ],
   [
-    /^\/v1\/demo\/personas\/([^/]+)$/,
+    /^\/v1\/marketplace\/personas\/([^/]+)$/,
     async (handle) => one(await services.getAgentPersona(handle), toAgentPersonaDto),
   ],
-  [/^\/v1\/demo\/markets$/, async () => (await services.listMarkets()).map(toPerpMarketDto)],
+  [/^\/v1\/marketplace\/markets$/, async () => (await services.listMarkets()).map(toPerpMarketDto)],
   [
-    /^\/v1\/demo\/markets\/([^/]+)$/,
+    /^\/v1\/marketplace\/markets\/([^/]+)$/,
     async (symbol) => one(await services.getMarket(symbol), toMarketDetailDto),
   ],
-  [/^\/v1\/demo\/leaderboard$/, async () => toLeaderboardDto(await services.getLeaderboard())],
+  [
+    /^\/v1\/marketplace\/leaderboard$/,
+    async () => toLeaderboardDto(await services.getLeaderboard()),
+  ],
 ];
 
 const server = createServer(async (request, response) => {
@@ -116,7 +124,7 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(body));
   };
   // Analytics takes a range off the query string rather than the path, so it sits outside the table.
-  if (url.pathname === "/v1/demo/analytics") {
+  if (url.pathname === "/v1/marketplace/analytics") {
     const value = await services.getPlatformAnalytics(url.searchParams.get("range") ?? "30d");
     return send(200, toPlatformAnalyticsDto(value));
   }

@@ -232,7 +232,7 @@ The browser maps `DOMException` by name — `NotAllowedError` is a cancellation 
 `InvalidStateError` means already registered, `SecurityError` is almost always an `rp.id` mismatch
 and is logged with that hint. Turnkey messages are sanitised before they reach the interface.
 
-`TURNKEY_RPID` is `localhost` in development and the site domain in production. A wrong `rp.id` is
+`TURNKEY_RPID` is `localhost` in development and `studio.pickler.fun` in production (`product-hosts-v1.md` §3). A wrong `rp.id` is
 the most common cause of `SecurityError`; Relayer left that diagnosis in a comment and we keep it.
 
 ## 8. Testing

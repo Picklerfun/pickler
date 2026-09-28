@@ -4,6 +4,9 @@ import type { AgentLedger } from "./budget/agent-ledger";
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
   APP_ENV: string;
+  TRADING_EXECUTOR?: Fetcher;
+  TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
+  TRADING_ADMISSIONS_ENABLED?: string;
   ADMISSIONS_ENABLED?: string;
   DATABASE?: Hyperdrive;
   /** Loopback development only; hosted requests require DATABASE. */
@@ -24,6 +27,15 @@ export interface Env {
   TURNKEY_API_PUBLIC_KEY?: string;
   TURNKEY_API_PRIVATE_KEY?: string;
   TURNKEY_PARENT_ORG_ID?: string;
+  /**
+   * Pickler's delegated API key: the only credential of the non-root "Pickler" user each person
+   * creates inside their own sub-organization, with no rights beyond that wallet's policies. The
+   * public half (compressed P-256 hex) goes into the create_users activity; without it the agent
+   * wallet ceremony answers 503 and every other signing route is unaffected. The private half is
+   * held by Pickler, unused until live trading, and never logged.
+   */
+  TURNKEY_DELEGATED_API_PUBLIC_KEY?: string;
+  TURNKEY_DELEGATED_API_PRIVATE_KEY?: string;
   /** WebAuthn relying party: "localhost" in development, the site domain in production. */
   TURNKEY_RPID?: string;
   /** Shown in the operating system's passkey prompt. */
@@ -36,6 +48,20 @@ export interface Env {
   CHAIN_ID?: string;
   /** Provider endpoint for balance reads; absent falls back to the public, rate-limited one. */
   MONAD_RPC_URL?: string;
+  /**
+   * The domain a sign-in message must name. Absent leaves the wallet routes unmounted rather than
+   * mounted and unable to reject a signature harvested for another site.
+   */
+  SIWE_DOMAIN?: string;
+  /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
+  WALLET_EMAIL_DOMAIN?: string;
+  /**
+   * The OpenAI-compatible model the research worker uses. The studio drafts an agent from one
+   * line with it; without all three, drafting answers 503 and nothing else changes.
+   */
+  MODEL_BASE_URL?: string;
+  MODEL_ID?: string;
+  MODEL_API_KEY?: string;
 }
 
 export interface Variables {

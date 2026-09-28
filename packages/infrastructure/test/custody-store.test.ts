@@ -2,12 +2,68 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import type { RegistrationInput } from "@pickler/core";
+import {
+  DelegatedUserExistsError,
+  DepositAlreadyRecordedError,
+  type RegistrationInput,
+} from "@pickler/core";
 import { PostgresCustodyStore } from "../src/persistence/custody-store.js";
 import { createTestStore } from "./database.js";
 
 const hex = (length: number) =>
   `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
+
+/**
+ * A minimal agent, the way the studio writes one: the agent and its handle reference each other
+ * through deferrable foreign keys, so both inserts share one transaction. Returns the agent id.
+ */
+async function seedAgent(pool: Pool) {
+  const id = randomUUID();
+  const userId = randomUUID();
+  const workspaceId = randomUUID();
+  const handle = `h${id.slice(0, 8)}`;
+
+  await pool.query(`SELECT identity.create_profile($1, 'Maker', $2)`, [
+    userId,
+    `maker_${id.slice(0, 6)}`,
+  ]);
+  await pool.query(
+    `INSERT INTO identity.workspaces (id, owner_user_id, name) VALUES ($1, $2, 'w')`,
+    [workspaceId, userId],
+  );
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by)
+       VALUES ($1, $2, 'Halftime', $3, 'active', $4)`,
+      [id, workspaceId, handle, userId],
+    );
+    await client.query(`INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)`, [
+      handle,
+      id,
+    ]);
+    await client.query("COMMIT");
+  } catch (cause) {
+    await client.query("ROLLBACK");
+    throw cause;
+  } finally {
+    client.release();
+  }
+  return id;
+}
+
+/** A `wallets.wallets` row an `agent_wallets` row can reference. Returns its wallet id. */
+async function seedWalletRecord(pool: Pool) {
+  const walletId = `wallet-${hex(12)}`;
+  await pool.query(
+    `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name)
+     VALUES ($1, $2, $3, 'agent', 'Agent Wallet')`,
+    [randomUUID(), walletId, `sub-${hex(12)}`],
+  );
+  return walletId;
+}
 
 /** masterWalletId equals walletId because registration mints exactly one wallet. */
 function registration(overrides: Partial<RegistrationInput> = {}): RegistrationInput {
@@ -319,3 +375,232 @@ async function waitForLockWait(pool: Pool) {
   }
   assert.fail("the second delete never queued on the row lock");
 }
+
+test("an agent_wallets row with one policy id is refused", async (t) => {
+  const { store } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const walletId = await seedWalletRecord(store.pool);
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids)
+       VALUES ($1, $2, $3)`,
+      [agentId, walletId, ["policy-one"]],
+    ),
+    /agent_wallets_policies/,
+  );
+});
+
+test("two agent_wallets rows pointing at the same wallet_id are refused", async (t) => {
+  const { store } = await setup(t);
+  const firstAgentId = await seedAgent(store.pool);
+  const secondAgentId = await seedAgent(store.pool);
+  const walletId = await seedWalletRecord(store.pool);
+  const policyIds = ["policy-one", "policy-two"];
+
+  await store.pool.query(
+    `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+    [firstAgentId, walletId, policyIds],
+  );
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+      [secondAgentId, walletId, policyIds],
+    ),
+    /agent_wallets_wallet_key/,
+  );
+});
+
+test("a deposit with a malformed hash is refused", async (t) => {
+  const { store } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+
+  await assert.rejects(
+    store.pool.query(
+      `INSERT INTO wallets.deposits (agent_id, tx_hash, amount_micro_usd) VALUES ($1, $2, $3)`,
+      [agentId, "not-a-hash", 1_000_000],
+    ),
+    /deposits_tx_format/,
+  );
+});
+
+/** A registered person, so turnkey_orgs has a row the delegated user can be written on. */
+async function registered(custody: PostgresCustodyStore) {
+  const input = registration();
+  await custody.saveRegistration(input);
+  return input;
+}
+
+function agentWallet(userId: string, subOrganizationId: string, name = "halftime") {
+  return {
+    userId,
+    walletId: `wallet-${hex(12)}`,
+    subOrganizationId,
+    kind: "agent" as const,
+    name,
+    address: `0x${hex(40)}`,
+    path: "m/44'/60'/0'/0/0",
+  };
+}
+
+test("the delegated user is written once; the same id again is fine, another is refused", async (t) => {
+  const { custody } = await setup(t);
+  const person = await registered(custody);
+  assert.equal(await custody.delegatedUserId(person.userId), null);
+
+  await custody.saveDelegatedUser(person.userId, "da-1");
+  await custody.saveDelegatedUser(person.userId, "da-1");
+
+  assert.equal(await custody.delegatedUserId(person.userId), "da-1");
+  await assert.rejects(custody.saveDelegatedUser(person.userId, "da-2"), DelegatedUserExistsError);
+  assert.equal(await custody.delegatedUserId(person.userId), "da-1");
+  // Nobody's row to write on: refused rather than silently ignored.
+  await assert.rejects(custody.saveDelegatedUser(randomUUID(), "da-1"), DelegatedUserExistsError);
+});
+
+test("an agent wallet lands with its account; the master lookup is unaffected", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+
+  await custody.saveWallet(wallet);
+
+  const { rows } = await store.pool.query(
+    `SELECT w.kind, w.name, a.address, a.path
+       FROM wallets.wallets w JOIN wallets.wallet_accounts a USING (wallet_id)
+      WHERE w.wallet_id = $1`,
+    [wallet.walletId],
+  );
+  assert.deepEqual(rows, [
+    { kind: "agent", name: "halftime", address: wallet.address, path: wallet.path },
+  ]);
+  assert.equal((await custody.findByUserId(person.userId))?.address, person.address);
+  assert.deepEqual(await custody.findOwnedAgentWallet(person.userId, wallet.walletId), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+  });
+  assert.equal(await custody.findOwnedAgentWallet(randomUUID(), wallet.walletId), null);
+  assert.equal(await custody.findOwnedAgentWallet(person.userId, person.walletId), null);
+});
+
+test("saving the same wallet twice for its owner is a no-op; for someone else it is refused", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+
+  await custody.saveWallet(wallet);
+  await custody.saveWallet(wallet);
+
+  const { rows } = await store.pool.query(
+    `SELECT (SELECT count(*) FROM wallets.wallets WHERE wallet_id = $1) AS wallets,
+            (SELECT count(*) FROM wallets.wallet_accounts WHERE wallet_id = $1) AS accounts`,
+    [wallet.walletId],
+  );
+  assert.deepEqual(rows, [{ wallets: "1", accounts: "1" }]);
+
+  const stranger = await registered(custody);
+  await assert.rejects(
+    custody.saveWallet({ ...wallet, userId: stranger.userId }),
+    /another person/,
+  );
+  assert.equal(await custody.findOwnedAgentWallet(stranger.userId, wallet.walletId), null);
+});
+
+test("a wallet whose account is refused leaves no wallets row behind", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = { ...agentWallet(person.userId, person.subOrganizationId), address: "0xnope" };
+
+  await assert.rejects(custody.saveWallet(wallet));
+
+  const { rowCount } = await store.pool.query(
+    "SELECT 1 FROM wallets.wallets WHERE wallet_id = $1",
+    [wallet.walletId],
+  );
+  assert.equal(rowCount, 0);
+});
+
+test("an orphan wallet is found before its link and not after; the link decides first agent and findAgentWallet", async (t) => {
+  const { store, custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId);
+  await custody.saveWallet(wallet);
+  // Someone else's wallet under the same name must never be offered.
+  const stranger = await registered(custody);
+  await custody.saveWallet(agentWallet(stranger.userId, stranger.subOrganizationId));
+
+  assert.deepEqual(await custody.findOrphanWallet(person.userId, "halftime"), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+    approvedPolicyIds: null,
+  });
+  assert.equal(await custody.findOrphanWallet(person.userId, "another"), null);
+  // Rules approved before the attempt stopped travel with the orphan, so a retry can skip them.
+  await custody.saveApprovedPolicies(person.userId, wallet.walletId, ["p1", "p2", "p3"]);
+  assert.deepEqual((await custody.findOrphanWallet(person.userId, "halftime"))?.approvedPolicyIds, [
+    "p1",
+    "p2",
+    "p3",
+  ]);
+
+  const agentId = await seedAgent(store.pool);
+  assert.equal(await custody.findAgentWallet(agentId), null);
+  // Not linked yet: the ceremony in progress is this person's first agent's.
+  assert.equal(await custody.hasLinkedAgentWallet(person.userId), false);
+  await store.pool.query(
+    `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+    [agentId, wallet.walletId, ["p1", "p2"]],
+  );
+
+  assert.equal(await custody.findOrphanWallet(person.userId, "halftime"), null);
+  assert.equal(await custody.hasLinkedAgentWallet(person.userId), true);
+  assert.equal(await custody.hasLinkedAgentWallet(stranger.userId), false);
+  assert.deepEqual(await custody.findAgentWallet(agentId), {
+    walletId: wallet.walletId,
+    address: wallet.address,
+  });
+});
+
+test("a deposit hash is lowercased before it is stored", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"AB".repeat(32)}`;
+
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 2_500_000n });
+
+  const { rows } = await store.pool.query(
+    "SELECT tx_hash, amount_micro_usd FROM wallets.deposits WHERE agent_id = $1",
+    [agentId],
+  );
+  assert.deepEqual(rows, [{ tx_hash: hash.toLowerCase(), amount_micro_usd: "2500000" }]);
+});
+
+test("recording the same deposit hash twice is DepositAlreadyRecordedError", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"cd".repeat(32)}`;
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 10_000_000n });
+
+  await assert.rejects(
+    custody.saveDeposit({
+      agentId,
+      txHash: hash.toUpperCase().replace("0X", "0x"),
+      amountMicroUsd: 10_000_000n,
+    }),
+    DepositAlreadyRecordedError,
+  );
+});
+
+test("a recorded deposit is found by its hash in any case, and only that one", async (t) => {
+  const { store, custody } = await setup(t);
+  const agentId = await seedAgent(store.pool);
+  const hash = `0x${"ef".repeat(32)}`;
+  assert.equal(await custody.depositRecorded(hash), false);
+
+  await custody.saveDeposit({ agentId, txHash: hash, amountMicroUsd: 10_000_000n });
+
+  assert.equal(await custody.depositRecorded(hash), true);
+  assert.equal(await custody.depositRecorded(`0x${"EF".repeat(32)}`), true);
+  assert.equal(await custody.depositRecorded(`0x${"ee".repeat(32)}`), false);
+});

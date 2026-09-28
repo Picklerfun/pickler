@@ -12,13 +12,16 @@ Auth values are the exception: authentication uses its publishable key in the br
 ```text
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
-  auth/callback/route.ts    # Supabase code exchange, cookies, return to console
-  console/page.tsx          # Private research UI
+  auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
+  studio/page.tsx           # The studio: opens on the home; no agents sends you to /studio/new
+  studio/new/page.tsx       # Creating an agent: `?step=` names the screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
   markets/                  # The perpetuals board and one market's level × time surface
-src/features/console/      # Agent form, history, research result and API client
+src/features/studio/       # Studio sections, history, research result and API client
+src/features/studio/create # Creating an agent: describe, seven steps, review, passkey ceremony, first run
+src/features/studio/home   # The home after the first run: status, wallet and deposit, schedule, picks
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -28,8 +31,8 @@ src/server/
 ```
 
 Landing, signup, applications, token pages, paid reads, wallet and ranking designs are retained.
-Public demo content comes from explicitly sample-labeled API endpoints; research results never
-appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
+The marketplace reads `/api/v1/marketplace/*`: agents come from the database, the perpetuals board
+is still sample content, and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
 Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in URLs or JSON.
 
 ## Three-layer implementation example
@@ -131,7 +134,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator console lives at `/console` and calls the Hono API. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -143,7 +146,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Unified API transport and private console
+## Unified API transport and private studio
 
 `src/server/container.ts`
 is now a typed API client facade. No core or infrastructure dependency is permitted anywhere
@@ -152,17 +155,17 @@ Binding; the explicit loopback-only fallback is for local development. Cookies a
 are transported, never interpreted as workspace authority by the web Worker. Hono validates
 identity and owns business decisions. Only public Supabase Auth configuration reaches the web.
 
-`features/console` and `/console` provide private agent configuration, manual research, schedule
+`features/studio` and `/studio` provide private agent configuration, manual research, schedule
 and pause controls, history and evidence. Reuse the existing shared control system with
 `data-surface="dark"`. API mutation errors remain explicit; do not automatically retry paid
 research. Reuse an idempotency key after an uncertain admission response. Poll pending/active
 research every three seconds, stop at terminal status, suspend in hidden tabs and clean up
 requests/timers on navigation. Results are not added to the public sample directory.
 
-The auth callback exchanges a Supabase authorization code and returns to the console. Console
+The auth callback exchanges a Supabase authorization code and returns to the studio. Studio
 onboarding finishes missing profiles and idempotently provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
-the console; public wallet/token/read demonstrations retain their existing design and limits.
+^the studio; public wallet/token/read demonstrations retain their existing design and limits.
 
 ## Worker build
 
@@ -170,16 +173,169 @@ OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --w
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.
 
-## Studio console integration
+Worker branch previews use the explicit `previews` block in `wrangler.jsonc`. They retain the
+production Next.js runtime mode but deliberately have no service bindings, including API and
+self-reference. They validate the web build and presentation only; backend routes and features
+requiring those bindings are unavailable. A successful preview is not full-stack acceptance.
 
-The private console uses the Studio shell and sections under `features/console/sections`.
+## Studio integration
+
+The private studio uses the Studio shell and sections under `features/studio/sections`, reached
+from the home's Menu.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
-`features/console/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
+The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
+the draft, the edge as the blurb, the venue from where it trades).
+Swatches paint from `accentVars`, never from a hue name typed into a token.
+`features/studio/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
 the selected trace every three seconds; stop when terminal unless scheduling needs discovery.
 Abort on page hiding, agent changes and unmount. Mutations trigger an immediate read refresh.
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
+
+## The new creation flow's pure logic
+
+`features/studio/create/draft.ts` is the "Pickler Create First Agent v2" canvas's rules with no
+React and no transport: the `Draft` the Describe screen and seven manual steps (`name, trades,
+looks, reads, skills, decides, review`, `ORDER`) build up, `ready(step, draft)` for each step's
+gate, `soonRows` for the Soon venue/beat rows that block Review, the six `reviewRows` and their
+text builders (`readsText` is exported; `tradesText`, `callsText`, `skillsText` and `decidesText`
+are private to the module), `fromApiDraft`
+to fill the form from `POST /v1/studio/agents/draft`, `addSite`/`toggleIn` for the reads and looks
+steps, and `toCreate(draft, walletId, defaults)` for the `POST /agents` body, following the same
+`{ ...defaults, ... }` shape core's `draftToConfig` builds (`defaults` is `/options`'s answer).
+The web cannot be turned off in this plan, so there is no `webOn` field, only `webMode`.
+
+`SOON_VENUES`, `SOON_BEATS`, `SPORT_SUB_IDS`, `STYLE_POLICIES` and `SUGGESTED_SKILLS` inside this
+file are literal copies of the same-named exports in `@pickler/api-schema` (`src/studio.ts`), not
+imports of them: `apps/web` is CommonJS to node's module resolver and `@pickler/api-schema`
+publishes only an `"import"` condition, so a module that reads its values at load time cannot be
+required by a `node:test` here — the same constraint `features/wallet/lib/handles.ts` documents.
+Only types cross the boundary (`import type`), which cost nothing because they are erased before
+this ever runs. Core is the one authority for all five; api-schema's copies are pinned against it
+by `workers/api/test/accent-venue-mirror.test.ts`, and this file's five copies are exported and
+pinned against api-schema's own values by a test in `studio-create-draft.test.ts` that reaches
+api-schema with a dynamic `import()` — the one way that test file can still resolve a package
+publishing only an `"import"` condition, since a dynamic import always goes through node's ESM
+loader even from a CommonJS file, unlike this module's own static `import`.
+
+`api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
+funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
+`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`), `updateConfig`,
+`setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
+`depositPrepare`/`depositConfirm`, and
+the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
+`confirmDelegated`, `prepareWallet`/`confirmWallet`, `preparePolicies`/`confirmPolicies`) plus the
+public `handleAvailable`. The signing and handle routes answer Relayer's envelope
+(`{ success, message, data, ... }`); `envelopeApi` unwraps it into the same `StudioError` the
+plain-JSON studio routes throw through `studioApi`, so a caller branches on `errorCode` the same
+way regardless of which family a request belongs to.
+
+## Creating an agent
+
+`/studio/new` is the only place an agent is created, and `/studio` sends a person with no agents
+there (the old empty studio, its stepped flow and `AgentForm` are gone). `create/create.tsx` owns the
+screen: a `useReducer` over `flowReducer` (`create/flow.ts`, pure and tested in
+`studio-create-flow.test.ts`) holding the `Draft`, the screen, `auto`/`manual` mode and the Edit
+snapshot that Cancel restores. `?step=` mirrors the screen through `router.replace`; `describe` is
+the first screen's URL name. Outside production a link past Describe opens on the canvas's example
+draft (`sampleDraft`) so the design harness has every screen to measure — one route per step in
+`scripts/design/routes.mjs`, each proving `#create-<step>`. Without Supabase configured it renders
+from the preview options and says so; nothing can be drafted, checked or created there. Outside
+production, a browser that reached the screen with no Supabase session (the middleware lets a
+request through on the cookie's name alone) renders the same labelled preview on `previewOptions()`
+instead of redirecting to `/signin`; in production it still redirects. That is what the design
+harness sees: `scripts/design/lib/render.mjs` adds a dummy `sb-<project-ref>-auth-token` cookie,
+named from `NEXT_PUBLIC_SUPABASE_URL` (or `DESIGN_SESSION_COOKIE`), to studio routes on a loopback
+base URL only. It passes the middleware's presence check and is not a session: the API still
+refuses every call behind it. The reading screen opened by a deep link on the sample draft is held
+(`FlowState.held`): every row shows at once and it does not run on to the review, so it can be
+measured. Reached from Describe with a real draft, it reveals and advances as before.
+
+One component per screen, each with its own id: `describe.tsx`, `reading.tsx` (reveals
+`reviewRows` one per 620 ms, then review), `name.tsx`, `trades.tsx`, `looks.tsx`, `reads.tsx`,
+`skills.tsx`, `decides.tsx`, `review.tsx`, `first-run.tsx`, and `stack.tsx` for the block stack
+beside them. `map.ts` holds the canvas's copy and lists and may read `@pickler/api-schema` values,
+because only bundled screens import it. Soon venues and beats are drawn and cannot be chosen; a
+model draft that chose one reaches the review with the row flagged and creation off. The handle is
+checked against `/v1/handles/:handle/availability` wherever it changes, debounced, so a model's
+suggestion is checked too. "Set it up from my line" calls `draftAgent`; `DRAFT_UNAVAILABLE` sends the
+person to the manual steps with "The model is busy. Build it step by step instead."
+
+`create/ceremony.ts` is "Create and run it once" as a sequence, pure and pinned in
+`studio-ceremony.test.ts`: `wallet` (add the delegated user if there is none, then the wallet named
+for the handle, or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped
+when that `existing` wallet comes back with `policiesApproved`, so a retry after a reload never
+writes the rules twice), `agent`, `run`. It never creates a sub-organization: without one it throws
+`NoSubOrganization` before any prompt and the screen sends the person to the signup's passkey step. A first agent
+is three passkey prompts (delegated user, wallet, policies), a later one two; any failure
+propagates and stops the sequence. `onFirstAgent` tells the screen which, so the rail's Wallet line
+says it covers two prompts on a first agent. The screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
+Idempotency keys for the create and the run are kept per draft, and `runCeremony` carries a
+`CeremonyProgress` (wallet, approved policies, agent, run) across retries, so "Try again with your
+passkey" resumes where the attempt stopped: a failed run start retries only the start, a refused
+create retries only the create, and neither asks for the passkey again. Leaving the screen aborts
+the ceremony between prompts. `create/gate.ts` is pure and pinned in `studio-create-gate.test.ts`:
+`createGate(agents)` answers `{ open: true }` or `{ open: false, agent }` (one unfunded agent at a
+time, from each agent's `canCreateAnother`, naming the first below 10 AUSD). The create screen
+reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx`
+(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to
+`/studio?agent=<id>`) instead of the flow; "Create and run it once" goes through
+`startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
+An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
+"New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
+message for `CONFLICT` and `NOT_FOUND` ("Approve the wallet's rules first", "That wallet already
+belongs to an agent", "Wallet not found"), which `StudioError.serverMessage` carries.
+`first-run.tsx` draws the four steps as the rail's first lines, then polls
+the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
+order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
+"Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
+
+## The studio home
+
+`/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
+docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
+instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
+the rail has a Home item back. `/studio?agent=<id>` opens on that agent (the creation flow's
+"Open the studio" links there); without it, or for an id that is not the person's, the studio opens
+on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
+is not a preview parameter, so it works in production. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
+`canSchedule`, `canCreateAnother`, `spend`, `spendEnforced`); the writes answer `AgentRecord`.
+
+`home/status.ts` is pure and pinned branch by branch in `studio-status.test.ts`: `homeStatus` turns
+the latest run, its events and the agent into the pill (WORKING, FIRST CALL IN, LIVE, or NO CALL
+YET before any call), the mood (THINKING until a `selection` or `market_classification` event,
+RESEARCHING after, then PICKED for a TRADE, PASSED for an abstention, WAITING while the schedule is
+on, STOPPED for a failed or empty run), the first-person "say" line and the strip ("First run
+finished in 2m 11s · 8 steps, 6 sources"). `pickCard` builds the decided card (range, market,
+reason, "TRACKED ON PAPER · size AT price"), `scheduleView` the switch's lock and note from
+`canSchedule.reason`, `nextUp` the one item ("Fund its wallet" until 10 AUSD), and `depositFailure`
+the deposit's errors in the person's terms. Market names come from the `eligible_candidates` and
+`selection` events, never invented. It imports only types from `api.ts`.
+
+The home polls its own latest run through `startPolling`: every 3 s while it is queued or running,
+every 20 s while the schedule is on, not at all once terminal, and it reads the agent again when a
+run finishes. The shell's own loop pauses while the home is showing. A TRADE's paper order is read
+with `readPaperOrder`; a missing one says "NOT TRACKED ON PAPER" rather than a fill. One component
+per part, each with a harness id: `strip.tsx` (`home-strip`), `agent-card.tsx` (`home-agent`),
+`wallet-card.tsx` and `deposit-sheet.tsx` (`home-wallet`), `schedule.tsx` (`home-schedule`),
+`picks.tsx` (`home-picks`), `next-up.tsx` (`home-next`) and `menu.tsx` (`home-menu`).
+
+The deposit prepares, stamps the exact body the API returned with `WebauthnStamper` (the relying
+party from a custody challenge fetched as the sheet opens) and confirms, then reads the balance now
+and twice more while the transfer lands. `lib/passkey.ts` holds that stamper, `session()` and
+`custody()`, shared with the creation ceremony. The limits save themselves 700 ms after a change
+through `PUT /limits` and say "Applies when it trades for real". The interval picker calls
+`setIntervalHours`, so choosing it never turns the schedule off. The mark and the top-bar chip paint
+from the DTO's `accent` through `accentVars`, like every other agent on the site (`cyan` renders
+indigo). A staged or preview studio refuses every write, the shell's included, and says so.
+
+`?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
+`home/fixture.ts`, the canvas's run built from real event types on a fixed clock so the server's
+HTML matches the browser's. It is gated on the build alone, like the creation flow's sample, because
+`previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
+nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id
+per stage.
 
 ## Custody boundary
 
@@ -187,3 +343,67 @@ No private key is ever derived or held in this app. Custody of the person's Pick
 to Turnkey, and a passkey registered against `TURNKEY_RPID` exists to authorise activities — never
 to be read as key material by anything else on the same host. A connected browser wallet is not
 authenticated server identity either: connecting is a read that says which address to show.
+
+A sub-organization is born at signup, before any agent (spec §4.1): the studio's profile shows the
+master wallet from the first visit, and a signed-in person without one does not get in anywhere.
+`lib/flow.ts` is the pure machine, pinned in `flow.test.ts`: signup is
+`auth → code → handle → passkey → welcome`, and the only event that leaves `passkey` is
+`passkey_created`; signin is `auth → code → welcome`, or `auth → code → passkey → welcome` when the
+landing check (`landing` in `lib/custody.ts`, reading `GET /v1/signing/wallets/me`) finds no
+sub-organization and sends `wallet_missing`. What the landing check dispatches is `verifiedEvent`
+(pure, in `lib/custody.ts`, over `landing`); a read that fails other than with a 404 dispatches
+nothing, and the screen says the account could not be read, with "Try again". Every event is
+accepted only on the steps whose screen can send it, and a walk from `INITIAL` through
+`verifiedEvent` for every account shape pins that welcome is reachable without `passkey_created`
+only for an account that already has a profile and a sub-organization.
+
+The step is `steps/create-wallet-step.tsx` (`#signup-passkey`, recovered from the `PasskeyStep`
+commit c4383d2 deleted): one prompt, the enrolment ceremony (`createWallet`: challenge fetched as
+the sheet opens → WebAuthn from the sheet's confirm click → `POST /v1/signing/passkeys/register`),
+which creates the sub-organization with the passkey as its only root and the master wallet. It is
+the only place a sub-organization is created. A closed or failed prompt leaves the person on the
+step with "Try again"; there is no skip. A failed create first reads the sub-organization again
+(`afterFailedCreate`): if another tab created it meanwhile — this authenticator then refuses a
+duplicate through `excludeCredentials` — the step advances rather than looping. `register` is
+idempotent and core returns the winner of a two-tab race, so after a create the account's passkey
+list is read and `enrolmentOutcome` decides: the browser is marked enrolled only if the credential
+it just made is on the list; one that is not (`orphan`) goes to `/passkey`'s add-device screen, and
+an unreadable list marks nothing.
+
+Every signed-in custody screen sends a person without a sub-organization to the signup's passkey
+step: the studio shell (`studio.tsx`), the create screen (`create/create.tsx`, also when the agent
+ceremony throws `NoSubOrganization`), `/account` with every section (`features/account/account.tsx`,
+where the master wallet is shown) and `/passkey` read it through `readSubOrganization` (the wallet,
+or null for a 404; any other failure propagates — to the studio's load error, the account's wallet
+card, or /passkey's "could not be read") and `redirectFor`, which answers `SIGNUP_PASSKEY_STEP`
+(`/signup?step=passkey`) for null, after the session guard, and `router.replace` there before
+rendering anything else. `/portfolio` and the marketplace screens are wallet-connection surfaces,
+not custody, and do not redirect. `/signup` and `/signin` resume any session they are opened with, whatever the URL
+(`arrivalFor` in `features/auth/lib/signup-entry.ts`; `/signup?step=passkey` is just the readable
+redirect target): the flow reads the account on arrival and sends the landing event from the
+account screen, so it lands on the handle step with no profile, on the passkey step with a profile
+and no wallet (the rail reads ACCOUNT and HANDLE done on signup, ACCOUNT done on signin), or on
+welcome for a complete account (`account_found`, a sign-in on either rail). The email form appears
+only when there is no session; the form column says "READING YOUR ACCOUNT…" until that is known,
+and a failed read offers "Try again" rather than a guess. `/passkey` is add-device only: the add-passkey ceremony and the device list.
+
+The account's passkey list, wherever a screen already has it, drives the second-passkey suggestion:
+`suggestSecondPasskey` (`features/auth/lib/second-passkey.ts`, pure, pinned in
+`second-passkey.test.ts`) is true only for a list that was read and holds exactly one — loading, a
+failed read and an empty list suggest nothing. `components/second-passkey.tsx` draws it ("You have
+one passkey…", a link to `/passkey`, and "Not now", which hides it for the browser session through
+`sessionStorage` and never for good). It shows on the signup's welcome right after the create step
+(`#welcome-second-passkey`, from the list the create step already reads for `enrolmentOutcome`),
+on the studio home (`#home-second-passkey`, from one read in the shell's load path, passed to
+`Home`; the staged home carries one fixture passkey so `studio-home-second-passkey` in
+`scripts/design/routes.mjs` measures it), and in `/account`'s security section next to the list
+(`#account-second-passkey`). No screen reads the list a second time for it.
+
+`/signup?state=passkey` (`signupPreviewFromSearch`, outside production only, gated on the build like
+`?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit
+needs a session with a profile and no wallet and the design harness has none;
+`scripts/design/routes.mjs` measures it as `signup-passkey`.
+
+## Cloudflare trading pilot
+
+The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.

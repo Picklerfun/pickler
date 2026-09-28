@@ -13,6 +13,7 @@ import {
   type Leaderboard,
   type PickDetail,
   type PlatformAnalytics,
+  type ReadService,
   type Venue,
 } from "@pickler/core";
 import type {
@@ -30,9 +31,13 @@ import type {
   PlatformAnalyticsDto,
 } from "@pickler/api-schema";
 
+/** A token's page is named by its ticker, so an agent without a token has no slug either. */
+const slugOf = (ticker: string | null): string | null =>
+  ticker === null ? null : agentSlug(ticker);
+
 export function toAgentSummaryDto(agent: AgentSummary): AgentSummaryDto {
   return {
-    slug: agentSlug(agent.ticker),
+    slug: slugOf(agent.ticker),
     name: agent.name,
     handle: agent.handle,
     ticker: agent.ticker,
@@ -63,9 +68,7 @@ export function toAgentProfileDto(profile: AgentProfile): AgentProfileDto {
     blurb: profile.blurb,
     xHandle: profile.xHandle,
     creatorHandle: profile.creatorHandle,
-    followers: profile.followers,
     openPicks: profile.openPicks,
-    brief: { ...profile.brief },
     market: profile.market && {
       ...profile.market,
       candles: Object.fromEntries(
@@ -85,7 +88,7 @@ export function toAgentProfileDto(profile: AgentProfile): AgentProfileDto {
 export function toPickDetailDto(pick: PickDetail): PickDetailDto {
   return {
     ...toCallDto(pick),
-    agent: { slug: agentSlug(pick.agent.ticker), ...pick.agent },
+    agent: { slug: slugOf(pick.agent.ticker), ...pick.agent },
     thesis: pick.thesis,
     maxPrice: pick.maxPrice,
     settledAt: pick.settledAt?.toISOString() ?? null,
@@ -97,7 +100,7 @@ export function toPickDetailDto(pick: PickDetail): PickDetailDto {
 
 const toActivityAgentDto = (agent: ActivityAgent): ActivityAgentDto => ({
   ...agent,
-  slug: agentSlug(agent.ticker),
+  slug: slugOf(agent.ticker),
 });
 
 const toActivityEventDto = (event: ActivityEvent): ActivityEventDto => ({
@@ -122,10 +125,11 @@ export function toAgentReadDto(read: AgentRead): AgentReadDto {
 }
 
 /** The question a read on each market would answer is written here, once, from the domain rule. */
-const toReadServiceDto = (service: DirectoryAgent["service"], venue: Venue): ReadServiceDto => ({
-  ...service,
-  markets: service.markets.map((name) => ({ name, question: readQuestion(venue, name) })),
-});
+const toReadServiceDto = (service: ReadService | null, venue: Venue): ReadServiceDto | null =>
+  service && {
+    ...service,
+    markets: service.markets.map((name) => ({ name, question: readQuestion(venue, name) })),
+  };
 
 export function toDirectoryAgentDto(entry: DirectoryAgent): DirectoryAgentDto {
   return {
@@ -135,20 +139,24 @@ export function toDirectoryAgentDto(entry: DirectoryAgent): DirectoryAgentDto {
   };
 }
 
+/** The score needs a calibration gap, so until settlement exists there is no score to show. */
+const scoreOf = (persona: AgentPersona): number | null =>
+  persona.calibrationGap === null
+    ? null
+    : agentScore({
+        calibrationGap: persona.calibrationGap,
+        resolved: persona.resolved,
+        net: persona.net,
+      });
+
 export function toAgentPersonaDto(persona: AgentPersona): AgentPersonaDto {
   return {
     ...persona,
-    slug: agentSlug(persona.ticker),
-    score: agentScore({
-      calibrationGap: persona.calibrationGap,
-      resolved: persona.resolved,
-      net: persona.net,
-    }),
+    slug: slugOf(persona.ticker),
+    score: scoreOf(persona),
     service: toReadServiceDto(persona.service, persona.venue),
     reads: persona.reads.map(toAgentReadDto),
     meters: persona.meters.map((meter) => ({ ...meter })),
-    rules: [...persona.rules],
-    brief: persona.brief.map((item) => ({ ...item })),
     answers: persona.answers.map((answer) => ({ ...answer })),
     decisions: persona.decisions.map(toActivityEventDto),
   };
