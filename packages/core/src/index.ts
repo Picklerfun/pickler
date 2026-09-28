@@ -236,6 +236,7 @@ export {
   ExpiredNonceError,
   NONCE_TTL_MS,
   UnknownNonceError,
+  WalletAccountConflictError,
   WrongDomainError,
   type Presented,
   type SignedMessage,

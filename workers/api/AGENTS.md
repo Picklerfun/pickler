@@ -75,7 +75,14 @@ server-only `app_metadata.pickler_account = "wallet"` (`UserPrincipal.walletAcco
 Supabase JWT verifier). `createWalletAccounts` sets it at `admin.createUser`, and every wallet
 sign-in calls `markWalletAccount` before minting the session, which backfills it on an account made
 before the marker existed — only when the account's email is that address's own synthetic one, so
-an email account that linked the wallet stays a studio account. A wallet account that has not
+an email account that linked the wallet stays a studio account. The synthetic email is computable
+from a public address, so an account found there (createUser's lost race, or a returning address)
+is accepted only if it is marked, or has no password and no identity but `email`
+(`walletAccountVerdict`, over `createAuthUserLookup`'s read of `auth.users` and `auth.identities`;
+the admin API cannot say whether a password is set). Anything else — a pre-registration with a
+password — is refused with 409 `wallet_account_conflict` before any link, backfill or session, and
+logged with the address digest only. On a local run, where the product database has no `auth`
+schema, the lookup falls back to the admin API by id and accepts only marked accounts. A wallet account that has not
 signed in since then gets 409 until its next sign-in; that is accepted, because a session comes
 only from that sign-in. The email domain is never an exemption: with email sign-up open and
 confirmations off, anyone can register an address in `WALLET_EMAIL_DOMAIN`. `isWalletAccountEmail`

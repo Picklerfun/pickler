@@ -8,6 +8,7 @@ import {
   buildUserPrincipal,
   ExpiredNonceError,
   UnknownNonceError,
+  WalletAccountConflictError,
   WrongDomainError,
   type createWalletSignIn,
 } from "@pickler/core";
@@ -143,6 +144,15 @@ test("a bad signature answers 401, which is a different thing from a spent nonce
   const response = await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig" });
   assert.equal(response.status, 401);
   assert.equal(((await response.json()) as { error?: string }).error, undefined);
+});
+
+test("a sign-in held by a pre-registered account answers 409 wallet_account_conflict, no session", async () => {
+  const { app } = harness({ verify: () => Promise.reject(new WalletAccountConflictError()) });
+  const response = await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig" });
+  assert.equal(response.status, 409);
+  const body = (await response.json()) as { error?: string; data?: unknown };
+  assert.equal(body.error, "wallet_account_conflict");
+  assert.equal(body.data, undefined, "no session in the answer");
 });
 
 test("verify refuses a body with no signature before reaching the service", async () => {

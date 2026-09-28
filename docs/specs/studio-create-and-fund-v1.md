@@ -226,10 +226,15 @@ shows their master wallet from the first visit, with or without agents — so it
   until it signs in again; claiming needs a session, and every new session comes from the wallet
   sign-in that sets the marker. If a wallet account opens the studio it is sent to the passkey step
   like anyone without a master wallet.
-- **Recommendation (not changed here):** the hosted Supabase project should have email
-  confirmations on. With them off, anyone can register any address, including one in the synthetic
-  wallet domain; the exemption above no longer depends on the email, but confirmations close the
-  door on every other rule that might.
+- **Requirement (not changed by this code):** the hosted Supabase project must have email
+  confirmations on. With them off, anyone can register any address, including a wallet's synthetic
+  one, which is sha256 of its public address. The code refuses such pre-registered accounts
+  regardless: wallet sign-in accepts an existing account at the synthetic email only if it carries
+  the marker, or predates it with no password and no identity but the `email` one
+  `admin.createUser` makes (read from `auth.users` and `auth.identities`). Anything else is
+  refused with 409 `wallet_account_conflict` — never linked, marked or given a session — and logged
+  with the address's digest, never the email. Where `auth.users` cannot be read (a local run on
+  Docker PostgreSQL), only marked accounts are accepted.
 - **Naming the first passkey.** It is created before there is a handle, so WebAuthn's `user.name`
   and `user.displayName` — stored in the device keychain — are the person's sign-in email from the
   verified token (never a wallet account's synthetic email; with no usable email, `pickler-<id8>`).

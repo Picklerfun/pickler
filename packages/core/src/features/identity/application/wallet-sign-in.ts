@@ -39,6 +39,22 @@ export class AddressTakenError extends Error {
   }
 }
 
+/**
+ * The auth account at this address's synthetic email was not made by wallet sign-in: it has a
+ * password, or an identity wallet sign-in never creates, and no wallet-account marker. Since the
+ * synthetic email is computable from a public address, that is what an account pre-registered
+ * to take over the wallet's sign-in looks like, so it is refused — never linked, marked or given a
+ * session.
+ */
+export class WalletAccountConflictError extends Error {
+  constructor() {
+    super(
+      "This wallet's sign-in is held by an account that wallet sign-in did not create. Contact support.",
+    );
+    this.name = "WalletAccountConflictError";
+  }
+}
+
 /** Five minutes, the same window a WebAuthn challenge gets. */
 export const NONCE_TTL_MS = 5 * 60 * 1000;
 

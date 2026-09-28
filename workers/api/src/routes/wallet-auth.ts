@@ -6,6 +6,7 @@ import {
   BadSignatureError,
   ExpiredNonceError,
   UnknownNonceError,
+  WalletAccountConflictError,
   WrongDomainError,
 } from "@pickler/core";
 import type { AppEnv } from "../env";
@@ -37,6 +38,9 @@ function asHttp(caught: unknown): never {
   }
   if (caught instanceof AddressTakenError) {
     throw new HttpError(409, caught.message);
+  }
+  if (caught instanceof WalletAccountConflictError) {
+    throw new HttpError(409, caught.message, { error: "wallet_account_conflict" });
   }
   throw caught;
 }

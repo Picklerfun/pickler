@@ -1,10 +1,27 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeAddress } from "@pickler/core";
-import { createSupabaseAdmin, createWalletAccounts, syntheticEmail } from "../src/index.js";
+import { normalizeAddress, WalletAccountConflictError } from "@pickler/core";
+import {
+  createAuthUserLookup,
+  createSupabaseAdmin,
+  createWalletAccounts,
+  syntheticEmail,
+  type AuthUserFacts,
+} from "../src/index.js";
 
 const EVM = normalizeAddress("eip155", "0xABC0000000000000000000000000000000000001");
 const SOLANA = normalizeAddress("solana", "7EqQdEULxWcraVx3mXKFjc84LhCkMGZCkRuDpvcMwJeK");
+const OWN_EMAIL = syntheticEmail("eip155", EVM, "wallet.pickler.fun");
+
+/** An auth user at this address's synthetic email, as wallet sign-in made it before the marker. */
+const facts = (over: Partial<AuthUserFacts> = {}): AuthUserFacts => ({
+  id: USER_ID,
+  email: OWN_EMAIL,
+  hasPassword: false,
+  providers: ["email"],
+  appMetadata: { provider: "email", providers: ["email"] },
+  ...over,
+});
 
 /**
  * A golden value, pinned deliberately. This derivation is an identity key: every existing account
@@ -113,7 +130,13 @@ const SESSION_BODY = {
  * paged with no filter, so a scan would silently miss every user past the first page — and would
  * do it to a returning person, whose sign-in is the thing that breaks.
  */
-test("a returning address is recovered by direct lookup, never by listing users", async () => {
+/**
+ * The genuine lost race: two first-time sign-ins for one address, and this one's createUser found
+ * the winner's account already there. The winner's account carries the marker, so it is accepted.
+ * The admin API has no lookup by email: `getUserById` is its only direct read and `listUsers` is
+ * paged with no filter, so a scan would silently miss every user past the first page.
+ */
+test("a lost race between two wallet sign-ins recovers the winner by direct lookup", async () => {
   const { admin, requests } = clientOver([
     {
       match: (m, u) => m === "POST" && u.includes("/admin/users"),
@@ -127,7 +150,10 @@ test("a returning address is recovered by direct lookup, never by listing users"
   const accounts = createWalletAccounts({
     admin,
     emailDomain: "wallet.pickler.fun",
-    findUserIdByEmail: async () => "user-original",
+    findAuthUser: async (where) => {
+      assert.deepEqual(where, { email: OWN_EMAIL });
+      return facts({ id: "user-original", appMetadata: { pickler_account: "wallet" } });
+    },
     sessionClient: () => admin,
   });
 
@@ -148,7 +174,7 @@ test("an address nobody has seen gets an account made", async () => {
   const accounts = createWalletAccounts({
     admin,
     emailDomain: "wallet.pickler.fun",
-    findUserIdByEmail: async () => assert.fail("must not look up a user it just created"),
+    findAuthUser: async () => assert.fail("must not look up a user it just created"),
     sessionClient: () => admin,
   });
   assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: "user-new" });
@@ -180,7 +206,7 @@ test("minting a session leaves no session on the shared admin client", async () 
   const accounts = createWalletAccounts({
     admin,
     emailDomain: "wallet.pickler.fun",
-    findUserIdByEmail: async () => null,
+    findAuthUser: async () => null,
     sessionClient: () => throwaway.admin,
   });
 
@@ -192,8 +218,6 @@ test("minting a session leaves no session on the shared admin client", async () 
   assert.equal(data.session, null);
 });
 
-const OWN_EMAIL = syntheticEmail("eip155", EVM, "wallet.pickler.fun");
-
 test("a new wallet account is created with the server-only wallet-account marker", async () => {
   const { admin, requests } = clientOver([
     {
@@ -204,7 +228,7 @@ test("a new wallet account is created with the server-only wallet-account marker
   const accounts = createWalletAccounts({
     admin,
     emailDomain: "wallet.pickler.fun",
-    findUserIdByEmail: async () => null,
+    findAuthUser: async () => null,
     sessionClient: () => admin,
   });
   await accounts.forAddress("eip155", EVM);
@@ -214,34 +238,37 @@ test("a new wallet account is created with the server-only wallet-account marker
   assert.deepEqual(body["app_metadata"], { pickler_account: "wallet" });
 });
 
-/** The admin client over routes for one user record, answering an update with what it was sent. */
-function accountsFor(user: { email: string; app_metadata: Record<string, unknown> }) {
+/** Wallet accounts over one auth user's facts, recording every admin write it makes. */
+function accountsFor(user: AuthUserFacts, created: "ok" | "exists" = "exists") {
   const client = clientOver([
     {
-      match: (m, u) => m === "GET" && u.includes(`/admin/users/${USER_ID}`),
-      body: { id: USER_ID, ...user },
+      match: (m, u) => m === "POST" && u.includes("/admin/users"),
+      ...(created === "exists"
+        ? { status: 422, body: { code: "email_exists", message: "already registered" } }
+        : { body: { id: "user-new", email: OWN_EMAIL } }),
     },
     {
-      match: (m, u) => m === "PUT" && u.includes(`/admin/users/${USER_ID}`),
-      body: { id: USER_ID, ...user },
+      match: (m, u) => m === "PUT" && u.includes(`/admin/users/${user.id}`),
+      body: { id: user.id, email: user.email },
     },
   ]);
   const accounts = createWalletAccounts({
     admin: client.admin,
     emailDomain: "wallet.pickler.fun",
-    findUserIdByEmail: async () => null,
+    findAuthUser: async (where) =>
+      ("id" in where ? where.id === user.id : where.email === user.email) ? user : null,
     sessionClient: () => client.admin,
   });
   const updates = () => client.requests.filter((r) => r.method === "PUT");
   return { accounts, updates };
 }
 
-test("a wallet sign-in backfills the marker on an account made before it existed", async () => {
-  const { accounts, updates } = accountsFor({
-    email: OWN_EMAIL,
-    app_metadata: { provider: "email", providers: ["email"] },
-  });
-  await accounts.markWalletAccount(USER_ID, "eip155", EVM);
+test("a legacy wallet account with no password is accepted and backfilled", async () => {
+  const user = facts();
+  const { accounts, updates } = accountsFor(user);
+
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: user.id });
+  await accounts.markWalletAccount(user.id, "eip155", EVM);
 
   assert.equal(updates().length, 1);
   assert.deepEqual(JSON.parse(updates()[0]!.body)["app_metadata"], {
@@ -251,23 +278,117 @@ test("a wallet sign-in backfills the marker on an account made before it existed
   });
 });
 
-test("an account that already carries the marker is not written again", async () => {
-  const { accounts, updates } = accountsFor({
-    email: OWN_EMAIL,
-    app_metadata: { provider: "email", pickler_account: "wallet" },
-  });
-  await accounts.markWalletAccount(USER_ID, "eip155", EVM);
+test("a marked wallet account is accepted and not written again", async () => {
+  const user = facts({ hasPassword: null, appMetadata: { pickler_account: "wallet" } });
+  const { accounts, updates } = accountsFor(user);
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: user.id });
+  await accounts.markWalletAccount(user.id, "eip155", EVM);
   assert.equal(updates().length, 0);
+});
+
+/**
+ * The takeover: the synthetic email is sha256 of a public address, so with password sign-up open
+ * anyone can register it before the wallet's holder signs in. That account is refused on the first
+ * sign-in (createUser finds it) and on a returning one (an address linked to it before this check),
+ * and nothing is written to it.
+ */
+test("an account pre-registered at the synthetic email is refused, never accepted or marked", async () => {
+  const cases: [string, Partial<AuthUserFacts>][] = [
+    ["a password", { hasPassword: true }],
+    [
+      "a password and a spoofed namespace",
+      { hasPassword: true, appMetadata: { provider: "email" } },
+    ],
+    ["an identity wallet sign-in never makes", { providers: ["email", "google"] }],
+    ["an unknown password on an unmarked account", { hasPassword: null }],
+  ];
+  for (const [label, over] of cases) {
+    const attacker = facts({ id: "user-attacker", ...over });
+    const { accounts, updates } = accountsFor(attacker);
+    await assert.rejects(accounts.forAddress("eip155", EVM), WalletAccountConflictError, label);
+    await assert.rejects(
+      accounts.markWalletAccount(attacker.id, "eip155", EVM),
+      WalletAccountConflictError,
+      label,
+    );
+    assert.equal(updates().length, 0, `${label}: the attacker's account was written`);
+  }
 });
 
 /**
  * An email account can link a wallet and then sign in with it. That opens the email account, which
  * is a studio account and must stay one: only the account this address's sign-in created is marked.
  */
-test("an email account that linked the wallet is never marked", async () => {
+test("an email account that linked the wallet is never marked, whatever its password", async () => {
   for (const email of ["ana@x.io", syntheticEmail("solana", SOLANA, "wallet.pickler.fun")]) {
-    const { accounts, updates } = accountsFor({ email, app_metadata: { provider: "email" } });
+    const { accounts, updates } = accountsFor(facts({ email, hasPassword: true }));
     await accounts.markWalletAccount(USER_ID, "eip155", EVM);
     assert.equal(updates().length, 0, email);
   }
+});
+
+test("the lookup reads auth.users where it exists, and says nothing it cannot know elsewhere", async () => {
+  const { admin } = clientOver([
+    {
+      match: (m, u) => m === "GET" && u.includes(`/admin/users/${USER_ID}`),
+      body: {
+        id: USER_ID,
+        email: OWN_EMAIL,
+        app_metadata: { provider: "email" },
+        identities: [{ provider: "email" }],
+      },
+    },
+  ]);
+  const seen: unknown[][] = [];
+  const hosted = createAuthUserLookup({
+    admin,
+    pool: {
+      query: async <Row>(_text: string, values: unknown[]) => {
+        seen.push(values);
+        return {
+          rows: [
+            {
+              id: USER_ID,
+              email: OWN_EMAIL,
+              has_password: true,
+              providers: ["email"],
+              app_metadata: null,
+            },
+          ] as Row[],
+        };
+      },
+    },
+  });
+  assert.deepEqual(await hosted({ email: OWN_EMAIL }), {
+    id: USER_ID,
+    email: OWN_EMAIL,
+    hasPassword: true,
+    providers: ["email"],
+    appMetadata: {},
+  });
+  assert.deepEqual(seen, [[OWN_EMAIL]]);
+
+  // A local run: no auth schema. By id the admin API answers, but it never says whether a password
+  // is set; by email there is no admin lookup at all.
+  const local = createAuthUserLookup({
+    admin,
+    pool: {
+      query: async () => {
+        throw Object.assign(new Error('relation "auth.users" does not exist'), { code: "42P01" });
+      },
+    },
+  });
+  assert.equal((await local({ id: USER_ID }))?.hasPassword, null);
+  assert.equal(await local({ email: OWN_EMAIL }), null);
+
+  // Any other database failure is a failure, not "no user".
+  const down = createAuthUserLookup({
+    admin,
+    pool: {
+      query: async () => {
+        throw Object.assign(new Error("connection refused"), { code: "ECONNREFUSED" });
+      },
+    },
+  });
+  await assert.rejects(down({ id: USER_ID }), /connection refused/);
 });

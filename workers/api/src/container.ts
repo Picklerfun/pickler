@@ -34,6 +34,7 @@ import {
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
+  createAuthUserLookup,
   createWalletAccounts,
   createSignatureVerifier,
   buildSiweMessage,
@@ -229,15 +230,10 @@ function walletAuthServices(
       accounts: createWalletAccounts({
         admin: createSupabaseAdmin(supabase),
         emailDomain,
-        // The admin API has no lookup by email — `listUsers` is paged with no filter — so the
-        // recovery path reads the uniquely indexed column directly.
-        findUserIdByEmail: async (email) => {
-          const { rows } = await pool.query<{ id: string }>(
-            `SELECT id FROM auth.users WHERE email = $1 LIMIT 1`,
-            [email],
-          );
-          return rows[0]?.id ?? null;
-        },
+        // The admin API has no lookup by email and does not say whether a password is set, so
+        // this reads auth.users and auth.identities where they are reachable (a deployment's
+        // DATABASE), and falls back to the admin API where they are not (local Docker).
+        findAuthUser: createAuthUserLookup({ pool, admin: createSupabaseAdmin(supabase) }),
         // A throwaway per exchange: `verifyOtp` leaves the session on whichever client performs
         // it, and this isolate's admin client is shared across requests.
         sessionClient: () => createSupabaseAdmin(supabase),

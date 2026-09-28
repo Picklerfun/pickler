@@ -12,6 +12,7 @@ import {
   type WalletLink,
   type WalletLinkRepository,
   isWalletAccountEmail,
+  WalletAccountConflictError,
 } from "../src/index.js";
 
 const NOW = new Date("2026-09-23T12:00:00Z");
@@ -308,5 +309,46 @@ test("every sign-in marks the wallet account before minting its session", async 
       [`mark:${user}:eip155:${normalizeAddress("eip155", ADDRESS)}`, `session:${user}`],
       returning ? "returning" : "new",
     );
+  }
+});
+
+/**
+ * A refused account is never linked and never given a session: on a first sign-in the refusal comes
+ * from `forAddress`, before the link; on a returning one from `markWalletAccount`, before the session.
+ */
+test("an account refused as a pre-registration is not linked and gets no session", async () => {
+  for (const returning of [false, true]) {
+    const existing: WalletLink = {
+      userId: "user-attacker",
+      namespace: "eip155",
+      address: normalizeAddress("eip155", ADDRESS),
+      verifiedChain: "eip155:10143",
+      kind: "external",
+      verifiedAt: NOW,
+    };
+    const store = links(returning ? [existing] : []);
+    const calls: string[] = [];
+    const signIn = service({
+      nonces: nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]])),
+      links: store,
+      accounts: {
+        forAddress: async () => {
+          throw new WalletAccountConflictError();
+        },
+        markWalletAccount: async () => {
+          throw new WalletAccountConflictError();
+        },
+        session: async () => {
+          calls.push("session");
+          return { accessToken: "at", refreshToken: "rt" };
+        },
+      },
+    });
+    await assert.rejects(
+      signIn.verify({ raw: signed(), signature: "0xsig" }),
+      WalletAccountConflictError,
+    );
+    assert.deepEqual(calls, [], "no session was minted");
+    assert.equal(store.rows.length, returning ? 1 : 0, "nothing new was linked");
   }
 });

@@ -61,8 +61,11 @@ export {
 } from "./turnkey/turnkey-activity-forwarder.js";
 export { createSupabaseProfileRepository } from "./supabase/profiles/supabase-profile-repository.js";
 export {
+  createAuthUserLookup,
   createWalletAccounts,
   syntheticEmail,
+  walletAccountVerdict,
+  type AuthUserFacts,
   type WalletAccountsConfig,
 } from "./supabase/wallet-accounts.js";
 
