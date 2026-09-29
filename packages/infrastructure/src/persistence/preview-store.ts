@@ -216,22 +216,38 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
     };
   }
 
-  async claim(now: number): Promise<RunRecord | null> {
+  /**
+   * Claims the oldest runnable preview, or, with `queuedBefore`, only one queued before then (the
+   * executors' overdue claim). Admission is shared with research runs: the same locked
+   * `execution_policy` row, and its global and per-tenant limits count running rows of both tables.
+   */
+  async claim(now: number, queuedBefore?: number): Promise<RunRecord | null> {
     const owner = randomUUID();
     const claimed = await this.transaction(async (client) => {
-      const policy = await client.query<{ globalLimit: number }>(
-        `SELECT global_limit AS "globalLimit" FROM pickler.execution_policy WHERE id = 1`,
+      const policy = await client.query<{ globalLimit: number; tenantLimit: number }>(
+        `SELECT global_limit AS "globalLimit", tenant_limit AS "tenantLimit"
+        FROM pickler.execution_policy WHERE id = 1 FOR UPDATE`,
       );
-      const running = await client.query<{ n: number }>(
-        "SELECT count(*)::int AS n FROM pickler.preview_runs WHERE status = 'running'",
+      const limits = policy.rows[0];
+      if (!limits) {
+        throw new Error("Apply execution policy migration first");
+      }
+      const active = await client.query<{ tenantId: string }>(
+        `SELECT tenant_id AS "tenantId" FROM pickler.runs WHERE status = 'running'
+        UNION ALL
+        SELECT tenant_id FROM pickler.preview_runs WHERE status = 'running'`,
       );
-      if (running.rows[0]!.n >= (policy.rows[0]?.globalLimit ?? 5)) {
+      if (active.rows.length >= limits.globalLimit) {
         return null;
       }
       const queued = await client.query<PreviewRow & { userId: string }>(
         `SELECT ${COLUMNS}, user_id AS "userId" FROM pickler.preview_runs
-        WHERE status = 'queued' ORDER BY created_at, id LIMIT 20 FOR UPDATE SKIP LOCKED`,
+        WHERE status = 'queued' AND ($1::bigint IS NULL OR created_at < $1::bigint)
+        ORDER BY created_at, id LIMIT 20 FOR UPDATE SKIP LOCKED`,
+        [queuedBefore ?? null],
       );
+      const tenantRunning = (tenantId: string) =>
+        active.rows.filter((row) => row.tenantId === tenantId).length;
       for (const next of queued.rows) {
         const allowed = await client.query<{ enabled: boolean }>(
           `SELECT coalesce((SELECT enabled FROM pickler.research_access WHERE user_id = $1), false) AS enabled`,
@@ -249,6 +265,9 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
             WHERE id = $1 AND status = 'queued'`,
             [next.id, cancel, now],
           );
+          continue;
+        }
+        if (tenantRunning(next.tenantId) >= limits.tenantLimit) {
           continue;
         }
         const started = await client.query<PreviewRow>(

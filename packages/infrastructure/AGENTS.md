@@ -46,7 +46,13 @@ paper runs of a brief that is not an agent yet (docs/specs/studio-brief-v1.md §
 the runner's repository for a run with no `pickler.agents` row: `agent()` answers the run's config
 snapshot at version 1, never paused. Claims, 60 s leases, renewal and recovery mirror the research
 store; a queued preview whose owner lost research access is cancelled at claim, and recovery deletes
-expired previews nobody adopted. Migration 0017 also adds `agents.agent_status` `draft`.
+expired previews nobody adopted. Its claim locks the same `execution_policy` row as research
+claims, and both count running rows of `pickler.runs` and `pickler.preview_runs` against the global
+and per-tenant limits; the executors claim a preview queued over two minutes
+(`PREVIEW_PRIORITY_AFTER_MS`) ahead of research runs. Migration 0017 also adds
+`agents.agent_status` `draft`. Never use the `draft` value inside a migration: `migrateDatabase`
+applies pending migrations in one transaction, and Postgres refuses an enum value added in the
+same transaction, so it would fail whenever it is applied in the same batch as 0017.
 
 `src/polymarket/classification.ts` maps reviewed actual provider tags and metadata to core sports classifications with versioned provenance. Never infer authorization from a query filter or ambiguous football labels. `listScope` shares the five-page budget across chosen sports; unknown classifications reach core exclusion diagnostics. Category configurations and decisions v4 use existing JSONB without DDL or historical rewrites.
 

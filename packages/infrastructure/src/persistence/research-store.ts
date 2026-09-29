@@ -468,10 +468,14 @@ export class PostgresResearchStore implements ResearchRepository {
       if (!policy) {
         throw new Error("Apply execution policy migration first");
       }
-      const active = await tx
-        .select({ tenantId: runs.tenantId })
-        .from(runs)
-        .where(eq(runs.status, "running"));
+      // Preview runs of briefs (pickler.preview_runs) share these limits; their claim locks this
+      // same policy row, so the two tables together never exceed them.
+      const running = await tx.execute<{ tenantId: string }>(sql`
+        select tenant_id as "tenantId" from pickler.runs where status = 'running'
+        union all
+        select tenant_id from pickler.preview_runs where status = 'running'
+      `);
+      const active = running.rows;
       if (active.length >= policy.globalLimit) {
         return null;
       }

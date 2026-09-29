@@ -197,3 +197,64 @@ test("an expired lease is recovered as INTERRUPTED", async (t) => {
   assert.equal(read.run.error, "INTERRUPTED");
   await assert.rejects(f.previews.assertOwnership(run), { code: "LEASE_LOST" });
 });
+
+test("two claims at the shared limit: only one preview starts", async (t) => {
+  const f = await setup(t);
+  await f.store.setConcurrency(1, 1);
+  await f.create(await f.person("owner_one"));
+  await f.create(await f.person("other_one"));
+  const peer = new PostgresPreviewStore(f.store.pool, f.now);
+  const claims = await Promise.all([f.previews.claim(f.now()), peer.claim(f.now())]);
+  assert.equal(claims.filter((run) => run !== null).length, 1);
+});
+
+test("research runs and previews share the global limit both ways", async (t) => {
+  const f = await setup(t);
+  await f.store.setConcurrency(1, 1);
+  const agent = { tenantId: "alpha", agentId: "alpha-0" };
+  await f.store.pool.query("INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3)", [
+    agent.tenantId,
+    agent.agentId,
+    config,
+  ]);
+  await f.store.enqueue(agent, "first", null, f.now());
+  await f.create(await f.person("owner_one"));
+
+  const research = await f.store.claim(f.now());
+  assert.ok(research);
+  assert.equal(await f.previews.claim(f.now()), null);
+
+  await f.store.finish(research, null, "TEST_DONE", f.now());
+  const preview = await f.previews.claim(f.now());
+  assert.ok(preview);
+  await f.store.enqueue(agent, "second", null, f.now());
+  assert.equal(await f.store.claim(f.now()), null);
+});
+
+test("a tenant at its limit waits; the overdue claim takes only old previews", async (t) => {
+  const f = await setup(t);
+  await f.store.setConcurrency(5, 1);
+  const owner = await f.person("owner_one");
+  await f.create(owner);
+  await f.create(owner);
+  assert.equal(await f.previews.claim(f.now(), f.now() - 120_000), null);
+  f.advance(120_001);
+  assert.ok(await f.previews.claim(f.now(), f.now() - 120_000));
+  assert.equal(await f.previews.claim(f.now()), null);
+});
+
+test("two creations racing for the fifth slot: only one is queued", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  for (let i = 0; i < 4; i++) {
+    await f.create(owner);
+  }
+  const results = await Promise.allSettled([f.create(owner), f.create(owner)]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  const rejected = results.find((result) => result.status === "rejected");
+  assert.equal((rejected as PromiseRejectedResult).reason.code, "PREVIEW_RATE_LIMITED");
+  const rows = await f.store.pool.query("SELECT 1 FROM pickler.preview_runs WHERE user_id = $1", [
+    owner.userId,
+  ]);
+  assert.equal(rows.rows.length, 5);
+});
