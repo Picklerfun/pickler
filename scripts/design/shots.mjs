@@ -1,13 +1,18 @@
 // Screenshots, for a person to judge. The checks beside this one catch what is measurable; spacing,
 // rhythm and whether a screen reads like its canvas are not, and want eyes. Full page at both ends
 // of the width axis, because a layout that survives 1400 and fails 390 fails for most people.
+//
+// DESIGN_SHOTS_DIR names the folder, so a baseline and a later run can sit side by side for
+// compare.mjs. Without it the shots go to scripts/design/shots, as they always have.
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eachRoute, finish } from "./lib/render.mjs";
 import { ROUTES } from "./routes.mjs";
 
-const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), "shots");
+const SHOTS = process.env.DESIGN_SHOTS_DIR
+  ? path.resolve(process.env.DESIGN_SHOTS_DIR)
+  : path.join(path.dirname(fileURLToPath(import.meta.url)), "shots");
 const SIZES = [
   { name: "desktop", width: 1400, height: 1000 },
   { name: "phone", width: 390, height: 844 },
@@ -26,7 +31,9 @@ for (const { name, width, height } of SIZES) {
     ROUTES,
     async (page, route) => {
       const file = path.join(SHOTS, `${route.name}-${name}.png`);
-      await page.screenshot({ path: file, fullPage: true });
+      // Animations off: a blinking dot or a floating mascot caught at a different moment is a
+      // difference between two runs that nobody made.
+      await page.screenshot({ path: file, fullPage: true, animations: "disabled" });
       taken.push(`${route.name}-${name}.png`);
     },
     { width, height },

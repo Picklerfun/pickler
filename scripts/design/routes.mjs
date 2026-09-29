@@ -31,7 +31,9 @@
 // on two. render.mjs refuses a route that has no `product` rather than falling back, for the same
 // reason it refuses a route with no floor: the fallback would be a number about the wrong server,
 // and a number about the wrong server is indistinguishable from a number about the right one.
-export const ROUTES = [
+import { only } from "./lib/only.mjs";
+
+const ALL = [
   {
     path: "/",
     name: "landing",
@@ -618,6 +620,9 @@ export const ROUTES = [
     proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("JOIN THE BOARD")',
   },
 ];
+
+/** Every route, or the ones DESIGN_ROUTES names (lib/only.mjs). */
+export const ROUTES = only(ALL, process.env.DESIGN_ROUTES);
 
 export const GROUND = { light: "rgb(255, 255, 255)", dark: "rgb(11, 13, 26)" };
 
