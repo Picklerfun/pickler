@@ -6,11 +6,13 @@ import { createTool } from "@mastra/core/tools";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import {
+  briefEvaluationSchema,
   modelAssessmentSchema,
   nflAssessmentSchema,
   generalAssessmentSchema,
 } from "@pickler/api-schema";
-import { PilotError, type ResearchModel, type Market } from "@pickler/core";
+import { PilotError, type Market, type ResearchModel, type ResearchProtocol } from "@pickler/core";
+import { briefDecisionSystemPrompt } from "../prompts/brief-decision-system.js";
 import { nflDecisionSystemPrompt } from "../prompts/nfl-decision-system.js";
 import { decisionSystemPrompt } from "../prompts/decision-system.js";
 import { modelDiagnostic } from "./model-diagnostics.js";
@@ -27,6 +29,26 @@ import {
   marketSelectionSystemPrompt,
   marketSelectionSchema,
 } from "../prompts/market-selection-system.js";
+
+/**
+ * The decision's schema for a protocol. With a brief the answer must carry `brief`; the base
+ * schemas stay as they are, because their JSON schema is part of each decision prompt.
+ */
+function assessmentSchemaFor(protocol: ResearchProtocol | undefined, briefed: boolean) {
+  if (protocol === "general-market-v1") {
+    return briefed
+      ? generalAssessmentSchema.extend({ brief: briefEvaluationSchema }).strict()
+      : generalAssessmentSchema;
+  }
+  if (protocol === "nfl-winner-v1") {
+    return briefed
+      ? nflAssessmentSchema.extend({ brief: briefEvaluationSchema }).strict()
+      : nflAssessmentSchema;
+  }
+  return briefed
+    ? modelAssessmentSchema.extend({ brief: briefEvaluationSchema }).strict()
+    : modelAssessmentSchema;
+}
 
 export function createModel(env: Environment): ResearchModel & {
   check(): Promise<unknown>;
@@ -61,6 +83,7 @@ export function createModel(env: Environment): ResearchModel & {
         decision: decisionSystemPrompt,
         nflDecision: nflDecisionSystemPrompt,
         generalDecision: generalDecisionSystemPrompt,
+        briefDecision: briefDecisionSystemPrompt,
       },
     }),
     async select(
@@ -149,12 +172,7 @@ export function createModel(env: Environment): ResearchModel & {
       }
     },
     async research(input) {
-      const assessmentSchema =
-        input.protocol === "general-market-v1"
-          ? generalAssessmentSchema
-          : input.protocol === "nfl-winner-v1"
-            ? nflAssessmentSchema
-            : modelAssessmentSchema;
+      const assessmentSchema = assessmentSchemaFor(input.protocol, input.brief !== undefined);
       const agent = new Agent({
         maxRetries: 0,
         id: "researcher",
@@ -246,12 +264,14 @@ export function createModel(env: Environment): ResearchModel & {
           maxRetries: 0,
           id: "research-decision",
           name: "Research decision",
-          instructions:
+          instructions: [
             input.protocol === "general-market-v1"
               ? generalDecisionSystemPrompt.instructions
               : input.protocol === "nfl-winner-v1"
                 ? nflDecisionSystemPrompt.instructions
                 : decisionSystemPrompt.instructions,
+            ...(input.brief ? [briefDecisionSystemPrompt.instructions] : []),
+          ].join("\n"),
           model,
         });
         finalizer.__setLogger(noopLogger);
@@ -263,6 +283,15 @@ export function createModel(env: Environment): ResearchModel & {
           availability: input.availability,
           evidence: input.evidence?.(),
           untrustedResearchSummary: research.text,
+          ...(input.brief
+            ? {
+                brief: {
+                  entersWhen: input.brief.entersWhen,
+                  exitsWhen: input.brief.exitsWhen,
+                  never: input.brief.never,
+                },
+              }
+            : {}),
         };
         if (finalInput.evidence) {
           try {
