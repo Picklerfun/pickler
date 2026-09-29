@@ -97,8 +97,9 @@ leaves no row in `identity.siwe_nonces`.
 
 `POST /v1/auth/wallet/nonce` is public and has no rate limit of its own. What bounds it is in the
 store: every issue deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired nonces, and an address
-with `MAX_OPEN_NONCES_PER_ADDRESS` (5, core) unexpired ones is refused with 429
-`too_many_sign_in_requests`. A nonce is kept under the address it was issued to, so `verify` and
+holds `MAX_OPEN_NONCES_PER_ADDRESS` (5, core) at most — a further issue evicts its oldest and is
+never refused, because the address is unverified and a refusal would let anybody lock a wallet out
+of signing in. An evicted nonce answers 400 `nonce_invalid`, which a retry fixes. A nonce is kept under the address it was issued to, so `verify` and
 `link` answer 400 `nonce_invalid` for one presented in a message naming another address. There is
 no cap per client yet: `CF-Connecting-IP` is available to the route, but keeping its hash needs a
 column `identity.siwe_nonces` does not have.

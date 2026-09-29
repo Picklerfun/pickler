@@ -52,7 +52,7 @@ test("a nonce can be consumed once", async (t) => {
   const { wallets } = await setup(t);
   const expiresAt = new Date(Date.now() + 60_000);
   const issued = nonce();
-  assert.deepEqual(await wallets.issue(issued, expiresAt, HOLDER), { issued: true });
+  await wallets.issue(issued, expiresAt, HOLDER);
 
   // The whole record, so a misspelled alias cannot pass as an unchecked field.
   assert.deepEqual(await wallets.consume(issued, HOLDER), { expiresAt });
@@ -112,54 +112,77 @@ test("one issue deletes at most a batch, so no call pays for a backlog", async (
   assert.equal(await count(store.pool, "expires_at < now()"), 0);
 });
 
-test("an address holds at most five unexpired nonces", async (t) => {
+/** Issued one after another with expiries a second apart, so which is oldest is not in doubt. */
+async function issueInOrder(
+  wallets: PostgresWalletIdentityStore,
+  howMany: number,
+  holder = HOLDER,
+) {
+  const issued: string[] = [];
+  for (let index = 0; index < howMany; index += 1) {
+    const one = nonce();
+    await wallets.issue(one, new Date(Date.now() + 60_000 + index * 1_000), holder);
+    issued.push(one);
+  }
+  return issued;
+}
+
+test("a sixth nonce for an address is issued, and the oldest makes room for it", async (t) => {
   const { store, wallets } = await setup(t);
   assert.equal(MAX_OPEN_NONCES_PER_ADDRESS, 5);
-  for (let held = 0; held < MAX_OPEN_NONCES_PER_ADDRESS; held += 1) {
-    assert.deepEqual(await wallets.issue(nonce(), inAMinute(), HOLDER), { issued: true });
-  }
+  const [oldest, ...rest] = await issueInOrder(wallets, MAX_OPEN_NONCES_PER_ADDRESS);
 
-  const refused = nonce();
-  assert.deepEqual(await wallets.issue(refused, inAMinute(), HOLDER), { issued: false });
+  const sixth = nonce();
+  await wallets.issue(sixth, new Date(Date.now() + 120_000), HOLDER);
 
-  assert.equal(await wallets.consume(refused, HOLDER), null, "a refused nonce was stored");
   assert.equal(await count(store.pool, "true"), MAX_OPEN_NONCES_PER_ADDRESS);
-  // The cap is per address: somebody else is not refused because of it.
-  assert.deepEqual(await wallets.issue(nonce(), inAMinute(), OTHER_HOLDER), { issued: true });
+  assert.equal(await wallets.consume(oldest!, HOLDER), null, "the evicted nonce was still there");
+  for (const kept of [...rest, sixth]) {
+    assert.ok(await wallets.consume(kept, HOLDER), "a nonce that was not the oldest was evicted");
+  }
 });
 
-test("the same address in another chain family has a cap of its own", async (t) => {
-  const { wallets } = await setup(t);
-  // Not a real collision — the two families spell addresses differently — but the namespace is
-  // part of what the cap counts, as it is part of what a link is.
-  for (let held = 0; held < MAX_OPEN_NONCES_PER_ADDRESS; held += 1) {
-    await wallets.issue(nonce(), inAMinute(), HOLDER);
-  }
-  assert.deepEqual(
-    await wallets.issue(nonce(), inAMinute(), { namespace: "solana", address: SOL_ADDR }),
-    { issued: true },
-  );
+/**
+ * The route is public and the address unverified, so anybody can ask for nonces in somebody
+ * else's name. A cap that refused would let them keep that wallet from signing in at all; one that
+ * evicts costs its holder a retry at most.
+ */
+test("an address flooded by somebody else can still get a nonce and spend it", async (t) => {
+  const { store, wallets } = await setup(t);
+  await issueInOrder(wallets, MAX_OPEN_NONCES_PER_ADDRESS * 3);
+
+  const own = nonce();
+  await wallets.issue(own, new Date(Date.now() + 300_000), HOLDER);
+
+  assert.ok(await wallets.consume(own, HOLDER));
+  assert.equal(await count(store.pool, "true"), MAX_OPEN_NONCES_PER_ADDRESS - 1);
 });
 
-test("expired nonces do not count against an address", async (t) => {
+test("making room for one address never takes another's nonces", async (t) => {
   const { wallets } = await setup(t);
-  for (let held = 0; held < MAX_OPEN_NONCES_PER_ADDRESS; held += 1) {
-    await wallets.issue(nonce(), new Date(Date.now() - 1_000), HOLDER);
+  const others = await issueInOrder(wallets, MAX_OPEN_NONCES_PER_ADDRESS, OTHER_HOLDER);
+  const solana: NonceHolder = { namespace: "solana", address: SOL_ADDR };
+  const [inSolana] = await issueInOrder(wallets, 1, solana);
+
+  await issueInOrder(wallets, MAX_OPEN_NONCES_PER_ADDRESS * 2);
+
+  for (const kept of others) {
+    assert.ok(await wallets.consume(kept, OTHER_HOLDER));
   }
-  assert.deepEqual(await wallets.issue(nonce(), inAMinute(), HOLDER), { issued: true });
+  assert.ok(await wallets.consume(inSolana!, solana));
 });
 
-test("spending a nonce makes room for another", async (t) => {
-  const { wallets } = await setup(t);
-  const issued = Array.from({ length: MAX_OPEN_NONCES_PER_ADDRESS }, nonce);
-  for (const one of issued) {
-    await wallets.issue(one, inAMinute(), HOLDER);
+test("issues racing for one address leave it with five at most", async (t) => {
+  const { store, wallets } = await setup(t);
+  await issueInOrder(wallets, MAX_OPEN_NONCES_PER_ADDRESS);
+  const warm = await Promise.all(Array.from({ length: 4 }, () => store.pool.connect()));
+  for (const client of warm) {
+    client.release();
   }
-  assert.deepEqual(await wallets.issue(nonce(), inAMinute(), HOLDER), { issued: false });
 
-  await wallets.consume(issued[0]!, HOLDER);
+  await Promise.all(Array.from({ length: 8 }, () => wallets.issue(nonce(), inAMinute(), HOLDER)));
 
-  assert.deepEqual(await wallets.issue(nonce(), inAMinute(), HOLDER), { issued: true });
+  assert.equal(await count(store.pool, "true"), MAX_OPEN_NONCES_PER_ADDRESS);
 });
 
 test("a nonce that was never issued cannot be consumed", async (t) => {

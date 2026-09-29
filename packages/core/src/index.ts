@@ -244,7 +244,6 @@ export {
   createWalletSignIn,
   ExpiredNonceError,
   NONCE_TTL_MS,
-  TooManySignInRequestsError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,

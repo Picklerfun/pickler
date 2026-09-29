@@ -7,7 +7,6 @@ import {
   ExpiredNonceError,
   InvalidAddressError,
   InvalidChainError,
-  TooManySignInRequestsError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
@@ -24,7 +23,7 @@ export interface WalletAuthServices {
 }
 
 /**
- * Every refusal is a 400, 401, 409 or 429 with something the browser can branch on, never a 500. A 500
+ * Every refusal is a 400, 401 or 409 with something the browser can branch on, never a 500. A 500
  * tells a person to try again later when the truth is that their nonce is stale. Malformed input
  * is the same: an address that is not one, a chain that is not a positive whole number and a string
  * that is not a sign-in message are each a 400 with a code of their own.
@@ -50,9 +49,6 @@ function asHttp(caught: unknown): never {
     (caught instanceof Error && caught.name === "SiweInvalidMessageFieldError")
   ) {
     throw badRequest("That is not a Pickler sign-in message", { error: "invalid_message" });
-  }
-  if (caught instanceof TooManySignInRequestsError) {
-    throw new HttpError(429, caught.message, { error: "too_many_sign_in_requests" });
   }
   if (caught instanceof WrongDomainError) {
     throw badRequest(caught.message, { error: "wrong_domain" });

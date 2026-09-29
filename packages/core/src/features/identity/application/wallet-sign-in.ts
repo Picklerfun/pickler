@@ -45,15 +45,6 @@ export class AddressTakenError extends Error {
   }
 }
 
-export class TooManySignInRequestsError extends Error {
-  constructor() {
-    super(
-      "Too many sign-ins are waiting for that wallet. Finish one, or try again in a few minutes.",
-    );
-    this.name = "TooManySignInRequestsError";
-  }
-}
-
 /**
  * The auth account at this address's synthetic email was not made by wallet sign-in: it has a
  * password, or an identity wallet sign-in never creates, and no wallet-account marker. Since the
@@ -211,14 +202,10 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         nonce,
         issuedAt: deps.clock.now(),
       });
-      const { issued } = await deps.nonces.issue(
-        nonce,
-        new Date(deps.clock.now().getTime() + NONCE_TTL_MS),
-        { namespace: input.namespace, address },
-      );
-      if (!issued) {
-        throw new TooManySignInRequestsError();
-      }
+      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS), {
+        namespace: input.namespace,
+        address,
+      });
       return { nonce, message };
     },
 

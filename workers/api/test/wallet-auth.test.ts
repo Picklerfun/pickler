@@ -8,7 +8,6 @@ import {
   buildUserPrincipal,
   createWalletSignIn as createRealWalletSignIn,
   ExpiredNonceError,
-  TooManySignInRequestsError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
@@ -126,10 +125,7 @@ function realSignIn() {
     clock: { now: () => new Date("2026-09-29T12:00:00Z") },
     domain: "pickler.fun",
     nonces: {
-      issue: async (nonce) => {
-        stored.push(nonce);
-        return { issued: true };
-      },
+      issue: async (nonce) => void stored.push(nonce),
       consume: async () => null,
     },
     links: {
@@ -249,15 +245,6 @@ test("a field the message builder refuses answers 400 invalid_message", async ()
   const { app } = harness({ issueNonce: () => Promise.reject(refused) });
   const response = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
   assert.deepEqual(await refusal(response), { status: 400, error: "invalid_message" });
-});
-
-test("an address with too many sign-ins open answers 429 too_many_sign_in_requests", async () => {
-  const { app } = harness({ issueNonce: () => Promise.reject(new TooManySignInRequestsError()) });
-  const response = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
-  assert.deepEqual(await refusal(response), {
-    status: 429,
-    error: "too_many_sign_in_requests",
-  });
 });
 
 test("a spent nonce answers 400 with nonce_invalid, so the browser can ask for another", async () => {

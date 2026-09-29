@@ -750,7 +750,7 @@ designed: the client would have to say, and no field exists for it.
 
 **Expired nonces are deleted by the next issue.** There is still no sweeper: every
 `POST /v1/auth/wallet/nonce` deletes up to a hundred expired rows through the index on `expires_at`,
-and an address may hold five unexpired nonces at most (429 `too_many_sign_in_requests`). The row's
+and an address holds five nonces at most: a sixth evicts the oldest and is never refused. The row's
 key is a tag of the address followed by the nonce, because the table has no address column. A cap
 per client IP is not built: it needs a column for the IP's hash.
 

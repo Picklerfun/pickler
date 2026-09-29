@@ -255,12 +255,14 @@ at that same version would otherwise drop them.
 `identity.siwe_nonces`, which has only `nonce` and `expires_at`. The row's key is the holder's tag
 — sixteen hex characters of sha256 over `namespace:address` — followed by the nonce, so an
 address's open nonces are a range of the primary key and a nonce can only be consumed for the
-address it was issued to. `issue(nonce, expiresAt, holder)` is one statement: it deletes up to
-`EXPIRED_NONCE_PURGE_BATCH` (100) expired rows through `siwe_nonces_expiry_idx` (by `ctid`,
-`FOR UPDATE SKIP LOCKED`), and inserts only while the holder has fewer than core's
-`MAX_OPEN_NONCES_PER_ADDRESS` (5) unexpired nonces, answering `{ issued: false }` otherwise. The
-count reads the statement's snapshot, so the cap can be passed by one or two under a race. Nothing
-else deletes expired nonces. A cap per client IP would need a column for the IP's hash and a
+address it was issued to. `issue(nonce, expiresAt, holder)` never refuses. In one transaction,
+under `pg_advisory_xact_lock` on the holder's tag so issues for one address take turns, one
+statement deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired rows through
+`siwe_nonces_expiry_idx`, evicts the holder's oldest nonces so that it holds core's
+`MAX_OPEN_NONCES_PER_ADDRESS` (5) with the new one, and inserts. Both deletes go by `ctid` with
+`FOR UPDATE SKIP LOCKED`. It evicts rather than refuses because the route is public and the address
+unverified: a refusing cap would let anybody lock a wallet out. Nothing else deletes expired
+nonces. A cap per client IP would need a column for the IP's hash and a
 migration.
 
 ## Agent wallet ceremony

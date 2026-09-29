@@ -20,19 +20,20 @@ export interface NonceHolder {
 }
 
 /**
- * How many unexpired nonces one address may hold. The route that issues them is public, so
- * without a cap one address's sign-in can be asked for without end. Five is more than a person
+ * How many nonces one address may hold at once. The route that issues them is public, so without
+ * a bound one address's rows grow for as long as anybody keeps asking. Five is more than a person
  * retrying in several tabs needs inside the five minutes a nonce lives.
  */
 export const MAX_OPEN_NONCES_PER_ADDRESS = 5;
 
 export interface NonceStore {
   /**
-   * `issued: false` when the holder already has `MAX_OPEN_NONCES_PER_ADDRESS` unexpired nonces;
-   * nothing is stored then. Every call also deletes nonces that have expired, a bounded number at
-   * a time, because nothing else ever does.
+   * Never refuses. A holder already at `MAX_OPEN_NONCES_PER_ADDRESS` loses its oldest nonces to
+   * make room: the address is unverified and anybody can ask in its name, so refusing would let
+   * a stranger keep a wallet from signing in, where evicting costs its holder a retry. Every call
+   * also deletes nonces that have expired, a bounded number at a time, because nothing else does.
    */
-  issue(nonce: string, expiresAt: Date, holder: NonceHolder): Promise<{ issued: boolean }>;
+  issue(nonce: string, expiresAt: Date, holder: NonceHolder): Promise<void>;
   /**
    * Single-use. Returns the row and deletes it in one statement, so two concurrent verifications
    * of the same nonce cannot both succeed. Returns null when it never existed, was already taken
