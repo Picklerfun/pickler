@@ -4,6 +4,8 @@ import { ACCENTS } from "./landing.js";
 import {
   agentConfigSchema,
   agentResponseSchema,
+  decisionSchema,
+  eventResponseSchema,
   skillSchema,
   spendLimitsSchema,
   uncertaintyPolicySchema,
@@ -246,3 +248,58 @@ export const draftResponseSchema = z.object({
   draft: agentDraftSchema,
   unsupported: z.array(z.string()),
 });
+
+/**
+ * What the brief screen sends. Lengths and line counts are core's to judge (`assertBrief`), so the
+ * answer can name the section: 400 INVALID_BRIEF with `field` and `reason`. These bounds only keep
+ * the body small.
+ */
+const briefInputSchema = z
+  .object({
+    thesis: z.string().max(4000),
+    reads: z.array(z.string().max(1000)).max(50),
+    entersWhen: z.array(z.string().max(1000)).max(50),
+    exitsWhen: z.array(z.string().max(1000)).max(50),
+    never: z.array(z.string().max(1000)).max(50),
+  })
+  .strict();
+
+/** `POST /v1/studio/preview-runs` (spec §4). Caps and leverage are core's to judge too. */
+export const previewRunRequestSchema = z
+  .object({
+    brief: briefInputSchema,
+    spend: z.object({ perCallAusd: z.number(), perDayAusd: z.number() }).strict(),
+    maxLeverage: z.number(),
+  })
+  .strict();
+export type PreviewRunRequestDto = z.infer<typeof previewRunRequestSchema>;
+
+/** `GET /v1/studio/preview-runs/:id`: the run and its trace, events in a run's own shape. */
+export const previewRunResponseSchema = z.object({
+  run: z.object({
+    id: z.string(),
+    status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
+    createdAt: z.number(),
+    startedAt: z.number().nullable(),
+    finishedAt: z.number().nullable(),
+    expiresAt: z.number(),
+    adopted: z.boolean(),
+    decision: decisionSchema.nullable(),
+    error: z.string().nullable(),
+  }),
+  events: z.array(eventResponseSchema),
+});
+export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
+
+/**
+ * `POST /v1/studio/drafts` (spec §6). The brief travels again so the server can check that the
+ * run was made from exactly this brief (409 RUN_STALE otherwise).
+ */
+export const draftCreateSchema = previewRunRequestSchema
+  .extend({
+    name: z.string().trim().min(1).max(40),
+    handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
+    previewRunId: z.string().uuid(),
+  })
+  .strict();
+export type DraftCreateDto = z.infer<typeof draftCreateSchema>;
