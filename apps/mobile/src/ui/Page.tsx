@@ -9,12 +9,11 @@ import { Icon, T, Tag, Touch } from "./primitives";
 import { tabBarHeight } from "./tabBarLayout";
 import { C } from "./theme";
 
-/** Una página de react-navigation: cabecera propia (viaja con el gesto), ScrollView con pull-to-refresh y sello, fondo opaco. */
-export function Page({ screen, children, headerRight }: { screen: Screen; children: ReactNode; headerRight?: ReactNode }) {
+/** Una página de react-navigation: cabecera propia (viaja con el gesto), fondo opaco. Con `bare`, el cuerpo es un View flex:1 (para FooterBar fuera del scroll); si no, PageScroll de siempre. */
+export function Page({ screen, children, headerRight, bare }: { screen: Screen; children: ReactNode; headerRight?: ReactNode; bare?: boolean }) {
   const ctx = useAppCtx();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
-  const { S, perpl, treasury, reads, seal, back, setControls } = ctx;
+  const { S, perpl, reads, back, setControls } = ctx;
   const openMarket = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId);
   const perpsSymbol = openMarket?.symbol;
   const [title, baseSub] = headerFor(screen, perpsSymbol);
@@ -23,26 +22,6 @@ export function Page({ screen, children, headerRight }: { screen: Screen; childr
   const isRoot = ROOT_OF[screen] === screen;
   const canBack = CAN_BACK.includes(screen) && navigation.canGoBack();
   const showTabs = SHOW_TABS.includes(screen);
-  const refreshable = REFRESHABLE.includes(screen);
-
-  const [refreshing, setRefreshing] = useState(false);
-  // Wallet = saldos + movimientos; Markets/Market = contexto de Perpl (+ reads en Market). allSettled: un fallo no deja el spinner colgado.
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.allSettled(
-        screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()]
-        : screen === "market" || screen === "portfolio" ? [perpl.refreshContext(), reads.refresh()]
-        : [perpl.refreshContext()],
-      );
-    } finally {
-      setRefreshing(false);
-      seal.onRefreshDone(screen);
-    }
-  }, [screen, treasury, perpl, reads, seal]);
-
-  const label = refreshable ? seal.labelFor(screen) : null;
-  const failed = refreshable && seal.failedOn(screen);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -67,22 +46,62 @@ export function Page({ screen, children, headerRight }: { screen: Screen; childr
             </Touch>
           ) : null}
         </View>
-        <ScrollView
-          style={{ flex: 1 }}
-          // Las raíces reservan el hueco de la tab bar absoluta (D13); las no-raíz no lo necesitan.
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.faint} /> : undefined}
-        >
-          {failed || label !== null ? (
-            <View style={{ paddingHorizontal: 18, paddingTop: 10 }}>
-              <Tag color={failed ? C.down : C.faint}>{failed ? "COULDN'T REFRESH" : label}</Tag>
-            </View>
-          ) : null}
-          {children}
-        </ScrollView>
+        {bare ? <View style={{ flex: 1 }}>{children}</View> : <PageScroll screen={screen}>{children}</PageScroll>}
       </SafeAreaView>
+    </View>
+  );
+}
+
+/** Cuerpo con scroll, pull-to-refresh y sello (UPDATED / COULDN'T REFRESH) — el `Page` de siempre, ahora aparte para que `bare` lo pueda omitir. */
+export function PageScroll({ screen, children }: { screen: Screen; children: ReactNode }) {
+  const { perpl, treasury, reads, seal } = useAppCtx();
+  const insets = useSafeAreaInsets();
+  const showTabs = SHOW_TABS.includes(screen);
+  const refreshable = REFRESHABLE.includes(screen);
+
+  const [refreshing, setRefreshing] = useState(false);
+  // Wallet = saldos + movimientos; Markets/Market = contexto de Perpl (+ reads en Market). allSettled: un fallo no deja el spinner colgado.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled(
+        screen === "wallet" ? [treasury.refresh(), treasury.refreshMovements()]
+        : screen === "market" || screen === "portfolio" ? [perpl.refreshContext(), reads.refresh()]
+        : [perpl.refreshContext()],
+      );
+    } finally {
+      setRefreshing(false);
+      seal.onRefreshDone(screen);
+    }
+  }, [screen, treasury, perpl, reads, seal]);
+
+  const label = refreshable ? seal.labelFor(screen) : null;
+  const failed = refreshable && seal.failedOn(screen);
+
+  return (
+    <ScrollView
+      style={{ flex: 1 }}
+      // Las raíces reservan el hueco de la tab bar absoluta (D13); las no-raíz no lo necesitan.
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} tintColor={C.faint} /> : undefined}
+    >
+      {failed || label !== null ? (
+        <View style={{ paddingHorizontal: 18, paddingTop: 10 }}>
+          <Tag color={failed ? C.down : C.faint}>{failed ? "COULDN'T REFRESH" : label}</Tag>
+        </View>
+      ) : null}
+      {children}
+    </ScrollView>
+  );
+}
+
+/** Barra de acción fija (Handoff: STICKY ACTION de Market, Read y el perfil). Sólo en pantallas no raíz: ahí no hay tab bar. */
+export function FooterBar({ children }: { children: ReactNode }) {
+  return (
+    <View style={{ paddingTop: 12, paddingHorizontal: 18, paddingBottom: 12, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.hair08, gap: 10 }}>
+      {children}
     </View>
   );
 }
@@ -91,11 +110,11 @@ export function Page({ screen, children, headerRight }: { screen: Screen; childr
 export function withPage(
   screen: Screen,
   Component: (ctx: AppCtx) => ReactElement,
-  opts?: { headerRight?: (ctx: AppCtx) => ReactNode },
+  opts?: { headerRight?: (ctx: AppCtx) => ReactNode; bare?: boolean },
 ): () => ReactElement {
   const Wrapped = () => {
     const ctx = useAppCtx();
-    return <Page screen={screen} headerRight={opts?.headerRight?.(ctx)}><Component {...ctx} /></Page>;
+    return <Page screen={screen} headerRight={opts?.headerRight?.(ctx)} bare={opts?.bare}><Component {...ctx} /></Page>;
   };
   Wrapped.displayName = `Page(${screen})`;
   return Wrapped;
