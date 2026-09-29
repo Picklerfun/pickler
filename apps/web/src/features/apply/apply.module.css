@@ -1,36 +1,19 @@
 /* Pickler apply flow, implemented from the "Pickler Join" design canvas. */
 
 .page {
-  --ink: var(--pk-ink);
-  --ink-soft: var(--pk-ink-soft);
-  --muted: var(--pk-ink-muted);
-  --faint: var(--pk-ink-faint);
-  --placeholder: var(--pk-ink-placeholder);
-  --cyan-ink: var(--pk-cyan-ink);
-  --rule: var(--pk-rule);
-  --lime: var(--pk-lime);
-  --lime-ink: var(--pk-lime-ink);
-  --cyan: var(--pk-cyan);
-  --magenta: var(--pk-magenta);
-  --display: var(--pk-font-display);
-  --body: var(--pk-font);
-  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
-     sizes with wide tracking, so the alias stops claiming to be a monospace. */
-  --label: var(--pk-font);
-
   position: relative;
   min-height: 100vh;
   /* `clip`, not `hidden`: a hidden box is still a scroll container, so jumping to an anchor
      scrolled this element instead of the page and left the footer floating. */
   overflow: clip;
   background: var(--pk-bg);
-  color: var(--ink);
-  font-family: var(--body);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
   -webkit-font-smoothing: antialiased;
 }
 
 .page a {
-  color: var(--ink);
+  color: var(--pk-ink);
   text-decoration: none;
 }
 
@@ -38,18 +21,18 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: var(--cyan);
+  color: var(--pk-cyan);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
 .page :focus-visible:not(:global(.pk-input)):not(:global(.pk-input-inner)) {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--pk-cyan);
   outline-offset: 2px;
 }
 
 .page input::placeholder,
 .page textarea::placeholder {
-  color: var(--placeholder);
+  color: var(--pk-ink-placeholder);
 }
 
 /* Accent-driven pixel. Set --accent and --accent-rgb inline. */
@@ -73,9 +56,9 @@
 
 .monoLabel {
   margin: 0;
-  font: 500 12px/1 var(--label);
+  font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .glass {
@@ -96,7 +79,7 @@
 .primaryButton:disabled {
   opacity: 1;
   background: rgba(245, 246, 255, 0.08);
-  color: var(--placeholder);
+  color: var(--pk-ink-placeholder);
   border-color: rgba(245, 246, 255, 0.2);
   box-shadow: none;
   cursor: not-allowed;
@@ -110,7 +93,7 @@
 }
 
 .page .secondaryButton:hover {
-  border-color: var(--ink);
+  border-color: var(--pk-ink);
 }
 
 /* ---------- Header ---------- */
@@ -118,7 +101,7 @@
 .header {
   position: relative;
   z-index: 20;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--pk-rule);
   background: var(--pk-nav-bg);
 }
 
@@ -135,7 +118,7 @@
   align-items: center;
   gap: 11px;
   padding: 16px 22px;
-  border-right: 1px solid var(--rule);
+  border-right: 1px solid var(--pk-rule);
 }
 
 .brandLogo {
@@ -146,7 +129,7 @@
 }
 
 .brandName {
-  font: 700 20px/1 var(--display);
+  font: 700 20px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.01em;
 }
@@ -155,10 +138,10 @@
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  border-right: 1px solid var(--rule);
-  font: 500 11px/1 var(--label);
+  border-right: 1px solid var(--pk-rule);
+  font: 500 11px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--faint);
+  color: var(--pk-ink-faint);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -167,17 +150,17 @@
   align-items: center;
   margin-left: auto;
   padding: 14px 20px;
-  border-left: 1px solid var(--rule);
-  font: 500 12.5px/1 var(--label);
+  border-left: 1px solid var(--pk-rule);
+  font: 500 12.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
 }
 
 .page a.headerLink {
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .page a.headerLink:hover {
-  color: var(--ink);
+  color: var(--pk-ink);
 }
 
 /* ---------- Layout ---------- */
@@ -192,14 +175,14 @@
 
 .eyebrow {
   margin: 0 0 14px;
-  font: 500 13px/1 var(--label);
+  font: 500 13px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .title {
   margin: 0 0 12px;
-  font: 700 clamp(34px, 6vw, 64px)/0.98 var(--display);
+  font: 700 clamp(34px, 6vw, 64px)/0.98 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
@@ -207,8 +190,8 @@
 .lead {
   max-width: 580px;
   margin: 0 0 32px;
-  font: 400 18px/1.5 var(--body);
-  color: var(--ink-soft);
+  font: 400 18px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
 }
 
 .columns {
@@ -245,14 +228,14 @@
 .inviteEmail {
   min-width: 0;
   overflow-wrap: anywhere;
-  font: 600 15px/1.2 var(--body);
+  font: 600 15px/1.2 var(--pk-font);
 }
 
 .inviteSource {
   margin-left: auto;
-  font: 500 11.5px/1 var(--label);
+  font: 500 11.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--faint);
+  color: var(--pk-ink-faint);
 }
 
 .card {
@@ -282,9 +265,9 @@
   gap: 9px;
   margin-bottom: 10px;
   padding: 0;
-  font: 500 12px/1 var(--label);
+  font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -304,28 +287,28 @@
   width: auto;
   border-color: rgba(200, 240, 58, 0.45);
   font-weight: 700;
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .hint {
   margin: 9px 0 0;
-  font: 400 13.5px/1.4 var(--body);
-  color: var(--muted);
+  font: 400 13.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .monoHint {
   margin: 9px 0 0;
-  font: 500 12.5px/1.3 var(--label);
+  font: 500 12.5px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .good {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .bad {
-  color: var(--magenta);
+  color: var(--pk-magenta);
 }
 
 .counterRow {
@@ -333,12 +316,12 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 9px;
-  font: 400 13px/1.3 var(--body);
-  color: var(--muted);
+  font: 400 13px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .counter {
-  font: 500 12.5px/1.3 var(--label);
+  font: 500 12.5px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
 }
 
@@ -355,8 +338,8 @@
   padding: 10px 13px;
   background: var(--pk-bg);
   border: 1px solid rgba(245, 246, 255, 0.24);
-  font: 600 14px/1 var(--body);
-  color: var(--ink-soft);
+  font: 600 14px/1 var(--pk-font);
+  color: var(--pk-ink-soft);
   cursor: pointer;
   border-radius: var(--pk-radius-pill);
 }
@@ -377,8 +360,8 @@
 
 .chip[aria-checked="true"] {
   background: rgba(245, 246, 255, 0.14);
-  border-color: var(--ink);
-  color: var(--ink);
+  border-color: var(--pk-ink);
+  color: var(--pk-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -391,9 +374,9 @@
 
 .fieldError {
   margin: 9px 0 0;
-  font: 500 12.5px/1.3 var(--label);
+  font: 500 12.5px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--magenta);
+  color: var(--pk-magenta);
 }
 
 .submitRow {
@@ -405,9 +388,9 @@
 }
 
 .progressLabel {
-  font: 500 12.5px/1.4 var(--label);
+  font: 500 12.5px/1.4 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- Your piece ---------- */
@@ -436,9 +419,9 @@
 }
 
 .pieceCount {
-  font: 500 12px/1 var(--label);
+  font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .well {
@@ -488,22 +471,22 @@
 .blockValue {
   display: block;
   overflow: hidden;
-  font: 600 14px/1.2 var(--body);
+  font: 600 14px/1.2 var(--pk-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .blockLabel {
   display: block;
-  font: 500 11.5px/1.3 var(--label);
+  font: 500 11.5px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .pieceFoot {
   margin: 14px 0 0;
-  font: 400 14px/1.45 var(--body);
-  color: var(--muted);
+  font: 400 14px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- Submitted ---------- */
@@ -538,15 +521,15 @@
   align-items: center;
   gap: 9px;
   margin-bottom: 16px;
-  font: 500 12.5px/1 var(--label);
+  font: 500 12.5px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--ink-soft);
+  color: var(--pk-ink-soft);
 }
 
 .liveDot {
   width: 9px;
   height: 9px;
-  background: var(--lime);
+  background: var(--pk-lime);
   box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
   animation: blink 1.4s steps(1, end) infinite;
   border-radius: var(--pk-radius-pill);
@@ -555,7 +538,7 @@
 .sentTitle {
   margin: 0 0 14px;
   overflow-wrap: anywhere;
-  font: 700 clamp(30px, 4.6vw, 52px)/1 var(--display);
+  font: 700 clamp(30px, 4.6vw, 52px)/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
@@ -563,7 +546,7 @@
 .sentLead {
   max-width: 430px;
   margin: 0 0 26px;
-  font: 400 17px/1.5 var(--body);
+  font: 400 17px/1.5 var(--pk-font);
 }
 
 .tiles {
@@ -585,14 +568,14 @@
 
 .tile dd {
   margin: 0 0 5px;
-  font: 700 26px/1 var(--label);
+  font: 700 26px/1 var(--pk-font);
   letter-spacing: -0.03em;
 }
 
 .tile dt {
-  font: 500 11px/1 var(--label);
+  font: 500 11px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--ink-soft);
+  color: var(--pk-ink-soft);
 }
 
 .tileLime {
@@ -608,11 +591,11 @@
 }
 
 .tileLime dd {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .tileCyan dd {
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .held {
@@ -648,15 +631,15 @@
 }
 
 .heldText dt {
-  font: 500 11.5px/1.3 var(--label);
+  font: 500 11.5px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .heldText dd {
   margin: 0;
   overflow-wrap: anywhere;
-  font: 600 15px/1.3 var(--body);
+  font: 600 15px/1.3 var(--pk-font);
 }
 
 .crowd {
@@ -679,14 +662,14 @@
 
 .crowdEyebrow {
   margin: 0 0 10px;
-  font: 500 12px/1 var(--label);
+  font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .crowdTitle {
   margin: 0 0 12px;
-  font: 700 clamp(24px, 3vw, 34px)/1.05 var(--display);
+  font: 700 clamp(24px, 3vw, 34px)/1.05 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
@@ -694,8 +677,8 @@
 .crowdLead {
   max-width: 440px;
   margin: 0 0 20px;
-  font: 400 16px/1.5 var(--body);
-  color: var(--ink-soft);
+  font: 400 16px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
 }
 
 .shareButton {
@@ -727,15 +710,15 @@
 
 .postText {
   margin: 0;
-  font: 400 15px/1.5 var(--body);
+  font: 400 15px/1.5 var(--pk-font);
 }
 
 .linkText {
   margin: 10px 0 0;
   overflow-wrap: anywhere;
-  font: 500 12.5px/1.4 var(--label);
+  font: 500 12.5px/1.4 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .tile.small dd {
