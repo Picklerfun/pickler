@@ -6,12 +6,14 @@ import {
   BadSignatureError,
   buildApiKeyPrincipal,
   buildUserPrincipal,
+  createWalletSignIn as createRealWalletSignIn,
   ExpiredNonceError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
   type createWalletSignIn,
 } from "@pickler/core";
+import { buildSiweMessage, parseSiweMessage } from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
 
 const ANA = "11111111-2222-4333-8444-555555555555";
@@ -110,6 +112,138 @@ test("the nonce route refuses a chain id that is not a number", async () => {
     chain_id: "10143",
   });
   assert.equal(response.status, 400);
+});
+
+/**
+ * The service itself over the real SIWE builder and parser, wired as the container wires it, with
+ * a nonce store that only counts. Malformed input is refused by core and by viem, not by the
+ * route, so a stub service could not show what the route answers for it.
+ */
+function realSignIn() {
+  const stored: string[] = [];
+  const signIn = createRealWalletSignIn({
+    clock: { now: () => new Date("2026-09-29T12:00:00Z") },
+    domain: "pickler.fun",
+    nonces: {
+      issue: async (nonce) => void stored.push(nonce),
+      consume: async () => null,
+    },
+    links: {
+      findByAddress: async () => null,
+      link: async () => ({ created: true }),
+      listForUser: async () => [],
+    },
+    verifier: { verify: async () => true },
+    accounts: {
+      forAddress: async () => ({ userId: ANA }),
+      session: async () => ({ accessToken: "at", refreshToken: "rt" }),
+      markWalletAccount: async () => {},
+    },
+    randomNonce: () => "b1c93a5f4e2d47a8b0c6e9f1a2d3b4c5",
+    buildMessage: (fields) =>
+      buildSiweMessage({
+        domain: fields.domain,
+        address: fields.address as `0x${string}`,
+        statement: "Sign in to Pickler",
+        uri: `https://${fields.domain}`,
+        chainId: fields.chainReference,
+        nonce: fields.nonce,
+        issuedAt: fields.issuedAt,
+      }),
+    parseMessage: parseSiweMessage,
+  });
+  return { signIn, stored };
+}
+
+async function refusal(response: Response) {
+  return { status: response.status, error: ((await response.json()) as { error?: string }).error };
+}
+
+test("the real service issues a nonce for a well-formed request", async () => {
+  const { signIn, stored } = realSignIn();
+  const { app } = harness(signIn);
+  const response = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
+  assert.equal(response.status, 200);
+  assert.equal(stored.length, 1);
+});
+
+test("an address that is not one answers 400 invalid_address and stores no nonce", async () => {
+  const { signIn, stored } = realSignIn();
+  const { app } = harness(signIn);
+  const response = await post(app, "/v1/auth/wallet/nonce", { address: "nope", chain_id: 10143 });
+  assert.deepEqual(await refusal(response), { status: 400, error: "invalid_address" });
+  assert.deepEqual(stored, []);
+});
+
+test("a chain id that is not a positive whole number answers 400 invalid_chain", async () => {
+  for (const chain of [1.5, 0, -1, 2 ** 60]) {
+    const { signIn, stored } = realSignIn();
+    const { app } = harness(signIn);
+    const response = await post(app, "/v1/auth/wallet/nonce", {
+      address: ADDRESS,
+      chain_id: chain,
+    });
+    assert.deepEqual(
+      await refusal(response),
+      { status: 400, error: "invalid_chain" },
+      String(chain),
+    );
+    assert.deepEqual(stored, []);
+  }
+});
+
+test("a fractional chain id never reaches the service", async () => {
+  const { app, calls } = harness();
+  const response = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 1.5 });
+  assert.equal(response.status, 400);
+  assert.deepEqual(calls, []);
+});
+
+test("an address that is not a string answers 400, not 500", async () => {
+  const { signIn, stored } = realSignIn();
+  const { app } = harness(signIn);
+  const response = await post(app, "/v1/auth/wallet/nonce", {
+    address: { toString: "x" },
+    chain_id: 10143,
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(stored, []);
+});
+
+test("a string that is not a sign-in message answers 400 invalid_message", async () => {
+  const { signIn } = realSignIn();
+  const { app } = harness(signIn);
+  for (const path of ["/v1/auth/wallet/verify", "/v1/auth/wallet/link"]) {
+    const response = await post(
+      app,
+      path,
+      { raw: "hello", signature: "0xsig" },
+      { Authorization: `Bearer ${TOKEN}` },
+    );
+    assert.deepEqual(await refusal(response), { status: 400, error: "invalid_message" }, path);
+  }
+});
+
+test("a raw or signature that is not a string answers 400, not 500", async () => {
+  const { signIn } = realSignIn();
+  const { app } = harness(signIn);
+  for (const body of [
+    { raw: 12, signature: "0xsig" },
+    { raw: "hello", signature: { a: 1 } },
+  ]) {
+    const response = await post(app, "/v1/auth/wallet/verify", body);
+    assert.equal(response.status, 400, JSON.stringify(body));
+  }
+});
+
+test("a field the message builder refuses answers 400 invalid_message", async () => {
+  // viem's own refusal, recognised by name: the worker does not depend on viem.
+  const refused = Object.assign(new Error("Invalid Sign-In with Ethereum message field"), {
+    name: "SiweInvalidMessageFieldError",
+  });
+  const { app } = harness({ issueNonce: () => Promise.reject(refused) });
+  const response = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
+  assert.deepEqual(await refusal(response), { status: 400, error: "invalid_message" });
 });
 
 test("a spent nonce answers 400 with nonce_invalid, so the browser can ask for another", async () => {

@@ -5,10 +5,13 @@ import {
   AddressTakenError,
   BadSignatureError,
   ExpiredNonceError,
+  InvalidAddressError,
+  InvalidChainError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
 } from "@pickler/core";
+import { MalformedMessageError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
 import { successEnvelope } from "../http/envelope";
 import { badRequest, HttpError } from "../http/http-error";
@@ -21,7 +24,12 @@ export interface WalletAuthServices {
 
 /**
  * Every refusal is a 400, 401 or 409 with something the browser can branch on, never a 500. A 500
- * tells a person to try again later when the truth is that their nonce is stale.
+ * tells a person to try again later when the truth is that their nonce is stale. Malformed input
+ * is the same: an address that is not one, a chain that is not a positive whole number and a string
+ * that is not a sign-in message are each a 400 with a code of their own.
+ *
+ * viem's refusal of a message field is recognised by its name because this worker does not depend
+ * on viem; it reaches here only through the builder the container hands to core.
  *
  * `BadSignatureError` deliberately carries no `error` code: the client distinguishes it by the 401
  * alone, and the absence is what makes that work. Adding a code here would not be tidying.
@@ -29,6 +37,18 @@ export interface WalletAuthServices {
 function asHttp(caught: unknown): never {
   if (caught instanceof UnknownNonceError || caught instanceof ExpiredNonceError) {
     throw badRequest(caught.message, { error: "nonce_invalid" });
+  }
+  if (caught instanceof InvalidAddressError) {
+    throw badRequest(caught.message, { error: "invalid_address" });
+  }
+  if (caught instanceof InvalidChainError) {
+    throw badRequest(caught.message, { error: "invalid_chain" });
+  }
+  if (
+    caught instanceof MalformedMessageError ||
+    (caught instanceof Error && caught.name === "SiweInvalidMessageFieldError")
+  ) {
+    throw badRequest("That is not a Pickler sign-in message", { error: "invalid_message" });
   }
   if (caught instanceof WrongDomainError) {
     throw badRequest(caught.message, { error: "wrong_domain" });
@@ -56,11 +76,15 @@ export function walletAuthRoutes(services: WalletAuthServices) {
   // Public: there is no session yet, which is the point. Answers with the string to sign.
   api.post("/nonce", async (c) => {
     const body = (await c.req.json().catch(() => null)) as {
-      address?: string;
-      chain_id?: number;
+      address?: unknown;
+      chain_id?: unknown;
     } | null;
-    if (!body?.address || typeof body.chain_id !== "number") {
+    if (typeof body?.address !== "string" || !body.address || typeof body.chain_id !== "number") {
       throw badRequest("An address and a chain id are required to build the message");
+    }
+    // `typeof 1.5` is "number". Core refuses it too; refusing it here keeps it from the service.
+    if (!Number.isSafeInteger(body.chain_id) || body.chain_id <= 0) {
+      throw badRequest("The chain id must be a positive whole number", { error: "invalid_chain" });
     }
     const issued = await services.signIn
       .issueNonce({
@@ -74,8 +98,11 @@ export function walletAuthRoutes(services: WalletAuthServices) {
 
   /** `raw` is the whole request: the signature covers that string and nothing else is trusted. */
   function presented(body: unknown) {
-    const it = body as { raw?: string; signature?: string } | null;
-    if (!it?.raw || !it.signature) {
+    const it = body as { raw?: unknown; signature?: unknown } | null;
+    if (typeof it?.raw !== "string" || !it.raw) {
+      throw badRequest("The exact string signed and its signature are both required");
+    }
+    if (typeof it.signature !== "string" || !it.signature) {
       throw badRequest("The exact string signed and its signature are both required");
     }
     return { raw: it.raw, signature: it.signature };

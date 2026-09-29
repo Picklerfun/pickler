@@ -88,6 +88,13 @@ only from that sign-in. The email domain is never an exemption: with email sign-
 confirmations off, anyone can register an address in `WALLET_EMAIL_DOMAIN`. `isWalletAccountEmail`
 survives only to keep the synthetic email out of a passkey's keychain name, which is cosmetic.
 
+No wallet sign-in route answers 500 for bad input (`asHttp` in `routes/wallet-auth.ts`): an address
+that is not one is 400 `invalid_address`, a `chain_id` that is not a positive whole number 400
+`invalid_chain` (refused in the route, and again in core), and a `raw` that is not a sign-in
+message, or a field viem's builder refuses, 400 `invalid_message`. Core's `issueNonce` validates
+the address and the chain and builds the message before it stores the nonce, so a refused request
+leaves no row in `identity.siwe_nonces`.
+
 Responses deliberately withhold what the browser has no use for: register answers with
 `sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and
 add/confirm answers with the activity's id and status rather than the activity. All three

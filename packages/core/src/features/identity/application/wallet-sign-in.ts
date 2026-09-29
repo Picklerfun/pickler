@@ -1,5 +1,10 @@
 import type { Clock } from "../../../ports/clock.js";
-import { normalizeAddress, caip2, type Namespace } from "../domain/wallet-auth.js";
+import {
+  caip2,
+  InvalidChainError,
+  normalizeAddress,
+  type Namespace,
+} from "../domain/wallet-auth.js";
 import type {
   AccountProvisioner,
   NonceStore,
@@ -145,18 +150,25 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * with no indication of why, and the failure looks exactly like the wrong wallet.
      *
      * The address is unverified at this point and that is fine: it goes into the message, and the
-     * signature is what proves it.
+     * signature is what proves it. It is checked for shape, though, and so is the chain: a
+     * malformed one is `InvalidAddressError` or `InvalidChainError` and stores nothing.
      */
     async issueNonce(input: { address: string; namespace: Namespace; chainReference: number }) {
+      // Everything that can refuse the request runs before the nonce is stored. This route is
+      // public, and a nonce stored ahead of a refusal is a row anyone can make for free.
+      const address = normalizeAddress(input.namespace, input.address);
+      if (!Number.isSafeInteger(input.chainReference) || input.chainReference <= 0) {
+        throw new InvalidChainError(String(input.chainReference));
+      }
       const nonce = deps.randomNonce();
-      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS));
       const message = deps.buildMessage({
         domain: deps.domain,
-        address: normalizeAddress(input.namespace, input.address),
+        address,
         chainReference: input.chainReference,
         nonce,
         issuedAt: deps.clock.now(),
       });
+      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS));
       return { nonce, message };
     },
 

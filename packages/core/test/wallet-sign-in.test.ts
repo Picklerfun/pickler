@@ -8,6 +8,8 @@ import {
   BadSignatureError,
   AddressTakenError,
   normalizeAddress,
+  InvalidAddressError,
+  InvalidChainError,
   type NonceStore,
   type WalletLink,
   type WalletLinkRepository,
@@ -124,6 +126,44 @@ test("the address in the message is normalised, so one wallet is one link", asyn
     chainReference: 10143,
   });
   assert.ok(message.includes(ADDRESS));
+});
+
+test("an address that is not one is refused before any nonce is stored", async () => {
+  const store = nonces();
+  const signIn = service({ nonces: store });
+  await assert.rejects(
+    signIn.issueNonce({ address: "nope", namespace: "eip155", chainReference: 10143 }),
+    InvalidAddressError,
+  );
+  assert.equal(store.rows.size, 0);
+});
+
+test("a chain that is not a positive whole number is refused before any nonce is stored", async () => {
+  const store = nonces();
+  const signIn = service({ nonces: store });
+  for (const chainReference of [1.5, 0, -1, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 60]) {
+    await assert.rejects(
+      signIn.issueNonce({ address: ADDRESS, namespace: "eip155", chainReference }),
+      InvalidChainError,
+      String(chainReference),
+    );
+  }
+  assert.equal(store.rows.size, 0);
+});
+
+test("a message that cannot be built leaves no nonce behind", async () => {
+  const store = nonces();
+  const signIn = service({
+    nonces: store,
+    buildMessage: () => {
+      throw new Error("the builder refused a field");
+    },
+  });
+  await assert.rejects(
+    signIn.issueNonce({ address: ADDRESS, namespace: "eip155", chainReference: 10143 }),
+    /the builder refused a field/,
+  );
+  assert.equal(store.rows.size, 0);
 });
 
 /**
