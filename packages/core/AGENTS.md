@@ -252,7 +252,7 @@ provider credentials or observer pricing, and the observer is not a decision-pol
 
 ## Paper resolution
 
-Paper settlement lives in `features/paper/settlement.ts`; it applies finalized payout fractions to immutable fills, calculates virtual P&L with integer arithmetic and never signs or sends orders. `features/paper/sports.ts` restricts new scoped buys to reviewed NFL/soccer game winners. Settlement is explicit, idempotent and permission-checked; open costs are not realized losses.
+Paper settlement lives in `features/paper/settlement.ts`; it applies finalized payout fractions to immutable fills, calculates virtual P&L with integer arithmetic and never signs or sends orders. `features/paper/sports.ts` restricts new scoped buys to reviewed NFL/soccer game winners. The soccer half of that rule is `isSoccerFullGameWinner(market)` in `features/research/soccer.ts`, the one predicate both `assertPaperMarket` and trading's `assertLivePreview` call. Settlement is explicit, idempotent and permission-checked; open costs are not realized losses.
 
 ## Local paper studies
 

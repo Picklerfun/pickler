@@ -1,6 +1,7 @@
 import { PilotError, type AgentRecord, type Scope, type RunRecord } from "../research/types.js";
 import { pluginEnabled, requireTool } from "../research/plugins.js";
 import { assertConfiguredMarket, protocolForMarket } from "../research/market-scope.js";
+import { isSoccerFullGameWinner } from "../research/soccer.js";
 import type { BuyRequest, LivePreview, TradingRepository, TradingProvider } from "./types.js";
 
 export function moneyMicros(value: string): number {
@@ -28,17 +29,10 @@ export function assertLivePreview(preview: LivePreview, agent: AgentRecord, now:
   assertTradingAgent(agent);
   assertConfiguredMarket(preview.market, agent.config, now);
   const market = preview.market;
-  const regulationTime = /\b(?:90 minutes|regular time|regulation time)\b/i.test(market.rules);
-  const includesExtraTime = /\b(?:including|includes|after|with) (?:extra time|overtime)\b/i.test(
-    market.rules,
-  );
-  const soccer =
-    market.classification?.subcategory === "soccer" &&
-    market.classification.temporalClass === "match" &&
-    ["moneyline", "match_winner"].includes(market.sportsMarketType ?? "") &&
-    (regulationTime || includesExtraTime) &&
-    !/(?:first half|second half|handicap|spread|total goals|qualif)/i.test(market.question);
-  if (protocolForMarket(market, agent.config) !== "nfl-winner-v1" && !soccer) {
+  if (
+    protocolForMarket(market, agent.config) !== "nfl-winner-v1" &&
+    !isSoccerFullGameWinner(market)
+  ) {
     throw new PilotError(
       "TRADING_UNSUPPORTED_MARKET",
       "Only verified NFL or soccer full-game winners are supported",
