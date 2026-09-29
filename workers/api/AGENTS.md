@@ -235,8 +235,9 @@ does not fail the page. The list and both creates still require every read.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
-`canCreateAnother` is closed, but a retry of an earlier create is looked up first with
-`directory.createdWithKey` and replays the original agent without meeting the lock. The
+`canCreateAnother` is closed with `unfunded_agent`. The lock is the `admit` callback
+`directory.createAgent` runs inside its transaction, after it has looked for an earlier create with
+the same idempotency key, so a retry replays the original agent without meeting the lock. The
 directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, message }` (409 and
 404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per

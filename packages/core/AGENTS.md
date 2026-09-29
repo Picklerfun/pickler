@@ -110,8 +110,9 @@ per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
 checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
 person picks it right before turning the schedule on. With the schedule on, the next run moves to
 `nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
-`StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
-idempotency key made, so a retry can be recognised before any lock is applied.
+A retried create is recognised inside `StudioDirectory.createAgent` (by workspace and
+idempotency key) and `createDraft` (by the adopted preview), before `admit` runs; the port has no
+separate lookup.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease

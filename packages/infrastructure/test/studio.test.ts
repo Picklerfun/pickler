@@ -97,13 +97,10 @@ test("concurrent creation preserves one handle, config, mapping and disabled sch
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  assert.equal(await directory.createdWithKey(access, input.key), null);
   const scopes = await Promise.all(
     Array.from({ length: 5 }, () => directory.createAgent(access, userId, { ...input, wallet })),
   );
   assert.equal(new Set(scopes.map((s) => s.agentId)).size, 1);
-  assert.deepEqual(await directory.createdWithKey(access, input.key), scopes[0]);
-  assert.equal(await directory.createdWithKey(access, "another-key"), null);
   const agent = await store.agent(scopes[0]!);
   assert.equal(agent.scheduleEnabled, false);
   assert.deepEqual(agent.config.marketScope, config.marketScope);

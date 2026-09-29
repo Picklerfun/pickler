@@ -99,10 +99,6 @@ function fixture({
       agents = [...agents, SECOND];
       return scope(SECOND);
     },
-    createdWithKey: async (_access, key) => {
-      const earlier = keys.get(key);
-      return earlier ? scope(earlier) : null;
-    },
     agentScope: async (_access, id) => {
       if (!agents.includes(id)) {
         throw new PilotError("NOT_FOUND", "Missing");

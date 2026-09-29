@@ -206,8 +206,8 @@ from `@pickler/chain`, defaulting to the network's first public endpoint and ref
 chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
 private query `schedule` uses. `PostgresStudioDirectory.list` left-joins `agents.agent_profiles` for each agent's `accent`, reading
 "lime" when there is no profile row or the stored value is outside `ACCENTS`.
-`PostgresStudioDirectory.createdWithKey` is a read-only lookup on
-the same workspace and request key `createAgent` replays from. `PostgresResearchStore.updateSpend`
+`PostgresStudioDirectory.createAgent` replays an earlier create by workspace and request key inside
+its transaction, before `admit`. `PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
 `PostgresResearchStore.updateInterval(scope, hours, now)` sets only the `intervalHours` key the same

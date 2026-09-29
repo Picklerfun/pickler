@@ -32,7 +32,6 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
       }
       return { tenantId: "trusted", agentId: "agent" };
     },
-    createdWithKey: async () => null,
     list: async () => [],
     runs: async () => [],
   };
