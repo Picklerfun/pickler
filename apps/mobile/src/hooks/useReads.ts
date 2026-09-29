@@ -6,7 +6,7 @@ import type { Side } from "../perpl/orders";
 import { describeReadsError, fetchAgents, fetchRead, fetchReads, isSessionError, postReminders, requestRead } from "../reads/api";
 import { READS_POLL_MS } from "../reads/constants";
 import type { ReminderKind } from "../reads/level";
-import { createSession, type ReadsSession, sessionFor } from "../reads/session";
+import { createSession, isStaleAccount, type ReadsSession, sessionFor } from "../reads/session";
 import type { Agent, Read } from "../reads/types";
 import { clearReadsSession, loadReadsSession, saveReadsSession } from "../storage/reads";
 import type { AskCell, TradeLevel } from "../store";
@@ -157,12 +157,16 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const loadReads = useCallback(async () => {
     const s = sessionRef.current;
     if (!s) return;
+    // Una respuesta tardía de la cuenta A no debe pintarse (ni tirar la sesión) tras cambiar a la cuenta B (I1).
+    const addr = addressRef.current;
     try {
       const r = await fetchReads(READS_URL, s); // todas tus reads (máx. 50); el board filtra por mercado (D26)
+      if (isStaleAccount(addr, addressRef.current)) return;
       setReads(r.reads);
       setCredits(r.credits);
       setListError("");
     } catch (e) {
+      if (isStaleAccount(addr, addressRef.current)) return;
       if (isSessionError(e)) { await dropSession(); return; }
       setListError(describeReadsError(e));
     }
@@ -207,11 +211,14 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   /** Una read por id (pantalla Read abierta desde un push, D14): primero la lista; si no está, read-get. */
   const fetchOne = useCallback(async (id: string): Promise<Read | null> => {
     if (!(await ensureSession())) return null;
+    const addr = addressRef.current; // mismo guard que loadReads (I1): no se inserta la read de A en la lista de B
     try {
       const read = await fetchRead(READS_URL, sessionRef.current!, id);
+      if (isStaleAccount(addr, addressRef.current)) return null;
       setReads((list) => upsert(list ?? [], read));
       return read;
     } catch (e) {
+      if (isStaleAccount(addr, addressRef.current)) return null;
       if (isSessionError(e)) await dropSession();
       return null;
     }

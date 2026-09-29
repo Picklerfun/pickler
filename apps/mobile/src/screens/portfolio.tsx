@@ -8,7 +8,7 @@ import { portfolioTotals } from "../perpl/portfolio";
 import { cellLabel, formatProbability, formatRemaining } from "../reads/matrix";
 import type { Read, ReadStatus } from "../reads/types";
 import { askMarketId } from "../store";
-import { Btn, Card, EmptyPanel, InkBlock, InkTile, Page, Reveal, Segmented, Skeleton, T, Tag, TouchCard, Warn } from "../ui/primitives";
+import { Btn, Card, Chip, EmptyPanel, InkBlock, InkTile, Page, Reveal, Segmented, Skeleton, T, Tag, TouchCard, Warn } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { PositionsPanel, TradingWarns } from "./tradingGate";
 
@@ -91,13 +91,18 @@ export function PortfolioScreen(ctx: AppCtx) {
           <Warn title="Unlock to see your reads" body="Your wallet signs once a day for Ask. No transaction, no gas.">
             <Btn label="Unlock with Face ID" onPress={() => { void reads.ensureSession(); }} variant="violet" py={11} accessibilityLabel="reads-unlock" />
           </Warn>
+        ) : reads.reads === null && reads.listError ? (
+          // m2: sin lista y con error no hay skeletons eternos; sólo el aviso con Retry.
+          <Warn title="Couldn't load your reads" body={reads.listError}>
+            <Chip label="Retry" onPress={() => { void reads.refresh(); }} style={{ alignSelf: "flex-start" }} accessibilityLabel="retry-reads" />
+          </Warn>
         ) : reads.reads === null ? <><Skeleton.Card lines={2} /><Skeleton.Card lines={2} /></>
         : reads.reads.length === 0 ? <Reveal><EmptyPanel><T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center" }}>No reads yet. Ask an agent from any market.</T></EmptyPanel></Reveal>
         : <Reveal style={{ gap: 10 }}>{reads.reads.map((r) => <ReadRow key={r.id} read={r} name={name(r.agentId)} now={now} onPress={() => nav("read", { readId: r.id })} />)}</Reveal>
       ) : (
         <EmptyPanel><T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center" }}>Backing agents comes with Launchpad.</T></EmptyPanel>
       )}
-      {reads.listError && tab === "reads" ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
+      {reads.listError && tab === "reads" && !(reads.session === "ready" && reads.reads === null) ? <Warn title="Couldn't load your reads" body={reads.listError} /> : null}
     </Page>
   );
 }

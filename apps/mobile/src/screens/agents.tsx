@@ -3,7 +3,7 @@ import type { AppCtx } from "../ctx";
 import { agentBlurb, hitRate } from "../reads/agentsCopy";
 import type { Agent } from "../reads/types";
 import { askMarketId } from "../store";
-import { Avatar, Btn, Chip, Page, Reveal, Skeleton, T, Tag, TouchCard, Warn } from "../ui/primitives";
+import { Avatar, Btn, Chip, EmptyPanel, Page, Reveal, Skeleton, T, Tag, TouchCard, Warn } from "../ui/primitives";
 import { C } from "../ui/theme";
 
 const initials = (name: string): string => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -20,7 +20,10 @@ export function AgentsScreen({ reads, perpl, S, requireAccount }: AppCtx) {
         </Warn>
       ) : null}
       {reads.agents === null && !reads.agentsError ? <><Skeleton.Card lines={4} /><Skeleton.Card lines={4} /><Skeleton.Card lines={4} /></> : null}
-      {reads.agents !== null ? (
+      {reads.agents !== null && reads.agents.length === 0 ? (
+        <EmptyPanel><T w={400} s={13} lh={1.45} color={C.dim} style={{ textAlign: "center" }}>No agents yet.</T></EmptyPanel>
+      ) : null}
+      {reads.agents !== null && reads.agents.length > 0 ? (
         <Reveal style={{ gap: 10 }}>
           {reads.agents.map((a) => (
             <TouchCard key={a.id} onPress={() => ask(a)} accessibilityLabel={`agent-row-${a.id}`} style={{ gap: 12 }}>

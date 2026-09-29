@@ -93,7 +93,7 @@ function TradeTab(ctx: AppCtx) {
   ];
 
   if (st.step === "result") {
-    return <Page top={13}><OrderResultCard result={st.result} primary={{ label: "See it in Portfolio", onPress: () => nav("portfolio"), accessibilityLabel: "see-in-portfolio" }} onEdit={() => setSt({ step: "edit" })} /></Page>;
+    return <Page top={13}><OrderResultCard result={st.result} primary={{ label: "See it in Portfolio", onPress: () => { setSt({ step: "edit" }); nav("portfolio"); }, /* m3: al volver no queda el "Filled" viejo */ accessibilityLabel: "see-in-portfolio" }} onEdit={() => setSt({ step: "edit" })} /></Page>;
   }
 
   if (st.step === "review") {

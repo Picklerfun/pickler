@@ -39,9 +39,9 @@ const Launchpad = withPage("launchpad", (ctx) => <ComingSoonScreen screen="launc
 const Activity = withPage("activity", (ctx) => <ComingSoonScreen screen="activity" requireAccount={ctx.requireAccount} />);
 const AgentsList = withPage("agents", AgentsScreen);
 const AgentProfile = withPage("agent", () => <Page><T>Agent</T></Page>); // F2: perfil, stub en F1 (ruling Task 11)
-// Provisionales hasta Tasks 12–13:
-const Portfolio = withPage("portfolio", PortfolioScreen); // Task 12 reemplaza el stub de screens/portfolio.tsx
-const ReadView = withPage("read", ReadScreen); // Task 13 reemplaza el stub de screens/read.tsx
+// Sólo el stub de `agent` (perfil) sigue provisional hasta F2; Portfolio y Read ya son las pantallas finales de F1.
+const Portfolio = withPage("portfolio", PortfolioScreen);
+const ReadView = withPage("read", ReadScreen);
 const Signin = withPage("signin", SigninScreen);
 
 function MarketsTab() {

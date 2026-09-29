@@ -9,6 +9,7 @@ import type { Read } from "../reads/types";
 import { Avatar, Btn, Card, Page, Skeleton, T, Tag, Warn } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { resolutionLine } from "./ask";
+import { readMissingCopy } from "./readCopy";
 
 const STATE: Record<Read["status"], { label: string; fg: string; bg: string }> = {
   pending: { label: "READING", fg: C.faint, bg: C.ctl },
@@ -28,25 +29,34 @@ export function ReadScreen({ S, reads, nav }: AppCtx) {
   // podría renderizarse bajo el id nuevo mientras el fetch está en curso.
   const [fetched, setFetched] = useState<{ id: string; read: Read } | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
+  // "Try again" (I2): cada pulsación vuelve a correr el fetch; con pop:true la instancia se reutiliza y sin esto
+  // volver al mismo readId dejaba el error pegado.
+  const [attempt, setAttempt] = useState(0);
   const { fetchOne } = reads;
   useEffect(() => {
     const id = S.readId;
     if (listed || !id) return;
     let stale = false;
+    setMissing(null);
     void fetchOne(id).then((r) => {
       if (stale) return;
       if (r) setFetched({ id, read: r });
       else setMissing(id);
     });
     return () => { stale = true; };
-  }, [listed, S.readId, fetchOne]);
+  }, [listed, S.readId, fetchOne, attempt]);
   const read = listed ?? (fetched !== null && fetched.id === S.readId ? fetched.read : null);
   const isMissing = missing === S.readId;
 
   if (!read) {
-    return isMissing
-      ? <Page><Warn title="Couldn't open this read" body="It may belong to another wallet, or the reads service is unreachable." /></Page>
-      : <Page gap={12}><Skeleton.Card lines={4} /><Skeleton.Card lines={2} /></Page>;
+    if (!isMissing) return <Page gap={12}><Skeleton.Card lines={4} /><Skeleton.Card lines={2} /></Page>;
+    const copy = readMissingCopy(reads.session);
+    return (
+      <Page gap={12}>
+        <Warn title={copy.title} body={copy.body} />
+        <Btn label="Try again" onPress={() => setAttempt((n) => n + 1)} accessibilityLabel="read-try-again" />
+      </Page>
+    );
   }
   const agent = reads.agents?.find((a) => a.id === read.agentId);
   const name = agent?.name ?? read.agentId;

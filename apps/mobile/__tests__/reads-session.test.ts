@@ -1,6 +1,6 @@
 import { privateKeyToAccount } from "viem/accounts";
 import {
-  canonicalMessage, createSession, isUsable, parseSession, SESSION_RENEW_BEFORE_MS, SESSION_TTL_MS, serializeSession, sessionFor, signedHeaders,
+  canonicalMessage, createSession, isStaleAccount, isUsable, parseSession, SESSION_RENEW_BEFORE_MS, SESSION_TTL_MS, serializeSession, sessionFor, signedHeaders,
 } from "../src/reads/session";
 
 const account = privateKeyToAccount("0x0000000000000000000000000000000000000000000000000000000000000001");
@@ -41,6 +41,16 @@ test("serialize/parse round-trips and rejects malformed entries", () => {
     JSON.stringify({ address: ADDRESS.toLowerCase(), ts: NOW, sig: "0x12" }),
     JSON.stringify({}),
   ]) expect(parseSession(raw)).toBeUndefined();
+});
+
+test("isStaleAccount discards responses once the account changed mid-flight (I1)", () => {
+  const OTHER = "0x2222222222222222222222222222222222222222";
+  expect(isStaleAccount(ADDRESS, ADDRESS)).toBe(false);
+  expect(isStaleAccount(ADDRESS, ADDRESS.toLowerCase())).toBe(false); // compara en minúsculas
+  expect(isStaleAccount(ADDRESS, OTHER)).toBe(true); // A → B: la respuesta de A no se pinta bajo B
+  expect(isStaleAccount(ADDRESS, null)).toBe(true); // cuenta borrada/bloqueada sin dirección
+  expect(isStaleAccount(null, ADDRESS)).toBe(true);
+  expect(isStaleAccount(null, null)).toBe(false);
 });
 
 test("signedHeaders are the three x-pickler-* headers", () => {

@@ -9,7 +9,7 @@ import { BTN_VARIANTS, type BtnVariant } from "./variants";
 export type { BtnVariant } from "./variants";
 
 // ---------------------------------------------------------------------------
-// Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains) | display (Chakra Petch).
+// Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains) | display (Archivo wdth 112).
 export type TProps = {
   w?: number; s?: number; lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string;
   style?: StyleProp<TextStyle>; numberOfLines?: number; children?: ReactNode; accessibilityLabel?: string;
