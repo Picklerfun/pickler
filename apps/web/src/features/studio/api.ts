@@ -11,6 +11,9 @@ import type {
   createAgentSchema,
   studioAgentSchema,
   AgentDraftDto,
+  DraftCreateDto,
+  PreviewRunDto,
+  PreviewRunRequestDto,
 } from "@pickler/api-schema";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export { DEFAULT_PROFILE, type Profile } from "./profile";
@@ -33,6 +36,8 @@ export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 export type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
 export type { AgentDraftDto };
+/** A paper run of a brief, as its owner reads it. */
+export type PreviewRun = PreviewRunDto["run"];
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -45,6 +50,8 @@ export class StudioError extends Error {
     message: string,
     /** The server's own words, when it sent any; `message` is the studio's for the code. */
     public readonly serverMessage?: string,
+    /** The rest of the error body: `field`/`reason` for INVALID_BRIEF, `retryAt` for a limit. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "StudioError";
@@ -69,6 +76,13 @@ const messages: Record<string, string> = {
   NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
   UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
   INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
+  INVALID_BRIEF: "Check the brief: a section is empty, too long or has too many lines.",
+  PREVIEW_RATE_LIMITED: "Five paper runs an hour. The next one opens soon.",
+  PREVIEW_UNAVAILABLE: "Paper runs are not available here yet.",
+  RUN_STALE: "The brief changed since the run. Run it again, then create.",
+  HANDLE_TAKEN: "That handle is taken. Change the name.",
+  PREVIEW_UNUSABLE: "That paper run can't be used any more. Run it again, then create.",
+  DAILY_CAP_REACHED: "Today's paper trades reached its daily cap.",
 };
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
@@ -96,6 +110,7 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
       code,
       messages[code] ?? `Request failed: ${serverMessage ?? code}`,
       serverMessage,
+      body && typeof body === "object" ? (body as Record<string, unknown>) : undefined,
     );
   }
   return body as T;
@@ -108,6 +123,21 @@ export const draftAgent = (line: string) =>
   studioApi<{ draft: AgentDraftDto; unsupported: string[] }>("/agents/draft", {
     method: "POST",
     body: JSON.stringify({ line }),
+  });
+
+/** `POST /preview-runs`: "Run it on paper". 400 INVALID_BRIEF names the section; 429 has `retryAt`. */
+export const startPreviewRun = (body: PreviewRunRequestDto) =>
+  studioApi<{ id: string }>("/preview-runs", { method: "POST", body: JSON.stringify(body) });
+
+/** `GET /preview-runs/:id`: the run and its trace, in a run's event shape. */
+export const readPreviewRun = (id: string, signal?: AbortSignal) =>
+  studioApi<PreviewRunDto>(`/preview-runs/${encodeURIComponent(id)}`, signal ? { signal } : {});
+
+/** `POST /drafts`: "Create {Name}", adopting the run. 409 RUN_STALE, HANDLE_TAKEN, PREVIEW_UNUSABLE. */
+export const createDraft = (body: DraftCreateDto) =>
+  studioApi<{ productId: string; agent: AgentRecord }>("/drafts", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 
 /**
