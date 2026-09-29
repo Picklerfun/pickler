@@ -359,8 +359,9 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-schedule",
   },
-  // The home before the first agent (`?stage=empty`): the top bar and Menu around an empty state
-  // instead of a redirect to /studio/new. It proves the empty state, which no staged run has.
+  // The home before the first agent (`?stage=empty`), the "Pickler Studio Empty v4" canvas: the top
+  // bar, the disabled rail and the blank brief instead of a redirect to /studio/new. It proves the
+  // brief, which no staged run has.
   {
     path: "/studio?stage=empty",
     name: "studio-home-empty",

@@ -346,16 +346,23 @@ voice, X, publish) is §10.
 
 ### 5.1 Before the first agent
 
-A person with no agents is not sent to `/studio/new`. `/studio` opens on the home with the same top
-bar ("No agent yet" where the agent chip would be, the Menu, the profile), the second-passkey
-suggestion when it applies, and an empty state where the board would be (`#home-empty`): "Nothing
-running yet.", one line on what an agent does, and "Create your first agent" to `/studio/new`,
-disabled with the reason when research is not enabled or the person cannot manage the workspace.
-The Menu still opens: "+ New agent" is open (with no agents the §6.3 lock has nothing to fund), and
-every section is listed but disabled — "Every section opens after you create your agent", the
-"Pickler Studio Empty" canvas's hint. A `?section=` deep link lands on the same empty home. The
-account gates stay first: no master wallet → `/signup?step=passkey`, a wallet without a profile →
-the handle step. `?stage=empty` stages this home outside production.
+A person with no agents is not sent to `/studio/new`. `/studio` opens on the home as the "Pickler
+Studio Empty v4" canvas draws it: the top bar ("No agent yet" in a dashed chip where the agent chip
+would be, TESTNET, the profile), the studio rail with every section listed but disabled — "After you
+create your agent" — and, where the board would be, the first agent's brief (`#home-empty`): "YOUR
+FIRST AGENT · ITS BRIEF IS WHAT IT RUNS ON", "Start from" Blank or a ranked agent (a link to
+`/agents`), "Name it", the five sections (Thesis, It reads, Enters when, Exits when, Never) drawn
+blank with the canvas's prompts, and beside it a "Starting point: Blank" card and an idle paper run.
+The second-passkey suggestion sits above the brief when it applies. The canvas edits the brief and
+runs it on paper in place; neither has a backend in this specification, so the sections are prompts,
+not fields, the paper run stays idle ("its first run is on paper, right after you create it"), and
+"Create your first agent" goes to `/studio/new`, disabled with the reason when research is not
+enabled or the person cannot manage the workspace. The canvas's Risk card and its "Go public" phase
+are not drawn. At phone width the rail gives way to the Menu, whose "+ New agent" is open (with no
+agents the §6.3 lock has nothing to fund) and whose sections are disabled with the same hint. A
+`?section=` deep link lands on the same empty home. The account gates stay first: no master wallet →
+`/signup?step=passkey`, a wallet without a profile → the handle step. `?stage=empty` stages this
+home outside production.
 
 ---
 

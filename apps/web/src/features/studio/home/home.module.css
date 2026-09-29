@@ -253,45 +253,338 @@
 
 /* ---------- No agent yet ---------- */
 
-/* The empty home: the board's measure, one narrow column where its three would be. */
-.first {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 56px 22px 60px;
+/* The home before the first agent, from `Pickler Studio Empty v4.dc.html`: the top bar's dashed
+   "No agent yet" chip, the rail with every section disabled, and the first agent's brief with its
+   starting point and paper run beside it. The canvas's #5A5F78 labels map to `--pk-ink-faint`, its
+   #3A3F58 disabled rows to `--pk-ink-faint` too (the dark ramp's floor that still reads), its
+   #0B0D1A wells to `--pk-bg` and its lime tags to the lime tint. */
+.noAgent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px dashed var(--pk-border-strong);
+  min-width: 0;
 }
-.firstBody {
+.noAgent b {
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-muted);
+}
+.noAgentMark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-panel);
+  font: 600 15px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+/* The rail is the canvas's; below its width the Menu lists the same disabled sections instead. */
+.emptyMenu {
+  display: none;
+}
+.emptyBody {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+}
+.emptyRail {
+  flex: 0 0 218px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 16px;
-  max-width: 520px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pk-rule);
 }
-.firstTitle {
+.emptyRailItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-ink-faint);
+  font: 600 13.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: not-allowed;
+}
+.emptyRailItem svg {
+  flex: none;
+}
+.emptyMain {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 36px 28px 60px;
+}
+.brief {
+  flex: 1 1 460px;
+  max-width: 680px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.emptyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  font: 700 clamp(30px, 6vw, 44px) / 1 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-amber-ink);
 }
-.firstTitle span {
-  color: var(--pk-lime);
-}
-.firstLine {
-  margin: 0;
-  font: 400 15px/1.55 var(--pk-font);
+.briefKicker {
+  margin: 6px 0 0;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.12em;
   color: var(--pk-ink-muted);
-  text-wrap: pretty;
 }
-.firstActions {
+.starts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 6px;
 }
-
+.startsLabel {
+  margin-right: 4px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+}
+.start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition: background var(--pk-duration);
+}
+a.start:hover {
+  background: var(--pk-panel-2);
+}
+.start[data-on="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.start i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-panel-3);
+}
+.start i[data-tint="lime"] {
+  background: var(--pk-lime);
+}
+.briefName {
+  margin: 6px 0 2px;
+  font: 700 clamp(46px, 5.4vw, 64px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink-faint);
+}
+.briefHandle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.briefHandle span {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-ink-faint);
+}
+.briefHandle small {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+.briefCardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.briefLabel {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-lime-ink);
+}
+.briefSub {
+  font: 500 10.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.briefTag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefPrompt {
+  margin: 0;
+  padding: 4px 0 0;
+  font: 500 15.5px/1.5 var(--pk-font);
+  letter-spacing: -0.015em;
+  color: var(--pk-ink-faint);
+  text-wrap: pretty;
+}
+.briefActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.briefActions > * {
+  flex: 1 1 200px;
+  justify-content: center;
+}
+.briefFoot {
+  margin: -4px 0 0;
+  text-align: center;
+  font: 600 10.5px/1.5 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefSide {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.briefMascot {
+  position: absolute;
+  top: -30px;
+  right: -12px;
+  z-index: 2;
+  width: 96px;
+  height: auto;
+  pointer-events: none;
+  animation: pkFloat 6s ease-in-out infinite;
+}
+.sideCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sideTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.sideState {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sourceMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel-3);
+  font: 700 17px/1 var(--pk-font-display);
+  color: var(--pk-ink);
+}
+.sourceName {
+  display: block;
+  font: 700 22px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+}
+.sourceLine {
+  display: block;
+  margin-top: 5px;
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.sideText {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.sideLink {
+  align-self: flex-start;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  text-decoration: none;
+}
+.sideLink:hover {
+  color: var(--pk-ink);
+}
+.runIdle {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 34px 12px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+  font: 600 10.5px/1.6 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+  text-wrap: pretty;
+}
+@media (max-width: 860px) {
+  .emptyRail {
+    display: none;
+  }
+  .emptyMenu {
+    display: contents;
+  }
+  .emptyMain {
+    padding: 24px 16px 48px;
+  }
+  .briefSide {
+    max-width: none;
+  }
+  .briefMascot {
+    right: 0;
+  }
+}
 /* ---------- Live strip ---------- */
 
 .strip {
@@ -974,6 +1267,15 @@
     transform: translateY(0);
   }
 }
+@keyframes pkFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
 @keyframes pkRing {
   0% {
     transform: scale(1);
@@ -985,6 +1287,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .briefMascot,
   .ring,
   .caret,
   .pillDot,

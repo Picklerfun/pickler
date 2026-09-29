@@ -297,15 +297,20 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 
 ## The studio home
 
-With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`): the home's top
-bar ("No agent yet", the Menu, the profile), the second-passkey suggestion, and an empty state —
-"Nothing running yet.", one line on what an agent does, "Create your first agent" to
-`/studio/new` (disabled with the reason when research is not enabled or the person cannot manage).
-`HomeMenu` takes `agent: null` then: "+ New agent" is open (`createGate([])`) and every section is
-listed disabled with "After you create your agent". `home/access.ts` holds that decision, pure:
-`menuAccess` answers whether sections open and whether "+ New agent" is a link, with one reason
-(view-only, then research access, then the unfunded-agent lock), and the empty home's button reads
-the same answer, so a manager on a workspace without research sees the research reason in both.
+With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`), drawn from the
+"Pickler Studio Empty v4" canvas: a top bar with the dashed "No agent yet" chip, TESTNET and the
+profile; the studio rail with every section disabled ("After you create your agent"); and the first
+agent's brief — its five sections (thesis, reads, enters, exits, never) drawn blank as prompts, a
+"Starting point: Blank" card and an idle paper run beside it, the second-passkey suggestion above it.
+The canvas edits the brief and runs it on paper in place; neither has a backend (the brief is not
+the `/studio/new` draft, and a scripted run would be fake), so "Create your first agent" goes to
+`/studio/new` (disabled with the reason when research is not enabled or the person cannot manage)
+and "Start from: a ranked agent" goes to `/agents`. Below 860px the rail is hidden and the Menu
+appears in the top bar instead. `HomeMenu` takes `agent: null` then: "+ New agent" is open
+(`createGate([])`) and every section is listed disabled with "After you create your agent".
+`home/access.ts` holds that decision, pure: `menuAccess` answers whether sections open and whether
+"+ New agent" is a link, with one reason (research access, then view-only, then the unfunded-agent
+lock), and the empty home's button and rail read the same answer.
 `lib/landing.ts` decides the screen: `studioLanding(loaded, agents, section)` is `home` or `section`
 with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
 read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The
