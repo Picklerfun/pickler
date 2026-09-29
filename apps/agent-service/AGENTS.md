@@ -177,3 +177,5 @@ runtime composes adapters and models. Hosts must not duplicate risk, fills or ac
 
 Perpl continuation runs retain the same tenant/network/database campaign budget. Read
 [PERPS-STUDY.md](PERPS-STUDY.md) before starting one; never reset scope to obtain a fresh ceiling.
+
+`evaluate stability --config FILE --env-file FILE --output DIRECTORY` runs one fixed thirty-minute Perpl public-data check (30 scheduled cycles). It uses a separate diagnostic PostgreSQL lease and existing agent permissions, never creates accounts or calls models. It parses only DATABASE_URL from the operator environment file. Reports are JSON/CSV/HTML; acceptance requires 29/30 valid joint BTC/ETH cycles and no lease/ownership failure. No automatic repeat or paid restart. The output directory has an exclusive STARTED marker. Paid Perpl run/resume requires a newly initialized record with coherent-20s-v1; historical report/settle remain available. macOS runs use the existing lid/idle-sleep guard, and persist local lease diagnostics.
