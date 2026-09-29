@@ -1,9 +1,10 @@
 // What the runner does about the two servers is decided by a pure function, so every position of
 // the decision is pinned here without starting anything.
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import test from "node:test";
-import { BASE_URL, listening, plan, webEnv } from "./lib/servers.mjs";
+import { BASE_URL, listening, plan, stopOnSignal, webEnv } from "./lib/servers.mjs";
 
 test("with both ports free the runner starts the servers and measures its own", () => {
   assert.deepEqual(plan({ baseUrl: undefined, fixtureBusy: false, webBusy: false }), {
@@ -56,4 +57,33 @@ test("a port something listens on is seen, and a free one is not", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
   assert.equal(await listening(port), false);
+});
+
+test("an interrupted runner stops its servers once and exits as the signal would have", () => {
+  const target = Object.assign(new EventEmitter(), {
+    exits: [],
+    exit: (code) => target.exits.push(code),
+  });
+  let stopped = 0;
+  stopOnSignal(() => stopped++, target);
+
+  target.emit("SIGINT");
+  target.emit("SIGINT");
+
+  assert.equal(stopped, 1);
+  assert.deepEqual(target.exits, [130, 130]);
+});
+
+test("SIGTERM stops the servers too, with its own exit status", () => {
+  const target = Object.assign(new EventEmitter(), {
+    exits: [],
+    exit: (code) => target.exits.push(code),
+  });
+  let stopped = 0;
+  stopOnSignal(() => stopped++, target);
+
+  target.emit("SIGTERM");
+
+  assert.equal(stopped, 1);
+  assert.deepEqual(target.exits, [143]);
 });

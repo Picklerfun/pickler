@@ -12,7 +12,7 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIXTURE_PORT, WEB_PORT, listening, plan, start } from "./lib/servers.mjs";
+import { FIXTURE_PORT, WEB_PORT, listening, plan, start, stopOnSignal } from "./lib/servers.mjs";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const RENDERED = ["surfaces", "tokens", "contrast", "type", "shots"];
@@ -64,6 +64,10 @@ if (rendered.length) {
       process.stderr.write(`${error.message}; read ${log}\n`);
       process.exit(2);
     }
+    // Ctrl-C or a kill during a check must not leave them on the ports. A check runs in a child
+    // that blocks this process, so the handler fires when that child ends: on Ctrl-C at once,
+    // since the terminal interrupts it too; on a kill of the runner alone, when the check finishes.
+    stopOnSignal(servers.stop);
   }
   try {
     for (const check of rendered) {

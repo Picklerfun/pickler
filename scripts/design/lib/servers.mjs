@@ -139,3 +139,25 @@ export async function start(root, log = () => {}) {
   }
   return { stop };
 }
+
+/* What a process interrupted by each signal exits with: 128 plus the signal's number. */
+const SIGNAL_EXIT = { SIGINT: 130, SIGTERM: 143 };
+
+/**
+ * Stops the servers when the runner is interrupted. They run in their own process groups, so
+ * Ctrl-C or a `kill` on the runner alone would leave them holding the ports for the next run.
+ * `stop` runs once however many signals arrive; the exit status is the one the signal would have
+ * given. `target` is the process, replaceable by a test.
+ */
+export function stopOnSignal(stop, target = process) {
+  let stopped = false;
+  for (const [signal, code] of Object.entries(SIGNAL_EXIT)) {
+    target.on(signal, () => {
+      if (!stopped) {
+        stopped = true;
+        stop();
+      }
+      target.exit(code);
+    });
+  }
+}
