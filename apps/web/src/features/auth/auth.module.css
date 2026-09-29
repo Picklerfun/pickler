@@ -1,49 +1,18 @@
 /* Pickler sign up / sign in, implemented from the "Pickler Sign Up" design canvas. */
 
 .page {
-  --bg: var(--pk-bg);
-  --panel: var(--pk-panel);
-  --field: var(--pk-field);
-  --ink: var(--pk-ink);
-  --ink-soft: var(--pk-ink-soft);
-  --muted: var(--pk-ink-muted);
-  --line: var(--pk-rule);
-  --line-strong: var(--pk-rule-strong);
-  /* The strongest edge the dark surface has. It is the same white as --line-strong at a heavier
-     alpha, which is why it is the token for an edge meant to be seen — a bevel on a bright fill,
-     a control's own outline — rather than a hairline meant to divide. */
-  --border-strong: var(--pk-border-strong);
-  --lime: var(--pk-lime);
-  --lime-ink: var(--pk-lime-ink);
-  --on-lime: var(--pk-on-lime);
-  --cyan-ink: var(--pk-cyan-ink);
-  --cyan-tint: var(--pk-cyan-tint);
-  --cyan-edge: var(--pk-cyan-edge);
-  --amber: var(--pk-amber);
-  --amber-ink: var(--pk-amber-ink);
-  --magenta: var(--pk-magenta);
-  --magenta-ink: var(--pk-magenta-ink);
-  --magenta-tint: var(--pk-magenta-tint);
-  --magenta-edge: var(--pk-magenta-edge);
-  --violet: var(--pk-violet);
-  --display: var(--pk-font-display);
-  --body: var(--pk-font);
-  /* The monospace is gone: no canvas has one. What replaced it is this face at the same small
-     sizes with wide tracking, so the alias stops claiming to be a monospace. */
-  --label: var(--pk-font);
-
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--body);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
   -webkit-font-smoothing: antialiased;
 }
 
 .page a {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
   text-decoration: none;
 }
 
@@ -51,17 +20,17 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
 .page :focus-visible:not(:global(.pk-input)):not(:global(.pk-input-inner)) {
-  outline: 2px solid var(--lime);
+  outline: 2px solid var(--pk-lime);
   outline-offset: 2px;
 }
 
 .page input::placeholder {
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .srOnly {
@@ -84,7 +53,7 @@
   gap: 14px;
   min-height: 60px;
   padding: 0 22px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--pk-rule);
   background: var(--pk-nav-bg);
 }
 
@@ -93,7 +62,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--ink);
+  color: var(--pk-ink);
 }
 
 .brandLogo {
@@ -104,7 +73,7 @@
 }
 
 .brandName {
-  font: 700 20px/1 var(--display);
+  font: 700 20px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.01em;
 }
@@ -113,11 +82,11 @@
   display: inline-flex;
   align-items: center;
   padding: 7px 12px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .spacer {
@@ -125,14 +94,14 @@
 }
 
 .switchNote {
-  font: 400 13px/1 var(--body);
-  color: var(--muted);
+  font: 400 13px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .page a.switchButton,
 .ghostButton {
   padding: 9px 16px;
-  border-color: var(--line-strong);
+  border-color: var(--pk-rule-strong);
 }
 
 .page a.switchButton:hover,
@@ -146,7 +115,7 @@
   padding: 16px 22px;
   /* The rim of a lit fill, which is what this is; 0.45 folds into the token's 0.5 (styles.css). */
   border-color: var(--pk-glow-rim);
-  font: 700 13px/1 var(--body);
+  font: 700 13px/1 var(--pk-font);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     0 0 26px rgba(200, 240, 58, 0.38);
@@ -155,52 +124,52 @@
 .page a.primary,
 .page a.primary:hover {
   display: inline-flex;
-  color: var(--on-lime);
+  color: var(--pk-on-lime);
 }
 
 .primary:disabled {
   opacity: 1;
-  border-color: var(--line-strong);
-  background: var(--panel);
-  color: var(--muted);
+  border-color: var(--pk-rule-strong);
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .good {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .warn {
-  color: var(--amber-ink);
+  color: var(--pk-amber-ink);
 }
 
 .bad {
-  color: var(--magenta);
+  color: var(--pk-magenta);
 }
 
 /* Still running: not a result yet, so it reads as the surface's live colour rather than a verdict. */
 .open {
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .alert {
   margin: 0 0 16px;
   padding: 12px 14px;
-  border: 1px solid var(--magenta-edge);
+  border: 1px solid var(--pk-magenta-edge);
   border-radius: var(--pk-radius-sm);
-  background: var(--magenta-tint);
-  font: 500 13px/1.45 var(--body);
-  color: var(--magenta-ink);
+  background: var(--pk-magenta-tint);
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-magenta-ink);
 }
 
 /* The cool pair, not a cyan mixed by hand. The palette's cool hue is --pk-blue rather than the
    #5ad8ff this reached for, so the edge and the wash shift with it; the ink is --cyan-ink, which
    reads 5.34:1 on --cyan-tint where the old #c9f2ff was chosen against the page instead. */
 .info {
-  border-color: var(--cyan-edge);
-  background: var(--cyan-tint);
-  color: var(--cyan-ink);
+  border-color: var(--pk-cyan-edge);
+  background: var(--pk-cyan-tint);
+  color: var(--pk-cyan-ink);
 }
 
 /* ---------- Sign up ---------- */
@@ -226,14 +195,14 @@
 
 .eyebrow {
   margin: 0 0 12px;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .headline {
   margin: 0 0 12px;
-  font: 700 clamp(30px, 4.4vw, 42px)/1.02 var(--display);
+  font: 700 clamp(30px, 4.4vw, 42px)/1.02 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.025em;
 }
@@ -241,8 +210,8 @@
 .subhead {
   max-width: 460px;
   margin: 0 0 26px;
-  font: 400 15.5px/1.6 var(--body);
-  color: var(--ink-soft);
+  font: 400 15.5px/1.6 var(--pk-font);
+  color: var(--pk-ink-soft);
   text-wrap: pretty;
 }
 
@@ -260,21 +229,21 @@
   align-items: center;
   gap: 9px;
   padding: 8px 14px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  font: 600 12.5px/1 var(--body);
-  color: var(--muted);
+  font: 600 12.5px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .step span {
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.08em;
 }
 
 .stepActive {
   border-color: rgba(200, 240, 58, 0.34);
   background: rgba(200, 240, 58, 0.1);
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .methods {
@@ -288,7 +257,7 @@
   gap: 12px;
   padding: 15px 16px;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--pk-ink-soft);
 }
 
 .method:hover {
@@ -297,8 +266,8 @@
 
 .method[aria-checked="true"] {
   border-color: rgba(243, 241, 236, 0.3);
-  background: var(--field);
-  color: var(--ink);
+  background: var(--pk-field);
+  color: var(--pk-ink);
 }
 
 .methodText {
@@ -308,19 +277,19 @@
 
 .methodText strong {
   display: block;
-  font: 700 14px/1.2 var(--body);
+  font: 700 14px/1.2 var(--pk-font);
   letter-spacing: -0.025em;
 }
 
 .methodText span {
   display: block;
   margin-top: 3px;
-  font: 400 12.5px/1.35 var(--body);
-  color: var(--muted);
+  font: 400 12.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .check {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .card {
@@ -330,7 +299,7 @@
   gap: 11px;
   margin-bottom: 16px;
   padding: 18px;
-  background: var(--panel);
+  background: var(--pk-panel);
   animation: fadeIn 240ms ease-out;
 }
 
@@ -358,7 +327,7 @@
 .strengthLabel {
   flex: none;
   min-width: 42px;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
   text-align: right;
 }
@@ -386,24 +355,24 @@
   margin-top: 1px;
   border: 1px solid rgba(243, 241, 236, 0.26);
   border-radius: var(--pk-radius-mark);
-  color: var(--on-lime);
+  color: var(--pk-on-lime);
 }
 
 .terms input:checked + .box {
-  border-color: var(--lime);
-  background: var(--lime);
+  border-color: var(--pk-lime);
+  background: var(--pk-lime);
 }
 
 .terms input:focus-visible + .box {
-  outline: 2px solid var(--lime);
+  outline: 2px solid var(--pk-lime);
   outline-offset: 2px;
 }
 
 .termsText {
   flex: 1 1 auto;
   min-width: 0;
-  font: 400 13px/1.5 var(--body);
-  color: var(--ink-soft);
+  font: 400 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
   text-wrap: pretty;
 }
 
@@ -416,8 +385,8 @@
   margin: 0;
   padding-top: 12px;
   border-top: 1px solid rgba(243, 241, 236, 0.1);
-  font: 400 13px/1.5 var(--body);
-  color: var(--muted);
+  font: 400 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
   text-wrap: pretty;
   border-radius: var(--pk-radius-lg);
 }
@@ -434,7 +403,7 @@
 
 .back {
   padding: 16px 20px;
-  color: var(--ink-soft);
+  color: var(--pk-ink-soft);
 }
 
 /* ---------- Spawn board ---------- */
@@ -443,9 +412,9 @@
   flex: 1 1 300px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
-  background: var(--panel);
+  background: var(--pk-panel);
 }
 
 .boardHead {
@@ -469,34 +438,34 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .liveDot {
   width: 6px;
   height: 6px;
   border-radius: var(--pk-radius-pill);
-  background: var(--lime);
+  background: var(--pk-lime);
   box-shadow: 0 0 10px rgba(200, 240, 58, 0.8);
   animation: blink 1.6s steps(1, end) infinite;
 }
 
 .bigNumber {
   display: block;
-  font: 700 42px/0.9 var(--display);
+  font: 700 42px/0.9 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
   text-shadow: 0 0 26px rgba(200, 240, 58, 0.45);
 }
 
 .smallNote {
   display: block;
   margin-top: 4px;
-  font: 400 13px/1.35 var(--body);
-  color: var(--muted);
+  font: 400 13px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .boardBody {
@@ -508,9 +477,9 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .monoRow span:last-child {
@@ -529,9 +498,9 @@
   padding: 6px;
   overflow: hidden;
   list-style: none;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
-  background-color: var(--bg);
+  background-color: var(--pk-bg);
   background-image:
     linear-gradient(rgba(243, 241, 236, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(243, 241, 236, 0.06) 1px, transparent 1px);
@@ -545,7 +514,7 @@
   display: grid;
   place-items: center;
   background: rgba(200, 240, 58, 0.2);
-  font: 700 15px/1 var(--display);
+  font: 700 15px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: 0.06em;
   text-shadow: 0 0 20px rgba(200, 240, 58, 0.9);
@@ -579,7 +548,7 @@
 }
 
 .cellOn {
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--pk-border-strong);
   background: var(--accent);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.4),
@@ -588,30 +557,30 @@
 
 .dropText strong {
   display: block;
-  font: 700 13.5px/1.2 var(--body);
+  font: 700 13.5px/1.2 var(--pk-font);
   letter-spacing: -0.025em;
 }
 
 .dropText span {
   display: block;
-  font: 500 11px/1.35 var(--label);
+  font: 500 11px/1.35 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .nextLabel {
   margin: 10px 0 0;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .boardFoot {
   margin: 0;
   padding: 14px 20px;
-  border-top: 1px solid var(--line);
-  font: 400 13px/1.5 var(--body);
-  color: var(--ink-soft);
+  border-top: 1px solid var(--pk-rule);
+  font: 400 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
   text-wrap: pretty;
 }
 
@@ -697,7 +666,7 @@
 
 .glassCard {
   padding: 26px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
   background: rgba(13, 13, 16, 0.82);
   backdrop-filter: blur(18px);
@@ -709,15 +678,15 @@
 
 .cardTitle {
   margin: 0 0 6px;
-  font: 700 26px/1.05 var(--display);
+  font: 700 26px/1.05 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
 
 .cardLead {
   margin: 0 0 22px;
-  font: 400 14px/1.5 var(--body);
-  color: var(--muted);
+  font: 400 14px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .page .walletButton {
@@ -725,8 +694,8 @@
   gap: 11px;
   margin-bottom: 14px;
   padding: 13px 16px;
-  background: var(--field);
-  font: 600 13.5px/1 var(--body);
+  background: var(--pk-field);
+  font: 600 13.5px/1 var(--pk-font);
 }
 
 .walletButton:hover:not(:disabled) {
@@ -743,9 +712,9 @@
   align-items: center;
   gap: 11px;
   margin-bottom: 14px;
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .divider::before,
@@ -753,7 +722,7 @@
   content: "";
   flex: 1 1 auto;
   height: 1px;
-  background: var(--line);
+  background: var(--pk-rule);
 }
 
 .stack {
@@ -773,7 +742,7 @@
   margin: 0;
   padding: 16px 18px;
   list-style: none;
-  border: 1px solid var(--line);
+  border: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-lg);
   background: rgba(13, 13, 16, 0.7);
   backdrop-filter: blur(14px);
@@ -783,15 +752,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .boardNowHead span:last-child {
   margin-left: auto;
   letter-spacing: normal;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .callRow {
@@ -802,24 +771,24 @@
 
 .callTicker {
   flex: none;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .callText {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  font: 400 12.5px/1.35 var(--body);
-  color: var(--ink-soft);
+  font: 400 12.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .callResult {
   flex: none;
-  font: 500 11px/1 var(--label);
+  font: 500 11px/1 var(--pk-font);
   letter-spacing: 0.08em;
 }
 
@@ -829,22 +798,22 @@
   align-items: center;
   gap: 14px;
   padding: 0 4px;
-  font: 500 11.5px/1 var(--label);
+  font: 500 11.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
 }
 
 .page .footerLinks a {
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .page .footerLinks a:hover {
-  color: var(--ink);
+  color: var(--pk-ink);
 }
 
 .footerLinks span {
   margin-left: auto;
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- Done ---------- */
@@ -873,7 +842,7 @@
   border: 1px solid rgba(200, 240, 58, 0.4);
   border-radius: var(--pk-radius-pill);
   background: rgba(200, 240, 58, 0.12);
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
   box-shadow: 0 0 30px rgba(200, 240, 58, 0.3);
   animation: pop 520ms cubic-bezier(0.3, 1.5, 0.5, 1);
 }
@@ -885,7 +854,7 @@
 
 .doneTitle {
   margin: 0 0 12px;
-  font: 700 34px/1.05 var(--display);
+  font: 700 34px/1.05 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
@@ -893,16 +862,16 @@
 
 .doneBody {
   margin: 0 0 26px;
-  font: 400 15.5px/1.6 var(--body);
-  color: var(--ink-soft);
+  font: 400 15.5px/1.6 var(--pk-font);
+  color: var(--pk-ink-soft);
   text-wrap: pretty;
 }
 
 .doneFoot {
   margin: 18px 0 0;
-  font: 500 10.5px/1.5 var(--label);
+  font: 500 10.5px/1.5 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .doneBox .primary {
@@ -1056,32 +1025,32 @@
   border-radius: var(--pk-radius-pill);
   /* The unfilled half of the rail: a divider's weight as a fill, which is what --line-strong is.
      0.14 of #f3f1ec painted rgb(44, 45, 55) here and the token paints rgb(40, 42, 53). */
-  background: var(--line-strong);
+  background: var(--pk-rule-strong);
 }
 
 .railLabel {
-  font: 600 10px/1 var(--label);
+  font: 600 10px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .railDone .railBar {
-  background: var(--lime);
+  background: var(--pk-lime);
 }
 
 .railDone .railLabel {
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .railActive .railBar {
-  background: var(--ink);
+  background: var(--pk-ink);
 }
 
 .railActive .railLabel {
-  color: var(--ink);
+  color: var(--pk-ink);
 }
 
 .flowStep {
@@ -1093,7 +1062,7 @@
 
 .flowTitle {
   margin: 14px 0 0;
-  font: 700 clamp(34px, 5.4vw, 52px)/0.94 var(--display);
+  font: 700 clamp(34px, 5.4vw, 52px)/0.94 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.035em;
   text-wrap: balance;
@@ -1101,14 +1070,14 @@
 
 .flowTitle::after {
   content: ".";
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .flowLead {
   margin: 0;
-  font: 600 12px/1.4 var(--label);
+  font: 600 12px/1.4 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
   overflow-wrap: anywhere;
 }
 
@@ -1124,12 +1093,12 @@
   gap: 10px;
   min-width: 0;
   padding: 15px;
-  background: var(--field);
-  color: var(--ink);
+  background: var(--pk-field);
+  color: var(--pk-ink);
 }
 
 .provider:hover:not(:disabled) {
-  border-color: var(--line-strong);
+  border-color: var(--pk-rule-strong);
 }
 
 .emailRow {
@@ -1176,8 +1145,8 @@
   height: 64px;
   border: 1px solid transparent;
   border-radius: var(--pk-radius-lg);
-  background: var(--panel);
-  font: 700 28px/1 var(--body);
+  background: var(--pk-panel);
+  font: 700 28px/1 var(--pk-font);
 }
 
 .codeFilled {
@@ -1204,7 +1173,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  font: 600 16px/1 var(--body);
+  font: 600 16px/1 var(--pk-font);
   opacity: 0;
   cursor: text;
 }
@@ -1216,8 +1185,8 @@
 }
 
 .codeInput:focus-visible ~ .codeCaret {
-  border-color: var(--lime);
-  box-shadow: 0 0 0 1px var(--lime);
+  border-color: var(--pk-lime);
+  box-shadow: 0 0 0 1px var(--pk-lime);
 }
 
 .codeAlert {
@@ -1235,13 +1204,13 @@
 
 .codeAlertText {
   flex: 1 1 160px;
-  font: 600 14.5px/1.3 var(--body);
+  font: 600 14.5px/1.3 var(--pk-font);
   letter-spacing: -0.01em;
 }
 
 .codeAlertTag {
   flex: none;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-pink-ink);
 }
@@ -1258,16 +1227,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: 500 11.5px/1 var(--label);
+  font: 500 11.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .busyDot {
   width: 7px;
   height: 7px;
   border-radius: var(--pk-radius-pill);
-  background: var(--lime);
+  background: var(--pk-lime);
   animation: blink 1s steps(1, end) infinite;
 }
 
@@ -1276,7 +1245,7 @@
 }
 
 .resend:disabled {
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- Handle ---------- */
@@ -1284,12 +1253,12 @@
 .handleField :global(.pk-input) {
   padding: 8px 18px;
   border-radius: var(--pk-radius-lg);
-  background: var(--panel);
+  background: var(--pk-panel);
 }
 
 .handleField :global(.pk-input-prefix),
 .handleField :global(.pk-input-inner) {
-  font: 600 22px/1.1 var(--body);
+  font: 600 22px/1.1 var(--pk-font);
   letter-spacing: -0.03em;
 }
 
@@ -1299,7 +1268,7 @@
 
 .handleField :global(.pk-field-note) {
   padding: 0 4px;
-  font: 600 11px/1.4 var(--label);
+  font: 600 11px/1.4 var(--pk-font);
   letter-spacing: 0.06em;
 }
 
@@ -1308,9 +1277,9 @@
    nothing this file gives a finished screen. */
 .notBuilt {
   margin: 24px 0 0;
-  font: 400 13.5px/1.7 var(--label);
+  font: 400 13.5px/1.7 var(--pk-font);
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
   white-space: pre-line;
 }
 
@@ -1329,39 +1298,49 @@
 }
 
 .point {
-  --accent: var(--lime);
-
   display: flex;
   align-items: center;
   gap: 12px;
   margin: 0;
   padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
+  border: 1px solid var(--pk-rule);
+  border-left: 2px solid var(--pk-lime);
   border-radius: var(--pk-radius-sm);
-  background: var(--panel);
+  background: var(--pk-panel);
 }
 
 .point[data-accent="violet"] {
-  --accent: var(--violet);
+  border-left-color: var(--pk-violet);
 }
 
 .point[data-accent="amber"] {
-  --accent: var(--amber);
+  border-left-color: var(--pk-amber);
 }
 
 .pointTitle {
   flex: 1 1 auto;
   min-width: 0;
-  font: 600 14px/1.35 var(--body);
+  font: 600 14px/1.35 var(--pk-font);
   letter-spacing: -0.015em;
 }
 
 .pointTag {
   flex: none;
-  font: 500 10px/1 var(--label);
+  font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--accent);
+  color: var(--pk-lime);
+}
+
+.point[data-accent="violet"] .pointTag {
+  color: var(--pk-violet);
+}
+
+.point[data-accent="amber"] .pointTag {
+  color: var(--pk-amber);
+}
+
+.point[data-accent="muted"] .pointTag {
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- The ceremony sheet ---------- */
@@ -1386,8 +1365,8 @@
   border-bottom: none;
   border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) 0 0;
   background: var(--pk-popover);
-  color: var(--ink);
-  font-family: var(--body);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
   animation: fadeIn 160ms ease-out;
 }
 
@@ -1410,14 +1389,14 @@
     width: min(460px, calc(100% - 44px));
     height: fit-content;
     margin: auto;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--pk-rule);
     border-radius: var(--pk-radius-2xl);
   }
 }
 
 .sheetTitle {
   margin: 0;
-  font: 700 21px/1.2 var(--display);
+  font: 700 21px/1.2 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.025em;
   text-wrap: balance;
@@ -1425,9 +1404,9 @@
 
 .sheetNote {
   margin: 0;
-  font: 500 10.5px/1.4 var(--label);
+  font: 500 10.5px/1.4 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
   overflow-wrap: anywhere;
 }
 
@@ -1445,7 +1424,7 @@
 .sheetSaved {
   margin-right: 7px;
   vertical-align: -3px;
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 .sheet .alert {
@@ -1460,25 +1439,25 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font: 600 12.5px/1 var(--label);
+  font: 600 12.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--lime-ink);
+  color: var(--pk-lime-ink);
 }
 
 /* The address is a button because it is there to be taken away, not only read. */
 .page .addressButton {
   padding: 6px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-pill);
-  background: var(--panel);
-  font: 600 12px/1 var(--label);
+  background: var(--pk-panel);
+  font: 600 12px/1 var(--pk-font);
   letter-spacing: 0.04em;
-  color: var(--ink);
+  color: var(--pk-ink);
   cursor: pointer;
 }
 
 .addressButton:hover {
-  border-color: var(--line-strong);
+  border-color: var(--pk-rule-strong);
 }
 
 /* Shown when the clipboard is unavailable or refused — an insecure origin, or a permission the
@@ -1490,9 +1469,9 @@
   border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-sm);
   background: var(--pk-amber-tint);
-  font: 500 11.5px/1.5 var(--label);
+  font: 500 11.5px/1.5 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--ink);
+  color: var(--pk-ink);
   overflow-wrap: anywhere;
   user-select: all;
 }
@@ -1501,12 +1480,12 @@
   display: block;
   margin-bottom: 4px;
   letter-spacing: 0.08em;
-  color: var(--amber-ink);
+  color: var(--pk-amber-ink);
   user-select: none;
 }
 
 .point[data-accent="muted"] {
-  --accent: var(--muted);
+  border-left-color: var(--pk-ink-muted);
 }
 
 .flowActions {
@@ -1527,7 +1506,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 20px;
-  background: var(--panel);
+  background: var(--pk-panel);
 }
 
 .balanceLabel {
@@ -1537,44 +1516,44 @@
   justify-content: space-between;
   gap: 10px;
   margin: 0;
-  font: 500 10.5px/1 var(--label);
+  font: 500 10.5px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .balanceLock {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--cyan-ink);
+  color: var(--pk-cyan-ink);
 }
 
 .balance {
   margin: 0;
-  font: 700 clamp(30px, 5vw, 40px)/1 var(--display);
+  font: 700 clamp(30px, 5vw, 40px)/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
 }
 
 .balance span {
   margin-left: 6px;
-  font: 600 14px/1 var(--label);
+  font: 600 14px/1 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .balanceSecondary {
   margin: 0;
-  font: 500 12.5px/1 var(--label);
+  font: 500 12.5px/1 var(--pk-font);
   letter-spacing: 0.04em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 /* A balance nobody could read is not a zero, and this is the line that says which one it is. */
 .balanceUnknown {
   margin: 0;
-  font: 500 13.5px/1.45 var(--body);
-  color: var(--amber-ink);
+  font: 500 13.5px/1.45 var(--pk-font);
+  color: var(--pk-amber-ink);
 }
 
 /* ---------- New device ---------- */
@@ -1582,13 +1561,13 @@
 .page .tile {
   gap: 14px;
   padding: 16px;
-  background: var(--panel);
-  color: var(--ink);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
   text-align: left;
 }
 
 .tile:hover:not(:disabled) {
-  border-color: var(--line-strong);
+  border-color: var(--pk-rule-strong);
 }
 
 .tileText {
@@ -1598,33 +1577,33 @@
 
 .tileText strong {
   display: block;
-  font: 700 15px/1.2 var(--body);
+  font: 700 15px/1.2 var(--pk-font);
   letter-spacing: -0.025em;
 }
 
 .tileText span {
   display: block;
   margin-top: 4px;
-  font: 500 10.5px/1.4 var(--label);
+  font: 500 10.5px/1.4 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
 
 .lost {
   padding: 14px 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-sm);
-  background: var(--panel);
+  background: var(--pk-panel);
 }
 
 .lost summary {
-  font: 600 13px/1.3 var(--body);
-  color: var(--ink-soft);
+  font: 600 13px/1.3 var(--pk-font);
+  color: var(--pk-ink-soft);
   cursor: pointer;
 }
 
 .lost summary:hover {
-  color: var(--ink);
+  color: var(--pk-ink);
 }
 
 .lostFacts {
@@ -1637,7 +1616,7 @@
 }
 
 .lostFacts li {
-  font: 500 11px/1.5 var(--label);
+  font: 500 11px/1.5 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--pk-ink-muted);
 }
