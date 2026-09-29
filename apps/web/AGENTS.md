@@ -359,7 +359,8 @@ per part, each with a harness id: `strip.tsx` (`home-strip`), `agent-card.tsx` (
 `picks.tsx` (`home-picks`), `next-up.tsx` (`home-next`) and `menu.tsx` (`home-menu`).
 
 The deposit prepares, stamps the exact body the API returned with `WebauthnStamper` (the relying
-party from a custody challenge fetched as the sheet opens) and confirms, then reads the balance now
+party from a custody challenge, read as the first sheet opens and kept for the session by
+`relyingParty()`, so later openings store no challenge) and confirms, then reads the balance now
 and twice more while the transfer lands. `lib/passkey.ts` holds that stamper, `session()` and
 `custody()`, shared with the creation ceremony. The limits save themselves 700 ms after a change
 through `PUT /limits` and say "Applies when it trades for real"; closing the sheet inside that
