@@ -29,8 +29,11 @@ export function perpsStudyReport(
     .flatMap((r) => Object.values(r.calls))
     .filter((c) => ["started", "failed"].includes(c.status) && c.costUsd === null);
   const incompleteRounds = rounds.filter(
-    (r) => r.status !== "completed" || r.executionStatus !== "complete",
+    (r) =>
+      r.executionStatus !== "skipped_data_unavailable" &&
+      (r.status !== "completed" || r.executionStatus !== "complete"),
   ).length;
+  const omitted = events.filter((e) => e.kind === "data-unavailable");
   const rows = PERPS_STUDY_STRATEGIES.map((strategy) => {
     const view = accounts[strategy];
     const risk = paperRisk(view.account, view.attempts, now);
@@ -135,6 +138,7 @@ export function perpsStudyReport(
     !record.stopRequested &&
     !record.decisionStopReason?.match(/FAIL|INTERRUPT|INCOMPLETE|UNVERIFIED/) &&
     incompleteRounds === 0 &&
+    omitted.length === 0 &&
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
     rounds.length === 96 &&
@@ -149,6 +153,8 @@ export function perpsStudyReport(
     stopReason: record.decisionStopReason,
     rounds: rounds.length,
     incompleteRounds,
+    omittedRounds: omitted.length,
+    omittedSlots: omitted.map((e) => e.data),
     unknownCalls: unknownCalls.length,
     unobservedMs,
     accountedOrReservedUSD: perpsAccountedUsd(rounds),
@@ -186,6 +192,6 @@ export function renderPerpsReport(report: ReturnType<typeof perpsStudyReport>) {
       fields.map(csvCell).join(","),
       ...report.rows.map((row) => fields.map((f) => csvCell(row[f as keyof typeof row])).join(",")),
     ].join("\n") + "\n";
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details></html>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details></html>`;
   return { html, csv };
 }
