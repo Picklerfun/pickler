@@ -60,3 +60,21 @@ test("never more sites than the allow-list holds", () => {
   const config = briefToConfig({ brief: { ...brief, reads }, spend, maxLeverage: 2 });
   assert.ok((config.sources?.web?.sites.length ?? 0) <= MAX_SITES);
 });
+
+test("an X or Twitter link is an account, never a site to search", () => {
+  for (const line of [
+    "https://x.com/AdamSchefter",
+    "https://www.twitter.com/AdamSchefter/status/1",
+    "https://mobile.twitter.com/AdamSchefter",
+    "x.com/AdamSchefter",
+    "twitter.com/AdamSchefter",
+  ]) {
+    assert.deepEqual(classifyRead(line), { kind: "account" }, line);
+  }
+  const config = briefToConfig({
+    brief: { ...brief, reads: ["https://x.com/AdamSchefter", "espn.com"] },
+    spend,
+    maxLeverage: 2,
+  });
+  assert.deepEqual(config.sources?.web, { mode: "prefer", sites: ["espn.com"] });
+});

@@ -8,13 +8,15 @@ import {
 } from "../research/types.js";
 
 const HOST = /^[a-z0-9.-]+\.[a-z]{2,}$/;
+/** X profiles and posts are accounts, whatever the link looks like; web search does not read them. */
+const X_HOST = /^(?:[a-z0-9-]+\.)?(?:x|twitter)\.com$/;
 
 export type ReadKind = { kind: "site"; host: string } | { kind: "account" } | { kind: "feed" };
 
 /**
- * One `reads` line (§3.4). A URL or a bare domain is a site the web search prefers; an @account (X)
- * or a named feed is passed to the model as context only, and the screen marks it "Soon", because
- * nothing ingests X or arbitrary feeds yet.
+ * One `reads` line (§3.4). A URL or a bare domain is a site the web search prefers. An X account
+ * (an @handle or an x.com/twitter.com link) or a named feed is passed to the model as context only,
+ * and the screen marks it "Soon", because nothing ingests X or arbitrary feeds yet.
  */
 export function classifyRead(line: string): ReadKind {
   const text = line.trim();
@@ -32,6 +34,9 @@ export function classifyRead(line: string): ReadKind {
     host = text.split("/")[0]!;
   }
   host = host.toLowerCase().replace(/^www\./, "");
+  if (X_HOST.test(host)) {
+    return { kind: "account" };
+  }
   return HOST.test(host) ? { kind: "site", host } : { kind: "feed" };
 }
 
