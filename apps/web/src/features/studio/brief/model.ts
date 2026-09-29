@@ -312,6 +312,41 @@ export function createLabel(
 export const canCreate = (handle: HandleState, state: RunState, completed: boolean): boolean =>
   handle === "free" && state === "DONE" && completed;
 
+/** A draft the API answered 201 for: it exists whatever happens to the screen afterwards. */
+export interface CreatedDraft {
+  productId: string;
+  name: string;
+}
+
+export type CreatePress =
+  { kind: "none" } | { kind: "create" } | { kind: "reload"; productId: string };
+
+/**
+ * What a press on the create button does. Creating and opening what was created are two steps,
+ * and only the first is a create: once the draft exists a press reloads it and nothing else, so a
+ * reload that failed is never answered with a second `POST`.
+ */
+export function createPress(input: {
+  created: CreatedDraft | null;
+  busy: boolean;
+  creatable: boolean;
+}): CreatePress {
+  if (input.busy) {
+    return { kind: "none" };
+  }
+  if (input.created) {
+    return { kind: "reload", productId: input.created.productId };
+  }
+  return input.creatable ? { kind: "create" } : { kind: "none" };
+}
+
+/** The button once the draft exists: opening it, or saying it is there and could not be read. */
+export function createdLabel(created: CreatedDraft, reload: "opening" | "failed"): string {
+  return reload === "opening"
+    ? `Opening ${created.name}`
+    : `Created ${created.name}. Couldn't load it · reload`;
+}
+
 export function footNote(state: RunState): string {
   if (state === "STALE") {
     return "YOU CHANGED THE BRIEF SINCE THE LAST RUN";

@@ -313,6 +313,9 @@ appears in the top bar instead. `HomeMenu` takes `agent: null` then: "+ New agen
 `home/access.ts` holds that decision, pure: `menuAccess` answers whether sections open and whether
 "+ New agent" is a link, with one reason (research access, then view-only, then the unfunded-agent
 lock), and the empty home's button and rail read the same answer.
+Creating the draft and opening it are two steps: once `createDraft` answered, a failed reload reads
+"Created {Name}. Couldn't load it · reload" on the button, and a press only reloads, never creates a
+second draft (`createPress` and `createdLabel` in `brief/model.ts`, pinned in `studio-brief.test.ts`).
 `lib/landing.ts` decides the screen: `studioLanding(loaded, agents, section)` is `home` or `section`
 with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
 read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The

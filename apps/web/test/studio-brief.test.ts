@@ -11,6 +11,8 @@ import {
   canRun,
   capsProblem,
   createLabel,
+  createPress,
+  createdLabel,
   deriveHandle,
   emptyForm,
   fingerprint,
@@ -267,4 +269,40 @@ test("polling a paper run gives up only when the run is gone", async () => {
   assert.equal(readGivesUp("INTERNAL_OR_PROVIDER_FAILURE"), false);
   assert.equal(readGivesUp("503"), false);
   assert.equal(readGivesUp(""), false);
+});
+
+/* Creating, then opening what was created: two steps, and only the first is a create. */
+
+const CREATED = { productId: "prod_1", name: "Half Time" };
+
+test("before anything was created, the button creates when it may", () => {
+  assert.deepEqual(createPress({ created: null, busy: false, creatable: true }), {
+    kind: "create",
+  });
+  assert.deepEqual(createPress({ created: null, busy: false, creatable: false }), {
+    kind: "none",
+  });
+});
+
+test("once the draft exists the button only ever reloads it, never creates a second", () => {
+  // The 201 already happened. Whatever the form now says about being creatable — the handle reads
+  // as taken, because this draft took it — a press opens the draft that exists.
+  for (const creatable of [true, false]) {
+    assert.deepEqual(createPress({ created: CREATED, busy: false, creatable }), {
+      kind: "reload",
+      productId: "prod_1",
+    });
+  }
+});
+
+test("a press while a create or a reload is under way does nothing", () => {
+  assert.deepEqual(createPress({ created: null, busy: true, creatable: true }), { kind: "none" });
+  assert.deepEqual(createPress({ created: CREATED, busy: true, creatable: true }), {
+    kind: "none",
+  });
+});
+
+test("a failed reload says the agent was created, and offers the reload", () => {
+  assert.equal(createdLabel(CREATED, "failed"), "Created Half Time. Couldn't load it · reload");
+  assert.equal(createdLabel(CREATED, "opening"), "Opening Half Time");
 });

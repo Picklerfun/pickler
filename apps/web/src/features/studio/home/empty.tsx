@@ -21,6 +21,8 @@ import {
   canCreate,
   canRun,
   createLabel,
+  createPress,
+  createdLabel,
   deriveHandle,
   emptyForm,
   fingerprint,
@@ -33,6 +35,7 @@ import {
   sectionForField,
   toRequest,
   type BriefForm,
+  type CreatedDraft,
   type SectionKey,
 } from "../brief/model";
 import { PaperRun, type PaperRunView } from "../brief/paper-run";
@@ -133,6 +136,9 @@ export function EmptyHome({
   const [creating, setCreating] = useState(false);
   const [runError, setRunError] = useState("");
   const [createError, setCreateError] = useState("");
+  /* The draft the API answered 201 for. From here on the button reloads and never creates. */
+  const [created, setCreated] = useState<CreatedDraft | null>(null);
+  const [opening, setOpening] = useState(false);
 
   const handle = deriveHandle(form.name);
   /* The existing availability check, debounced; the canvas's mock TAKEN list is gone. */
@@ -186,7 +192,7 @@ export function EmptyHome({
     retryAt !== null && retryAt > now
       ? new Date(retryAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : "";
-  const runnable = access.create && !starting && canRun(form, state, nextRunAt);
+  const runnable = access.create && !starting && !created && canRun(form, state, nextRunAt);
   const creatable = access.create && !creating && canCreate(nameState, state, completed);
 
   function edit(next: BriefForm) {
@@ -230,20 +236,41 @@ export function EmptyHome({
     }
   }
 
+  /* Only the reload: the draft exists, and a failure here is not a failure to create it. */
+  async function open(productId: string) {
+    setOpening(true);
+    try {
+      await onCreated(productId);
+    } catch {
+      /* The button says so (`createdLabel`), and the next press comes back here. */
+    } finally {
+      setOpening(false);
+    }
+  }
+
   async function create() {
-    if (preview || !paper || !creatable) {
+    const press = createPress({
+      created,
+      busy: creating || opening,
+      creatable: !preview && paper !== null && creatable,
+    });
+    if (press.kind === "reload") {
+      await open(press.productId);
+      return;
+    }
+    if (press.kind === "none" || !paper) {
       return;
     }
     setCreateError("");
     setCreating(true);
+    let productId: string;
     try {
-      const created = await createDraft({
+      ({ productId } = await createDraft({
         ...toRequest(form),
         name: form.name.trim(),
         handle,
         previewRunId: paper.id,
-      });
-      await onCreated(created.productId);
+      }));
     } catch (caught) {
       const code = errorCode(caught);
       if (code === "RUN_STALE") {
@@ -257,9 +284,12 @@ export function EmptyHome({
       } else {
         setCreateError(caught instanceof Error ? caught.message : "It was not created.");
       }
+      return;
     } finally {
       setCreating(false);
     }
+    setCreated({ productId, name: form.name.trim() });
+    await open(productId);
   }
 
   return (
@@ -357,7 +387,7 @@ export function EmptyHome({
               form={form}
               handle={nameState}
               fieldErrors={fieldErrors}
-              disabled={starting || creating}
+              disabled={starting || creating || created !== null}
               onChange={edit}
               onRecheck={() => {
                 setAvailability(null);
@@ -380,10 +410,14 @@ export function EmptyHome({
               <Button
                 variant="primary"
                 size="lg"
-                aria-disabled={!creatable}
+                aria-disabled={created ? opening : !creatable}
                 onClick={() => void create()}
               >
-                {creating ? "Creating" : createLabel(form, nameState, state, completed)}
+                {created
+                  ? createdLabel(created, opening ? "opening" : "failed")
+                  : creating
+                    ? "Creating"
+                    : createLabel(form, nameState, state, completed)}
               </Button>
             </div>
             {runError && (
