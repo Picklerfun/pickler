@@ -5,12 +5,13 @@ import { AUSD_DECIMALS, formatAusd, parseAusd } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import { useNow } from "../hooks/useNow";
 import { change24h, formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from "../perpl/orders";
-import { levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from "../reads/level";
-import { cellLabel } from "../reads/matrix";
+import { levelFromCell, levelIsLive, levelTitle, reminderKinds, remindersCopy, resolvesLabel, sideFor } from "../reads/level";
+import { cellLabel, type Cell, readDots, readsForMarket } from "../reads/matrix";
 import { askMarketId, type TradeLevel } from "../store";
 import { Btn, Card, Chip, InkBlock, KVList, type KVRow, Page, Segmented, Skeleton, T, Tag } from "../ui/primitives";
 import { C, pill, textStyle } from "../ui/theme";
 import { AskTab } from "./ask";
+import { Board } from "./board";
 import { BookCard } from "./book";
 import { OrderResultCard, type OrderResult } from "./orderResult";
 import { EnableTrading, TradingWarns } from "./tradingGate";
@@ -47,9 +48,20 @@ function TradeTab(ctx: AppCtx) {
   const now = useNow(30_000);
   // Sólo el nivel de este mercado y todavía vivo; uno de otro mercado se conserva en el store pero no se pinta ni programa nada.
   const level = S.tradeLevel && S.tradeLevel.marketId === market.id && levelIsLive(S.tradeLevel, now) ? S.tradeLevel : undefined;
+  const dots = readDots(readsForMarket(reads.reads, market.id));
+  const board = (
+    <Board mode="trade" market={market} marks={perpl.marks[market.id] ?? []} dots={dots}
+      selected={level ? { levelBps: level.levelBps, horizonMin: level.horizonMin } as Cell : undefined}
+      onSelect={(c) => set({ tradeLevel: levelFromCell(market, c, new Date()), perpsSide: sideFor(c.levelBps) })} />
+  );
 
-  if (perpl.state.status === "loading") return <Page top={13}><ActivityIndicator color={C.faint} /></Page>;
-  if (perpl.state.status !== "ready") return <EnableTrading {...ctx} />;
+  if (perpl.state.status === "loading") return <Page top={13} gap={11}>{board}<ActivityIndicator color={C.faint} /></Page>;
+  if (perpl.state.status !== "ready") return (
+    <>
+      <Page top={13} gap={11}>{board}</Page>
+      <EnableTrading {...ctx} />
+    </>
+  );
 
   const leverages = leveragesFor(market);
   const lvUsed = leverages.includes(lv) ? lv : 1;
@@ -116,6 +128,7 @@ function TradeTab(ctx: AppCtx) {
   return (
     <Page top={13} gap={11}>
       <TradingWarns perpl={perpl} />
+      {board}
       {level ? <LevelCard symbol={sym} level={level} pd={market.priceDecimals} now={now} onRemove={() => set({ tradeLevel: undefined })} /> : null}
       <Segmented
         options={[["long", "Long · up"], ["short", "Short · down"]] as const}

@@ -128,12 +128,3 @@ export function pill(on: boolean): Pill {
 
 /** Color del icono y la etiqueta de la pestaña activa (barra hi-fi del Handoff, spec D2). */
 export const TAB_TINT = { markets: "#3F6B00", agents: "#5B3CE0", portfolio: "#8A6200", wallet: "#C62C62" } as const;
-
-/** Acento de la matriz nivel × horizonte: violeta en Ask, tinte lima en Trade (estados del board del Handoff). */
-export type GridAccent = { fg: string; on: string; soft: string };
-export const GRID_ACCENT: Record<"ask" | "trade", GridAccent> = {
-  ask: { fg: C.vio, on: "rgba(91,60,224,0.18)", soft: "rgba(91,60,224,0.06)" },
-  trade: { fg: C.limeInk, on: "#EDF7CE", soft: "#F3F8E0" },
-};
-/** Punto de una celda con reads ("Violet, always"). */
-export const GRID_DOT = C.agentDot;

@@ -1,20 +1,20 @@
 import { type ReactNode, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import type { AppCtx } from "../ctx";
 import { useNow } from "../hooks/useNow";
 import type { Reads } from "../hooks/useReads";
 import type { Market } from "../perpl/context";
-import { sparkPoints } from "../perpl/marks";
 import { formatPrice } from "../perpl/orders";
 import {
-  callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
-  levelLabel, questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
+  callOf, type Cell, cellLabel, distanceLabel, expiresAtFor, formatProbability, formatRemaining, horizonLabel,
+  questionFor, readDots, readsForMarket, stepHorizon, stepLevel, targetFor,
 } from "../reads/matrix";
 import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
 import type { Agent, Read } from "../reads/types";
 import type { AskCell, TradeLevel } from "../store";
-import { Btn, Card, Chip, Reveal, Skeleton, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, Warn } from "../ui/primitives";
-import { C, GRID_ACCENT, GRID_DOT } from "../ui/theme";
+import { Btn, Card, Chip, Reveal, Skeleton, StatusCard, Stepper, T, Tag, type Tone, Touch, Warn } from "../ui/primitives";
+import { C } from "../ui/theme";
+import { Board } from "./board";
 
 const READING: Tone = { bd: C.warnBd, bg: C.warnBg, fg: C.warn };
 const FAILED: Tone = { bd: C.downBd, bg: C.downBg, fg: C.down };
@@ -89,60 +89,6 @@ function CreditsRow({ credits, error }: { credits: number | null; error: string 
         : <Reveal><T w={700} s={16} lh={1} mono>{String(credits)}</T></Reveal>}
       <T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}>1 credit per read · simulated for the testnet</T>
     </Card>
-  );
-}
-
-/** El `Grid` del prototipo: sparkline a la izquierda, escalera de precios, celdas de 48 px con un punto donde ya hay reads, horizontes abajo. */
-function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Market; marks: readonly number[]; dots: Set<string>; selected?: AskCell; onSelect: (c: Cell) => void }) {
-  const acc = GRID_ACCENT.ask;
-  const pd = market.priceDecimals;
-  return (
-    <View style={{ borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, overflow: "hidden" }}>
-      <View style={{ flexDirection: "row" }}>
-        <View style={{ width: 74, borderRightWidth: 1, borderRightColor: C.hair10 }}>
-          <Sparkline points={sparkPoints(marks)} style={StyleSheet.absoluteFill} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          {LEVELS_BPS.map((bps, i) => {
-            const rowOn = selected?.levelBps === bps;
-            const markBand = bps > 0 && (LEVELS_BPS[i + 1] ?? 0) < 0; // la banda del mark va entre el último nivel positivo y el primero negativo (P4)
-            return (
-              <View key={bps}>
-                <View style={{ flexDirection: "row", borderBottomWidth: markBand ? 0 : 1, borderBottomColor: C.hair08 }}>
-                  <View style={{ width: 58, justifyContent: "center", paddingLeft: 7, gap: 3, borderRightWidth: 1, borderRightColor: C.hair08 }}>
-                    <T w={500} s={9.5} lh={1} mono color={bps > 0 ? C.up : C.down} numberOfLines={1}>{formatPrice(targetFor(market.mark, bps), pd)}</T>
-                    <T w={500} s={8.5} lh={1} mono color={C.faint} numberOfLines={1}>{levelLabel(bps)}</T>
-                  </View>
-                  {HORIZONS_MIN.map((h) => {
-                    const colOn = selected?.horizonMin === h;
-                    const on = rowOn && colOn;
-                    return (
-                      <Touch key={h} onPress={() => onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
-                        style={{ flex: 1, minWidth: 0, height: 48, borderLeftWidth: 1, borderLeftColor: C.hair08, backgroundColor: on ? acc.on : rowOn || colOn ? acc.soft : "transparent", alignItems: "center", justifyContent: "center" }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: dots.has(dotKey({ levelBps: bps, horizonMin: h })) ? GRID_DOT : "transparent" }} />
-                      </Touch>
-                    );
-                  })}
-                </View>
-                {markBand ? (
-                  <View style={{ height: 22, justifyContent: "center", paddingLeft: 7, backgroundColor: C.ink }} accessibilityLabel="mark-band">
-                    <T w={700} s={10.5} lh={1} mono color={C.onInk} numberOfLines={1}>{formatPrice(market.mark, pd)} MARK</T>
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-          <View style={{ flexDirection: "row" }}>
-            <View style={{ width: 58 }} />
-            {HORIZONS_MIN.map((h) => (
-              <View key={h} style={{ flex: 1, alignItems: "center", paddingVertical: 6 }}>
-                <T w={500} s={9.5} lh={1} mono color={selected?.horizonMin === h ? acc.fg : C.faint}>{horizonLabel(h)}</T>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-    </View>
   );
 }
 
@@ -243,11 +189,7 @@ export function AskTab(ctx: AppCtx) {
     return (
       <View style={{ gap: 11 }}>
         <CreditsRow credits={reads.credits} error={reads.listError} />
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Tag s={10}>HISTORY · MARK</Tag>
-          <T w={700} s={15} lh={1} mono>{formatPrice(market.mark, market.priceDecimals)}</T>
-        </View>
-        <MatrixGrid market={market} marks={perpl.marks[market.id] ?? []} dots={dots} selected={S.askCell} onSelect={(c) => set({ askCell: c })} />
+        <Board mode="ask" market={market} marks={perpl.marks[market.id] ?? []} dots={dots} selected={S.askCell as Cell | undefined} onSelect={(c) => set({ askCell: c })} />
         <T w={400} s={11.5} lh={1.45} color={C.faint}>{S.askCell ? "Use the steppers to move it." : "Tap a cell: a level and a horizon."}</T>
         {S.askCell ? (
           <AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId}
