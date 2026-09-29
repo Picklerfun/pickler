@@ -1,4 +1,4 @@
-import { agentBlurb, hitRate } from "../src/reads/agentsCopy";
+import { agentBlurb, hitRate, initials } from "../src/reads/agentsCopy";
 
 test("each seeded agent has a one-line blurb written in the app, never its persona (D15)", () => {
   expect(agentBlurb("jesus")).toBe("Swing trader on Monad perps. Prefers 4H–24H and fades moves past +2.5%.");
@@ -10,4 +10,10 @@ test("each seeded agent has a one-line blurb written in the app, never its perso
 test("hitRate is right over resolved, rounded; dash with nothing resolved", () => {
   expect(hitRate({ reads: 10, resolved: 12, right: 7, brierAvg: 0.2 })).toBe("58%");
   expect(hitRate({ reads: 3, resolved: 0, right: 0, brierAvg: null })).toBe("—");
+});
+
+test("initials: up to 2 letters, one per word, uppercase (item 9)", () => {
+  expect(initials("Drift")).toBe("D");
+  expect(initials("Jesus Acevedo")).toBe("JA");
+  expect(initials("a b c")).toBe("AB");
 });

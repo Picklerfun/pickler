@@ -4,8 +4,9 @@ import { Image, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppCtx } from "../ctx";
 import { useAppCtx } from "../navigation/context";
+import { initials } from "../reads/agentsCopy";
 import { CAN_BACK, headerFor, REFRESHABLE, ROOT_OF, type Screen, SHOW_TABS } from "../store";
-import { Icon, T, Tag, Touch } from "./primitives";
+import { Avatar, Icon, T, Tag, Touch } from "./primitives";
 import { tabBarHeight } from "./tabBarLayout";
 import { C } from "./theme";
 
@@ -34,6 +35,9 @@ export function Page({ screen, children, headerRight, bare }: { screen: Screen; 
             </Touch>
           ) : null}
           {isRoot ? <Image source={require("../../assets/pickler-mark.png")} style={{ width: 26, height: 26 }} resizeMode="contain" /> : null}
+          {/* item 9 de la ola final (spec D16): antes del título, junto al ícono de raíz y el back — Page ya
+              resuelve `agent` para headerFor, así que no hace falta un `headerRight` que repita la búsqueda. */}
+          {screen === "agent" && agent ? <Avatar initials={initials(agent.name)} size={38} s={12} /> : null}
           <View style={{ flex: 1, minWidth: 0 }}>
             {isRoot
               ? <T w={700} s={30} lh={1} ls={-0.045} display numberOfLines={1}>{title.toUpperCase()}</T>

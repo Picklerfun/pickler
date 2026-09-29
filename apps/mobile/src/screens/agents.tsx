@@ -1,12 +1,10 @@
 import { View } from "react-native";
 import type { AppCtx } from "../ctx";
-import { agentBlurb, hitRate } from "../reads/agentsCopy";
+import { agentBlurb, hitRate, initials } from "../reads/agentsCopy";
 import type { Agent } from "../reads/types";
 import { askMarketId } from "../store";
 import { Avatar, Btn, Chip, EmptyPanel, Page, Reveal, Skeleton, T, Tag, TouchCard, Warn } from "../ui/primitives";
 import { C } from "../ui/theme";
-
-const initials = (name: string): string => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
 /** Pestaña Agents (D15): lista pública de agents-list. La tarjeta abre el perfil; "Ask" abre Market en Ask con el agente (D13). */
 export function AgentsScreen({ reads, perpl, S, requireAccount }: AppCtx) {

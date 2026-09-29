@@ -10,3 +10,6 @@ const BLURBS: Record<string, string> = {
 export const agentBlurb = (id: string): string => BLURBS[id] ?? "Reads Perpl markets on Monad.";
 
 export const hitRate = (r: AgentRecord): string => (r.resolved === 0 ? "—" : `${Math.round((r.right / r.resolved) * 100)}%`);
+
+// Iniciales para el Avatar del agente (tarjeta de Agents y, desde el item 9 de la ola final, la cabecera del perfil).
+export const initials = (name: string): string => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
