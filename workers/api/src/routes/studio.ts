@@ -98,7 +98,10 @@ export interface StudioServices {
   };
   /** The wallet linked to an agent at creation, by product agent id. */
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
-  /** The AUSD display balance of an address. A read that fails throws; it is never zero. */
+  /**
+   * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
+   * chain is not composed it throws `PilotError` BALANCES_UNAVAILABLE (503).
+   */
   balances: { read(address: string): Promise<number> };
   /**
    * The passkey custody service, per request, for deposits. Absent where Turnkey is not
@@ -151,6 +154,9 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
     return 503;
   }
   if (code === "PREVIEW_UNAVAILABLE") {
+    return 503;
+  }
+  if (code === "BALANCES_UNAVAILABLE") {
     return 503;
   }
   return 409;

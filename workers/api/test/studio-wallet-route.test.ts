@@ -43,6 +43,8 @@ interface Options {
   balances?: Record<string, number>;
   ready?: boolean;
   failRead?: boolean;
+  /** What the balance reader throws where the chain is not composed. */
+  readError?: Error;
   signedIn?: boolean;
   /** What the directory refuses a new creation with. */
   createError?: Error;
@@ -55,6 +57,7 @@ function fixture({
   balances = {},
   ready = true,
   failRead = false,
+  readError,
   signedIn = true,
   createError,
   drafts = [],
@@ -183,6 +186,9 @@ function fixture({
     balances: {
       read: async (address) => {
         reads.push(address);
+        if (readError) {
+          throw readError;
+        }
         if (failRead) {
           throw new Error("rpc down");
         }
@@ -323,6 +329,17 @@ test("a second agent is refused while the first holds 3 AUSD", async () => {
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: "UNFUNDED_AGENT" });
   assert.deepEqual(created, []);
+});
+
+test("balances that are not composed answer 503 BALANCES_UNAVAILABLE", async () => {
+  const { app } = fixture({
+    readError: new PilotError("BALANCES_UNAVAILABLE", "Balances are not available"),
+  });
+
+  const response = await app.request(`/agents/${FIRST}`);
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "BALANCES_UNAVAILABLE" });
 });
 
 test("an agent with its wallet is created even at the draft limit", async () => {

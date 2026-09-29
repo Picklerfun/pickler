@@ -9,6 +9,7 @@ import {
   createProfileService,
   createWalletSignIn,
   parseEmailAllowlist,
+  PilotError,
 } from "@pickler/core";
 import {
   createSupabaseAdmin,
@@ -47,6 +48,7 @@ import {
 import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
 import type { Env } from "./env";
+import { HttpError } from "./http/http-error";
 import type { SigningRouteServices } from "./routes/signing";
 import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
@@ -84,6 +86,27 @@ function required<
 
 /** Monad testnet, the same default the web carries in NEXT_PUBLIC_SIWE_CHAIN_ID. */
 const DEFAULT_CHAIN_ID = 10143;
+
+/**
+ * The chain balances and deposits run on, or null when `CHAIN_ID` is not a chain Pickler supports.
+ * A bad value turns those two off (503) and leaves every other route alone, and says so by
+ * variable name, never by value.
+ */
+export function supportedChainId(
+  env: Pick<Env, "CHAIN_ID" | "MONAD_RPC_URL">,
+  log: (message: string) => void = console.error,
+): number | null {
+  const chainId = Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID);
+  try {
+    // The adapters refuse an unsupported chain when they are built; building the cached reader
+    // here is that check, made once.
+    ausdBalances(env, chainId);
+    return chainId;
+  } catch {
+    log("CHAIN_ID is not a chain Pickler supports; balances and deposits are off");
+    return null;
+  }
+}
 
 /** A compressed P-256 public key in hex, the format Turnkey API keys use. */
 const COMPRESSED_P256 = /^0[23][0-9a-f]{64}$/i;
@@ -135,6 +158,7 @@ function custodyServices(
   pool: PostgresResearchStore["pool"],
   authenticate: Services["authenticate"],
   profiles: SigningRouteServices["profiles"],
+  chainId: number | null,
 ): SigningRouteServices | undefined {
   const apiPublicKey = env.TURNKEY_API_PUBLIC_KEY;
   const apiPrivateKey = env.TURNKEY_API_PRIVATE_KEY;
@@ -154,20 +178,28 @@ function custodyServices(
   const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
   // AUSD deposits from the master wallet, on the studio's chain and endpoint; a sent deposit
   // drops the studio reader's cached balance for the agent's address.
-  const deposits = createAusdDepositChain({
-    chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
-    ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
-    balances: ausdBalances(env),
-  });
+  // Without a supported chain there is no deposit chain, and core answers deposits with
+  // `DepositsUnavailableError` (503); the passkey ceremonies do not read the chain and stay on.
+  const endpoint = env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {};
+  const deposits =
+    chainId === null
+      ? undefined
+      : createAusdDepositChain({ chainId, ...endpoint, balances: ausdBalances(env, chainId) });
 
   return {
     authenticate,
     profiles,
     walletEmailDomain: env.WALLET_EMAIL_DOMAIN,
-    balances: createBalanceReader({
-      chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
-      ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
-    }),
+    balances:
+      chainId === null
+        ? {
+            read: async () => {
+              throw new HttpError(503, "Balances are not available", {
+                error: "balances_unavailable",
+              });
+            },
+          }
+        : createBalanceReader({ chainId, ...endpoint }),
     // Only the service itself is per-request: it is a closure over the adapters above, and this
     // is what lets the orphan report name the request that produced it.
     custody: (requestId: string) =>
@@ -179,7 +211,7 @@ function custodyServices(
         forwarder,
         agentActivities,
         agentWallets: store,
-        deposits,
+        ...(deposits ? { deposits } : {}),
         delegatedPublicKey,
         venueContracts: VENUE_CONTRACTS,
         rpId,
@@ -286,8 +318,7 @@ const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>(
  * reader is kept per isolate (per chain and endpoint) or its cache would never be hit. A failed
  * read fails the request; it is never reported as a zero balance.
  */
-function ausdBalances(env: Env) {
-  const chainId = Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID);
+function ausdBalances(env: Pick<Env, "MONAD_RPC_URL">, chainId: number) {
   const key = `${chainId}|${env.MONAD_RPC_URL ?? ""}`;
   let reader = ausdReaders.get(key);
   if (!reader) {
@@ -299,6 +330,13 @@ function ausdBalances(env: Env) {
   }
   return reader;
 }
+
+/** The studio's balances where `CHAIN_ID` is unusable: every read is 503 BALANCES_UNAVAILABLE. */
+const noBalances = {
+  read: async (): Promise<number> => {
+    throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
+  },
+};
 
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
@@ -335,7 +373,8 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const profiles = createProfileService(new PostgresProfileRepository(repository.pool), {
     hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
   });
-  const custody = custodyServices(env, repository.pool, authenticate, profiles);
+  const chainId = supportedChainId(env);
+  const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
@@ -371,7 +410,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       repository,
       previews: new PostgresPreviewStore(repository.pool),
       wallets: new PostgresCustodyStore(repository.pool),
-      balances: ausdBalances(env),
+      balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
       paper: {
         ...createPaperService(new PostgresPaperStore(repository.pool), new PolymarketData()),

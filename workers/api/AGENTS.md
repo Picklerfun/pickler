@@ -231,6 +231,15 @@ directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, m
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
 
+A `CHAIN_ID` that is not a number or not a chain `@pickler/chain` lists never fails composition:
+`supportedChainId` in `container.ts` answers null and logs the variable's name, never its value.
+Balances and deposits are then off and every other route serves. The studio's balance reader
+throws `PilotError` `BALANCES_UNAVAILABLE`, so a studio read that needs a balance (an agent with a
+wallet) answers 503 `{ error: "BALANCES_UNAVAILABLE" }`. The custody service is composed without a
+deposit chain, so the deposit routes answer 503 `DEPOSITS_UNAVAILABLE`. `GET
+/v1/signing/wallets/me` answers 503 with `error: "balances_unavailable"` in its envelope. The
+passkey ceremonies read no chain and stay on.
+
 `POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
 rights) adopts a completed paper run as a private draft through `directory.createDraft`
 (studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
