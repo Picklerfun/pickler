@@ -84,9 +84,10 @@ function service(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
     links: links(),
     verifier: { verify: async () => true },
     accounts: {
-      forAddress: async () => ({ userId: "user-1" }),
+      forAddress: async () => ({ userId: "user-1", created: true }),
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
       markWalletAccount: async () => {},
+      discardAccount: async () => {},
     },
     randomNonce: () => "nonce-1",
     buildMessage: build,
@@ -263,7 +264,7 @@ test("signing in with an already-linked address returns that account, not a new 
     links: links([existing]),
     // forAddress must not be consulted; if it is, the test's assertion on userId catches it.
     accounts: {
-      forAddress: async () => ({ userId: "user-newly-made" }),
+      forAddress: async () => ({ userId: "user-newly-made", created: true }),
       session: async (userId) => ({ accessToken: `at:${userId}`, refreshToken: "rt" }),
       markWalletAccount: async () => {},
     },
@@ -332,7 +333,7 @@ test("every sign-in marks the wallet account before minting its session", async 
       nonces: nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]])),
       links: links(returning ? [existing] : []),
       accounts: {
-        forAddress: async () => ({ userId: "user-new" }),
+        forAddress: async () => ({ userId: "user-new", created: true }),
         markWalletAccount: async (userId, namespace, address) => {
           calls.push(`mark:${userId}:${namespace}:${address}`);
         },
@@ -391,4 +392,147 @@ test("an account refused as a pre-registration is not linked and gets no session
     assert.deepEqual(calls, [], "no session was minted");
     assert.equal(store.rows.length, returning ? 1 : 0, "nothing new was linked");
   }
+});
+
+/**
+ * The race `verify` has to survive: the address was linked to nobody when it looked, an account
+ * was made for it, and by the time the link was written somebody else — a signed-in studio account
+ * linking the same wallet — held it. `link` answers `created: false`, and the wallet belongs to
+ * that account, not to the one this call just made.
+ */
+function lostRace(holder: string) {
+  const calls: string[] = [];
+  const held: WalletLink = {
+    userId: holder,
+    namespace: "eip155",
+    address: ADDRESS,
+    verifiedChain: "eip155:10143",
+    kind: "external",
+    verifiedAt: NOW,
+  };
+  let linked = false;
+  const repository: WalletLinkRepository = {
+    // Nothing on the first read, the winner's link once the insert has been refused.
+    findByAddress: async () => (linked ? held : null),
+    link: async (link) => {
+      calls.push(`link:${link.userId}`);
+      linked = true;
+      return { created: false };
+    },
+    listForUser: async () => [],
+  };
+  return { calls, repository };
+}
+
+function racing(
+  holder: string,
+  accounts: Partial<Parameters<typeof createWalletSignIn>[0]["accounts"]> = {},
+  made = true,
+) {
+  const { calls, repository } = lostRace(holder);
+  const signIn = service({
+    nonces: nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]])),
+    links: repository,
+    accounts: {
+      forAddress: async () => ({ userId: "user-synthetic", created: made }),
+      markWalletAccount: async (userId) => void calls.push(`mark:${userId}`),
+      session: async (userId) => {
+        calls.push(`session:${userId}`);
+        return { accessToken: `at:${userId}`, refreshToken: "rt" };
+      },
+      discardAccount: async (userId, namespace, address) =>
+        void calls.push(`discard:${userId}:${namespace}:${address}`),
+      ...accounts,
+    },
+  });
+  return { calls, signIn };
+}
+
+test("a link lost to another account signs in as the account that holds the wallet", async () => {
+  const { calls, signIn } = racing("user-studio");
+  const result = await signIn.verify({ raw: signed(), signature: "0xsig" });
+  assert.equal(result.userId, "user-studio");
+  assert.equal(result.session.accessToken, "at:user-studio");
+  assert.equal(
+    calls.some((call) => call === "session:user-synthetic" || call === "mark:user-synthetic"),
+    false,
+    "the account this call made holds no wallet and gets nothing",
+  );
+  assert.deepEqual(calls.slice(-2), ["mark:user-studio", "session:user-studio"]);
+});
+
+test("the account made for a lost link is removed, because nothing will ever use it", async () => {
+  const { calls, signIn } = racing("user-studio");
+  await signIn.verify({ raw: signed(), signature: "0xsig" });
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("discard:")),
+    [`discard:user-synthetic:eip155:${ADDRESS}`],
+  );
+});
+
+test("an account this call did not make is never removed", async () => {
+  const { calls, signIn } = racing("user-studio", {}, false);
+  const result = await signIn.verify({ raw: signed(), signature: "0xsig" });
+  assert.equal(result.userId, "user-studio");
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("discard:")),
+    [],
+  );
+});
+
+test("a link lost to the same account is that account's sign-in, and nothing is removed", async () => {
+  // Two first sign-ins of one wallet at once: both resolve to one account and one wins the insert.
+  const { calls, signIn } = racing("user-synthetic");
+  const result = await signIn.verify({ raw: signed(), signature: "0xsig" });
+  assert.equal(result.userId, "user-synthetic");
+  assert.deepEqual(calls, ["link:user-synthetic", "mark:user-synthetic", "session:user-synthetic"]);
+});
+
+test("the holder of a lost link is held to the same conflict check before any session", async () => {
+  const { calls, signIn } = racing("user-studio", {
+    markWalletAccount: async () => {
+      throw new WalletAccountConflictError();
+    },
+  });
+  await assert.rejects(
+    () => signIn.verify({ raw: signed(), signature: "0xsig" }),
+    WalletAccountConflictError,
+  );
+  assert.equal(
+    calls.some((call) => call.startsWith("session:")),
+    false,
+  );
+});
+
+test("failing to remove the leftover account does not refuse the sign-in", async () => {
+  const { signIn } = racing("user-studio", {
+    discardAccount: async () => {
+      throw new Error("admin API unavailable");
+    },
+  });
+  const result = await signIn.verify({ raw: signed(), signature: "0xsig" });
+  assert.equal(result.userId, "user-studio");
+});
+
+test("a lost link that nobody holds after all is a failure, never a session", async () => {
+  const calls: string[] = [];
+  const signIn = service({
+    nonces: nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]])),
+    links: {
+      findByAddress: async () => null,
+      link: async () => ({ created: false }),
+      listForUser: async () => [],
+    },
+    accounts: {
+      forAddress: async () => ({ userId: "user-synthetic", created: true }),
+      markWalletAccount: async () => {},
+      session: async (userId) => {
+        calls.push(`session:${userId}`);
+        return { accessToken: "at", refreshToken: "rt" };
+      },
+      discardAccount: async (userId) => void calls.push(`discard:${userId}`),
+    },
+  });
+  await assert.rejects(() => signIn.verify({ raw: signed(), signature: "0xsig" }));
+  assert.deepEqual(calls, []);
 });

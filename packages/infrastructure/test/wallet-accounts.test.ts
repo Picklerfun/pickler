@@ -157,7 +157,10 @@ test("a lost race between two wallet sign-ins recovers the winner by direct look
     sessionClient: () => admin,
   });
 
-  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: "user-original" });
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), {
+    userId: "user-original",
+    created: false,
+  });
   assert.equal(
     requests.some((r) => r.method === "GET" && /\/admin\/users(\?|$)/.test(r.url)),
     false,
@@ -177,7 +180,10 @@ test("an address nobody has seen gets an account made", async () => {
     findAuthUser: async () => assert.fail("must not look up a user it just created"),
     sessionClient: () => admin,
   });
-  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: "user-new" });
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), {
+    userId: "user-new",
+    created: true,
+  });
 });
 
 /**
@@ -267,7 +273,10 @@ test("a legacy wallet account with no password is accepted and backfilled", asyn
   const user = facts();
   const { accounts, updates } = accountsFor(user);
 
-  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: user.id });
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), {
+    userId: user.id,
+    created: false,
+  });
   await accounts.markWalletAccount(user.id, "eip155", EVM);
 
   assert.equal(updates().length, 1);
@@ -281,7 +290,10 @@ test("a legacy wallet account with no password is accepted and backfilled", asyn
 test("a marked wallet account is accepted and not written again", async () => {
   const user = facts({ hasPassword: null, appMetadata: { pickler_account: "wallet" } });
   const { accounts, updates } = accountsFor(user);
-  assert.deepEqual(await accounts.forAddress("eip155", EVM), { userId: user.id });
+  assert.deepEqual(await accounts.forAddress("eip155", EVM), {
+    userId: user.id,
+    created: false,
+  });
   await accounts.markWalletAccount(user.id, "eip155", EVM);
   assert.equal(updates().length, 0);
 });
@@ -325,6 +337,68 @@ test("an email account that linked the wallet is never marked, whatever its pass
     await accounts.markWalletAccount(USER_ID, "eip155", EVM);
     assert.equal(updates().length, 0, email);
   }
+});
+
+/** Wallet accounts over one auth user's facts, recording the deletes asked of the admin API. */
+function discarding(user: AuthUserFacts | null, status = 200) {
+  const client = clientOver([
+    {
+      match: (m, u) => m === "DELETE" && u.includes("/admin/users/"),
+      status,
+      body: status === 200 ? {} : { code: "unexpected_failure", message: "could not delete" },
+    },
+  ]);
+  const accounts = createWalletAccounts({
+    admin: client.admin,
+    emailDomain: "wallet.pickler.fun",
+    findAuthUser: async (where) => ("id" in where && where.id === user?.id ? user : null),
+    sessionClient: () => client.admin,
+  });
+  const deletes = () => client.requests.filter((r) => r.method === "DELETE").map((r) => r.url);
+  return { accounts, deletes };
+}
+
+/**
+ * The account `forAddress` made a moment ago, whose link went to another account: it holds no
+ * wallet, nothing points at it, and it is this address's own marked wallet account.
+ */
+test("a wallet account made for a link that was lost is deleted", async () => {
+  const user = facts({ appMetadata: { pickler_account: "wallet" } });
+  const { accounts, deletes } = discarding(user);
+  await accounts.discardAccount(user.id, "eip155", EVM);
+  assert.deepEqual(deletes(), [`https://ref.supabase.co/auth/v1/admin/users/${user.id}`]);
+});
+
+test("nothing but this address's own marked wallet account is ever deleted", async () => {
+  const cases: [string, Partial<AuthUserFacts>][] = [
+    ["an email account", { email: "ana@x.io", appMetadata: { pickler_account: "wallet" } }],
+    [
+      "another address's wallet account",
+      {
+        email: syntheticEmail("solana", SOLANA, "wallet.pickler.fun"),
+        appMetadata: { pickler_account: "wallet" },
+      },
+    ],
+    ["an unmarked account at the synthetic email", {}],
+    ["a pre-registration with a password", { hasPassword: true }],
+  ];
+  for (const [label, over] of cases) {
+    const { accounts, deletes } = discarding(facts(over));
+    await assert.rejects(accounts.discardAccount(USER_ID, "eip155", EVM), /not removed/, label);
+    assert.deepEqual(deletes(), [], label);
+  }
+});
+
+test("an account that is already gone is nothing to delete", async () => {
+  const { accounts, deletes } = discarding(null);
+  await accounts.discardAccount(USER_ID, "eip155", EVM);
+  assert.deepEqual(deletes(), []);
+});
+
+test("a delete the admin API refuses is reported, not swallowed", async () => {
+  const user = facts({ appMetadata: { pickler_account: "wallet" } });
+  const { accounts } = discarding(user, 500);
+  await assert.rejects(accounts.discardAccount(user.id, "eip155", EVM));
 });
 
 test("the lookup reads auth.users where it exists, and says nothing it cannot know elsewhere", async () => {

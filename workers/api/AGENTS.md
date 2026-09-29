@@ -95,6 +95,14 @@ message, or a field viem's builder refuses, 400 `invalid_message`. Core's `issue
 the address and the chain and builds the message before it stores the nonce, so a refused request
 leaves no row in `identity.siwe_nonces`.
 
+A first wallet sign-in can lose its link: the address was linked to nobody when `verify` looked,
+and a signed-in account's `POST /v1/auth/wallet/link` of the same wallet wrote the link first
+(`link` answers `created: false`). `verify` then reads the link again and signs in its holder, after
+the same `markWalletAccount` check, never the account it just made. That account is deleted through
+`AccountProvisioner.discardAccount` only when this very call created it (`forAddress` answers
+`created`), and `createWalletAccounts` deletes nothing but the address's own marked wallet account.
+A delete that fails is logged and the sign-in still succeeds; the leftover holds no wallet.
+
 Responses deliberately withhold what the browser has no use for: register answers with
 `sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and
 add/confirm answers with the activity's id and status rather than the activity. All three

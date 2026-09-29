@@ -141,7 +141,7 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
         app_metadata: { [WALLET_ACCOUNT_METADATA_KEY]: WALLET_ACCOUNT_METADATA_VALUE },
       });
       if (created.data.user) {
-        return { userId: created.data.user.id };
+        return { userId: created.data.user.id, created: true };
       }
       // Already there. Usually two first-time sign-ins for one address raced and this one lost,
       // and the winner's account is the account. But the email is computable from the address, so
@@ -155,7 +155,37 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
       if (verdict !== "wallet" && verdict !== "legacy") {
         refuse(namespace, address, existing.id);
       }
-      return { userId: existing.id };
+      return { userId: existing.id, created: false };
+    },
+
+    /**
+     * Core calls this only for an account `forAddress` made in the same call. It is checked again
+     * here all the same, because a delete cannot be taken back: the account must be this
+     * address's own synthetic one and carry the marker `forAddress` creates it with. Anything
+     * else — an email account, another address's, one somebody registered — is refused.
+     */
+    async discardAccount(userId, namespace, address) {
+      const user = await config.findAuthUser({ id: userId });
+      if (!user) {
+        return;
+      }
+      const verdict = walletAccountVerdict(
+        user,
+        syntheticEmail(namespace, address, config.emailDomain),
+      );
+      if (verdict !== "wallet") {
+        throw new Error(
+          "That account is not one wallet sign-in made for this address: not removed",
+        );
+      }
+      const { error } = await config.admin.auth.admin.deleteUser(userId);
+      if (error) {
+        const digest = syntheticEmail(namespace, address, "x").split("@")[0];
+        console.warn(
+          `[wallet-auth] could not remove the unlinked account ${userId} made for ${digest}`,
+        );
+        throw error;
+      }
     },
 
     async markWalletAccount(userId, namespace, address) {

@@ -135,9 +135,10 @@ function realSignIn() {
     },
     verifier: { verify: async () => true },
     accounts: {
-      forAddress: async () => ({ userId: ANA }),
+      forAddress: async () => ({ userId: ANA, created: true }),
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
       markWalletAccount: async () => {},
+      discardAccount: async () => {},
     },
     randomNonce: () => "b1c93a5f4e2d47a8b0c6e9f1a2d3b4c5",
     buildMessage: (fields) =>

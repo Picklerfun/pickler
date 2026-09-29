@@ -42,7 +42,14 @@ export interface AccountProvisioner {
    * synthetic email that wallet sign-in did not create is refused with
    * `WalletAccountConflictError`, never returned.
    */
-  forAddress(namespace: Namespace, address: NormalizedAddress): Promise<{ userId: string }>;
+  forAddress(
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<{
+    userId: string;
+    /** True only when this very call made the account; false when it was already there. */
+    created: boolean;
+  }>;
   /** A session for an existing user, minted server-side. */
   session(userId: string): Promise<{ accessToken: string; refreshToken: string }>;
   /**
@@ -59,4 +66,10 @@ export interface AccountProvisioner {
     namespace: Namespace,
     address: NormalizedAddress,
   ): Promise<void>;
+  /**
+   * Removes an account `forAddress` made in the same call (`created: true`) whose link then went
+   * to another account, so it holds no wallet. Never called for any other account, and an adapter
+   * refuses anything that is not this address's own marked wallet account.
+   */
+  discardAccount(userId: string, namespace: Namespace, address: NormalizedAddress): Promise<void>;
 }

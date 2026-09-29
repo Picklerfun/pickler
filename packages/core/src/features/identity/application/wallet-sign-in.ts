@@ -4,6 +4,7 @@ import {
   InvalidChainError,
   normalizeAddress,
   type Namespace,
+  type NormalizedAddress,
 } from "../domain/wallet-auth.js";
 import type {
   AccountProvisioner,
@@ -142,6 +143,33 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     return { address, namespace: parsed.namespace, chainReference: parsed.chainReference };
   }
 
+  /**
+   * The address was linked to nobody when `verify` looked and is linked now: somebody else wrote
+   * the link first. Usually that is a second sign-in of the same wallet, which resolves to the
+   * same account. It can also be a signed-in account linking this wallet, and then the wallet is
+   * theirs — a session for the account made a moment ago would be a session for an account the
+   * wallet is not linked to. So the link is read again and its holder is who signs in, after the
+   * same `markWalletAccount` check every returning sign-in gets.
+   *
+   * The account made for nothing is removed, and only when this very call made it: an account
+   * that was already there belongs to whoever made it. Removing is tidying, so its failure does
+   * not refuse the sign-in — a leftover holds no wallet and no session is ever minted for it.
+   */
+  async function holderOfLostLink(
+    made: { userId: string; created: boolean },
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<string> {
+    const holder = await deps.links.findByAddress(namespace, address);
+    if (!holder) {
+      throw new Error("That wallet's link could not be written or read. Try again.");
+    }
+    if (holder.userId !== made.userId && made.created) {
+      await deps.accounts.discardAccount(made.userId, namespace, address).catch(() => {});
+    }
+    return holder.userId;
+  }
+
   return {
     /**
      * Returns the exact string to sign, not just a nonce. The browser signs what it is given and
@@ -180,14 +208,15 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         await deps.accounts.markWalletAccount(existing.userId, namespace, address);
         return { userId: existing.userId, session: await deps.accounts.session(existing.userId) };
       }
-      const { userId } = await deps.accounts.forAddress(namespace, address);
-      await deps.links.link({
-        userId,
+      const made = await deps.accounts.forAddress(namespace, address);
+      const { created } = await deps.links.link({
+        userId: made.userId,
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
         kind: "external",
       });
+      const userId = created ? made.userId : await holderOfLostLink(made, namespace, address);
       await deps.accounts.markWalletAccount(userId, namespace, address);
       return { userId, session: await deps.accounts.session(userId) };
     },
