@@ -67,21 +67,17 @@ function Calibration({ mine }: { mine: readonly Read[] }) {
           </View>
           <View style={{ height: 118, flexDirection: "row", alignItems: "flex-end", gap: 7 }}>
             {buckets.map((b, i) => (
-              <View
-                key={i}
-                accessibilityLabel={`calib-${i}`}
-                style={{
-                  flex: 1,
-                  height: Math.max(2, (b.actual ?? 0) * 108),
-                  borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-                  backgroundColor: i < 2 ? C.vio : C.lime,
-                }}
-              />
-            ))}
-          </View>
-          <View style={{ flexDirection: "row", gap: 9 }}>
-            {buckets.map((b, i) => (
-              <T key={i} w={500} s={9} mono color={C.onInkDim} style={{ flex: 1, textAlign: "center" }}>{`${Math.round(b.lo * 100)}–${Math.round(b.hi * 100)}`}</T>
+              <View key={i} style={{ flex: 1, gap: 9, alignItems: "stretch" }}>
+                <View
+                  accessibilityLabel={`calib-${i}`}
+                  style={{
+                    height: b.actual === null ? 0 : Math.max(2, b.actual * 108),
+                    borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+                    backgroundColor: i < 2 ? C.vio : C.lime,
+                  }}
+                />
+                <T w={500} s={9} mono color={C.onInkDim} style={{ textAlign: "center" }}>{`${Math.round(b.lo * 100)}–${Math.round(b.hi * 100)}`}</T>
+              </View>
             ))}
           </View>
         </View>
