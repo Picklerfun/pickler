@@ -90,12 +90,26 @@ async function answers(url, timeoutMs) {
   return false;
 }
 
-/** Starts both servers and answers how to stop them. Throws if either never comes up. */
-export async function start(root, log = () => {}) {
+/**
+ * Starts both servers and answers how to stop them. Throws if either never comes up.
+ *
+ * A signal that arrives while they are still coming up, which can take minutes, stops whatever
+ * has been spawned by then: the handler is registered before the first child is. The options
+ * exist for a test that stands in another process for the servers and waits less.
+ */
+export async function start(
+  root,
+  log = () => {},
+  {
+    target = process,
+    spawn: spawnProcess = spawn,
+    timeouts = { fixture: 60_000, web: 180_000 },
+  } = {},
+) {
   const children = [];
   const launch = (command, args, options) => {
     // Its own process group, so stopping it stops whatever it started too.
-    const child = spawn(command, args, { ...options, detached: true, stdio: "pipe" });
+    const child = spawnProcess(command, args, { ...options, detached: true, stdio: "pipe" });
     child.stdout.on("data", (chunk) => log(String(chunk)));
     child.stderr.on("data", (chunk) => log(String(chunk)));
     children.push(child);
@@ -118,6 +132,7 @@ export async function start(root, log = () => {}) {
       }
     }
   };
+  stopOnSignal(stop, target);
   try {
     launch(
       process.execPath,
@@ -128,8 +143,11 @@ export async function start(root, log = () => {}) {
       cwd: path.join(root, "apps/web"),
       env: webEnv(process.env),
     });
-    const fixtureUp = await answers(`http://127.0.0.1:${FIXTURE_PORT}/v1/landing`, 60_000);
-    const webUp = fixtureUp && (await answers(`${BASE_URL}/`, 180_000));
+    const fixtureUp = await answers(
+      `http://127.0.0.1:${FIXTURE_PORT}/v1/landing`,
+      timeouts.fixture,
+    );
+    const webUp = fixtureUp && (await answers(`${BASE_URL}/`, timeouts.web));
     if (!fixtureUp || !webUp) {
       throw new Error(`${fixtureUp ? "the web app" : "the fixture API"} did not come up`);
     }

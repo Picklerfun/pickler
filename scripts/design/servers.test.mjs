@@ -1,10 +1,12 @@
 // What the runner does about the two servers is decided by a pure function, so every position of
 // the decision is pinned here without starting anything.
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import test from "node:test";
-import { BASE_URL, listening, plan, stopOnSignal, webEnv } from "./lib/servers.mjs";
+import { BASE_URL, listening, plan, start, stopOnSignal, webEnv } from "./lib/servers.mjs";
 
 test("with both ports free the runner starts the servers and measures its own", () => {
   assert.deepEqual(plan({ baseUrl: undefined, fixtureBusy: false, webBusy: false }), {
@@ -86,4 +88,40 @@ test("SIGTERM stops the servers too, with its own exit status", () => {
 
   assert.equal(stopped, 1);
   assert.deepEqual(target.exits, [143]);
+});
+
+test("a signal while the servers are still coming up stops what has been spawned", async () => {
+  const target = Object.assign(new EventEmitter(), {
+    exits: [],
+    exit: (code) => target.exits.push(code),
+  });
+  // Stand-ins for the two servers: processes that never answer on a port and sleep until killed.
+  const children = [];
+  const spawnSleeper = (command, args, options) => {
+    // The real servers' working folders do not exist under the temporary root.
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], {
+      ...options,
+      cwd: undefined,
+    });
+    children.push(child);
+    return child;
+  };
+  const pending = start(tmpdir(), () => {}, {
+    target,
+    spawn: spawnSleeper,
+    timeouts: { fixture: 1500, web: 1500 },
+  });
+  const ended = Promise.all(
+    children.map((child) => new Promise((resolve) => child.once("exit", resolve))),
+  );
+
+  assert.equal(children.length, 2);
+  target.emit("SIGINT");
+
+  await ended;
+  assert.deepEqual(target.exits, [130]);
+  assert.ok(children.every((child) => child.signalCode === "SIGTERM"));
+  // How start() itself settles is not the point: it rejects when the ports are free, and resolves
+  // when somebody else's servers happen to answer on them. Either way it must be waited out.
+  await pending.catch(() => {});
 });
