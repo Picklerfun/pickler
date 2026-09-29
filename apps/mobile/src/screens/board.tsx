@@ -1,7 +1,7 @@
 // Board nivel × tiempo del Handoff (spec mobile-light D10–D12): banda MARK, celdas de 48 px con puntos de
 // reads, trayectoria de precio al fondo y punto "now". Reemplaza a MatrixGrid en Trade it y Ask an agent.
 import { View } from "react-native";
-import Svg, { Polygon, Polyline } from "react-native-svg";
+import Svg, { Polyline } from "react-native-svg";
 import type { Market } from "../perpl/context";
 import { formatPrice } from "../perpl/orders";
 import { BOARD_CELL_H, BOARD_H, BOARD_MARK_H, boardCaption, boardRows, type BoardMode, cellTone, trajectory } from "../reads/board";
@@ -26,22 +26,37 @@ function Pill({ tone }: { tone: "long" | "short" | "ask" }) {
   );
 }
 
-/** Capa de trayectoria encima de las filas y de la banda MARK: área + línea sobre los marks en memoria, punto "now" al
+/** Capa de trayectoria encima de las filas y de la banda MARK: línea sobre los marks en memoria, punto "now" al
  *  final. Va pintada DESPUÉS del grid (ruling del coordinador, item 1 de la ola final): un `View` `position: "absolute"`
- *  no sube de plano solo por ser absoluto, así que si se pinta antes que las filas, éstas (que no son absolutas) la tapan. */
+ *  no sube de plano solo por ser absoluto, así que si se pinta antes que las filas, éstas (que no son absolutas) la tapan.
+ *  Sin polígono de área (ruling visual-fixes #1): tiñe de lavanda todas las filas bajo la línea y parece una selección. */
 function Trajectory({ marks, mark }: { marks: readonly number[]; mark: number }) {
   const pts = trajectory(marks, mark);
   if (pts.length === 0) return null;
   const line = pts.map(([x, y]) => `${x},${y}`).join(" ");
-  const area = `${line} 100,100 0,100`;
   const nowY = pts[pts.length - 1][1];
   return (
     <View style={{ position: "absolute", left: 84, right: 0, top: 0, height: BOARD_H }} pointerEvents="none">
       <Svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-        <Polygon points={area} fill="rgba(91,60,224,0.07)" />
         <Polyline points={line} stroke={C.spark} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" fill="none" />
       </Svg>
       <View style={{ position: "absolute", right: 2, top: (nowY / 100) * BOARD_H - 4.5, width: 9, height: 9, borderRadius: 999, backgroundColor: C.vio, borderWidth: 2, borderColor: C.bg }} />
+    </View>
+  );
+}
+
+/** Rótulo de la banda MARK repintado por encima de la capa de trayectoria (ruling visual-fixes #2): sin esto, la
+ *  línea de `Trajectory` (pintada después del grid) cruza «2659.41 MARK» porque el rótulo es más ancho que la
+ *  columna de 84. Mismo fondo `C.ink` de la banda con `paddingRight` extra para tapar la línea bajo el texto; a la
+ *  derecha del rótulo (ancho intrínseco, sin `right`) la línea sigue visible. */
+function MarkLabel({ top, mark, pd }: { top: number; mark: number; pd: number }) {
+  return (
+    <View
+      style={{ position: "absolute", left: 0, top, height: BOARD_MARK_H, flexDirection: "row", alignItems: "center", paddingLeft: 12, paddingRight: 20, gap: 8, backgroundColor: C.ink }}
+      pointerEvents="none"
+    >
+      <T w={700} s={10.5} lh={1} mono color={C.onInk}>{formatPrice(mark, pd)}</T>
+      <T w={500} s={9} lh={1} ls={0.12} mono color={C.onInkDim}>MARK</T>
     </View>
   );
 }
@@ -96,6 +111,7 @@ export function Board({ mode, market, marks, dots, selected, target, onSelect }:
             );
           })}
           <Trajectory marks={marks} mark={market.mark} />
+          <MarkLabel top={rows.findIndex((r) => r.kind === "mark") * BOARD_CELL_H} mark={market.mark} pd={pd} />
         </View>
         <View style={{ flexDirection: "row", marginHorizontal: 6 }}>
           <View style={{ width: 84, paddingLeft: 12, justifyContent: "center" }}>
