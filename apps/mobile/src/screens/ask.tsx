@@ -13,6 +13,7 @@ import { levelFromCell, levelFromRead, sideFor } from "../reads/level";
 import type { Agent, Read } from "../reads/types";
 import type { AskCell, TradeLevel } from "../store";
 import { Btn, Card, Chip, Reveal, Skeleton, StatusCard, Stepper, T, Tag, type Tone, Touch, Warn } from "../ui/primitives";
+import { PageScroll } from "../ui/Page";
 import { C } from "../ui/theme";
 import { Board } from "./board";
 
@@ -149,8 +150,8 @@ function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAs
   );
 }
 
-export function AskTab(ctx: AppCtx) {
-  const { S, set, perpl, reads, notifications } = ctx;
+export function AskTab(ctx: AppCtx & { head: ReactNode }) {
+  const { S, set, perpl, reads, notifications, head } = ctx;
   const market = perpl.context?.markets.find((m) => m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
   const now = useNow(30_000);
   const pushOff = notifications.permission === "denied" || notifications.permission === "unavailable";
@@ -206,8 +207,11 @@ export function AskTab(ctx: AppCtx) {
   };
 
   return (
-    <View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 11 }}>
-      {newRead()}
-    </View>
+    <PageScroll screen="market">
+      {head}
+      <View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 11 }}>
+        {newRead()}
+      </View>
+    </PageScroll>
   );
 }

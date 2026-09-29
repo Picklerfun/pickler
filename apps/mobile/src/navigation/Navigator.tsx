@@ -30,7 +30,7 @@ const LaunchpadStack = createNativeStackNavigator<SoloStackParamList<"launchpad"
 const ActivityStack = createNativeStackNavigator<SoloStackParamList<"activity">>();
 
 const Markets = withPage("markets", MarketsScreen);
-const Market = withPage("market", MarketScreen, { headerRight: MarkBadge });
+const Market = withPage("market", MarketScreen, { headerRight: MarkBadge, bare: true });
 const PerpsFunds = withPage("perpsFunds", PerpsFundsScreen);
 const Wallet = withPage("wallet", WalletScreen);
 const Deposit = withPage("deposit", DepositScreen);
@@ -40,7 +40,7 @@ const Activity = withPage("activity", (ctx) => <ComingSoonScreen screen="activit
 const AgentsList = withPage("agents", AgentsScreen);
 const AgentProfile = withPage("agent", AgentScreen, { bare: true });
 const Portfolio = withPage("portfolio", PortfolioScreen);
-const ReadView = withPage("read", ReadScreen);
+const ReadView = withPage("read", ReadScreen, { bare: true });
 const Signin = withPage("signin", SigninScreen);
 
 function MarketsTab() {
