@@ -2637,3 +2637,381 @@ MSG
   packages/ui/package.json \
   scripts/design/mirror.test.mjs
 ```
+
+---
+
+# Batch F — dead code
+
+Tasks 27, 28, 29 and 31 share no file and may run in parallel, taking turns at the harness. Task 30 runs after all four are committed: it touches `agents.module.css`, which task 27 owns, and it ends with the batch's full run of the harness. The lists are in `$PLAN/mapping-dead-code.md`.
+
+A dead rule paints nothing, so no pixel moves in this batch. What falls is `unused-class`, from 96 to 0, and the last 22 `colour-literal`, which sit in dead rules of `auth`.
+
+## Task 27: Dead classes: `agents`
+
+**Owns:** `apps/web/src/features/agents/agents.module.css`
+
+**List:** `$PLAN/mapping-dead-code.md`, section `agents.module.css` — task 27: 32 classes. Most are the old token board (`.grid`, `.card*`, `.curve*`, `.table*`, `.viewToggle`, `.stageButton`), orphaned when main replaced it with `LaunchBoard` (A8).
+
+**Kept:** `.resultWon`, `.resultLost`, `.resultOpen`, `.kindCALL`, `.kindPOSITION`, `.kindPASS`, `.kindANSWER`, `.kindPERP`. They are reached through a computed `styles[...]` and are not in the list.
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "unused-class  apps/web/src/features/agents/agents.module.css"`
+
+Expected: `32`.
+
+- [ ] **Step 2: Remove the rules**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/agents/agents.module.css --classes "$(cat $PLAN/maps/27-agents-classes.txt)"
+npx prettier --write apps/web/src/features/agents/agents.module.css
+```
+
+Expected: the lines listed in `mapping-dead-code.md`, ending `apps/web/src/features/agents/agents.module.css: 53 rule(s) or selector(s) removed`.
+
+- [ ] **Step 3: See the number fall, and the kept classes still there**
+
+```sh
+npm run design:source | grep -c "unused-class  apps/web/src/features/agents/agents.module.css"
+grep -cE '^\.(resultWon|resultLost|resultOpen|kindCALL|kindPOSITION|kindPASS|kindANSWER|kindPERP) ' apps/web/src/features/agents/agents.module.css
+```
+
+Expected: `0`, then `8`.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 13 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate DESIGN_SHOTS_DIR=scripts/design/.shots/task-27 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-27 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. No component names a class that was removed. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/agents/agents.module.css
+git commit -m "$(cat <<'MSG'
+Agents: thirty-two classes nothing names are gone
+
+Most were the token board main replaced with the launch board. The
+eight classes reached through a computed styles[...] stay.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/agents/agents.module.css
+```
+
+## Task 28: Dead classes: `auth`
+
+**Owns:** `apps/web/src/features/auth/auth.module.css`
+
+**List:** `$PLAN/mapping-dead-code.md`, section `auth.module.css` — task 28: 59 classes and four keyframes (`fallSpin`, `fall`, `stars`, `pop`). Among them is the second, already dead sky of this file, `.signinGlow` and `.signinStars`.
+
+- [ ] **Step 1: See the numbers that have to fall**
+
+```sh
+npm run design:source | grep -c "unused-class  apps/web/src/features/auth/auth.module.css"
+npm run design:source | grep -c "colour-literal  apps/web/src/features/auth/auth.module.css"
+```
+
+Expected: `59` and `22`.
+
+- [ ] **Step 2: Remove the rules**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/auth/auth.module.css --classes "$(cat $PLAN/maps/28-auth-classes.txt)" \
+  --keyframes fallSpin,fall,stars,pop
+node $PLAN/tools/reline.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/28-auth-header.json
+npx prettier --write apps/web/src/features/auth/auth.module.css
+```
+
+Expected: the lines listed in `mapping-dead-code.md`, ending `apps/web/src/features/auth/auth.module.css: 83 rule(s) or selector(s) removed`; then `1 edit(s) applied`, which removes the `Done` section header the rules left empty.
+
+- [ ] **Step 3: See the numbers fall**
+
+```sh
+npm run design:source | grep -c "apps/web/src/features/auth/auth.module.css"
+grep -cE '^@keyframes (fadeIn|blink|drop|float)' apps/web/src/features/auth/auth.module.css
+```
+
+Expected: `0` — the file has no violation of any rule left — then `4`: the keyframes live rules use are untouched.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 4 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add DESIGN_SHOTS_DIR=scripts/design/.shots/task-28 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-28 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. No component names a class that was removed. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/auth/auth.module.css
+git commit -m "$(cat <<'MSG'
+Auth: fifty-nine classes nothing names are gone
+
+With them the last colour literals in the product's stylesheets, and
+the second sky this file still carried.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/auth/auth.module.css
+```
+
+## Task 29: Dead classes: `landing`, `home`, `studio`
+
+**Owns:** `apps/web/src/features/landing/landing.module.css`, `apps/web/src/features/studio/home/home.module.css`, `apps/web/src/features/studio/studio.module.css`
+
+| File                          | Classes                       |
+| ----------------------------- | ----------------------------- |
+| `landing/landing.module.css`  | `.display`                    |
+| `studio/home/home.module.css` | `.briefName`, `.briefPrompt`  |
+| `studio/studio.module.css`    | `.accentRow`, `.accentSwatch` |
+
+- [ ] **Step 1: Remove the rules**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/landing/landing.module.css --classes display
+node $PLAN/tools/derule.mjs apps/web/src/features/studio/home/home.module.css --classes briefName,briefPrompt
+node $PLAN/tools/derule.mjs apps/web/src/features/studio/studio.module.css --classes accentRow,accentSwatch
+npx prettier --write apps/web/src/features/landing/landing.module.css apps/web/src/features/studio/home/home.module.css apps/web/src/features/studio/studio.module.css
+npm run design:source | grep "unused-class" | grep -cE "landing|home.module|studio.module"
+```
+
+Expected: `1 rule(s) or selector(s) removed`, `2 …`, `3 …` (the third is `.accentSwatch[aria-checked="true"]`), then `0`.
+
+- [ ] **Step 2: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=landing,studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey,studio-picks,studio-activity,studio-skills,studio-token node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 15 route(s).`, and `exit 0`.
+
+- [ ] **Step 3: Capture and compare**
+
+```sh
+DESIGN_ROUTES=landing,studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey,studio-picks,studio-activity,studio-skills,studio-token DESIGN_SHOTS_DIR=scripts/design/.shots/task-29 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-29 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. No component names a class that was removed. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 4: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/web/src/features/landing/landing.module.css \
+  apps/web/src/features/studio/home/home.module.css \
+  apps/web/src/features/studio/studio.module.css
+git commit -m "$(cat <<'MSG'
+Landing and studio: five classes nothing names are gone
+
+No component names them.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/landing/landing.module.css \
+  apps/web/src/features/studio/home/home.module.css \
+  apps/web/src/features/studio/studio.module.css
+```
+
+## Task 31: `/console`
+
+**Owns:** `apps/web/src/app/console/page.tsx` (deleted), `apps/web/AGENTS.md` (one sentence)
+
+The decision and its evidence are at the top of this plan, under "The `/console` decision (A7)".
+
+- [ ] **Step 1: Prove nothing names it**
+
+Run: `grep -rnE '["\x27`(]/console' apps/web/src apps/web/test scripts/design`
+
+Expected: no output.
+
+- [ ] **Step 2: Remove the route and the sentence that describes it**
+
+```sh
+git rm -q apps/web/src/app/console/page.tsx
+node $PLAN/tools/reline.mjs apps/web/AGENTS.md $PLAN/maps/31-agents-md.json
+npx prettier --write apps/web/AGENTS.md
+```
+
+Expected: `apps/web/AGENTS.md: 1 edit(s) applied`. The edit removes "The historical `/console` URL redirects to `/studio` with its query preserved." from the last paragraph; the sentence at line 139, "no redirect is kept because nobody had launched", is the decision and stays.
+
+`git rm` stages one deletion, of a file this task owns. It stages nothing else.
+
+- [ ] **Step 3: Clear the types `next dev` generated for the route**
+
+`apps/web/tsconfig.json` includes `.next/dev/types/**/*.ts`, which `next dev` writes and git ignores. After a harness run that folder holds a `validator.ts` that imports `src/app/console/page.js`, and the type check fails on it:
+
+```
+.next/dev/types/validator.ts(134,39): error TS2307: Cannot find module '../../../src/app/console/page.js'
+```
+
+Look at the ports. If 3001 is free:
+
+```sh
+rm -rf apps/web/.next/dev/types
+```
+
+If 3001 is taken, somebody's dev server owns that folder: wait until it is free. The next harness run writes the folder again, without the route.
+
+- [ ] **Step 4: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+Look at the ports, then run: `DESIGN_ROUTES=studio node scripts/design/run.mjs surfaces; echo "exit $?"` — expected `clean over all 1 route(s).`, `exit 0`: `/studio` itself is untouched.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/web/src/app/console/page.tsx \
+  apps/web/AGENTS.md
+git commit -m "$(cat <<'MSG'
+Web: /console is gone, as the rename decided
+
+The studio moved to /studio on 2026-09-24 and kept no redirect; a merge
+brought one back. Nothing links to it and neither production host
+serves it.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/app/console/page.tsx \
+  apps/web/AGENTS.md
+```
+
+## Task 30: Dead exports, and the retired signer path
+
+Runs alone, after tasks 27, 28, 29 and 31 are committed.
+
+**Owns:** the 35 files named in `$PLAN/maps/30-unexport.tsv`; `apps/web/src/features/agents/components/agent-parts.tsx`, `apps/web/src/features/agents/lib/empty.ts`, `apps/web/src/features/auth/lib/shapes.ts`, `apps/web/src/features/studio/api.ts`, `apps/web/src/features/wallet/lib/signer-adapters.ts`, `apps/web/src/features/wallet/lib/sign-in-words.ts`, `apps/web/src/features/wallet/lib/connect.ts`; `apps/web/src/features/agents/agents.module.css` (the rules `.marks`, `.mark`, `.mark img`); `apps/web/test/marketplace-empty.test.ts`, `apps/web/test/signer-adapters.test.ts`, `apps/web/test/sign-in-words.test.ts`.
+
+**Lists:** `$PLAN/mapping-dead-code.md`, sections "Declarations deleted", "Exports kept although only tests import them" and "`export` removed" (J23).
+
+- [ ] **Step 1: Record what the tests say before**
+
+Run: `node --import tsx --test apps/web/test/*.test.ts 2>&1 | grep -E '^ℹ (tests|pass|fail)'`
+
+Expected: `fail 0`. Write down `tests`; after this task it is six lower.
+
+- [ ] **Step 2: Change the tests first**
+
+The patch holds the code and its tests. Apply the three test files alone:
+
+```sh
+git apply --check --include='apps/web/test/*' $PLAN/patches/30-dead-declarations.patch
+git apply --include='apps/web/test/*' $PLAN/patches/30-dead-declarations.patch
+node --import tsx --test apps/web/test/marketplace-empty.test.ts \
+  apps/web/test/signer-adapters.test.ts apps/web/test/sign-in-words.test.ts
+```
+
+Expected: PASS, `fail 0`, against the code as it still is. This is a removal, so there is no test to see fail: the tests that named `agentsWithToken`, `fromViemAccount` and `PasskeyUnusableError` are gone, and one is added, `an ordinary refusal stays the error the wallet threw`, which pins what `describeSignerFailure` keeps doing. It passes before and after; what it guards is step 3 deleting too much.
+
+- [ ] **Step 3: Delete the dead declarations**
+
+```sh
+git apply --check --exclude='apps/web/test/*' $PLAN/patches/30-dead-declarations.patch
+git apply --exclude='apps/web/test/*' $PLAN/patches/30-dead-declarations.patch
+```
+
+It deletes what the table "Declarations deleted" lists. `signer-adapters.ts` keeps `describeSignerFailure`, now one line, and `fromInjectedProvider`.
+
+- [ ] **Step 4: Remove `export` where nothing imports**
+
+```sh
+node $PLAN/tools/unexport.mjs $PLAN/maps/30-unexport.tsv
+```
+
+Expected: `69 declaration(s) in 35 file(s) no longer exported`.
+
+- [ ] **Step 5: Remove the classes the dead component was the last to name**
+
+```sh
+npm run design:source | grep unused-class
+node $PLAN/tools/derule.mjs apps/web/src/features/agents/agents.module.css --classes marks,mark
+npx prettier --write apps/web/src apps/web/test
+npm run design:source | tail -1
+```
+
+Expected: the first command prints two lines, `.marks` and `.mark` in `agents.module.css`; the tool prints `removed  .marks`, `removed  .mark`, `removed  .mark img`; the last line is `source: clean over 244 file(s).`
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`. `npm run lint` must print no warning: an unused variable left behind by a deleted test is a warning, and the patch removes the one there was (`curve` in `marketplace-empty.test.ts`).
+
+Run: `node --import tsx --test apps/web/test/*.test.ts 2>&1 | grep -E '^ℹ (tests|pass|fail)'` — expected `fail 0`, and `tests` six lower than in step 1.
+
+- [ ] **Step 7: The whole harness, and the batch's picture**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-30 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-30 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: `source: clean over 244 file(s).`; four times `clean over all 51 route(s).`; `exit 0`.
+
+**Expected differences, for the whole batch:** none. Every line starts with `NOISE`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/web/src apps/web/test/marketplace-empty.test.ts \
+  apps/web/test/signer-adapters.test.ts apps/web/test/sign-in-words.test.ts
+git commit -m "$(cat <<'MSG'
+Web: exports nothing imports, and the signer path nothing can reach
+
+Sixty-nine declarations lose their export keyword. Eight are deleted
+outright with the tests that named them: two venue components, the
+token board's filter, a shape map, a type, a fetch wrapper, and Mera's
+adapter with the error only Mera could cause.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src apps/web/test/marketplace-empty.test.ts \
+  apps/web/test/signer-adapters.test.ts apps/web/test/sign-in-words.test.ts
+```
+
+Before that `git add`, run `git status --short apps/web/src` and check that every path listed is one this task owns. `apps/web/src` is named whole only because the list is 43 files long; if the status shows a file that is not in `30-unexport.tsv` or in the **Owns** list, somebody else is editing it: add the files one by one instead and leave theirs alone.
