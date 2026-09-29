@@ -42,7 +42,10 @@ interface Locked {
   now: number;
 }
 export class PostgresPerpsStudyStore implements PerpsStudyRepository {
-  private readonly fences = new WeakMap<PoolClient, { id: string; owner: string }>();
+  private readonly fences = new WeakMap<
+    PoolClient,
+    { id: string; owner: string; assertActive?: () => void }
+  >();
   constructor(
     readonly pool: Pool,
     private readonly clock?: () => number,
@@ -54,6 +57,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const r = await fn(c);
       const fence = this.fences.get(c);
       if (fence) {
+        fence.assertActive?.();
         const current = await c.query(
           "SELECT owner, expires_at FROM pickler.perps_studies WHERE id=$1",
           [fence.id],
@@ -65,6 +69,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           throw new PilotError("LEASE_LOST", "Study ownership expired before commit");
         }
       }
+      fence?.assertActive?.();
       await c.query("COMMIT");
       return r;
     } catch (e) {
@@ -102,10 +107,15 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     };
   }
   private owned(c: PoolClient, x: Locked, lease: PerpsStudyLease) {
+    lease.assertActive?.();
     if (x.owner !== lease.owner || Number(x.expires_at) <= x.now) {
       throw new PilotError("LEASE_LOST", "Study ownership expired");
     }
-    this.fences.set(c, { id: x.id, owner: lease.owner });
+    this.fences.set(c, {
+      id: x.id,
+      owner: lease.owner,
+      ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
+    });
   }
   private async permissions(c: PoolClient, x: Locked) {
     for (const strategy of PERPS_STUDY_STRATEGIES) {
@@ -259,7 +269,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     );
     return config;
   }
-  async claim(scope: PerpsStudyScope) {
+  async claim(scope: PerpsStudyScope): Promise<PerpsStudyLease> {
     return this.tx(async (c) => {
       const x = await this.lock(c, scope);
       if (x.owner && Number(x.expires_at) > x.now) {
