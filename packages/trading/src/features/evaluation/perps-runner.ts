@@ -73,6 +73,7 @@ export function createPerpsStudyRunner(deps: {
 }) {
   const { study, data, models } = deps;
   let paper = deps.paper;
+  let assertActive = () => {};
   const now = deps.now ?? Date.now;
   // Every execution receives a common captured frame. No hidden provider fetch is permitted.
   const unavailable: PerpsPaperData = {
@@ -98,6 +99,8 @@ export function createPerpsStudyRunner(deps: {
     frames: PerpsPaperFrame[],
     signal: AbortSignal,
   ) {
+    assertActive();
+    signal.throwIfAborted();
     if (proposal.action === "hold") {
       return;
     }
@@ -155,9 +158,16 @@ export function createPerpsStudyRunner(deps: {
     lease: PerpsStudyLease,
     signal: AbortSignal,
   ): Promise<boolean> {
+    const ownedGuard = async (paid = false) => {
+      assertActive();
+      signal.throwIfAborted();
+      await study.guard(scope, lease, paid);
+      assertActive();
+      signal.throwIfAborted();
+    };
     paper = deps.paperForLease?.(scope, lease, signal) ?? deps.paper;
     simulator = createPerpsPaperService(paper, unavailable, now);
-    await study.guard(scope, lease);
+    await ownedGuard();
     let { record } = await study.view(scope);
     if (now() >= record.endsAt! || record.stopRequested) {
       for (const strategy of strategies) {
@@ -184,11 +194,11 @@ export function createPerpsStudyRunner(deps: {
     let observation: PerpsPaperObservation;
     let observationWritesStarted = false;
     try {
-      observation = await data.observe(record, signal, () => study.guard(scope, lease));
+      observation = await data.observe(record, signal, () => ownedGuard());
       validateCommonFrames(observation.frames, record.config.network, now());
       observationWritesStarted = true;
       for (const strategy of strategies) {
-        await study.guard(scope, lease);
+        await ownedGuard();
         views[strategy] = await paper.observe(accountScope(record, strategy), key, observation);
       }
     } catch (error) {
@@ -267,7 +277,7 @@ export function createPerpsStudyRunner(deps: {
     }
     let evidence: PerpsEvidence;
     try {
-      evidence = await data.evidence(record, observation, signal, () => study.guard(scope, lease));
+      evidence = await data.evidence(record, observation, signal, () => ownedGuard());
       signal.throwIfAborted();
       validateCommonFrames(evidence.frames, record.config.network, now());
     } catch (error) {
@@ -300,11 +310,13 @@ export function createPerpsStudyRunner(deps: {
       try {
         const result = await fn({
           before: async (request) => {
+            await ownedGuard(true);
             await study.startCall(scope, lease, round!.key, lane, request);
             started = true;
           },
           usage: (input, output) => study.usage(scope, lease, round!.key, lane, input, output),
         });
+        assertActive();
         deadline.throwIfAborted();
         await study.finishCall(scope, lease, round!.key, lane, result, null);
         return result;
@@ -343,8 +355,8 @@ export function createPerpsStudyRunner(deps: {
     }
     let executionStarted = false;
     try {
-      await study.guard(scope, lease, true);
-      const frames = await data.execution(record, signal, () => study.guard(scope, lease));
+      await ownedGuard(true);
+      const frames = await data.execution(record, signal, () => ownedGuard());
       signal.throwIfAborted();
       // Persist the common execution input even if validation rejects it before any fill.
       await study.event(scope, lease, `${round.key}:execution-input`, "execution-input", {
@@ -352,12 +364,12 @@ export function createPerpsStudyRunner(deps: {
         frames,
       });
       validateCommonFrames(frames, record.config.network, now());
-      await study.guard(scope, lease, true);
+      await ownedGuard(true);
       executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
         signal.throwIfAborted();
-        await study.guard(scope, lease);
+        await ownedGuard();
         await paper.observe(accountScope(record, strategy), `${round.key}:execution-marks`, {
           frames,
           funding: [],
@@ -424,6 +436,8 @@ export function createPerpsStudyRunner(deps: {
         now,
         ...(deps.leaseDiagnostic ? { diagnostic: deps.leaseDiagnostic } : {}),
       });
+      assertActive = heartbeat.assertActive;
+      lease.assertActive = assertActive;
       const combined = AbortSignal.any([signal, heartbeat.signal]);
       try {
         for (;;) {
