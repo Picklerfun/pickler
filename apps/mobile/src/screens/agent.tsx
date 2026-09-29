@@ -160,22 +160,20 @@ export function AgentScreen({ S, reads, perpl, nav, requireAccount }: AppCtx) {
       </PageScroll>
     );
   }
-  if (reads.agentsError) {
-    return (
-      <PageScroll screen="agent">
-        <Page gap={12}>
-          <Warn title="Couldn't load agents" body={reads.agentsError}>
-            <Chip label="Retry" onPress={() => { void reads.refresh(); }} style={{ alignSelf: "flex-start" }} accessibilityLabel="retry-agent" />
-          </Warn>
-        </Page>
-      </PageScroll>
-    );
-  }
   if (!a) {
+    // item 7 de la ola final: el error de agents-list sólo reemplaza el perfil cuando, por eso, no hay agente que
+    // mostrar. Con `reads.agents` cargada y el agente encontrado, un `agentsError` viejo (de un refresh posterior
+    // fallido) no debe tapar el perfil que ya tenemos.
     return (
       <PageScroll screen="agent">
         <Page gap={12}>
-          <Warn title="This agent isn't listed anymore" />
+          {reads.agentsError ? (
+            <Warn title="Couldn't load agents" body={reads.agentsError}>
+              <Chip label="Retry" onPress={() => { void reads.refresh(); }} style={{ alignSelf: "flex-start" }} accessibilityLabel="retry-agent" />
+            </Warn>
+          ) : (
+            <Warn title="This agent isn't listed anymore" />
+          )}
         </Page>
       </PageScroll>
     );
