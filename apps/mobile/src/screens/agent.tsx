@@ -107,6 +107,11 @@ function RecordSection({ reads, agentId, nav }: { reads: AppCtx["reads"]; agentI
         <Warn title="Unlock to see your record" body="Your wallet signs once a day for Ask. No transaction, no gas.">
           <Btn label="Unlock with Face ID" onPress={() => { void reads.ensureSession(); }} variant="violet" py={11} accessibilityLabel="reads-unlock" />
         </Warn>
+      ) : reads.reads === null && reads.listError ? (
+        // item 6 de la ola final: sin lista y con error no hay skeleton eterno, sólo el aviso con Retry (como Portfolio → Reads).
+        <Warn title="Couldn't load your reads" body={reads.listError}>
+          <Chip label="Retry" onPress={() => { void reads.refresh(); }} style={{ alignSelf: "flex-start" }} accessibilityLabel="retry-record" />
+        </Warn>
       ) : rows === null ? (
         <><Skeleton.Card lines={2} /><Skeleton.Card lines={2} /></>
       ) : rows.length === 0 ? (
