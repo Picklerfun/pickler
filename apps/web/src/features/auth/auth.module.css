@@ -73,25 +73,6 @@
   white-space: nowrap;
 }
 
-.floor {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  height: 300px;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(90, 216, 255, 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(155, 123, 255, 0.26) 1px, transparent 1px);
-  background-size: 64px 64px;
-  transform: perspective(520px) rotateX(76deg);
-  transform-origin: bottom center;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 86%);
-  mask-image: linear-gradient(to top, #000 0%, transparent 86%);
-  animation: grid 9s linear infinite;
-}
-
 /* ---------- Header ---------- */
 
 .header {
@@ -933,19 +914,6 @@
   .page *::before,
   .page *::after {
     animation: none !important;
-  }
-}
-
-@keyframes grid {
-  from {
-    background-position:
-      0 0,
-      0 0;
-  }
-  to {
-    background-position:
-      0 64px,
-      64px 0;
   }
 }
 

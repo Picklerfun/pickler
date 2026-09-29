@@ -8,7 +8,6 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className={styles.page} data-surface="dark">
-      <div className={styles.floor} aria-hidden="true" />
       {children}
     </div>
   );
