@@ -89,6 +89,14 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's create-agent transaction only ever reads it.
 
+`PostgresStudioDirectory.createDraft` adopts a preview as a private draft in one transaction. It
+locks the workspace, then the preview row, and first looks for a replay: a preview already adopted
+by this caller in this workspace, with the submitted fingerprint, whose `pickler.product_agents`
+row (`request_key = 'preview:<previewRunId>'`) was created under the submitted handle, answers
+that draft again without calling `admit`. Otherwise the checks run in the spec's order
+(`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`), then `admit` (the route's funding lock and draft
+limit), then the writes.
+
 ## Invocation database connections
 
 Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass

@@ -47,7 +47,9 @@ export interface StudioDirectory {
    * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
    * the agent with `status = 'draft'` and no wallet, its runtime row with the run's config snapshot,
    * the preview copied in as its first run, and the preview marked adopted. Refuses with
-   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, and then writes nothing.
+   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, in that order, then runs `admit`; a refusal writes
+   * nothing. A retry of a create that committed (same caller, brief and handle) answers the same
+   * draft again and never reaches `admit`.
    */
   createDraft(
     access: StudioAccess,

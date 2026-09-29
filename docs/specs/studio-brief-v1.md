@@ -182,6 +182,10 @@ The layout is the visual base (`ef63752`). What becomes real:
   4. in one transaction, creates the agent with the run's config snapshot and `status: draft`,
      `public: false`, no wallet; copies the preview run in as the agent's first run; and marks the
      preview run adopted.
+- The locks below run after those checks, inside the same transaction.
+- **A retry is a replay.** If the preview is already adopted by this caller, from this same brief
+  (fingerprint) and under this same handle, the server answers the draft it became, with the same
+  201 body, and meets no lock. Any other request for an adopted preview is 409 `PREVIEW_UNUSABLE`.
 - The existing `createGate` (`canCreateAnother`) still applies, over agents that have a wallet: a
   funded or unfunded agent is one with a wallet. **A draft does not count toward the funding
   lock.** It is private, has no wallet and runs on paper, and it cannot be funded until Go Public

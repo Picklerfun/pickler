@@ -207,11 +207,13 @@ export class PostgresStudioDirectory implements StudioDirectory {
     });
   }
   /**
-   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace, run the
-   * funding lock, lock the preview and check it (PREVIEW_UNUSABLE, then RUN_STALE, then
-   * HANDLE_TAKEN), then write the agent as a draft with no wallet, its profile and handle, its
-   * runtime row with the run's config snapshot, the preview as its first run with its trace, and
-   * the preview's adoption. Any failure rolls all of it back.
+   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace, lock the
+   * preview, and answer the draft it already became when this is the same create retried (same
+   * caller, brief and handle), without meeting the lock. Otherwise check the run
+   * (PREVIEW_UNUSABLE, then RUN_STALE, then HANDLE_TAKEN), run the create lock, then write the
+   * agent as a draft with no wallet, its profile and handle, its runtime row with the run's config
+   * snapshot, the preview as its first run with its trace, and the preview's adoption. Any failure
+   * rolls all of it back.
    */
   async createDraft(
     access: StudioAccess,
@@ -232,7 +234,6 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!allowed.rows.length) {
           throw new AccessDeniedError("Research access revoked");
         }
-        await admit?.();
         const found = await client.query<
           AdoptablePreview & {
             config: AgentConfig;
@@ -251,12 +252,12 @@ export class PostgresStudioDirectory implements StudioDirectory {
           [input.previewRunId],
         );
         const preview = found.rows[0] ?? null;
-        assertPreviewAdoptable(
-          preview,
-          { userId, workspaceId: access.workspaceId },
-          input.fingerprint,
-          now,
-        );
+        const caller = { userId, workspaceId: access.workspaceId };
+        const replayed = await this.adoptedDraft(client, access, preview, caller, input);
+        if (replayed) {
+          return replayed;
+        }
+        assertPreviewAdoptable(preview, caller, input.fingerprint, now);
         const run = preview!;
         const available = await client.query("SELECT identity.handle_available($1) AS available", [
           input.handle,
@@ -264,6 +265,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!available.rows[0].available) {
           throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
         }
+        // Only a genuinely new draft meets the lock, and only once its run and handle are good.
+        await admit?.();
         const id = randomUUID();
         await client.query(
           "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'draft',$5)",
@@ -331,6 +334,41 @@ export class PostgresStudioDirectory implements StudioDirectory {
       }
       throw error;
     }
+  }
+  /**
+   * The draft this preview already became, when the create is the same one retried: adopted by
+   * this caller in this workspace, from the same brief, under the same handle. Null otherwise, and
+   * the caller's checks then refuse an adopted preview as PREVIEW_UNUSABLE.
+   */
+  private async adoptedDraft(
+    client: PoolClient,
+    access: StudioAccess,
+    preview: AdoptablePreview | null,
+    caller: { userId: string; workspaceId: string },
+    input: { handle: string; previewRunId: string; fingerprint: string },
+  ): Promise<{ productId: string; scope: Scope } | null> {
+    if (
+      !preview?.adopted ||
+      preview.userId !== caller.userId ||
+      preview.workspaceId !== caller.workspaceId ||
+      preview.fingerprint !== input.fingerprint
+    ) {
+      return null;
+    }
+    const created = await client.query<{ productId: string; agentId: string }>(
+      `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId"
+      FROM pickler.product_agents
+      WHERE workspace_id=$1 AND tenant_id=$2 AND request_key=$3 AND request->>'handle'=$4`,
+      [access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, input.handle],
+    );
+    const draft = created.rows[0];
+    if (!draft) {
+      return null;
+    }
+    return {
+      productId: draft.productId,
+      scope: { tenantId: access.tenantId, agentId: draft.agentId },
+    };
   }
   /** The same lookup `createAgent` replays from: workspace and key. */
   async createdWithKey(access: StudioAccess, key: string): Promise<Scope | null> {

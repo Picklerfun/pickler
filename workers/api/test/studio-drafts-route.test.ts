@@ -67,11 +67,11 @@ function app({
         scope: { tenantId: "trusted", agentId: agent.id },
       })),
     createDraft: async (_access, _user, input, _now, admit) => {
-      // The directory runs the funding lock inside its transaction, before it checks the run.
-      await admit?.();
+      // The directory checks the run and the handle, then runs the lock, inside its transaction.
       if (refuse) {
         throw new PilotError(refuse, "refused");
       }
+      await admit?.();
       drafts.push({ handle: input.handle, fingerprint: input.fingerprint });
       return { productId: DRAFT, scope: { tenantId: "trusted", agentId: DRAFT } };
     },

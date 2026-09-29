@@ -288,3 +288,100 @@ test("while a create holds the workspace lock, a paper run for that workspace st
 
   assert.equal(outcome, "inserted");
 });
+
+test("a retried create whose first attempt committed answers the same draft, past the lock", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  const terms = {
+    name: "Halftime",
+    handle: "halftime",
+    previewRunId: id,
+    fingerprint: f.fingerprint,
+  };
+  const created = await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
+  // The draft now exists, so the route's lock could refuse a new one; a replay never meets it.
+  const admit = async () => {
+    throw new PilotError("DRAFT_LIMIT", "At most 3 drafts at a time");
+  };
+
+  // Past the preview's 24 hours: a replay reads what was created, not whether it could be again.
+  const replayed = await f.directory.createDraft(
+    owner.access,
+    owner.userId,
+    terms,
+    f.clock + 86_400_000,
+    admit,
+  );
+
+  assert.deepEqual(replayed, created);
+  assert.equal(await agentCount(f, "halftime"), 1);
+});
+
+test("a retry with a different handle or brief is not a replay and is refused", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  const terms = {
+    name: "Halftime",
+    handle: "halftime",
+    previewRunId: id,
+    fingerprint: f.fingerprint,
+  };
+  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
+
+  await assert.rejects(
+    f.directory.createDraft(owner.access, owner.userId, { ...terms, handle: "fulltime" }, f.clock),
+    { code: "PREVIEW_UNUSABLE" },
+  );
+  await assert.rejects(
+    f.directory.createDraft(
+      owner.access,
+      owner.userId,
+      { ...terms, fingerprint: "other" },
+      f.clock,
+    ),
+    { code: "PREVIEW_UNUSABLE" },
+  );
+  assert.equal(await agentCount(f, "fulltime"), 0);
+  assert.equal((await f.directory.list(owner.access)).length, 1);
+});
+
+test("someone else's adopted preview is PREVIEW_UNUSABLE, even with the same terms", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const other = await f.person("other_one");
+  const id = await f.completed(owner);
+  const terms = {
+    name: "Halftime",
+    handle: "halftime",
+    previewRunId: id,
+    fingerprint: f.fingerprint,
+  };
+  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
+
+  await assert.rejects(f.directory.createDraft(other.access, other.userId, terms, f.clock), {
+    code: "PREVIEW_UNUSABLE",
+  });
+  assert.equal((await f.directory.list(other.access)).length, 0);
+});
+
+test("the run is checked before the lock: a stale brief is RUN_STALE even when the lock is closed", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  const admit = async () => {
+    throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+  };
+
+  await assert.rejects(
+    f.directory.createDraft(
+      owner.access,
+      owner.userId,
+      { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: "other" },
+      f.clock,
+      admit,
+    ),
+    { code: "RUN_STALE" },
+  );
+});
