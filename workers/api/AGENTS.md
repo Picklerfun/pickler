@@ -220,7 +220,10 @@ before wallets have none and are not counted. A draft has no wallet either and d
 unfunded (studio-brief-v1 §6); three drafts (`MAX_DRAFTS_PER_WORKSPACE`) close the lock with
 `draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
 turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
-wallet, and nothing has launched. A balance read that fails fails the request (500); it is never shown as zero.
+wallet, and nothing has launched. A balance read that fails fails the request (500); it is never
+shown as zero. `GET /agents/:id` reads this agent's balance that way and the other agents' only
+for the lock: another agent's balance that cannot be read is left out of `canCreateAnother` and
+does not fail the page. The list and both creates still require every read.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when

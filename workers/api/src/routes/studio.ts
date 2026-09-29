@@ -350,6 +350,32 @@ export function studioRoutes(services: StudioServices) {
     };
   }
 
+  /**
+   * The same lock for one agent's page. Its own balance is already read; the other agents' are
+   * read here, and one that cannot be read is left out: an unknown balance is not an unfunded
+   * agent, and another agent's failed read does not fail this page. A create decides again with
+   * `fundingLock`, where every read must succeed.
+   */
+  async function lockSeenFrom(
+    listed: Awaited<ReturnType<StudioDirectory["list"]>>,
+    productId: string,
+    own: FundedWallet | null,
+  ) {
+    const others = listed.filter((agent) => agent.id !== productId);
+    const linked = await Promise.all(
+      others.map((agent) => services.wallets.findAgentWallet(agent.id)),
+    );
+    const read = await Promise.allSettled(
+      linked.flatMap((wallet) => (wallet ? [services.balances.read(wallet.address)] : [])),
+    );
+    const known = read.flatMap((balance) =>
+      balance.status === "fulfilled" ? [balance.value] : [],
+    );
+    const balances = own ? [own.balanceAusd, ...known] : known;
+    const drafts = listed.filter((agent) => agent.draft).length;
+    return canCreateAnother(balances, drafts);
+  }
+
   /** The single place the agent DTO, its wallet and both locks are composed. */
   async function studioAgent(
     scope: Scope,
@@ -485,10 +511,11 @@ export function studioRoutes(services: StudioServices) {
     const current = await access.authorize(c.get("principal"));
     const productId = c.req.param("id");
     const scope = await services.directory.agentScope(current, productId);
-    const { listed, wallets, another } = await fleet(current);
-    const index = listed.findIndex((agent) => agent.id === productId);
-    const listedAgent = listed[index];
-    const wallet = listedAgent ? (wallets[index] ?? null) : await fundedWallet(productId);
+    const listed = await services.directory.list(current);
+    const listedAgent = listed.find((agent) => agent.id === productId);
+    // This agent's own balance is what the page shows, so its failed read fails the request.
+    const wallet = await fundedWallet(productId);
+    const another = await lockSeenFrom(listed, productId, wallet);
     const identity = listedAgent
       ? {
           productId,

@@ -43,6 +43,8 @@ interface Options {
   balances?: Record<string, number>;
   ready?: boolean;
   failRead?: boolean;
+  /** Agents whose balance read fails while the others answer. */
+  failReadFor?: string[];
   /** What the balance reader throws where the chain is not composed. */
   readError?: Error;
   signedIn?: boolean;
@@ -57,6 +59,7 @@ function fixture({
   balances = {},
   ready = true,
   failRead = false,
+  failReadFor = [],
   readError,
   signedIn = true,
   createError,
@@ -193,6 +196,9 @@ function fixture({
           throw new Error("rpc down");
         }
         const id = Object.keys(ADDRESS).find((key) => ADDRESS[key] === address)!;
+        if (failReadFor.includes(id)) {
+          throw new Error("rpc down");
+        }
         return balances[id] ?? 0;
       },
     },
@@ -328,6 +334,57 @@ test("a second agent is refused while the first holds 3 AUSD", async () => {
 
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: "UNFUNDED_AGENT" });
+  assert.deepEqual(created, []);
+});
+
+test("one agent's page reads its own balance; another agent's failed read does not fail it", async () => {
+  const { app } = fixture({
+    agents: [FIRST, SECOND],
+    balances: { [FIRST]: 12 },
+    failReadFor: [SECOND],
+  });
+
+  const response = await app.request(`/agents/${FIRST}`);
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.wallet.balanceAusd, 12);
+  // An unknown balance is not an unfunded agent; the create decides again with a real read.
+  assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
+});
+
+test("one agent's page still says when another agent is known to be unfunded", async () => {
+  const { app } = fixture({ agents: [FIRST, SECOND], balances: { [FIRST]: 12, [SECOND]: 3 } });
+
+  const body = await (await app.request(`/agents/${FIRST}`)).json();
+
+  assert.deepEqual(body.canCreateAnother, { ok: false, reason: "unfunded_agent" });
+});
+
+test("an agent's own failed balance read fails its page", async () => {
+  const { app } = fixture({
+    agents: [FIRST, SECOND],
+    balances: { [SECOND]: 12 },
+    failReadFor: [FIRST],
+  });
+
+  const response = await app.request(`/agents/${FIRST}`);
+
+  assert.equal(response.status, 500);
+});
+
+test("the list and a create still fail on any failed balance read", async () => {
+  const { app, created } = fixture({ agents: [FIRST, SECOND], failReadFor: [SECOND] });
+
+  const list = await app.request("/agents");
+  const create = await app.request("/agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
+    body: JSON.stringify(createBody),
+  });
+
+  assert.equal(list.status, 500);
+  assert.equal(create.status, 500);
   assert.deepEqual(created, []);
 });
 
