@@ -32,12 +32,21 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
   constructor(
     readonly pool: Pool,
     private readonly clock?: () => number,
+    private readonly studyOwner?: {
+      tenantId: string;
+      sessionId: string;
+      network: string;
+      owner: string;
+      signal?: AbortSignal;
+    },
   ) {}
   private async transaction<T>(action: (client: PoolClient) => Promise<T>) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await this.guardStudy(client);
       const result = await action(client);
+      await this.guardStudy(client);
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -46,6 +55,24 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
     } finally {
       client.release();
     }
+  }
+  private async guardStudy(client: PoolClient) {
+    if (!this.studyOwner) {
+      return;
+    }
+    this.studyOwner.signal?.throwIfAborted();
+    const scope = this.studyOwner;
+    const result = await client.query(
+      "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE",
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    if (
+      result.rows[0]?.owner !== scope.owner ||
+      Number(result.rows[0]?.expires_at) <= (await this.now(client))
+    ) {
+      throw new PilotError("LEASE_LOST", "Study ownership expired before paper mutation");
+    }
+    this.studyOwner.signal?.throwIfAborted();
   }
   private async agent(client: PoolClient, scope: PerpsPaperScope) {
     if (
