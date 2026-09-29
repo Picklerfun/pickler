@@ -7,6 +7,9 @@ import {
   DEFAULT_CONFIG,
   PLUGINS,
   PilotError,
+  BriefError,
+  PreviewRateLimited,
+  preparePreview,
   AccessDeniedError,
   AuthenticationRequiredError,
   unsupported,
@@ -34,6 +37,7 @@ import {
   type Scope,
   type StudioAccess,
   type StudioDirectory,
+  type PreviewRepository,
   type ResearchRepository,
   type TradingRepository,
 } from "@pickler/core";
@@ -57,6 +61,8 @@ import {
   draftResponseSchema,
   studioAgentSchema,
   limitsUpdateSchema,
+  previewRunRequestSchema,
+  previewRunResponseSchema,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
@@ -75,6 +81,11 @@ export interface StudioServices {
   repository: ResearchRepository;
   admissionsEnabled?: boolean;
   notifyQueued(): Promise<void>;
+  /**
+   * Paper runs of a brief that is not an agent yet (studio-brief-v1 §4). Absent where it is not
+   * composed; the preview routes then answer 503 PREVIEW_UNAVAILABLE and nothing else changes.
+   */
+  previews?: PreviewRepository;
   /** Null when no model is configured; drafting then answers 503 rather than guessing. */
   drafter?: AgentDrafter | null;
   paper?: {
@@ -135,6 +146,9 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
     return 400;
   }
   if (code === "DRAFT_UNAVAILABLE") {
+    return 503;
+  }
+  if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
   }
   return 409;
@@ -201,6 +215,12 @@ export function studioRoutes(services: StudioServices) {
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
     }
+    if (error instanceof BriefError) {
+      return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
+    }
+    if (error instanceof PreviewRateLimited) {
+      return c.json({ error: error.code, retryAt: error.retryAt }, 429);
+    }
     if (error instanceof PilotError) {
       return c.json({ error: error.code }, pilotStatus(error.code));
     }
@@ -238,6 +258,49 @@ export function studioRoutes(services: StudioServices) {
     return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
   });
   api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
+
+  function previewRepository(): PreviewRepository {
+    if (!services.previews) {
+      throw new PilotError("PREVIEW_UNAVAILABLE", "Paper runs are not composed here");
+    }
+    return services.previews;
+  }
+
+  // "Run it on paper" (studio-brief-v1 §4): the real runtime, once, on a config that is not an
+  // agent yet. Research rights, like any run; 5 per rolling hour; readable by its owner for 24 h.
+  api.post("/preview-runs", async (c) => {
+    if (services.admissionsEnabled === false) {
+      throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
+    }
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const previews = previewRepository();
+    const { config, fingerprint } = preparePreview(
+      previewRunRequestSchema.parse(await c.req.json()),
+    );
+    const { id } = await previews.create(
+      {
+        userId: principal.id,
+        workspaceId: current.workspaceId,
+        tenantId: current.tenantId,
+        config,
+        fingerprint,
+      },
+      Date.now(),
+    );
+    try {
+      await services.notifyQueued();
+    } catch {
+      console.error("Durable admission awaits queue reconciliation");
+    }
+    return c.json({ id }, 202);
+  });
+  api.get("/preview-runs/:id", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal);
+    const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
+    return c.json(previewRunResponseSchema.parse(read));
+  });
   /** The linked wallet and its balance. A failed balance read propagates as an error. */
   async function fundedWallet(productId: string): Promise<FundedWallet | null> {
     const wallet = await services.wallets.findAgentWallet(productId);

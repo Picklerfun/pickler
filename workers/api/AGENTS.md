@@ -186,6 +186,15 @@ answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure i
 the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
 other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
+`POST /v1/studio/preview-runs` (JWT, research rights; 409 `ADMISSIONS_PAUSED` when admissions are
+off) runs `preparePreview` on `previewRunRequestSchema` and queues a paper run of a brief with no
+agent row through `services.previews` (`PostgresPreviewStore`, studio-brief-v1 §4), answering 202
+`{ id }` and waking the research queue. An invalid brief is 400 `{ error: "INVALID_BRIEF", field,
+reason }`; caps and leverage out of bounds are 400 `INVALID_INPUT`; the sixth run in a rolling hour
+is 429 `{ error: "PREVIEW_RATE_LIMITED", retryAt }`. `GET /v1/studio/preview-runs/:id` answers
+`previewRunResponseSchema` to the owner only (404 for anyone else and after 24 h). Without
+`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`.
+
 `GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
 helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` ("lime" without a
 profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
