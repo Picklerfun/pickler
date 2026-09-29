@@ -2279,3 +2279,361 @@ MSG
   packages/ui/src/chart.tsx \
   scripts/design/levels.test.mjs
 ```
+
+---
+
+# Batch E — literals
+
+Tasks 23, 24 and 25 share no file and may run in parallel, taking turns at the harness. Task 26 runs after all three are committed, because it removes `--accent-rgb`, which tasks 23 and 24 stop reading. The tables are in `$PLAN/mapping-literals.md`; the reason for each choice is the judgment call named beside it.
+
+This is the batch that moves pixels on purpose (A3): the colours being replaced are the pre-v2 palette.
+
+## Task 23: Literals: `apply`
+
+**Owns:** `apps/web/src/features/apply/apply.module.css`
+
+**Table:** `$PLAN/mapping-literals.md`, section `maps/23-apply-literals.json`. In short:
+
+| Was                                                                                                                   | Becomes                                                                         | Call |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---- |
+| old ink at 0.05, 0.06 as a ground (`.glass`, `.card`, `.piece`)                                                       | `--pk-panel`                                                                    | J1   |
+| old ink at 0.14 as the selected chip's ground                                                                         | `--pk-panel-3`                                                                  | J1   |
+| old ink at 0.14–0.24 as a hairline (`.glass`, `.chip`, `.piece`, `.pieceHead`, `.well`, `.tile`, `.heldRow`, `.post`) | `--pk-rule-strong`                                                              | J1   |
+| old ink at 0.3 and 0.6 as an edge (`.sentHero`, `.chip:hover`)                                                        | `--pk-border-strong`                                                            | J1   |
+| old ink at 0.3 on `.page .secondaryButton`                                                                            | the declaration is deleted: the system's secondary button already has that edge | J1   |
+| old ink at 0.07 as the well's grid                                                                                    | `--pk-rule`                                                                     | J1   |
+| `.primaryButton:disabled`, the whole rule                                                                             | deleted                                                                         | J13  |
+| old cyan: the brand's glow, the invite bar, the cyan tile                                                             | `--pk-cyan-edge`, `--pk-state-cool-bg`                                          | J3   |
+| white at 0.25, 0.26, 0.35 as an inset highlight                                                                       | `--pk-lit-edge`                                                                 | J7   |
+| white at 0.4, 0.45 as a bevel on a lit fill                                                                           | `--pk-glow-rim`                                                                 | J7   |
+| lime at 0.45 as a border (`.cardDone`, `.tickerInput`), at 0.4 (`.tileLime`)                                          | `--pk-lime-edge`                                                                | J8   |
+| lime at 0.12 as a ground (`.tileLime`)                                                                                | `--pk-state-good-bg`                                                            | J8   |
+| lime at 0.9 (`.liveDot`), at 0.45 (`.shareButton`) as a glow                                                          | `--pk-lime`, `--pk-glow-lime-strong`                                            | J8   |
+| magenta at 0.6 (`.cardError`)                                                                                         | `--pk-magenta-edge`                                                             | J12  |
+| violet at 0.14 and 0.28 (`.sentHero`)                                                                                 | `--pk-state-info-bg`, `--pk-violet-edge`                                        | J11  |
+| `rgba(var(--accent-rgb), 0.6)`, three glows                                                                           | `var(--accent)`                                                                 | J9   |
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "colour-literal  apps/web/src/features/apply/apply.module.css"`
+
+Expected: `43`.
+
+- [ ] **Step 2: Replace the literals**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/apply/apply.module.css $PLAN/maps/23-apply-literals.json
+npx prettier --write apps/web/src/features/apply/apply.module.css
+npm run design:source | grep -c "colour-literal  apps/web/src/features/apply/apply.module.css"
+```
+
+Expected: `apps/web/src/features/apply/apply.module.css: 28 edit(s) applied`, then `0`.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=apply-no-seat node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 1 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=apply-no-seat DESIGN_SHOTS_DIR=scripts/design/.shots/task-23 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-23 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** `apply-no-seat-desktop.png` and `apply-no-seat-phone.png`, each by less than 1% of pixels, inside the box of the brand mark in the header (desktop about `x 113–174, y 0–58`; phone about `x 3–64, y 0–58`): its glow goes from the old cyan to the cool edge (J3). Nothing else on that screen reads a literal this task changes. The form and the submitted screen, where most of these literals are drawn, are behind the apply cookie and on no harness route; say in your report that they were verified by the static check and the table, not by a picture.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/apply/apply.module.css
+git commit -m "$(cat <<'MSG'
+Apply: every colour is a token
+
+Forty-three literals of the pre-v2 palette are the v2 token that holds
+their role on the dark surface. The disabled primary button is the
+system's.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/apply/apply.module.css
+```
+
+## Task 24: Literals: `auth`
+
+**Owns:** `apps/web/src/features/auth/auth.module.css` (the live rules only; the literals in dead classes go with their rules in task 28)
+
+**Table:** `$PLAN/mapping-literals.md`, section `maps/24-auth-literals.json`. In short:
+
+| Selector                               | Was                                              | Becomes                           | Call   |
+| -------------------------------------- | ------------------------------------------------ | --------------------------------- | ------ |
+| `.brandLogo`                           | old cyan at 0.55, as a drop-shadow               | `--pk-cyan-edge`                  | J3     |
+| `.primary`                             | white 0.4 bevel; lime 0.38 glow                  | `--pk-glow-rim`; `--pk-glow-lime` | J7, J8 |
+| `.mascotSmall`                         | lime 0.35 drop-shadow                            | `--pk-glow-lime`                  | J8     |
+| `.liveDot`                             | lime 0.8 glow                                    | `--pk-lime`                       | J8     |
+| `.bigNumber`                           | lime 0.45 text-shadow                            | `--pk-glow-lime-strong`           | J8     |
+| `.well`                                | old console ink 0.06, the grid lines             | `--pk-rule`                       | J2     |
+| `.wellClear`                           | lime 0.2 ground; lime 0.9 text-shadow            | `--pk-glow-lime`; `--pk-lime`     | J8     |
+| `.cellOn`                              | white 0.4 bevel; `rgba(var(--accent-rgb), 0.55)` | `--pk-glow-rim`; `var(--accent)`  | J7, J9 |
+| `.codeFilled`                          | lime 0.6                                         | `--pk-lime-edge`                  | J8     |
+| `.codeCaret`                           | old console ink 0.4                              | `--pk-border-strong`              | J2     |
+| `.codeWrong`                           | magenta 0.8                                      | `--pk-magenta-edge`               | J12    |
+| `.codeInput:focus-visible ~ .codeCell` | lime 0.45                                        | `--pk-focus`                      | J12    |
+| `.sheet::backdrop`                     | `rgba(6, 6, 9, 0.72)`                            | `--pk-scrim`                      | J10    |
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "colour-literal  apps/web/src/features/auth/auth.module.css"`
+
+Expected: `39` — 17 in live rules and 22 in dead ones.
+
+- [ ] **Step 2: Replace the literals**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/24-auth-literals.json
+npx prettier --write apps/web/src/features/auth/auth.module.css
+npm run design:source | grep -c "colour-literal  apps/web/src/features/auth/auth.module.css"
+```
+
+Expected: `apps/web/src/features/auth/auth.module.css: 13 edit(s) applied`, then `22`. Every one of the 22 is inside a class task 28 removes.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 4 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add DESIGN_SHOTS_DIR=scripts/design/.shots/task-24 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-24 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** all eight shots — `signin`, `signup`, `signup-passkey` and `passkey-add`, desktop and phone — each by 1% to 5% of pixels, inside the header and the sample board on the right (desktop about `x 3–1166, y 0–460`; on the phone the board is below the form). What moved: the brand mark's glow, the board's grid lines, the mascot's and the big number's halo, the live dot, the glow of each lit cell of a piece, and on `signup-passkey` and `passkey-add` the primary button's halo. Open `task-24/signin-desktop.png`: the board still reads as lit, the pieces still glow in their own colour, and no text changed.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/auth/auth.module.css
+git commit -m "$(cat <<'MSG'
+Auth: every colour in a live rule is a token
+
+Seventeen literals of the pre-v2 palette are tokens: the lime halos the
+two lime glows, the old cyan the cool edge, the old console ink the
+hairlines, the sheet's backdrop the scrim.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/auth/auth.module.css
+```
+
+## Task 25: Literals: the small sheets, and the undefined token
+
+**Owns:** `apps/web/src/features/agents/agents.module.css` (the rule `.glass`), `apps/web/src/features/markets/markets.module.css` (the rule `.tile`), `apps/web/src/features/wallet/components/connect-modal.module.css` (the rule `.dialog::backdrop`), `apps/web/src/features/wallet/components/claim-handle.module.css` (the rule `.eyebrow`)
+
+**Table:** `$PLAN/mapping-literals.md`, the four sections `maps/25-*.json`.
+
+| File                       | Selector            | Was                                       | Becomes              | Call                                         |
+| -------------------------- | ------------------- | ----------------------------------------- | -------------------- | -------------------------------------------- |
+| `agents.module.css`        | `.glass`            | `inset 0 1px 0 rgba(255, 255, 255, 0.22)` | `var(--pk-lit-edge)` | J7                                           |
+| `markets.module.css`       | `.tile`             | `rgba(255, 255, 255, 0.22)`               | `var(--pk-lit-edge)` | J7                                           |
+| `connect-modal.module.css` | `.dialog::backdrop` | `rgba(11, 13, 26, 0.72)`                  | `var(--pk-scrim)`    | J10                                          |
+| `claim-handle.module.css`  | `.eyebrow`          | `var(--pk-font-mono, var(--pk-font))`     | `var(--pk-font)`     | spec 3.2: `--pk-font-mono` was never defined |
+
+- [ ] **Step 1: Replace**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/agents/agents.module.css $PLAN/maps/25-agents-literal.json
+node $PLAN/tools/reline.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/25-markets-literal.json
+node $PLAN/tools/reline.mjs apps/web/src/features/wallet/components/connect-modal.module.css $PLAN/maps/25-connect-modal-literal.json
+node $PLAN/tools/reline.mjs apps/web/src/features/wallet/components/claim-handle.module.css $PLAN/maps/25-claim-handle.json
+npx prettier --write apps/web/src/features/agents/agents.module.css apps/web/src/features/markets/markets.module.css apps/web/src/features/wallet/components/connect-modal.module.css apps/web/src/features/wallet/components/claim-handle.module.css
+npm run design:source | grep -E "colour-literal|undefined-token" | grep -cE "agents.module|markets.module|connect-modal|claim-handle"
+```
+
+Expected: four times `1 edit(s) applied`, then `0`.
+
+- [ ] **Step 2: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate,markets,market-ask,market-trade,market-trade-picked,market-ask-picked node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 18 route(s).`, and `exit 0`.
+
+- [ ] **Step 3: Capture and compare**
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate,markets,market-ask,market-trade,market-trade-picked,market-ask-picked DESIGN_SHOTS_DIR=scripts/design/.shots/task-25 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-25 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. The two highlights keep their value, 0.22; the two dialogs and the claim form are on no harness route, and the font falls back to the face it already rendered in. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 4: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/web/src/features/agents/agents.module.css \
+  apps/web/src/features/markets/markets.module.css \
+  apps/web/src/features/wallet/components/connect-modal.module.css \
+  apps/web/src/features/wallet/components/claim-handle.module.css
+git commit -m "$(cat <<'MSG'
+Marketplace: the last literals in live rules, and the token never defined
+
+Two inset highlights read --pk-lit-edge, the wallet chooser's backdrop
+reads --pk-scrim, and the claim form stops asking for --pk-font-mono.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/agents/agents.module.css \
+  apps/web/src/features/markets/markets.module.css \
+  apps/web/src/features/wallet/components/connect-modal.module.css \
+  apps/web/src/features/wallet/components/claim-handle.module.css
+```
+
+## Task 26: The palettes in TypeScript, and the mirror
+
+Runs alone, after tasks 23–25 are committed.
+
+**Owns:** created — `packages/ui/src/tokens.ts`, `scripts/design/mirror.test.mjs`; modified — `apps/web/src/lib/accent.ts`, `apps/web/src/features/apply/lib/options.ts`, `apps/web/src/features/apply/components/application-form.tsx`, `apps/web/src/features/apply/components/submitted.tsx`, `apps/web/src/app/layout.tsx`, `packages/ui/src/index.ts`, `packages/ui/src/chart.tsx`, `packages/ui/package.json`.
+
+| Where                       | Was                                                                                                                      | Becomes                                                                                                                                                                                        | Call    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `lib/accent.ts`             | `ACCENT_COLORS` (seven hex and seven triples), `ACCENT_ORDER`, `colorVars(color, rgb)`; `accentVars` sets `--accent-rgb` | all four gone. `accentVars` sets `--accent`, `--accent-bg`, `--accent-ink`. New: `type Swatch` and `swatchVars(swatch)`, which sets `--accent` to a palette fill or an ink.                    | J9, J18 |
+| `apply/lib/options.ts`      | nine swatches as `{ color, rgb }`                                                                                        | nine names: `lime`, `cyan` → `"indigo"`, `amber`, `orange`, `magenta`, `violet`, `blue`, `white` → `"ink"`, `slate` → `"muted"`. `CATEGORIES` and `PERSONALITIES` carry `swatch`.              | J4      |
+| `apply/components/*.tsx`    | `colorVars(x.color, x.rgb)`, five places                                                                                 | `swatchVars(x)`                                                                                                                                                                                | J4      |
+| `packages/ui/src/tokens.ts` | —                                                                                                                        | `TOKEN_MIRROR.light`: `--pk-bg`, `--pk-ink-faint`, `--pk-rule-strong`, `--pk-win`, `--pk-loss`, each with the value `styles.css` holds. Exported from the package and as `@pickler/ui/tokens`. | J17     |
+| `packages/ui/src/chart.tsx` | four fallbacks typed by hand, three of them stale (`#6b7186`, `#2e7d32`, `#c62c62`)                                      | `TOKEN_MIRROR.light[name]`                                                                                                                                                                     | J17     |
+| `app/layout.tsx`            | `themeColor: "#FFFFFF"`                                                                                                  | `TOKEN_MIRROR.light["--pk-bg"]`                                                                                                                                                                | J17     |
+
+- [ ] **Step 1: Write the failing test**
+
+```sh
+git apply --check $PLAN/patches/26-mirror-test.patch && git apply $PLAN/patches/26-mirror-test.patch
+node --import tsx --test scripts/design/mirror.test.mjs
+```
+
+Expected: FAIL with `Cannot find module '…/packages/ui/src/tokens.ts'`.
+
+The test resolves each mirrored token in `styles.css`, following `var()` chains, and compares it with the mirror's value; a second test fails if the mirror is empty.
+
+- [ ] **Step 2: Write the mirror and move the palettes**
+
+```sh
+git apply --check $PLAN/patches/26-palettes-impl.patch && git apply $PLAN/patches/26-palettes-impl.patch
+node --import tsx --test scripts/design/mirror.test.mjs
+```
+
+Expected: PASS, `tests 2`, `fail 0`.
+
+- [ ] **Step 3: Prove the test can fail**
+
+Change one value in `packages/ui/src/tokens.ts` — `"--pk-win": "#2b732e"` to `"#2e7d32"`, the stale value the chart held — and run the test again.
+
+Expected: FAIL, with `--pk-win on light: tokens.ts says #2e7d32, styles.css says #2b732e`.
+
+Put the value back, run the test once more, and see it pass. `git diff packages/ui/src/tokens.ts` must print nothing but the new file.
+
+- [ ] **Step 4: Verify**
+
+```sh
+npm run design:source | tail -1
+grep -rn 'accent-rgb\|colorVars\|ACCENT_COLORS\|ACCENT_ORDER' apps/web/src packages/ui/src
+```
+
+Expected: `source: 118 violation(s) — colour-literal 22, unused-class 96. Report only; --strict fails on them.` — no `colour-in-ts`, no `undefined-token`. The `grep` prints nothing.
+
+- [ ] **Step 5: The whole harness, and the batch's picture**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-26 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-26 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: four times `clean over all 51 route(s).`, `exit 0`.
+
+**Expected differences, for the whole batch — ten shots and no others:**
+
+| Screens                                                                 | How much                                     | Why                                                                                           |
+| ----------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `apply-no-seat` (desktop and phone)                                     | less than 1%, in the header's brand mark     | task 23                                                                                       |
+| `signin`, `signup`, `signup-passkey`, `passkey-add` (desktop and phone) | 1% to 5%, in the header and the sample board | task 24; and this task, for the glow of each lit cell, which now paints from `--accent` alone |
+
+Every other line starts with `NOISE`, or is a `DIFFERS` under 0.1% on `markets-desktop` or `token-desktop` inside the box those screens have in `noise.txt` (see task 4, step 3).
+
+- [ ] **Step 6: Move the baseline forward**
+
+```sh
+rm -rf scripts/design/.shots/baseline
+cp -R scripts/design/.shots/task-26 scripts/design/.shots/baseline
+```
+
+- [ ] **Step 7: Gates**
+
+Check the ports are free. Run, and check each exit status is 0: `npm run build:shared`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run build:workers`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/web/src/lib/accent.ts \
+  apps/web/src/features/apply/lib/options.ts \
+  apps/web/src/features/apply/components/application-form.tsx \
+  apps/web/src/features/apply/components/submitted.tsx \
+  apps/web/src/app/layout.tsx \
+  packages/ui/src/tokens.ts \
+  packages/ui/src/index.ts \
+  packages/ui/src/chart.tsx \
+  packages/ui/package.json \
+  scripts/design/mirror.test.mjs
+git commit -m "$(cat <<'MSG'
+Palettes: no colour in TypeScript outside the mirror
+
+accent.ts and the application's options hold token names and no value;
+the r,g,b triples are gone with the glows that needed them. The five
+values code must hold as values live in packages/ui/src/tokens.ts, and
+a test fails when one differs from styles.css.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/lib/accent.ts \
+  apps/web/src/features/apply/lib/options.ts \
+  apps/web/src/features/apply/components/application-form.tsx \
+  apps/web/src/features/apply/components/submitted.tsx \
+  apps/web/src/app/layout.tsx \
+  packages/ui/src/tokens.ts \
+  packages/ui/src/index.ts \
+  packages/ui/src/chart.tsx \
+  packages/ui/package.json \
+  scripts/design/mirror.test.mjs
+```

@@ -1,0 +1,6 @@
+[
+  {
+    "find": ".dialog::backdrop {\n  background: rgba(11, 13, 26, 0.72);\n",
+    "replace": ".dialog::backdrop {\n  background: var(--pk-scrim);\n"
+  }
+]
