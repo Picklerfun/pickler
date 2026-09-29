@@ -75,6 +75,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   signal?.addEventListener("abort", interrupt, { once: true });
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
+  let primaryFailed = false;
   try {
     signal?.throwIfAborted();
     if (action === "init") {
@@ -287,15 +288,29 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
           }),
         leaseDiagnostic: diagnostic,
       }).run(config, controller.signal);
+    } catch (error) {
+      primaryFailed = true;
+      throw error;
     } finally {
       releaseAwake();
-      await diagnostics;
+      await diagnostics.catch((error) => {
+        if (!primaryFailed) {
+          throw error;
+        }
+      });
     }
     console.log("Study finished; regenerate the report to inspect open positions and limitations.");
+  } catch (error) {
+    primaryFailed = true;
+    throw error;
   } finally {
     signal?.removeEventListener("abort", interrupt);
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
-    await research.close();
+    await research.close().catch((error) => {
+      if (!primaryFailed) {
+        throw error;
+      }
+    });
   }
 }
