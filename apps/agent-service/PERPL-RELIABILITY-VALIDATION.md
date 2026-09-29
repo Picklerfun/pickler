@@ -31,3 +31,14 @@ Last ordinary renewal completed at 10:08:09.782 UTC, with PostgreSQL expiry 10:0
 Additional controlled tests cover expiry immediately before transaction commit, delayed PostgreSQL renewal, and partial observation writes. The final implementation checks elapsed local time since the last successful renewal (or startup) before requests, model admission, execution and diagnostic writes. A gap of 90 seconds aborts locally with `PROCESS_INTERRUPTED`, without attempting renewal; it never extends the PostgreSQL lease or replaces its ownership authority. A pending renewal completing after such an interruption cannot restore liveness. Original errors survive rollback/cleanup failures.
 
 These changes have controlled-test validation only. They were not injected into the frozen running process, and no second public run was made. The same data acquisition thresholds and strategies remain unchanged. Another explicitly authorized thirty-minute window with the lid open is needed to satisfy public acceptance. A new paid comparison remains out of scope and requires its own frozen configuration and historical-budget verification.
+
+## Final controlled verification
+
+Implementation commit `7aaeeb9c11b2b1659c37ad56aa303e0dfa984a0e` passed:
+
+- `npm test`: 1,422 passed, zero failed, one explicitly gated local Workers/Supabase end-to-end test skipped. The PostgreSQL integration tests ran with isolated databases.
+- `npm run lint`, `npm run typecheck` (14 workspaces), and `npm run format:check`.
+- `npm run build:workers` and `npm run build --workspace=@pickler/agent-service`.
+- Controlled total-deadline cancellation at approximately 20 seconds, expiry before commit, delayed DB renewal, synchronous interruption fencing while DB ownership still appears valid, and rejection of late renewal completion.
+
+Read-back after the interrupted public probe confirmed released ownership, zero model rounds, zero paper accounts and sixteen diagnostic events. The incomplete diagnostic record remains `monitoring`; its local report records the terminal failure because the expired owner cannot write a new business outcome. No paid continuation or second public probe was started.
