@@ -104,6 +104,7 @@ function fixture({
         name: `Agent ${id.slice(0, 1)}`,
         handle: `h${id.slice(0, 4)}`,
         accent: id === FIRST ? ("magenta" as const) : ("lime" as const),
+        draft: false,
         scope: scope(id),
       })),
     runs: async () => [],

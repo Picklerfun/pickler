@@ -63,6 +63,7 @@ import {
   limitsUpdateSchema,
   previewRunRequestSchema,
   previewRunResponseSchema,
+  draftCreateSchema,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
@@ -311,13 +312,20 @@ export function studioRoutes(services: StudioServices) {
   }
 
   /**
-   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. An agent
-   * without a linked wallet (created before wallets existed) cannot be funded and is not counted.
+   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. A private
+   * draft has no wallet yet and holds 0 AUSD, so it closes the lock until it is funded (§6). An
+   * agent without a wallet that is not a draft (created before wallets existed) cannot be funded
+   * and is not counted.
    */
   async function fleet(current: StudioAccess) {
     const listed = await services.directory.list(current);
     const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
-    const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
+    const balances = wallets.flatMap((wallet, index) => {
+      if (wallet) {
+        return [wallet.balanceAusd];
+      }
+      return listed[index]?.draft ? [0] : [];
+    });
     return { listed, wallets, another: canCreateAnother(balances) };
   }
 
@@ -326,7 +334,13 @@ export function studioRoutes(services: StudioServices) {
     scope: Scope,
     wallet: FundedWallet | null,
     another: Lock,
-    identity: { productId?: string; name?: string; handle?: string; accent: Accent },
+    identity: {
+      productId?: string;
+      name?: string;
+      handle?: string;
+      accent: Accent;
+      draft: boolean;
+    },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
     const ready = isReadyToSchedule(record, await repo.readiness(scope));
@@ -356,6 +370,7 @@ export function studioRoutes(services: StudioServices) {
             name: agent.name,
             handle: agent.handle,
             accent: agent.accent,
+            draft: agent.draft,
           }),
         ),
       ),
@@ -416,6 +431,32 @@ export function studioRoutes(services: StudioServices) {
       throw caught;
     }
   });
+  // "Create {Name}" (studio-brief-v1 §6): adopt the paper run as a private draft. Not
+  // /agents/draft, which is the model drafter above. The brief travels again, is checked exactly as
+  // the run's was, and its fingerprint must match the run's (RUN_STALE otherwise).
+  api.post("/drafts", async (c) => {
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const body = draftCreateSchema.parse(await c.req.json());
+    const { fingerprint } = preparePreview(body);
+    const { another } = await fleet(current);
+    if (!another.ok) {
+      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+    }
+    const created = await services.directory.createDraft(
+      current,
+      principal.id,
+      { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
+      Date.now(),
+    );
+    return c.json(
+      {
+        productId: created.productId,
+        agent: agentResponseSchema.parse(await repo.agent(created.scope)),
+      },
+      201,
+    );
+  });
   api.get("/agents/:id", async (c) => {
     const current = await access.authorize(c.get("principal"));
     const productId = c.req.param("id");
@@ -430,8 +471,9 @@ export function studioRoutes(services: StudioServices) {
           name: listedAgent.name,
           handle: listedAgent.handle,
           accent: listedAgent.accent,
+          draft: listedAgent.draft,
         }
-      : { accent: "lime" as const };
+      : { accent: "lime" as const, draft: false };
     return c.json(await studioAgent(scope, wallet, another, identity));
   });
   api.put("/agents/:id/config", async (c) => {

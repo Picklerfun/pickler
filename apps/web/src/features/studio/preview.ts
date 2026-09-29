@@ -238,6 +238,7 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       name: "Halftime",
       handle: "halftime",
       accent: "lime",
+      draft: false,
       version: 7,
       config: previewConfig,
       paused: false,
