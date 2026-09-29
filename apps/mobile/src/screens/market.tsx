@@ -33,7 +33,7 @@ function LevelCard({ symbol, level, pd, now, onRemove }: { symbol: string; level
         { label: "RESOLVES", value: resolvesLabel(level, now).replace("Resolves ", "") },
         { label: "SUGGESTED", value: side.toUpperCase(), fg: side === "long" ? C.limeInk : C.down },
       ]} top />
-      <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Portfolio.`}</T>
+      <T w={400} s={11} lh={1.45} color={C.dim}>{`Once your order fills: a reminder ${two ? "15 min before and one at expiry" : "at expiry"}. Nothing closes the position for you — close it from Portfolio. Reminders use Ask's daily Face ID unlock.`}</T>
       <Btn label="Remove level" onPress={onRemove} variant="ghost" py={8} accessibilityLabel="level-remove" />
     </Card>
   );
