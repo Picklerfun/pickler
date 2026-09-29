@@ -15,6 +15,7 @@ export const AGENT_STATUSES = [
   "killed",
   "paused",
   "pending_policies",
+  "draft",
 ] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
