@@ -105,10 +105,14 @@ export class PostgresStudioDirectory implements StudioDirectory {
       throw new PilotError("INVALID_INPUT", "A category selection is required");
     }
     return this.transaction(async (client) => {
+      // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
+      // with revoking research access or deactivating the workspace (both non-key updates), but not
+      // with the KEY SHARE locks foreign-key inserts take, so paper runs and other rows for this
+      // workspace are not held up while the funding lock reads balances over the network.
       const allowed = await client.query(
         `SELECT w.id FROM identity.workspaces w
         JOIN pickler.research_access a ON a.user_id=w.owner_user_id
-        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR UPDATE OF w,a`,
+        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
         [access.workspaceId, userId],
       );
       if (!allowed.rows.length) {
@@ -218,10 +222,11 @@ export class PostgresStudioDirectory implements StudioDirectory {
   ): Promise<{ productId: string; scope: Scope }> {
     try {
       return await this.transaction(async (client) => {
+        // NO KEY UPDATE, as in `createAgent`: creates serialize, foreign-key inserts do not wait.
         const allowed = await client.query(
           `SELECT w.id FROM identity.workspaces w
           JOIN pickler.research_access a ON a.user_id=w.owner_user_id
-          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR UPDATE OF w,a`,
+          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
           [access.workspaceId, userId],
         );
         if (!allowed.rows.length) {

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import {
   DEFAULT_CONFIG,
+  PilotError,
   createStudioAccess,
   type AgentConfig,
   type Principal,
@@ -423,4 +424,35 @@ test("the idempotent retry with the same wallet returns the same agent; a retry 
     }),
     { code: "CONFLICT" },
   );
+});
+
+test("a replay under the same key returns the original agent even once the funding lock closes", async (t) => {
+  const { store, directory, userId, access, wallet } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  let admitted = 0;
+  const open = async () => {
+    admitted++;
+  };
+  const closed = async () => {
+    admitted++;
+    throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+  };
+
+  const first = await directory.createAgent(access, userId, { ...input, wallet }, open);
+  const replay = await directory.createAgent(access, userId, { ...input, wallet }, closed);
+
+  assert.equal(replay.agentId, first.agentId);
+  assert.equal(admitted, 1);
+  await assert.rejects(
+    directory.createAgent(
+      access,
+      userId,
+      { ...input, handle: "agent_two", key: "another", wallet },
+      closed,
+    ),
+    { code: "UNFUNDED_AGENT" },
+  );
+  assert.equal(admitted, 2);
 });

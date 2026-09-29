@@ -240,3 +240,45 @@ test("two concurrent drafts serialize on the funding lock: only one is created",
   assert.equal((refused as PromiseRejectedResult).reason.code, "UNFUNDED_AGENT");
   assert.equal((await f.directory.list(owner.access)).length, 1);
 });
+
+test("while a create holds the workspace lock, a paper run for that workspace still starts", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  let entered!: () => void;
+  const inside = new Promise<void>((resolve) => (entered = resolve));
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  // The route's lock reads balances over the network; this one waits until the test lets it go.
+  const creating = f.directory.createDraft(
+    owner.access,
+    owner.userId,
+    { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: f.fingerprint },
+    f.clock,
+    async () => {
+      entered();
+      await held;
+    },
+  );
+  await inside;
+
+  const insert = f.previews.create(
+    {
+      userId: owner.userId,
+      workspaceId: owner.access.workspaceId,
+      tenantId: owner.access.tenantId,
+      config: f.config,
+      fingerprint: f.fingerprint,
+    },
+    f.clock,
+  );
+  const outcome = await Promise.race([
+    insert.then(() => "inserted"),
+    new Promise((resolve) => setTimeout(() => resolve("blocked"), 2_000)),
+  ]);
+  release();
+  await creating;
+  await insert;
+
+  assert.equal(outcome, "inserted");
+});
