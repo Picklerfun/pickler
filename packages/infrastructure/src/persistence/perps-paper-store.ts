@@ -37,6 +37,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       sessionId: string;
       network: string;
       owner: string;
+      assertActive?: () => void;
       signal?: AbortSignal;
     },
   ) {}
@@ -60,6 +61,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
     if (!this.studyOwner) {
       return;
     }
+    this.studyOwner.assertActive?.();
     this.studyOwner.signal?.throwIfAborted();
     const scope = this.studyOwner;
     const result = await client.query(
@@ -72,6 +74,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
     ) {
       throw new PilotError("LEASE_LOST", "Study ownership expired before paper mutation");
     }
+    this.studyOwner.assertActive?.();
     this.studyOwner.signal?.throwIfAborted();
   }
   private async agent(client: PoolClient, scope: PerpsPaperScope) {
