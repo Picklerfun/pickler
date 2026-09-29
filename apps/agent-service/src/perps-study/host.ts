@@ -1,5 +1,6 @@
+import { keepAwake } from "../paper-study/comparison-host.js";
 import { parseArgs } from "node:util";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile, appendFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
@@ -247,7 +248,49 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         model: config.deepseek.model,
       }),
     );
-    await createPerpsStudyRunner({ study, paper, data, models }).run(config, controller.signal);
+    if (!view.record.dataPolicy) {
+      throw new PilotError(
+        "HISTORICAL_SESSION",
+        "Use a new frozen session for coherent data policy",
+      );
+    }
+    const output = resolve(
+      values.output ??
+        fileURLToPath(new URL(`../../.data/perps-studies/${config.sessionId}`, import.meta.url)),
+    );
+    await mkdir(output, { recursive: true });
+    let diagnostics: Promise<void> = Promise.resolve();
+    const releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
+    const diagnostic = (event: unknown) => {
+      diagnostics = diagnostics.then(() =>
+        appendFile(join(output, "diagnostics.jsonl"), JSON.stringify(event) + "\n", {
+          mode: 0o600,
+        }),
+      );
+      void diagnostics.catch((cause) => controller.abort(cause));
+    };
+    const reliableData = createStudyData(paper, research, {
+      onDiagnostic: diagnostic,
+      onAcquisition: diagnostic,
+    });
+    try {
+      await createPerpsStudyRunner({
+        study,
+        paper,
+        data: reliableData,
+        models,
+        paperForLease: (scope, lease, signal) =>
+          new PostgresPerpsPaperStore(research.pool, undefined, {
+            ...scope,
+            owner: lease.owner,
+            signal,
+          }),
+        leaseDiagnostic: diagnostic,
+      }).run(config, controller.signal);
+    } finally {
+      releaseAwake();
+      await diagnostics;
+    }
     console.log("Study finished; regenerate the report to inspect open positions and limitations.");
   } finally {
     signal?.removeEventListener("abort", interrupt);
