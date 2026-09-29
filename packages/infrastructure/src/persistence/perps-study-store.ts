@@ -193,6 +193,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         stopRequested: false,
         lastObservationAt: null,
         lastRoundSlot: -1,
+        lastAttemptedSlot: -1,
+        dataPolicy: "coherent-20s-v1",
       };
       await c.query(
         "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -215,6 +217,31 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       );
       return { record: x.record, rounds: await this.rounds(c, x.id), events: events.rows };
     });
+  }
+  async initializeDiagnostic(source: PerpsStudyScope, sessionId: string, metadata: unknown) {
+    const { record } = await this.view(source);
+    const config = { ...record.config, sessionId };
+    const document: PerpsStudyRecord = {
+      ...record,
+      config,
+      metadata,
+      createdAt: Date.now(),
+      startedAt: null,
+      endsAt: null,
+      graceUntil: null,
+      status: "initialized",
+      stopRequested: false,
+      decisionStopReason: "DIAGNOSTIC_ONLY",
+      lastRoundSlot: -1,
+      lastAttemptedSlot: -1,
+      lastObservationAt: null,
+      dataPolicy: "coherent-20s-v1",
+    };
+    await this.pool.query(
+      "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
+      [randomUUID(), config.tenantId, sessionId, config.network, document],
+    );
+    return config;
   }
   async claim(scope: PerpsStudyScope) {
     return this.tx(async (c) => {
@@ -267,15 +294,43 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return lease;
     });
   }
+  async claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number) {
+    return this.tx(async (c) => {
+      const x = await this.lock(c, scope);
+      this.owned(x, lease);
+      await this.permissions(c, x);
+      if (
+        x.record.decisionStopReason ||
+        x.record.stopRequested ||
+        x.record.startedAt === null ||
+        x.now >= x.record.endsAt! ||
+        !Number.isInteger(slot) ||
+        slot !== Math.floor((x.now - x.record.startedAt) / 900000) ||
+        (x.now - x.record.startedAt) % 900000 >= 60000 ||
+        slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
+      ) {
+        return false;
+      }
+      x.record.lastAttemptedSlot = slot;
+      await this.save(c, x);
+      await c.query(
+        "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'slot-attempted',$4)",
+        [x.id, `slot-${slot}`, x.now, { slot }],
+      );
+      return true;
+    });
+  }
   async renew(scope: PerpsStudyScope, lease: PerpsStudyLease) {
-    await this.tx(async (c) => {
+    const expiresAt = await this.tx(async (c) => {
       const x = await this.lock(c, scope);
       this.owned(x, lease);
       await c.query("UPDATE pickler.perps_studies SET expires_at=$2 WHERE id=$1", [
         x.id,
         x.now + 90000,
       ]);
+      return x.now + 90000;
     });
+    lease.expiresAt = expiresAt;
   }
   async release(scope: PerpsStudyScope, lease: PerpsStudyLease) {
     await this.tx(async (c) => {
@@ -570,7 +625,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     key: string,
-    complete: boolean,
+    result: "complete" | "skipped_data_unavailable" | "incomplete",
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
@@ -579,7 +634,10 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       if (r.executionStatus !== "pending") {
         throw new PilotError("CONFLICT", "Execution already finalized");
       }
-      r.executionStatus = complete ? "complete" : "incomplete";
+      r.executionStatus = result;
+      if (result === "skipped_data_unavailable") {
+        r.executionReason = "DATA_UNAVAILABLE";
+      }
       await this.saveRound(c, x.id, r);
     });
   }
