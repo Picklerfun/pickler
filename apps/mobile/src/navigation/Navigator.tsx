@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import { AgentScreen } from "../screens/agent";
 import { AgentsScreen } from "../screens/agents";
 import { ComingSoonScreen } from "../screens/comingSoon";
 import { MarkBadge, MarketScreen } from "../screens/market";
@@ -12,7 +13,6 @@ import { SigninScreen } from "../screens/signin";
 import { DepositScreen, WalletScreen, WithdrawScreen } from "../screens/wallet";
 import { TabBar } from "../ui/TabBar";
 import { withPage } from "../ui/Page";
-import { Page, T } from "../ui/primitives";
 import { C } from "../ui/theme";
 import { flushPending, navigationRef } from "./ref";
 import type { AgentsStackParamList, MarketsStackParamList, PortfolioStackParamList, RootParamList, SoloStackParamList, TabParamList, WalletStackParamList } from "./routes";
@@ -38,8 +38,7 @@ const Withdraw = withPage("withdraw", WithdrawScreen);
 const Launchpad = withPage("launchpad", (ctx) => <ComingSoonScreen screen="launchpad" requireAccount={ctx.requireAccount} />);
 const Activity = withPage("activity", (ctx) => <ComingSoonScreen screen="activity" requireAccount={ctx.requireAccount} />);
 const AgentsList = withPage("agents", AgentsScreen);
-const AgentProfile = withPage("agent", () => <Page><T>Agent</T></Page>); // F2: perfil, stub en F1 (ruling Task 11)
-// Sólo el stub de `agent` (perfil) sigue provisional hasta F2; Portfolio y Read ya son las pantallas finales de F1.
+const AgentProfile = withPage("agent", AgentScreen, { bare: true });
 const Portfolio = withPage("portfolio", PortfolioScreen);
 const ReadView = withPage("read", ReadScreen);
 const Signin = withPage("signin", SigninScreen);

@@ -16,7 +16,8 @@ export function Page({ screen, children, headerRight, bare }: { screen: Screen; 
   const { S, perpl, reads, back, setControls } = ctx;
   const openMarket = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId);
   const perpsSymbol = openMarket?.symbol;
-  const [title, baseSub] = headerFor(screen, perpsSymbol);
+  const agent = screen === "agent" ? reads.agents?.find((a) => a.id === S.agentId) : undefined;
+  const [title, baseSub] = headerFor(screen, perpsSymbol, agent);
   // Market: subtítulo dinámico (agentes y apalancamiento máximo del mercado abierto); sin mercado, el de headerFor.
   const sub = screen === "market" && openMarket ? `${reads.agents?.length ?? "—"} AGENTS · MAX ${openMarket.maxLeverage}×` : baseSub;
   const isRoot = ROOT_OF[screen] === screen;

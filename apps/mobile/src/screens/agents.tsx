@@ -8,7 +8,7 @@ import { C } from "../ui/theme";
 
 const initials = (name: string): string => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
-/** Pestaña Agents (D15): lista pública de agents-list. En F1 la tarjeta y "Ask" abren Market en Ask con el agente (D13). */
+/** Pestaña Agents (D15): lista pública de agents-list. La tarjeta abre el perfil; "Ask" abre Market en Ask con el agente (D13). */
 export function AgentsScreen({ reads, perpl, S, requireAccount }: AppCtx) {
   // Agents es pública, Market no (D23): requireAccount desvía a Sign in y vuelve con el patch.
   const ask = (a: Agent) => requireAccount("market", { askAgentId: a.id, marketTab: "ask", perpsMarketId: askMarketId(S.perpsMarketId, perpl.context?.markets ?? []) });
@@ -26,7 +26,7 @@ export function AgentsScreen({ reads, perpl, S, requireAccount }: AppCtx) {
       {reads.agents !== null && reads.agents.length > 0 ? (
         <Reveal style={{ gap: 10 }}>
           {reads.agents.map((a) => (
-            <TouchCard key={a.id} onPress={() => ask(a)} accessibilityLabel={`agent-row-${a.id}`} style={{ gap: 12 }}>
+            <TouchCard key={a.id} onPress={() => requireAccount("agent", { agentId: a.id })} accessibilityLabel={`agent-row-${a.id}`} style={{ gap: 12 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Avatar initials={initials(a.name)} size={44} s={13} />
                 <View style={{ flex: 1, minWidth: 0 }}>

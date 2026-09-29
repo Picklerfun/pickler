@@ -49,6 +49,11 @@ test("headers", () => {
   expect(headerFor("signin")).toEqual(["Pickler", ""]);
 });
 
+test("agent header: the agent's name and owner once agents-list is loaded (D16)", () => {
+  expect(headerFor("agent", undefined, { name: "Drift", owner: "pickler" })).toEqual(["Drift", "By pickler"]);
+  expect(headerFor("agent")).toEqual(["Agent", ""]);
+});
+
 test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SOON set", () => {
   for (const s of COMING_SOON) expect(isComingSoonTab(s)).toBe(true);
   for (const s of ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "signin"] as const) expect(isComingSoonTab(s)).toBe(false);

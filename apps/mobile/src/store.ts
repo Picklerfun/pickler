@@ -123,7 +123,7 @@ export function screenHasData(screen: Screen, d: { balances: unknown; context: u
   }
 }
 
-export function headerFor(screen: Screen, perpsSymbol?: string): [string, string] {
+export function headerFor(screen: Screen, perpsSymbol?: string, agent?: { name: string; owner: string }): [string, string] {
   switch (screen) {
     case "markets": return ["Markets", ""];
     case "agents": return ["Agents", ""];
@@ -134,7 +134,7 @@ export function headerFor(screen: Screen, perpsSymbol?: string): [string, string
     case "deposit": return ["Deposit", "AUSD · Monad testnet"];
     case "withdraw": return ["Withdraw", "AUSD to an external address"];
     case "read": return ["Read", ""];
-    case "agent": return ["Agent", ""];
+    case "agent": return agent ? [agent.name, `By ${agent.owner}`] : ["Agent", ""];
     case "signin": return ["Pickler", ""];
     case "launchpad": case "activity": return [COMING_SOON_COPY[screen].title, "Coming soon"];
   }
