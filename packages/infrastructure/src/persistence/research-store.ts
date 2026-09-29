@@ -232,6 +232,19 @@ export class PostgresResearchStore implements ResearchRepository {
       }
       const stored = agent.config.spend;
       const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;
+      // The brief and its max leverage change only with a new brief (checked by `assertConfig`
+      // above). A save without one, such as the settings screen's, keeps what the agent has.
+      if (next.brief === undefined) {
+        delete next.maxLeverage;
+        if (agent.config.brief !== undefined) {
+          next.brief = agent.config.brief;
+        }
+        if (agent.config.maxLeverage !== undefined) {
+          next.maxLeverage = agent.config.maxLeverage;
+        }
+      } else if (next.maxLeverage === undefined && agent.config.maxLeverage !== undefined) {
+        next.maxLeverage = agent.config.maxLeverage;
+      }
       const [updated] = await tx
         .update(agents)
         .set({
