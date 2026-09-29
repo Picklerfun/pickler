@@ -132,3 +132,26 @@ test("heartbeat does not overlap, records timer delay and aborts on renewal fail
     },
   ]);
 });
+
+test("a pair that expires while reading the other symbol is never returned", async () => {
+  const x = fixture();
+  const book = x.inputs.book;
+  x.inputs.book = async (symbol) => {
+    if (symbol === "ETH") {
+      x.advance(31000);
+    }
+    return book(symbol);
+  };
+  await assert.rejects(acquirePerpsFrames(x.inputs), { code: "DATA_UNAVAILABLE" });
+});
+
+test("schema failures abort immediately without public-data recovery", async () => {
+  const x = fixture();
+  let reads = 0;
+  x.inputs.book = async () => {
+    reads++;
+    throw new PilotError("PERPL_INVALID_RESPONSE", "controlled");
+  };
+  await assert.rejects(acquirePerpsFrames(x.inputs), { code: "PERPL_INVALID_RESPONSE" });
+  assert.equal(reads, 1);
+});
