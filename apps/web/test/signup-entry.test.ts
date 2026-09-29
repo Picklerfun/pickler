@@ -22,7 +22,7 @@ test("a repeated parameter reads its first value", () => {
 });
 
 test("a session is resumed on arrival, whatever the URL; the email form is only for no session", () => {
-  // Plain /signup, /signin, /signup?step=passkey and /signup?complete=1 all arrive the same way:
+  // Plain /signup, /signin, /signup?step=passkey and /signup?step=handle all arrive the same way:
   // the URL's parameters are not an input.
   assert.equal(arrivalFor({ preview: undefined, signedIn: true }), "resume");
   assert.equal(arrivalFor({ preview: undefined, signedIn: false }), "form");

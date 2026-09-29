@@ -12,10 +12,13 @@ import type { WalletDto } from "../../lib/custody-api";
  * be read, and that is not a zero. An empty wallet reads "0.00"; an unread one says so.
  */
 export function WelcomeStep({
+  title,
   handle,
   wallet,
   destination,
 }: {
+  /** From `welcomeTitle`: a new account's, or WELCOME BACK for one that already existed. */
+  title: string;
   /** May be empty: the sign-in rail never asks for a name, so the shell supplies it or does not. */
   handle: string;
   /** Null when GET /wallets/me has not answered, or answered 404 for an account with no wallet. */
@@ -28,7 +31,7 @@ export function WelcomeStep({
 
   return (
     <div className={styles.flowStep}>
-      <h1 className={styles.flowTitle}>WELCOME BACK</h1>
+      <h1 className={styles.flowTitle}>{title}</h1>
       {handle && <p className={styles.flowLead}>@{handle.toUpperCase()}</p>}
 
       <div className={styles.balanceCard}>

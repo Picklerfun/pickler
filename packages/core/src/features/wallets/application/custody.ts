@@ -331,7 +331,12 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     async register(
       userId: string,
       input: {
-        identity: DisplayIdentity;
+        /**
+         * The Turnkey root user's name, and the sub-organization's. Not the challenge's
+         * `DisplayIdentity`, which may carry the person's email for their keychain: this goes to
+         * Turnkey, and email is kept out of Turnkey.
+         */
+        ownerLabel: string;
         label: string;
         challenge: string;
         attestation: PasskeyAttestation;
@@ -352,7 +357,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       }
 
       const created = await deps.turnkey.create({
-        ownerLabel: input.identity.name,
+        ownerLabel: input.ownerLabel,
         discriminator: userId.slice(0, 8),
         label: input.label,
         challenge: input.challenge,

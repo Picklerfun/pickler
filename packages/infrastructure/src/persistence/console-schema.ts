@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
 import {
+  bigserial,
   boolean,
+  check,
   foreignKey,
+  index,
   jsonb,
   primaryKey,
   text,
@@ -10,6 +13,7 @@ import {
   uuid,
   bigint,
 } from "drizzle-orm/pg-core";
+import type { AgentConfig, Decision, RunRecord } from "@pickler/core";
 import { pickler, agents as runtimeAgents } from "./schema.js";
 import { workspaces } from "./product/identity.js";
 import { agents } from "./product/agents.js";
@@ -103,5 +107,75 @@ export const budgetProcessed = pickler
       key: text("key").notNull(),
     },
     (t) => [primaryKey({ columns: [t.agentId, t.key] })],
+  )
+  .enableRLS();
+
+const milliseconds = (name: string) => bigint(name, { mode: "number" });
+
+/**
+ * A paper run of a brief that is not an agent yet (docs/specs/studio-brief-v1.md §4). The runner
+ * executes it through `PostgresPreviewStore` with no `pickler.agents` row: the config snapshot is
+ * its agent. Owner-only, gone after `expires_at` unless adopted, when the draft create copies it in
+ * as the new agent's first run.
+ */
+export const previewRuns = pickler
+  .table(
+    "preview_runs",
+    {
+      id: text("id").primaryKey(),
+      userId: uuid("user_id").notNull(),
+      workspaceId: uuid("workspace_id")
+        .notNull()
+        .references(() => workspaces.id),
+      tenantId: text("tenant_id").notNull(),
+      status: text("status").$type<RunRecord["status"]>().notNull(),
+      createdAt: milliseconds("created_at").notNull(),
+      startedAt: milliseconds("started_at"),
+      finishedAt: milliseconds("finished_at"),
+      expiresAt: milliseconds("expires_at").notNull(),
+      leaseOwner: text("lease_owner"),
+      leaseExpiresAt: milliseconds("lease_expires_at"),
+      config: jsonb("config").$type<AgentConfig>().notNull(),
+      fingerprint: text("fingerprint").notNull(),
+      decision: jsonb("decision").$type<Decision>(),
+      error: text("error"),
+      adoptedAt: milliseconds("adopted_at"),
+      adoptedAgentId: text("adopted_agent_id"),
+    },
+    (t) => [
+      index("preview_runs_user_created").on(t.userId, t.createdAt),
+      index("preview_runs_queued")
+        .on(t.createdAt, t.id)
+        .where(sql`${t.status} = 'queued'`),
+      check(
+        "preview_run_status",
+        sql`${t.status} in ('queued','running','completed','failed','cancelled')`,
+      ),
+      check(
+        "preview_running_requires_lease",
+        sql`${t.status} <> 'running' OR (${t.leaseOwner} IS NOT NULL AND ${t.leaseExpiresAt} IS NOT NULL)`,
+      ),
+      check(
+        "preview_adoption_consistent",
+        sql`(${t.adoptedAt} IS NULL) = (${t.adoptedAgentId} IS NULL)`,
+      ),
+    ],
+  )
+  .enableRLS();
+
+/** A preview run's trace, in a run's event shape so the first-run trace code reads it unchanged. */
+export const previewEvents = pickler
+  .table(
+    "preview_events",
+    {
+      id: bigserial("id", { mode: "number" }).primaryKey(),
+      previewRunId: text("preview_run_id")
+        .notNull()
+        .references(() => previewRuns.id, { onDelete: "cascade" }),
+      type: text("type").notNull(),
+      data: jsonb("data").$type<unknown>().notNull(),
+      createdAt: milliseconds("created_at").notNull(),
+    },
+    (t) => [index("preview_run_events").on(t.previewRunId, t.id)],
   )
   .enableRLS();

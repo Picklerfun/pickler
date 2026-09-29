@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { INITIAL, next, rail, stepsFor } from "../src/features/auth/lib/flow";
+import { INITIAL, next, rail, stepsFor, welcomeTitle } from "../src/features/auth/lib/flow";
 import type { FlowEvent, FlowState, RailPhase, Step } from "../src/features/auth/lib/flow";
 import { verifiedEvent } from "../src/features/auth/lib/custody";
 import type { WalletDto } from "../src/features/auth/lib/custody-api";
@@ -34,29 +34,44 @@ test("the flow starts on the account screen of the sign-up rail, with nothing kn
     code: "",
     handle: "",
     needsWallet: false,
+    wallet: "none",
   });
 });
 
-test("signing up walks account, code, handle, passkey, welcome", () => {
+test("signing up walks account, code, passkey, handle, welcome", () => {
   const { steps, state } = walk(INITIAL, [
     { type: "code_sent", email: "ana@pickler.xyz" },
     { type: "code_changed", code: "482913" },
-    { type: "profile_missing" },
+    { type: "wallet_missing", profile: false },
+    { type: "passkey_created", profile: false },
     { type: "handle_claimed", handle: "nightowl" },
-    { type: "passkey_created" },
   ]);
   // The walk, not the rail. A rail that merely stopped listing HANDLE would leave this green
   // with the step still reachable, which is the whole reason this asserts the steps a person is
   // put through rather than the labels drawn above them.
-  assert.deepEqual(steps, ["code", "code", "handle", "passkey", "welcome"]);
+  assert.deepEqual(steps, ["code", "code", "passkey", "handle", "welcome"]);
   assert.deepEqual(state, {
     mode: "up",
     step: "welcome",
     email: "ana@pickler.xyz",
     code: "482913",
     handle: "nightowl",
-    needsWallet: false,
+    needsWallet: true,
+    wallet: "created",
   });
+});
+
+test("the handle is asked for only after the passkey step, never before it", () => {
+  const landed = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    verifiedEvent({ handle: null, wallet: null, enrolledHere: false }),
+  ]).state;
+  assert.equal(landed.step, "passkey");
+  // Nothing but the ceremony leaves the passkey step, so the handle step is out of reach until it.
+  const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
+  assert.ok(reachable(landed, without, 6).every((state) => state.step === "passkey"));
+  assert.equal(next(landed, { type: "handle_claimed", handle: "nightowl" }), landed);
+  assert.equal(next(landed, { type: "passkey_created", profile: false }).step, "handle");
 });
 
 test("signing in walks account, code, welcome — the handle is never asked for", () => {
@@ -166,50 +181,53 @@ test("the sign-up rail lights the phase you are on and every phase before it", (
 
   assert.deepEqual(rail(INITIAL), [
     phase("ACCOUNT", "active"),
-    phase("HANDLE", "todo"),
     phase("PASSKEY", "todo"),
+    phase("HANDLE", "todo"),
     phase("IN", "todo"),
   ]);
   // Both steps of ACCOUNT are the same phase: the bar must not move on the way to the code.
   assert.deepEqual(at([{ type: "code_sent", email: "ana@pickler.xyz" }]), [
     phase("ACCOUNT", "active"),
-    phase("HANDLE", "todo"),
     phase("PASSKEY", "todo"),
+    phase("HANDLE", "todo"),
     phase("IN", "todo"),
   ]);
   assert.deepEqual(
-    at([{ type: "code_sent", email: "ana@pickler.xyz" }, { type: "profile_missing" }]),
-    [
-      phase("ACCOUNT", "done"),
-      phase("HANDLE", "active"),
-      phase("PASSKEY", "todo"),
-      phase("IN", "todo"),
-    ],
-  );
-  assert.deepEqual(
     at([
       { type: "code_sent", email: "ana@pickler.xyz" },
-      { type: "profile_missing" },
-      { type: "handle_claimed", handle: "nightowl" },
+      { type: "wallet_missing", profile: false },
     ]),
     [
       phase("ACCOUNT", "done"),
-      phase("HANDLE", "done"),
       phase("PASSKEY", "active"),
+      phase("HANDLE", "todo"),
       phase("IN", "todo"),
     ],
   );
   assert.deepEqual(
     at([
       { type: "code_sent", email: "ana@pickler.xyz" },
-      { type: "profile_missing" },
-      { type: "handle_claimed", handle: "nightowl" },
-      { type: "passkey_created" },
+      { type: "wallet_missing", profile: false },
+      { type: "passkey_created", profile: false },
     ]),
     [
       phase("ACCOUNT", "done"),
-      phase("HANDLE", "done"),
       phase("PASSKEY", "done"),
+      phase("HANDLE", "active"),
+      phase("IN", "todo"),
+    ],
+  );
+  assert.deepEqual(
+    at([
+      { type: "code_sent", email: "ana@pickler.xyz" },
+      { type: "wallet_missing", profile: false },
+      { type: "passkey_created", profile: false },
+      { type: "handle_claimed", handle: "nightowl" },
+    ]),
+    [
+      phase("ACCOUNT", "done"),
+      phase("PASSKEY", "done"),
+      phase("HANDLE", "done"),
       phase("IN", "active"),
     ],
   );
@@ -249,7 +267,7 @@ test("a step outside the current rail lights nothing rather than lighting everyt
 });
 
 test("the rails ask for the passkey on sign-up always and on sign-in only without a wallet", () => {
-  assert.deepEqual(stepsFor("up"), ["auth", "code", "handle", "passkey", "welcome"]);
+  assert.deepEqual(stepsFor("up"), ["auth", "code", "passkey", "handle", "welcome"]);
   assert.deepEqual(stepsFor("in"), ["auth", "code", "welcome"]);
   assert.deepEqual(stepsFor("in", true), ["auth", "code", "passkey", "welcome"]);
 });
@@ -261,10 +279,12 @@ const EVERY_EVENT: readonly FlowEvent[] = [
   { type: "code_sent", email: "ana@pickler.xyz" },
   { type: "code_changed", code: "482913" },
   { type: "handle_claimed", handle: "nightowl" },
-  { type: "profile_missing" },
-  { type: "wallet_missing" },
+  { type: "profile_missing", wallet: true },
+  { type: "wallet_missing", profile: false },
+  { type: "wallet_missing", profile: true },
   { type: "account_found" },
-  { type: "passkey_created" },
+  { type: "passkey_created", profile: false },
+  { type: "passkey_created", profile: true },
   { type: "device_unknown" },
   { type: "approve_started" },
   { type: "device_added" },
@@ -306,10 +326,10 @@ const WALLET: WalletDto = {
  * a verified code can find — a profile or none, a sub-organization or none (a 404 is null), this
  * browser marked or not — on both rails. Then every event any screen can send, except the
  * ceremony finishing, as deep as the longest rail. Welcome is reachable that way exactly when the
- * account already has both a profile and a sub-organization; otherwise only `passkey_created`
- * gets there.
+ * account already has a sub-organization — then a profile, or the handle step that makes one;
+ * otherwise only `passkey_created` gets there, and the handle step is unreachable before it.
  */
-test("from INITIAL, nobody reaches welcome without a sub-organization but through the passkey step", () => {
+test("after each landing a verified code can produce, welcome needs a wallet and the handle comes after the passkey", () => {
   const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
   for (const mode of ["up", "in"] as const) {
     for (const handle of [null, "nightowl"]) {
@@ -323,19 +343,23 @@ test("from INITIAL, nobody reaches welcome without a sub-organization but throug
           const label = `${mode}, profile ${handle !== null}, wallet ${wallet !== null}, marked ${enrolledHere}`;
 
           const welcomeWithout = reachable(landed, without, 6).some((s) => s.step === "welcome");
-          assert.equal(welcomeWithout, handle !== null && wallet !== null, label);
+          assert.equal(welcomeWithout, wallet !== null, label);
 
           if (wallet === null) {
-            // The passkey step is on the way, and the ceremony finishing is what leaves it.
+            // The passkey step is where they land, and the ceremony finishing is what leaves it.
+            assert.equal(landed.step, "passkey", label);
             const all = reachable(landed, EVERY_EVENT, 6);
-            assert.ok(
-              all.some((s) => s.step === "passkey"),
-              label,
-            );
             assert.ok(
               all.some((s) => s.step === "welcome"),
               label,
             );
+            // The handle step is behind the passkey step: out of reach until the ceremony.
+            assert.ok(
+              reachable(landed, without, 6).every((s) => s.step !== "handle"),
+              label,
+            );
+          } else if (handle === null) {
+            assert.equal(landed.step, "handle", label);
           }
         }
       }
@@ -343,33 +367,103 @@ test("from INITIAL, nobody reaches welcome without a sub-organization but throug
   }
 });
 
-/* Opening /signup or /signin with a session — plain, or `?step=passkey` where every signed-in
-   screen sends a person without a master wallet — resumes it: the account is read on arrival and
-   its landing event is sent from the account screen, with nothing typed. */
-test("a resumed signup with a profile and no wallet lands on the passkey step, the rest done", () => {
-  const resumed = next(
-    INITIAL,
-    verifiedEvent({ handle: "nightowl", wallet: null, enrolledHere: false }),
-  );
-  assert.equal(resumed.step, "passkey");
-  assert.deepEqual(rail(resumed), [
-    phase("ACCOUNT", "done"),
-    phase("HANDLE", "done"),
-    phase("PASSKEY", "active"),
-    phase("IN", "todo"),
-  ]);
-  const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
-  assert.ok(reachable(resumed, without, 6).every((state) => state.step === "passkey"));
-  assert.equal(next(resumed, { type: "passkey_created" }).step, "welcome");
+/** The events that establish a master wallet: the ceremony, or a landing check that found one. */
+const WALLET_EVENTS: readonly FlowEvent["type"][] = [
+  "passkey_created",
+  "profile_missing",
+  "account_found",
+  "device_unknown",
+];
+
+/**
+ * A true walk: from INITIAL, every event any screen can send, in every order, as deep as the
+ * longest path through the machine. Every state on the handle step or welcome knows of a wallet,
+ * and with the wallet-establishing events removed neither step can be reached at all. Only the
+ * ceremony creates one, so a new account reaches the handle step only through `passkey_created`.
+ */
+test("from INITIAL over every event, neither the handle step nor welcome is reachable without a wallet", () => {
+  const all = reachable(INITIAL, EVERY_EVENT, 8);
+  for (const step of ["handle", "welcome"] as const) {
+    const on = all.filter((state) => state.step === step);
+    assert.ok(on.length > 0, `${step} is reachable at all`);
+    for (const state of on) {
+      assert.notEqual(state.wallet, "none", `${step} without a wallet: ${JSON.stringify(state)}`);
+    }
+  }
+
+  const without = EVERY_EVENT.filter((event) => !WALLET_EVENTS.includes(event.type));
+  const walletless = reachable(INITIAL, without, 8);
+  assert.ok(walletless.every((state) => state.step !== "handle" && state.step !== "welcome"));
+  assert.ok(walletless.every((state) => state.wallet === "none"));
+
+  // A handle claimed where no wallet is known changes nothing, even on the handle step itself.
+  const forged: FlowState = { ...INITIAL, step: "handle" };
+  assert.equal(next(forged, { type: "handle_claimed", handle: "nightowl" }), forged);
 });
 
-test("a resumed signup with no profile lands on the handle step, then the passkey step", () => {
-  const { steps } = walk(INITIAL, [
-    verifiedEvent({ handle: null, wallet: null, enrolledHere: false }),
-    { type: "handle_claimed", handle: "nightowl" },
-    { type: "passkey_created" },
+/* Opening /signup or /signin with a session — plain, `?step=passkey` where every signed-in screen
+   sends a person without a master wallet, or `?step=handle` where it sends one with a wallet and
+   no profile — resumes it: the account is read on arrival and its landing event is sent from the
+   account screen, with nothing typed. */
+test("a resumed signup with neither a profile nor a wallet lands on the passkey step, then the handle", () => {
+  const resumed = next(INITIAL, verifiedEvent({ handle: null, wallet: null, enrolledHere: false }));
+  assert.equal(resumed.step, "passkey");
+  assert.equal(resumed.mode, "up");
+  assert.deepEqual(rail(resumed), [
+    phase("ACCOUNT", "done"),
+    phase("PASSKEY", "active"),
+    phase("HANDLE", "todo"),
+    phase("IN", "todo"),
   ]);
-  assert.deepEqual(steps, ["handle", "passkey", "welcome"]);
+  const { steps } = walk(resumed, [
+    { type: "passkey_created", profile: false },
+    { type: "handle_claimed", handle: "nightowl" },
+  ]);
+  assert.deepEqual(steps, ["handle", "welcome"]);
+});
+
+test("a resumed signup with a wallet and no profile lands on the handle step, the passkey done", () => {
+  for (const enrolledHere of [false, true]) {
+    const resumed = next(INITIAL, verifiedEvent({ handle: null, wallet: WALLET, enrolledHere }));
+    assert.equal(resumed.step, "handle");
+    assert.deepEqual(rail(resumed), [
+      phase("ACCOUNT", "done"),
+      phase("PASSKEY", "done"),
+      phase("HANDLE", "active"),
+      phase("IN", "todo"),
+    ]);
+    assert.equal(next(resumed, { type: "handle_claimed", handle: "nightowl" }).step, "welcome");
+  }
+});
+
+/* An account made before the order changed: it chose a handle, then never finished the passkey.
+   It is asked for the passkey and welcomed, and never for a second handle. */
+test("a resumed legacy account with a profile and no wallet: passkey, then welcome, no handle", () => {
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const resumed = next(
+      start,
+      verifiedEvent({ handle: "nightowl", wallet: null, enrolledHere: false }),
+    );
+    assert.equal(resumed.step, "passkey", mode);
+    assert.deepEqual(
+      rail(resumed),
+      [phase("ACCOUNT", "done"), phase("PASSKEY", "active"), phase("IN", "todo")],
+      mode,
+    );
+    const without = EVERY_EVENT.filter((event) => event.type !== "passkey_created");
+    assert.ok(
+      reachable(resumed, without, 6).every((state) => state.step === "passkey"),
+      mode,
+    );
+    const done = next(resumed, { type: "passkey_created", profile: true });
+    assert.equal(done.step, "welcome", mode);
+    assert.deepEqual(rail(done), [
+      phase("ACCOUNT", "done"),
+      phase("PASSKEY", "done"),
+      phase("IN", "active"),
+    ]);
+  }
 });
 
 test("a resumed signup with a complete account is welcomed as a sign-in", () => {
@@ -388,8 +482,8 @@ const resumed = (mode: "up" | "in", account: Parameters<typeof verifiedEvent>[0]
     verifiedEvent(account),
   );
 
-test("plain /signup with a session resumes: handle, passkey, or welcome — never the email form", () => {
-  assert.equal(resumed("up", { handle: null, wallet: null, enrolledHere: false }).step, "handle");
+test("plain /signup with a session resumes: passkey, handle, or welcome — never the email form", () => {
+  assert.equal(resumed("up", { handle: null, wallet: null, enrolledHere: false }).step, "passkey");
   assert.equal(resumed("up", { handle: null, wallet: WALLET, enrolledHere: true }).step, "handle");
   assert.equal(
     resumed("up", { handle: "nightowl", wallet: null, enrolledHere: false }).step,
@@ -427,7 +521,7 @@ test("sign-in without a sub-organization lands on the passkey step and leaves it
     verifiedEvent({ handle: "nightowl", wallet: null, enrolledHere: true }),
   ]).state;
   assert.equal(missing.step, "passkey");
-  assert.equal(next(missing, { type: "passkey_created" }).step, "welcome");
+  assert.equal(next(missing, { type: "passkey_created", profile: true }).step, "welcome");
 });
 
 test("sign-in with a sub-organization goes straight to welcome, with no passkey phase", () => {
@@ -443,7 +537,7 @@ test("sign-in without a sub-organization walks account, code, passkey, welcome",
   const signIn = next(INITIAL, { type: "mode_chosen", mode: "in" });
   const { steps, state } = walk(signIn, [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "wallet_missing" },
+    { type: "wallet_missing", profile: true },
   ]);
   assert.deepEqual(steps, ["code", "passkey"]);
   assert.equal(state.mode, "in");
@@ -452,7 +546,7 @@ test("sign-in without a sub-organization walks account, code, passkey, welcome",
     phase("PASSKEY", "active"),
     phase("IN", "todo"),
   ]);
-  const done = next(state, { type: "passkey_created" });
+  const done = next(state, { type: "passkey_created", profile: true });
   assert.deepEqual(rail(done), [
     phase("ACCOUNT", "done"),
     phase("PASSKEY", "done"),
@@ -460,14 +554,24 @@ test("sign-in without a sub-organization walks account, code, passkey, welcome",
   ]);
 });
 
-test("sign-in on an account with no profile finishes signing up, passkey included", () => {
+test("sign-in on an account with neither finishes signing up: passkey, then handle", () => {
   const { steps, state } = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
     { type: "code_sent", email: "ana@pickler.xyz" },
-    { type: "profile_missing" },
+    verifiedEvent({ handle: null, wallet: null, enrolledHere: false }),
+    { type: "passkey_created", profile: false },
     { type: "handle_claimed", handle: "nightowl" },
-    { type: "passkey_created" },
   ]);
-  assert.deepEqual(steps, ["code", "handle", "passkey", "welcome"]);
+  assert.deepEqual(steps, ["code", "passkey", "handle", "welcome"]);
+  assert.equal(state.mode, "up");
+});
+
+test("sign-in on an account with a wallet and no profile finishes signing up at the handle", () => {
+  const { steps, state } = walk(next(INITIAL, { type: "mode_chosen", mode: "in" }), [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    verifiedEvent({ handle: null, wallet: WALLET, enrolledHere: true }),
+    { type: "handle_claimed", handle: "nightowl" },
+  ]);
+  assert.deepEqual(steps, ["code", "handle", "welcome"]);
   assert.equal(state.mode, "up");
 });
 
@@ -481,7 +585,67 @@ test("a sign-up that finds a complete account behind it is welcomed as a sign-in
 });
 
 test("an event sent from a screen that cannot send it changes nothing", () => {
-  assert.equal(next(INITIAL, { type: "passkey_created" }), INITIAL);
+  assert.equal(next(INITIAL, { type: "passkey_created", profile: false }), INITIAL);
   assert.equal(next(INITIAL, { type: "device_skipped" }), INITIAL);
   assert.equal(next(INITIAL, { type: "handle_claimed", handle: "x" }), INITIAL);
+});
+
+test("a new account is greeted as one; WELCOME BACK is only for an account that already existed", () => {
+  // Created in this session: passkey, then handle, on the sign-up rail.
+  const created = walk(INITIAL, [
+    { type: "code_sent", email: "ana@pickler.xyz" },
+    verifiedEvent({ handle: null, wallet: null, enrolledHere: false }),
+    { type: "passkey_created", profile: false },
+    { type: "handle_claimed", handle: "nightowl" },
+  ]).state;
+  assert.equal(created.step, "welcome");
+  assert.equal(welcomeTitle(created), "WALLET CREATED");
+
+  // A sign-in, on either rail.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const signedIn = walk(start, [
+      { type: "code_sent", email: "ana@pickler.xyz" },
+      verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: true }),
+    ]).state;
+    assert.equal(signedIn.step, "welcome", mode);
+    assert.equal(welcomeTitle(signedIn), "WELCOME BACK", mode);
+  }
+
+  // A resumed complete account, with nothing typed.
+  const resumedComplete = next(
+    INITIAL,
+    verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: true }),
+  );
+  assert.equal(welcomeTitle(resumedComplete), "WELCOME BACK");
+
+  // An older account that only added its wallet, on either rail.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const legacy = walk(start, [
+      verifiedEvent({ handle: "nightowl", wallet: null, enrolledHere: false }),
+      { type: "passkey_created", profile: true },
+    ]).state;
+    assert.equal(legacy.step, "welcome", mode);
+    assert.equal(welcomeTitle(legacy), "WELCOME BACK", mode);
+  }
+
+  // A resumed account that already had a wallet and only now chose its handle.
+  for (const mode of ["up", "in"] as const) {
+    const start = mode === "up" ? INITIAL : next(INITIAL, { type: "mode_chosen", mode });
+    const handled = walk(start, [
+      verifiedEvent({ handle: null, wallet: WALLET, enrolledHere: true }),
+      { type: "handle_claimed", handle: "nightowl" },
+    ]).state;
+    assert.equal(handled.step, "welcome", mode);
+    assert.equal(welcomeTitle(handled), "WELCOME BACK", mode);
+  }
+
+  // Leaving the new-device rail.
+  const skipped = walk(INITIAL, [
+    verifiedEvent({ handle: "nightowl", wallet: WALLET, enrolledHere: false }),
+    { type: "device_skipped" },
+  ]).state;
+  assert.equal(skipped.step, "welcome");
+  assert.equal(welcomeTitle(skipped), "WELCOME BACK");
 });

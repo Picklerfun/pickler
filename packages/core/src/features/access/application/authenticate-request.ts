@@ -99,7 +99,7 @@ export function createAuthenticateRequest(deps: AuthenticateDependencies) {
 
     return {
       principal: buildUserPrincipal({
-        user: { id: user.userId, email: user.email },
+        user: { id: user.userId, email: user.email, walletAccount: user.walletAccount },
         integrator: workspace,
         memberRole: workspace ? role : null,
         superAdminEmails: deps.superAdminEmails,

@@ -4,7 +4,12 @@
 // - Issuer is required by the type, so pinning can never be skipped by a missing env var.
 // - Failures surface as the core InvalidAccessTokenError.
 
-import { InvalidAccessTokenError, type AccessTokenVerifier } from "@pickler/core";
+import {
+  InvalidAccessTokenError,
+  WALLET_ACCOUNT_METADATA_KEY,
+  WALLET_ACCOUNT_METADATA_VALUE,
+  type AccessTokenVerifier,
+} from "@pickler/core";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 export interface SupabaseJwtVerifierConfig {
@@ -38,9 +43,18 @@ export function createSupabaseJwtVerifier(config: SupabaseJwtVerifierConfig): Ac
         if (typeof payload.sub !== "string" || payload.sub.length === 0) {
           throw new Error("JWT missing sub");
         }
+        // `app_metadata` is written only with the secret key, so its marker can be trusted where
+        // the email cannot: see WALLET_ACCOUNT_METADATA_KEY.
+        const appMetadata = payload["app_metadata"];
+        const walletAccount =
+          typeof appMetadata === "object" &&
+          appMetadata !== null &&
+          (appMetadata as Record<string, unknown>)[WALLET_ACCOUNT_METADATA_KEY] ===
+            WALLET_ACCOUNT_METADATA_VALUE;
         return {
           userId: payload.sub,
           email: typeof payload.email === "string" ? payload.email : undefined,
+          walletAccount,
         };
       } catch (cause) {
         throw new InvalidAccessTokenError({ cause });

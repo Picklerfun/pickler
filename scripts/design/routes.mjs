@@ -359,6 +359,52 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-schedule",
   },
+  // The home before the first agent (`?stage=empty`), the "Pickler Studio Empty v4" canvas: the top
+  // bar, the disabled rail and the blank brief instead of a redirect to /studio/new. It proves the
+  // brief, which no staged run has.
+  {
+    path: "/studio?stage=empty",
+    name: "studio-home-empty",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-empty",
+  },
+  // The brief home with its paper run live, done and stale (`?stage=brief-*`), and the draft home
+  // after create (`?stage=draft`). Each proves the state it stages, so a stage that fell back to
+  // another is not reported green.
+  {
+    path: "/studio?stage=brief-running",
+    name: "studio-brief-running",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="LIVE"]',
+  },
+  {
+    path: "/studio?stage=brief-done",
+    name: "studio-brief-done",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="DONE"]',
+  },
+  {
+    path: "/studio?stage=brief-stale",
+    name: "studio-brief-stale",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="STALE"]',
+  },
+  {
+    path: "/studio?stage=draft",
+    name: "studio-home-draft",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: "#home-go-public",
+  },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
   {
@@ -526,9 +572,10 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
-  // The signup's mandatory passkey step: its one prompt creates the sub-organization and the
-  // master wallet, and every signed-in screen sends a person without that wallet back to it. A
-  // real visit reaches it only with a session that has a profile and no wallet, which the harness
+  // The signup's mandatory passkey step, straight after the code and before the handle: its one
+  // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a
+  // person without that wallet back to it. A real visit reaches it only with a session that has
+  // no wallet, which the harness
   // cannot have — its cookie passes the middleware's presence check and is not a session
   // (render.mjs). `?state=passkey` opens the signup on that step with no session and no reads,
   // outside production only. The studio by hosts.ts's segments, and the (auth) layout is dark.

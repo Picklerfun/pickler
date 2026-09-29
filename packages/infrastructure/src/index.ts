@@ -61,8 +61,11 @@ export {
 } from "./turnkey/turnkey-activity-forwarder.js";
 export { createSupabaseProfileRepository } from "./supabase/profiles/supabase-profile-repository.js";
 export {
+  createAuthUserLookup,
   createWalletAccounts,
   syntheticEmail,
+  walletAccountVerdict,
+  type AuthUserFacts,
   type WalletAccountsConfig,
 } from "./supabase/wallet-accounts.js";
 
@@ -70,7 +73,22 @@ export { PostgresResearchStore } from "./persistence/research-store.js";
 export { ExaResearch, exaSearchRequest } from "./research/exa.js";
 export { PolymarketData } from "./polymarket/market-data.js";
 export { PostgresPaperStore } from "./persistence/paper-store.js";
+export {
+  PostgresPreviewStore,
+  type PreviewExecutionRepository,
+} from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresProfileRepository } from "./persistence/profile-repository.js";
+export {
+  PostgresApiKeyDirectory,
+  PostgresWorkspaceDirectory,
+} from "./persistence/access-directory.js";
+export {
+  PostgresAgentEventLog,
+  PostgresAgentRegistry,
+  PostgresBudgetSource,
+} from "./persistence/agent-registry.js";
+export { PostgresApplicants, PostgresWaitlist } from "./persistence/growth-store.js";
 export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";

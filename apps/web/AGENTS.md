@@ -13,7 +13,7 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio: opens on the home; no agents sends you to /studio/new
+  studio/page.tsx           # The studio: opens on the home; no agents opens its empty state
   studio/new/page.tsx       # Creating an agent: `?step=` names the screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
@@ -84,6 +84,8 @@ The account menu names which wallet you are looking at, so a portfolio is never 
 It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
 
 **Connecting is not signing in.** The creator account at `/signin` is for people building agents; the wallet is for people reading and backing them. Do not fold one into the other.
+
+A wallet session belongs to one address. `lib/wallet-session.ts` keeps the token with the address and chain family it was issued for (`WalletSession`), and `decideSession(cached, connected, now)` is the only thing that hands it back: the same address with a token more than `EXPIRY_MARGIN_MS` from its `exp` reuses it, a different address or an expired or unreadable token signs again, and nothing connected has no session. `wallet-context.tsx` lets go of the session when the account changes or the wallet disconnects (a change of chain keeps it), and `dropWalletSession` signs the shared Supabase client out locally only when its session is that same user's and a wallet account's (`madeByWalletSignIn`: `app_metadata.pickler_account === "wallet"`). A studio account that linked the wallet is opened by signing in with it, but its session also came from a passkey, an email or Google, so a wallet switch never ends it. After a reload the page holds nothing while the browser is still signed in, so on mount a wallet account's session found on the client is adopted (`adoptSession`). The session does not record its address — the token carries a digest — so an `AdoptedSession` has none: it is never reused as a token (the next action signs again), and `releases(held, previous, next)` lets go of it on any change of address, on disconnect, and on connecting when nothing was connected. `session` on the context is derived from whose session is held, never stored. `signInWithWallet` answers `{ token }` or `{ error }` (`lib/wallet-sign-in.ts`, `signInAs`; `error: null` is a closed prompt), and a caller shows the error from that result — `sessionError` read after the await is the value of the render the call started in.
 
 Three pages only mean something for a connected wallet — `/portfolio`, `/activity` and `/reads` — and they say so through `ConnectGate` rather than showing an empty table. Following an agent is kept in the browser against the address, so a different wallet in the same browser has a different list and nothing about it reaches a server.
 
@@ -162,8 +164,11 @@ research. Reuse an idempotency key after an uncertain admission response. Poll p
 research every three seconds, stop at terminal status, suspend in hidden tabs and clean up
 requests/timers on navigation. Results are not added to the public sample directory.
 
-The auth callback exchanges a Supabase authorization code and returns to the studio. Studio
-onboarding finishes missing profiles and idempotently provisions a workspace. Provider access
+The auth callback exchanges a Supabase authorization code and redirects once, from what the account
+holds (`callbackDestination` in `features/auth/lib/callback.ts`): no master wallet →
+`/signup?step=passkey` whatever the profile, a wallet and no profile → `/signup?step=handle`, both
+→ the studio, and a failed read → `/signup`, which reads again. Studio onboarding idempotently
+provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
 ^the studio; public wallet/token/read demonstrations retain their existing design and limits.
 
@@ -233,8 +238,9 @@ way regardless of which family a request belongs to.
 
 ## Creating an agent
 
-`/studio/new` is the only place an agent is created, and `/studio` sends a person with no agents
-there (the old empty studio, its stepped flow and `AgentForm` are gone). `create/create.tsx` owns the
+`/studio/new` is the only place an agent is created. `/studio` no longer sends a person with no
+agents there: they land on the empty home and choose to go (the old stepped flow and `AgentForm`
+are gone). `create/create.tsx` owns the
 screen: a `useReducer` over `flowReducer` (`create/flow.ts`, pure and tested in
 `studio-create-flow.test.ts`) holding the `Draft`, the screen, `auto`/`manual` mode and the Edit
 snapshot that Cancel restores. `?step=` mirrors the screen through `router.replace`; `describe` is
@@ -279,9 +285,17 @@ the ceremony between prompts. `create/gate.ts` is pure and pinned in `studio-cre
 `createGate(agents)` answers `{ open: true }` or `{ open: false, agent }` (one unfunded agent at a
 time, from each agent's `canCreateAnother`, naming the first below 10 AUSD). The create screen
 reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx`
-(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to
-`/studio?agent=<id>`) instead of the flow; "Create and run it once" goes through
+(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to the studio
+opened on that agent, `gateHref(agent, useStudioHref())`) instead of the flow; "Create and run it once" goes through
 `startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
+That gate is the funding lock only, and a private draft is never the agent it names: a draft has
+no wallet to fund. The API's other reason, `draft_limit` (three drafts), closes only the making of
+drafts, so `/studio/new` stays open at three, and so do the menus' "+ New agent" entries (the
+home's Menu and the shell's), which lead there: they read `newAgentLock(agents)`, the funding lock
+in words ("Fund <wallet agent> first. One unfunded agent at a time."). The draft limit is said
+where a draft is refused: a 409 `DRAFT_LIMIT` on the brief's create reads "At most 3 drafts at a
+time." (`lib/messages.ts`). `menuAccess` orders the reasons research, view-only, funding, draft
+limit; no entry passes a draft limit today.
 An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
 "New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
 message for `CONFLICT` and `NOT_FOUND` ("Approve the wallet's rules first", "That wallet already
@@ -292,6 +306,37 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 "Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
 
 ## The studio home
+
+With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`), drawn from the
+"Pickler Studio Empty v4" canvas: a top bar with the dashed "No agent yet" chip, TESTNET and the
+profile; the studio rail with every section disabled ("After you create your agent"); and the first
+agent's brief — its five sections (thesis, reads, enters, exits, never) drawn blank as prompts, a
+"Starting point: Blank" card and an idle paper run beside it, the second-passkey suggestion above it.
+The canvas edits the brief and runs it on paper in place; neither has a backend (the brief is not
+the `/studio/new` draft, and a scripted run would be fake), so "Create your first agent" goes to
+`/studio/new` (disabled with the reason when research is not enabled or the person cannot manage)
+and "Start from: a ranked agent" goes to `/agents`. Below 860px the rail is hidden and the Menu
+appears in the top bar instead. `HomeMenu` takes `agent: null` then: "+ New agent" is open
+(`createGate([])`) and every section is listed disabled with "After you create your agent".
+`home/access.ts` holds that decision, pure: `menuAccess` answers whether sections open and whether
+"+ New agent" is a link, with one reason (research access, then view-only, then the unfunded-agent
+lock), and the empty home's button and rail read the same answer.
+Creating the draft and opening it are two steps: once `createDraft` answered, a failed reload reads
+"Created {Name}. Couldn't load it · reload" on the button, and a press only reloads, never creates a
+second draft (`createPress` and `createdLabel` in `brief/model.ts`, pinned in `studio-brief.test.ts`).
+`lib/landing.ts` decides the screen: `studioLanding(loaded, agents, section)` is `home` or `section`
+with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
+read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The
+wallet and profile gates run before it, unchanged.
+
+No link in the studio, account or auth screens names a cross-product path as a literal. On the
+studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
+404s, so the studio's home comes from `useStudioHref()` (with `studioAgentHref(home, id)` from
+`lib/select.ts` to open it on an agent) and a marketplace path from `useMarketplaceHref(path)`
+(`features/site/studio-href.tsx`, over `marketplaceUrl` in `server/hosts.ts`): relative on a host
+serving both products, `https://<marketplace host>/path` from the studio host. The middleware's
+rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
+`/studio?agent=<id>&section=<key>` there.
 
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
@@ -322,16 +367,20 @@ per part, each with a harness id: `strip.tsx` (`home-strip`), `agent-card.tsx` (
 `picks.tsx` (`home-picks`), `next-up.tsx` (`home-next`) and `menu.tsx` (`home-menu`).
 
 The deposit prepares, stamps the exact body the API returned with `WebauthnStamper` (the relying
-party from a custody challenge fetched as the sheet opens) and confirms, then reads the balance now
+party from a custody challenge, read as the first sheet opens and kept for the session by
+`relyingParty()`, so later openings store no challenge) and confirms, then reads the balance now
 and twice more while the transfer lands. `lib/passkey.ts` holds that stamper, `session()` and
 `custody()`, shared with the creation ceremony. The limits save themselves 700 ms after a change
-through `PUT /limits` and say "Applies when it trades for real". The interval picker calls
+through `PUT /limits` and say "Applies when it trades for real"; closing the sheet inside that
+delay saves the pending change at once rather than dropping it (`lib/pending-save.ts`, pinned in
+`studio-pending-save.test.ts`). The interval picker calls
 `setIntervalHours`, so choosing it never turns the schedule off. The mark and the top-bar chip paint
 from the DTO's `accent` through `accentVars`, like every other agent on the site (`cyan` renders
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, the canvas's run built from real event types on a fixed clock so the server's
+`home/fixture.ts`, and `?stage=empty` renders the empty home with no fixture (`StudioStage`);
+the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
 HTML matches the browser's. It is gated on the build alone, like the creation flow's sample, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
 nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id
@@ -346,16 +395,34 @@ authenticated server identity either: connecting is a read that says which addre
 
 A sub-organization is born at signup, before any agent (spec §4.1): the studio's profile shows the
 master wallet from the first visit, and a signed-in person without one does not get in anywhere.
-`lib/flow.ts` is the pure machine, pinned in `flow.test.ts`: signup is
-`auth → code → handle → passkey → welcome`, and the only event that leaves `passkey` is
-`passkey_created`; signin is `auth → code → welcome`, or `auth → code → passkey → welcome` when the
-landing check (`landing` in `lib/custody.ts`, reading `GET /v1/signing/wallets/me`) finds no
-sub-organization and sends `wallet_missing`. What the landing check dispatches is `verifiedEvent`
+Signup: email → code → passkey (mandatory; creates the master wallet) → handle (creates the profile
+and workspace) → welcome. `lib/flow.ts` is the pure machine, pinned in `flow.test.ts`: signup is
+`auth → code → passkey → handle → welcome`, and the only event that leaves `passkey` is
+`passkey_created { profile }`, which goes to `handle` when there is no profile yet and to `welcome`
+when there is one (an account made before the order changed). The handle step's
+`POST /v1/profile` (`ensureProfile`) runs only after the wallet exists, and the API refuses it
+otherwise (409 `wallet_required`) for a studio (email or Google) account. A wallet sign-in account
+— only one whose token carries the server-only `app_metadata.pickler_account = "wallet"` — is
+exempt and claims its handle from the marketplace portfolio (`wallet/components/claim-handle.tsx`)
+with no custody account; one that has not signed in since the marker existed gets 409 until its
+next wallet sign-in sets it. If it opens the studio, the gates send it to the passkey step. Signin is
+`auth → code → welcome`, or `auth → code → passkey → welcome` when the landing check (`landing` in
+`lib/custody.ts`, reading `GET /v1/signing/wallets/me` and `GET /v1/profile`) finds no
+sub-organization on an account with a profile and sends `wallet_missing { profile: true }`. The
+landing check puts the wallet first: no wallet → `passkey` whatever the profile; a wallet and no
+profile → `handle` (`profile_missing { wallet: true }`, the finding carried in the event's type);
+both → welcome, or the new-device rail when this browser is
+not marked enrolled. What the landing check dispatches is `verifiedEvent`
 (pure, in `lib/custody.ts`, over `landing`); a read that fails other than with a 404 dispatches
 nothing, and the screen says the account could not be read, with "Try again". Every event is
-accepted only on the steps whose screen can send it, and a walk from `INITIAL` through
-`verifiedEvent` for every account shape pins that welcome is reachable without `passkey_created`
-only for an account that already has a profile and a sub-organization.
+accepted only on the steps whose screen can send it. `FlowState.wallet` (`none`, `found`,
+`created`) is set only by the events that establish a wallet — `passkey_created`, `profile_missing`,
+`account_found`, `device_unknown` — and `handle_claimed` is ignored while it is `none`. A walk from
+`INITIAL` over every event pins that no state on the handle step or welcome lacks a wallet, and
+that neither step is reachable at all without those events; a second walk, after `verifiedEvent`
+for every account shape, pins that the handle step comes only after the passkey step for an account
+without a wallet. `welcomeTitle` says WALLET CREATED only on the sign-up rail after the ceremony
+created the wallet in this session, and WELCOME BACK otherwise.
 
 The step is `steps/create-wallet-step.tsx` (`#signup-passkey`, recovered from the `PasskeyStep`
 commit c4383d2 deleted): one prompt, the enrolment ceremony (`createWallet`: challenge fetched as
@@ -371,19 +438,25 @@ it just made is on the list; one that is not (`orphan`) goes to `/passkey`'s add
 an unreadable list marks nothing.
 
 Every signed-in custody screen sends a person without a sub-organization to the signup's passkey
-step: the studio shell (`studio.tsx`), the create screen (`create/create.tsx`, also when the agent
-ceremony throws `NoSubOrganization`), `/account` with every section (`features/account/account.tsx`,
-where the master wallet is shown) and `/passkey` read it through `readSubOrganization` (the wallet,
+step, whatever the profile, and one with a wallet and no profile to its handle step: the studio
+shell (`studio.tsx`), the create screen (`create/create.tsx`, also when the agent ceremony throws
+`NoSubOrganization`), `/account` with every section (`features/account/account.tsx`, where the
+master wallet is shown) and `/passkey` read the wallet through `readSubOrganization` (the wallet,
 or null for a 404; any other failure propagates — to the studio's load error, the account's wallet
-card, or /passkey's "could not be read") and `redirectFor`, which answers `SIGNUP_PASSKEY_STEP`
-(`/signup?step=passkey`) for null, after the session guard, and `router.replace` there before
-rendering anything else. `/portfolio` and the marketplace screens are wallet-connection surfaces,
+card, or /passkey's "could not be read") and the profile (null only for a 404), and ask
+`redirectFor({ wallet, profile })`, which answers `SIGNUP_PASSKEY_STEP` (`/signup?step=passkey`)
+for a null wallet, `SIGNUP_HANDLE_STEP` (`/signup?step=handle`) for a wallet and a null profile,
+and null otherwise, after the session guard; they `router.replace` there before rendering anything
+else. The studio and the create screen read the wallet first and call `ensureProfile` only once it
+exists, because `ensureProfile` can write a profile from sign-up metadata; nothing sends anyone to
+`?complete=1` any more. `/portfolio` and the marketplace screens are wallet-connection surfaces,
 not custody, and do not redirect. `/signup` and `/signin` resume any session they are opened with, whatever the URL
 (`arrivalFor` in `features/auth/lib/signup-entry.ts`; `/signup?step=passkey` is just the readable
 redirect target): the flow reads the account on arrival and sends the landing event from the
-account screen, so it lands on the handle step with no profile, on the passkey step with a profile
-and no wallet (the rail reads ACCOUNT and HANDLE done on signup, ACCOUNT done on signin), or on
-welcome for a complete account (`account_found`, a sign-in on either rail). The email form appears
+account screen, so it lands on the passkey step with no wallet (the signup rail, ACCOUNT done, when
+there is no profile either; the signin rail ACCOUNT → PASSKEY → IN for a profile without a wallet),
+on the handle step with a wallet and no profile (ACCOUNT and PASSKEY done), or on welcome for a
+complete account (`account_found`, a sign-in on either rail). The URL's `?step=` is cosmetic. The email form appears
 only when there is no session; the form column says "READING YOUR ACCOUNT…" until that is known,
 and a failed read offers "Try again" rather than a guess. `/passkey` is add-device only: the add-passkey ceremony and the device list.
 
@@ -401,7 +474,7 @@ on the studio home (`#home-second-passkey`, from one read in the shell's load pa
 
 `/signup?state=passkey` (`signupPreviewFromSearch`, outside production only, gated on the build like
 `?stage=`) opens the signup on its passkey step with no session and no reads, because a real visit
-needs a session with a profile and no wallet and the design harness has none;
+needs a session with no wallet and the design harness has none;
 `scripts/design/routes.mjs` measures it as `signup-passkey`.
 
 ## Cloudflare trading pilot

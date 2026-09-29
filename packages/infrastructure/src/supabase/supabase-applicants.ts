@@ -10,7 +10,7 @@ import type { SupabaseRestClient } from "./supabase-rest-client.js";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Mirrors growth.applicant_by_token() in supabase/migrations.
-const applicantSchema = z
+export const applicantSchema = z
   .object({
     email: z.string(),
     linePosition: z.coerce.number().int().positive(),
@@ -31,7 +31,7 @@ const applicantSchema = z
   })
   .nullable();
 
-const outcomeSchema = z.enum([
+export const outcomeSchema = z.enum([
   "submitted",
   "not_found",
   "already_submitted",

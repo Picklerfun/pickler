@@ -24,7 +24,7 @@ import {
   type ChallengeOptionsDto,
 } from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
-import { getProfile, type ProfileDto } from "../auth/lib/pickler-api";
+import { ApiError, getProfile, type ProfileDto } from "../auth/lib/pickler-api";
 import type { SheetPhase } from "../auth/lib/sheet";
 import { getSupabase } from "../auth/lib/supabase-browser";
 import { coverage } from "./lib/coverage";
@@ -117,9 +117,12 @@ export function Account({ opening }: { opening: SectionKey }) {
       setSession(describeDevice(userAgent()));
       const token = data.session.access_token;
       const [found, dto, keys] = await Promise.all([
+        // A 404 is no profile, which the gate below sends to the handle step. Any other failure is
+        // undefined: it decides nothing, and the profile section simply has nothing to show.
         getProfile(token).then(
           (value) => value,
-          () => null,
+          (error: unknown) =>
+            error instanceof ApiError && error.status === 404 ? null : undefined,
         ),
         readSubOrganization(() => readWallet(token)).then(
           (read): WalletState => (read ? { kind: "ready", wallet: read } : { kind: "none" }),
@@ -144,13 +147,14 @@ export function Account({ opening }: { opening: SectionKey }) {
       }
       /* This is where the master wallet is shown, so it is the most visible place for the rule
          (spec §4.1): a signed-in person without a sub-organization creates it before anything
-         else, on the signup's passkey step. Every section redirects, not only the wallet. */
-      const away = redirectFor(dto.kind === "none" ? null : dto);
+         else, on the signup's passkey step, and one with a wallet and no profile finishes signup
+         at the handle step. Every section redirects, not only the wallet. */
+      const away = redirectFor({ wallet: dto.kind === "none" ? null : dto, profile: found });
       if (away) {
         router.replace(away);
         return;
       }
-      setProfile(found);
+      setProfile(found ?? null);
       setWallet(dto);
       setPasskeys(keys);
     })();

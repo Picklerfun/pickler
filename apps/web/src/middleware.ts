@@ -88,8 +88,14 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     case "notFound":
       return NextResponse.rewrite(new URL("/not-found", request.url), { status: 404 });
-    case "rewrite":
-      return NextResponse.rewrite(new URL(decision.to, request.url));
+    case "rewrite": {
+      // The address changes and the query does not: neither Next nor the OpenNext adapter merges
+      // the original query into a rewrite's target, and the studio reads `?agent=` on the server.
+      // Not so for the refusal above, which answers with a page that was never asked anything.
+      const target = request.nextUrl.clone();
+      target.pathname = decision.to;
+      return NextResponse.rewrite(target);
+    }
     case "signIn": {
       // Temporary and uncacheable: this answer is about one request's cookies, not about the URL.
       const response = NextResponse.redirect(new URL(decision.to, request.url), 307);

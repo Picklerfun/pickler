@@ -93,9 +93,11 @@ export const marketCatalogSchema = z.object({
     }),
   ),
 });
+/** Mirror of trading's `PAPER_BUDGET_AUSD`: the virtual bankroll one paper order spends. */
+export const PAPER_BUDGET_AUSD = 10;
 /**
- * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Stored and shown; not enforced until the
- * trading work does it, which `spendEnforced` on the studio agent DTO states.
+ * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Paper orders enforce them, which
+ * `spendEnforced` on the studio agent DTO states.
  */
 export const spendLimitsSchema = z
   .object({
@@ -108,6 +110,53 @@ export const spendLimitsSchema = z
     path: ["perDayAusd"],
   });
 export type SpendLimitsDto = z.infer<typeof spendLimitsSchema>;
+
+/** Mirror of core's `BRIEF_LIMITS`; `workers/api/test/accent-venue-mirror.test.ts` pins it. */
+export const BRIEF_LIMITS = {
+  thesis: 600,
+  line: 200,
+  reads: 12,
+  entersWhen: 8,
+  exitsWhen: 8,
+  never: 8,
+} as const;
+/** Mirror of core's `LEVERAGE_BOUNDS`. */
+export const LEVERAGE_BOUNDS = { min: 1, max: 10 } as const;
+
+const briefLine = z.string().min(1).max(BRIEF_LIMITS.line);
+/** A stored brief, which core has already normalized and checked (spec §2). */
+export const agentBriefSchema = z
+  .object({
+    thesis: z.string().max(BRIEF_LIMITS.thesis),
+    reads: z.array(briefLine).max(BRIEF_LIMITS.reads),
+    entersWhen: z.array(briefLine).min(1).max(BRIEF_LIMITS.entersWhen),
+    exitsWhen: z.array(briefLine).max(BRIEF_LIMITS.exitsWhen),
+    never: z.array(briefLine).max(BRIEF_LIMITS.never),
+  })
+  .strict();
+export type AgentBriefDto = z.infer<typeof agentBriefSchema>;
+
+/** The model's answer to each brief rule (spec §3.2); core's `briefVerdict` checks it. */
+export const briefEvaluationSchema = z
+  .object({
+    entries: z
+      .array(
+        z
+          .object({
+            rule: briefLine,
+            fired: z.boolean(),
+            why: z.string().min(1).max(600),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(BRIEF_LIMITS.entersWhen),
+    exitArmed: briefLine.nullable(),
+    neverChecked: z
+      .array(z.object({ rule: briefLine, respected: z.boolean() }).strict())
+      .max(BRIEF_LIMITS.never),
+  })
+  .strict();
 
 export const agentConfigSchema = z
   .object({
@@ -161,6 +210,8 @@ export const agentConfigSchema = z
     sources: sourcesSchema.optional(),
     skills: z.array(skillSchema).max(8).optional(),
     spend: spendLimitsSchema.optional(),
+    brief: agentBriefSchema.optional(),
+    maxLeverage: z.number().int().min(LEVERAGE_BOUNDS.min).max(LEVERAGE_BOUNDS.max).optional(),
   })
   .strict()
   .refine(
@@ -225,10 +276,17 @@ export const modelAssessmentSchema = legacyDecisionSchema
     missingInformation: z.array(z.string().min(1).max(1000)).max(20),
   })
   .strict();
+/**
+ * A stored assessment may carry the brief's answers. `modelAssessmentSchema` itself does not, because
+ * it is serialized into the decision prompts and changing it would change every prompt.
+ */
+const storedAssessmentSchema = modelAssessmentSchema
+  .extend({ brief: briefEvaluationSchema.optional() })
+  .strict();
 export const decisionV2Schema = legacyDecisionSchema
   .extend({
     schemaVersion: z.literal(2),
-    modelAssessment: modelAssessmentSchema,
+    modelAssessment: storedAssessmentSchema,
     policyEvaluation: z
       .object({
         version: z.literal("1.0.0"),
@@ -243,6 +301,8 @@ export const decisionV2Schema = legacyDecisionSchema
             "WIDE_PROBABILITY_RANGE",
             "INSUFFICIENT_CONSERVATIVE_MARGIN",
             "PRICE_EXCEEDS_LIMIT",
+            "BRIEF_ENTRY_NOT_MET",
+            "BRIEF_NEVER_BROKEN",
           ]),
         ),
         evaluatedAt: z.string().datetime(),
@@ -287,10 +347,13 @@ export const researchReportSchema = z
 export const nflAssessmentSchema = modelAssessmentSchema
   .extend({ report: researchReportSchema })
   .strict();
+const storedNflAssessmentSchema = nflAssessmentSchema
+  .extend({ brief: briefEvaluationSchema.optional() })
+  .strict();
 export const decisionV3Schema = decisionV2Schema
   .extend({
     schemaVersion: z.literal(3),
-    modelAssessment: nflAssessmentSchema,
+    modelAssessment: storedNflAssessmentSchema,
     forecast: researchReportSchema.shape.forecast,
     coverage: researchReportSchema.shape.sections,
   })
@@ -319,6 +382,9 @@ export const generalReportSchema = researchReportSchema
 export const generalAssessmentSchema = modelAssessmentSchema
   .extend({ report: generalReportSchema })
   .strict();
+const storedGeneralAssessmentSchema = generalAssessmentSchema
+  .extend({ brief: briefEvaluationSchema.optional() })
+  .strict();
 export const decisionV4Schema = z.union([
   decisionV3Schema
     .extend({ schemaVersion: z.literal(4), protocol: z.literal("nfl-winner-v1") })
@@ -327,7 +393,7 @@ export const decisionV4Schema = z.union([
     .extend({
       schemaVersion: z.literal(4),
       protocol: z.literal("general-market-v1"),
-      modelAssessment: generalAssessmentSchema,
+      modelAssessment: storedGeneralAssessmentSchema,
       coverage: generalReportSchema.shape.sections,
     })
     .strict(),

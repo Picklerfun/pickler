@@ -80,3 +80,32 @@ export function caip2(namespace: Namespace, reference: number | string): string 
 type Assert<T extends true> = T;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- tsc checks it; nothing reads it
 type _BrandIsLoadBearing = Assert<string extends NormalizedAddress ? false : true>;
+
+/**
+ * The server-only marker of a wallet sign-in account: `app_metadata.pickler_account = "wallet"`.
+ * Set by the admin API when wallet sign-in creates the account, and backfilled on every wallet
+ * sign-in for accounts made before it existed. `app_metadata` cannot be written by the person and
+ * is carried in the access token, so this — and only this — is what exempts an account from
+ * studio-only rules such as `wallet_required`.
+ */
+export const WALLET_ACCOUNT_METADATA_KEY = "pickler_account";
+export const WALLET_ACCOUNT_METADATA_VALUE = "wallet";
+
+/**
+ * Whether an email is in the domain of wallet sign-in accounts' synthetic emails
+ * (`<namespace>-<digest>@<walletEmailDomain>`, minted by infrastructure's wallet-accounts.ts).
+ *
+ * Cosmetic only — never an authorization signal. With email sign-up enabled and confirmations off,
+ * anyone can register an address in that domain and get a token with it; the exemption from studio
+ * rules reads `WALLET_ACCOUNT_METADATA_KEY` instead. This only keeps an internal key out of places a
+ * person reads, such as a passkey's keychain name. With no domain configured nothing matches.
+ */
+export function isWalletAccountEmail(
+  email: string | null | undefined,
+  walletEmailDomain: string | null | undefined,
+): boolean {
+  if (!email || !walletEmailDomain) {
+    return false;
+  }
+  return email.toLowerCase().endsWith(`@${walletEmailDomain.toLowerCase()}`);
+}

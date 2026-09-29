@@ -55,6 +55,19 @@ export interface CreateSubOrgResponse {
   activity?: { result?: TurnkeyApiTypes["v1Result"] };
 }
 
+/**
+ * Turnkey refuses names outside printable ASCII ("This field can only contain alphanumeric
+ * characters and printable ASCII symbols"), and it refuses the whole activity for it, after the
+ * person has already made their passkey. A "·" separator did exactly that. Anything outside
+ * U+0020–U+007E is dropped, runs of spaces collapse, and the result is trimmed.
+ */
+export function turnkeyName(raw: string): string {
+  return raw
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
 export function createSubOrganizationCreator(
   config: SubOrganizationCreatorConfig,
 ): SubOrganizationCreator {
@@ -74,16 +87,16 @@ export function createSubOrganizationCreator(
         timestampMs: String(Date.now()),
         organizationId: config.parentOrganizationId,
         parameters: {
-          subOrganizationName: `${input.ownerLabel} · ${input.discriminator}`,
+          subOrganizationName: turnkeyName(`${input.ownerLabel} - ${input.discriminator}`),
           rootQuorumThreshold: 1,
           rootUsers: [
             {
-              userName: input.ownerLabel,
+              userName: turnkeyName(input.ownerLabel),
               apiKeys: [],
               oauthProviders: [],
               authenticators: [
                 {
-                  authenticatorName: input.label || "Default Passkey",
+                  authenticatorName: turnkeyName(input.label) || "Default Passkey",
                   challenge: input.challenge,
                   attestation: {
                     credentialId: input.attestation.credentialId,
@@ -147,7 +160,7 @@ export function createAddPasskeyActivityBuilder(config: { baseUrl?: string } = {
           userId: input.rootUserId,
           authenticators: [
             {
-              authenticatorName: input.label,
+              authenticatorName: turnkeyName(input.label) || "Default Passkey",
               challenge: input.challenge,
               attestation: {
                 credentialId: input.attestation.credentialId,

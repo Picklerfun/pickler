@@ -22,6 +22,7 @@ async function seedAgent(
     name?: string;
     handle?: string;
     killed?: boolean;
+    status?: "draft";
     profile?: boolean;
     createdAt?: Date;
   } = {},
@@ -53,7 +54,7 @@ async function seedAgent(
         workspaceId,
         over.name ?? "Halftime",
         handle,
-        over.killed ? "killed" : "active",
+        over.killed ? "killed" : (over.status ?? "active"),
         userId,
         over.killed ? new Date() : null,
         over.createdAt ?? null,
@@ -301,4 +302,27 @@ test("a pick is null until settlement exists, and reads are empty until they exi
   assert.equal(await directory.getPick("$HALF", "anything"), null);
   assert.deepEqual(await directory.listReads(), []);
   assert.equal(await directory.getRead("anything"), null);
+});
+
+test("a private draft is not on the board, in the directory, at its handle or its ticker", async (t) => {
+  const { pool, directory } = await setup(t);
+  const listed = await seedAgent(pool, { handle: "public_one" });
+  const draft = await seedAgent(pool, { handle: "draft_one", status: "draft" });
+  await seedToken(pool, listed, "pre_graduation", "$PUB");
+  await seedToken(pool, draft, "pre_graduation", "$DRAFT");
+
+  const agents = await directory.listAgents();
+  assert.deepEqual(
+    agents.map((agent) => agent.handle),
+    ["public_one"],
+  );
+  const rows = await directory.listDirectory();
+  assert.deepEqual(
+    rows.map((row) => row.agent.handle),
+    ["public_one"],
+  );
+  assert.equal(await directory.getPersona("draft_one"), null);
+  assert.ok(await directory.getPersona("public_one"));
+  assert.equal(await directory.getProfile("$DRAFT"), null);
+  assert.ok(await directory.getProfile("$PUB"));
 });

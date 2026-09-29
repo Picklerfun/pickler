@@ -9,10 +9,13 @@
 //
 // The passkey step is mandatory (studio-create-and-fund §4.1, decided 2026-09-25): the master
 // wallet exists before any agent, so the person's profile can show it from the first studio visit.
-// Sign-up is account → code → handle → passkey → welcome, and the only event that leaves the
-// passkey step is `passkey_created` — the enrolment ceremony that creates the sub-organization and
-// its master wallet. Sign-in passes through the same step when the landing check finds no
-// sub-organization (`wallet_missing`), and goes straight to welcome when there is one.
+// Sign-up is account → code → passkey → handle → welcome: the username is saved only once the
+// passkey and the master wallet exist. The only event that leaves the passkey step is
+// `passkey_created` — the enrolment ceremony that creates the sub-organization and its master
+// wallet — and it goes on to the handle step when there is no profile yet, or to welcome when there
+// is one (an account made before the order changed). Sign-in passes through the same step when the
+// landing check finds no sub-organization (`wallet_missing`), and goes straight to welcome when the
+// account is complete.
 //
 // Every event is accepted only on the steps whose screen can send it (`ACCEPTS` below). That is
 // what makes the rule hold for the machine rather than for today's screens: from the passkey step
@@ -31,10 +34,17 @@ export interface FlowState {
   code: string;
   handle: string;
   /**
-   * Sign-in found no sub-organization, so its rail carries the PASSKEY phase. Sign-up always does;
-   * a sign-in with a wallet never shows it.
+   * The landing check found no sub-organization, so a sign-in's rail carries the PASSKEY phase.
+   * Sign-up's always does; a sign-in with a wallet never shows it.
    */
   needsWallet: boolean;
+  /**
+   * What the flow knows of the master wallet: none known, `found` by the landing check (or implied
+   * by an account it found complete), or `created` by the ceremony in this session. The handle step
+   * and welcome are entered only with one: every event that leads there sets it, which
+   * flow.test.ts walks from INITIAL over every event.
+   */
+  wallet: "none" | "found" | "created";
 }
 
 /**
@@ -48,17 +58,30 @@ export type FlowEvent =
   /** Typing in the six cells. The machine holds the code so `change_email` can forget it. */
   | { type: "code_changed"; code: string }
   | { type: "handle_claimed"; handle: string }
-  /** The landing check: the account has no profile yet, so it finishes signing up. */
-  | { type: "profile_missing" }
-  /** The landing check: GET /wallets/me answered 404, so there is no sub-organization. */
-  | { type: "wallet_missing" }
+  /**
+   * The landing check: GET /wallets/me found the master wallet but the account has no profile yet,
+   * so it finishes signing up at the handle step. `wallet: true` is that finding, in the type: the
+   * event cannot be sent without claiming it, and it is the only way to the handle step other than
+   * `passkey_created`.
+   */
+  | { type: "profile_missing"; wallet: true }
+  /**
+   * The landing check: GET /wallets/me answered 404, so there is no sub-organization, whatever the
+   * profile. `profile` says whether GET /profile found one: without one this is a sign-up still to
+   * finish (passkey, then handle); with one it is an older account that only lacks the wallet.
+   */
+  | { type: "wallet_missing"; profile: boolean }
   /**
    * The landing check found a complete account — a profile and a sub-organization — so this is a
    * sign-in, whichever rail it arrived on.
    */
   | { type: "account_found" }
-  /** The enrolment ceremony finished: the sub-organization and its master wallet exist. */
-  | { type: "passkey_created" }
+  /**
+   * The enrolment ceremony finished: the sub-organization and its master wallet exist. `profile`
+   * says whether the account already has one, which decides what follows: the handle step, or
+   * welcome for an account that chose its handle before the order changed.
+   */
+  | { type: "passkey_created"; profile: boolean }
   /** Signed in, but this browser holds no passkey for the account. */
   | { type: "device_unknown" }
   | { type: "approve_started" }
@@ -89,8 +112,8 @@ export interface RailPhase {
 const RAILS: Record<Mode | "inWithoutWallet", readonly Phase[]> = {
   up: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
-    { label: "HANDLE", steps: ["handle"] },
     { label: "PASSKEY", steps: ["passkey"] },
+    { label: "HANDLE", steps: ["handle"] },
     // Sign-up ends where signing in ends, under the label the `in` rail already gives `welcome`.
     { label: "IN", steps: ["welcome"] },
   ],
@@ -98,7 +121,8 @@ const RAILS: Record<Mode | "inWithoutWallet", readonly Phase[]> = {
     { label: "ACCOUNT", steps: ["auth", "code"] },
     { label: "IN", steps: ["welcome"] },
   ],
-  // Sign-in without a sub-organization: the same mandatory step, between the code and welcome.
+  // Sign-in without a sub-organization on an account that has a profile: the same mandatory step,
+  // between the code and welcome, and no handle to ask for.
   inWithoutWallet: [
     { label: "ACCOUNT", steps: ["auth", "code"] },
     { label: "PASSKEY", steps: ["passkey"] },
@@ -127,6 +151,7 @@ export const INITIAL: FlowState = {
   code: "",
   handle: "",
   needsWallet: false,
+  wallet: "none",
 };
 
 /** The steps whose screen can send each event. Anything else is ignored, not obeyed. */
@@ -171,20 +196,38 @@ export function next(state: FlowState, event: FlowEvent): FlowState {
     case "code_changed":
       return { ...state, code: event.code };
     case "handle_claimed":
-      // Not the end of sign-up: the master wallet is made next, and nobody skips it.
-      return { ...state, step: "passkey", handle: event.handle };
+      // The last step of sign-up: the master wallet was made before the handle was asked for. The
+      // guard is the machine's own copy of the server's `wallet_required`.
+      if (state.wallet === "none") {
+        return state;
+      }
+      return { ...state, step: "welcome", handle: event.handle };
     case "profile_missing":
-      // No profile yet: finish signing up rather than welcoming somebody to an empty account.
-      return { ...state, mode: "up", step: "handle" };
+      // A wallet but no profile yet: finish signing up rather than welcoming somebody to an empty
+      // account. The sign-up rail, so PASSKEY reads as behind them.
+      return { ...state, mode: "up", step: "handle", wallet: "found" };
     case "wallet_missing":
-      return { ...state, step: "passkey", needsWallet: true };
+      // No profile either: a sign-up still to finish, on the sign-up rail whichever it arrived on.
+      // A profile already: an existing account that only lacks the wallet, so a sign-in whose
+      // rail carries the passkey phase and no handle phase it would skip.
+      return {
+        ...state,
+        mode: event.profile ? "in" : "up",
+        step: "passkey",
+        needsWallet: true,
+      };
     case "account_found":
-      return { ...state, mode: "in", step: "welcome" };
+      return { ...state, mode: "in", step: "welcome", wallet: "found" };
     case "passkey_created":
-      return { ...state, step: "welcome" };
+      // The handle is asked for only now, and only when there is none: the username is saved once
+      // the passkey and the master wallet exist.
+      return event.profile
+        ? { ...state, step: "welcome", wallet: "created" }
+        : { ...state, mode: "up", step: "handle", wallet: "created" };
     case "device_unknown":
       // Not just another screen — the rail above the form becomes the three-phase recovery one.
-      return { ...state, mode: "recover", step: "recover" };
+      // Only a complete account is asked whether this device holds its passkey.
+      return { ...state, mode: "recover", step: "recover", wallet: "found" };
     case "approve_started":
       return { ...state, step: "approve" };
     case "device_added":
@@ -214,4 +257,18 @@ export function rail(state: FlowState): RailPhase[] {
     // reading as "every phase is behind you".
     done: index < at,
   }));
+}
+
+/**
+ * The welcome screen's title. WALLET CREATED only for an account whose wallet the ceremony created
+ * in this session and which then chose its handle here — the sign-up rail after `passkey_created`.
+ * Everything else is an account that already existed and says WELCOME BACK: a sign-in, a resumed
+ * complete account (`account_found`), leaving the new-device rail, a resumed account that had a
+ * wallet and only now chose its handle (`profile_missing`), and an older account that only added
+ * its wallet (`wallet_missing` with a profile puts it on the sign-in rail). The canvas draws
+ * WELCOME BACK for sign-in only; its sign-up ends on the "Wallet created" screen, whose words the
+ * new-account title takes.
+ */
+export function welcomeTitle(state: FlowState): "WALLET CREATED" | "WELCOME BACK" {
+  return state.mode === "up" && state.wallet === "created" ? "WALLET CREATED" : "WELCOME BACK";
 }

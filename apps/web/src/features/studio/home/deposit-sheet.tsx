@@ -4,6 +4,7 @@ import { Button, Icon, Segmented } from "@pickler/ui";
 import { SessionExpired } from "@/features/auth/lib/custody";
 import { depositConfirm, depositPrepare, errorCode, saveLimits, type Agent } from "../api";
 import { relyingParty, stampActivity } from "../lib/passkey";
+import { pendingSave } from "../lib/pending-save";
 import { depositFailure } from "./status";
 import styles from "./home.module.css";
 
@@ -21,6 +22,10 @@ const SAVE_DELAY_MS = 700;
 const CLOSED_PROMPT = new Set(["NotAllowedError", "AbortError"]);
 
 type LimitsState = "idle" | "saving" | "saved";
+interface SpendLimits {
+  perCallAusd: number;
+  perDayAusd: number;
+}
 
 /**
  * The deposit sheet under the wallet: 10 / 25 / 50 / 100 AUSD, the two spend limits (stored, shown,
@@ -47,38 +52,14 @@ export function DepositSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const rpId = useRef<Promise<string> | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mounted = useRef(true);
+  const limitsSave = useRef<ReturnType<typeof pendingSave<SpendLimits>> | null>(null);
 
+  /* One per agent, and flushed on the way out: the sheet showed the new limit the moment it was
+     pressed, so closing inside the delay saves it rather than dropping it. */
   useEffect(() => {
     mounted.current = true;
-    return () => {
-      mounted.current = false;
-      clearTimeout(saveTimer.current);
-    };
-  }, []);
-
-  /* The relying party comes from a custody challenge, fetched as the sheet opens so the click that
-     deposits reaches the passkey prompt with one fetch fewer in between. */
-  useEffect(() => {
-    if (preview || !canManage) {
-      return;
-    }
-    const pending = relyingParty();
-    // A failure here is reported when the person deposits, where it can be acted on.
-    pending.catch(() => {});
-    rpId.current = pending;
-  }, [preview, canManage]);
-
-  function changeLimits(next: { perCallAusd: number; perDayAusd: number }) {
-    setLimits(next);
-    setLimitsError("");
-    if (preview) {
-      return;
-    }
-    clearTimeout(saveTimer.current);
-    setLimitsState("saving");
-    saveTimer.current = setTimeout(() => {
+    const pending = pendingSave<SpendLimits>(SAVE_DELAY_MS, (next) => {
       void (async () => {
         try {
           await saveLimits(agentId, next.perCallAusd, next.perDayAusd);
@@ -92,7 +73,34 @@ export function DepositSheet({
           }
         }
       })();
-    }, SAVE_DELAY_MS);
+    });
+    limitsSave.current = pending;
+    return () => {
+      mounted.current = false;
+      pending.flush();
+    };
+  }, [agentId]);
+
+  /* The relying party comes from a custody challenge, fetched as the sheet opens so the click that
+     deposits reaches the passkey prompt with one fetch fewer in between. */
+  useEffect(() => {
+    if (preview || !canManage) {
+      return;
+    }
+    const pending = relyingParty();
+    // A failure here is reported when the person deposits, where it can be acted on.
+    pending.catch(() => {});
+    rpId.current = pending;
+  }, [preview, canManage]);
+
+  function changeLimits(next: SpendLimits) {
+    setLimits(next);
+    setLimitsError("");
+    if (preview) {
+      return;
+    }
+    setLimitsState("saving");
+    limitsSave.current?.schedule(next);
   }
 
   async function deposit() {
@@ -155,10 +163,10 @@ export function DepositSheet({
     limitsState === "saving"
       ? "Saving…"
       : limitsState === "saved"
-        ? "Saved. Applies when it trades for real."
+        ? "Saved. Its paper trades keep to these caps."
         : agent.spend
-          ? "Applies when it trades for real."
-          : "Not set yet. Applies when it trades for real.";
+          ? "Its paper trades keep to these caps."
+          : "Not set yet. Its paper trades keep to these caps once set.";
 
   return (
     <div className={styles.sheet} id="home-deposit">
