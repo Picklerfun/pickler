@@ -250,6 +250,53 @@ test("somewhere else is not, so `next` cannot be an open redirect", () => {
   assert.equal(returnTo("account"), null);
 });
 
+test("a control character anywhere is refused, because a browser strips it before resolving", () => {
+  // Tab, CR and LF are removed by the URL parser, so `/\t/evil.example` is `//evil.example` by the
+  // time anything navigates to it. Checking the second character alone never sees that.
+  for (const asked of [
+    "/\t/evil.example",
+    "/\n/evil.example",
+    "/\r/evil.example",
+    "/\t\\evil.example",
+    "/\t\t/evil.example",
+    "\t//evil.example",
+    "/account\n",
+    "/account\u0000",
+    "/account\u007f",
+  ]) {
+    assert.equal(returnTo(asked), null, JSON.stringify(asked));
+  }
+});
+
+test("a backslash anywhere is refused, not only in second place", () => {
+  assert.equal(returnTo("/account\\..\\evil"), null);
+  assert.equal(returnTo("/a/\\evil.example"), null);
+});
+
+test("what the query string decodes to is what gets checked", () => {
+  // `next` is read through URLSearchParams, which decodes it: the encoded forms arrive here as the
+  // characters themselves.
+  const decoded = (query: string) => new URLSearchParams(query).get("next");
+  for (const query of [
+    "next=%2F%09%2Fevil.example",
+    "next=%2F%0A%2Fevil.example",
+    "next=%2F%0D%2Fevil.example",
+    "next=%2F%09%5Cevil.example",
+    "next=%2F%2Fevil.example",
+    "next=%2F%5Cevil.example",
+  ]) {
+    assert.equal(returnTo(decoded(query)), null, query);
+  }
+  assert.equal(returnTo(decoded("next=%2Faccount%3Ftab%3Dkeys")), "/account?tab=keys");
+});
+
+test("an ordinary path keeps its query and its fragment", () => {
+  assert.equal(returnTo("/?agent=x&section=trading"), "/?agent=x&section=trading");
+  assert.equal(returnTo("/account?next=%2F%2Fevil.example"), "/account?next=%2F%2Fevil.example");
+  assert.equal(returnTo("/studio/create?from=home#brief"), "/studio/create?from=home#brief");
+  assert.equal(returnTo("/agents/half-time"), "/agents/half-time");
+});
+
 test("no `next` at all is no destination, not a broken one", () => {
   assert.equal(returnTo(null), null);
   assert.equal(returnTo(undefined), null);
