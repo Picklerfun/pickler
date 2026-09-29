@@ -99,6 +99,10 @@
   background: var(--pk-panel);
   color: var(--pk-ink-muted);
 }
+.pill[data-tint="amber"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-amber-ink);
+}
 .pillDot {
   width: 6px;
   height: 6px;
@@ -1437,6 +1441,14 @@ a.start:hover {
   margin-top: 3px;
   font: 400 12.5px/1.35 var(--pk-font);
   color: var(--pk-ink-muted);
+}
+.goSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* ---------- Motion ---------- */

@@ -21,6 +21,7 @@ import { agentInitials } from "../lib/initials";
 import { startPolling } from "../lib/polling";
 import type { SectionKey } from "../sections/keys";
 import { AgentCard } from "./agent-card";
+import { GoPublic } from "./go-public";
 import { HomeMenu } from "./menu";
 import { NextUp } from "./next-up";
 import { Picks } from "./picks";
@@ -237,6 +238,11 @@ export function Home({
           <span className={styles.pillDot} data-live={status.working} />
           {status.pill}
         </span>
+        {agent.draft && (
+          <span className={styles.pill} data-tint="amber" id="home-draft-chip">
+            DRAFT · PRIVATE
+          </span>
+        )}
         <span className={styles.spacer} />
         <HomeMenu
           agent={agent}
@@ -279,21 +285,33 @@ export function Home({
       <div className={styles.board}>
         <div className={styles.column}>
           <AgentCard name={name} accent={agent.accent} status={status} />
-          <WalletCard
-            agent={agent}
-            preview={preview !== null}
-            canManage={canManage}
-            open={depositOpen}
-            onOpen={setDepositOpen}
-            onRefresh={refresh}
-          />
-          <Schedule
-            agent={agent}
-            now={now}
-            preview={preview !== null}
-            canManage={canManage}
-            onRefresh={refresh}
-          />
+          {agent.draft ? (
+            <section className={styles.wallet} id="home-wallet" aria-label="Its wallet">
+              <p className={styles.eyebrow}>ITS WALLET · MONAD</p>
+              <p className={styles.fine}>
+                A draft has no wallet yet. It comes with Go Public, with the brief&apos;s caps as
+                its rules, and then it can be funded and run on its own.
+              </p>
+            </section>
+          ) : (
+            <>
+              <WalletCard
+                agent={agent}
+                preview={preview !== null}
+                canManage={canManage}
+                open={depositOpen}
+                onOpen={setDepositOpen}
+                onRefresh={refresh}
+              />
+              <Schedule
+                agent={agent}
+                now={now}
+                preview={preview !== null}
+                canManage={canManage}
+                onRefresh={refresh}
+              />
+            </>
+          )}
         </div>
         {loaded ? (
           <Picks
@@ -312,14 +330,18 @@ export function Home({
             <p className={styles.empty}>Reading its runs…</p>
           </section>
         )}
-        <NextUp
-          items={next.items}
-          count={next.count}
-          onDeposit={() => {
-            setDepositOpen(true);
-            document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
-          }}
-        />
+        {agent.draft ? (
+          <GoPublic />
+        ) : (
+          <NextUp
+            items={next.items}
+            count={next.count}
+            onDeposit={() => {
+              setDepositOpen(true);
+              document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
+            }}
+          />
+        )}
       </div>
     </main>
   );

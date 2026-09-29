@@ -155,10 +155,10 @@ export function DepositSheet({
     limitsState === "saving"
       ? "Saving…"
       : limitsState === "saved"
-        ? "Saved. Applies when it trades for real."
+        ? "Saved. Its paper trades keep to these caps."
         : agent.spend
-          ? "Applies when it trades for real."
-          : "Not set yet. Applies when it trades for real.";
+          ? "Its paper trades keep to these caps."
+          : "Not set yet. Its paper trades keep to these caps once set.";
 
   return (
     <div className={styles.sheet} id="home-deposit">
