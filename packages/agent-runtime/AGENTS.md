@@ -139,3 +139,5 @@ subpaths. Execution factories remain operator-only; there is no application regi
 Perpetual paper data reads the order book before the ticker in each bounded session. The ticker
 can lag the book; reading it last avoids adding the book request delay to that lag. This is not an
 atomic exchange snapshot: the trading engine still rejects excessive skew without retries.
+
+The Perpl paper plugin exports `createCoherentPerplReader`, a read-only BTC/ETH acquisition factory with a shared twenty-second deadline and live permission checks. It constructs no model or signing client. Hosts inject study ownership checks and a shared provider schedule. Existing unversioned study snapshots retain their historical interpretation.
