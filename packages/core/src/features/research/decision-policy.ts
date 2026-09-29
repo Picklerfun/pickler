@@ -2,6 +2,8 @@ import {
   DEFAULT_UNCERTAINTY_POLICY,
   PilotError,
   assertUncertaintyPolicy,
+  type AgentBrief,
+  type BriefEvaluation,
   type ModelAssessment,
   type DecisionV2,
   type PolicyReason,
@@ -9,12 +11,57 @@ import {
 } from "./types.js";
 import { decimalPrice } from "./policy.js";
 
+export interface BriefVerdict {
+  entriesFired: boolean;
+  neverRespected: boolean;
+  /** The first rule that stopped the trade, for the run to show; null when none did. */
+  stoppedBy: { kind: "entry" | "never"; rule: string } | null;
+}
+
+/**
+ * The model's answer to the brief, checked against it (§3.2). One entry per `entersWhen` line and
+ * one check per `never` line, each copying its rule, in order; an armed exit is one of `exitsWhen`.
+ * Anything else is a failed decision: a block that does not line up is never read as "all fired".
+ */
+export function briefVerdict(
+  brief: AgentBrief,
+  evaluation: BriefEvaluation | undefined,
+): BriefVerdict {
+  const aligned = (got: unknown, want: readonly string[]) =>
+    Array.isArray(got) &&
+    got.length === want.length &&
+    got.every((item, i) => typeof item === "object" && item !== null && item.rule === want[i]);
+  if (
+    !evaluation ||
+    !aligned(evaluation.entries, brief.entersWhen) ||
+    !aligned(evaluation.neverChecked, brief.never) ||
+    evaluation.entries.some((entry) => typeof entry.fired !== "boolean") ||
+    evaluation.neverChecked.some((check) => typeof check.respected !== "boolean") ||
+    !(evaluation.exitArmed === null || brief.exitsWhen.includes(evaluation.exitArmed))
+  ) {
+    throw new PilotError(
+      "INVALID_DECISION",
+      "The brief evaluation must answer every rule, in order",
+    );
+  }
+  const held = evaluation.entries.find((entry) => !entry.fired);
+  const broken = evaluation.neverChecked.find((check) => !check.respected);
+  let stoppedBy: BriefVerdict["stoppedBy"] = null;
+  if (held) {
+    stoppedBy = { kind: "entry", rule: held.rule };
+  } else if (broken) {
+    stoppedBy = { kind: "never", rule: broken.rule };
+  }
+  return { entriesFired: !held, neverRespected: !broken, stoppedBy };
+}
+
 /** Model assessments are estimates, not statistically calibrated confidence intervals. */
 export function evaluateDecision(
   assessment: ModelAssessment,
   observedPrice: string | null,
   configuredPolicy: UncertaintyPolicy | undefined,
   now: number,
+  brief?: AgentBrief,
 ): DecisionV2 {
   const config = { ...(configuredPolicy ?? DEFAULT_UNCERTAINTY_POLICY) };
   assertUncertaintyPolicy(config);
@@ -33,6 +80,8 @@ export function evaluateDecision(
   ) {
     throw new PilotError("INVALID_DECISION", "Invalid structured uncertainty assessment");
   }
+  // Checked for every action, so a run with a brief always shows which rules fired.
+  const verdict = brief ? briefVerdict(brief, assessment.brief) : null;
 
   const reasonCodes: PolicyReason[] = [];
   if (assessment.action === "ABSTAIN") {
@@ -43,6 +92,12 @@ export function evaluateDecision(
   } else {
     if (observedPrice === null || assessment.limitPrice === null) {
       throw new PilotError("NO_QUOTE", "Trade evaluation requires a verified quote and limit");
+    }
+    if (verdict && !verdict.entriesFired) {
+      reasonCodes.push("BRIEF_ENTRY_NOT_MET");
+    }
+    if (verdict && !verdict.neverRespected) {
+      reasonCodes.push("BRIEF_NEVER_BROKEN");
     }
     const ask = decimalPrice(observedPrice);
     const limit = decimalPrice(assessment.limitPrice);

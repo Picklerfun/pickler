@@ -146,7 +146,11 @@ export * from "./features/research/policy.js";
 export * from "./features/research/style.js";
 export * from "./features/research/brief.js";
 export * from "./features/research/books.js";
-export { evaluateDecision } from "./features/research/decision-policy.js";
+export {
+  evaluateDecision,
+  briefVerdict,
+  type BriefVerdict,
+} from "./features/research/decision-policy.js";
 export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
