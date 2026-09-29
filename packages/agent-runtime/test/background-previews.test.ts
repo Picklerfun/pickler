@@ -1,11 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { RunRecord } from "@pickler/core";
+import { PREVIEW_PRIORITY_AFTER_MS, type RunRecord } from "@pickler/core";
 import { consumeWakeup } from "../src/workers/background.js";
 
+const NOW = 10_000_000;
 const run = (id: string) => ({ id }) as RunRecord;
 
-function fakes(research: RunRecord | null, preview: RunRecord | null) {
+function fakes(
+  research: RunRecord | null,
+  preview: RunRecord | null,
+  overdue: RunRecord | null = null,
+) {
   const calls: string[] = [];
   const repository = {
     recover: async () => {
@@ -26,7 +31,12 @@ function fakes(research: RunRecord | null, preview: RunRecord | null) {
       recover: async () => {
         calls.push("preview.recover");
       },
-      claim: async () => {
+      claim: async (_now: number, queuedBefore?: number) => {
+        if (queuedBefore !== undefined) {
+          assert.equal(queuedBefore, NOW - PREVIEW_PRIORITY_AFTER_MS);
+          calls.push("preview.claim:overdue");
+          return overdue;
+        }
         calls.push("preview.claim");
         return preview;
       },
@@ -45,10 +55,11 @@ function fakes(research: RunRecord | null, preview: RunRecord | null) {
 
 test("with no research run waiting, a preview is claimed and executed", async () => {
   const f = fakes(null, run("p1"));
-  await consumeWakeup(f.repository, f.execute, f.queue, Date.now, f.previews);
+  await consumeWakeup(f.repository, f.execute, f.queue, () => NOW, f.previews);
   assert.deepEqual(f.calls, [
     "research.recover",
     "preview.recover",
+    "preview.claim:overdue",
     "research.claim",
     "preview.claim",
     "preview.execute:p1",
@@ -56,11 +67,19 @@ test("with no research run waiting, a preview is claimed and executed", async ()
   ]);
 });
 
-test("a research run goes first; the preview waits for the next wakeup", async () => {
+test("a research run goes ahead of a recent preview", async () => {
   const f = fakes(run("r1"), run("p1"));
-  await consumeWakeup(f.repository, f.execute, f.queue, Date.now, f.previews);
+  await consumeWakeup(f.repository, f.execute, f.queue, () => NOW, f.previews);
   assert.ok(f.calls.includes("research.execute:r1"));
   assert.ok(!f.calls.includes("preview.claim"));
+  assert.ok(!f.calls.some((call) => call.startsWith("preview.execute")));
+});
+
+test("a preview queued past the priority window goes ahead of research", async () => {
+  const f = fakes(run("r1"), null, run("p-old"));
+  await consumeWakeup(f.repository, f.execute, f.queue, () => NOW, f.previews);
+  assert.ok(f.calls.includes("preview.execute:p-old"));
+  assert.ok(!f.calls.includes("research.claim"));
 });
 
 test("without previews composed, nothing changes", async () => {

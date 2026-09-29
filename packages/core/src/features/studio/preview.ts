@@ -19,6 +19,12 @@ import {
 export const PREVIEW_RATE = { perHour: 5, windowMs: 3_600_000 } as const;
 /** A preview can be read, and adopted, for 24 h. */
 export const PREVIEW_TTL_MS = 86_400_000;
+/**
+ * Previews run when no research run is waiting; one queued longer than this is claimed ahead of
+ * research runs (still inside the shared limits), so sustained research load cannot hold it until
+ * it expires. Two minutes keeps research first for ordinary bursts.
+ */
+export const PREVIEW_PRIORITY_AFTER_MS = 120_000;
 
 /** 429, with the time the next run is allowed. */
 export class PreviewRateLimited extends PilotError {

@@ -81,6 +81,7 @@ export function createRuntime(
       repository: previewStore,
       execute(run: RunRecord, signal?: AbortSignal) {
         const execute = createResearchRunner({
+          ...(options?.observer ? { observer: options.observer } : {}),
           repository: previewStore,
           markets,
           configured: { exa: Boolean(env.EXA_API_KEY) },
