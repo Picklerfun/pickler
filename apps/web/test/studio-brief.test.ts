@@ -227,16 +227,105 @@ test("model.ts's copies match api-schema's and core's", async () => {
       .success,
   );
   assert.ok(schema.previewRunRequestSchema.safeParse(toRequest(filled())).success);
-  for (const line of [
+});
+
+/**
+ * Every branch of core's `classifyRead`, by the kind core gives it. The kind is written down so the
+ * list is known to reach each branch: a sample that stopped being what it is listed as would mean
+ * the branch it was there for is no longer covered.
+ */
+const READS: Record<"site" | "account" | "feed", string[]> = {
+  site: [
+    // A URL: the hostname, whatever else the link carries.
     "https://www.espn.com/nfl",
+    "http://espn.com",
+    "HTTPS://ESPN.COM/NFL",
+    "https://espn.com:8443/nfl/injuries?week=3#top",
+    "https://user:secret@espn.com/nfl",
+    "https://www.espn.co.uk/rugby",
+    "https://münchen.de/sport",
+    // A bare domain, with or without a path.
     "nfl.com",
+    "NFL.com",
+    "www.nfl.com",
+    "  nfl.com  ",
+    "nfl.com/",
+    "nfl.com/injuries/week-3",
+    "nfl.com/injuries?week=3",
+    "stats.nba.com",
+    "pro-football-reference.com",
+    // Hosts that only look like X.
+    "max.com",
+    "notx.com",
+    "x.company",
+    "https://netflix.com",
+    "a.b.x.com",
+  ],
+  account: [
     "@AdamSchefter",
-    "x.com/AdamSchefter",
-    "https://twitter.com/AdamSchefter",
+    "  @AdamSchefter",
+    "@",
+    "@nfl.com",
+    "x.com",
+    "X.com/AdamSchefter",
+    "x.com/AdamSchefter/status/1",
+    "twitter.com/AdamSchefter",
+    "www.x.com/AdamSchefter",
+    "www.twitter.com/AdamSchefter",
     "mobile.x.com/AdamSchefter",
+    "mobile.twitter.com/AdamSchefter",
+    "https://x.com/AdamSchefter",
+    "https://twitter.com/AdamSchefter",
+    "https://www.x.com/AdamSchefter",
+    "https://mobile.twitter.com/AdamSchefter?s=20",
+  ],
+  feed: [
+    // A named feed.
     "the Thursday report",
-  ]) {
-    assert.equal(readKind(line), core.classifyRead(line).kind === "site" ? "site" : "soon", line);
+    "rotowire",
+    "ESPN",
+    "injury reports, daily",
+    // Nothing at all.
+    "",
+    "   ",
+    // A URL that does not parse, or whose host is not a domain.
+    "http://",
+    "https://exa mple.com",
+    "https://localhost/feed",
+    "https://127.0.0.1/feed",
+    "https://espn.com./nfl",
+    // Almost a bare domain.
+    "nfl.c",
+    ".com",
+    "nfl.com/week 3",
+    "nfl.com?week=3",
+    "nfl.com#top",
+    "nfl.com:8080",
+    "ftp://nfl.com",
+    "//nfl.com",
+    "nfl,com",
+    "münchen.de",
+    "mailto:desk@nfl.com",
+  ],
+};
+
+test("the samples reach every branch of core's classifyRead", async () => {
+  const core = await import("@pickler/core");
+  for (const [kind, samples] of Object.entries(READS)) {
+    for (const line of samples) {
+      assert.equal(core.classifyRead(line).kind, kind, JSON.stringify(line));
+    }
+  }
+});
+
+test("a read is a site here exactly when core says it is a site", async () => {
+  const core = await import("@pickler/core");
+  for (const line of Object.values(READS).flat()) {
+    assert.equal(
+      readKind(line),
+      core.classifyRead(line).kind === "site" ? "site" : "soon",
+      JSON.stringify(line),
+    );
   }
 });
 
