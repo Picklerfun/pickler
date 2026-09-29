@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
+import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
 import { settle } from "./settle.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
@@ -142,7 +143,8 @@ const KINDS = {
       `  drops PICKLER_API_LOCAL_URL and every data route then answers 500.`,
   },
   "not-built": {
-    line: (route) => `${route.path} — 404, not built yet; ${route.task} builds it`,
+    line: (route) =>
+      `${route.path} — 404 twice, and no page file: not built yet; ${route.task} builds it`,
     remedy:
       "Nothing is broken. Those screens are not your turn, and this check will cover them the day they exist.",
   },
@@ -303,6 +305,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
   // sit on two origins, and verifying one of them while measuring both is the same mistake in a
   // smaller form. In development both resolve to DESIGN_BASE_URL, so this still runs exactly once.
   const checked = new Set();
+  const pages = appPages(fileURLToPath(new URL("../../..", import.meta.url)));
   try {
     for (const route of routes) {
       if (!route.product) {
@@ -313,8 +316,21 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
       try {
         await passGuard(page, route);
         let response;
+        let verdict = null;
         try {
-          response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
+          // A 404 is asked once more before it is believed: the dev server compiles routes on
+          // demand and answers 404 during a recompile (lib/not-found.mjs).
+          for (let attempts = 1; ; attempts++) {
+            response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
+            if (!response || response.status() !== 404) {
+              break;
+            }
+            verdict = afterNotFound({ attempts, built: Boolean(pageFor(route.path, pages)) });
+            if (!verdict.retry) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
         } catch (error) {
           blocked.push({
             route,
@@ -325,7 +341,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         }
         const status = response ? response.status() : 0;
         if (status === 404) {
-          blocked.push({ route, kind: "not-built" });
+          blocked.push({ route, ...verdict });
           continue;
         }
         if (!response || !response.ok()) {
