@@ -182,10 +182,13 @@ export async function runPerpsStability(
         recordLocal(event);
       },
     });
+    ownedLease.assertActive = heartbeat.assertActive;
     const signal = AbortSignal.any([parent, heartbeat.signal]);
     const guard = async () => {
+      heartbeat!.assertActive();
       signal.throwIfAborted();
       await study.guard(ownedScope, ownedLease);
+      heartbeat!.assertActive();
       signal.throwIfAborted();
       await writes;
     };
