@@ -15,6 +15,7 @@ import {
 } from "@/features/auth/lib/custody";
 import { wallet as readWallet } from "@/features/auth/lib/custody-api";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
+import { useStudioHref } from "@/features/site/studio-href";
 import {
   agentState,
   confirmDelegated,
@@ -34,6 +35,7 @@ import {
   type Options,
 } from "../api";
 import { custody } from "../lib/passkey";
+import { studioAgentHref } from "../lib/select";
 import { previewOptions, studioPreview } from "../preview";
 import {
   NoSubOrganization,
@@ -118,6 +120,7 @@ export function CreateAgent({
   allowSample: boolean;
 }) {
   const router = useRouter();
+  const studio = useStudioHref();
   const [state, dispatch] = useReducer(
     flowReducer,
     initialStep,
@@ -449,7 +452,7 @@ export function CreateAgent({
         </Link>
         <span className={styles.newAgent}>NEW AGENT</span>
         <span className={shell.spacer} />
-        <Link href="/studio" className={styles.exit}>
+        <Link href={studio} className={styles.exit}>
           Exit
         </Link>
       </header>
@@ -600,9 +603,7 @@ export function CreateAgent({
         <Button
           size="lg"
           disabled={!settled}
-          onClick={() =>
-            router.push(ceremony.agentId ? `/studio?agent=${ceremony.agentId}` : "/studio")
-          }
+          onClick={() => router.push(studioAgentHref(studio, ceremony.agentId))}
         >
           {settled ? "Open the studio" : "Thinking…"}
         </Button>

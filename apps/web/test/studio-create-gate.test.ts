@@ -52,7 +52,14 @@ test("the note and the link name the agent to fund", () => {
     title: "Fund Agent b first.",
     note: "One unfunded agent at a time.",
   });
-  assert.equal(gateHref(unfunded), "/studio?agent=b");
+  assert.equal(gateHref(unfunded, "/studio"), "/studio?agent=b");
+});
+
+test('"Fund it" goes to the studio\'s home on the host it is rendered for', () => {
+  // `/studio` is a 404 on the studio host, where the studio is `/`.
+  const unfunded = agent("b", 0, locked);
+  assert.equal(gateHref(unfunded, "/"), "/?agent=b");
+  assert.equal(gateHref(unfunded, "https://app.pickler.fun/"), "https://app.pickler.fun/?agent=b");
 });
 
 test("a closed gate never starts the ceremony", async () => {

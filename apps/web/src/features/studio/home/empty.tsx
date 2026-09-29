@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, ButtonLink, Icon, Tag, type IconName } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
 import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
+import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
 import {
   StudioError,
@@ -114,6 +115,7 @@ export function EmptyHome({
   /* No agents, so no unfunded-agent lock: the same answer the Menu's "+ New agent" reads. */
   const access = menuAccess({ hasAgent: false, canManage, researchLock, fundLock: "" });
   const now = useNow(15_000);
+  const directory = useMarketplaceHref("/agents");
 
   const [form, setForm] = useState<BriefForm>(staged?.form ?? emptyForm());
   const [availability, setAvailability] = useState<{
@@ -345,7 +347,7 @@ export function EmptyHome({
                 <i aria-hidden="true" />
                 Blank
               </span>
-              <Link href="/agents" className={styles.start}>
+              <Link href={directory} className={styles.start}>
                 <i data-tint="lime" aria-hidden="true" />A ranked agent
                 <Tag className={styles.soon}>SOON</Tag>
               </Link>
@@ -428,7 +430,7 @@ export function EmptyHome({
                 A blank brief. Every section is yours. Read a ranked agent first to see how a
                 working one reads.
               </p>
-              <Link href="/agents" className={styles.sideLink}>
+              <Link href={directory} className={styles.sideLink}>
                 SEE THEIR RECEIPTS →
               </Link>
             </div>

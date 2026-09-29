@@ -7,6 +7,7 @@
  */
 import type { Agent } from "../api";
 import { MIN_FUNDED_AUSD } from "../home/status";
+import { studioAgentHref } from "../lib/select";
 
 type GateAgent = Pick<Agent, "id" | "productId" | "name" | "wallet" | "canCreateAnother">;
 
@@ -34,9 +35,9 @@ export function gateNote(agent: GateAgent): { title: string; note: string } {
   };
 }
 
-/** Where "Fund it" goes: the studio, opened on that agent. */
-export function gateHref(agent: GateAgent): string {
-  return `/studio?agent=${encodeURIComponent(agent.productId ?? agent.id)}`;
+/** Where "Fund it" goes: the studio's home as this host addresses it, opened on that agent. */
+export function gateHref(agent: GateAgent, home: string): string {
+  return studioAgentHref(home, agent.productId ?? agent.id);
 }
 
 /**

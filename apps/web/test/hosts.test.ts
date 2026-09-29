@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ownerOf, productFor, studioHref, studioUrl } from "../src/server/hosts";
+import { marketplaceUrl, ownerOf, productFor, studioHref, studioUrl } from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -110,4 +110,36 @@ test("the studio link follows a reconfigured studio host", () => {
   const hosts = { marketplace: "market.test", studio: "studio.test" };
   assert.equal(studioHref("marketplace", hosts), "https://studio.test/");
   assert.equal(studioUrl("marketplace", hosts, "/apply"), "https://studio.test/apply");
+});
+
+test("a marketplace path gets an origin only from the studio host", () => {
+  // The mirror of `studioUrl`. The studio host 404s what the marketplace owns, so the studio's
+  // links to the directory and the leaderboard have to name the other origin there, and only there.
+  const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
+  assert.equal(marketplaceUrl("studio", hosts, "/agents"), "https://pickler.fun/agents");
+  assert.equal(marketplaceUrl("marketplace", hosts, "/agents"), "/agents");
+  assert.equal(marketplaceUrl("either", hosts, "/agents"), "/agents");
+});
+
+test("a marketplace link carries the whole path it was given", () => {
+  const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
+  assert.equal(
+    marketplaceUrl("studio", hosts, "/agents/half_time"),
+    "https://pickler.fun/agents/half_time",
+  );
+  assert.equal(marketplaceUrl("studio", hosts, "/leaderboard"), "https://pickler.fun/leaderboard");
+  assert.equal(marketplaceUrl("studio", hosts, "/"), "https://pickler.fun/");
+});
+
+test("the marketplace link follows a reconfigured marketplace host", () => {
+  const hosts = { marketplace: "market.test", studio: "studio.test" };
+  assert.equal(marketplaceUrl("studio", hosts, "/agents"), "https://market.test/agents");
+});
+
+test("every marketplace link the studio renders is one its own host would refuse", () => {
+  // The reason the helper exists, pinned against `ownerOf`: if one of these became a studio path,
+  // sending it to the other origin would be the bug.
+  for (const path of ["/agents", "/agents/half_time", "/leaderboard"]) {
+    assert.equal(ownerOf(path), "marketplace", path);
+  }
 });

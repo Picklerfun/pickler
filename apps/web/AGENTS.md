@@ -285,8 +285,8 @@ the ceremony between prompts. `create/gate.ts` is pure and pinned in `studio-cre
 `createGate(agents)` answers `{ open: true }` or `{ open: false, agent }` (one unfunded agent at a
 time, from each agent's `canCreateAnother`, naming the first below 10 AUSD). The create screen
 reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx`
-(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to
-`/studio?agent=<id>`) instead of the flow; "Create and run it once" goes through
+(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to the studio
+opened on that agent, `gateHref(agent, useStudioHref())`) instead of the flow; "Create and run it once" goes through
 `startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
 An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
 "New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
@@ -317,6 +317,15 @@ lock), and the empty home's button and rail read the same answer.
 with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
 read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The
 wallet and profile gates run before it, unchanged.
+
+No link in the studio, account or auth screens names a cross-product path as a literal. On the
+studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
+404s, so the studio's home comes from `useStudioHref()` (with `studioAgentHref(home, id)` from
+`lib/select.ts` to open it on an agent) and a marketplace path from `useMarketplaceHref(path)`
+(`features/site/studio-href.tsx`, over `marketplaceUrl` in `server/hosts.ts`): relative on a host
+serving both products, `https://<marketplace host>/path` from the studio host. The middleware's
+rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
+`/studio?agent=<id>&section=<key>` there.
 
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)

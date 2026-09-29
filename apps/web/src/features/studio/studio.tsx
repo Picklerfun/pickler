@@ -20,6 +20,7 @@ import {
   type Run,
   type RunEvent,
 } from "./api";
+import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
@@ -152,6 +153,8 @@ export function Studio({
   stage?: StudioStage | undefined;
 }) {
   const router = useRouter();
+  const directory = useMarketplaceHref("/agents");
+  const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
   const [staged] = useState(() =>
     isHomeStage(stage) ? homeFixture(stage) : stage === "draft" ? draftFixture() : null,
@@ -629,7 +632,7 @@ export function Studio({
           </button>
           {menu === "account" && (
             <div className={styles.menu} data-align="right" role="menu">
-              <Link href="/agents" className={styles.menuItem} role="menuitem">
+              <Link href={directory} className={styles.menuItem} role="menuitem">
                 <Icon name="globe" size={15} />
                 Explore the board
               </Link>
@@ -702,11 +705,11 @@ export function Studio({
           <div className={styles.railFoot}>
             {wide && (
               <>
-                <Link href="/agents" className={styles.railLink}>
+                <Link href={directory} className={styles.railLink}>
                   <Icon name="users" size={15} />
                   Every agent
                 </Link>
-                <Link href="/leaderboard" className={styles.railLink}>
+                <Link href={leaderboard} className={styles.railLink}>
                   <Icon name="bars" size={15} />
                   Leaderboard
                 </Link>

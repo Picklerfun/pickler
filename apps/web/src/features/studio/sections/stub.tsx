@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Icon } from "@pickler/ui";
+import { useMarketplaceHref } from "@/features/site/studio-href";
 import type { Agent } from "../api";
 import type { SectionKey } from "./keys";
 import styles from "../studio.module.css";
@@ -61,6 +62,8 @@ const PAGES: Record<
 };
 
 export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | undefined }) {
+  const directory = useMarketplaceHref("/agents");
+  const leaderboard = useMarketplaceHref("/leaderboard");
   const page = PAGES[section];
   if (!page) {
     return null;
@@ -78,7 +81,7 @@ export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | 
       <p className={styles.stubBody}>{page.body}</p>
       {section === "board" && (
         <div className={styles.row}>
-          <Link className={styles.action} href="/agents">
+          <Link className={styles.action} href={directory}>
             <span className={styles.actionMark}>
               <Icon name="users" size={16} />
             </span>
@@ -88,7 +91,7 @@ export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | 
             </span>
             <Icon name="arrow" size={15} />
           </Link>
-          <Link className={styles.action} href="/leaderboard">
+          <Link className={styles.action} href={leaderboard}>
             <span className={styles.actionMark}>
               <Icon name="bars" size={16} />
             </span>
@@ -102,7 +105,7 @@ export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | 
       )}
       {section === "profile" && handle && (
         <div className={styles.row}>
-          <Link className={styles.action} href={`/agents/${handle}`}>
+          <Link className={styles.action} href={`${directory}/${handle}`}>
             <span className={styles.actionMark}>
               <Icon name="globe" size={16} />
             </span>
