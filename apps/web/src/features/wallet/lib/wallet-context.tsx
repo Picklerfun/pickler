@@ -16,8 +16,8 @@ import { injectedSigner } from "./injected-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
 import { signIn } from "./connect";
 import { fromInjectedProvider } from "./signer-adapters";
-import { signInWords } from "./sign-in-words";
-import { decideSession, dropWalletSession, heldBy, type WalletSession } from "./wallet-session";
+import { dropWalletSession, heldBy, type WalletSession } from "./wallet-session";
+import { signInAs, type SignInResult } from "./wallet-sign-in";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
@@ -112,10 +112,11 @@ interface WalletState {
   sessionError: string | null;
   /**
    * Sign in with the connected wallet: one signature over a string the server built. Answers with
-   * the access token, or null when it did not happen — including when the person simply closed the
-   * prompt, which is an answer rather than a failure.
+   * the access token, or with the error — null when the person simply closed the prompt, which is
+   * an answer rather than a failure. A caller shows the error from this result: `sessionError` is
+   * for whoever renders later, and is not yet set in the render the caller awaited from.
    */
-  signInWithWallet: () => Promise<string | null>;
+  signInWithWallet: () => Promise<SignInResult>;
   /**
    * Opens the chooser. `holding` is what the person was about to do, shown while they pick so the
    * action they came for is not lost behind the wallet.
@@ -237,57 +238,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [release],
   );
 
-  const signInWithWallet = useCallback(async (): Promise<string | null> => {
-    // Already signed in as this address, with a token that has not run out: hand back what we
-    // have rather than spend another prompt on a signature that would prove the same thing twice.
-    // A token issued to another address, or an expired one, is never handed back.
-    const decided = decideSession(
-      heldRef.current,
-      account && { address: account.address, namespace: "eip155" },
-      new Date(),
-    );
-    if (decided.action === "reuse") {
-      return decided.token;
-    }
+  const signInWithWallet = useCallback(async (): Promise<SignInResult> => {
     const provider = getProvider();
-    const supabase = getSupabase();
-    if (!provider || !account) {
-      setSessionError("Connect a wallet before signing in.");
-      return null;
-    }
-    if (!supabase) {
-      // No Supabase in this build: there is nowhere to put a session, so asking for a signature
-      // would spend somebody's prompt on nothing.
-      setSessionError("Signing in is not configured in this build.");
-      return null;
-    }
     setSigning(true);
     setSessionError(null);
     try {
-      const signer = fromInjectedProvider(
-        provider,
-        account.address,
-        account.chainId ?? TARGET_CHAIN.chainId,
-      );
-      const result = await signIn(signer);
-      const { error: refused } = await supabase.auth.setSession({
-        access_token: result.session.accessToken,
-        refresh_token: result.session.refreshToken,
+      const { result, session } = await signInAs({
+        cached: heldRef.current,
+        signer:
+          provider && account
+            ? fromInjectedProvider(
+                provider,
+                account.address,
+                account.chainId ?? TARGET_CHAIN.chainId,
+              )
+            : null,
+        supabase: getSupabase(),
+        signIn,
+        now: new Date(),
       });
-      if (refused) {
-        throw new Error(refused.message);
+      if (session) {
+        hold(session);
       }
-      // Stored against the address that signed, not whichever is connected by now.
-      hold({
-        token: result.session.accessToken,
-        userId: result.userId,
-        address: signer.address,
-        namespace: "eip155",
-      });
-      return result.session.accessToken;
-    } catch (caught) {
-      setSessionError(signInWords(caught));
-      return null;
+      setSessionError("error" in result ? result.error : null);
+      return result;
     } finally {
       setSigning(false);
     }
