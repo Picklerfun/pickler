@@ -709,3 +709,71 @@ test("paper account writes are fenced by the study lease in their own transactio
   );
   assert.equal(await x.paper.observed(target, "expired"), false);
 });
+
+test("study event rolls back if ownership expires during the transaction", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  let reads = 0;
+  const delayed = new PostgresPerpsStudyStore(x.research.pool, () => {
+    if (++reads === 2) {
+      x.advance(90001);
+    }
+    return x.now();
+  });
+  await assert.rejects(delayed.event(x.scope, lease, "late-commit", "test", {}), {
+    code: "LEASE_LOST",
+  });
+  assert.ok(!(await x.study.view(x.scope)).events.some((event) => event.key === "late-commit"));
+});
+
+test("a partial observation write failure stops instead of skipping or invoking models", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  let writes = 0;
+  const original = x.paper.observe.bind(x.paper);
+  x.paper.observe = async (...args) => {
+    if (++writes === 2) {
+      throw new PilotError("DATA_UNAVAILABLE", "failure after first write");
+    }
+    return original(...args);
+  };
+  const unexpected = async () => {
+    throw new Error("model must not run");
+  };
+  const runner = createPerpsStudyRunner({
+    study: x.study,
+    paper: x.paper,
+    now: x.now,
+    models: { metadata: {}, direct: unexpected, readiness: unexpected },
+    data: {
+      observe: async () => ({ frames: studyEvidence(x.now()).frames, funding: [] }),
+      evidence: async () => studyEvidence(x.now()),
+      execution: async () => studyEvidence(x.now()).frames,
+    },
+  });
+  await assert.rejects(runner.cycle(x.scope, lease, new AbortController().signal), {
+    code: "DATA_UNAVAILABLE",
+  });
+  const view = await x.study.view(x.scope);
+  assert.equal(view.rounds.length, 0);
+  assert.equal(view.events.filter((event) => event.kind === "data-unavailable").length, 0);
+});
+
+test("database lock delay cannot renew an expired lease or permit subsequent writes", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  const blocker = await x.research.pool.connect();
+  await blocker.query("BEGIN");
+  await blocker.query("SELECT id FROM pickler.perps_studies WHERE session_id=$1 FOR UPDATE", [
+    x.scope.sessionId,
+  ]);
+  const renewal = x.study.renew(x.scope, lease);
+  const rejected = assert.rejects(renewal, { code: "LEASE_LOST" });
+  x.advance(90001);
+  await blocker.query("COMMIT");
+  blocker.release();
+  await rejected;
+  await assert.rejects(x.study.event(x.scope, lease, "after-lock", "test", {}), {
+    code: "LEASE_LOST",
+  });
+});
