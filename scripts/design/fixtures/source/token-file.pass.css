@@ -1,0 +1,9 @@
+:root {
+  --pk-lime: #c8f03a;
+  --pk-rule: rgba(11, 13, 26, 0.08);
+}
+
+.pk-button {
+  color: var(--pk-lime);
+  border-color: var(--pk-rule);
+}

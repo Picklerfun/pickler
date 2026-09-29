@@ -1,0 +1,7 @@
+.row {
+  --gap: 12px;
+  --edge: 1px solid var(--pk-rule);
+  gap: var(--gap);
+  border-bottom: var(--edge);
+  color: var(--pk-ink);
+}
