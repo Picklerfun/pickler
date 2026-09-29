@@ -20,6 +20,13 @@ export interface AgentWalletLink {
   walletId: string;
 }
 
+/**
+ * The "+ New agent" funding lock, run by a create inside its transaction after the workspace row
+ * is locked, so two creates in one workspace serialize and the second sees the first. It throws to
+ * refuse; the create then writes nothing.
+ */
+export type CreateAdmission = () => Promise<void>;
+
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
@@ -34,6 +41,7 @@ export interface StudioDirectory {
       profile: AgentProfileInput;
       wallet: AgentWalletLink;
     },
+    admit?: CreateAdmission,
   ): Promise<Scope>;
   /**
    * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
@@ -46,6 +54,7 @@ export interface StudioDirectory {
     userId: string,
     input: { name: string; handle: string; previewRunId: string; fingerprint: string },
     now: number,
+    admit?: CreateAdmission,
   ): Promise<{ productId: string; scope: Scope }>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   /**
@@ -90,13 +99,14 @@ export function createStudioAccess(directory: StudioDirectory) {
         profile: AgentProfileInput;
         wallet: AgentWalletLink;
       },
+      admit?: CreateAdmission,
     ) {
       const access = await this.authorize(principal, true);
       assertConfig(input.config);
       if (!input.config.marketScope) {
         throw new AccessDeniedError("A category and subcategory selection is required");
       }
-      return directory.createAgent(access, principal.id, input);
+      return directory.createAgent(access, principal.id, input, admit);
     },
   };
 }

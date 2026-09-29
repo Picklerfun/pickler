@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { preparePreview, type Decision } from "@pickler/core";
+import { PilotError, preparePreview, type Decision } from "@pickler/core";
 import { PostgresPreviewStore } from "../src/persistence/preview-store.js";
 import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { createTestStore } from "./database.js";
@@ -211,4 +211,32 @@ test("a failure mid-way leaves no agent, and the run is not adopted", async (t) 
     [id],
   );
   assert.equal(preview.rows[0].adopted_at, null);
+});
+
+test("two concurrent drafts serialize on the funding lock: only one is created", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const first = await f.completed(owner);
+  const second = await f.completed(owner);
+  // The route's lock over this directory: an unfunded draft (0 AUSD) closes it.
+  const admit = async () => {
+    if ((await f.directory.list(owner.access)).some((agent) => agent.draft)) {
+      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+    }
+  };
+  const draft = (id: string, handle: string) =>
+    f.directory.createDraft(
+      owner.access,
+      owner.userId,
+      { name: "Agent", handle, previewRunId: id, fingerprint: f.fingerprint },
+      f.clock,
+      admit,
+    );
+
+  const results = await Promise.allSettled([draft(first, "agent_one"), draft(second, "agent_two")]);
+
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  const refused = results.find((result) => result.status === "rejected");
+  assert.equal((refused as PromiseRejectedResult).reason.code, "UNFUNDED_AGENT");
+  assert.equal((await f.directory.list(owner.access)).length, 1);
 });

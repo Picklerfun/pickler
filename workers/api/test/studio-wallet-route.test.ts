@@ -75,11 +75,13 @@ function fixture({
       role: "admin",
       enabled: true,
     }),
-    createAgent: async (_access, _user, input) => {
+    createAgent: async (_access, _user, input, admit) => {
       const earlier = keys.get(input.key);
       if (earlier) {
         return scope(earlier);
       }
+      // The directory runs the funding lock inside its transaction, after a replay.
+      await admit?.();
       if (createError) {
         throw createError;
       }

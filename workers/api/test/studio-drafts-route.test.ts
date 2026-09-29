@@ -64,7 +64,9 @@ function app({
         draft: agent.draft,
         scope: { tenantId: "trusted", agentId: agent.id },
       })),
-    createDraft: async (_access, _user, input) => {
+    createDraft: async (_access, _user, input, _now, admit) => {
+      // The directory runs the funding lock inside its transaction, before it checks the run.
+      await admit?.();
       if (refuse) {
         throw new PilotError(refuse, "refused");
       }

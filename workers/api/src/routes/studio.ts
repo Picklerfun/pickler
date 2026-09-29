@@ -329,6 +329,20 @@ export function studioRoutes(services: StudioServices) {
     return { listed, wallets, another: canCreateAnother(balances) };
   }
 
+  /**
+   * "+ New agent"'s lock as the create runs it: inside its transaction, after the workspace row is
+   * locked, so two concurrent creates serialize and the second counts the first (a draft as 0
+   * AUSD).
+   */
+  function fundingLock(current: StudioAccess) {
+    return async () => {
+      const { another } = await fleet(current);
+      if (!another.ok) {
+        throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+      }
+    };
+  }
+
   /** The single place the agent DTO, its wallet and both locks are composed. */
   async function studioAgent(
     scope: Scope,
@@ -380,18 +394,11 @@ export function studioRoutes(services: StudioServices) {
     const input = createAgentSchema.parse(await c.req.json());
     const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
     const current = await access.authorize(c.get("principal"), true);
-    // A retry of a create that already happened replays through `create` (which still refuses
-    // different terms under the key); only a genuinely new agent meets the funding lock.
-    const replay = await services.directory.createdWithKey(current, key);
-    if (!replay) {
-      const { another } = await fleet(current);
-      if (!another.ok) {
-        throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
-      }
-    }
     let scope;
     try {
-      scope = await access.create(c.get("principal"), { ...input, key });
+      // A retry of a create that already happened replays inside `create` (which still refuses
+      // different terms under the key) before the funding lock; only a genuinely new agent meets it.
+      scope = await access.create(c.get("principal"), { ...input, key }, fundingLock(current));
     } catch (error) {
       // Creation's refusals share one code for different fixes ("Approve the wallet's rules
       // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
@@ -439,15 +446,12 @@ export function studioRoutes(services: StudioServices) {
     const current = await access.authorize(principal, true);
     const body = draftCreateSchema.parse(await c.req.json());
     const { fingerprint } = preparePreview(body);
-    const { another } = await fleet(current);
-    if (!another.ok) {
-      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
-    }
     const created = await services.directory.createDraft(
       current,
       principal.id,
       { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
       Date.now(),
+      fundingLock(current),
     );
     return c.json(
       {

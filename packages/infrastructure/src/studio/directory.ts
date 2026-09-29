@@ -13,6 +13,7 @@ import {
   type AgentConfig,
   type AgentProfileInput,
   type AgentWalletLink,
+  type CreateAdmission,
   type Scope,
 } from "@pickler/core";
 
@@ -95,6 +96,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       profile: AgentProfileInput;
       wallet: AgentWalletLink;
     },
+    admit?: CreateAdmission,
   ) {
     // The beat the profile shows is the category the runtime is scoped to. Core has already
     // required it; narrowing here keeps the profile from ever being written without one.
@@ -130,6 +132,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
         }
         return { tenantId: access.tenantId, agentId: existing.rows[0].runtime_agent_id as string };
       }
+      // Only a genuinely new agent meets the funding lock; a replay above does not.
+      await admit?.();
       const available = await client.query("SELECT identity.handle_available($1) AS available", [
         input.handle,
       ]);
@@ -199,17 +203,18 @@ export class PostgresStudioDirectory implements StudioDirectory {
     });
   }
   /**
-   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace and the
-   * preview, check it (PREVIEW_UNUSABLE, then RUN_STALE, then HANDLE_TAKEN), then write the agent
-   * as a draft with no wallet, its profile and handle, its runtime row with the run's config
-   * snapshot, the preview as its first run with its trace, and the preview's adoption. Any failure
-   * rolls all of it back.
+   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace, run the
+   * funding lock, lock the preview and check it (PREVIEW_UNUSABLE, then RUN_STALE, then
+   * HANDLE_TAKEN), then write the agent as a draft with no wallet, its profile and handle, its
+   * runtime row with the run's config snapshot, the preview as its first run with its trace, and
+   * the preview's adoption. Any failure rolls all of it back.
    */
   async createDraft(
     access: StudioAccess,
     userId: string,
     input: { name: string; handle: string; previewRunId: string; fingerprint: string },
     now: number,
+    admit?: CreateAdmission,
   ): Promise<{ productId: string; scope: Scope }> {
     try {
       return await this.transaction(async (client) => {
@@ -222,6 +227,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!allowed.rows.length) {
           throw new AccessDeniedError("Research access revoked");
         }
+        await admit?.();
         const found = await client.query<
           AdoptablePreview & {
             config: AgentConfig;
