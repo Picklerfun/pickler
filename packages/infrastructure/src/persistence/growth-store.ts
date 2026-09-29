@@ -1,6 +1,8 @@
 import type { Pool } from "pg";
 import {
+  CATEGORIES,
   DataSourceUnavailableError,
+  PERSONALITIES,
   type Applicant,
   type Application,
   type ApplicantRepository,
@@ -9,13 +11,52 @@ import {
   type WaitlistRepository,
 } from "@pickler/core";
 import { z } from "zod";
-import { applicantSchema, outcomeSchema } from "../supabase/supabase-applicants.js";
-import { placementSchema } from "../supabase/supabase-waitlist.js";
 import { readRows } from "./data-source.js";
 
 // The growth schema's security-definer functions (drizzle/0006_product_functions_and_grants.sql)
-// over the API's pool: the same calls the Supabase adapters made through PostgREST, and the same
-// schemas check what comes back, so a function whose shape drifts fails as unavailable.
+// over the API's pool. The schemas below check what comes back, so a function whose shape drifts
+// fails as unavailable.
+
+// growth.join_waitlist returns a single-row table.
+export const placementSchema = z
+  .array(
+    z.object({
+      line_position: z.coerce.number().int().positive(),
+      already_joined: z.boolean(),
+      apply_token: z.uuid().nullable(),
+    }),
+  )
+  .length(1);
+
+// Mirrors growth.applicant_by_token() in the product functions migration.
+export const applicantSchema = z
+  .object({
+    email: z.string(),
+    linePosition: z.coerce.number().int().positive(),
+    referralCode: z.string(),
+    referrals: z.coerce.number().int().nonnegative(),
+    application: z
+      .object({
+        agentName: z.string(),
+        ticker: z.string(),
+        xHandle: z.string(),
+        category: z.enum(CATEGORIES),
+        personality: z.enum(PERSONALITIES),
+        edge: z.string(),
+        whyYou: z.string(),
+        submittedAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
+      })
+      .nullable(),
+  })
+  .nullable();
+
+export const outcomeSchema = z.enum([
+  "submitted",
+  "not_found",
+  "already_submitted",
+  "ticker_taken",
+  "handle_taken",
+]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

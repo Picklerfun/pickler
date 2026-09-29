@@ -12,6 +12,7 @@ import {
   type AgentRegistry,
   type RegisteredAgent,
 } from "@pickler/core";
+import { ANALYTICS_ROW_LIMIT } from "../../persistence/agent-registry.js";
 import type { SupabaseAdmin } from "../supabase-admin-client.js";
 
 interface AgentRow {
@@ -131,9 +132,6 @@ export function createSupabaseAgentRegistry(db: SupabaseAdmin): AgentRegistry {
     },
   };
 }
-
-/** Upper bound on rows scanned for analytics; Relayer scanned without a limit. */
-export const ANALYTICS_ROW_LIMIT = 10_000;
 
 export function createSupabaseAgentEventLog(db: SupabaseAdmin): AgentEventLog {
   const events = () => db.schema("agents").from("agent_events");

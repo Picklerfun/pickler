@@ -9,8 +9,10 @@ import type {
   BudgetSource,
   RegisteredAgent,
 } from "@pickler/core";
-import { ANALYTICS_ROW_LIMIT } from "../supabase/agent-registry/supabase-agent-registry.js";
 import { readRows } from "./data-source.js";
+
+/** Upper bound on rows scanned for analytics; Relayer scanned without a limit. */
+export const ANALYTICS_ROW_LIMIT = 10_000;
 
 // agents.agents + agents.agent_profiles, agents.agent_credentials, agents.agent_events and
 // budget.budgets over the API's pool, mirroring the Supabase adapters these replace. Nothing here

@@ -1,17 +1,6 @@
 import { DataSourceUnavailableError, type WaitlistRepository } from "@pickler/core";
-import { z } from "zod";
+import { placementSchema } from "../persistence/growth-store.js";
 import type { SupabaseRestClient } from "./supabase-rest-client.js";
-
-// growth.join_waitlist returns a single-row table.
-export const placementSchema = z
-  .array(
-    z.object({
-      line_position: z.coerce.number().int().positive(),
-      already_joined: z.boolean(),
-      apply_token: z.uuid().nullable(),
-    }),
-  )
-  .length(1);
 
 export function createSupabaseWaitlist(client: SupabaseRestClient): WaitlistRepository {
   return {

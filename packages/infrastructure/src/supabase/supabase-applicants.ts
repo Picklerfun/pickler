@@ -1,43 +1,9 @@
-import {
-  CATEGORIES,
-  DataSourceUnavailableError,
-  PERSONALITIES,
-  type ApplicantRepository,
-} from "@pickler/core";
+import { DataSourceUnavailableError, type ApplicantRepository } from "@pickler/core";
 import { z } from "zod";
+import { applicantSchema, outcomeSchema } from "../persistence/growth-store.js";
 import type { SupabaseRestClient } from "./supabase-rest-client.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// Mirrors growth.applicant_by_token() in supabase/migrations.
-export const applicantSchema = z
-  .object({
-    email: z.string(),
-    linePosition: z.coerce.number().int().positive(),
-    referralCode: z.string(),
-    referrals: z.coerce.number().int().nonnegative(),
-    application: z
-      .object({
-        agentName: z.string(),
-        ticker: z.string(),
-        xHandle: z.string(),
-        category: z.enum(CATEGORIES),
-        personality: z.enum(PERSONALITIES),
-        edge: z.string(),
-        whyYou: z.string(),
-        submittedAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
-      })
-      .nullable(),
-  })
-  .nullable();
-
-export const outcomeSchema = z.enum([
-  "submitted",
-  "not_found",
-  "already_submitted",
-  "ticker_taken",
-  "handle_taken",
-]);
 
 function parse<T>(schema: z.ZodType<T>, body: unknown, fn: string): T {
   const parsed = schema.safeParse(body);

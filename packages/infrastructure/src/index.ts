@@ -42,7 +42,6 @@ export {
 export { createSupabaseWorkspaceDirectory } from "./supabase/access/supabase-workspace-directory.js";
 export { createSupabaseApiKeyDirectory } from "./supabase/access/supabase-api-key-directory.js";
 export {
-  ANALYTICS_ROW_LIMIT,
   createSupabaseAgentEventLog,
   createSupabaseAgentRegistry,
 } from "./supabase/agent-registry/supabase-agent-registry.js";
@@ -84,6 +83,7 @@ export {
   PostgresWorkspaceDirectory,
 } from "./persistence/access-directory.js";
 export {
+  ANALYTICS_ROW_LIMIT,
   PostgresAgentEventLog,
   PostgresAgentRegistry,
   PostgresBudgetSource,
