@@ -8,7 +8,14 @@ test("the brief decision prompt is versioned, hashed and asks for every field", 
   assert.equal(briefDecisionSystemPrompt.id, "brief-decision-system");
   assert.equal(briefDecisionSystemPrompt.version, "1.0.0");
   assert.match(briefDecisionSystemPrompt.sha256, /^[0-9a-f]{64}$/);
-  for (const word of ["entries", "exitArmed", "neverChecked", "untrusted", "same order"]) {
+  for (const word of [
+    "entries",
+    "exitArmed",
+    "neverChecked",
+    "untrusted",
+    "same order",
+    "one key allowed",
+  ]) {
     assert.ok(briefDecisionSystemPrompt.instructions.includes(word), word);
   }
 });
