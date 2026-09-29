@@ -35,6 +35,18 @@ export interface StudioDirectory {
       wallet: AgentWalletLink;
     },
   ): Promise<Scope>;
+  /**
+   * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
+   * the agent with `status = 'draft'` and no wallet, its runtime row with the run's config snapshot,
+   * the preview copied in as its first run, and the preview marked adopted. Refuses with
+   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, and then writes nothing.
+   */
+  createDraft(
+    access: StudioAccess,
+    userId: string,
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
+    now: number,
+  ): Promise<{ productId: string; scope: Scope }>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   /**
    * The agent an earlier create with this idempotency key made, or null for a new key. Read-only:
@@ -42,10 +54,15 @@ export interface StudioDirectory {
    */
   createdWithKey(access: StudioAccess, key: string): Promise<Scope | null>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
-  /** The person's agents, oldest first, with the accent their profile was created with ("lime" without one). */
+  /**
+   * The person's agents, oldest first, with the accent their profile was created with ("lime"
+   * without one), and whether each is a private draft (no wallet yet; it holds 0 AUSD).
+   */
   list(
     access: StudioAccess,
-  ): Promise<{ id: string; name: string; handle: string; accent: Accent; scope: Scope }[]>;
+  ): Promise<
+    { id: string; name: string; handle: string; accent: Accent; draft: boolean; scope: Scope }[]
+  >;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {

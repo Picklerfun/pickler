@@ -5,6 +5,8 @@ import {
   AccessDeniedError,
   MIN_AGENT_WALLET_POLICIES,
   PilotError,
+  assertPreviewAdoptable,
+  type AdoptablePreview,
   type Accent,
   type StudioAccess,
   type StudioDirectory,
@@ -196,6 +198,129 @@ export class PostgresStudioDirectory implements StudioDirectory {
       return { tenantId: access.tenantId, agentId: id };
     });
   }
+  /**
+   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace and the
+   * preview, check it (PREVIEW_UNUSABLE, then RUN_STALE, then HANDLE_TAKEN), then write the agent
+   * as a draft with no wallet, its profile and handle, its runtime row with the run's config
+   * snapshot, the preview as its first run with its trace, and the preview's adoption. Any failure
+   * rolls all of it back.
+   */
+  async createDraft(
+    access: StudioAccess,
+    userId: string,
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
+    now: number,
+  ): Promise<{ productId: string; scope: Scope }> {
+    try {
+      return await this.transaction(async (client) => {
+        const allowed = await client.query(
+          `SELECT w.id FROM identity.workspaces w
+          JOIN pickler.research_access a ON a.user_id=w.owner_user_id
+          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR UPDATE OF w,a`,
+          [access.workspaceId, userId],
+        );
+        if (!allowed.rows.length) {
+          throw new AccessDeniedError("Research access revoked");
+        }
+        const found = await client.query<
+          AdoptablePreview & {
+            config: AgentConfig;
+            decision: unknown;
+            error: string | null;
+            createdAt: number;
+            startedAt: number | null;
+            finishedAt: number | null;
+          }
+        >(
+          `SELECT user_id AS "userId", workspace_id AS "workspaceId", status,
+            expires_at::double precision AS "expiresAt", adopted_at IS NOT NULL AS adopted,
+            fingerprint, config, decision, error, created_at::double precision AS "createdAt",
+            started_at::double precision AS "startedAt", finished_at::double precision AS "finishedAt"
+          FROM pickler.preview_runs WHERE id=$1 FOR UPDATE`,
+          [input.previewRunId],
+        );
+        const preview = found.rows[0] ?? null;
+        assertPreviewAdoptable(
+          preview,
+          { userId, workspaceId: access.workspaceId },
+          input.fingerprint,
+          now,
+        );
+        const run = preview!;
+        const available = await client.query("SELECT identity.handle_available($1) AS available", [
+          input.handle,
+        ]);
+        if (!available.rows[0].available) {
+          throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
+        }
+        const id = randomUUID();
+        await client.query(
+          "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'draft',$5)",
+          [id, access.workspaceId, input.name, input.handle, userId],
+        );
+        // The public face comes in Go Public; the beat is the scope the brief runs on.
+        await client.query(
+          "INSERT INTO agents.agent_profiles (agent_id, beat, accent) VALUES ($1, 'sports', 'lime')",
+          [id],
+        );
+        await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
+          input.handle,
+          id,
+        ]);
+        await client.query(
+          "INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3::jsonb)",
+          [access.tenantId, id, JSON.stringify(run.config)],
+        );
+        const request = JSON.stringify({
+          name: input.name,
+          handle: input.handle,
+          previewRunId: input.previewRunId,
+        });
+        await client.query(
+          `INSERT INTO pickler.product_agents (product_agent_id,workspace_id,tenant_id,runtime_agent_id,request_key,request)
+          VALUES ($1::uuid,$2,$3,$1::text,$4,$5::jsonb)`,
+          [id, access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, request],
+        );
+        // The preview becomes its first run: a completed manual run at version 1, which is what
+        // readiness counts (§6: "its first run counts as done").
+        await client.query(
+          `INSERT INTO pickler.runs
+            (id, tenant_id, agent_id, request_key, market_id, trigger, status, created_at, started_at,
+             finished_at, config_version, config, decision, error)
+          VALUES ($1,$2,$3,$4,NULL,'manual','completed',$5,$6,$7,1,$8::jsonb,$9::jsonb,$10)`,
+          [
+            input.previewRunId,
+            access.tenantId,
+            id,
+            `preview:${input.previewRunId}`,
+            run.createdAt,
+            run.startedAt,
+            run.finishedAt,
+            JSON.stringify(run.config),
+            run.decision === null ? null : JSON.stringify(run.decision),
+            run.error,
+          ],
+        );
+        await client.query(
+          `INSERT INTO pickler.events (run_id, type, data, created_at)
+          SELECT $1, type, data, created_at FROM pickler.preview_events
+          WHERE preview_run_id=$1 ORDER BY id`,
+          [input.previewRunId],
+        );
+        await client.query(
+          "UPDATE pickler.preview_runs SET adopted_at=$2, adopted_agent_id=$3 WHERE id=$1",
+          [input.previewRunId, now, id],
+        );
+        return { productId: id, scope: { tenantId: access.tenantId, agentId: id } };
+      });
+    } catch (error) {
+      // A handle claimed between the check and the insert hits the unique index instead.
+      if (error instanceof PilotError && error.code === "CONFLICT") {
+        throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
+      }
+      throw error;
+    }
+  }
   /** The same lookup `createAgent` replays from: workspace and key. */
   async createdWithKey(access: StudioAccess, key: string): Promise<Scope | null> {
     const result = await this.pool.query(
@@ -227,7 +352,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,pr.accent,p.tenant_id,p.runtime_agent_id FROM agents.agents a
+      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,pr.accent,p.tenant_id,p.runtime_agent_id
+      FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
       WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
@@ -241,6 +367,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       accent: (ACCENTS as readonly string[]).includes(row.accent)
         ? (row.accent as Accent)
         : ("lime" as const),
+      draft: row.draft === true,
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
   }
