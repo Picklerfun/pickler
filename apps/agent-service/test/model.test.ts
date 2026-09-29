@@ -244,14 +244,18 @@ test("research combines tool calls, per-step usage and validated decisions in Ma
 
 test("runtime metadata identifies the exact immutable system prompts without credentials", () => {
   const metadata = createModel(env).metadata();
-  assert.deepEqual(metadata.prompts, {
+  const { briefDecision, ...pinned } = metadata.prompts;
+  assert.deepEqual(pinned, {
     research: researchSystemPrompt,
     marketSelection: marketSelectionSystemPrompt,
     decision: decisionSystemPrompt,
     nflDecision: nflDecisionSystemPrompt,
     generalDecision: generalDecisionSystemPrompt,
   });
-  for (const prompt of Object.values(metadata.prompts)) {
+  assert.ok(briefDecision);
+  assert.equal(briefDecision.id, "brief-decision-system");
+  assert.equal(briefDecision.version, "1.0.0");
+  for (const prompt of [...Object.values(pinned), briefDecision]) {
     if (prompt.id !== "research-system") {
       assert.match(prompt.instructions, /json/i);
       assert.match(prompt.instructions, /required/);
