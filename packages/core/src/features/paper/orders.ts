@@ -59,7 +59,7 @@ export interface PaperRepository {
     tenantId: string,
     runId: string,
     key: string,
-  ): Promise<{ order: PaperOrder; owned: boolean }>;
+  ): Promise<{ order: PaperOrder; owned: boolean; budgetAusd: number }>;
   get(tenantId: string, runId: string): Promise<PaperOrder>;
   guard(order: PaperOrder): Promise<{ run: RunRecord; agent: AgentRecord }>;
   finish(
@@ -290,16 +290,15 @@ export function createPaperService(
   return {
     get: (tenantId: string, runId: string) => repository.get(tenantId, runId),
     async create(tenantId: string, runId: string, key: string): Promise<PaperOrder> {
-      const { order, owned } = await repository.begin(tenantId, runId, key);
+      // The fill spends exactly the budget `begin` admitted under the daily cap, never a limit
+      // raised after it.
+      const { order, owned, budgetAusd } = await repository.begin(tenantId, runId, key);
       if (!owned) {
         return order;
       }
       const signal = AbortSignal.timeout(55000);
       try {
-        const { run, agent } = await repository.guard(order);
-        // The agent's current limits: `updateSpend` keeps the config version, so the run's
-        // snapshot can be older than what the person last set.
-        const budget = paperBudgetAusd(agent.config.spend);
+        const { run } = await repository.guard(order);
         const market = await markets.get(order.marketId, signal);
         if (run.config.marketScope) {
           assertConfiguredMarket(market, run.config, now());
@@ -330,7 +329,7 @@ export function createPaperService(
           conditions,
           run.decision!.limitPrice!,
           now(),
-          budget,
+          budgetAusd,
         );
         return await repository.finish(
           order,

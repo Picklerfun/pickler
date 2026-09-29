@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   PilotError,
+  PAPER_BUDGET_AUSD,
   PLUGINS,
   assertPaperAllowed,
   assertPaperDailyCap,
@@ -91,22 +92,27 @@ export class PostgresPaperStore implements PaperRepository, PaperSettlementRepos
       const context = await this.context(client, tenantId, runId);
       const now = await this.now(client);
       await this.recover(client, tenantId, context.run.agentId, now);
-      const existing = await client.query<PaperOrder & { request_key: string }>(
-        `SELECT ${projection}, request_key FROM pickler.paper_orders WHERE tenant_id = $1 AND run_id = $2`,
-        [tenantId, runId],
+      const existing = await client.query<
+        PaperOrder & { request_key: string; budget_ausd: number }
+      >(
+        `SELECT ${projection}, request_key, coalesce((snapshot->>'budgetAusd')::double precision, $3) AS budget_ausd
+        FROM pickler.paper_orders WHERE tenant_id = $1 AND run_id = $2`,
+        [tenantId, runId, PAPER_BUDGET_AUSD],
       );
       if (existing.rows[0]) {
-        const { request_key, ...order } = existing.rows[0];
+        const { request_key, budget_ausd, ...order } = existing.rows[0];
         if (request_key !== key) {
           throw new PilotError("CONFLICT", "Only one paper attempt per research is allowed");
         }
-        return { order, owned: false };
+        return { order, owned: false, budgetAusd: budget_ausd };
       }
       assertPaperAllowed(context.run, context.agent, now);
-      // The agent row is locked (`context`), so two orders cannot both fit under the same cap.
+      // The agent's current limits: `updateSpend` keeps the config version, so the run's snapshot
+      // can be older than what the person last set. The agent row is locked (`context`), so two
+      // orders cannot both fit under the same cap.
       const spend = context.agent.config.spend;
+      const budget = paperBudgetAusd(spend);
       if (spend) {
-        const budget = paperBudgetAusd(spend);
         const today = await client.query<{ spent: string }>(
           `SELECT coalesce(sum(CASE WHEN status = 'filled' THEN (fill->>'totalCost')::numeric ELSE $4::numeric END), 0)::text AS spent
           FROM pickler.paper_orders
@@ -135,12 +141,13 @@ export class PostgresPaperStore implements PaperRepository, PaperSettlementRepos
             config: context.run.config,
             decision,
             plugin: PLUGINS.find((plugin) => plugin.id === "paper-trading"),
+            budgetAusd: budget,
           }),
           owner,
         ],
       );
       this.owners.set(id, owner);
-      return { order: result.rows[0]!, owned: true };
+      return { order: result.rows[0]!, owned: true, budgetAusd: budget };
     });
   }
   async get(tenantId: string, runId: string): Promise<PaperOrder> {

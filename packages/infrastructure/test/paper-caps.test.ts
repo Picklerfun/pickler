@@ -7,6 +7,7 @@ import {
   type Market,
   type ModelAssessment,
   type PaperMarketData,
+  type PaperRepository,
 } from "@pickler/core";
 import { PostgresPaperStore } from "../src/persistence/paper-store.js";
 import { createTestStore } from "./database.js";
@@ -79,15 +80,15 @@ async function setup(t: TestContext) {
       provenance: `https://example.com/${marketId}`,
     }),
   };
-  const service = createPaperService(
-    new PostgresPaperStore(store.pool, () => now),
-    markets,
-    () => now,
-  );
+  const paper = new PostgresPaperStore(store.pool, () => now);
+  const service = createPaperService(paper, markets, () => now);
   return {
     store,
     scope,
     makeRun,
+    paper,
+    markets,
+    now: () => now,
     service,
     advance: (ms: number) => {
       now += ms;
@@ -126,4 +127,34 @@ test("the order past the day's cap is refused, and a new UTC day starts a new su
   f.advance(12 * 3600_000 + 1_000); // 2026-09-29T00:00:01Z
   const next = await f.makeRun("4");
   assert.equal((await f.service.create("alpha", next.id, "k4")).status, "filled");
+});
+
+test("a pending order counts toward the day's sum and blocks the next", async (t) => {
+  const f = await setup(t);
+  await f.store.updateSpend(f.scope, { perCallAusd: 5, perDayAusd: 5 });
+  const first = await f.makeRun("1");
+  const pending = await f.paper.begin("alpha", first.id, "k1");
+  assert.equal(pending.order.status, "pending");
+  const second = await f.makeRun("2");
+  await assert.rejects(f.service.create("alpha", second.id, "k2"), { code: "DAILY_CAP_REACHED" });
+});
+
+test("the fill spends the budget the daily check admitted, even if the cap rises after", async (t) => {
+  const f = await setup(t);
+  await f.store.updateSpend(f.scope, { perCallAusd: 5, perDayAusd: 10 });
+  const raised: PaperRepository = {
+    begin: async (tenantId, runId, key) => {
+      const begun = await f.paper.begin(tenantId, runId, key);
+      await f.store.updateSpend(f.scope, { perCallAusd: 10, perDayAusd: 10 });
+      return begun;
+    },
+    get: (tenantId, runId) => f.paper.get(tenantId, runId),
+    guard: (order) => f.paper.guard(order),
+    finish: (order, status, fill, reason) => f.paper.finish(order, status, fill, reason),
+  };
+  const run = await f.makeRun("1");
+  const order = await createPaperService(raised, f.markets, f.now).create("alpha", run.id, "k1");
+  assert.equal(order.status, "filled");
+  assert.ok(Number(order.fill!.totalCost) <= 5);
+  assert.ok(Number(order.fill!.totalCost) >= 4.99);
 });
