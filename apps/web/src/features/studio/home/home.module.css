@@ -1042,18 +1042,6 @@ a.start:hover {
   border-left: 1px solid var(--pk-border);
   border-bottom: 1px solid var(--pk-border);
 }
-.bubble[data-tint="violet"] {
-  --mood: var(--pk-violet-ink);
-}
-.bubble[data-tint="lime"] {
-  --mood: var(--pk-lime-ink);
-}
-.bubble[data-tint="grey"] {
-  --mood: var(--pk-ink-muted);
-}
-.bubble[data-tint="magenta"] {
-  --mood: var(--pk-magenta-ink);
-}
 .moodLabel {
   display: flex;
   align-items: center;
@@ -1061,13 +1049,35 @@ a.start:hover {
   margin: 0 0 6px;
   font: 700 11px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--mood);
+}
+.bubble[data-tint="violet"] .moodLabel {
+  color: var(--pk-violet-ink);
+}
+.bubble[data-tint="lime"] .moodLabel {
+  color: var(--pk-lime-ink);
+}
+.bubble[data-tint="grey"] .moodLabel {
+  color: var(--pk-ink-muted);
+}
+.bubble[data-tint="magenta"] .moodLabel {
+  color: var(--pk-magenta-ink);
 }
 .moodDot {
   width: 6px;
   height: 6px;
   border-radius: var(--pk-radius-mark);
-  background: var(--mood);
+}
+.bubble[data-tint="violet"] .moodDot {
+  background: var(--pk-violet-ink);
+}
+.bubble[data-tint="lime"] .moodDot {
+  background: var(--pk-lime-ink);
+}
+.bubble[data-tint="grey"] .moodDot {
+  background: var(--pk-ink-muted);
+}
+.bubble[data-tint="magenta"] .moodDot {
+  background: var(--pk-magenta-ink);
 }
 .moodSub {
   margin: 0;
