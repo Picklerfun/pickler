@@ -12,6 +12,7 @@ import {
   PostgresResearchStore,
   type DatabaseConnectionOptions,
   PostgresPaperStore,
+  PostgresPreviewStore,
   ExaResearch,
   PolymarketData,
   PolymarketPaperResolution,
@@ -49,6 +50,8 @@ export function createRuntime(
     : undefined;
   const odds = env.THE_ODDS_API_KEY ? new OddsApiSports(env.THE_ODDS_API_KEY, cache) : undefined;
   let checking = false;
+  // Previews share the research pool; closing the repository closes both.
+  const previewStore = new PostgresPreviewStore(repository.pool);
   return {
     env,
     repository,
@@ -72,6 +75,23 @@ export function createRuntime(
         ...scopeRun({ repository, model, exa: search, ...(odds ? { odds } : {}) }, run),
       });
       return execute(run, signal);
+    },
+    /** Paper runs of a brief (studio-brief-v1 §4): the same runner, a store with no agent row. */
+    previews: {
+      repository: previewStore,
+      execute(run: RunRecord, signal?: AbortSignal) {
+        const execute = createResearchRunner({
+          repository: previewStore,
+          markets,
+          configured: { exa: Boolean(env.EXA_API_KEY) },
+          ...(sports ? { sports } : {}),
+          ...scopeRun(
+            { repository: previewStore, model, exa: search, ...(odds ? { odds } : {}) },
+            run,
+          ),
+        });
+        return execute(run, signal);
+      },
     },
     async checkPlugin(scope: { tenantId: string; agentId: string }, plugin: string) {
       const agent = await repository.agent(scope);

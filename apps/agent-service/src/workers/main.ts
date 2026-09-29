@@ -20,11 +20,22 @@ try {
   console.log("Pickler worker ready with per-run leases.");
   while (!controller.signal.aborted) {
     await container.repository.recover(Date.now());
+    await container.previews.repository.recover(Date.now());
     await container.repository.tick(Date.now());
     const run = await container.repository.claim(Date.now());
-    if (run) {
+    const preview = run ? null : await container.previews.repository.claim(Date.now());
+    if (run || preview) {
       try {
-        await executeWithLease(container.repository, run, container.execute, controller.signal);
+        if (run) {
+          await executeWithLease(container.repository, run, container.execute, controller.signal);
+        } else if (preview) {
+          await executeWithLease(
+            container.previews.repository,
+            preview,
+            container.previews.execute,
+            controller.signal,
+          );
+        }
       } catch {
         console.error("Research execution interrupted; expired leases will be recovered");
       }

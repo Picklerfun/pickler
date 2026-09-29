@@ -9,7 +9,7 @@ agents, change global configuration, or call providers. Provider checks are expl
 Prompts retain immutable snapshots and versions when moved unchanged. Runtime tools obey the
 same core guards, budgets, five-minute deadline and renewable per-run lease across hosts.
 `composition/runtime.ts` builds real adapters; `workers/lease.ts` owns heartbeat cleanup;
-`workers/background.ts` implements generic Queue wakeups and scheduled reconciliation.
+`workers/background.ts` implements generic Queue wakeups and scheduled reconciliation. `consumeWakeup` takes an optional `PreviewExecution` (the runtime's `previews`: `PostgresPreviewStore` and the same research runner) and claims a paper run of a brief only when no research run is waiting (studio-brief-v1 §4); the local runner in `apps/agent-service/src/workers/main.ts` does the same.
 No trading/signing tools or paid retries. Build shared dependencies before local consumers.
 
 ## Invocation database connections
