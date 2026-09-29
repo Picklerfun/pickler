@@ -42,8 +42,20 @@ export interface StudyData {
     guard?: () => Promise<void>,
   ): Promise<PerpsPaperFrame[]>;
 }
+function validateCommonFrames(frames: PerpsPaperFrame[], network: string, at: number) {
+  if (
+    frames.length !== 2 ||
+    !frames.some((frame) => frame.snapshot.market.symbol === "BTC") ||
+    !frames.some((frame) => frame.snapshot.market.symbol === "ETH")
+  ) {
+    throw new PilotError("INVALID_MARKET_DATA", "BTC and ETH common frames required");
+  }
+  for (const frame of frames) {
+    validatePaperFrame(frame, network, frame.snapshot.market.symbol, at);
+  }
+}
 const safeCode = (error: unknown) =>
-  error instanceof PilotError && /^[A-Z_]{1,80}$/.test(error.code)
+  error instanceof PilotError && /^[A-Z0-9_]{1,80}$/.test(error.code)
     ? error.code
     : "STUDY_OPERATION_FAILED";
 export function createPerpsStudyRunner(deps: {
@@ -173,10 +185,7 @@ export function createPerpsStudyRunner(deps: {
     let observationWritesStarted = false;
     try {
       observation = await data.observe(record, signal, () => study.guard(scope, lease));
-      const at = now();
-      for (const frame of observation.frames) {
-        validatePaperFrame(frame, record.config.network, frame.snapshot.market.symbol, at);
-      }
+      validateCommonFrames(observation.frames, record.config.network, now());
       observationWritesStarted = true;
       for (const strategy of strategies) {
         await study.guard(scope, lease);
@@ -260,9 +269,7 @@ export function createPerpsStudyRunner(deps: {
     try {
       evidence = await data.evidence(record, observation, signal, () => study.guard(scope, lease));
       signal.throwIfAborted();
-      for (const frame of evidence.frames) {
-        validatePaperFrame(frame, record.config.network, frame.snapshot.market.symbol, now());
-      }
+      validateCommonFrames(evidence.frames, record.config.network, now());
     } catch (error) {
       signal.throwIfAborted();
       if (transientPerpsData(error)) {
@@ -344,13 +351,7 @@ export function createPerpsStudyRunner(deps: {
         observedAt: now(),
         frames,
       });
-      const at = now();
-      if (frames.length !== 2 || new Set(frames.map((f) => f.snapshot.market.symbol)).size !== 2) {
-        throw new PilotError("INVALID_MARKET_DATA", "BTC and ETH common frames required");
-      }
-      for (const frame of frames) {
-        validatePaperFrame(frame, record.config.network, frame.snapshot.market.symbol, at);
-      }
+      validateCommonFrames(frames, record.config.network, now());
       await study.guard(scope, lease, true);
       executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
