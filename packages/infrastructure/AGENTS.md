@@ -99,7 +99,7 @@ column — the studio's create-agent transaction only ever reads it.
 locks the workspace, then the preview row, and first looks for a replay: a preview already adopted
 by this caller in this workspace, with the submitted fingerprint, whose `pickler.product_agents`
 row (`request_key = 'preview:<previewRunId>'`) was created under the submitted handle, answers
-that draft again without calling `admit`. Otherwise the checks run in the spec's order
+that draft again without calling `admit`; the same request under a different name is `CONFLICT`. Otherwise the checks run in the spec's order
 (`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`), then `admit` (the route's funding lock and draft
 limit), then the writes.
 

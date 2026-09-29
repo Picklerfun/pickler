@@ -255,7 +255,7 @@ passkey ceremonies read no chain and stay on.
 `POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
 rights) adopts a completed paper run as a private draft through `directory.createDraft`
 (studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
-`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN` and `UNFUNDED_AGENT` (an agent with a wallet below
+`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`, `CONFLICT` (a retry under a different name) and `UNFUNDED_AGENT` (an agent with a wallet below
 the minimum). The fourth draft in a workspace is 409
 `{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, the one studio refusal besides
 creation's `CONFLICT`/`NOT_FOUND` that carries a message. Both locks run in the admit callback,

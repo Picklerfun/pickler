@@ -391,3 +391,46 @@ test("the run is checked before the lock: a stale brief is RUN_STALE even when t
     { code: "RUN_STALE" },
   );
 });
+
+test("a retry under a different name is different terms: CONFLICT, and the draft keeps its name", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  const terms = {
+    name: "Halftime",
+    handle: "halftime",
+    previewRunId: id,
+    fingerprint: f.fingerprint,
+  };
+  const created = await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
+
+  await assert.rejects(
+    f.directory.createDraft(owner.access, owner.userId, { ...terms, name: "Fulltime" }, f.clock),
+    { code: "CONFLICT" },
+  );
+
+  const agent = await f.store.pool.query("SELECT name FROM agents.agents WHERE id=$1", [
+    created.productId,
+  ]);
+  assert.equal(agent.rows[0].name, "Halftime");
+});
+
+test("a retry after recovery deleted the adopted preview is PREVIEW_UNUSABLE", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const id = await f.completed(owner);
+  const terms = {
+    name: "Halftime",
+    handle: "halftime",
+    previewRunId: id,
+    fingerprint: f.fingerprint,
+  };
+  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
+  const later = f.clock + 30 * 24 * 3_600_000;
+  await new PostgresPreviewStore(f.store.pool, () => later).recover(later);
+
+  await assert.rejects(f.directory.createDraft(owner.access, owner.userId, terms, later), {
+    code: "PREVIEW_UNUSABLE",
+  });
+  assert.equal(await agentCount(f, "halftime"), 1);
+});

@@ -185,7 +185,9 @@ The layout is the visual base (`ef63752`). What becomes real:
 - The locks below run after those checks, inside the same transaction.
 - **A retry is a replay.** If the preview is already adopted by this caller, from this same brief
   (fingerprint) and under this same handle, the server answers the draft it became, with the same
-  201 body, and meets no lock. Any other request for an adopted preview is 409 `PREVIEW_UNUSABLE`.
+  201 body, and meets no lock. The same request under a different name is 409 `CONFLICT`. Any
+  other request for an adopted preview is 409 `PREVIEW_UNUSABLE`, and so is a retry after the
+  adopted preview's row was deleted, 30 days after adoption.
 - The existing `createGate` (`canCreateAnother`) still applies, over agents that have a wallet: a
   funded or unfunded agent is one with a wallet. **A draft does not count toward the funding
   lock.** It is private, has no wallet and runs on paper, and it cannot be funded until Go Public

@@ -23,6 +23,9 @@ const CONFLICTS: Record<string, string> = {
   agent_wallets_wallet_key: "That wallet already belongs to an agent",
 };
 
+/** A retried draft create that names the draft differently from the one it made. */
+const DIFFERENT_TERMS = "This run already became a draft under another name";
+
 export class PostgresStudioDirectory implements StudioDirectory {
   constructor(private readonly pool: Pool) {}
   private async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -333,8 +336,13 @@ export class PostgresStudioDirectory implements StudioDirectory {
         return { productId: id, scope: { tenantId: access.tenantId, agentId: id } };
       });
     } catch (error) {
-      // A handle claimed between the check and the insert hits the unique index instead.
-      if (error instanceof PilotError && error.code === "CONFLICT") {
+      // A handle claimed between the check and the insert hits the unique index instead. A
+      // replay under different terms is a conflict of its own and stays one.
+      if (
+        error instanceof PilotError &&
+        error.code === "CONFLICT" &&
+        error.message !== DIFFERENT_TERMS
+      ) {
         throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
       }
       throw error;
@@ -343,14 +351,15 @@ export class PostgresStudioDirectory implements StudioDirectory {
   /**
    * The draft this preview already became, when the create is the same one retried: adopted by
    * this caller in this workspace, from the same brief, under the same handle. Null otherwise, and
-   * the caller's checks then refuse an adopted preview as PREVIEW_UNUSABLE.
+   * the caller's checks then refuse an adopted preview as PREVIEW_UNUSABLE. A different name for
+   * that same draft is CONFLICT.
    */
   private async adoptedDraft(
     client: PoolClient,
     access: StudioAccess,
     preview: AdoptablePreview | null,
     caller: { userId: string; workspaceId: string },
-    input: { handle: string; previewRunId: string; fingerprint: string },
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
   ): Promise<{ productId: string; scope: Scope } | null> {
     if (
       !preview?.adopted ||
@@ -360,8 +369,9 @@ export class PostgresStudioDirectory implements StudioDirectory {
     ) {
       return null;
     }
-    const created = await client.query<{ productId: string; agentId: string }>(
-      `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId"
+    const created = await client.query<{ productId: string; agentId: string; name: string }>(
+      `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId",
+        request->>'name' AS name
       FROM pickler.product_agents
       WHERE workspace_id=$1 AND tenant_id=$2 AND request_key=$3 AND request->>'handle'=$4`,
       [access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, input.handle],
@@ -369,6 +379,11 @@ export class PostgresStudioDirectory implements StudioDirectory {
     const draft = created.rows[0];
     if (!draft) {
       return null;
+    }
+    // The same run and handle under another name is the same create with different terms, as
+    // `createAgent` answers a reused key.
+    if (draft.name !== input.name) {
+      throw new PilotError("CONFLICT", DIFFERENT_TERMS);
     }
     return {
       productId: draft.productId,

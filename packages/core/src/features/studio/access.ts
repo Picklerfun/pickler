@@ -49,7 +49,7 @@ export interface StudioDirectory {
    * the preview copied in as its first run, and the preview marked adopted. Refuses with
    * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, in that order, then runs `admit`; a refusal writes
    * nothing. A retry of a create that committed (same caller, brief and handle) answers the same
-   * draft again and never reaches `admit`.
+   * draft again and never reaches `admit`; under a different name it is CONFLICT.
    */
   createDraft(
     access: StudioAccess,
