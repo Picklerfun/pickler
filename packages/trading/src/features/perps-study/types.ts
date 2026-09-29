@@ -86,6 +86,8 @@ export interface PerpsStudyView {
   events: { key: string; at: number; kind: string; data: unknown }[];
 }
 export interface PerpsStudyLease {
+  /** Process-local fence; never persisted or sent to providers. */
+  assertActive?: () => void;
   owner: string;
   expiresAt: number;
 }
