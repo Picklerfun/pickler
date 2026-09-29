@@ -145,6 +145,7 @@ export function perpsStudyReport(
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
+    dataPolicy: record.dataPolicy ?? "legacy",
     config: record.config,
     metadata: record.metadata,
     status: record.status,
