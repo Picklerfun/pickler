@@ -518,3 +518,52 @@ test("two-market capture completes with seven public requests and immutable hash
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("coherent reader shares one snapshot for BTC/ETH and never constructs models", async () => {
+  const { createCoherentPerplReader } = await import("@pickler/agent-runtime/plugins/perps-paper");
+  const source = provider();
+  const frames = await createCoherentPerplReader(
+    { agent: async () => agent() },
+    {
+      transport: source.transport,
+      now: () => now,
+    },
+  )(scope, ["BTC", "ETH"], new AbortController().signal);
+  assert.deepEqual(
+    frames.map((frame) => frame.snapshot.market.symbol),
+    ["BTC", "ETH"],
+  );
+  assert.equal(source.urls.filter((url) => url.endsWith("/context")).length, 1);
+  assert.equal(source.urls.length, 5);
+});
+
+test("429 shares Retry-After across sessions without exposing response content", async () => {
+  const { PerplRequestSchedule } = await import("@pickler/infrastructure");
+  const schedule = new PerplRequestSchedule();
+  let calls = 0;
+  const events: unknown[] = [];
+  const options = {
+    schedule,
+    retryTransient: true,
+    onDiagnostic: (event: unknown) => events.push(event),
+    transport: (async () => {
+      calls++;
+      return new Response("secret-body", {
+        status: 429,
+        headers: { "Retry-After": "60", Authorization: "secret" },
+      });
+    }) as typeof fetch,
+  };
+  const first = new PerplMarketData(options);
+  await assert.rejects(first.list("mainnet", ["BTC"], readContext()), { code: "PERPL_HTTP_429" });
+  assert.ok(schedule.blockedUntil - Date.now() > 59000);
+  const controller = new AbortController();
+  const next = new PerplMarketData(options).list("mainnet", ["BTC"], {
+    guard: async () => {},
+    signal: controller.signal,
+  });
+  setTimeout(() => controller.abort(), 20);
+  await assert.rejects(next);
+  assert.equal(calls, 1);
+  assert.equal(JSON.stringify(events).includes("secret"), false);
+});
