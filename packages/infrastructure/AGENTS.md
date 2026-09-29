@@ -40,6 +40,14 @@ Polymarket discovery round-robins a shared budget of five pages of twenty market
 
 `PostgresPaperStore` uses the existing pool, per-attempt private reservations and atomic agent-locked finalization. Migration 0004 adds `paper_orders`, one attempt per run and one pending/filled position per agent/market. Public projections exclude owner tokens and internal snapshots. `recover` also interrupts expired paper reservations. A test-only clock must never be wired from API/environment. Polymarket paper conditions require explicit per-market fee and trading metadata; do not default missing fees to zero.
 
+`PostgresPreviewStore` (migration 0017: `pickler.preview_runs`, `pickler.preview_events`) holds the
+paper runs of a brief that is not an agent yet (docs/specs/studio-brief-v1.md §4). It is the owner's
+`create`/`read` (5 per user per rolling hour under a per-user advisory lock, readable for 24 h) and
+the runner's repository for a run with no `pickler.agents` row: `agent()` answers the run's config
+snapshot at version 1, never paused. Claims, 60 s leases, renewal and recovery mirror the research
+store; a queued preview whose owner lost research access is cancelled at claim, and recovery deletes
+expired previews nobody adopted. Migration 0017 also adds `agents.agent_status` `draft`.
+
 `src/polymarket/classification.ts` maps reviewed actual provider tags and metadata to core sports classifications with versioned provenance. Never infer authorization from a query filter or ambiguous football labels. `listScope` shares the five-page budget across chosen sports; unknown classifications reach core exclusion diagnostics. Category configurations and decisions v4 use existing JSONB without DDL or historical rewrites.
 
 `src/persistence/migrate-database.ts` applies Drizzle migrations by original hash and timestamp under

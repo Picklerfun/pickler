@@ -73,6 +73,10 @@ export { PostgresResearchStore } from "./persistence/research-store.js";
 export { ExaResearch, exaSearchRequest } from "./research/exa.js";
 export { PolymarketData } from "./polymarket/market-data.js";
 export { PostgresPaperStore } from "./persistence/paper-store.js";
+export {
+  PostgresPreviewStore,
+  type PreviewExecutionRepository,
+} from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
 export { PostgresProfileRepository } from "./persistence/profile-repository.js";
 export {
