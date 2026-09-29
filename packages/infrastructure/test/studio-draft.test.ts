@@ -105,6 +105,12 @@ test("create adopts the run: a private draft with no wallet, the run as its firs
     [id],
   );
   assert.deepEqual(preview.rows[0], { at: f.clock, agent: created.scope.agentId });
+  // The trace now lives with the run; the preview keeps its row for a retried create.
+  const trace = await f.store.pool.query(
+    "SELECT 1 FROM pickler.preview_events WHERE preview_run_id=$1",
+    [id],
+  );
+  assert.equal(trace.rows.length, 0);
   const listed = await f.directory.list(owner.access);
   assert.deepEqual(
     listed.map((item) => [item.handle, item.draft]),

@@ -46,7 +46,10 @@ paper runs of a brief that is not an agent yet (docs/specs/studio-brief-v1.md §
 the runner's repository for a run with no `pickler.agents` row: `agent()` answers the run's config
 snapshot at version 1, never paused. Claims, 60 s leases, renewal and recovery mirror the research
 store; a queued preview whose owner lost research access is cancelled at claim, and recovery deletes
-expired previews nobody adopted. Its claim locks the same `execution_policy` row as research
+expired previews nobody adopted. An adopted preview loses its `preview_events` at adoption (they
+were copied to `pickler.events`) and keeps its row, which a retried create replays from; recovery
+deletes that row 30 days after adoption (`ADOPTED_PREVIEW_RETENTION_MS`). Its `config` and
+`decision` stay: `config` is NOT NULL and both are one small document each. Its claim locks the same `execution_policy` row as research
 claims, and both count running rows of `pickler.runs` and `pickler.preview_runs` against the global
 and per-tenant limits; the executors claim a preview queued over two minutes
 (`PREVIEW_PRIORITY_AFTER_MS`) ahead of research runs. Under that lock the claim walks the queue

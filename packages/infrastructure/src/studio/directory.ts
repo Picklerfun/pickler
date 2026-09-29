@@ -321,6 +321,11 @@ export class PostgresStudioDirectory implements StudioDirectory {
           WHERE preview_run_id=$1 ORDER BY id`,
           [input.previewRunId],
         );
+        // The trace was copied above and the run is now the agent's; the preview keeps only its
+        // row, which a retried create replays from until recovery deletes it.
+        await client.query("DELETE FROM pickler.preview_events WHERE preview_run_id=$1", [
+          input.previewRunId,
+        ]);
         await client.query(
           "UPDATE pickler.preview_runs SET adopted_at=$2, adopted_agent_id=$3 WHERE id=$1",
           [input.previewRunId, now, id],

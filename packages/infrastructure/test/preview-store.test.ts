@@ -371,3 +371,24 @@ test("paging still cancels what cannot run: expired previews and owners without 
     ]),
   );
 });
+
+test("recovery keeps an adopted preview for 30 days, then deletes it", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const { id } = await f.create(owner);
+  await f.store.pool.query(
+    `UPDATE pickler.preview_runs
+    SET status='completed', finished_at=$2, adopted_at=$2, adopted_agent_id='agent' WHERE id=$1`,
+    [id, f.now()],
+  );
+  const left = async () =>
+    (await f.store.pool.query("SELECT 1 FROM pickler.preview_runs WHERE id=$1", [id])).rows.length;
+
+  f.advance(30 * 24 * HOUR - 1);
+  await f.previews.recover(f.now());
+  assert.equal(await left(), 1);
+
+  f.advance(1);
+  await f.previews.recover(f.now());
+  assert.equal(await left(), 0);
+});

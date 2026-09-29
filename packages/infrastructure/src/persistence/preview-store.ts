@@ -19,6 +19,12 @@ import {
 import { eventFailure } from "./event-failure.js";
 
 const LEASE_MS = 60_000;
+/**
+ * How long an adopted preview's row outlives its adoption. The row is what a retried "Create"
+ * replays from (its `adopted_agent_id`), and a retry comes within seconds; 30 days leaves room to
+ * trace a support question back to the run. Its trace already lives with the agent's first run.
+ */
+export const ADOPTED_PREVIEW_RETENTION_MS = 30 * 24 * 3_600_000;
 /** How many queued previews one claim looks at per statement. */
 const CLAIM_PAGE = 50;
 const COLUMNS = `id, tenant_id AS "tenantId", status,
@@ -386,7 +392,10 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
     this.owners.delete(run.id);
   }
 
-  /** Interrupted leases fail; expired previews nobody adopted are deleted with their events. */
+  /**
+   * Interrupted leases fail; expired previews nobody adopted are deleted with their events, and
+   * adopted ones once `ADOPTED_PREVIEW_RETENTION_MS` has passed since their adoption.
+   */
   async recover(now: number): Promise<void> {
     const leaseNow = await this.clock(this.pool);
     await this.pool.query(
@@ -397,8 +406,9 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
     );
     await this.pool.query(
       `DELETE FROM pickler.preview_runs
-      WHERE expires_at <= $1 AND adopted_at IS NULL AND status <> 'running'`,
-      [now],
+      WHERE status <> 'running'
+        AND ((adopted_at IS NULL AND expires_at <= $1) OR adopted_at <= $2)`,
+      [now, now - ADOPTED_PREVIEW_RETENTION_MS],
     );
   }
 }
