@@ -165,7 +165,7 @@
         </div>
       </article>
 
-      <article class="phase-card" data-phase="2" data-status="plan_ready">
+      <article class="phase-card" data-phase="2" data-status="completed">
         <div class="phase-head">
           <div class="phase-title-wrap">
             <span class="phase-num">F2</span>
@@ -174,9 +174,9 @@
           <div class="phase-status-control">
             <select aria-label="Phase 2 status">
               <option value="pending">pending</option>
-              <option value="plan_ready" selected>plan_ready</option>
+              <option value="plan_ready">plan_ready</option>
               <option value="in_progress">in_progress</option>
-              <option value="completed">completed</option>
+              <option value="completed" selected>completed</option>
             </select>
           </div>
         </div>
@@ -189,19 +189,35 @@
           <details class="tasks">
             <summary>
               <span>Tasks del plan · <a href="../superpowers/plans/2026-09-28-mobile-light-f2.html">plan F2</a></span>
-              <span class="progress-pill" data-tasks-counter>0/9</span>
+              <span class="progress-pill" data-tasks-counter>9/9</span>
             </summary>
             <ol>
-              <li><label><input type="checkbox"> T0 · Línea base sobre main (F1 mergeada, rama adelantada)</label></li>
-              <li><label><input type="checkbox"> T1 · Lógica pura del board: filas, tono, rótulo, trayectoria y frase de la barra (D10, D11)</label></li>
-              <li><label><input type="checkbox"> T2 · Page con modo bare, PageScroll y FooterBar</label></li>
-              <li><label><input type="checkbox"> T3 · Componente Board en Trade it y Ask an agent (D10–D12)</label></li>
-              <li><label><input type="checkbox"> T4 · Barras fijas de Market (Review) y Read (Trade this market) (D11, D14)</label></li>
-              <li><label><input type="checkbox"> T5 · Calibración y récord, puros (D16)</label></li>
-              <li><label><input type="checkbox"> T6 · Perfil de agente (D15, D16, D23)</label></li>
-              <li><label><input type="checkbox"> T7 · Onboarding de 3 hojas tras crear la wallet (D21)</label></li>
-              <li><label><input type="checkbox"> T8 · Verificación en simulador, README, overview y audit</label></li>
+              <li><label><input type="checkbox" checked> T0 · Línea base sobre main (F1 mergeada, rama adelantada) · <code>3302949</code></label></li>
+              <li><label><input type="checkbox" checked> T1 · Lógica pura del board: filas, tono, rótulo, trayectoria y frase de la barra (D10, D11) · <code>6c09fd3</code></label></li>
+              <li><label><input type="checkbox" checked> T2 · Page con modo bare, PageScroll y FooterBar · <code>42e34ee</code></label></li>
+              <li><label><input type="checkbox" checked> T3 · Componente Board en Trade it y Ask an agent (D10–D12) · <code>26433aa</code></label></li>
+              <li><label><input type="checkbox" checked> T4 · Barras fijas de Market (Review) y Read (Trade this market) (D11, D14) · <code>c65df5f</code></label></li>
+              <li><label><input type="checkbox" checked> T5 · Calibración y récord, puros (D16) · <code>7d68363</code></label></li>
+              <li><label><input type="checkbox" checked> T6 · Perfil de agente (D15, D16, D23) · <code>6a18a26 · 3929e3b · 243aeb6</code></label></li>
+              <li><label><input type="checkbox" checked> T7 · Onboarding de 3 hojas tras crear la wallet (D21) · <code>799bf1c</code></label></li>
+              <li><label><input type="checkbox" checked> T8 · Verificación en simulador, README, overview y audit · <code>7fa5758..6608731</code></label></li>
             </ol>
+          </details>
+          <details class="followups">
+            <summary>
+              <span>Pendientes (audit F2)</span>
+              <span class="progress-pill">8</span>
+            </summary>
+            <ul>
+              <li><b>Recorrido con dinero y todo lo que exige key</b>: barra fija de Trade con key, teclado sobre la barra, scroll estable edit↔review, orden desde una celda del board con recordatorios y Face ID diario, y un long → «See it in Portfolio» → Close. <code>0xd6da…Ed23</code> sigue con MON = 0; lo hace Jesús con faucet o con #620 en su iPhone.</li>
+              <li>El onboarding desde un gate con <code>next</code> (Sign up desde una pantalla que pide cuenta) no se ejecutó; el CTA «Continue» está cubierto por tests, no por una captura real.</li>
+              <li>La evidencia visual del último arreglo del onboarding (flecha en el CTA, banda de una pieza, punto cuadrado) se verificó por código, no con una captura nueva — exige otra wallet.</li>
+              <li>Sin tests del cableado <code>finishSignin(fallback)</code> / <code>startOnboarding</code>; sólo verificado en simulador.</li>
+              <li>Minors sin cerrar: timer de signin tras desmontar, push durante el onboarding, <code>cellTone</code> con bps 0, <code>useAppCtx()</code> duplicado en <code>Page</code>/<code>PageScroll</code>.</li>
+              <li><code>MarkLabel</code> duplicado (rótulo de la banda pintado dos veces para taparse) y su <code>top</code> acoplado al orden de <code>boardRows</code>.</li>
+              <li>Wallet extra <code>0x91f7…CC64</code> (creada para probar el onboarding) y algunos commits con el trailer «Claude Sonnet 5» quedan en la rama — ver el audit F2.</li>
+              <li>AX5 ilegible en Markets, heredado de F1 (fuera de alcance de F2).</li>
+            </ul>
           </details>
         </div>
       </article>
@@ -257,8 +273,10 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>Fuentes:</b> spec en <a href="../superpowers/specs/2026-09-28-mobile-light-design.html"><code>docs/superpowers/specs/2026-09-28-mobile-light-design.md</code></a> ·
-       planes en <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f1.md</code></a> ·
-       audit en <code>docs/superpowers/audits/2026-09-28-mobile-light-f1-rulings.md</code></p>
+       planes en <a href="../superpowers/plans/2026-09-28-mobile-light-f1.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f1.md</code></a> y
+       <a href="../superpowers/plans/2026-09-28-mobile-light-f2.html"><code>docs/superpowers/plans/2026-09-28-mobile-light-f2.md</code></a> ·
+       audits en <code>docs/superpowers/audits/2026-09-28-mobile-light-f1-rulings.md</code> y
+       <code>docs/superpowers/audits/2026-09-28-mobile-light-f2-rulings.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
        <code>docs/CLAUDE.md</code>.</p>
   </div>

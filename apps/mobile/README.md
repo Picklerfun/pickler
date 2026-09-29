@@ -6,8 +6,12 @@ App Expo/iOS de Pickler. UI del sistema **light** del Handoff de Claude Design, 
 `python3 -m http.server 8765 --directory design`). Spec: `docs/superpowers/specs/2026-09-28-mobile-light-design.md`.
 Tab bar de 4 botones fijos: MARKETS · AGENTS · PORTFOLIO · WALLET, cada uno con su tinte (`TAB_TINT`).
 Reales: Wallet (passkey, AUSD/MON, deposit con QR, withdraw, movimientos), Markets (Perpl, búsqueda local),
-Market (Trade it / Ask an agent), Agents (récord real), Portfolio (Positions, Reads; Backed es *coming soon*)
-y la pantalla Read. Launchpad y Activity siguen registradas en el navegador, pero **no se pintan** en la barra.
+Market (Trade it / Ask an agent, con el **board nivel × tiempo** del Handoff — mismo componente en los dos
+modos — y una barra fija «Review» que sólo aparece en edición y con trading key), Agents (récord real; la
+tarjeta abre el **perfil del agente**, con calibración y récord calculados en la app a partir de tus reads),
+Portfolio (Positions, Reads; Backed es *coming soon*) y la pantalla Read (con su propia barra fija «Trade
+this market»). Tras **crear** una wallet salen 3 hojas de **onboarding**, una sola vez por dispositivo.
+Launchpad y Activity siguen registradas en el navegador, pero **no se pintan** en la barra.
 El panel ⚙ del header (solo en dev) salta a cualquier pantalla o estado de la sesión.
 
 ### Fuentes
@@ -54,7 +58,7 @@ animado y el botón `←` son los de iOS:
 ```
 Tabs
 ├── MarketsTab   (native-stack) markets → market
-├── AgentsTab    (native-stack) agents → agent (perfil: stub hasta F2)
+├── AgentsTab    (native-stack) agents → agent (perfil real, F2)
 ├── PortfolioTab (native-stack) portfolio → read
 ├── WalletTab    (native-stack) wallet → deposit → withdraw → perpsFunds
 ├── LaunchpadTab (native-stack) launchpad   (registrada, no se pinta en la barra)
@@ -134,7 +138,7 @@ assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboar
 ## Tests
 
 ```bash
-npm test          # jest, 279/279 esperado (40 suites)
+npm test          # jest, 301/301 esperado (44 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 
@@ -212,8 +216,11 @@ bloqueada) y guarda `{ address, ts, sig }` en SecureStore (`pickler.reads.v1`); 
 tap sin APNs: `xcrun simctl push <UDID> fun.pickler.app payload.apns` con `{ "pickler": { "kind": "read", "readId", "marketId" } }`.
 `PUSH_MODE = "local"` (fallback D10) programa una notificación local al vencer en vez de esperar el push.
 `expo-notifications` es nativo: tras instalar, `prebuild --clean` + `run:ios`.
-La matriz es el `Grid` del prototipo (sparkline con los últimos 60 marks que la app vio, escalera de 5 niveles, celdas
-con punto donde ya hay reads, hoja con steppers); `src/perpl/marks.ts` y `src/reads/matrix.ts` son puros y tienen test.
+El board nivel × tiempo (`src/screens/board.tsx`, F2) reemplaza a la matriz del prototipo en Ask y en Trade:
+5 filas de nivel × 4 horizontes (los del backend), banda MARK, trayectoria de los últimos marks que la app
+vio y celdas con punto donde ya hay reads. La geometría, el tono y los rótulos son puros y tienen test
+(`src/reads/board.ts`); `src/perpl/marks.ts` y `src/reads/matrix.ts` siguen dando los niveles, horizontes y
+el historial de marks.
 «Trade this level» (hoja de la celda y card de una read `open`) pone `S.tradeLevel`, sugiere el lado (nivel + → long)
 y abre Trade con la `LevelCard`; cuando la orden queda `filled` u `open` la app llama `reminder-set` (firmado, misma
 sesión de Ask) y el servidor programa `pre` (15 min antes, si faltan más de 15) y `expiry`; `resolve-reads` los manda
