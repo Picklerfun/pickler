@@ -243,6 +243,20 @@ including when the lookup fails, the original refusal propagates.
 `updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
 at that same version would otherwise drop them.
 
+## Wallet sign-in nonces
+
+`PostgresWalletIdentityStore` (`src/persistence/wallet-identity-store.ts`) keeps
+`identity.siwe_nonces`, which has only `nonce` and `expires_at`. The row's key is the holder's tag
+— sixteen hex characters of sha256 over `namespace:address` — followed by the nonce, so an
+address's open nonces are a range of the primary key and a nonce can only be consumed for the
+address it was issued to. `issue(nonce, expiresAt, holder)` is one statement: it deletes up to
+`EXPIRED_NONCE_PURGE_BATCH` (100) expired rows through `siwe_nonces_expiry_idx` (by `ctid`,
+`FOR UPDATE SKIP LOCKED`), and inserts only while the holder has fewer than core's
+`MAX_OPEN_NONCES_PER_ADDRESS` (5) unexpired nonces, answering `{ issued: false }` otherwise. The
+count reads the statement's snapshot, so the cap can be passed by one or two under a race. Nothing
+else deletes expired nonces. A cap per client IP would need a column for the IP's hash and a
+migration.
+
 ## Agent wallet ceremony
 
 `src/turnkey/turnkey-activities.ts` exports `createActivityBuilders`: the unsigned

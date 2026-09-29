@@ -748,9 +748,11 @@ future work.
 which connector signed, and nothing in the request carries it, so this was not implementable as
 designed: the client would have to say, and no field exists for it.
 
-**Expired nonces are never deleted.** Rows leave `identity.siwe_nonces` only through `consume`, so
-an issued-and-abandoned nonce stays forever. The index on `expires_at` is there for a sweeper that
-does not exist.
+**Expired nonces are deleted by the next issue.** There is still no sweeper: every
+`POST /v1/auth/wallet/nonce` deletes up to a hundred expired rows through the index on `expires_at`,
+and an address may hold five unexpired nonces at most (429 `too_many_sign_in_requests`). The row's
+key is a tag of the address followed by the nonce, because the table has no address column. A cap
+per client IP is not built: it needs a column for the IP's hash.
 
 **And the `(auth)` group has never been measured by the design checks.** Not `/signin`, not
 `/signup` — `routes.mjs` carries 15 routes and none of them is in that group. Pointing a route at

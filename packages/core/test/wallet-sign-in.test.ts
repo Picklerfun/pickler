@@ -10,6 +10,7 @@ import {
   normalizeAddress,
   InvalidAddressError,
   InvalidChainError,
+  TooManySignInRequestsError,
   type NonceStore,
   type WalletLink,
   type WalletLinkRepository,
@@ -28,7 +29,10 @@ const ADDRESS = normalizeAddress("eip155", "0xabc0000000000000000000000000000000
 function nonces(rows = new Map<string, Date>()): NonceStore & { rows: Map<string, Date> } {
   return {
     rows,
-    issue: async (nonce, expiresAt) => void rows.set(nonce, expiresAt),
+    issue: async (nonce, expiresAt) => {
+      rows.set(nonce, expiresAt);
+      return { issued: true };
+    },
     consume: async (nonce) => {
       const expiresAt = rows.get(nonce);
       if (!expiresAt) {
@@ -535,4 +539,41 @@ test("a lost link that nobody holds after all is a failure, never a session", as
   });
   await assert.rejects(() => signIn.verify({ raw: signed(), signature: "0xsig" }));
   assert.deepEqual(calls, []);
+});
+
+test("an address with too many sign-ins open is refused, and told so", async () => {
+  const signIn = service({
+    nonces: { issue: async () => ({ issued: false }), consume: async () => null },
+  });
+  await assert.rejects(
+    signIn.issueNonce({ address: ADDRESS, namespace: "eip155", chainReference: 10143 }),
+    TooManySignInRequestsError,
+  );
+});
+
+test("a nonce is issued to the address asked for, and spent for the address in the message", async () => {
+  const seen: unknown[] = [];
+  const signIn = service({
+    nonces: {
+      issue: async (nonce, _expiresAt, holder) => {
+        seen.push(["issue", nonce, holder]);
+        return { issued: true };
+      },
+      consume: async (nonce, holder) => {
+        seen.push(["consume", nonce, holder]);
+        return { expiresAt: new Date("2026-09-23T12:05:00Z") };
+      },
+    },
+  });
+  const { message } = await signIn.issueNonce({
+    address: ADDRESS.toUpperCase().replace("0X", "0x"),
+    namespace: "eip155",
+    chainReference: 10143,
+  });
+  await signIn.verify({ raw: message, signature: "0xsig" });
+  const holder = { namespace: "eip155", address: ADDRESS };
+  assert.deepEqual(seen, [
+    ["issue", "nonce-1", holder],
+    ["consume", "nonce-1", holder],
+  ]);
 });

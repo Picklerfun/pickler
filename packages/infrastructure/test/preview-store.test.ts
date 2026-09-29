@@ -276,3 +276,98 @@ test("another tenant's preview is claimed behind many from a tenant at its limit
   const claimed = await f.previews.claim(f.now());
   assert.equal(claimed?.id, id);
 });
+
+/** Every statement the pool's clients run while `action` does, in order. */
+async function statements(f: Awaited<ReturnType<typeof setup>>, action: () => Promise<unknown>) {
+  const texts: string[] = [];
+  const connect = f.store.pool.connect.bind(f.store.pool);
+  f.store.pool.connect = (async () => {
+    const client = await connect();
+    const query = client.query.bind(client);
+    const release = client.release.bind(client);
+    client.query = ((text: string, values?: unknown[]) => {
+      texts.push(text);
+      return query(text, values);
+    }) as typeof client.query;
+    client.release = ((error?: Error | boolean) => {
+      client.query = query;
+      client.release = release;
+      release(error);
+    }) as typeof client.release;
+    return client;
+  }) as typeof f.store.pool.connect;
+  try {
+    await action();
+  } finally {
+    f.store.pool.connect = connect;
+  }
+  return texts;
+}
+
+test("a claim pages through the queue by id and loads the config of the run it claims only", async (t) => {
+  const f = await setup(t);
+  await f.store.setConcurrency(5, 1);
+  const busy = await f.person("owner_one");
+  await f.create(busy);
+  assert.ok(await f.previews.claim(f.now()));
+  // Three pages of previews that cannot start: their tenant is at its limit.
+  await f.store.pool.query(
+    `INSERT INTO pickler.preview_runs
+      (id, user_id, workspace_id, tenant_id, status, created_at, expires_at, config, fingerprint)
+    SELECT gen_random_uuid(), $1, $2, $3, 'queued', $4::bigint + n, $5, $6::jsonb, 'fp'
+    FROM generate_series(1, 120) n`,
+    [busy.userId, busy.workspaceId, busy.tenantId, f.now(), f.now() + HOUR, JSON.stringify(config)],
+  );
+  f.advance(1_000);
+  const other = await f.person("other_one");
+  const { id } = await f.create(other);
+
+  let claimed;
+  const texts = await statements(f, async () => {
+    claimed = await f.previews.claim(f.now());
+  });
+
+  assert.equal((claimed as { id: string } | undefined)?.id, id);
+  assert.deepEqual((claimed as { config: unknown } | undefined)?.config, config);
+  const pages = texts.filter((text) => text.includes("SKIP LOCKED"));
+  assert.equal(pages.length, 3);
+  for (const page of pages) {
+    assert.doesNotMatch(page, /config/);
+    assert.match(page, /LIMIT/);
+  }
+  // BEGIN, the policy, the running rows, three pages, the claim and COMMIT: no statement per row.
+  assert.ok(texts.length <= 8, `${texts.length} statements`);
+});
+
+test("paging still cancels what cannot run: expired previews and owners without access", async (t) => {
+  const f = await setup(t);
+  const gone = await f.person("owner_one");
+  const late = await f.person("other_one");
+  const fine = await f.person("third_one");
+  const denied = await f.create(gone);
+  const expired = await f.create(late);
+  await f.store.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
+    gone.userId,
+  ]);
+  await f.store.pool.query("UPDATE pickler.preview_runs SET expires_at=$2 WHERE id=$1", [
+    expired.id,
+    f.now(),
+  ]);
+  f.advance(1);
+  const { id } = await f.create(fine);
+
+  const claimed = await f.previews.claim(f.now());
+
+  assert.equal(claimed?.id, id);
+  const rows = await f.store.pool.query(
+    "SELECT id, status, error FROM pickler.preview_runs WHERE id = ANY($1) ORDER BY created_at, id",
+    [[denied.id, expired.id]],
+  );
+  assert.deepEqual(
+    new Map(rows.rows.map((row) => [row.id, [row.status, row.error]])),
+    new Map([
+      [denied.id, ["cancelled", "RESEARCH_ACCESS_DENIED"]],
+      [expired.id, ["cancelled", "EXPIRED"]],
+    ]),
+  );
+});

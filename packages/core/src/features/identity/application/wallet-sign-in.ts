@@ -45,6 +45,15 @@ export class AddressTakenError extends Error {
   }
 }
 
+export class TooManySignInRequestsError extends Error {
+  constructor() {
+    super(
+      "Too many sign-ins are waiting for that wallet. Finish one, or try again in a few minutes.",
+    );
+    this.name = "TooManySignInRequestsError";
+  }
+}
+
 /**
  * The auth account at this address's synthetic email was not made by wallet sign-in: it has a
  * password, or an identity wallet sign-in never creates, and no wallet-account marker. Since the
@@ -117,7 +126,14 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
    */
   async function proven(presented: Presented) {
     const parsed = deps.parseMessage(presented.raw);
-    const taken = await deps.nonces.consume(parsed.nonce);
+    // Before the nonce, because the nonce is kept under the address it was issued to. A message
+    // whose address is not one stops here with its nonce unspent, which gives nothing away: no
+    // signature over that message can ever verify.
+    const address = normalizeAddress(parsed.namespace, parsed.address);
+    const taken = await deps.nonces.consume(parsed.nonce, {
+      namespace: parsed.namespace,
+      address,
+    });
     if (!taken) {
       throw new UnknownNonceError();
     }
@@ -131,7 +147,6 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     if (parsed.domain !== deps.domain) {
       throw new WrongDomainError();
     }
-    const address = normalizeAddress(parsed.namespace, parsed.address);
     const ok = await deps.verifier.verify({
       message: presented.raw,
       signature: presented.signature,
@@ -196,7 +211,14 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         nonce,
         issuedAt: deps.clock.now(),
       });
-      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS));
+      const { issued } = await deps.nonces.issue(
+        nonce,
+        new Date(deps.clock.now().getTime() + NONCE_TTL_MS),
+        { namespace: input.namespace, address },
+      );
+      if (!issued) {
+        throw new TooManySignInRequestsError();
+      }
       return { nonce, message };
     },
 

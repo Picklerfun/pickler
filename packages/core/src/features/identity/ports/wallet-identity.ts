@@ -9,14 +9,36 @@ export interface WalletLink {
   verifiedAt: Date;
 }
 
+/**
+ * Who a nonce was issued to: the address the message names. Unverified when the nonce is issued —
+ * the signature is what proves it — but it is what the message will say, so it is what the nonce
+ * is kept under and what a cap on open nonces counts.
+ */
+export interface NonceHolder {
+  namespace: Namespace;
+  address: NormalizedAddress;
+}
+
+/**
+ * How many unexpired nonces one address may hold. The route that issues them is public, so
+ * without a cap one address's sign-in can be asked for without end. Five is more than a person
+ * retrying in several tabs needs inside the five minutes a nonce lives.
+ */
+export const MAX_OPEN_NONCES_PER_ADDRESS = 5;
+
 export interface NonceStore {
-  issue(nonce: string, expiresAt: Date): Promise<void>;
+  /**
+   * `issued: false` when the holder already has `MAX_OPEN_NONCES_PER_ADDRESS` unexpired nonces;
+   * nothing is stored then. Every call also deletes nonces that have expired, a bounded number at
+   * a time, because nothing else ever does.
+   */
+  issue(nonce: string, expiresAt: Date, holder: NonceHolder): Promise<{ issued: boolean }>;
   /**
    * Single-use. Returns the row and deletes it in one statement, so two concurrent verifications
-   * of the same nonce cannot both succeed. Returns null when it never existed or was already
-   * taken — indistinguishable on purpose: both mean "ask for a new one".
+   * of the same nonce cannot both succeed. Returns null when it never existed, was already taken
+   * or was issued to another holder — indistinguishable on purpose: all mean "ask for a new one".
    */
-  consume(nonce: string): Promise<{ expiresAt: Date } | null>;
+  consume(nonce: string, holder: NonceHolder): Promise<{ expiresAt: Date } | null>;
 }
 
 export interface WalletLinkRepository {

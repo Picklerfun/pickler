@@ -228,8 +228,10 @@ export {
 } from "./features/wallets/application/custody.js";
 
 export * from "./features/identity/domain/wallet-auth.js";
+export { MAX_OPEN_NONCES_PER_ADDRESS } from "./features/identity/ports/wallet-identity.js";
 export type {
   AccountProvisioner,
+  NonceHolder,
   NonceStore,
   SignatureVerifier,
   WalletLink,
@@ -241,6 +243,7 @@ export {
   createWalletSignIn,
   ExpiredNonceError,
   NONCE_TTL_MS,
+  TooManySignInRequestsError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
