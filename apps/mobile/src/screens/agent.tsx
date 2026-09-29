@@ -42,7 +42,7 @@ function FilterPills({ value, onChange }: { value: RecordFilter; onChange: (f: R
       {FILTERS.map((f) => {
         const on = f === value;
         return (
-          <Touch key={f} onPress={() => onChange(f)} accessibilityLabel={`record-${f}`} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, backgroundColor: on ? C.ink : "transparent" }}>
+          <Touch key={f} onPress={() => onChange(f)} accessibilityLabel={`record-${f}`} style={{ flex: 1, alignItems: "center", paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, backgroundColor: on ? C.ink : "transparent" }}>
             <T w={500} s={11} mono ls={0.04} color={on ? C.onInk : C.dim}>{FILTER_LABEL[f]}</T>
           </Touch>
         );
@@ -99,10 +99,8 @@ function RecordSection({ reads, agentId, nav }: { reads: AppCtx["reads"]; agentI
   const rows = recordFor(reads.reads, agentId, filter);
   return (
     <View style={{ gap: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <T w={700} s={22} ls={-0.04} display>THE RECORD</T>
-        <FilterPills value={filter} onChange={setFilter} />
-      </View>
+      <T w={700} s={22} ls={-0.04} display>THE RECORD</T>
+      <FilterPills value={filter} onChange={setFilter} />
       {reads.session !== "ready" ? (
         <Warn title="Unlock to see your record" body="Your wallet signs once a day for Ask. No transaction, no gas.">
           <Btn label="Unlock with Face ID" onPress={() => { void reads.ensureSession(); }} variant="violet" py={11} accessibilityLabel="reads-unlock" />
