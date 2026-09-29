@@ -38,6 +38,7 @@
 10. **The base assessment schemas are prompt text.** `modelAssessmentSchema`, `nflAssessmentSchema` and `generalAssessmentSchema` are serialized into the decision prompts, so they stay untouched. `brief` is added to the stored decision schemas (optional) and to the validator the model adapter uses (required) only when the run has a brief.
 11. **An invalid handle is not "taken".** The canvas says "@x is taken" for both. The screen says "@x is taken" when the availability check says so, and "@x can't be a handle" when the derived handle breaks the rules (shorter than 3).
 12. **A failed preview run** shows in the panel as the first run's failure does. The state label is DONE (the canvas has four states), Create stays disabled, and Run reads "Run it again".
+13. **The model's metadata always lists `briefDecision`.** `metadata().prompts` records every prompt the adapter can send, so `briefDecision` is there for runs without a brief too; only the decision request itself appends it, and only when the run has a brief.
 
 ## File map
 
