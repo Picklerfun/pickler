@@ -209,7 +209,7 @@ export function AskTab(ctx: AppCtx & { head: ReactNode }) {
   return (
     <PageScroll screen="market">
       {head}
-      <View style={{ paddingTop: 13, paddingHorizontal: 15, paddingBottom: 20, gap: 11 }}>
+      <View style={{ paddingTop: 13, paddingHorizontal: 18, paddingBottom: 20, gap: 11 }}>
         {newRead()}
       </View>
     </PageScroll>
