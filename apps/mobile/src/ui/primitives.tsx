@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, type StyleProp, Text, TextInput, type TextStyle, View, type ViewStyle } from "react-native";
+import { Animated, Easing, type Insets, Pressable, type StyleProp, Text, TextInput, type TextStyle, View, type ViewStyle } from "react-native";
 import {
   Activity, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChartLine, CircleQuestionMark, ExternalLink, Layers, LayoutGrid, MessageCircle, Rocket, ScanFace, Search, Send, SlidersHorizontal, User, Wallet,
 } from "lucide-react-native";
@@ -30,7 +30,8 @@ export function Tag({ children, color = C.faint, s = 10, style }: { children: Re
 
 export type TouchProps = {
   onPress?: () => void; style?: StyleProp<ViewStyle>; children?: ReactNode; disabled?: boolean;
-  hitSlop?: number; accessibilityLabel?: string;
+  // Insets, no sólo un número parejo: los puntos del onboarding necesitan más alto que ancho (item 10 de la ola final).
+  hitSlop?: number | Insets; accessibilityLabel?: string;
 };
 
 export function Touch({ onPress, style, children, disabled, hitSlop, accessibilityLabel }: TouchProps) {

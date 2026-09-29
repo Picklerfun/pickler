@@ -67,7 +67,7 @@ export function OnboardingScreen() {
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             {ONBOARDING_SHEETS.map((_, i) => (
-              <Touch key={i} onPress={() => setStep(i)} accessibilityLabel={`onboarding-dot-${i}`}>
+              <Touch key={i} onPress={() => setStep(i)} accessibilityLabel={`onboarding-dot-${i}`} hitSlop={{ top: 12, bottom: 12, left: 4, right: 4 }}>
                 <View style={{ width: i === step ? 22 : 7, height: 5, borderRadius: 999, backgroundColor: i === step ? C.ink : C.dotOff }} />
               </Touch>
             ))}
