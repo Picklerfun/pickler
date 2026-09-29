@@ -777,3 +777,26 @@ test("database lock delay cannot renew an expired lease or permit subsequent wri
     code: "LEASE_LOST",
   });
 });
+
+test("a process interruption fences writes even while PostgreSQL still sees a live lease", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  lease.assertActive = () => {
+    throw new PilotError("PROCESS_INTERRUPTED", "controlled wakeup gap");
+  };
+  await assert.rejects(x.study.event(x.scope, lease, "after-wake", "test", {}), {
+    code: "PROCESS_INTERRUPTED",
+  });
+  const bound = new PostgresPerpsPaperStore(x.research.pool, x.now, {
+    ...x.scope,
+    owner: lease.owner,
+    assertActive: lease.assertActive,
+  });
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  await assert.rejects(
+    bound.observe(target, "after-wake", { frames: studyEvidence(x.now()).frames, funding: [] }),
+    { code: "PROCESS_INTERRUPTED" },
+  );
+  assert.equal(await x.paper.observed(target, "after-wake"), false);
+  assert.ok(!(await x.study.view(x.scope)).events.some((event) => event.key === "after-wake"));
+});
