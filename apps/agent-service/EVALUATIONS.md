@@ -56,3 +56,19 @@ and error mapping. Usage persists before answer validation, with no retries or r
 a 1 MiB response bound; existing timeouts remain 30 seconds for quantitative review, 180 seconds
 for legacy evidence routing and 20 seconds for Perpl. Extraction does not establish live-provider
 acceptance. New prospective runs require frozen configuration and the remaining authorized budget.
+
+## Perpl public stability acceptance
+
+Run from the agent-service workspace using the unified CLI:
+
+```sh
+node --import tsx src/evaluate.ts stability --config /absolute/path/study.json --env-file /absolute/path/study.env --output /absolute/path/new-stability-report
+```
+
+The configuration identifies an existing study whose three agents still have matching, enabled Perpl permissions. The command creates only a separate diagnostic record/lease, references the existing agents, and performs no account mutation, model request or purchase. Do not supply `--allow-paid`. Its provider operations share the same coherent reader used for new comparison studies. Keep the laptop open; the command prevents idle sleep, not lid-close sleep. Closing the lid may invalidate the lease; it must never resume paid work automatically.
+
+The duration is fixed at thirty minutes. Cycles start once per minute, with no catch-up. A cycle more than five seconds late is marked missed. Both markets must pass at one reference time, within twenty seconds total. Existing limits remain thirty-second freshness, five-second future tolerance, five-second component skew, one public request per second and twelve requests per read session. A Retry-After cooldown can consume the whole acquisition window. No missing price or timestamp is substituted.
+
+The output includes report.json, report.csv, report.html and append-only events.jsonl. Acceptance requires at least 29 valid joint cycles out of 30, no lease failure and successful completion; this is an availability threshold, not a profitability test. A failed acceptance is reported without another run or threshold changes. The command refuses a tracked dirty checkout and records the tested commit. There are no migrations.
+
+New comparison records carry `coherent-20s-v1`. Data-unavailable rounds are skipped once, preserving proposals and known model cost, while execution failures after mutation remain incomplete and stop decisions. Reports exclude omitted rounds from completed comparisons rather than treating them as holds or zero returns. Historical records are not upgraded or restarted implicitly.
