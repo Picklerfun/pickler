@@ -50,7 +50,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       await client.query("COMMIT");
       return result;
     } catch (error) {
-      await client.query("ROLLBACK");
+      await client.query("ROLLBACK").catch(() => {});
       throw error;
     } finally {
       client.release();
