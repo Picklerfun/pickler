@@ -113,7 +113,7 @@ test("heartbeat does not overlap, records timer delay and aborts on renewal fail
     },
     diagnostic: (event) => events.push(event),
   });
-  at += 95000;
+  at += 25000;
   heartbeat.tick();
   heartbeat.tick();
   assert.equal(calls, 1);
@@ -125,7 +125,7 @@ test("heartbeat does not overlap, records timer delay and aborts on renewal fail
       kind: "renewal-failed",
       at,
       durationMs: 0,
-      timerDelayMs: 75000,
+      timerDelayMs: 5000,
       lastSuccessAt: null,
       expiresAt: base + 90000,
       code: "LEASE_LOST",
@@ -154,4 +154,47 @@ test("schema failures abort immediately without public-data recovery", async () 
   };
   await assert.rejects(acquirePerpsFrames(x.inputs), { code: "PERPL_INVALID_RESPONSE" });
   assert.equal(reads, 1);
+});
+
+test("suspension blocks reads synchronously before a delayed renewal timer can fire", async () => {
+  let at = base,
+    renewals = 0;
+  const heartbeat = startLeaseHeartbeat({
+    lease: { expiresAt: base + 90000 },
+    now: () => at,
+    renew: async () => {
+      renewals++;
+    },
+  });
+  at += 153000;
+  assert.throws(() => heartbeat.assertActive(), { code: "PROCESS_INTERRUPTED" });
+  heartbeat.tick();
+  assert.equal(renewals, 0);
+  assert.equal(heartbeat.signal.aborted, true);
+  await heartbeat.stop();
+});
+
+test("a renewal completing after suspension cannot restore process liveness", async () => {
+  let at = base;
+  let resolve: () => void = () => {};
+  const events: { kind: string }[] = [];
+  const heartbeat = startLeaseHeartbeat({
+    lease: { expiresAt: base + 90000 },
+    now: () => at,
+    renew: () =>
+      new Promise<void>((done) => {
+        resolve = done;
+      }),
+    diagnostic: (event) => events.push(event),
+  });
+  at += 20000;
+  heartbeat.tick();
+  at += 153000;
+  resolve();
+  await heartbeat.stop();
+  assert.throws(() => heartbeat.assertActive(), { code: "PROCESS_INTERRUPTED" });
+  assert.deepEqual(
+    events.map((event) => event.kind),
+    ["renewal-failed"],
+  );
 });
