@@ -21,6 +21,10 @@
 // must name something only the post-click screen has — the hook is otherwise a way to report green
 // for the screen before the click, which is this file's oldest failure wearing a new shape.
 //
+// `settles` is for a screen still busy when the network goes quiet, such as a debounced request:
+// `{ gone }` names the busy state, and the page is read only once nothing matches it
+// (lib/settle.mjs). A state that never clears is reported as blocked, not waited past.
+//
 // It is not an alternative to `?state=` and `?section=`. Those exist because a wallet connection
 // and a Supabase session are states no click produces, so a dev-guarded parameter in shipped code
 // was the only way in and was worth its cost. A click is not a door: Playwright already has clicks,
@@ -467,6 +471,8 @@ const ALL = [
     surface: "dark",
     task: "Task 11",
     proves: "#create-name",
+    // The handle is checked 400ms after the step mounts, after `networkidle` has already fired.
+    settles: { gone: '#create-handle-hint:text-is("CHECKING")' },
   },
   {
     path: "/studio/new?step=trades",

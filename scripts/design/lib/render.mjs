@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
+import { settle } from "./settle.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
@@ -183,6 +184,13 @@ const KINDS = {
       "  measure the route against whichever host happened to be named, and once the two products\n" +
       "  sit on different origins that is a number about the wrong server — which is the one\n" +
       "  failure this whole file is built to refuse.",
+  },
+  unsettled: {
+    line: (route, detail) => `${route.path} — loaded and proved, but ${detail}`,
+    remedy:
+      "The route names a busy state in `settles` and the screen never left it. Usually the request\n" +
+      "  behind it: read the dev server log for the endpoint. Not measured, because a screen caught\n" +
+      "  mid-request is a different picture on every run.",
   },
   "error-boundary": {
     line: (route) =>
@@ -375,6 +383,11 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           proof = `${carried} text elements ≥ floor ${route.floor}`;
         } else {
           blocked.push({ route, kind: "no-floor" });
+          continue;
+        }
+        const unsettled = await settle(page, route);
+        if (unsettled) {
+          blocked.push({ route, kind: "unsettled", detail: unsettled });
           continue;
         }
 
