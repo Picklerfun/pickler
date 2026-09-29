@@ -185,6 +185,8 @@ The layout is the visual base (`ef63752`). What becomes real:
 - The existing `createGate` (`canCreateAnother`) still applies. A draft has no wallet, so it holds
   0 AUSD. Its first run counts as done for `canSchedule`, but scheduling still needs ≥ 10 AUSD,
   which needs a wallet, which comes in Go Public. So a draft cannot schedule. That is intended.
+  A draft can still run manual paper research, like any unfunded agent ("IT RUNS ON PAPER UNTIL
+  YOU FUND IT"); only scheduling waits for funds.
 - **After create,** `/studio` shows the agent's home (Studio v5) with a "DRAFT · PRIVATE" chip in
   amber. The rail enables. A **Go Public** card lists the four steps (Voice, Connect X, Its wallet,
   Fund it), each marked **"Soon"** until the next sub-project builds them.
