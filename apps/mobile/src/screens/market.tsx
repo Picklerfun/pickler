@@ -58,75 +58,70 @@ function TradeTab(ctx: AppCtx & { head: ReactNode }) {
       onSelect={(c) => set({ tradeLevel: levelFromCell(market, c, new Date()), perpsSide: sideFor(c.levelBps) })} />
   );
 
+  // item 8 de la ola final: UN solo PageScroll para edit/review/result/loading/sin key (el contenido cambia dentro),
+  // con la FooterBar condicional fuera. Antes cada paso devolvía su propio <PageScroll>, y react-navigation las veía
+  // como árboles distintos al alternar entre ellos: se desmontaba el ScrollView y el scroll volvía arriba (p.ej. al
+  // pasar edit → review). `body` es lo que cambia; `footer` sólo existe en edit con key lista.
+  let body: ReactNode;
+  let footer: ReactNode = null;
+
   if (perpl.state.status === "loading") {
-    return <PageScroll screen="market">{head}<Page top={13} gap={11}>{board}<ActivityIndicator color={C.faint} /></Page></PageScroll>;
-  }
-  if (perpl.state.status !== "ready") {
+    body = <Page top={13} gap={11}>{board}<ActivityIndicator color={C.faint} /></Page>;
+  } else if (perpl.state.status !== "ready") {
     // Sin key, el board va apretado (sin padding inferior) contra el `Page gap={11}` (top 14) de EnableTrading:
     // deja ~14 px entre ambos, en vez de los ~34 px que dejaría un `Page` completo aquí (hallazgo de la revisión de Task 3).
-    return (
-      <PageScroll screen="market">
-        {head}
+    body = (
+      <>
         <View style={{ paddingHorizontal: 18, paddingTop: 13 }}>{board}</View>
         <EnableTrading {...ctx} />
-      </PageScroll>
+      </>
     );
-  }
+  } else {
+    const leverages = leveragesFor(market);
+    const lvUsed = leverages.includes(lv) ? lv : 1;
+    const units = parseAusd(amount);
+    const size = units === undefined ? 0 : sizeFromAusd(units, lvUsed, market.mark, market.priceDecimals, market.sizeDecimals);
+    const notional = notionalAusd(size, market.mark, market.priceDecimals, market.sizeDecimals);
+    const fee = takerFee(notional, market.takerFeeMicros);
+    const liq = liquidationPrice(market.mark, lvUsed, side, market.maintenanceBps, market.maxLeverage);
+    // El exchange cobra la fee además del margen: units + fee debe caber en el saldo libre.
+    const error = amount === "" ? "" : units === undefined || units === 0n ? "Enter an amount above zero." : units > free ? `That is more than the ${formatAusd(free)} AUSD free.` : size <= 0 ? "That amount is below one unit of this market." : units + fee > free ? `That leaves no room for the ${formatAusd(fee, 4)} AUSD fee.` : "";
+    const ok = units !== undefined && units > 0n && units + fee <= free && size > 0;
+    // Max deja sitio a la fee: fee(free × lv) acota la fee real (nominal ≤ Max × lv < free × lv), así que Max pasa la validación.
+    const maxFee = takerFee(free * BigInt(lvUsed), market.takerFeeMicros);
+    const max = free > maxFee ? free - maxFee : 0n;
+    const live = perpl.live?.status === "live";
+    const sym = market.symbol;
 
-  const leverages = leveragesFor(market);
-  const lvUsed = leverages.includes(lv) ? lv : 1;
-  const units = parseAusd(amount);
-  const size = units === undefined ? 0 : sizeFromAusd(units, lvUsed, market.mark, market.priceDecimals, market.sizeDecimals);
-  const notional = notionalAusd(size, market.mark, market.priceDecimals, market.sizeDecimals);
-  const fee = takerFee(notional, market.takerFeeMicros);
-  const liq = liquidationPrice(market.mark, lvUsed, side, market.maintenanceBps, market.maxLeverage);
-  // El exchange cobra la fee además del margen: units + fee debe caber en el saldo libre.
-  const error = amount === "" ? "" : units === undefined || units === 0n ? "Enter an amount above zero." : units > free ? `That is more than the ${formatAusd(free)} AUSD free.` : size <= 0 ? "That amount is below one unit of this market." : units + fee > free ? `That leaves no room for the ${formatAusd(fee, 4)} AUSD fee.` : "";
-  const ok = units !== undefined && units > 0n && units + fee <= free && size > 0;
-  // Max deja sitio a la fee: fee(free × lv) acota la fee real (nominal ≤ Max × lv < free × lv), así que Max pasa la validación.
-  const maxFee = takerFee(free * BigInt(lvUsed), market.takerFeeMicros);
-  const max = free > maxFee ? free - maxFee : 0n;
-  const live = perpl.live?.status === "live";
-  const sym = market.symbol;
+    const confirm = async () => {
+      setSt({ step: "result", result: { step: "sent" } });
+      const outcome = await perpl.open(market, side, units ?? 0n, lvUsed);
+      const result: OrderResult =
+        outcome.kind === "filled" ? { step: "filled", title: `Filled ${formatSize(outcome.order.fs, market.sizeDecimals)} ${sym} at ${formatPrice(outcome.order.fp, market.priceDecimals)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · ${side.toUpperCase()} ${lvUsed}x` }
+        : outcome.kind === "open" ? { step: "filled", title: "Placed — waiting in the book", detail: `${formatSize(outcome.order.os, market.sizeDecimals)} ${sym}` }
+        : outcome.kind === "failed" ? { step: "failed", text: outcome.text }
+        : { step: "unknown" };
+      setSt({ step: "result", result });
+      // D12 / P7: con nivel vivo y orden filled u open, recordatorios; primero se muestra la orden, la nota llega después.
+      if (result.step === "filled" && level) {
+        const r = await reads.setReminders(sym, level, side);
+        setSt({ step: "result", result: { ...result, note: r.ok ? remindersCopy(r.kinds) : `Couldn't set reminders — ${r.text}` } });
+        if (r.ok) set({ tradeLevel: undefined }); // el nivel se consumió: vive en mobile.reminders
+      }
+    };
 
-  const confirm = async () => {
-    setSt({ step: "result", result: { step: "sent" } });
-    const outcome = await perpl.open(market, side, units ?? 0n, lvUsed);
-    const result: OrderResult =
-      outcome.kind === "filled" ? { step: "filled", title: `Filled ${formatSize(outcome.order.fs, market.sizeDecimals)} ${sym} at ${formatPrice(outcome.order.fp, market.priceDecimals)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · ${side.toUpperCase()} ${lvUsed}x` }
-      : outcome.kind === "open" ? { step: "filled", title: "Placed — waiting in the book", detail: `${formatSize(outcome.order.os, market.sizeDecimals)} ${sym}` }
-      : outcome.kind === "failed" ? { step: "failed", text: outcome.text }
-      : { step: "unknown" };
-    setSt({ step: "result", result });
-    // D12 / P7: con nivel vivo y orden filled u open, recordatorios; primero se muestra la orden, la nota llega después.
-    if (result.step === "filled" && level) {
-      const r = await reads.setReminders(sym, level, side);
-      setSt({ step: "result", result: { ...result, note: r.ok ? remindersCopy(r.kinds) : `Couldn't set reminders — ${r.text}` } });
-      if (r.ok) set({ tradeLevel: undefined }); // el nivel se consumió: vive en mobile.reminders
-    }
-  };
+    const rows: KVRow[] = [
+      { label: "SIZE", value: `${formatSize(size, market.sizeDecimals)} ${sym} · ≈ ${formatAusd(notional)} AUSD` },
+      { label: "EST. PRICE", value: formatPrice(market.mark, market.priceDecimals) },
+      { label: "FEE · TAKER", value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
+      { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: C.down },
+      ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.limeInk }] : []),
+    ];
 
-  const rows: KVRow[] = [
-    { label: "SIZE", value: `${formatSize(size, market.sizeDecimals)} ${sym} · ≈ ${formatAusd(notional)} AUSD` },
-    { label: "EST. PRICE", value: formatPrice(market.mark, market.priceDecimals) },
-    { label: "FEE · TAKER", value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
-    { label: "LIQUIDATION ≈", value: formatPrice(liq, market.priceDecimals), fg: C.down },
-    ...(level ? [{ label: "LEVEL", value: `${cellLabel(level)} → ${formatPrice(level.target, market.priceDecimals)}`, fg: C.limeInk }] : []),
-  ];
-
-  if (st.step === "result") {
-    return (
-      <PageScroll screen="market">
-        {head}
-        <Page top={13}><OrderResultCard result={st.result} primary={{ label: "See it in Portfolio", onPress: () => { setSt({ step: "edit" }); nav("portfolio"); }, /* m3: al volver no queda el "Filled" viejo */ accessibilityLabel: "see-in-portfolio" }} onEdit={() => setSt({ step: "edit" })} /></Page>
-      </PageScroll>
-    );
-  }
-
-  if (st.step === "review") {
-    return (
-      <PageScroll screen="market">
-        {head}
+    if (st.step === "result") {
+      body = <Page top={13}><OrderResultCard result={st.result} primary={{ label: "See it in Portfolio", onPress: () => { setSt({ step: "edit" }); nav("portfolio"); }, /* m3: al volver no queda el "Filled" viejo */ accessibilityLabel: "see-in-portfolio" }} onEdit={() => setSt({ step: "edit" })} /></Page>;
+    } else if (st.step === "review") {
+      body = (
         <Page top={13} gap={11}>
           <InkBlock gap={8}>
             <Tag color={C.onInkDim}>YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET</Tag>
@@ -139,14 +134,9 @@ function TradeTab(ctx: AppCtx & { head: ReactNode }) {
           <Btn label="Change amount" onPress={() => setSt({ step: "edit" })} variant="ghost" accessibilityLabel="change-amount" />
           <T w={400} s={11} lh={1.45} color={C.faint}>Market order with up to {market.maxSlippageBps / 100}% slippage. Forwarded orders pay no gas.</T>
         </Page>
-      </PageScroll>
-    );
-  }
-
-  return (
-    <>
-      <PageScroll screen="market">
-        {head}
+      );
+    } else {
+      body = (
         <Page top={13} gap={11}>
           <TradingWarns perpl={perpl} />
           {board}
@@ -181,11 +171,23 @@ function TradeTab(ctx: AppCtx & { head: ReactNode }) {
           {error ? <T w={400} s={11.5} lh={1.4} color={C.warn}>{error}</T> : null}
           <T w={400} s={10.5} lh={1.4} color={C.faint}>Nothing sent yet. Fills from the book; PnL and liquidation on mark.</T>
         </Page>
+      );
+      footer = (
+        <FooterBar>
+          <T w={600} s={17} lh={1.25} ls={-0.03} accessibilityLabel="sticky-phrase">{stickyPhrase(side, sym, level, market.priceDecimals)}</T>
+          <Btn label={ok ? `Review · ${formatAusd(units ?? 0n)} AUSD` : "Enter a margin"} onPress={() => setSt({ step: "review" })} arrow disabled={!ok} py={16} variant="lime" accessibilityLabel="review" />
+        </FooterBar>
+      );
+    }
+  }
+
+  return (
+    <>
+      <PageScroll screen="market">
+        {head}
+        {body}
       </PageScroll>
-      <FooterBar>
-        <T w={600} s={17} lh={1.25} ls={-0.03} accessibilityLabel="sticky-phrase">{stickyPhrase(side, sym, level, market.priceDecimals)}</T>
-        <Btn label={ok ? `Review · ${formatAusd(units ?? 0n)} AUSD` : "Enter a margin"} onPress={() => setSt({ step: "review" })} arrow disabled={!ok} py={16} variant="lime" accessibilityLabel="review" />
-      </FooterBar>
+      {footer}
     </>
   );
 }
