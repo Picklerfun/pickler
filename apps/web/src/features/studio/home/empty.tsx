@@ -1,9 +1,40 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Button, ButtonLink, Icon, type IconName } from "@pickler/ui";
+import { useCallback, useEffect, useState } from "react";
+import { Button, ButtonLink, Icon, Tag, type IconName } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
 import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
+import { useNow } from "@/lib/now";
+import {
+  StudioError,
+  createDraft,
+  errorCode,
+  handleAvailable,
+  startPreviewRun,
+  type PreviewRun,
+} from "../api";
+import { BriefFields } from "../brief/brief-form";
+import {
+  briefProblemText,
+  canCreate,
+  canRun,
+  createLabel,
+  deriveHandle,
+  emptyForm,
+  fingerprint,
+  footNote,
+  handleState,
+  idleNote,
+  isTerminal,
+  runLabel,
+  runState,
+  sectionForField,
+  toRequest,
+  type BriefForm,
+  type SectionKey,
+} from "../brief/model";
+import { PaperRun, type PaperRunView } from "../brief/paper-run";
 import { menuAccess } from "./access";
 import { HomeMenu } from "./menu";
 import shell from "../studio.module.css";
@@ -32,33 +63,32 @@ const RAIL: { title: string; items: [IconName, string][] }[] = [
   { title: "GROW", items: [["globe", "Public profile"]] },
 ];
 
-/* The canvas's five brief sections, drawn as its blank brief: what each one asks for. */
-const BRIEF: [string, string, string][] = [
-  [
-    "THESIS",
-    "why this edge exists, in plain words",
-    "What does this agent believe that the market does not price yet?",
-  ],
-  ["IT READS", "one source per line", "A feed, an @account, a site it trusts…"],
-  [
-    "ENTERS WHEN",
-    "every line must be true",
-    "Conditions, one per line. The run shows which ones fired.",
-  ],
-  ["EXITS WHEN", "the first line that turns true closes it", "Take profit, stop, time limit…"],
-  ["NEVER", "hard lines it will not cross", "The things a tired human would do at 3am."],
-];
+const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
+
+/** The run a brief was sent on: its id, what it was made from, and its latest read. */
+interface Paper {
+  id: string;
+  ranFor: string;
+  perTrade: number;
+  run: PreviewRun | null;
+  /** A staged run's whole view, drawn without reading anything. */
+  view: PaperRunView | null;
+}
+
+/** A brief home filled in for the design harness, with its run in one state. Nothing is sent. */
+export interface BriefStaged {
+  form: BriefForm;
+  available: boolean;
+  paper: Paper;
+}
 
 /**
- * The home before the first agent, as the "Pickler Studio Empty v4" canvas draws it: the top bar
- * with "No agent yet", the studio rail with every section disabled, and the first agent's brief
- * where the board would be — its five sections, the starting point beside it and an idle paper run.
- *
- * The canvas edits the brief here and runs it on paper in the browser. Neither has a backend: the
- * brief's sections are not the draft `/studio/new` builds, and a scripted run would be a run that
- * never happened. So the sections are drawn blank, as prompts, and "Create your first agent" goes to
- * `/studio/new`, where the draft, the passkey ceremony and the real first run are. Every section
- * needs an agent, so the rail (and, at phone width, the Menu) lists them disabled.
+ * The home before the first agent, as the "Pickler Studio Empty v4" canvas draws it, made real
+ * (docs/specs/studio-brief-v1.md §5): the top bar with "No agent yet", the studio rail with every
+ * section disabled, and the first agent's brief where the board would be. The brief is written
+ * here, run once on paper through the real runtime ("Run it on paper", nothing is created), and
+ * then created as a private draft that adopts that run ("Create {Name}"). `/studio/new` stays for
+ * later agents.
  */
 export function EmptyHome({
   passkeys,
@@ -66,19 +96,159 @@ export function EmptyHome({
   preview,
   locked,
   error,
+  staged,
+  onCreated,
 }: {
   passkeys: PasskeysKnown;
   canManage: boolean;
-  /** A staged or fixture studio, which says so. Creating still links to /studio/new, which
-      renders its own labelled preview when it has no session or no Supabase behind it. */
+  /** A staged or fixture studio, which says so. Nothing on it is sent. */
   preview: boolean;
   /** Why creating is closed on this workspace (research not enabled), or null when it is open. */
   locked: { title: string; note: string } | null;
   error: string;
+  staged: BriefStaged | null;
+  /** The draft exists: reload the agents and open its home. */
+  onCreated(productId: string): Promise<void>;
 }) {
   const researchLock = locked ? `${locked.title} ${locked.note}` : "";
   /* No agents, so no unfunded-agent lock: the same answer the Menu's "+ New agent" reads. */
   const access = menuAccess({ hasAgent: false, canManage, researchLock, fundLock: "" });
+  const now = useNow(15_000);
+
+  const [form, setForm] = useState<BriefForm>(staged?.form ?? emptyForm());
+  const [availability, setAvailability] = useState<{ handle: string; available: boolean } | null>(
+    staged ? { handle: deriveHandle(staged.form.name), available: staged.available } : null,
+  );
+  const [paper, setPaper] = useState<Paper | null>(staged?.paper ?? null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<SectionKey, string>>>({});
+  const [retryAt, setRetryAt] = useState<number | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [runError, setRunError] = useState("");
+  const [createError, setCreateError] = useState("");
+
+  const handle = deriveHandle(form.name);
+  /* The existing availability check, debounced; the canvas's mock TAKEN list is gone. */
+  useEffect(() => {
+    if (preview || !HANDLE_RE.test(handle)) {
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(() => {
+      handleAvailable(handle).then(
+        (answer) => {
+          if (active) {
+            setAvailability({ handle, available: answer.available });
+          }
+        },
+        () => {
+          if (active) {
+            setAvailability(null);
+          }
+        },
+      );
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [handle, preview]);
+
+  const onUpdate = useCallback((run: PreviewRun) => {
+    setPaper((current) => (current && current.id === run.id ? { ...current, run } : current));
+  }, []);
+
+  const available = availability?.handle === handle ? availability.available : null;
+  const nameState = handleState(form.name, available);
+  const latest = paper?.run ?? paper?.view?.run ?? null;
+  const state = runState(
+    {
+      started: paper !== null,
+      terminal: latest !== null && isTerminal(latest.status),
+      ranFor: paper?.ranFor ?? null,
+    },
+    fingerprint(form),
+  );
+  const completed = latest?.status === "completed";
+  const nextRunAt =
+    retryAt !== null && retryAt > now
+      ? new Date(retryAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "";
+  const runnable = access.create && !starting && canRun(form, state, nextRunAt);
+  const creatable = access.create && !creating && canCreate(nameState, state, completed);
+
+  function edit(next: BriefForm) {
+    setForm(next);
+    setFieldErrors({});
+    setCreateError("");
+  }
+
+  async function run() {
+    if (preview || !runnable) {
+      return;
+    }
+    setRunError("");
+    setFieldErrors({});
+    setStarting(true);
+    const ranFor = fingerprint(form);
+    const perTrade = form.perTrade;
+    try {
+      const { id } = await startPreviewRun(toRequest(form));
+      setPaper({ id, ranFor, perTrade, run: null, view: null });
+    } catch (caught) {
+      const details = caught instanceof StudioError ? caught.details : undefined;
+      const section =
+        errorCode(caught) === "INVALID_BRIEF"
+          ? sectionForField(String(details?.field ?? ""))
+          : null;
+      if (section) {
+        const next: Partial<Record<SectionKey, string>> = {};
+        next[section] = briefProblemText(String(details?.reason ?? ""));
+        setFieldErrors(next);
+      } else if (
+        errorCode(caught) === "PREVIEW_RATE_LIMITED" &&
+        typeof details?.retryAt === "number"
+      ) {
+        setRetryAt(details.retryAt);
+      } else {
+        setRunError(caught instanceof Error ? caught.message : "The paper run did not start.");
+      }
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function create() {
+    if (preview || !paper || !creatable) {
+      return;
+    }
+    setCreateError("");
+    setCreating(true);
+    try {
+      const created = await createDraft({
+        ...toRequest(form),
+        name: form.name.trim(),
+        handle,
+        previewRunId: paper.id,
+      });
+      await onCreated(created.productId);
+    } catch (caught) {
+      const code = errorCode(caught);
+      if (code === "RUN_STALE") {
+        // The server saw a different brief than the run's: say so the way the screen does.
+        setPaper((current) => (current ? { ...current, ranFor: "" } : current));
+      } else if (code === "HANDLE_TAKEN") {
+        setAvailability({ handle, available: false });
+      } else if (code === "PREVIEW_UNUSABLE") {
+        setPaper(null);
+        setCreateError("That paper run can't be used any more. Run it again, then create.");
+      } else {
+        setCreateError(caught instanceof Error ? caught.message : "It was not created.");
+      }
+    } finally {
+      setCreating(false);
+    }
+  }
 
   return (
     <main className={styles.home} data-surface="dark">
@@ -167,48 +337,50 @@ export function EmptyHome({
               </span>
               <Link href="/agents" className={styles.start}>
                 <i data-tint="lime" aria-hidden="true" />A ranked agent
-                <Icon name="arrow" size={12} />
+                <Tag className={styles.soon}>SOON</Tag>
               </Link>
             </div>
 
-            <div>
-              <h1 className={styles.briefName} id="home-empty-title">
-                Name it
-              </h1>
-              <p className={styles.briefHandle}>
-                <span>@handle</span>
-                <small>BLANK BRIEF</small>
-              </p>
-            </div>
-
-            {BRIEF.map(([label, sub, prompt]) => (
-              <div key={label} className={styles.briefCard}>
-                <div className={styles.briefCardHead}>
-                  <span className={styles.briefLabel}>{label}</span>
-                  <span className={styles.briefSub}>{sub}</span>
-                  <span className={styles.briefTag}>EMPTY</span>
-                </div>
-                <p className={styles.briefPrompt}>{prompt}</p>
-              </div>
-            ))}
+            <BriefFields
+              form={form}
+              handle={nameState}
+              fieldErrors={fieldErrors}
+              disabled={starting || creating}
+              onChange={edit}
+            />
 
             {access.createNote && <p className={styles.newAgentNote}>{access.createNote}</p>}
             <div className={styles.briefActions}>
-              {access.create ? (
-                <ButtonLink as={Link} href="/studio/new" variant="primary" size="lg" arrow>
-                  Create your first agent
-                </ButtonLink>
-              ) : (
-                <Button variant="primary" size="lg" disabled>
-                  Create your first agent
-                </Button>
-              )}
-              <ButtonLink as={Link} href="/agents" variant="secondary" size="lg">
-                See what others built
-              </ButtonLink>
+              <Button variant="secondary" size="lg" disabled={!runnable} onClick={() => void run()}>
+                {runLabel(form, starting ? "LIVE" : state, nextRunAt)}
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={!creatable}
+                onClick={() => void create()}
+              >
+                {creating ? "Creating" : createLabel(form, nameState, state, completed)}
+              </Button>
             </div>
-            <p className={styles.briefFoot}>
-              NOTHING GOES PUBLIC · IT RUNS ON PAPER UNTIL YOU FUND IT
+            {runError && (
+              <p className={styles.alert} role="alert">
+                <Icon name="alert" size={13} />
+                {runError}
+              </p>
+            )}
+            {createError && (
+              <p className={styles.alert} role="alert">
+                <Icon name="alert" size={13} />
+                {createError}
+              </p>
+            )}
+            <p className={styles.briefFoot}>{footNote(state)}</p>
+            <p className={styles.briefActionNote}>
+              Building more than one?{" "}
+              <ButtonLink as={Link} href="/studio/new" variant="ghost" size="sm">
+                The step-by-step flow
+              </ButtonLink>
             </p>
           </section>
 
@@ -239,13 +411,15 @@ export function EmptyHome({
                 SEE THEIR RECEIPTS →
               </Link>
             </div>
-            <div className={styles.sideCard}>
-              <div className={styles.sideHead}>
-                <span className={styles.sideTitle}>PAPER RUN</span>
-                <span className={styles.sideState}>IDLE</span>
-              </div>
-              <p className={styles.runIdle}>ITS FIRST RUN IS ON PAPER, RIGHT AFTER YOU CREATE IT</p>
-            </div>
+            <PaperRun
+              key={paper?.id ?? "idle"}
+              previewId={paper?.id ?? null}
+              staged={paper?.view ?? null}
+              state={state}
+              perTrade={paper?.perTrade ?? form.perTrade}
+              idleNote={idleNote(form)}
+              onUpdate={onUpdate}
+            />
           </aside>
         </div>
       </div>

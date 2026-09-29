@@ -463,6 +463,11 @@ export function Studio({
         preview={preview}
         locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
         error={error}
+        staged={null}
+        onCreated={async (productId) => {
+          await loadAgents();
+          setAgentId(productId);
+        }}
       />
     );
   }
