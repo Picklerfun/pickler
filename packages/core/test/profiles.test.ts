@@ -157,3 +157,37 @@ test("a wallet sign-in account creates its profile with no custody account, and 
     WalletRequiredError,
   );
 });
+
+test("repeating a create answers the existing profile before the custody account is asked about", async () => {
+  const repo = memoryRepo();
+  const existing = {
+    userId: "u1",
+    displayName: "Ana",
+    handle: "anarobles",
+    createdAt: new Date("2026-09-16T12:00:00Z"),
+  };
+  repo.rows.push(existing);
+  const asked: string[] = [];
+  const profiles = createProfileService(repo, {
+    hasCustodyAccount: async (userId) => {
+      asked.push(userId);
+      return false;
+    },
+  });
+
+  const replayed = await profiles.createProfile(
+    "u1",
+    { displayName: "Ana", handle: "@AnaRobles" },
+    "studio",
+  );
+
+  assert.deepEqual(replayed, existing);
+  assert.deepEqual(asked, []);
+
+  // A different handle is not a replay: the wallet rule comes first, as for any new profile.
+  await assert.rejects(
+    profiles.createProfile("u1", { displayName: "Ana", handle: "other" }, "studio"),
+    WalletRequiredError,
+  );
+  assert.equal(repo.rows.length, 1);
+});

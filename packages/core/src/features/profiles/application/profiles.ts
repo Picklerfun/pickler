@@ -43,9 +43,9 @@ export function createProfileService(repository: ProfileRepository, custody: Cus
      * Creates the caller's profile. Repeating the same request returns the existing profile, so a
      * client retry after a lost response is safe; a different handle for an existing profile conflicts.
      *
-     * A studio account is refused with `WalletRequiredError` until it has a custody account: the
-     * username is saved only once the passkey and the master wallet exist. A wallet sign-in account
-     * is not asked.
+     * Otherwise a studio account is refused with `WalletRequiredError` until it has a custody
+     * account: the username is saved only once the passkey and the master wallet exist. A wallet
+     * sign-in account is not asked.
      */
     async createProfile(
       userId: string,
@@ -58,15 +58,16 @@ export function createProfileService(repository: ProfileRepository, custody: Cus
       if (problem) {
         throw new InvalidProfileError("handle", problem);
       }
+      // The replay comes first: a retry answers the profile that exists, whatever has happened
+      // to the account's wallet since.
+      const existing = await repository.findByUserId(userId);
+      if (existing?.handle === handle) {
+        return existing;
+      }
       if (account === "studio" && !(await custody.hasCustodyAccount(userId))) {
         throw new WalletRequiredError();
       }
-
-      const existing = await repository.findByUserId(userId);
       if (existing) {
-        if (existing.handle === handle) {
-          return existing;
-        }
         throw new ProfileAlreadyExistsError(existing);
       }
 
