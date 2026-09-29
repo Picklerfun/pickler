@@ -297,6 +297,33 @@ test("an ordinary path keeps its query and its fragment", () => {
   assert.equal(returnTo("/agents/half-time"), "/agents/half-time");
 });
 
+test("a path that resolves to a double slash or climbs is refused", () => {
+  // `/.//evil.example` and `/x/..//evil.example` parse to the pathname `//evil.example` on our own
+  // origin. Staying here then rests on how the server normalises slashes, which is not ours to say.
+  for (const asked of [
+    "/.//evil.example",
+    "/x/..//evil.example",
+    "/x//evil.example",
+    "/account//",
+    "/./account",
+    "/account/../studio",
+    "/account/..",
+    "/account/.",
+    "/%2e%2e/account",
+    "/account/%2E/keys",
+    "/x/%2e%2e//evil.example",
+  ]) {
+    assert.equal(returnTo(asked), null, JSON.stringify(asked));
+  }
+});
+
+test("dots and slashes that are not segments of their own are ordinary", () => {
+  assert.equal(returnTo("/agents/half.time"), "/agents/half.time");
+  assert.equal(returnTo("/.well-known/x"), "/.well-known/x");
+  assert.equal(returnTo("/account?next=//x/../y"), "/account?next=//x/../y");
+  assert.equal(returnTo("/account#a//b"), "/account#a//b");
+});
+
 test("no `next` at all is no destination, not a broken one", () => {
   assert.equal(returnTo(null), null);
   assert.equal(returnTo(undefined), null);
