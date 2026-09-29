@@ -567,3 +567,48 @@ test("429 shares Retry-After across sessions without exposing response content",
   assert.equal(calls, 1);
   assert.equal(JSON.stringify(events).includes("secret"), false);
 });
+
+test("429 without Retry-After applies the sixty-second fallback without a retry", async () => {
+  const { PerplRequestSchedule } = await import("@pickler/infrastructure");
+  const schedule = new PerplRequestSchedule();
+  let calls = 0;
+  await assert.rejects(
+    new PerplMarketData({
+      schedule,
+      retryTransient: true,
+      transport: (async () => {
+        calls++;
+        return new Response(null, { status: 429 });
+      }) as typeof fetch,
+    }).list("mainnet", ["BTC"], readContext()),
+    { code: "PERPL_HTTP_429" },
+  );
+  assert.equal(calls, 1);
+  assert.ok(schedule.blockedUntil - Date.now() > 59000);
+});
+
+test(
+  "joint acquisition cancels blocked public requests at the total twenty-second deadline",
+  { timeout: 25000 },
+  async () => {
+    const { createCoherentPerplReader } =
+      await import("@pickler/agent-runtime/plugins/perps-paper");
+    const signals: AbortSignal[] = [];
+    const started = Date.now();
+    const reader = createCoherentPerplReader(
+      { agent: async () => agent() },
+      {
+        transport: (async (_url, init) => {
+          signals.push(init!.signal!);
+          return new Promise<Response>(() => {});
+        }) as typeof fetch,
+      },
+    );
+    await assert.rejects(reader(scope, ["BTC", "ETH"], new AbortController().signal), {
+      code: "DATA_UNAVAILABLE",
+    });
+    assert.ok(Date.now() - started < 24000);
+    assert.ok(signals.length >= 1 && signals.length <= 2);
+    assert.ok(signals.every((signal) => signal.aborted));
+  },
+);
