@@ -1,6 +1,6 @@
 import { generalDecisionSystemPrompt } from "../src/prompts/general-decision-system";
-import { test } from "node:test";
-import { DEFAULT_CONFIG, assertConfig, evaluateDecision } from "@pickler/core";
+import { test, type TestContext } from "node:test";
+import { DEFAULT_CONFIG, ModelFailure, assertConfig, evaluateDecision } from "@pickler/core";
 import { agentConfigSchema, decisionSchema, modelAssessmentSchema } from "@pickler/api-schema";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -240,6 +240,181 @@ test("research combines tool calls, per-step usage and validated decisions in Ma
   assert.equal(calls, 4);
   assert.equal(usageSteps, 4);
   assert.equal(ownershipChecks, calls + 1);
+});
+
+const brief = {
+  thesis: "Injury news moves the books first.",
+  reads: ["espn.com"],
+  entersWhen: ["A starter is ruled out", "The market has not moved"],
+  exitsWhen: ["The line moves back"],
+  never: ["Trade within an hour of kickoff"],
+};
+const briefAnswer = {
+  entries: [
+    { rule: "A starter is ruled out", fired: false, why: "No report lists a starter out." },
+    { rule: "The market has not moved", fired: true, why: "The price held all week." },
+  ],
+  exitArmed: null,
+  neverChecked: [{ rule: "Trade within an hour of kickoff", respected: true }],
+};
+
+/**
+ * One research() call over a fixture transport: two searches, a summary, then `answer` as the
+ * decision. Returns the outcome with the decision request's system text and its input.
+ */
+async function researchWith(
+  t: TestContext,
+  input: { brief?: typeof brief; answer: Record<string, unknown> },
+) {
+  let calls = 0;
+  const decision: { system: string; input: Record<string, unknown> }[] = [];
+  t.mock.method(globalThis, "fetch", async (_url: unknown, init: RequestInit) => {
+    const request = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const messages = request.messages as { role: string; content: unknown }[];
+    calls++;
+    if (calls >= 4) {
+      const user = messages.find((message) => message.role === "user");
+      decision.push({
+        system: messages
+          .filter((message) => message.role === "system")
+          .map((message) => String(message.content))
+          .join("\n"),
+        input: JSON.parse(String(user?.content)) as Record<string, unknown>,
+      });
+    }
+    const tool = calls <= 2;
+    const message = tool
+      ? {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              index: 0,
+              id: `call-${calls}`,
+              type: "function",
+              function: {
+                name: "searchWeb",
+                arguments: JSON.stringify({
+                  query: "evidence",
+                  intent: calls === 1 ? "supporting" : "contradicting",
+                }),
+              },
+            },
+          ],
+        }
+      : {
+          role: "assistant",
+          content: calls === 3 ? "Research summary citing source" : JSON.stringify(input.answer),
+        };
+    const reason = tool ? "tool_calls" : "stop";
+    const usage = { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 };
+    const base = {
+      id: "research",
+      object: "chat.completion.chunk",
+      created: 1,
+      model: env.MODEL_ID,
+    };
+    if (!request.stream) {
+      return Response.json({
+        ...base,
+        object: "chat.completion",
+        choices: [{ index: 0, message, finish_reason: reason }],
+        usage,
+      });
+    }
+    return new Response(
+      `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta: message, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ ...base, choices: [{ index: 0, delta: {}, finish_reason: reason }], usage })}\n\ndata: [DONE]\n\n`,
+      { headers: { "Content-Type": "text/event-stream" } },
+    );
+  });
+  const outcome = await createModel(env)
+    .research({
+      market: {
+        id: "1",
+        question: "Test",
+        rules: "Test rules",
+        categoryIds: ["2"],
+        active: true,
+        closesAt: null,
+        liquidity: 1,
+        outcomes: [
+          { id: "99", label: "Yes" },
+          { id: "100", label: "No" },
+        ],
+      },
+      profile: "Reads injury reports.",
+      signal: AbortSignal.timeout(5000),
+      limits: {
+        searches: 3,
+        pageReads: 5,
+        steps: 12,
+        durationMs: 300000,
+        outputTokens: 32768,
+        dailyRuns: 6,
+      },
+      onUsage: async () => {},
+      tools: {
+        searchWeb: async () => [
+          {
+            id: "source",
+            url: "https://example.com",
+            title: "Fixture",
+            content: "Fixture evidence",
+            retrievedAt: new Date().toISOString(),
+            publishedAt: null,
+            provider: "fixture",
+            truncated: false,
+          },
+        ],
+      },
+      ...(input.brief ? { brief: input.brief } : {}),
+    })
+    .then(
+      (result) => ({ result, error: null }),
+      (error: unknown) => ({ result: null, error }),
+    );
+  return { ...outcome, decision };
+}
+
+test("research with a brief appends the brief prompt, sends the rules and requires the answers", async (t) => {
+  const briefPrompt = createModel(env).metadata().prompts.briefDecision!;
+  const answer = { ...sample, marketId: "1", sourceIds: ["source"] };
+
+  const missing = await researchWith(t, { brief, answer });
+  const answered = await researchWith(t, { brief, answer: { ...answer, brief: briefAnswer } });
+
+  assert.ok(
+    missing.decision[0]!.system.includes(
+      `${decisionSystemPrompt.instructions}\n${briefPrompt.instructions}`,
+    ),
+  );
+  assert.deepEqual(missing.decision[0]!.input.brief, {
+    entersWhen: brief.entersWhen,
+    exitsWhen: brief.exitsWhen,
+    never: brief.never,
+  });
+  assert.ok(missing.error instanceof ModelFailure);
+  assert.equal(missing.error.code, "MODEL_INVALID_SCHEMA");
+  assert.ok(missing.error.details.validation?.some((issue) => issue.path === "brief"));
+  assert.equal(answered.error, null);
+  assert.deepEqual(answered.result?.decision.brief, briefAnswer);
+});
+
+test("research without a brief keeps the decision prompt and schema as they were", async (t) => {
+  const briefPrompt = createModel(env).metadata().prompts.briefDecision!;
+  const answer = { ...sample, marketId: "1", sourceIds: ["source"] };
+
+  const plain = await researchWith(t, { answer });
+  const extra = await researchWith(t, { answer: { ...answer, brief: briefAnswer } });
+
+  assert.ok(plain.decision[0]!.system.includes(decisionSystemPrompt.instructions));
+  assert.equal(plain.decision[0]!.system.includes(briefPrompt.instructions), false);
+  assert.equal("brief" in plain.decision[0]!.input, false);
+  assert.equal(plain.error, null);
+  assert.equal(plain.result?.decision.brief, undefined);
+  // The base schema is still strict: an unasked-for brief is an unknown key.
+  assert.ok(extra.error instanceof ModelFailure);
+  assert.equal(extra.error.code, "MODEL_INVALID_SCHEMA");
 });
 
 test("runtime metadata identifies the exact immutable system prompts without credentials", () => {
