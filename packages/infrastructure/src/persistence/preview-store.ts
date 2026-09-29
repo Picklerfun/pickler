@@ -19,6 +19,8 @@ import {
 import { eventFailure } from "./event-failure.js";
 
 const LEASE_MS = 60_000;
+/** How many queued previews one claim looks at per statement. */
+const CLAIM_PAGE = 50;
 const COLUMNS = `id, tenant_id AS "tenantId", status,
   created_at::double precision AS "createdAt", started_at::double precision AS "startedAt",
   finished_at::double precision AS "finishedAt", expires_at::double precision AS "expiresAt",
@@ -36,6 +38,17 @@ interface PreviewRow {
   decision: Decision | null;
   error: string | null;
   adopted: boolean;
+}
+
+/** What a claim reads of a queued preview before it takes one: no config, no decision. */
+interface QueuedPreview {
+  id: string;
+  tenantId: string;
+  /** Kept as text: it is the paging cursor and goes back to the database as it came. */
+  createdAt: string;
+  expiresAt: number;
+  /** Whether the owner still has research access. */
+  enabled: boolean;
 }
 
 /** A preview as the runner sees it: its own agent, at version 1, never paused. */
@@ -240,47 +253,57 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
       if (active.rows.length >= limits.globalLimit) {
         return null;
       }
-      const queued = await client.query<PreviewRow & { userId: string }>(
-        `SELECT ${COLUMNS}, user_id AS "userId" FROM pickler.preview_runs
-        WHERE status = 'queued' AND ($1::bigint IS NULL OR created_at < $1::bigint)
-        ORDER BY created_at, id FOR UPDATE SKIP LOCKED`,
-        [queuedBefore ?? null],
-      );
       const tenantRunning = (tenantId: string) =>
         active.rows.filter((row) => row.tenantId === tenantId).length;
-      for (const next of queued.rows) {
-        const allowed = await client.query<{ enabled: boolean }>(
-          `SELECT coalesce((SELECT enabled FROM pickler.research_access WHERE user_id = $1), false) AS enabled`,
-          [next.userId],
+      // The queue is walked oldest first in pages of ids, so the policy lock never waits on a
+      // backlog's configs, and a tenant at its limit cannot hide another tenant's preview behind
+      // its own. Only the row that is claimed is read in full.
+      let after: { createdAt: string; id: string } | null = null;
+      for (;;) {
+        const page: { rows: QueuedPreview[] } = await client.query<QueuedPreview>(
+          `SELECT p.id, p.tenant_id AS "tenantId", p.created_at::text AS "createdAt",
+            p.expires_at::double precision AS "expiresAt", coalesce(a.enabled, false) AS enabled
+          FROM pickler.preview_runs p
+          LEFT JOIN pickler.research_access a ON a.user_id = p.user_id
+          WHERE p.status = 'queued' AND ($1::bigint IS NULL OR p.created_at < $1::bigint)
+            AND ($2::bigint IS NULL OR (p.created_at, p.id) > ($2::bigint, $3::text))
+          ORDER BY p.created_at, p.id LIMIT $4 FOR UPDATE OF p SKIP LOCKED`,
+          [queuedBefore ?? null, after?.createdAt ?? null, after?.id ?? null, CLAIM_PAGE],
         );
-        let cancel: string | null = null;
-        if (next.expiresAt <= now) {
-          cancel = "EXPIRED";
-        } else if (!allowed.rows[0]!.enabled) {
-          cancel = "RESEARCH_ACCESS_DENIED";
-        }
-        if (cancel) {
-          await client.query(
-            `UPDATE pickler.preview_runs SET status = 'cancelled', error = $2, finished_at = $3
-            WHERE id = $1 AND status = 'queued'`,
-            [next.id, cancel, now],
+        for (const next of page.rows) {
+          let cancel: string | null = null;
+          if (next.expiresAt <= now) {
+            cancel = "EXPIRED";
+          } else if (!next.enabled) {
+            cancel = "RESEARCH_ACCESS_DENIED";
+          }
+          if (cancel) {
+            await client.query(
+              `UPDATE pickler.preview_runs SET status = 'cancelled', error = $2, finished_at = $3
+              WHERE id = $1 AND status = 'queued'`,
+              [next.id, cancel, now],
+            );
+            continue;
+          }
+          if (tenantRunning(next.tenantId) >= limits.tenantLimit) {
+            continue;
+          }
+          const started = await client.query<PreviewRow>(
+            `UPDATE pickler.preview_runs
+            SET status = 'running', started_at = $2, lease_owner = $3, lease_expires_at = $4
+            WHERE id = $1 AND status = 'queued' RETURNING ${COLUMNS}`,
+            [next.id, now, owner, (await this.clock(client)) + LEASE_MS],
           );
-          continue;
+          if (started.rows[0]) {
+            return toRun(started.rows[0]);
+          }
         }
-        if (tenantRunning(next.tenantId) >= limits.tenantLimit) {
-          continue;
+        const last = page.rows.at(-1);
+        if (!last || page.rows.length < CLAIM_PAGE) {
+          return null;
         }
-        const started = await client.query<PreviewRow>(
-          `UPDATE pickler.preview_runs
-          SET status = 'running', started_at = $2, lease_owner = $3, lease_expires_at = $4
-          WHERE id = $1 AND status = 'queued' RETURNING ${COLUMNS}`,
-          [next.id, now, owner, (await this.clock(client)) + LEASE_MS],
-        );
-        if (started.rows[0]) {
-          return toRun(started.rows[0]);
-        }
+        after = { createdAt: last.createdAt, id: last.id };
       }
-      return null;
     });
     if (claimed) {
       this.owners.set(claimed.id, owner);

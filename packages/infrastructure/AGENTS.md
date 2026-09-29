@@ -49,7 +49,10 @@ store; a queued preview whose owner lost research access is cancelled at claim, 
 expired previews nobody adopted. Its claim locks the same `execution_policy` row as research
 claims, and both count running rows of `pickler.runs` and `pickler.preview_runs` against the global
 and per-tenant limits; the executors claim a preview queued over two minutes
-(`PREVIEW_PRIORITY_AFTER_MS`) ahead of research runs. Migration 0017 also adds
+(`PREVIEW_PRIORITY_AFTER_MS`) ahead of research runs. Under that lock the claim walks the queue
+oldest first in pages of 50 (`CLAIM_PAGE`) with `FOR UPDATE OF p SKIP LOCKED`, reading only ids,
+tenant, expiry and the owner's research access (joined, not queried per row); the config is read
+once, by the `UPDATE ... RETURNING` of the row it claims. Migration 0017 also adds
 `agents.agent_status` `draft`. Never use the `draft` value inside a migration: `migrateDatabase`
 applies pending migrations in one transaction, and Postgres refuses an enum value added in the
 same transaction, so it would fail whenever it is applied in the same batch as 0017. Deploy order: apply 0017 before deploying the API, the research
