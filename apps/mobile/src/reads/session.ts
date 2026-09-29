@@ -26,6 +26,14 @@ export function sessionFor(s: ReadsSession | undefined, address: string, now = D
   return s && s.address === address.toLowerCase() && isUsable(s, now) ? s : undefined;
 }
 
+/**
+ * true si la cuenta cambió mientras una petición estaba en vuelo: su respuesta (éxito o error) ya no
+ * corresponde a la cuenta visible y se descarta (revisión final F1 mobile-light, I1). Compara en minúsculas.
+ */
+export function isStaleAccount(requested: string | null, current: string | null): boolean {
+  return (requested?.toLowerCase() ?? null) !== (current?.toLowerCase() ?? null);
+}
+
 export function signedHeaders(s: ReadsSession): Record<string, string> {
   return { "x-pickler-address": s.address, "x-pickler-ts": String(s.ts), "x-pickler-sig": s.sig };
 }

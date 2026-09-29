@@ -1,5 +1,5 @@
 import readJson from "./fixtures/reads/read.json";
-import { localReminderContent, localResolutionContent, patchForPush, pushEnvFor, pushTargetOf } from "../src/reads/push";
+import { localReminderContent, localResolutionContent, pushEnvFor, pushTarget, pushTargetOf } from "../src/reads/push";
 import { parseRead } from "../src/reads/types";
 
 const READ = { kind: "read", readId: "1fde46c6-97da-4435-8184-59b5218a771d", marketId: 16 };
@@ -13,9 +13,9 @@ test("the target comes from data.pickler, from data itself, or from the raw iOS 
   expect(pushTargetOf({ pickler: { kind: "reminder", reminderId: "m1", marketId: 16, readId: null } })).toEqual({ kind: "reminder", reminderId: "m1", marketId: 16, readId: null });
 });
 
-test("a read push opens My reads on that read; a reminder opens Trade (P7)", () => {
-  expect(patchForPush({ kind: "read", readId: "r1", marketId: 16 })).toEqual({ perpsMarketId: 16, marketTab: "ask", askView: "mine", askFocusReadId: "r1" });
-  expect(patchForPush({ kind: "reminder", reminderId: "m1", marketId: 64, readId: null })).toEqual({ perpsMarketId: 64, marketTab: "trade" });
+test("a read push opens the Read screen on that read; a reminder opens Market on Trade (D22)", () => {
+  expect(pushTarget({ kind: "read", readId: "r1", marketId: 3 })).toEqual({ screen: "read", patch: { readId: "r1", perpsMarketId: 3 } });
+  expect(pushTarget({ kind: "reminder", reminderId: "m1", marketId: 3, readId: null })).toEqual({ screen: "market", patch: { perpsMarketId: 3, marketTab: "trade" } });
 });
 
 test("sandbox in __DEV__, production otherwise (D10)", () => {
@@ -43,5 +43,5 @@ test("localReminderContent (fallback D10) names the level and never claims a mar
 });
 
 test("a reminder push still opens Trade without a level (P9 of F3: the push carries no target)", () => {
-  expect(patchForPush({ kind: "reminder", reminderId: "m1", marketId: 16, readId: null })).toEqual({ perpsMarketId: 16, marketTab: "trade" });
+  expect(pushTarget({ kind: "reminder", reminderId: "m1", marketId: 16, readId: null })).toEqual({ screen: "market", patch: { perpsMarketId: 16, marketTab: "trade" } });
 });

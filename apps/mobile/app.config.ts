@@ -18,13 +18,13 @@ const config: ExpoConfig = {
   orientation: "portrait",
   // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
   icon: "./assets/icon.png",
-  userInterfaceStyle: "dark",
-  backgroundColor: "#05061A",
+  userInterfaceStyle: "light",
+  backgroundColor: "#FFFFFF",
   ios: {
     bundleIdentifier,
     buildNumber: "10",
     supportsTablet: false,
-    backgroundColor: "#05061A",
+    backgroundColor: "#FFFFFF",
     associatedDomains: [`webcredentials:${rpId}`],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -41,7 +41,7 @@ const config: ExpoConfig = {
     ],
     ["expo-build-properties", { ios: { deploymentTarget: "18.0" } }],
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
-    ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#05061A" }],
+    ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
   ],
   extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl },
 };

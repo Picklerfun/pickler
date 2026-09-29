@@ -1,6 +1,6 @@
 import {
   CAN_BACK, COMING_SOON, GATED, headerFor, heldActionFor, INITIAL,
-  isComingSoonTab, marketEntryTab, refreshOk, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
+  askMarketId, isComingSoonTab, perplActiveFor, readsActiveFor, refreshOk, ROOT_OF, screenHasData, SHOW_TABS, signedOutState, tradingLineState, updatedLabel,
 } from "../src/store";
 
 test("the held action names what the gate kept, and is null when it kept nothing", () => {
@@ -11,18 +11,23 @@ test("the held action names what the gate kept, and is null when it kept nothing
   expect(heldActionFor("perpsFunds")).toBe("Moving trading funds");
   expect(heldActionFor("deposit")).toBe("A deposit");
   expect(heldActionFor("withdraw")).toBe("A withdrawal");
+  expect(heldActionFor("portfolio")).toBe("Your portfolio");
+  expect(heldActionFor("read")).toBe("A read");
+  expect(heldActionFor("agent")).toBe("An agent's record");
 });
 
-test("the screen sets of D5 are exactly the spec's", () => {
-  expect([...COMING_SOON]).toEqual(["launchpad", "activity", "portfolio"]);
-  expect([...GATED]).toEqual(["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw"]);
-  expect([...CAN_BACK]).toEqual(["market", "perpsFunds", "deposit", "withdraw", "signin"]);
-  expect([...SHOW_TABS]).toEqual(["markets", "launchpad", "activity", "portfolio", "wallet"]);
+test("the screen sets of the light redesign (D1, D23)", () => {
+  expect([...COMING_SOON]).toEqual(["launchpad", "activity"]);
+  expect([...GATED]).toEqual(["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "portfolio", "read", "agent"]);
+  expect([...CAN_BACK]).toEqual(["market", "perpsFunds", "deposit", "withdraw", "signin", "agent", "read"]);
+  expect([...SHOW_TABS]).toEqual(["markets", "agents", "portfolio", "wallet", "launchpad", "activity"]);
 });
 
 test("every screen maps to the tab it lights up", () => {
   expect(ROOT_OF.market).toBe("markets");
-  expect(ROOT_OF.perpsFunds).toBe("markets");
+  expect(ROOT_OF.perpsFunds).toBe("wallet");
+  expect(ROOT_OF.read).toBe("portfolio");
+  expect(ROOT_OF.agent).toBe("agents");
   expect(ROOT_OF.deposit).toBe("wallet");
   expect(ROOT_OF.withdraw).toBe("wallet");
   expect(ROOT_OF.signin).toBe("wallet");
@@ -30,16 +35,24 @@ test("every screen maps to the tab it lights up", () => {
 });
 
 test("headers", () => {
-  expect(headerFor("markets")).toEqual(["Markets", "Perps on Perpl · Monad"]);
-  expect(headerFor("market", "MON")).toEqual(["MON Perp", "Perpl · isolated margin · market order"]);
-  expect(headerFor("market")).toEqual(["Perp", "Perpl · isolated margin · market order"]);
+  expect(headerFor("markets")).toEqual(["Markets", ""]);
+  expect(headerFor("agents")).toEqual(["Agents", ""]);
+  expect(headerFor("portfolio")).toEqual(["Portfolio", ""]);
+  expect(headerFor("wallet")).toEqual(["Wallet", ""]);
+  expect(headerFor("market", "BTC")).toEqual(["BTC-PERP", "Perpl · isolated margin"]);
+  expect(headerFor("market")).toEqual(["PERP", "Perpl · isolated margin"]);
   expect(headerFor("perpsFunds")).toEqual(["Trading funds", "Between wallet and trading"]);
-  expect(headerFor("wallet")).toEqual(["Wallet", "AUSD available and movements"]);
-  expect(headerFor("deposit")).toEqual(["Deposit AUSD", "Monad network"]);
-  expect(headerFor("withdraw")).toEqual(["Withdraw AUSD", "To an external address"]);
-  expect(headerFor("signin")).toEqual(["Wallet access", "Passkey on this device"]);
-  for (const screen of COMING_SOON) expect(headerFor(screen)[1]).toBe("Coming soon");
-  expect(headerFor("launchpad")[0]).toBe("Launchpad");
+  expect(headerFor("deposit")).toEqual(["Deposit", "AUSD · Monad testnet"]);
+  expect(headerFor("withdraw")).toEqual(["Withdraw", "AUSD to an external address"]);
+  expect(headerFor("read")).toEqual(["Read", ""]);
+  expect(headerFor("agent")).toEqual(["Agent", ""]);
+  expect(headerFor("signin")).toEqual(["Pickler", ""]);
+  expect(headerFor("onboarding")).toEqual(["Pickler", ""]);
+});
+
+test("agent header: the agent's name and owner once agents-list is loaded (D16)", () => {
+  expect(headerFor("agent", undefined, { name: "Drift", owner: "pickler" })).toEqual(["Drift", "By pickler"]);
+  expect(headerFor("agent")).toEqual(["Agent", ""]);
 });
 
 test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SOON set", () => {
@@ -47,30 +60,19 @@ test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SO
   for (const s of ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "signin"] as const) expect(isComingSoonTab(s)).toBe(false);
 });
 
-test("Ask state: New read by default, a cell, an agent and a focused read travel in the patch (D13)", () => {
-  expect(INITIAL.askView).toBe("new");
-  expect(INITIAL.askCell).toBeUndefined();
-  const patch = { perpsMarketId: 16, marketTab: "ask" as const, askView: "mine" as const, askFocusReadId: "r1", askAgentId: "drift", askCell: { levelBps: 100, horizonMin: 240 } };
-  const s = { ...INITIAL, ...patch };
-  expect(s).toMatchObject({ marketTab: "ask", askView: "mine", askFocusReadId: "r1", askAgentId: "drift", askCell: { levelBps: 100, horizonMin: 240 } });
-  expect({ ...INITIAL, tradeLevel: { marketId: 16, levelBps: 100, horizonMin: 240, target: 770181, expiresAt: "2026-09-20T07:35:06.712Z" } }.tradeLevel?.target).toBe(770181);
+test("INITIAL opens Market on Trade; sign out clears Ask and the focused read", () => {
+  expect(INITIAL).toEqual({ marketTab: "trade" });
+  const s = signedOutState({ marketTab: "ask", askCell: { levelBps: 50, horizonMin: 60 }, askAgentId: "drift", readId: "r1", agentId: "drift" });
+  expect(s).toEqual({ marketTab: "ask", askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined });
 });
 
-test("the Market header subtitle follows the pill (D13)", () => {
-  expect(headerFor("market", "BTC", "trade")).toEqual(["BTC Perp", "Perpl · isolated margin · market order"]);
-  expect(headerFor("market", "BTC", "ask")).toEqual(["BTC Perp", "Ask an agent · simulated credits"]);
-  expect(headerFor("market", "BTC", "agents")).toEqual(["BTC Perp", "Who reads this market"]);
-  expect(headerFor("market", undefined)).toEqual(["Perp", "Perpl · isolated margin · market order"]);
-});
-
-test("signedOutState clears the Ask state (the stack is react-navigation's now)", () => {
-  const s = { ...INITIAL, askView: "mine" as const, askCell: { levelBps: 100, horizonMin: 240 }, askAgentId: "a", askFocusReadId: "r", tradeLevel: { marketId: 1, levelBps: 100, horizonMin: 240, target: 1, expiresAt: "x" } };
-  expect(signedOutState(s)).toEqual({ ...INITIAL });
-});
-
-test("a market opens on Trade with a trading key and on Ask without one (gate)", () => {
-  expect(marketEntryTab(true)).toBe("trade");
-  expect(marketEntryTab(false)).toBe("ask");
+test("askMarketId keeps the last market, else BTC, else the first listed", () => {
+  const mk = [{ id: 7, symbol: "MON" }, { id: 1, symbol: "BTC" }];
+  expect(askMarketId(7, mk)).toBe(7);
+  expect(askMarketId(99, mk)).toBe(1); // ya no listado → BTC
+  expect(askMarketId(undefined, mk)).toBe(1);
+  expect(askMarketId(undefined, [{ id: 3, symbol: "ETH" }])).toBe(3);
+  expect(askMarketId(undefined, [])).toBeUndefined();
 });
 
 test("updatedLabel formats a local 24h timestamp", () => {
@@ -109,6 +111,18 @@ test("tradingLineState: live, last seen, skeleton only while the socket is activ
   expect(tradingLineState({ account: null, keyRejected: true, status: "closed" }, null, true)).toBe("unknown"); // key rejected: terminal, not skeleton (R2)
   expect(tradingLineState({ account: null, keyRejected: false, status: "closed" }, null, true)).toBe("unknown"); // socket closed for good: terminal, not skeleton (R2)
   expect(tradingLineState({ account: null, keyRejected: false, status: "connecting" }, null, true)).toBe("skeleton"); // still connecting: skeleton stands
+});
+
+test("the Perpl socket runs where trading data is shown, Portfolio included (D26)", () => {
+  for (const s of ["markets", "market", "perpsFunds", "portfolio"] as const) expect(perplActiveFor(s)).toBe(true);
+  for (const s of ["wallet", "agents", "agent", "read", "signin"] as const) expect(perplActiveFor(s)).toBe(false);
+});
+
+test("reads poll on Ask, Portfolio, Agents, the profile, Read and Markets (agent count), not on Trade", () => {
+  expect(readsActiveFor("market", "ask")).toBe(true);
+  expect(readsActiveFor("market", "trade")).toBe(false);
+  for (const s of ["portfolio", "agents", "agent", "read", "markets"] as const) expect(readsActiveFor(s, "trade")).toBe(true);
+  expect(readsActiveFor("wallet", "trade")).toBe(false);
 });
 
 test("screenHasData follows the null contract of the hooks", () => {

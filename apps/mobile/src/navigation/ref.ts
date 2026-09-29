@@ -31,7 +31,7 @@ export function flushPending(): void {
 /** Ir a una pantalla por su pestaña: vuelve a `Tabs` (saca `signin`), enfoca la pestaña y apila/vuelve a la pantalla. */
 export function navigateTo(screen: Screen, signinParams?: SigninParams): void {
   run(() => {
-    if (screen === "signin") { navigationRef.navigate("signin", signinParams); return; }
+    if (screen === "signin" || screen === "onboarding") { navigationRef.navigate(screen, signinParams); return; }
     const tab = TAB_OF[screen];
     // `params: { screen }` anida un nivel más: Tabs → pestaña → pantalla de su pila.
     const nested = screen === TAB_ROOT[tab] ? { screen, pop: true } : { screen, initial: false, pop: true };

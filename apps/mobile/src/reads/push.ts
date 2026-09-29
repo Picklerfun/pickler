@@ -1,4 +1,5 @@
 // Payload de los pushes de resolve-reads (F1 copy.ts: `pickler: { kind, readId, marketId }`) → navegación (D10, P7). Puro.
+import type { Screen } from "../navigation/screens";
 import type { Patch, TradeLevel } from "../store";
 import { cellLabel } from "./matrix";
 import type { Read } from "./types";
@@ -28,10 +29,11 @@ export function pushTargetOf(...sources: unknown[]): PushTarget | null {
   return null;
 }
 
-export function patchForPush(t: PushTarget): Patch {
+/** Destino del tap en un push (D22): la read abre su pantalla; el recordatorio abre Trade sin nivel (el payload no trae target). */
+export function pushTarget(t: PushTarget): { screen: Screen; patch: Patch } {
   return t.kind === "read"
-    ? { perpsMarketId: t.marketId, marketTab: "ask", askView: "mine", askFocusReadId: t.readId }
-    : { perpsMarketId: t.marketId, marketTab: "trade" }; // el push de recordatorio no trae target ni vencimiento: Trade se abre sin LevelCard (F3, P9)
+    ? { screen: "read", patch: { readId: t.readId, perpsMarketId: t.marketId } }
+    : { screen: "market", patch: { perpsMarketId: t.marketId, marketTab: "trade" } };
 }
 
 export const pushEnvFor = (dev: boolean): "sandbox" | "production" => (dev ? "sandbox" : "production");

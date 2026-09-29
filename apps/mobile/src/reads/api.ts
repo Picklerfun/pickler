@@ -27,7 +27,7 @@ const COPY: Record<string, string> = {
   bad_signature: "Your Ask session expired. Unlock again.",
   expired: "That level already expired.",
   read_not_found: "That read isn't yours anymore.",
-  timeout: "The agent took too long. Check My reads — your credit comes back if it failed.",
+  timeout: "The agent took too long. Check Portfolio → Reads — your credit comes back if it failed.",
   network: "Couldn't reach the reads service.",
   bad_response: "The reads service sent something unexpected.",
 };

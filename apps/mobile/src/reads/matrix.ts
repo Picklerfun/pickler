@@ -45,12 +45,7 @@ export function formatRemaining(ms: number): string {
   return h > 0 ? `${h} h ${m % 60} m` : `${m} m`;
 }
 
-export const formatProbability = (p: number): string => `${Math.round(p * 100)} %`;
-
-export function recordLabel(r: { reads: number; resolved: number; right: number; brierAvg: number | null }): string {
-  if (r.resolved === 0 || r.brierAvg === null) return "No resolved reads yet";
-  return `${r.right}/${r.resolved} right · Brier ${r.brierAvg.toFixed(2)}`;
-}
+export const formatProbability = (p: number): string => `${Math.round(p * 100)}%`;
 
 // Hoja de la matriz (F2-matrix): steppers, distancia y puntos de reads previas. Puro.
 
@@ -78,4 +73,9 @@ export function readDots(reads: readonly { levelBps: number; horizonMin: number;
   const out = new Set<string>();
   for (const r of reads) if (r.status === "open" || r.status === "right" || r.status === "wrong") out.add(dotKey(r));
   return out;
+}
+
+/** Reads del mercado abierto: `reads-list` ya no se filtra por mercado (spec mobile-light D26). */
+export function readsForMarket<R extends { marketId: number }>(reads: readonly R[] | null, marketId: number | undefined): R[] {
+  return reads && marketId !== undefined ? reads.filter((r) => r.marketId === marketId) : [];
 }

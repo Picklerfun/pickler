@@ -12,7 +12,7 @@ type Step = { step: "edit" } | { step: "review"; amount: bigint } | { step: "sen
 
 const TONES = {
   sent: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
-  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime },
+  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.limeInk },
   failed: { bd: C.downBd, bg: C.downBg, fg: C.down },
   unknown: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
 } as const satisfies Record<string, Tone>;
@@ -69,7 +69,7 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
           </Touch>
           {st.step === "sent" ? <ActivityIndicator color={C.warn} style={{ alignSelf: "flex-start" }} /> : null}
         </StatusCard>
-        {st.step !== "sent" ? <Btn label="Back to Markets" onPress={() => nav("markets")} variant="lime" py={14} accessibilityLabel="back-to-markets" /> : null}
+        {st.step !== "sent" ? <Btn label="Back to Wallet" onPress={() => nav("wallet")} variant="lime" py={14} accessibilityLabel="back-to-wallet" /> : null}
       </Page>
     );
   }
@@ -78,9 +78,9 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
     return (
       <Page gap={11}>
         {header}
-        <Card bd={C.hair2} bg={C.deep} gap={8}>
+        <Card gap={8}>
           <Tag>{mode === "add" ? "YOU ADD TO TRADING · AUSD" : "YOU WITHDRAW TO WALLET · AUSD"}</Tag>
-          <T w={700} s={30} lh={1} ls={-0.02} display>{formatAusd(st.amount)}</T>
+          <T w={700} s={30} lh={1} ls={-0.02} mono>{formatAusd(st.amount)}</T>
           <KVList top rows={[
             { label: "FROM", value: mode === "add" ? "Wallet" : "Trading account" },
             { label: "TO", value: mode === "add" ? "Trading account" : "Wallet" },
@@ -101,12 +101,12 @@ export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
     <Page gap={11}>
       {header}
       <Segmented options={[["add", "Add funds"], ["withdraw", "Withdraw"]] as const} value={mode} onChange={(k) => { set({ fundsMode: k }); setAmount(""); }} />
-      <Card bd={C.hair2} bg={C.deep} gap={6}>
+      <Card gap={6}>
         <Tag>{mode === "add" ? "AMOUNT TO ADD · AUSD" : "AMOUNT TO WITHDRAW · AUSD"}</Tag>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <TextInput
             value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={C.faint} keyboardType="decimal-pad" accessibilityLabel="funds-input"
-            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
+            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, mono: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
           />
           <Chip label="Max" onPress={() => setAmount(formatUnits(max, AUSD_DECIMALS))} bd={C.hair22} fg={C.ink} accessibilityLabel="max" />
         </View>

@@ -1,6 +1,5 @@
-import { ChakraPetch_600SemiBold, ChakraPetch_700Bold } from "@expo-google-fonts/chakra-petch";
+import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold } from "@expo-google-fonts/instrument-sans";
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
-import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,11 +19,10 @@ import { useTreasury } from "./src/hooks/useTreasury";
 import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
 import type { PushTarget } from "./src/reads/push";
-import { patchForPush } from "./src/reads/push";
-import { type Screen, screenHasData, useAppStore } from "./src/store";
+import { pushTarget } from "./src/reads/push";
+import { perplActiveFor, readsActiveFor, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
-const PERPL_SCREENS: readonly Screen[] = ["markets", "market", "perpsFunds"];
 
 // Splash nativo (spec mobile-loading D7): se queda hasta que la cuenta local se resolvió; 2 s de tope por si el almacenamiento no responde.
 void SplashScreen.preventAutoHideAsync();
@@ -32,9 +30,9 @@ SplashScreen.setOptions({ fade: true, duration: 200 });
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold,
+    InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold,
     JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold,
-    ChakraPetch_600SemiBold, ChakraPetch_700Bold,
+    "ArchivoPickler-Bold": require("./assets/fonts/ArchivoPickler-Bold.ttf"),
   });
   const { account, onWallet, lock, signOut } = useAccount();
   const treasury = useTreasury(account ?? NONE, onWallet);
@@ -43,7 +41,7 @@ export default function App() {
   const scr = useCurrentScreen();
   const store = useAppStore({ hasAccount, scr });
   const { requireAccount } = store;
-  // Tap en un push (P7 de Ask): abre Market en la read (o en Trade para un recordatorio) respetando el gate.
+  // Tap en un push (D22): abre la pantalla Read en la read (o Market en Trade para un recordatorio) respetando el gate.
   // En frío, la última respuesta llega antes de que la cuenta cargue (account === null): se encola y se
   // navega cuando la cuenta se conoce, para que el gate no mande a Sign in a quien sí tiene wallet.
   // La cola por cuenta se conserva; el adaptador encola además hasta que el container está listo (isReady).
@@ -53,13 +51,15 @@ export default function App() {
   accountLoadedRef.current = accountLoaded;
   const onPushTarget = useCallback((t: PushTarget) => {
     if (!accountLoadedRef.current) { pendingPush.current = t; return; }
-    requireAccount("market", patchForPush(t));
+    const { screen, patch } = pushTarget(t);
+    requireAccount(screen, patch);
   }, [requireAccount]);
   useEffect(() => {
     if (!accountLoaded || pendingPush.current === null) return;
     const t = pendingPush.current;
     pendingPush.current = null;
-    requireAccount("market", patchForPush(t));
+    const { screen, patch } = pushTarget(t);
+    requireAccount(screen, patch);
   }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
@@ -69,8 +69,8 @@ export default function App() {
     const t = setTimeout(() => { void SplashScreen.hideAsync(); }, 2000);
     return () => clearTimeout(t);
   }, [ready]);
-  const perpsActive = PERPL_SCREENS.includes(scr);
-  const readsActive = scr === "market" && store.S.marketTab !== "trade";
+  const perpsActive = perplActiveFor(scr);
+  const readsActive = readsActiveFor(scr, store.S.marketTab);
   // Order book (D11, P5): sólo con Trade visible y trading key (sin key, el gate no muestra el book).
   const bookActive = scr === "market" && store.S.marketTab === "trade" && perpl.state.status === "ready";
   const marketData = useMarketData(store.S.perpsMarketId, bookActive);
@@ -95,7 +95,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle="dark-content" />
         <AppCtxProvider value={ctx}>
           <Navigator initial={initial.current} />
           {__DEV__ ? <DevControls visible={controls} onClose={() => setControls(false)} ctx={ctx} /> : null}

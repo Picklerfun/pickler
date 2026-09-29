@@ -1,49 +1,49 @@
-import { C, fam, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE, pill, textStyle } from "../src/ui/theme";
+import { C, fam, pill, TAB_TINT, textStyle } from "../src/ui/theme";
 
-test("weights map to the loaded Manrope families; 800 collapses to 700", () => {
-  expect(fam(400)).toBe("Manrope_400Regular");
-  expect(fam(500)).toBe("Manrope_500Medium");
-  expect(fam(600)).toBe("Manrope_600SemiBold");
-  expect(fam(700)).toBe("Manrope_700Bold");
-  expect(fam(800)).toBe("Manrope_700Bold");
+test("body weights map to Instrument Sans; 800 collapses to 700", () => {
+  expect(fam(400)).toBe("InstrumentSans_400Regular");
+  expect(fam(500)).toBe("InstrumentSans_500Medium");
+  expect(fam(600)).toBe("InstrumentSans_600SemiBold");
+  expect(fam(700)).toBe("InstrumentSans_700Bold");
+  expect(fam(800)).toBe("InstrumentSans_700Bold");
 });
 
-test("mono has three cuts and display two", () => {
+test("mono keeps three cuts; display is the single Archivo wdth 112 instance", () => {
   expect(fam(400, "mono")).toBe("JetBrainsMono_400Regular");
   expect(fam(500, "mono")).toBe("JetBrainsMono_500Medium");
   expect(fam(700, "mono")).toBe("JetBrainsMono_700Bold");
-  expect(fam(600, "display")).toBe("ChakraPetch_600SemiBold");
-  expect(fam(700, "display")).toBe("ChakraPetch_700Bold");
+  expect(fam(600, "display")).toBe("ArchivoPickler-Bold");
+  expect(fam(700, "display")).toBe("ArchivoPickler-Bold");
 });
 
 test("textStyle converts lh ratio and ls em to pixels", () => {
-  expect(textStyle(700, 20, { display: true, lh: 1.15, ls: -0.02 })).toEqual({
-    fontFamily: "ChakraPetch_700Bold",
-    fontSize: 20,
-    color: C.ink,
-    lineHeight: 23,
-    letterSpacing: -0.4,
+  expect(textStyle(700, 30, { display: true, lh: 1, ls: -0.045 })).toEqual({
+    fontFamily: "ArchivoPickler-Bold", fontSize: 30, color: C.ink, lineHeight: 30, letterSpacing: -1.35,
   });
   expect(textStyle(500, 10, { mono: true, color: C.faint })).toEqual({ fontFamily: "JetBrainsMono_500Medium", fontSize: 10, color: C.faint });
 });
 
-test("tokens come verbatim from the hi-fi design", () => {
-  expect(C.ink).toBe("#F5F6FF");
-  expect(C.lime).toBe("#C8F03A");
-  expect(C.vio).toBe("#B9A5FF");
-  expect(C.down).toBe("#FF5FA2");
-  expect(C.warn).toBe("#FFC93F");
-  expect([C.bgTop, C.bgMid, C.bgBottom]).toEqual(["#1B1F6B", "#0A0B2E", "#05061A"]);
+test("tokens come verbatim from the Handoff (light system)", () => {
+  expect([C.ink, C.dim, C.faint]).toEqual(["#0B0D1A", "#5A5F78", "#6B7186"]);
+  expect([C.bg, C.card, C.ctl, C.tile]).toEqual(["#FFFFFF", "#F5F6FA", "#F1F2F7", "#15182A"]);
+  expect(C.limeOnInk).toBe("#C8F03A");
+  expect(C.downOnInk).toBe("#FF8FB8");
+  expect(C.vioOnInk).toBe("#B9A5FF");
+  expect([C.lime, C.limeInk, C.vio, C.up, C.down, C.short, C.pending, C.warn, C.agentDot])
+    .toEqual(["#C8F03A", "#3F6B00", "#5B3CE0", "#2E7D32", "#C62C62", "#FF5FA2", "#FFC93F", "#8A6200", "#9B7BFF"]);
+  expect((C as Record<string, unknown>).bgBottom).toBeUndefined();
 });
 
-test("pill(on) is the selected filter chip of the design", () => {
-  expect(pill(true)).toEqual({ bd: C.limeBd, bg: C.limeBg14, fg: C.lime });
-  expect(pill(false)).toEqual({ bd: C.hair18, bg: "transparent", fg: C.dim });
+test("onVio is light text over the violet block (D14 THE QUESTION card)", () => {
+  expect(C.onVio).toBe("#D9D0FF");
 });
 
-test("the matrix accent is the prototype's accFg/accOn/accSoft: violet in Ask, lime in Trade", () => {
-  expect(GRID_ACCENT.ask).toEqual({ fg: C.vio, on: "rgba(155,123,255,0.45)", soft: "rgba(155,123,255,0.09)" });
-  expect(GRID_ACCENT.trade).toEqual({ fg: C.lime, on: "rgba(200,240,58,0.45)", soft: "rgba(200,240,58,0.09)" });
-  expect(GRID_DOT).toBe("rgba(245,246,255,0.35)");
-  expect(GRID_MARK_RULE).toBe("rgba(200,240,58,0.35)");
+test("lime is a fill, never text: onLime is ink and the selected pill is ink", () => {
+  expect(C.onLime).toBe("#0B0D1A");
+  expect(pill(true)).toEqual({ bd: C.ink, bg: C.ink, fg: C.onInk });
+  expect(pill(false)).toEqual({ bd: C.ctl, bg: C.ctl, fg: C.dim });
+});
+
+test("tab tints are the Handoff tab bar's, not the nav map's", () => {
+  expect(TAB_TINT).toEqual({ markets: "#3F6B00", agents: "#5B3CE0", portfolio: "#8A6200", wallet: "#C62C62" });
 });
