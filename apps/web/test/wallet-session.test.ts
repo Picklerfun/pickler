@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   decideSession,
   dropWalletSession,
+  madeByWalletSignIn,
   EXPIRY_MARGIN_MS,
   tokenExpiry,
   type WalletSession,
@@ -93,13 +94,17 @@ test("the expiry is read in milliseconds", () => {
   assert.equal(tokenExpiry(tokenExpiring(inAnHour)), inAnHour.getTime());
 });
 
-function fakeAuth(userId: string | null) {
+type Metadata = Record<string, unknown>;
+
+function fakeAuth(userId: string | null, appMetadata: Metadata = { pickler_account: "wallet" }) {
   const calls: unknown[] = [];
   return {
     calls,
     auth: {
       async getSession() {
-        return { data: { session: userId ? { user: { id: userId } } : null } };
+        return {
+          data: { session: userId ? { user: { id: userId, app_metadata: appMetadata } } : null },
+        };
       },
       async signOut(options: { scope: "local" }) {
         calls.push(options);
@@ -123,9 +128,28 @@ test("a session that belongs to someone else is left alone", async () => {
   assert.deepEqual(supabase.calls, []);
 });
 
+test("a studio account that linked the wallet is never signed out by a wallet switch", async () => {
+  // Signing in with a linked wallet opens the account it is linked to: the same user as the
+  // studio session already in this browser, which came from a passkey, an email or Google.
+  for (const metadata of [{}, { provider: "email" }, { pickler_account: "studio" }]) {
+    const supabase = fakeAuth("user-a", metadata);
+    await dropWalletSession(supabase, sessionFor(A, inAnHour));
+    assert.deepEqual(supabase.calls, [], JSON.stringify(metadata));
+  }
+});
+
 test("nothing cached or no client means nothing to drop", async () => {
   const supabase = fakeAuth("user-a");
   await dropWalletSession(supabase, null);
   await dropWalletSession(null, sessionFor(A, inAnHour));
   assert.deepEqual(supabase.calls, []);
+});
+
+test("only a wallet account's session is one wallet sign-in made", () => {
+  const user = (app_metadata: Metadata) => ({ user: { id: "user-a", app_metadata } });
+  assert.equal(madeByWalletSignIn(user({ pickler_account: "wallet" })), true);
+  assert.equal(madeByWalletSignIn(user({ provider: "email" })), false);
+  assert.equal(madeByWalletSignIn(user({ pickler_account: "Wallet" })), false);
+  assert.equal(madeByWalletSignIn({ user: { id: "user-a" } }), false);
+  assert.equal(madeByWalletSignIn(null), false);
 });

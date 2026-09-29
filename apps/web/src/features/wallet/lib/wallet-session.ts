@@ -83,28 +83,50 @@ export function decideSession(
   return { action: "reuse", token: cached.token };
 }
 
+/**
+ * The server-only marker of a wallet sign-in account, as core's `WALLET_ACCOUNT_METADATA_KEY` and
+ * `WALLET_ACCOUNT_METADATA_VALUE` spell it. `app_metadata` cannot be written by the person.
+ */
+const ACCOUNT_KEY = "pickler_account";
+const WALLET_ACCOUNT = "wallet";
+
+/** As much of Supabase's session as this reads. */
+export interface ClientSession {
+  user: { id: string; app_metadata?: Record<string, unknown> | null };
+}
+
+/**
+ * Whether this session is one wallet sign-in made: the session of a wallet account. A studio
+ * account that linked a wallet is opened by signing in with it, but that account's session is
+ * also what a passkey, an email or Google gave this browser, and it is not the wallet's to end.
+ */
+export function madeByWalletSignIn(session: ClientSession | null): boolean {
+  return session?.user.app_metadata?.[ACCOUNT_KEY] === WALLET_ACCOUNT;
+}
+
 /** The two verbs of Supabase's auth client this needs, so a test can stand in for it. */
 export interface SessionClient {
   auth: {
-    getSession(): Promise<{ data: { session: { user: { id: string } } | null } }>;
+    getSession(): Promise<{ data: { session: ClientSession | null } }>;
     signOut(options: { scope: "local" }): Promise<unknown>;
   };
 }
 
 /**
- * Signs this browser out of the session wallet sign-in put there. The studio shares the client, so
- * a session that now belongs to another account — someone signed in at `/signin` afterwards — is
- * left alone. `local` because the other devices of that account did nothing.
+ * Signs this browser out of the session wallet sign-in put there, and of no other. The studio
+ * shares the client, so the session is left alone when it belongs to another account — someone
+ * signed in at `/signin` afterwards — and when it is a studio account's, which a linked wallet
+ * opens but did not create. `local` because the other devices of that account did nothing.
  */
 export async function dropWalletSession(
   supabase: SessionClient | null,
-  cached: WalletSession | null,
+  cached: { userId: string } | null,
 ): Promise<void> {
   if (!supabase || !cached) {
     return;
   }
   const { data } = await supabase.auth.getSession();
-  if (data.session?.user.id === cached.userId) {
+  if (data.session?.user.id === cached.userId && madeByWalletSignIn(data.session)) {
     await supabase.auth.signOut({ scope: "local" });
   }
 }
