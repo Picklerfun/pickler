@@ -262,7 +262,7 @@ The layout is the visual base (`ef63752`). What becomes real:
 
 ## 11. Deploy order
 
-Apply migration 0017 (`npm run db:migrate`) before deploying the API, the research worker or the
+Apply migration 0022 (`npm run db:migrate`) before deploying the API, the research worker or the
 local runner built from this work. Every research claim now reads `pickler.preview_runs` (runs and
-previews share the execution limits), so a research worker on a database without 0017 fails every
+previews share the execution limits), so a research worker on a database without 0022 fails every
 claim.

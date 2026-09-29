@@ -7,3 +7,9 @@ idempotency and leases. Cron reconciles ambiguous submissions even when admissio
 Never create wallets, grant approvals or fund accounts during startup. Provider injection is
 only for tests. Secrets must not appear in logs, responses, prompts or configuration snapshots.
 Run root tests, typecheck and `npm run build:worker --workspace=@pickler/trading-worker`.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
+identity, configuration and research contracts. Infrastructure implements the trading ports;
+runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.

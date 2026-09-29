@@ -1,3 +1,4 @@
+import type { TradingRepository } from "@pickler/trading/polymarket";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -40,7 +41,6 @@ import {
   type StudioDirectory,
   type PreviewRepository,
   type ResearchRepository,
-  type TradingRepository,
 } from "@pickler/core";
 import {
   createAgentSchema,

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createTestStore } from "./database.js";
 
-test("migration 0017 adds the preview tables and the draft status", async (t) => {
+test("migration 0022 adds the preview tables and the draft status", async (t) => {
   const store = await createTestStore(t);
   const tables = await store.pool.query(
     "SELECT to_regclass('pickler.preview_runs') IS NOT NULL AS runs, to_regclass('pickler.preview_events') IS NOT NULL AS events",

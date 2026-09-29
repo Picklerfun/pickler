@@ -16,6 +16,14 @@
     "./trading-operator": {
       "types": "./src/trading/operator.ts",
       "import": "./dist/trading/operator.js"
+    },
+    "./model-providers/jev": {
+      "types": "./src/model-providers/jev/client.ts",
+      "import": "./dist/model-providers/jev/client.js"
+    },
+    "./migrations": {
+      "types": "./src/persistence/migrate-database.ts",
+      "import": "./dist/persistence/migrate-database.js"
     }
   },
   "scripts": {
@@ -44,7 +52,9 @@
     "jose": "^6.2.12",
     "pg": "8.20.0",
     "viem": "2.56.8",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@pickler/trading": "*",
+    "@pickler/api-schema": "*"
   },
   "files": [
     "dist",

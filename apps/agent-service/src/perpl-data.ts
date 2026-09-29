@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { config } from "dotenv";
 import { PostgresResearchStore } from "@pickler/infrastructure";
 import { PERP_TOOLS, effectivePlugins, PilotError, type PerplConfig } from "@pickler/core";
-import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
+import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
 import { capturePerplData } from "./perpl/capture.js";
 
 async function main() {

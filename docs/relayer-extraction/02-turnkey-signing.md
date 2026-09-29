@@ -1,3 +1,8 @@
+<!-- historical-evidence -->
+
+> Archived extraction design; not current implementation guidance.
+> See [Trading architecture](../trading-architecture.md) for current ownership.
+
 # Relayer extraction 02: Turnkey, wallets, policies, approvals and signing
 
 - **Source:** Relayer `develop` at commit `bb6bb1226e9289f675e355e7c022530e1e790fd9`, `apps/api`, read-only snapshot.

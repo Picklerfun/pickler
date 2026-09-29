@@ -1,13 +1,12 @@
 import { z } from "zod";
+import { PilotError, type Source } from "@pickler/core";
 import {
-  PilotError,
   assertStudyMarket,
   type StudyKind,
   type StudyMarket,
   type StudyEvidence,
   type StudyPlugin,
-  type Source,
-} from "@pickler/core";
+} from "@pickler/trading/strategies";
 import { PolymarketData } from "./market-data.js";
 import { providerJson } from "../research/http.js";
 import { ExaResearch } from "../research/exa.js";

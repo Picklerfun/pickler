@@ -1,3 +1,8 @@
+<!-- historical-evidence -->
+
+> Archived extraction design; not current implementation guidance.
+> See [Trading architecture](../trading-architecture.md) for current ownership.
+
 # Relayer → Pickler extraction plan
 
 Source: Relayer `develop` at `bb6bb1226e9289f675e355e7c022530e1e790fd9` (2026-06-25). Relayer-agent-kit at `9d9c0afec52f`.

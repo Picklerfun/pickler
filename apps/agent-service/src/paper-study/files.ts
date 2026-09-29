@@ -2,7 +2,7 @@ import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import type { StudyState } from "@pickler/core";
+import type { StudyState } from "@pickler/trading/strategies";
 
 export const studyConfigSchema = z
   .object({

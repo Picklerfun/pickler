@@ -8,7 +8,7 @@ import {
 } from "@polymarket/client";
 import { PolymarketTrading, tradingOrderHash } from "../src/polymarket/trading.js";
 import { PolymarketData } from "../src/polymarket/market-data.js";
-import type { LivePreview, LiveOrder } from "@pickler/core";
+import type { LivePreview, LiveOrder } from "@pickler/trading/polymarket";
 const credentials = {
   privateKey: `0x${"0".repeat(63)}1`,
   signer: "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",

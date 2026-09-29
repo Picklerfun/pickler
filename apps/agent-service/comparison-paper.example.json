@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "protocol": "btc-policy-comparison-v1",
+  "id": "btc-comparison-example",
+  "plugins": ["polymarket", "coinbase", "jev"],
+  "jevInputPerMillion": 0.042,
+  "maxNewReservedUsd": 0.25,
+  "historicalStudies": []
+}

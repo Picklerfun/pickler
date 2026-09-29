@@ -15,8 +15,8 @@ import {
   LEVERAGE_BOUNDS as CORE_LEVERAGE_BOUNDS,
   normalizeBrief,
   briefToConfig,
-  PAPER_BUDGET_AUSD as CORE_PAPER_BUDGET_AUSD,
 } from "@pickler/core";
+import { PAPER_BUDGET_AUSD as TRADING_PAPER_BUDGET_AUSD } from "@pickler/trading/polymarket";
 import {
   ACCENTS,
   VENUES,
@@ -133,6 +133,6 @@ test("the preview request leaves lengths to core, and the draft request adds the
   );
 });
 
-test("the paper budget in api-schema is core's", () => {
-  assert.equal(PAPER_BUDGET_AUSD, CORE_PAPER_BUDGET_AUSD);
+test("the paper budget in api-schema is trading's", () => {
+  assert.equal(PAPER_BUDGET_AUSD, TRADING_PAPER_BUDGET_AUSD);
 });

@@ -13,6 +13,12 @@ package-lock.json
 contracts/out/
 contracts/cache/
 contracts/broadcast/
+contracts/lib/
+
+# Generated from Foundry artifacts. Formatting these would fight the drift checks in
+# .github/workflows/contracts.yml, which regenerate them and fail on any diff.
+packages/core/test/fixtures/curve-vectors.json
+packages/chain/src/abi/
 
 # Generated local Supabase state
 supabase/.temp/

@@ -1,8 +1,10 @@
+export const PERPL_PLUGIN_VERSION = "1.1.0" as const;
 export const PERP_TOOLS = [
   "listPerpMarkets",
   "getPerpSnapshot",
   "getPerpOrderBook",
   "getPerpCandles",
+  "getPerpFundingHistory",
 ] as const;
 export type PerpTool = (typeof PERP_TOOLS)[number];
 export type PerpNetwork = "mainnet" | "testnet";
@@ -14,7 +16,7 @@ export interface PerplConfig {
 }
 export interface PerpProvenance {
   provider: "perpl";
-  pluginVersion: "1.0.0";
+  pluginVersion: "1.0.0" | "1.1.0";
   network: PerpNetwork;
   chainId: number;
   url: string;
@@ -107,7 +109,33 @@ export interface PerpReadContext {
   /** Must run before and after every provider request, including cached reads. */
   guard(): Promise<void>;
 }
+export interface PerpFundingRequest {
+  symbol: PerpSymbol;
+  from: number;
+  to: number;
+}
+export interface PerpFundingEvent {
+  eventBlock: number;
+  appliesAt: number | null;
+  rate: string;
+  index: string;
+  estimated: boolean;
+  provenance: PerpProvenance;
+}
+export interface PerpFundingHistory {
+  market: PerpMarketInfo;
+  from: number;
+  to: number;
+  complete: boolean;
+  events: PerpFundingEvent[];
+  pages: PerpProvenance[];
+}
 export interface PerpMarketData {
+  funding(
+    network: PerpNetwork,
+    request: PerpFundingRequest,
+    context: PerpReadContext,
+  ): Promise<PerpFundingHistory>;
   list(network: PerpNetwork, symbols: PerpSymbol[], context: PerpReadContext): Promise<PerpMarkets>;
   snapshot(
     network: PerpNetwork,
@@ -127,6 +155,7 @@ export interface PerpMarketData {
   ): Promise<PerpCandles>;
 }
 export interface PerpReadTools {
+  getPerpFundingHistory(input: PerpFundingRequest): Promise<PerpFundingHistory>;
   listPerpMarkets(): Promise<PerpMarkets>;
   getPerpSnapshot(input: { symbol: PerpSymbol }): Promise<PerpSnapshot>;
   getPerpOrderBook(input: { symbol: PerpSymbol; levels?: number }): Promise<PerpOrderBook>;

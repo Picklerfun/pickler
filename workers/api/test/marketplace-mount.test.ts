@@ -115,10 +115,12 @@ test("an empty database is an empty list, not an error", async () => {
   assert.equal(response.headers.get("x-pickler-data-source"), null);
 });
 
-test("/v1/demo is retired", async () => {
+test("legacy demo reads remain an alias of the public marketplace", async () => {
   const response = await app().request("/v1/demo/agents", {}, env);
 
-  assert.equal(response.status, 404);
+  assert.equal(response.status, 200);
+  const current = await app().request("/v1/marketplace/agents", {}, env);
+  assert.deepEqual(await response.json(), await current.json());
 });
 
 test("the workspace agent list stays authenticated", async () => {

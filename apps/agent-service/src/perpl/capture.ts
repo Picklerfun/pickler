@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile, rename } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { createPerplSession } from "@pickler/agent-runtime/composition/perpl";
+import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
 import {
   PilotError,
+  PERPL_PLUGIN_VERSION,
   type AgentRecord,
   type Scope,
   type PerpSnapshot,
@@ -32,7 +33,7 @@ export async function capturePerplData(input: {
   await mkdir(directory, { mode: 0o700 }); // Exclusive: an earlier attempt is never replaced.
   const manifest = {
     schemaVersion: 1,
-    pluginVersion: "1.0.0",
+    pluginVersion: PERPL_PLUGIN_VERSION,
     status: "started" as "started" | "complete" | "incomplete",
     scope: input.scope,
     agentVersion: agent.version,

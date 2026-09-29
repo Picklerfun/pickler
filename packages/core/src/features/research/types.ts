@@ -45,8 +45,9 @@ export const MAX_SKILLS = 8;
 export const MAX_SKILL_PROMPT = 600;
 export const MAX_SITES = 20;
 export interface AgentConfig {
+  perpsPaper?: import("./trading-config.js").PerpsPaperConfig | undefined;
   perpl?: PerplConfig | undefined;
-  trading?: import("../trading/types.js").TradingConfig | undefined;
+  trading?: import("./trading-config.js").TradingConfig | undefined;
   marketScope?: MarketScope | undefined;
   plugins?: PluginConfig | undefined;
   researchProtocol?: "nfl-winner-v1" | undefined;
@@ -603,6 +604,12 @@ export function assertUncertaintyPolicy(policy: UncertaintyPolicy): void {
 }
 
 export function assertConfig(config: AgentConfig): void {
+  if (
+    config.perpsPaper &&
+    (config.perpsPaper.version !== 1 || config.perpsPaper.policy !== "conservative-1x-v1")
+  ) {
+    throw new PilotError("INVALID_INPUT", "Invalid perpetual paper policy");
+  }
   if (config.perpl) {
     assertPerplConfig(config.perpl);
   }
@@ -658,6 +665,7 @@ export function assertConfig(config: AgentConfig): void {
             "paper-trading",
             "polymarket-trading",
             "perpl",
+            "perps-paper",
           ].includes(id),
       ))
   ) {

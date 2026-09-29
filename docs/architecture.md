@@ -1,12 +1,17 @@
+> Trading and evaluation ownership is defined in [Trading architecture](trading-architecture.md).
+
 # Architecture
 
 ## Three layers and dependency direction
 
-1. **Presentation** (`apps/web`): pages, product-specific components, and HTTP adapters. Route Handlers validate input, obtain authenticated identity, call a use case, and map its result to a DTO and HTTP status. They do not contain business rules or direct provider calls.
-2. **Business** (`packages/core`): entities, rules, use cases, and ports for persistence, external services, and blockchain operations. No Next.js, React, ORM, or provider SDK imports. The current layout has `domain`, `application`, and `ports`; organize future business features under `features/<feature>/{domain,application,ports}` when needed.
-3. **Infrastructure** (`packages/infrastructure`): implementations of the ports, including repositories and provider/RPC adapters. Infrastructure depends on business; business never depends on infrastructure.
+1. **Presentation** (`apps/web`): pages and an HTTP facade to the authenticated API. It does not import business or infrastructure packages.
+2. **Business** (`packages/core` and `packages/trading`): core owns research, identity and shared contracts; trading owns financial rules, execution ports and evaluation. Trading depends on core, never the reverse.
+3. **Infrastructure** (`packages/infrastructure`): repositories and provider adapters implement the business ports. Business never imports infrastructure.
 
-Runtime flow is HTTP → use case → adapter. Code dependencies are inverted through interfaces: presentation → business ← infrastructure. `apps/web/src/server/container.ts` is the current composition root, protected by `server-only`. The independent agent service has its own server composition root at `src/composition/container.ts`; both hosts consume the same business ports and rules. ESLint checks direct imports across key boundaries; these checks are guardrails, not a substitute for reviewing transitive dependencies. Next.js rejects importing the protected server boundary into a Client Component.
+Hono composes adapters in `workers/api/src/container.ts`; the research/trading Workers retain their
+own scoped composition. `apps/web/src/server` is an HTTP client facade. Agent-runtime composes shared
+plugins and models; the local evaluation host supplies files, process signals and reports to the
+portable trading engine. Read [Trading architecture](trading-architecture.md) for the dependency graph.
 
 `api-schema` contains public HTTP contracts only. `ui` knows nothing about use cases, authentication, wallets, or providers. Keep interactive client boundaries small instead of making the entire UI library client-only.
 
@@ -52,7 +57,7 @@ Supabase Postgres (project `pickler`) holds one schema per domain: `identity`, `
 
 ## Future backend extraction
 
-Create `apps/api` when needed. It will consume the same `core`, `infrastructure`, and `api-schema` packages, provide its own composition root, and expose the same `/api/v1` contract. Next.js can retain a facade or consume the new backend over HTTP. Use cases remain unchanged; transport, sessions, configuration, and deployment still need adaptation. Do not create an extra process merely to simulate a future migration.
+The existing `workers/api` composes core, trading, infrastructure and API schemas. New transports must reuse those business services and preserve authentication, admission and budgets. No additional evaluation transport is enabled by the trading extraction.
 
 Core, infrastructure and API-schema expose compiled ESM runtime exports and source type declarations. Their build configurations emit `dist`, and package file lists include those artifacts for Mastra packaging. UI and chain retain source exports. Root Turborepo builds dependencies before their consumers.
 

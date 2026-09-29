@@ -1,14 +1,11 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { DEFAULT_CONFIG, evaluateDecision, type Market, type ModelAssessment } from "@pickler/core";
 import {
-  DEFAULT_CONFIG,
   createPaperService,
-  evaluateDecision,
-  type Market,
-  type ModelAssessment,
   type PaperMarketData,
   type PaperRepository,
-} from "@pickler/core";
+} from "@pickler/trading/polymarket";
 import { PostgresPaperStore } from "../src/persistence/paper-store.js";
 import { createTestStore } from "./database.js";
 

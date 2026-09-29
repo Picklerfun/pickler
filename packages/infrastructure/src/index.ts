@@ -165,3 +165,47 @@ export {
   DraftUnavailableError,
   type OpenAiCompatibleDrafterConfig,
 } from "./model/openai-compatible-drafter.js";
+
+export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
+
+export { QuantData } from "./polymarket/quant-data.js";
+
+export {
+  comparisonTransport,
+  type PublicRequestDiagnostic,
+} from "./polymarket/comparison-transport.js";
+
+export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
+
+export {
+  PostgresLaunchIndexStore,
+  type ApplyBatchInput,
+  type IndexBlockInput,
+  type IndexEventInput,
+  type OutboxInput,
+} from "./persistence/product/launch-index-store.js";
+
+export {
+  runIndexerPass,
+  type IndexerPassOptions,
+  type IndexerSource,
+  type LogDecoder,
+  type OutboxPlanner,
+  type PassOutcome,
+} from "./chain/launch-indexer.js";
+export { decodeLaunchLog } from "./chain/launch-log-decoder.js";
+
+export {
+  PostgresLaunchProjector,
+  type LaunchMetadata,
+  type MetadataReader,
+  type ProjectionResult,
+} from "./persistence/product/launch-projector.js";
+
+export {
+  PostgresLaunchReadModel,
+  type LaunchListQuery,
+} from "./persistence/product/launch-read-model.js";
+
+/** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */

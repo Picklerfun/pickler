@@ -1,5 +1,6 @@
 import {
   PilotError,
+  PERPL_PLUGIN_VERSION,
   PERP_RESOLUTIONS,
   type PerpNetwork,
   type PerpSymbol,
@@ -11,10 +12,14 @@ import {
   type PerpOrderBook,
   type PerpCandleRequest,
   type PerpCandles,
+  type PerpFundingRequest,
+  type PerpFundingHistory,
+  type PerpFundingEvent,
 } from "@pickler/core";
 import { z } from "zod";
 import {
   contextSchema,
+  fundingSeriesSchema,
   tickerSchema,
   bookSchema,
   candlesSchema,
@@ -56,7 +61,7 @@ function stamp(
 ): PerpProvenance {
   return {
     provider: "perpl",
-    pluginVersion: "1.0.0",
+    pluginVersion: PERPL_PLUGIN_VERSION,
     network,
     chainId: PERPL_NETWORKS[network].chainId,
     url: response.url,
@@ -166,6 +171,84 @@ export class PerplMarketData implements PerpMarketData {
         },
         provenance: stamp(network, context.response, wire.config.at),
       },
+    };
+  }
+  async funding(
+    network: PerpNetwork,
+    request: PerpFundingRequest,
+    ctx: PerpReadContext,
+  ): Promise<PerpFundingHistory> {
+    const { symbol, from, to } = request;
+    if (
+      !Number.isSafeInteger(from) ||
+      !Number.isSafeInteger(to) ||
+      from < 0 ||
+      to < from ||
+      to > this.transport.now()
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid funding range");
+    }
+    const context = await this.context(network, ctx);
+    const { info: market } = this.market(network, symbol, context);
+    const span = market.fundingIntervalSeconds * 1000 * 1023;
+    if (to - from > span * 4) {
+      throw new PilotError("INVALID_INPUT", "Funding range exceeds four pages");
+    }
+    const events = new Map<number, PerpFundingEvent>();
+    const pages: PerpProvenance[] = [];
+    let complete = true;
+    for (let start = from; start <= to;) {
+      const end = Math.min(to, start + span);
+      const response = await this.transport.get(
+        network,
+        `/v1/market-data/${market.marketId}/funding/${start}-${end}`,
+        ctx,
+      );
+      const raw = parse(response, fundingSeriesSchema);
+      if (raw.m !== market.marketId) {
+        invalid();
+      }
+      pages.push(stamp(network, response, raw.at));
+      if (raw.d.length === 0) {
+        complete = false;
+      }
+      for (const event of raw.d) {
+        if (event.at.b !== undefined && event.at.b !== event.feb) {
+          invalid();
+        }
+        const normalized: PerpFundingEvent = {
+          eventBlock: event.feb,
+          appliesAt: event.at.t ?? null,
+          rate: perplDecimal(event.rate, 6),
+          index: perplDecimal(event.idx, market.priceDecimals),
+          estimated:
+            !context.data.chain.gas ||
+            event.feb > context.data.chain.gas.h ||
+            event.at.t === undefined ||
+            event.at.t > this.transport.now() - 60000,
+          provenance: stamp(network, response, event.at),
+        };
+        const previous = events.get(event.feb);
+        if (
+          previous &&
+          (previous.rate !== normalized.rate || previous.index !== normalized.index)
+        ) {
+          invalid();
+        }
+        events.set(event.feb, normalized);
+      }
+      if (end === to) {
+        break;
+      }
+      start = end + 1;
+    }
+    return {
+      market,
+      from,
+      to,
+      complete,
+      events: [...events.values()].sort((a, b) => a.eventBlock - b.eventBlock),
+      pages,
     };
   }
   async list(network: PerpNetwork, symbols: PerpSymbol[], ctx: PerpReadContext) {

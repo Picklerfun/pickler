@@ -1,3 +1,4 @@
+import type { ReadDto, LaunchSummaryDto } from "@pickler/api-schema";
 import "server-only";
 import type {
   LandingResponse,
@@ -20,6 +21,19 @@ export const services = {
   clock: { now: () => new Date() },
   getLanding: () => apiJson<LandingResponse>("/landing"),
   listAgents: () => apiJson<AgentSummaryDto[]>("/marketplace/agents"),
+  listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
+    const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Pickler API request failed (${response.status})`);
+    }
+
+    return response.json() as Promise<ReadDto<LaunchSummaryDto[]>>;
+  },
   listDirectory: () => apiJson<DirectoryAgentDto[]>("/marketplace/directory"),
   listReads: () => apiJson<AgentReadDto[]>("/marketplace/reads"),
   getRead: (id: string) =>

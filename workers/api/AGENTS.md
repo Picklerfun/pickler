@@ -346,3 +346,9 @@ Studio trading routes use user sessions and owner checks, the TRADING_EXECUTOR p
 ## Paper resolution
 
 Studio paper endpoints also expose POST /runs/:id/paper-order/settle (empty body, owner authorization, idempotent by position) and GET /agents/:id/paper-summary (workspace-scoped read). Settlement uses finalized public CTF data and never forwards a request to the live trading executor.
+
+## Trading package boundary
+
+Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains identity, configuration and research contracts. Hosts must not duplicate risk, fills or accounting.
+
+The launch catalogue is mounted at `/v1/launches` using the request-scoped PostgreSQL pool. `/v1/console` and `/v1/demo` remain aliases of the authenticated Studio and public marketplace surfaces respectively. The Studio creation contract still requires the approved wallet introduced by this branch; the alias does not bypass that requirement.

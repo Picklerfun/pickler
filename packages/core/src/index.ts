@@ -6,6 +6,30 @@ export type { Clock } from "./ports/clock.js";
 export { createGetHealth } from "./application/get-health.js";
 export { DataSourceUnavailableError } from "./shared/errors.js";
 
+export {
+  remainingTokens,
+  tokensOutForQuoteIn,
+  type CurveConfig,
+} from "./features/launch/domain/curve-math.js";
+
+export {
+  nextRange,
+  planAdvance,
+  type AdvancePlan,
+  type IndexedBlock,
+  type IndexerCursor,
+} from "./features/launch/domain/indexing.js";
+
+export {
+  ChainMismatchError,
+  ChainUnavailableError,
+  type BlockRef,
+  type CallRequest,
+  type ChainLog,
+  type ChainReader,
+  type LogQuery,
+} from "./features/launch/ports/chain-reader.js";
+
 export * from "./features/landing/domain/landing.js";
 export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
 export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
@@ -155,15 +179,11 @@ export {
 export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
-export * from "./features/paper/orders.js";
 export * from "./features/studio/access.js";
 export * from "./features/studio/draft.js";
 export * from "./features/studio/brief-config.js";
 export * from "./features/studio/preview.js";
 export * from "./features/studio/locks.js";
-
-export * from "./features/trading/types.js";
-export * from "./features/trading/service.js";
 
 export {
   ADD_PASSKEY_ACTIVITY_TYPE,
@@ -251,10 +271,7 @@ export {
   type SignedMessage,
 } from "./features/identity/application/wallet-sign-in.js";
 
-export * from "./features/paper/settlement.js";
-export * from "./features/paper/sports.js";
-
-export * from "./features/paper-study/study.js";
-
 export * from "./features/perps/types.js";
 export * from "./features/perps/service.js";
+
+export * from "./features/research/trading-config.js";
