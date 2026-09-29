@@ -1,28 +1,45 @@
 import { createPerplSession } from "@pickler/agent-runtime/plugins/perpl";
-import { createPerpsPaperRuntime } from "@pickler/agent-runtime/plugins/perps-paper";
+import { PerplRequestSchedule, type PerplDataOptions } from "@pickler/infrastructure";
+import {
+  createPerpsPaperRuntime,
+  createCoherentPerplReader,
+} from "@pickler/agent-runtime/plugins/perps-paper";
 import { PilotError, type AgentRecord, type Scope, type PerpCandles } from "@pickler/core";
-import { type PerpsPaperRepository } from "@pickler/trading/perps";
+import { type AcquisitionDiagnostic, type PerpsPaperRepository } from "@pickler/trading/perps";
 import type { StudyData } from "@pickler/trading/evaluation";
 export function createStudyData(
   paper: PerpsPaperRepository,
   agents: { agent(scope: Scope): Promise<AgentRecord> },
+  options: PerplDataOptions & { onAcquisition?: (event: AcquisitionDiagnostic) => void } = {},
 ): StudyData {
-  const runtime = createPerpsPaperRuntime(paper, agents);
+  const schedule = options.schedule ?? new PerplRequestSchedule();
+  const runtime = createPerpsPaperRuntime(paper, agents, { ...options, schedule });
   let cache: { hour: number; candles: PerpCandles[] } | undefined;
   return {
-    observe: (record, signal) =>
-      runtime.data.observation(
+    observe: async (record, signal, guard) => {
+      const active = record.dataPolicy
+        ? createPerpsPaperRuntime(paper, agents, {
+            ...options,
+            schedule,
+            coherent: true,
+            ...(guard ? { guard } : {}),
+          })
+        : runtime;
+      return active.data.observation(
         { ...record.config, agentId: record.agentIds.rules },
         record.startedAt ?? Date.now(),
         signal,
-      ),
-    async evidence(record, observation, signal) {
+      );
+    },
+    async evidence(record, observation, signal, guard) {
+      await guard?.();
       const hour = Math.floor(Date.now() / 3600000) * 3600000;
       if (cache?.hour !== hour) {
         const { service } = await createPerplSession(
           agents,
           { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
           signal,
+          { ...options, schedule, ...(guard ? { guard } : {}) },
         );
         const candles = [];
         for (const symbol of ["BTC", "ETH"] as const) {
@@ -42,6 +59,7 @@ export function createStudyData(
         }
         cache = { hour, candles };
       }
+      await guard?.();
       return {
         observedAt: Date.now(),
         frames: structuredClone(observation.frames),
@@ -56,7 +74,18 @@ export function createStudyData(
         ],
       };
     },
-    async execution(record, signal) {
+    async execution(record, signal, guard) {
+      if (record.dataPolicy) {
+        return createCoherentPerplReader(agents, {
+          ...options,
+          schedule,
+          ...(guard ? { guard } : {}),
+        })(
+          { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+          ["BTC", "ETH"],
+          signal,
+        );
+      }
       const frames = [];
       for (const symbol of ["BTC", "ETH"] as const) {
         frames.push(
