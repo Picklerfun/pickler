@@ -1,0 +1,57 @@
+diff --git a/.github/workflows/design.yml b/.github/workflows/design.yml
+new file mode 100644
+index 0000000..5651a5f
+--- /dev/null
++++ b/.github/workflows/design.yml
+@@ -0,0 +1,51 @@
++name: Design
++
++on:
++  pull_request:
++  push:
++    branches: [main]
++  workflow_dispatch:
++
++permissions:
++  contents: read
++
++jobs:
++  # What the source says: no colour outside the token file, no token defined or renamed outside
++  # it, no class nothing names. Needs no browser and no server.
++  source:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 22.22.0
++          cache: npm
++      - run: npm install --global npm@10.9.3
++      - run: npm ci
++      - run: npm run design:source
++      - run: node --import tsx --test scripts/design/*.test.mjs
++
++  # What the pages paint. Playwright is installed on the runner and not in package.json, as
++  # docs/specs/design-system-v2.md decided: these are checks run against a server, not a
++  # dependency of the build. The runner starts the fixture API and the web app itself.
++  rendered:
++    runs-on: ubuntu-latest
++    timeout-minutes: 45
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 22.22.0
++          cache: npm
++      - run: npm install --global npm@10.9.3
++      - run: npm ci
++      - run: npm run build:shared
++      - run: npm install --global playwright@1.63.0
++      - run: playwright install --with-deps chromium
++      - run: npm run design:check
++      - if: failure()
++        uses: actions/upload-artifact@v4
++        with:
++          name: design-servers-log
++          path: scripts/design/.shots/servers.log
++          if-no-files-found: ignore

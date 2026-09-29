@@ -3015,3 +3015,825 @@ MSG
 ```
 
 Before that `git add`, run `git status --short apps/web/src` and check that every path listed is one this task owns. `apps/web/src` is named whole only because the list is 43 files long; if the status shows a file that is not in `30-unexport.tsv` or in the **Owns** list, somebody else is editing it: add the files one by one instead and leave theirs alone.
+
+---
+
+# Batch G — the studio's sections
+
+One task.
+
+## Task 32: One rail list and one Soon panel
+
+**Owns:** created — `apps/web/src/features/studio/sections/rail.ts`, `apps/web/src/features/studio/sections/soon.tsx`, `apps/web/test/studio-rail.test.ts`; deleted — `apps/web/src/features/studio/sections/stub.tsx`; modified — `apps/web/src/features/studio/studio.tsx`, `apps/web/src/features/studio/sections/overview.tsx`, `apps/web/src/features/studio/sections/context.tsx`, `apps/web/src/features/studio/home/menu.tsx`, `apps/web/src/features/studio/home/empty.tsx`.
+
+What is there today: three lists of the same sections — `GROUPS` in `studio.tsx`, `groups` in `home/menu.tsx`, `RAIL` in `home/empty.tsx` — which disagree on labels and on which sections exist; and `sections/stub.tsx`, one component over a table of six pages, each with a state badge of its own (`LIVES IN SKILLS`, `HALF BUILT`, `RECORD PENDING`, `NO BACKEND`, `BUILT`).
+
+What is there after (J21, J22):
+
+|                                                 |                                                                                                                                                                                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sections/rail.ts`                              | `RAIL`: four groups, thirteen items, each `{ key, icon, label, soon }`, in the order of `SECTIONS` in `keys.ts`. `isSoon(key)`. `PANELS`: the title, tag and body of the six sections the panel draws. `isPanel(key)`. Data only, no `"use client"`. |
+| `sections/soon.tsx`                             | `Soon({ section, agent })`: the tag, `SOON` when `isSoon(section)`, the title, the body; the two links out on `board`, the link to the public page on `profile`. It replaces `Stub`.                                                                 |
+| `studio.tsx`                                    | draws `RAIL`; a soon section's badge is `SOON`; the render switch ends in `isPanel(section) ? <Soon …/> : null`. `SectionKey` is imported from `keys.ts`.                                                                                            |
+| `home/menu.tsx`                                 | builds its groups from `RAIL`; a soon item's note is `SOON`, else the live note it had (`picks`, `activity`, `skills`).                                                                                                                              |
+| `home/empty.tsx`                                | draws `RAIL`, every row disabled as before, with a `SOON` tag on the five.                                                                                                                                                                           |
+| `sections/overview.tsx`, `sections/context.tsx` | import `SectionKey` from `keys.ts` instead of `stub.tsx`.                                                                                                                                                                                            |
+
+What a person sees change:
+
+| Where                             | Before                                                                                                                  | After                                                                                                                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell rail, `profile`             | badge `SAMPLE`                                                                                                          | badge `SOON`                                                                                                                                                                   |
+| Shell rail, `audience`, `token`   | badge `PLANNED`                                                                                                         | badge `SOON`                                                                                                                                                                   |
+| Shell rail, `sources`, `identity` | no badge                                                                                                                | badge `SOON`                                                                                                                                                                   |
+| The six panels                    | a state badge each                                                                                                      | `SOON` on five; none on the board                                                                                                                                              |
+| The `token` panel's body          | "No curve, no contracts, no purchases…"                                                                                 | "Launching a token for this agent from the studio is not built. The public token board reads the launch catalogue, which stays empty until the launch contracts are deployed." |
+| Home Menu                         | 13 rows in three groups; `profile` called "Public page"; `token` noted `OPTIONAL`                                       | 13 rows in the rail's four groups; "Public profile"; the five noted `SOON`                                                                                                     |
+| Empty home rail                   | 9 rows: Overview, Console, Trades, Activity, Brief, Sources & rules, Limits & funding, Identity & voice, Public profile | the 13 rows of the shell rail, the five with a `SOON` tag                                                                                                                      |
+
+- [ ] **Step 1: Write the failing test**
+
+```sh
+git apply --check $PLAN/patches/32-rail-test.patch && git apply $PLAN/patches/32-rail-test.patch
+node --import tsx --test apps/web/test/studio-rail.test.ts
+```
+
+Expected: FAIL with `Cannot find module '../src/features/studio/sections/rail'`.
+
+The seven tests: the rail lists every section key once, in the order the keys are declared; its groups are RUN, BUILD, GROW, PUBLIC; the soon sections are `sources`, `identity`, `profile`, `audience`, `token`; every soon section has a panel; the board draws the panel without being soon; a section with a screen of its own draws no panel; no panel is without words.
+
+- [ ] **Step 2: Write the list and the panel, and draw all three rails from the list**
+
+```sh
+git apply --check $PLAN/patches/32-rail-impl.patch && git apply $PLAN/patches/32-rail-impl.patch
+node --import tsx --test apps/web/test/studio-rail.test.ts apps/web/test/studio.test.ts
+```
+
+Expected: PASS, `fail 0`. The patch deletes `sections/stub.tsx`; `git status --short apps/web/src/features/studio/sections` shows ` D stub.tsx`, `?? rail.ts`, `?? soon.tsx`.
+
+- [ ] **Step 3: Verify**
+
+```sh
+npm run design:source | tail -1
+grep -rn 'sections/stub\|GROUPS\b' apps/web/src/features/studio
+```
+
+Expected: `source: clean over 245 file(s).`; the `grep` prints nothing.
+
+Run, and check each exit status is 0: `npm run typecheck`, `npm run lint`.
+
+- [ ] **Step 4: The whole harness, and the picture**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-32 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-32 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: four times `clean over all 51 route(s).`, `exit 0`.
+
+**Expected differences:**
+
+| Screens                                                                                         | How much                                                                            | Why                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `studio-picks`, `studio-activity`, `studio-skills`, `studio-token`, desktop                     | 0.3% to 1.3% of pixels; the part that is this task's is inside the rail, `x 12–194` | the `SOON` badges; on `studio-token` also the panel's badge and body                                                                       |
+| the same four, phone                                                                            | `RESIZED`, taller by 1px (`studio-token` by 26px)                                   | below 860px the rail is a row of chips above the section, and a badge makes it a pixel taller; the token panel's new body is a line longer |
+| `studio-home-empty`, `studio-brief-running`, `studio-brief-done`, `studio-brief-stale`, desktop | about 0.4%, inside `x 22–194, y 146–679`                                            | the empty home's rail: thirteen rows, five with a tag                                                                                      |
+
+The phone shots of the empty home and of the three brief stages do not change: below 860px that rail is hidden. The staged homes (`studio-home-*`) do not change: the Menu is closed in a screenshot. `studio-picks` and `studio-activity` are also in `noise.txt`, so their numbers are the rail's plus their own; what matters is that the difference reaches `x 22`. Every other line starts with `NOISE`, or is a `market-*` or `token` screen moving inside the box it has in `noise.txt` — in the verified run `market-trade-picked-desktop` came back `RESIZED` by 15px with no change to the markets at all, which is a row of its time-driven data wrapping.
+
+Open `task-32/studio-token-desktop.png`: the rail on the left with `SOON` beside Sources, Identity & voice, Public profile, Audience and Token; the panel reading GROW · SOON, "Token", and the new body. Open `task-32/studio-home-empty-desktop.png`: thirteen dimmed rows in four groups. At 1400px the rail truncates a long label beside its badge ("Identity & v…"); `design-system-v2.md` already records that for "Public profile" and leaves it to a layout pass, and so does this task.
+
+- [ ] **Step 5: Move the baseline forward**
+
+```sh
+rm -rf scripts/design/.shots/baseline
+cp -R scripts/design/.shots/task-32 scripts/design/.shots/baseline
+```
+
+- [ ] **Step 6: Gates**
+
+Check the ports are free. Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+- [ ] **Step 7: Commit**
+
+`sections/stub.tsx` is deleted by the patch, not by `git rm`, so it has to be named for the commit to take the deletion.
+
+```bash
+git add apps/web/src/features/studio/sections/rail.ts \
+  apps/web/src/features/studio/sections/soon.tsx \
+  apps/web/src/features/studio/sections/stub.tsx \
+  apps/web/src/features/studio/sections/overview.tsx \
+  apps/web/src/features/studio/sections/context.tsx \
+  apps/web/src/features/studio/studio.tsx \
+  apps/web/src/features/studio/home/menu.tsx \
+  apps/web/src/features/studio/home/empty.tsx \
+  apps/web/test/studio-rail.test.ts
+git commit -m "$(cat <<'MSG'
+Studio: one list of sections, one Soon panel
+
+The shell's rail, the home's Menu and the empty home's rail drew three
+lists that disagreed. They draw one. A section with no screen is marked
+SOON in all three and opens on one panel that says what exists and
+what does not.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/studio/sections/rail.ts \
+  apps/web/src/features/studio/sections/soon.tsx \
+  apps/web/src/features/studio/sections/stub.tsx \
+  apps/web/src/features/studio/sections/overview.tsx \
+  apps/web/src/features/studio/sections/context.tsx \
+  apps/web/src/features/studio/studio.tsx \
+  apps/web/src/features/studio/home/menu.tsx \
+  apps/web/src/features/studio/home/empty.tsx \
+  apps/web/test/studio-rail.test.ts
+```
+
+---
+
+# Batch H — the harness sees more, the static check fails, CI runs both
+
+Tasks 33 and 34 share no file and may run in parallel, taking turns at the harness. Task 35 runs after both, task 36 after 35.
+
+## Task 33: The runtime token check reads gradients, shadows, filters, outlines and SVG paint
+
+**Owns:** `scripts/design/lib/probe.mjs`, `scripts/design/tokens.mjs`, `scripts/design/probe.test.mjs` (created), `packages/ui/src/brand.tsx` (one attribute).
+
+Until now `tokens.mjs` read three things off each element: `background-color`, `color`, and the colour of a border with a width. The sky was a `background-image` and every glow a `box-shadow`, so both passed. It also compared each colour with every token on the page, whatever surface the element sat in.
+
+| Change                       | Detail                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `paintedColours(pattern)`    | also reads `background-image`, `box-shadow`, `text-shadow`, `filter`, `outline-color` where an outline is drawn, and `fill` and `stroke` of SVG shapes. Each paint carries the index of its surface scope: the nearest `[data-surface]` ancestor, or the page. It skips what sits under `[data-third-party-mark]` (J19). |
+| `resolveTokens()`            | returns one list of values per scope. A token that is not a colour but holds some — `--pk-popover-shadow` — contributes each colour it holds.                                                                                                                                                                            |
+| `COLOUR`, `coloursIn(value)` | the one pattern for a colour in a computed value, tested in Node and handed to the page as an argument                                                                                                                                                                                                                   |
+| `tokens.mjs`                 | judges each paint against the tokens of its own scope; a stray is reported once per colour and role                                                                                                                                                                                                                      |
+| `packages/ui/src/brand.tsx`  | `data-third-party-mark=""` on the `<svg>`                                                                                                                                                                                                                                                                                |
+
+Not read: `::before` and `::after`, and what a `<canvas>` draws.
+
+- [ ] **Step 1: Write the failing test**
+
+```sh
+git apply --check $PLAN/patches/33-probe-test.patch && git apply $PLAN/patches/33-probe-test.patch
+node --test scripts/design/probe.test.mjs
+```
+
+Expected: FAIL: `The requested module './lib/probe.mjs' does not provide an export named 'coloursIn'`.
+
+The five tests give `coloursIn` what Chromium hands back for a shadow list, a gradient, a drop-shadow, a colour mixed by the browser and a value with no colour in it.
+
+- [ ] **Step 2: Write the implementation**
+
+```sh
+git apply --check $PLAN/patches/33-probe-impl.patch && git apply $PLAN/patches/33-probe-impl.patch
+node --test scripts/design/probe.test.mjs
+```
+
+Expected: PASS, `tests 5`, `fail 0`.
+
+- [ ] **Step 3: Prove the check can fail**
+
+In `apps/web/src/features/agents/agents.module.css`, in the rule `.glass`, change by hand
+
+```css
+box-shadow: inset 0 1px 0 var(--pk-lit-edge);
+```
+
+to
+
+```css
+box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.23);
+```
+
+Look at the ports, then run: `DESIGN_ROUTES=token-pick node scripts/design/run.mjs tokens; echo "exit $?"`
+
+Expected: `FAIL     token-pick article.agents-module__…__glass: #FFFFFF at 0.23 alpha as box-shadow is in no --pk-* token of its surface ×1`, and `exit 1`.
+
+Put the line back by hand. `git diff --stat apps/web/src/features/agents/agents.module.css` must print nothing. Run the same command again: `tokens: clean over all 1 route(s).`, `exit 0`.
+
+- [ ] **Step 4: The check over every route**
+
+Look at the ports, then run, with a timeout of twenty minutes: `node scripts/design/run.mjs tokens; echo "exit $?"`
+
+Expected: `tokens: clean over all 51 route(s).` (60 if task 34 has landed), `exit 0`. Before batches B to F this same check reported 53 strays on 17 routes: the stars, the floor, every glow, the old cyan, and Google's four colours.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+There is no capture in this task: the attribute on the `<svg>` paints nothing, and nothing else here reaches the product.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/design/lib/probe.mjs \
+  scripts/design/tokens.mjs \
+  scripts/design/probe.test.mjs \
+  packages/ui/src/brand.tsx
+git commit -m "$(cat <<'MSG'
+Design: the token check reads what a sky and a glow are made of
+
+Gradients, shadows, text shadows, drop-shadows, outlines and SVG paint,
+each judged against the tokens of the surface the element sits in. A
+third party's mark says so and is skipped.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- scripts/design/lib/probe.mjs \
+  scripts/design/tokens.mjs \
+  scripts/design/probe.test.mjs \
+  packages/ui/src/brand.tsx
+```
+
+## Task 34: Every studio section has a route
+
+**Owns:** `scripts/design/routes.mjs`
+
+Four of the thirteen sections have a route today (`picks`, `activity`, `skills`, `token`). Measured before writing this task, the other nine render clean on every check: `overview` 90 text elements, `context` 70, `brief` 51, `sources` 39, `limits` 82, `identity` 39, `profile` 41, `audience` 39, `board` 43. `limits` is where the trading panel is measured, because trading has no section key (A10).
+
+- [ ] **Step 1: Add the nine routes**
+
+`maps/34-routes.json` holds one edit: the four section entries and the comment above them become thirteen entries, in the rail's order, each `{ path: "/studio?section=<key>", name: "studio-<key>", product: "studio", surface: "dark", task: "Task 11", proves: "#studio-panel-<key>" }`. The four that existed keep their names.
+
+```sh
+node $PLAN/tools/reline.mjs scripts/design/routes.mjs $PLAN/maps/34-routes.json
+npx prettier --write scripts/design/routes.mjs
+node -e 'import("./scripts/design/routes.mjs").then((m) => console.log(m.ROUTES.length))'
+```
+
+Expected: `1 edit(s) applied`, then `60`.
+
+- [ ] **Step 2: The checks, on the thirteen**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=studio-overview,studio-context,studio-picks,studio-activity,studio-brief,studio-skills,studio-sources,studio-limits,studio-identity,studio-profile,studio-audience,studio-token,studio-board \
+  node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 13 route(s).`, and `exit 0`.
+
+- [ ] **Step 3: Capture, and add the new screens to the baseline**
+
+```sh
+DESIGN_ROUTES=studio-overview,studio-context,studio-brief,studio-sources,studio-limits,studio-identity,studio-profile,studio-audience,studio-board \
+  DESIGN_SHOTS_DIR=scripts/design/.shots/task-34 npm run design:shots
+cp scripts/design/.shots/task-34/*.png scripts/design/.shots/baseline/
+ls scripts/design/.shots/baseline | wc -l
+```
+
+Expected: `wrote 18 shot(s)`, then `120`. There is nothing to compare these with; open `task-34/studio-limits-desktop.png` and `task-34/studio-overview-desktop.png` and check they are the sections they say they are.
+
+- [ ] **Step 4: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm test`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/design/routes.mjs
+git commit -m "$(cat <<'MSG'
+Design: a route for each of the studio's thirteen sections
+
+Nine had none, the trading panel among them.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- scripts/design/routes.mjs
+```
+
+## Task 35: The static check fails
+
+Runs after tasks 33 and 34 are committed.
+
+**Owns:** `package.json` (two scripts)
+
+- [ ] **Step 1: See it clean while it still only reports**
+
+Run: `npm run design:source; echo "exit $?"`
+
+Expected: `source: clean over 245 file(s).`, `exit 0`. If it reports a violation, a task before this one is not finished, or something landed since: stop and report the lines.
+
+- [ ] **Step 2: Make it fail**
+
+```sh
+node $PLAN/tools/reline.mjs package.json $PLAN/maps/35-package.json
+npx prettier --write package.json
+```
+
+Expected: `package.json: 2 edit(s) applied`. The two scripts read:
+
+```json
+    "design:source": "node scripts/design/source.mjs --strict",
+    "design:check": "node scripts/design/run.mjs --strict",
+```
+
+- [ ] **Step 3: Prove it fails, once for CSS and once for TypeScript**
+
+Add by hand, at the end of `apps/web/src/app/globals.css`:
+
+```css
+.proof {
+  color: #c8f03a;
+}
+```
+
+Run: `npm run design:source; echo "exit $?"`
+
+Expected: `FAIL  colour-literal  apps/web/src/app/globals.css:<line>  color: #c8f03a is a colour literal; read a --pk-* token instead`, `source: 1 violation(s) — colour-literal 1.`, `exit 1`.
+
+Remove the three lines. Then create `apps/web/src/lib/proof.ts` holding the one line `export const proof = "#c8f03a";` and run the command again.
+
+Expected: `FAIL  colour-in-ts  apps/web/src/lib/proof.ts:1  #c8f03a is a colour literal; read it from packages/ui/src/tokens.ts`, `exit 1`. The file is untracked, and the check saw it.
+
+Delete `apps/web/src/lib/proof.ts` (`rm apps/web/src/lib/proof.ts`: a file this step created). Run the command once more: `source: clean over 245 file(s).`, `exit 0`. `git status --short apps/web/src` must print nothing.
+
+- [ ] **Step 4: The whole harness, under its final command**
+
+Look at the ports, then run, with a timeout of twenty-five minutes: `npm run design:check; echo "exit $?"`
+
+Expected:
+
+```
+source: clean over 245 file(s).
+surfaces: clean over all 60 route(s).
+tokens: clean over all 60 route(s).
+contrast: clean over all 60 route(s).
+type: clean over all 60 route(s).
+exit 0
+```
+
+That is the first line of the spec's section 5: `npm run design:check` exits 0 with zero blocked routes.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add package.json
+git commit -m "$(cat <<'MSG'
+Design: the static check fails the build
+
+The tree is clean, so a colour literal, a --pk-* definition or alias
+outside the token file, a token read and never defined, a colour in
+TypeScript or a class nothing names now exits 1.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- package.json
+```
+
+## Task 36: CI
+
+**Owns:** `.github/workflows/design.yml` (created)
+
+Two jobs. `source` runs the static check and the harness's unit tests, and needs neither a browser nor a server. `rendered` runs `npm run design:check` with Playwright installed on the runner and not in `package.json` (J27). The harness's unit tests also run under `npm test` in `postgres.yml` since task 1; `source` runs them again because it needs no database and answers in a minute.
+
+- [ ] **Step 1: Write the workflow**
+
+```sh
+git apply --check $PLAN/patches/36-ci.patch && git apply $PLAN/patches/36-ci.patch
+```
+
+It creates `.github/workflows/design.yml`:
+
+```yaml
+name: Design
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # What the source says: no colour outside the token file, no token defined or renamed outside
+  # it, no class nothing names. Needs no browser and no server.
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm install --global npm@10.9.3
+      - run: npm ci
+      - run: npm run design:source
+      - run: node --import tsx --test scripts/design/*.test.mjs
+
+  # What the pages paint. Playwright is installed on the runner and not in package.json, as
+  # docs/specs/design-system-v2.md decided: these are checks run against a server, not a
+  # dependency of the build. The runner starts the fixture API and the web app itself.
+  rendered:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm install --global npm@10.9.3
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm install --global playwright@1.63.0
+      - run: playwright install --with-deps chromium
+      - run: npm run design:check
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-servers-log
+          path: scripts/design/.shots/servers.log
+          if-no-files-found: ignore
+```
+
+- [ ] **Step 2: Run locally what the `source` job runs**
+
+```sh
+npm run design:source; echo "exit $?"
+node --import tsx --test scripts/design/*.test.mjs 2>&1 | grep -E '^ℹ (tests|pass|fail)'
+```
+
+Expected: `exit 0`; `tests 59`, `fail 0`.
+
+- [ ] **Step 3: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add .github/workflows/design.yml
+git commit -m "$(cat <<'MSG'
+CI: the design checks on every pull request
+
+The static check and the harness's unit tests in one job; the rendered
+checks in another, with Playwright installed on the runner.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- .github/workflows/design.yml
+```
+
+- [ ] **Step 5: After the branch is pushed — for the team lead, not the implementer**
+
+Implementers do not push. When the team lead has pushed (`git push origin codex/cleanup-design-system`) and the pull request has run:
+
+- `source` green and `rendered` green: nothing more to do.
+- `rendered` red with `FAIL` or `BLOCKED` lines: the check found something. It is a defect of the tree, to be fixed like any other.
+- `rendered` red before any route was measured — Chromium did not install, the web app did not come up, a font could not be fetched: that is the runner, not the tree. Read the `design-servers-log` artifact. If it cannot be made to run without a paid service, make the job manual by adding, under `rendered:`, the line
+
+  ```yaml
+  if: github.event_name == 'workflow_dispatch'
+  ```
+
+  and replace, in the appendix of `docs/specs/cleanup-and-design-system-v1.md`, the paragraph "Runtime checks in CI (3.4)" with: "They are a local gate: `npm run design:check` before a pull request. The `rendered` job in `.github/workflows/design.yml` runs only when started by hand, because <the reason the run gave>." The static check stays on every pull request either way, which is what the spec requires.
+
+---
+
+# Batch I — infrastructure leftovers
+
+Task 37, then task 38. This batch shares no file with batches B to H and may run at any time after batch A, beside any of them. It changes no pixel and needs no harness.
+
+Before anything: read `packages/infrastructure/AGENTS.md` and `workers/api/AGENTS.md`, as the root `AGENTS.md` requires. The database these tests use is the Docker PostgreSQL at `127.0.0.1:55432`; nothing here touches the hosted Supabase project.
+
+## Task 37: The shared exports move to the module that uses them
+
+**Owns:** `packages/infrastructure/src/persistence/growth-store.ts`, `packages/infrastructure/src/persistence/agent-registry.ts`, `packages/infrastructure/src/supabase/supabase-applicants.ts`, `packages/infrastructure/src/supabase/supabase-waitlist.ts`, `packages/infrastructure/src/supabase/agent-registry/supabase-agent-registry.ts`, `packages/infrastructure/src/index.ts`
+
+Three adapter files that nothing calls also define four values that live code imports (A9):
+
+| Value                              | Defined in                                               | Read by                                                            | Moves to                            |
+| ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------- |
+| `placementSchema`                  | `src/supabase/supabase-waitlist.ts`                      | `src/persistence/growth-store.ts`                                  | `src/persistence/growth-store.ts`   |
+| `applicantSchema`, `outcomeSchema` | `src/supabase/supabase-applicants.ts`                    | `src/persistence/growth-store.ts`                                  | `src/persistence/growth-store.ts`   |
+| `ANALYTICS_ROW_LIMIT`              | `src/supabase/agent-registry/supabase-agent-registry.ts` | `src/persistence/agent-registry.ts`; re-exported by `src/index.ts` | `src/persistence/agent-registry.ts` |
+
+After this task the adapters still exist and still compile: they import the values from their new home. Task 38 removes them.
+
+- [ ] **Step 1: Record what the tests say before**
+
+```sh
+npm run build:shared
+node --import tsx --test packages/infrastructure/test/*.test.ts 2>&1 | grep -E '^ℹ (tests|pass|fail)'
+```
+
+Expected: `fail 0`. Write down `tests` and `pass`. The tests of the growth store and of the adapters both parse with these schemas, so they are what proves the move changed nothing.
+
+- [ ] **Step 2: Move the values**
+
+```sh
+node $PLAN/tools/reline.mjs packages/infrastructure/src/persistence/growth-store.ts $PLAN/maps/37-growth-store.json
+node $PLAN/tools/reline.mjs packages/infrastructure/src/supabase/supabase-applicants.ts $PLAN/maps/37-supabase-applicants.json
+node $PLAN/tools/reline.mjs packages/infrastructure/src/supabase/supabase-waitlist.ts $PLAN/maps/37-supabase-waitlist.json
+node $PLAN/tools/reline.mjs packages/infrastructure/src/persistence/agent-registry.ts $PLAN/maps/37-agent-registry.json
+node $PLAN/tools/reline.mjs packages/infrastructure/src/supabase/agent-registry/supabase-agent-registry.ts $PLAN/maps/37-supabase-agent-registry.json
+node $PLAN/tools/reline.mjs packages/infrastructure/src/index.ts $PLAN/maps/37-index.json
+npx prettier --write packages/infrastructure/src
+```
+
+Expected: `2`, `2`, `2`, `1`, `2` and `2` edit(s) applied.
+
+| File                                                 | Edit                                                                                                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `persistence/growth-store.ts`                        | imports `CATEGORIES` and `PERSONALITIES` from `@pickler/core`; defines and exports the three schemas, word for word as the adapters had them; no longer imports from `../supabase/` |
+| `supabase/supabase-applicants.ts`                    | imports the two schemas from `../persistence/growth-store.js`; its own definitions go; `z` becomes a type import                                                                    |
+| `supabase/supabase-waitlist.ts`                      | imports `placementSchema` from `../persistence/growth-store.js`; its own definition and the `zod` import go                                                                         |
+| `persistence/agent-registry.ts`                      | defines and exports `ANALYTICS_ROW_LIMIT = 10_000`; no longer imports from `../supabase/`                                                                                           |
+| `supabase/agent-registry/supabase-agent-registry.ts` | imports the constant from `../../persistence/agent-registry.js`; its own definition goes                                                                                            |
+| `src/index.ts`                                       | `ANALYTICS_ROW_LIMIT` is re-exported from `./persistence/agent-registry.js`                                                                                                         |
+
+- [ ] **Step 3: Prove the live code no longer reaches into the adapters**
+
+Run: `grep -rn 'supabase/' packages/infrastructure/src/persistence`
+
+Expected: no output.
+
+- [ ] **Step 4: Gates**
+
+```sh
+npm run build:shared
+node --import tsx --test packages/infrastructure/test/*.test.ts 2>&1 | grep -E '^ℹ (tests|pass|fail)'
+```
+
+Expected: the same `tests` and `pass` as in step 1, `fail 0`.
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build:workers`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/infrastructure/src/persistence/growth-store.ts \
+  packages/infrastructure/src/persistence/agent-registry.ts \
+  packages/infrastructure/src/supabase/supabase-applicants.ts \
+  packages/infrastructure/src/supabase/supabase-waitlist.ts \
+  packages/infrastructure/src/supabase/agent-registry/supabase-agent-registry.ts \
+  packages/infrastructure/src/index.ts
+git commit -m "$(cat <<'MSG'
+Infrastructure: the growth schemas and the row limit live where they are used
+
+Three adapters nothing calls also defined four values the PostgreSQL
+classes import. The values move; the adapters import them back until
+they are removed.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- packages/infrastructure/src/persistence/growth-store.ts \
+  packages/infrastructure/src/persistence/agent-registry.ts \
+  packages/infrastructure/src/supabase/supabase-applicants.ts \
+  packages/infrastructure/src/supabase/supabase-waitlist.ts \
+  packages/infrastructure/src/supabase/agent-registry/supabase-agent-registry.ts \
+  packages/infrastructure/src/index.ts
+```
+
+## Task 38: The unused adapters go
+
+Runs after task 37 is committed.
+
+**Owns:** deleted — eight files under `packages/infrastructure/src/supabase/`, four tests and one fixture under `packages/infrastructure/test/` (listed in step 2); modified — `packages/infrastructure/src/index.ts`, `packages/infrastructure/AGENTS.md`, `workers/api/AGENTS.md`, `docs/public-data-audit.md`.
+
+| Removed                                                  | Exports                                                            | Its test                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------- |
+| `src/supabase/supabase-rest-client.ts`                   | `createSupabaseRestClient`, `SupabaseConfig`, `SupabaseRestClient` | `test/supabase.test.ts`                                 |
+| `src/supabase/supabase-waitlist.ts`                      | `createSupabaseWaitlist`                                           | `test/supabase.test.ts`                                 |
+| `src/supabase/supabase-applicants.ts`                    | `createSupabaseApplicants`                                         | `test/supabase.test.ts`, `test/fixtures/applicant.json` |
+| `src/supabase/access/supabase-workspace-directory.ts`    | `createSupabaseWorkspaceDirectory`                                 | `test/supabase-access.test.ts`                          |
+| `src/supabase/access/supabase-api-key-directory.ts`      | `createSupabaseApiKeyDirectory`                                    | `test/supabase-access.test.ts`                          |
+| `src/supabase/agent-registry/supabase-agent-registry.ts` | `createSupabaseAgentRegistry`, `createSupabaseAgentEventLog`       | `test/supabase-agent-registry.test.ts`                  |
+| `src/supabase/agent-registry/supabase-budget-source.ts`  | `createSupabaseBudgetSource`                                       | none                                                    |
+| `src/supabase/profiles/supabase-profile-repository.ts`   | `createSupabaseProfileRepository`                                  | `test/supabase-profiles.test.ts`                        |
+
+**Kept**, because the API composes them (`workers/api/src/container.ts`): `src/supabase/supabase-admin-client.ts` (`createSupabaseAdmin`), `src/supabase/wallet-accounts.ts` (`createWalletAccounts`, `createAuthUserLookup`), and `src/auth/supabase-jwt-verifier.ts`, with their tests.
+
+- [ ] **Step 1: Prove nothing calls them**
+
+```sh
+git grep -nE 'createSupabase(ApiKeyDirectory|WorkspaceDirectory|AgentRegistry|AgentEventLog|BudgetSource|ProfileRepository|RestClient|Waitlist|Applicants)|SupabaseRestClient|SupabaseConfig\b' \
+  -- apps workers packages scripts ':!packages/infrastructure/src/supabase' ':!packages/infrastructure/test' ':!*.md'
+```
+
+Expected: only lines of `packages/infrastructure/src/index.ts`, the re-exports this task removes. A line in `workers/`, `apps/` or `scripts/` is a caller: stop and report it.
+
+- [ ] **Step 2: Remove the files**
+
+```sh
+git rm -q packages/infrastructure/src/supabase/supabase-applicants.ts \
+  packages/infrastructure/src/supabase/supabase-waitlist.ts \
+  packages/infrastructure/src/supabase/supabase-rest-client.ts \
+  packages/infrastructure/src/supabase/access/supabase-api-key-directory.ts \
+  packages/infrastructure/src/supabase/access/supabase-workspace-directory.ts \
+  packages/infrastructure/src/supabase/agent-registry/supabase-agent-registry.ts \
+  packages/infrastructure/src/supabase/agent-registry/supabase-budget-source.ts \
+  packages/infrastructure/src/supabase/profiles/supabase-profile-repository.ts \
+  packages/infrastructure/test/supabase-access.test.ts \
+  packages/infrastructure/test/supabase-agent-registry.test.ts \
+  packages/infrastructure/test/supabase-profiles.test.ts \
+  packages/infrastructure/test/supabase.test.ts \
+  packages/infrastructure/test/fixtures/applicant.json
+ls packages/infrastructure/src/supabase
+```
+
+Expected: `supabase-admin-client.ts` and `wallet-accounts.ts`, and nothing else. `git rm` stages thirteen deletions, all of files this task owns.
+
+- [ ] **Step 3: Remove the re-exports, and make the documents true**
+
+```sh
+node $PLAN/tools/reline.mjs packages/infrastructure/src/index.ts $PLAN/maps/38-index.json
+node $PLAN/tools/reline.mjs packages/infrastructure/AGENTS.md $PLAN/maps/38-infrastructure-agents.json
+node $PLAN/tools/reline.mjs workers/api/AGENTS.md $PLAN/maps/38-api-agents.json
+node $PLAN/tools/reline.mjs docs/public-data-audit.md $PLAN/maps/38-audit.json
+npx prettier --write packages/infrastructure/src/index.ts packages/infrastructure/AGENTS.md workers/api/AGENTS.md docs/public-data-audit.md
+```
+
+Expected: `3`, `3`, `1` and `1` edit(s) applied.
+
+| File                                | Edit                                                                                                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`                      | the nine `createSupabase*` data-adapter exports and the two types go                                                                                                                  |
+| `packages/infrastructure/AGENTS.md` | says the data adapters were removed on 2026-09-29 and that supabase-js remains for auth only; the PostgreSQL classes are described by what they do, not by the adapters they mirrored |
+| `workers/api/AGENTS.md`             | "Do not wire a `createSupabase*` data adapter back in here" becomes "No Supabase data adapter exists any more, and none is to be written for this Worker"                             |
+| `docs/public-data-audit.md`         | the deployed path for applicants is `PostgresApplicants`                                                                                                                              |
+
+- [ ] **Step 4: Gates**
+
+```sh
+npm run build:shared
+node --import tsx --test packages/infrastructure/test/*.test.ts 2>&1 | grep -E '^ℹ (tests|pass|fail)'
+```
+
+Expected: `fail 0`, and `tests` lower than in task 37 by the tests of the four files removed.
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run check:staging`, `npm run build:workers`. `build:workers` and the API's tests are what prove nothing imported the adapters (spec 3.5).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/infrastructure/src/index.ts packages/infrastructure/AGENTS.md workers/api/AGENTS.md docs/public-data-audit.md
+git commit -m "$(cat <<'MSG'
+Infrastructure: nine Supabase data adapters nothing calls are gone
+
+The API reads those tables through the PostgreSQL classes. supabase-js
+stays for auth: the JWT verifier, the admin client and wallet accounts.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- packages/infrastructure/src/supabase packages/infrastructure/test/supabase-access.test.ts \
+  packages/infrastructure/test/supabase-agent-registry.test.ts \
+  packages/infrastructure/test/supabase-profiles.test.ts packages/infrastructure/test/supabase.test.ts \
+  packages/infrastructure/test/fixtures/applicant.json packages/infrastructure/src/index.ts packages/infrastructure/AGENTS.md workers/api/AGENTS.md docs/public-data-audit.md
+```
+
+`packages/infrastructure/src/supabase` is named as a folder so the commit takes the eight deletions in it; the two files that stay there are unchanged, so nothing of theirs is committed.
+
+---
+
+# Batch J — close
+
+## Task 39: The documents say what the code does
+
+**Owns:** `apps/web/AGENTS.md`, `packages/ui/AGENTS.md`, `docs/specs/cleanup-and-design-system-v1.md`, `docs/specs/design-system-v2.md`
+
+The root `AGENTS.md` requires a project's instructions to change with the project. Two of them still tell a feature stylesheet to alias the tokens.
+
+- [ ] **Step 1: Apply the patch**
+
+```sh
+git apply --check $PLAN/patches/39-docs.patch && git apply $PLAN/patches/39-docs.patch
+npx prettier --write apps/web/AGENTS.md packages/ui/AGENTS.md docs/specs/cleanup-and-design-system-v1.md docs/specs/design-system-v2.md
+```
+
+| File                                                       | Change                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/AGENTS.md`, "Design system"                      | which shells are light and which dark (`/apply` is dark, the agent pages light); no screen paints a ground of its own; a sheet reads tokens by name, defines no alias and no `--pk-*`, holds no literal; `src/lib/accent.ts` is the one channel from TypeScript; `npm run design:source` enforces it |
+| `apps/web/AGENTS.md`, "The new creation flow's pure logic" | `updateConfig` leaves the list of wrappers in `api.ts`                                                                                                                                                                                                                                               |
+| `apps/web/AGENTS.md`, "Studio integration"                 | `sections/rail.ts` is the one list; a section with no screen is SOON and opens on `sections/soon.tsx`                                                                                                                                                                                                |
+| `apps/web/AGENTS.md`, new section "Design checks"          | the three commands, the ports, the doors, and that a new screen gets a route in the same change                                                                                                                                                                                                      |
+| `packages/ui/AGENTS.md`                                    | the file list and the exports gain `brand.tsx`, `tokens.ts`, `BrandMark`, `TOKEN_MIRROR`; the "Colour" rule is rewritten; the chart reads `--pk-rule-strong`                                                                                                                                         |
+| `docs/specs/cleanup-and-design-system-v1.md`               | an appendix: the tokens kept, removed, added and renamed (D5), and where the runtime checks run (3.4)                                                                                                                                                                                                |
+| `docs/specs/design-system-v2.md`                           | two dated corrections: under §6, that neither dark pin stands; under Validation, that "no literal colour left" was false and why the check could not see it                                                                                                                                          |
+
+- [ ] **Step 2: Check the links, paths and commands**
+
+The root `AGENTS.md` asks this of a documentation change. For each path and command the patch adds, check it exists:
+
+```sh
+ls apps/web/src/lib/accent.ts apps/web/src/features/studio/sections/rail.ts \
+  apps/web/src/features/studio/sections/soon.tsx apps/web/test/studio-rail.test.ts \
+  packages/ui/src/tokens.ts packages/ui/src/brand.tsx scripts/design/mirror.test.mjs \
+  .github/workflows/design.yml docs/superpowers/plans/2026-09-29-cleanup-design-system.md
+npm run | grep -E 'design:(check|shots|compare|source)'
+```
+
+Expected: nine paths and four scripts, no "No such file".
+
+- [ ] **Step 3: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run check:architecture`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/web/AGENTS.md \
+  packages/ui/AGENTS.md \
+  docs/specs/cleanup-and-design-system-v1.md \
+  docs/specs/design-system-v2.md
+git commit -m "$(cat <<'MSG'
+Docs: the instructions and the specs say what the code does
+
+Feature stylesheets read tokens by name and alias none; the agent pages
+are light and /apply is dark without a backdrop; the studio has one
+list of sections. The cleanup spec gains its appendix of tokens.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/AGENTS.md \
+  packages/ui/AGENTS.md \
+  docs/specs/cleanup-and-design-system-v1.md \
+  docs/specs/design-system-v2.md
+```
+
+## Task 40: The last comparison and every gate
+
+**Owns:** nothing. It commits nothing. It is the spec's section 5, "What done means", run as written.
+
+- [ ] **Step 1: `npm run design:check` exits 0 with zero blocked routes**
+
+Look at the ports, then run, with a timeout of twenty-five minutes:
+
+```sh
+npm run design:check > scripts/design/.shots/final-check.txt 2>&1; echo "exit $?"
+grep -E '^(BLOCKED|FAIL)|clean over|^source' scripts/design/.shots/final-check.txt
+```
+
+Expected: `exit 0`, and exactly these five lines:
+
+```
+source: clean over 245 file(s).
+surfaces: clean over all 60 route(s).
+tokens: clean over all 60 route(s).
+contrast: clean over all 60 route(s).
+type: clean over all 60 route(s).
+```
+
+- [ ] **Step 2: The screenshots, before and after**
+
+The folder `baseline` has been moved forward after tasks 9, 15, 26, 32 and 34, so it is the tree after task 34. Capture once more and compare:
+
+```sh
+DESIGN_SHOTS_DIR=scripts/design/.shots/final npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/final \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected: `wrote 120 shot(s)`; every line of the comparison starts with `NOISE`. Tasks 33, 35, 36, 37, 38 and 39 move no pixel.
+
+Then report to the team lead the whole list of what changed between the first baseline and now, which is the sum of the expected differences of tasks 9, 15, 26 and 32:
+
+| Screens                                             | Task      | Spec                                                                 |
+| --------------------------------------------------- | --------- | -------------------------------------------------------------------- |
+| `agents`, `agent-profile`, `agent-ask`              | 5         | 3.1, D2: dark to light                                               |
+| `apply-no-seat`                                     | 6, 15, 23 | 3.1, D3: the backdrop; A3: the brand's glow; the glow button's bevel |
+| `signin`, `signup`, `signup-passkey`, `passkey-add` | 7, 24, 26 | 3.1, D1: the floor; A3: the glows and hairlines                      |
+| the studio's shell and the empty home               | 32        | D8, A6: `SOON` in the rails, one panel                               |
+| nine new `studio-*` screens                         | 34        | 3.4: coverage                                                        |
+
+Every other screen is identical or within noise. That is the second line of the spec's section 5: a route differs only where the spec says it changes or where a literal moved to its token's value.
+
+- [ ] **Step 3: Every gate, by exit status**
+
+Check the ports are free. Check the database is up: `lsof -nP -iTCP:55432 -sTCP:LISTEN` prints a line; if not, start Docker Desktop and run `npm run db:up`.
+
+```sh
+for gate in build:shared typecheck lint format:check test build check:staging build:workers; do
+  npm run $gate > scripts/design/.shots/gate-$gate.log 2>&1
+  echo "$gate: exit $?"
+done
+```
+
+Expected: eight lines, each `exit 0`. The contracts workflow is not run: no task touched `contracts/`.
+
+If `test` exits 1 with a Postgres connection timeout while other agents are running tests, that is contention. Find the failing files in `scripts/design/.shots/gate-test.log` and run them alone: `node --import tsx --test <file> [<file>…]`. Report contention only if they pass alone, and name the files.
+
+- [ ] **Step 4: Leave the worktree as you found it**
+
+```sh
+lsof -nP -iTCP:3001 -sTCP:LISTEN; lsof -nP -iTCP:8799 -sTCP:LISTEN
+git status --short
+```
+
+Expected: the two `lsof` commands print nothing. `git status` prints nothing of yours: `scripts/design/.shots/` is ignored, and `apps/web/next-env.d.ts` is as committed.
+
+- [ ] **Step 5: Report**
+
+To the team lead: the five lines of step 1, the last line of the comparison, the eight exit statuses, and the table of step 2. Do not push.

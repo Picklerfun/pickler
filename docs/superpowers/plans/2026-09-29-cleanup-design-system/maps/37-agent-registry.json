@@ -1,0 +1,6 @@
+[
+  {
+    "find": "import { ANALYTICS_ROW_LIMIT } from \"../supabase/agent-registry/supabase-agent-registry.js\";\nimport { readRows } from \"./data-source.js\";\n",
+    "replace": "import { readRows } from \"./data-source.js\";\n\n/** Upper bound on rows scanned for analytics; Relayer scanned without a limit. */\nexport const ANALYTICS_ROW_LIMIT = 10_000;\n"
+  }
+]

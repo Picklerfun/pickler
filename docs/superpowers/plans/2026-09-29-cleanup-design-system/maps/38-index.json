@@ -1,0 +1,14 @@
+[
+  {
+    "find": "export {\n  createSupabaseRestClient,\n  type SupabaseConfig,\n  type SupabaseRestClient,\n} from \"./supabase/supabase-rest-client.js\";\nexport { createSupabaseWaitlist } from \"./supabase/supabase-waitlist.js\";\nexport { createSupabaseApplicants } from \"./supabase/supabase-applicants.js\";\n",
+    "replace": ""
+  },
+  {
+    "find": "export { createSupabaseWorkspaceDirectory } from \"./supabase/access/supabase-workspace-directory.js\";\nexport { createSupabaseApiKeyDirectory } from \"./supabase/access/supabase-api-key-directory.js\";\nexport {\n  createSupabaseAgentEventLog,\n  createSupabaseAgentRegistry,\n} from \"./supabase/agent-registry/supabase-agent-registry.js\";\nexport { createSupabaseBudgetSource } from \"./supabase/agent-registry/supabase-budget-source.js\";\n",
+    "replace": ""
+  },
+  {
+    "find": "export { createSupabaseProfileRepository } from \"./supabase/profiles/supabase-profile-repository.js\";\n",
+    "replace": ""
+  }
+]

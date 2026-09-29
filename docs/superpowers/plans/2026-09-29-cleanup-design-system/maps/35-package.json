@@ -1,0 +1,10 @@
+[
+  {
+    "find": "\"design:source\": \"node scripts/design/source.mjs\",",
+    "replace": "\"design:source\": \"node scripts/design/source.mjs --strict\","
+  },
+  {
+    "find": "\"design:check\": \"node scripts/design/run.mjs\",",
+    "replace": "\"design:check\": \"node scripts/design/run.mjs --strict\","
+  }
+]
