@@ -185,6 +185,36 @@ Rondas de arreglo detectadas por revisión, no por el propio plan.
 - **La read de F1 sigue viva en la ventana**: el punto violeta en +1.0 % · 4H de ETH apareció en el board de
   Ask sin volver a pedirla — confirma que `dots`/`dotKey` leen la misma read entre F1 y F2.
 
+## Recorrido con dinero (2026-09-29, tras el merge a main local `919557e`)
+
+Simulador `pickler-mobile-light`, wallet `0xd6da…Ed23`, Metro propio sobre `e60620c`. Saldos por RPC (viem,
+Monad testnet):
+
+| Momento | MON | AUSD wallet | Trading (app) |
+|---|---|---|---|
+| 06:34 UTC, tras el MON de Jesús | 5 | 0 | — |
+| «Get test AUSD» | — | — | **revierte**: el faucet `0xd236…ee6C` tiene `0.000001` AUSD (`eth_call` de `requestFunds` también revierte). Jesús mandó 500 AUSD. |
+| 07:02 UTC | 5 | 500 | — |
+| tras Enable trading (100 AUSD) | 4.95863264 | 400 | 100.00 free |
+| tras el long y el Close | 4.95863264 | 400 | 99.99 |
+
+| Paso | Qué se vio |
+|---|---|
+| Enable trading desde Market BTC (Trade, sin key) | Un Face ID y las cuatro operaciones; al volver, el ticket con key. |
+| Toque en +0.5 %·4H del board | Pill LONG, `LevelCard` («TARGET 84447.6, RESOLVES 05:35 · in 3 h 59 m, SUGGESTED»), la nota de Face ID diario, book L2 LIVE plegado («Target 84447.6 · above the book»), chips 1×/2×/3×/5×, KV con LEVEL `+0.5% · 4H → 84447.6` y la **barra fija «Long to 84447.6 within 4H» + «Enter a margin»** deshabilitada. |
+| Margen `2` con el teclado decimal abierto | El teclado tapa la barra; al cerrarlo, la barra vuelve con **«Review · 2.00 AUSD»** (Review Focus 4). SIZE `0.00002 BTC · ≈ 1.67 AUSD` (redondeo al tamaño mínimo), FEE ≈ 0.0005, LIQ ≈ 1399.7. |
+| Review | Bloque ink «YOU OPEN · LONG BTC · 1X · MARKET · 2.00 AUSD» con LEVEL; sin barra fija; «Confirm long». |
+| Confirm | **«Filled 0.00002 BTC at 84046.8 · Fee 0.0005 AUSD · LONG 1x · Reminders set: 15 min before and at expiry.»** Sin pedir Face ID: la sesión diaria de Ask seguía vigente. |
+| «See it in Portfolio» | TOTAL 99.99 = POSITIONS 1.68 + AVAILABLE 98.31, «+0.00 AUSD UNREALISED»; la tarjeta Long BTC `0.00002 · 1×`, ENTRY 84046.8, MARK 84060.5, LIQ. EST. 1400.8, **en vivo en Portfolio sin pasar por Markets**. |
+| Close → confirmación en línea → «Close position» | «Closed 0.00002 BTC at 83965.0 · Fee 0.0005 AUSD»; POSITIONS 0.00, AVAILABLE 99.99. |
+
+Un solo fill: la posición mide 0.00002 y no el doble, aunque Maestro se colgó en un primer intento de tocar
+Confirm (la pantalla re-pinta con el polling y `waitForAnimationToEnd` no termina; se usó `tapOn` con
+`retryTapIfNoChange: false`).
+
+Hallazgos nuevos: el `LevelCard` dice «TRADE THIS LEVEL · FROM ASK» aunque el nivel venga de una celda del
+board (residual 16), y el faucet de AUSD está vacío (residual 17).
+
 ## Revisión final de rama
 
 Ver *Correcciones* #3 y #4 para el detalle de qué se encontró y cómo se cerró. Resumen: la revisión final
@@ -195,12 +225,10 @@ acoplamiento con `boardRows`, ver Residuales #9).
 
 ## Residuales abiertos (de mayor a menor peso)
 
-1. **El recorrido con dinero y todo lo que exige key**: la barra fija de Trade con key («Long to X within
-   4H» + «Review · X AUSD»), el teclado decimal tapando y liberando la barra con el monto actualizado
-   (Review Focus 4), el scroll estable al pasar edit↔review, una orden desde una celda del board con sus
-   recordatorios y el Face ID diario de Ask, y un long → «See it in Portfolio» → Close con saldos antes y
-   después. Nada de esto tiene evidencia en simulador: `0xd6da…Ed23` sigue en MON = 0. Lo hace Jesús con MON
-   de faucet o con la cuenta #620 en su iPhone.
+1. **Lo que el recorrido con dinero no cubrió** (ver *Recorrido con dinero*): el scroll al volver de review
+   con «Change amount», el book L2 desplegado, el Face ID diario de Ask pedido por los recordatorios (la
+   sesión ya estaba vigente) y los recordatorios de push llegando (se programaron para las 05:20 y 05:35 CST
+   del 29 sep; el push real sigue sin key APNs).
 2. **El onboarding desde un gate con `next`**: el camino (a) del plan (Sign out → Sign up desde un gate que
    pide cuenta, p. ej. Ask desde una celda) no se ejecutó — se probó Sign up directo desde la raíz. El CTA
    «Continue» en vez de «Go to markets» con acción retenida (ruling 15) está verificado por los tests de
@@ -238,13 +266,19 @@ acoplamiento con `boardRows`, ver Residuales #9).
 14. **El trailer «Claude Sonnet 5»** en los commits `534b222..6608731` (ruling 19), en vez del de Opus 5.5.
 15. **El AX5 ilegible**, heredado de F1 (residual 6/9 de ese audit): a un nivel de accesibilidad por encima
     de XXXL, Markets se lee «M…». Fuera del alcance de F2.
+16. **«FROM ASK» en el `LevelCard`** aunque el nivel venga de una celda del board de Trade: el tag es copy de
+    F1. Cambiarlo a «FROM THE BOARD» (o quitar el origen) es una línea.
+17. **El faucet de AUSD está vacío** (`0xd236…ee6C`, `0.000001` AUSD al 29 sep): «Get test AUSD» revierte con
+    «Execution reverted for an unknown reason». Un tester nuevo no puede habilitar trading sin que alguien le
+    mande AUSD; conviene un copy que lo diga o recargar el faucet.
 
 ## Rollback
 
 Nada se escribió en TestFlight, contratos ni cuentas de terceros. En entornos compartidos quedan: la wallet
 `0x91f7…CC64`, creada durante la verificación del onboarding, **sin fondos**, con su passkey en el
 simulador `pickler-mobile-light` (Apple Passwords) y su sesión de reads activa; no se hizo ninguna read
-nueva con ella. La wallet de F1, `0xd6da…Ed23`, sigue sin fondos (MON = 0, medido por RPC) y con la misma
-read de F1 sin tocar. Ambas son inocuas; borrarlas no es necesario. Números de cierre: tests **282 → 301**
+nueva con ella. La wallet de F1, `0xd6da…Ed23`, tiene desde el 29 sep 4.9586 MON y 400 AUSD en la wallet, más una
+cuenta de Perpl con trading key y 99.99 AUSD libres (sin posiciones abiertas), y dos recordatorios
+programados en `mobile.reminders` para el long de BTC ya cerrado. Ambas son inocuas; borrarlas no es necesario. Números de cierre: tests **282 → 301**
 (44 suites), `tsc --noEmit` limpio en cada task y al final, commits `3302949..6608731` sobre la rama
 `feat/mobile-light`, sin push, sin merge y sin TestFlight.
