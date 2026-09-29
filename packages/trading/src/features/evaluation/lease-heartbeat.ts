@@ -18,8 +18,33 @@ export function startLeaseHeartbeat(input: {
   const lost = new AbortController();
   let pending: Promise<void> | undefined;
   let lastSuccessAt: number | null = null;
-  let expected = now() + 20000;
+  const startedAt = now();
+  let expected = startedAt + 20000;
+  const assertActive = () => {
+    if (!lost.signal.aborted && now() - (lastSuccessAt ?? startedAt) >= 90000) {
+      const error = new PilotError(
+        "PROCESS_INTERRUPTED",
+        "Renewal gap exceeded the lease duration",
+      );
+      lost.abort(error);
+      input.diagnostic?.({
+        kind: "renewal-failed",
+        at: now(),
+        durationMs: 0,
+        timerDelayMs: Math.max(0, now() - expected),
+        lastSuccessAt,
+        expiresAt: input.lease.expiresAt,
+        code: error.code,
+      });
+    }
+    lost.signal.throwIfAborted();
+  };
   const tick = () => {
+    try {
+      assertActive();
+    } catch {
+      return;
+    }
     if (pending || lost.signal.aborted) {
       return;
     }
@@ -29,6 +54,7 @@ export function startLeaseHeartbeat(input: {
     pending = input
       .renew()
       .then(() => {
+        assertActive();
         lastSuccessAt = now();
         input.diagnostic?.({
           kind: "renewed",
@@ -41,6 +67,9 @@ export function startLeaseHeartbeat(input: {
         });
       })
       .catch((error) => {
+        if (lost.signal.aborted) {
+          return;
+        }
         const code = error instanceof PilotError ? error.code : "LEASE_RENEWAL_FAILED";
         lost.abort(error);
         input.diagnostic?.({
@@ -60,6 +89,7 @@ export function startLeaseHeartbeat(input: {
   const timer = setInterval(tick, 20000);
   return {
     signal: lost.signal,
+    assertActive,
     tick,
     async stop() {
       clearInterval(timer);
