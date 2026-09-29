@@ -35,7 +35,10 @@ export function menuAccess({
   researchLock: string;
   /** The unfunded-agent lock's note, or "" when another agent may be created. */
   fundLock: string;
-  /** The draft limit's note, or "" below it. Last: funding closes more than drafts do. */
+  /**
+   * The draft limit's note where the entry would create a draft, or "". Last: funding closes more
+   * than drafts do. The menus' "+ New agent" leads to /studio/new and passes "".
+   */
   draftLock: string;
 }): MenuAccess {
   // Research first: the API's canManage is false whenever research is off, even for the owner,

@@ -19,9 +19,9 @@ type GateAgent = Pick<Agent, "id" | "productId" | "name" | "wallet" | "canCreate
 export type CreateGate<A extends GateAgent = GateAgent> =
   { open: true } | { open: false; agent: A };
 
-const closedBy = (agent: GateAgent, reason: "unfunded_agent" | "draft_limit"): boolean =>
-  !agent.canCreateAnother.ok &&
-  (reason === "draft_limit") === (agent.canCreateAnother.reason === "draft_limit");
+/** Closed for funding: any closed lock whose reason is not the draft limit. */
+const unfundedLock = (agent: GateAgent): boolean =>
+  !agent.canCreateAnother.ok && agent.canCreateAnother.reason !== "draft_limit";
 
 /**
  * The funding lock, which is the whole gate for `/studio/new`. Open with no agents, when the API
@@ -31,7 +31,7 @@ const closedBy = (agent: GateAgent, reason: "unfunded_agent" | "draft_limit"): b
  * without a wallet.
  */
 export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGate<A> {
-  if (!agents.some((agent) => closedBy(agent, "unfunded_agent"))) {
+  if (!agents.some(unfundedLock)) {
     return { open: true };
   }
   // A draft has no wallet yet and an agent made before wallets never will: the API counts neither.
@@ -42,36 +42,15 @@ export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGat
   return named ? { open: false, agent: named } : { open: true };
 }
 
-export type NewAgentGate<A extends GateAgent = GateAgent> =
-  | { open: true }
-  | { open: false; reason: "unfunded_agent"; agent: A }
-  | { open: false; reason: "draft_limit" };
-
 /**
- * "+ New agent" in the studio's menus, with the reason it is shut. Funding first, as the API orders
- * them, then the draft limit (studio-brief-v1 §7: "the draft-limit reason on + New agent").
+ * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open. Both
+ * entries lead to `/studio/new`, so they read the funding lock and nothing else: at three drafts
+ * they stay open. The draft limit is said where a draft is refused (409 `DRAFT_LIMIT`).
  */
-export function newAgentGate<A extends GateAgent>(agents: readonly A[]): NewAgentGate<A> {
-  const funding = createGate(agents);
-  if (!funding.open) {
-    return { open: false, reason: "unfunded_agent", agent: funding.agent };
-  }
-  return agents.some((agent) => closedBy(agent, "draft_limit"))
-    ? { open: false, reason: "draft_limit" }
-    : { open: true };
-}
-
-/** Core's `MAX_DRAFTS_PER_WORKSPACE`, in the API's own words. Go Public is not built, so no way out is promised. */
-export const DRAFT_LIMIT_NOTE = "At most 3 drafts at a time.";
-
-/** The one line under a shut "+ New agent", or "" when it is open. */
 export function newAgentLock(agents: readonly GateAgent[]): string {
-  const gate = newAgentGate(agents);
+  const gate = createGate(agents);
   if (gate.open) {
     return "";
-  }
-  if (gate.reason === "draft_limit") {
-    return DRAFT_LIMIT_NOTE;
   }
   const { title, note } = gateNote(gate.agent);
   return `${title} ${note}`;

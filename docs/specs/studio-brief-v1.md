@@ -217,7 +217,7 @@ The layout is the visual base (`ef63752`). What becomes real:
 | Stale at create                                         | 409 `RUN_STALE`                            | "Brief changed · run again"             |
 | Handle taken at create                                  | 409 `HANDLE_TAKEN`                         | "@x is taken"                           |
 | Preview expired or adopted                              | 409 `PREVIEW_UNUSABLE`                     | asks for a new run                      |
-| Three drafts already                                    | 409 `DRAFT_LIMIT`, with a message          | the draft-limit reason on "+ New agent" |
+| Three drafts already                                    | 409 `DRAFT_LIMIT`, with a message          | under Create; "+ New agent" stays open  |
 
 ## 8. What stays as it is
 

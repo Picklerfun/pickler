@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  DRAFT_LIMIT_NOTE,
   createGate,
   gateHref,
   gateNote,
-  newAgentGate,
   newAgentLock,
   startIfOpen,
 } from "../src/features/studio/create/gate";
@@ -115,8 +113,9 @@ const draft = (id: string, canCreateAnother: Lock) => ({
   draft: true,
 });
 
-test("three drafts and every wallet funded: the reason is the draft limit, not funding", () => {
-  // Input A. A draft has no wallet, so reading its balance as 0 made this "Fund Draft d1 first".
+test('three drafts and every wallet funded: "+ New agent" is open, and nobody is asked to fund a draft', () => {
+  // Input A. The entries lead to /studio/new, which makes an agent with a wallet; the draft limit
+  // stops only the making of drafts, and is said where a draft is refused (409 DRAFT_LIMIT).
   const agents = [
     draft("d1", draftLimit),
     draft("d2", draftLimit),
@@ -124,9 +123,8 @@ test("three drafts and every wallet funded: the reason is the draft limit, not f
     agent("a", 25, draftLimit),
   ];
 
-  assert.deepEqual(newAgentGate(agents), { open: false, reason: "draft_limit" });
-  assert.equal(newAgentLock(agents), "At most 3 drafts at a time.");
-  assert.equal(DRAFT_LIMIT_NOTE, "At most 3 drafts at a time.");
+  assert.deepEqual(createGate(agents), { open: true });
+  assert.equal(newAgentLock(agents), "");
 });
 
 test("a draft beside an unfunded agent: the one to fund is the agent with the wallet", () => {
@@ -135,11 +133,6 @@ test("a draft beside an unfunded agent: the one to fund is the agent with the wa
   const agents = [draft("d1", locked), unfunded];
 
   assert.deepEqual(createGate(agents), { open: false, agent: unfunded });
-  assert.deepEqual(newAgentGate(agents), {
-    open: false,
-    reason: "unfunded_agent",
-    agent: unfunded,
-  });
   assert.equal(newAgentLock(agents), "Fund Agent a first. One unfunded agent at a time.");
 });
 
@@ -149,8 +142,7 @@ test("a closed funding lock with every wallet above the minimum names a wallet a
   assert.deepEqual(createGate([draft("d1", locked), first]), { open: false, agent: first });
 });
 
-test("funding comes before the draft limit when both hold", () => {
-  // The API answers `unfunded_agent` first; this is the same order for a list that mixes them.
+test("an unfunded agent closes it whatever the number of drafts", () => {
   const unfunded = agent("a", 2, locked);
   const agents = [draft("d1", locked), draft("d2", locked), draft("d3", locked), unfunded];
 

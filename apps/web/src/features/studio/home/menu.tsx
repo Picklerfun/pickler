@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import { DRAFT_LIMIT_NOTE, newAgentGate, newAgentLock } from "../create/gate";
+import { newAgentLock } from "../create/gate";
 import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
 import styles from "./home.module.css";
@@ -15,8 +15,8 @@ interface Item {
 }
 
 /**
- * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time and at most three
- * drafts, as the API decided it), then every studio section the rail reaches, grouped as the canvas groups them, and the
+ * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
+ * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
  * person's other agents when there is more than one.
  *
  * With no agent yet the Menu still opens, so a person can see everything an agent gets before
@@ -45,14 +45,13 @@ export function HomeMenu({
 }) {
   const [open, setOpen] = useState(false);
   /* The lock is the workspace's, not the selected agent's: a selected draft is never the one to
-     fund, and the reason names the agent with the wallet or the draft limit. */
-  const gate = newAgentGate(agents);
+     fund. Funding only, because "+ New agent" leads to /studio/new, which creates no draft. */
   const access = menuAccess({
     hasAgent: agent !== null,
     canManage,
     researchLock,
-    fundLock: !gate.open && gate.reason === "unfunded_agent" ? newAgentLock(agents) : "",
-    draftLock: !gate.open && gate.reason === "draft_limit" ? DRAFT_LIMIT_NOTE : "",
+    fundLock: newAgentLock(agents),
+    draftLock: "",
   });
   const plugins = agent?.config.plugins?.enabled.length ?? 0;
   const groups: { title: string; items: Item[] }[] = [
