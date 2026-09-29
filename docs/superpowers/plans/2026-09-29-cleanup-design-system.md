@@ -1123,3 +1123,1159 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 MSG
 )" -- packages/ui/src/styles.css
 ```
+
+---
+
+# Batch C — aliases
+
+Tasks 10 to 14 share no file and may run in parallel, taking turns at the harness. The tables are in `$PLAN/mapping-aliases.md`; the files the tools read are in `$PLAN/maps/`.
+
+An alias is defined on a module's root class (`--ink: var(--pk-ink)`) and read below it. Reading the token instead paints the same colour everywhere but in one case: inside a nested `data-surface`, the alias held the value of the surface it was defined on, and the token holds the value of the surface it is read on. None of the four modules with aliases draws anything inside a nested surface of the opposite kind — the one nested surface among them, the passkey sheet, is dark inside dark — so no pixel is expected to move.
+
+The static check's `token-alias` count is 100 before the batch and 0 after it. Each task's share is given; the other four numbers do not change in this batch.
+
+## Task 10: Aliases: `agents`
+
+**Owns:** `apps/web/src/features/agents/agents.module.css`
+
+**Table:** `$PLAN/mapping-aliases.md`, section `apps/web/src/features/agents/agents.module.css`.
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "token-alias  apps/web/src/features/agents/agents.module.css"`
+
+Expected: `15`.
+
+- [ ] **Step 2: Replace the aliases**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/agents/agents.module.css $PLAN/maps/10-agents-aliases.json --drop-definitions
+```
+
+Expected: 15 lines beginning `dropped`, one per alias, then one line per alias that is read, with its count. The counts are the `Reads` column of the table and sum to 272.
+
+- [ ] **Step 3: Format, and see the number fall**
+
+```sh
+npx prettier --write apps/web/src/features/agents/agents.module.css
+npm run design:source | grep -c "token-alias  apps/web/src/features/agents/agents.module.css"
+grep -cE '^\s*--[a-z-]+:\s*var\(--pk-' apps/web/src/features/agents/agents.module.css
+```
+
+Expected: `0` and `0`.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 13 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate DESIGN_SHOTS_DIR=scripts/design/.shots/task-10 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-10 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Every read paints the colour it painted. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/agents/agents.module.css
+git commit -m "$(cat <<'MSG'
+Agents: the stylesheet reads the tokens by name
+
+The alias layer on the module's root class is gone: 15 definitions,
+272 reads. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/agents/agents.module.css
+```
+
+## Task 11: Aliases and variant variables: `auth`
+
+**Owns:** `apps/web/src/features/auth/auth.module.css`
+
+**Table:** `$PLAN/mapping-aliases.md`, section `apps/web/src/features/auth/auth.module.css` (both the plain aliases and the variant variables).
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "token-alias  apps/web/src/features/auth/auth.module.css"`
+
+Expected: `25` — the four `--accent` variants hold `var(--lime)` and the like today, which the rule does not count until the alias under them is gone.
+
+- [ ] **Step 2: Replace the aliases**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/11-auth-aliases.json --drop-definitions
+```
+
+Expected: 25 lines beginning `dropped`, one per alias, then one line per alias that is read, with its count. The counts are the `Reads` column of the table and sum to 190.
+
+- [ ] **Step 3: Rewrite the variant variables**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/11-auth-variants.json
+```
+
+Expected: `apps/web/src/features/auth/auth.module.css: 5 edit(s) applied`.
+
+- [ ] **Step 4: Format, and see the number fall**
+
+```sh
+npx prettier --write apps/web/src/features/auth/auth.module.css
+npm run design:source | grep -c "token-alias  apps/web/src/features/auth/auth.module.css"
+grep -cE '^\s*--[a-z-]+:\s*var\(--pk-' apps/web/src/features/auth/auth.module.css
+```
+
+Expected: `0` and `0`.
+
+- [ ] **Step 5: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 4 route(s).`, and `exit 0`.
+
+- [ ] **Step 6: Capture and compare**
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add DESIGN_SHOTS_DIR=scripts/design/.shots/task-11 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-11 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Every read paints the colour it painted. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 7: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/web/src/features/auth/auth.module.css
+git commit -m "$(cat <<'MSG'
+Auth: the stylesheet reads the tokens by name
+
+The alias layer on the module's root class is gone: 25 definitions,
+190 reads. The variant variables that held a colour are one rule per
+variant.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/auth/auth.module.css
+```
+
+## Task 12: Aliases and variant variables: `markets`
+
+**Owns:** `apps/web/src/features/markets/markets.module.css`
+
+**Table:** `$PLAN/mapping-aliases.md`, section `apps/web/src/features/markets/markets.module.css` (both the plain aliases and the variant variables).
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "token-alias  apps/web/src/features/markets/markets.module.css"`
+
+Expected: `24` — the eighteen plain aliases and the six variant definitions whose value is already `var(--pk-…)`.
+
+- [ ] **Step 2: Replace the aliases**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/12-markets-aliases.json --drop-definitions
+```
+
+Expected: 18 lines beginning `dropped`, one per alias, then one line per alias that is read, with its count. The counts are the `Reads` column of the table and sum to 129.
+
+- [ ] **Step 3: Rewrite the variant variables**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/12-markets-variants.json
+```
+
+Expected: `apps/web/src/features/markets/markets.module.css: 8 edit(s) applied`.
+
+- [ ] **Step 4: Format, and see the number fall**
+
+```sh
+npx prettier --write apps/web/src/features/markets/markets.module.css
+npm run design:source | grep -c "token-alias  apps/web/src/features/markets/markets.module.css"
+grep -cE '^\s*--[a-z-]+:\s*var\(--pk-' apps/web/src/features/markets/markets.module.css
+```
+
+Expected: `0` and `0`.
+
+- [ ] **Step 5: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 5 route(s).`, and `exit 0`.
+
+- [ ] **Step 6: Capture and compare**
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked DESIGN_SHOTS_DIR=scripts/design/.shots/task-12 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-12 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Every read paints the colour it painted. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 7: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/web/src/features/markets/markets.module.css
+git commit -m "$(cat <<'MSG'
+Markets: the stylesheet reads the tokens by name
+
+The alias layer on the module's root class is gone: 18 definitions,
+129 reads. The variant variables that held a colour are one rule per
+variant.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/markets/markets.module.css
+```
+
+## Task 13: Aliases: `apply`
+
+**Owns:** `apps/web/src/features/apply/apply.module.css`
+
+**Table:** `$PLAN/mapping-aliases.md`, section `apps/web/src/features/apply/apply.module.css`.
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep -c "token-alias  apps/web/src/features/apply/apply.module.css"`
+
+Expected: `14`.
+
+- [ ] **Step 2: Replace the aliases**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/apply/apply.module.css $PLAN/maps/13-apply-aliases.json --drop-definitions
+```
+
+Expected: 14 lines beginning `dropped`, one per alias, then one line per alias that is read, with its count. The counts are the `Reads` column of the table and sum to 76.
+
+- [ ] **Step 3: Format, and see the number fall**
+
+```sh
+npx prettier --write apps/web/src/features/apply/apply.module.css
+npm run design:source | grep -c "token-alias  apps/web/src/features/apply/apply.module.css"
+grep -cE '^\s*--[a-z-]+:\s*var\(--pk-' apps/web/src/features/apply/apply.module.css
+```
+
+Expected: `0` and `0`.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=apply-no-seat node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 1 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=apply-no-seat DESIGN_SHOTS_DIR=scripts/design/.shots/task-13 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-13 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Every read paints the colour it painted. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/apply/apply.module.css
+git commit -m "$(cat <<'MSG'
+Apply: the stylesheet reads the tokens by name
+
+The alias layer on the module's root class is gone: 14 definitions,
+76 reads. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/apply/apply.module.css
+```
+
+## Task 14: Variant variables: `landing`, `create`, `home`
+
+**Owns:** `apps/web/src/features/landing/landing.module.css`, `apps/web/src/features/studio/create/create.module.css`, `apps/web/src/features/studio/home/home.module.css`
+
+**Table:** `$PLAN/mapping-aliases.md`, the last three sections of "Variant variables".
+
+| File                 | Variable | Set by                                                                 | Read by                                           | After                                                                                                                                                |
+| -------------------- | -------- | ---------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `landing.module.css` | `--hue`  | `.mark[data-hue]`, 7 hues                                              | `.mark { background }`                            | each `.mark[data-hue="…"]` sets `background`                                                                                                         |
+| `landing.module.css` | `--ink`  | `.move[data-hue] .moveCost`, 4 hues                                    | `.moveCost { color }`                             | each `.move[data-hue="…"] .moveCost` sets `color`                                                                                                    |
+| `create.module.css`  | `--dot`  | `.dot`, `.cells`, `.pieceMark`, `.beatDot` with `[data-tint]`, 7 tints | `.dot`, `.beatDot`, `.pieceMark`, `.cells i`      | each tint rule sets `background`, on `.cells[data-tint="…"] i` for the cells; `.dot` and `.pieceMark` keep their fallbacks as their own `background` |
+| `home.module.css`    | `--mood` | `.bubble[data-tint]`, 4 tints                                          | `.moodLabel { color }`, `.moodDot { background }` | one rule per tint for each reader                                                                                                                    |
+
+- [ ] **Step 1: See the number that has to fall**
+
+Run: `npm run design:source | grep "token-alias" | grep -cE "landing|create|home"`
+
+Expected: `22`.
+
+- [ ] **Step 2: Rewrite the variant variables**
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/landing/landing.module.css $PLAN/maps/14-landing-variants.json
+node $PLAN/tools/reline.mjs apps/web/src/features/studio/create/create.module.css $PLAN/maps/14-create-variants.json
+node $PLAN/tools/reline.mjs apps/web/src/features/studio/home/home.module.css $PLAN/maps/14-home-variants.json
+npx prettier --write apps/web/src/features/landing/landing.module.css apps/web/src/features/studio/create/create.module.css apps/web/src/features/studio/home/home.module.css
+```
+
+Expected: `13 edit(s) applied`, `11 edit(s) applied`, `3 edit(s) applied`.
+
+- [ ] **Step 3: See the number fall**
+
+```sh
+npm run design:source | grep "token-alias" | grep -cE "landing|create|home"
+grep -cE 'var\(--(hue|dot|mood|ink)\b' apps/web/src/features/landing/landing.module.css apps/web/src/features/studio/create/create.module.css apps/web/src/features/studio/home/home.module.css
+```
+
+Expected: `0`, then three lines each ending `:0`.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=landing,create-describe,create-reading,create-name,create-trades,create-looks,create-reads,create-skills,create-decides,create-review,create-run,studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 21 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=landing,create-describe,create-reading,create-name,create-trades,create-looks,create-reads,create-skills,create-decides,create-review,create-run,studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey DESIGN_SHOTS_DIR=scripts/design/.shots/task-14 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-14 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each variant sets the property to the token its variable held. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/landing/landing.module.css \
+  apps/web/src/features/studio/create/create.module.css \
+  apps/web/src/features/studio/home/home.module.css
+git commit -m "$(cat <<'MSG'
+Landing and studio: a variant sets its colour, not a variable
+
+--hue, --ink, --dot and --mood each held a token chosen by a data
+attribute. Each variant now sets the property itself.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/landing/landing.module.css \
+  apps/web/src/features/studio/create/create.module.css \
+  apps/web/src/features/studio/home/home.module.css
+```
+
+## Batch C checkpoint
+
+Done by whoever takes task 15, before its first step, once tasks 10–14 are committed.
+
+```sh
+npm run design:source | tail -1
+```
+
+Expected: `source: 208 violation(s) — colour-in-ts 21, colour-literal 90, undefined-token 1, unused-class 96. Report only; --strict fails on them.` There is no `token-alias` in the line.
+
+---
+
+# Batch D — legacy tokens
+
+Task 15 runs alone. Tasks 16 to 21 share no file and may run in parallel, taking turns at the harness. Task 22 runs alone, after all six are committed. The tables are in `$PLAN/mapping-legacy-tokens.md`.
+
+Fourteen carried-forward tokens have a v2 token that their definition already resolves to, on both surfaces. Reading that token instead moves no pixel. The definitions stay until task 22, so the tree is whole after every task.
+
+## Task 15: The token file: new tokens, the tint's prefix, its own legacy reads and literals
+
+**Owns:** `packages/ui/src/styles.css`; in `apps/web/src/features/studio/studio.module.css`, the 37 reads of `--tint-fg`, `--tint-bg` and `--tint-bd` and nothing else.
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The token file's own edits", task 15.
+
+What changes in `styles.css`:
+
+| Change                                              | Detail                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Four tokens added on `:root`, after `--pk-glow-rim` | `--pk-lit-edge: rgba(255, 255, 255, 0.22)` (J7); `--pk-glow-lime: rgba(200, 240, 58, 0.32)` and `--pk-glow-lime-strong: rgba(200, 240, 58, 0.5)` (J8); `--pk-scrim: rgba(11, 13, 26, 0.72)` (J10). Each with a comment saying what it is for.                                                                                                          |
+| The five literals in its rules                      | `.pk-button[data-glow="true"]`: `inset 0 2px 0 rgba(255, 255, 255, 0.3)` → `var(--pk-lit-edge)`, `0 0 24px rgba(200, 240, 58, 0.32)` → `var(--pk-glow-lime)`; its `:hover`: the same bevel, and `0 0 40px rgba(200, 240, 58, 0.5)` → `var(--pk-glow-lime-strong)`; `.pk-panel[data-tone="raised"]`: `rgba(255, 255, 255, 0.22)` → `var(--pk-lit-edge)` |
+| `--tint-fg`, `--tint-bg`, `--tint-bd`               | renamed `--pk-tint-fg`, `--pk-tint-bg`, `--pk-tint-bd` (J15): 21 occurrences in `styles.css`, 37 in `studio.module.css`                                                                                                                                                                                                                                |
+| Its rules' reads of legacy tokens                   | 19 reads of six tokens, by the legacy map                                                                                                                                                                                                                                                                                                              |
+
+- [ ] **Step 1: See the numbers that have to fall**
+
+```sh
+npm run design:source | grep -c "colour-literal  packages/ui/src/styles.css"
+grep -c -- '--tint-' packages/ui/src/styles.css apps/web/src/features/studio/studio.module.css
+```
+
+Expected: `5`; then `packages/ui/src/styles.css:21` and `apps/web/src/features/studio/studio.module.css:37`.
+
+- [ ] **Step 2: Add the tokens, replace the literals, rename the tint**
+
+```sh
+node $PLAN/tools/reline.mjs packages/ui/src/styles.css $PLAN/maps/15-styles-tokens.json
+node $PLAN/tools/reline.mjs apps/web/src/features/studio/studio.module.css $PLAN/maps/15-studio-tint.json
+```
+
+Expected: `packages/ui/src/styles.css: 6 edit(s) applied` and `apps/web/src/features/studio/studio.module.css: 1 edit(s) applied`.
+
+- [ ] **Step 3: Move the token file's own reads of legacy tokens**
+
+```sh
+node $PLAN/tools/retoken.mjs packages/ui/src/styles.css $PLAN/maps/legacy.json
+npx prettier --write packages/ui/src/styles.css apps/web/src/features/studio/studio.module.css
+```
+
+Expected:
+
+```
+--pk-ink-placeholder	1
+--pk-surface	3
+--pk-surface-strong	2
+--pk-field	3
+--pk-field-autofill	2
+--pk-border	8
+```
+
+The fourteen definitions in the two "Carried forward" blocks are untouched: the tool rewrites reads, and a definition is not a read.
+
+- [ ] **Step 4: See the numbers fall**
+
+```sh
+npm run design:source | tail -1
+grep -c -- '--tint-' packages/ui/src/styles.css apps/web/src/features/studio/studio.module.css
+grep -c -- '--pk-tint-' packages/ui/src/styles.css apps/web/src/features/studio/studio.module.css
+```
+
+Expected: `source: 203 violation(s) — colour-in-ts 21, colour-literal 85, undefined-token 1, unused-class 96.`; then both files `:0`; then `:21` and `:37`.
+
+- [ ] **Step 5: The whole harness, and the picture**
+
+This task touches what every screen is made of, so it captures every route. Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-15 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-15 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: four times `clean over all 51 route(s).`, `exit 0`.
+
+**Expected differences:** `apply-no-seat-desktop.png` and `apply-no-seat-phone.png`, each by less than 0.2% of pixels, inside the box of the JOIN WAITLIST button (desktop about `x 403–564, y 402–422`; phone about `x 23–184, y 364–384`). That is the glow button's top bevel going from white at 0.3 to white at 0.22 (J7); it is the only glow button on a measured route. Every other line starts with `NOISE`. This also confirms batch C moved nothing.
+
+- [ ] **Step 6: Move the baseline forward**
+
+```sh
+rm -rf scripts/design/.shots/baseline
+cp -R scripts/design/.shots/task-15 scripts/design/.shots/baseline
+```
+
+- [ ] **Step 7: Gates**
+
+Check the ports are free. Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add packages/ui/src/styles.css \
+  apps/web/src/features/studio/studio.module.css
+git commit -m "$(cat <<'MSG'
+Tokens: four new ones, the tint under the prefix, no literal in a rule
+
+--pk-lit-edge, --pk-glow-lime, --pk-glow-lime-strong and --pk-scrim are
+what the literals in feature stylesheets will read. The token file's own
+rules read tokens only, and --tint-* is --pk-tint-*.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- packages/ui/src/styles.css \
+  apps/web/src/features/studio/studio.module.css
+```
+
+## Task 16: Legacy tokens: agents
+
+**Owns:** `apps/web/src/features/agents/agents.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/agents/agents.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/agents/agents.module.css`
+
+```
+--pk-field	7
+--pk-cyan	3
+--pk-cyan-ink	10
+--pk-pink-ink	7
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/agents/agents.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/agents/agents.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 13 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=portfolio,portfolio-connected,portfolio-no-positions,leaderboard,agents,agent-profile,agent-ask,tokens,token,token-pick,reads-gate,read,activity-gate DESIGN_SHOTS_DIR=scripts/design/.shots/task-16 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-16 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/agents/agents.module.css
+git commit -m "$(cat <<'MSG'
+Agents: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/agents/agents.module.css
+```
+
+## Task 17: Legacy tokens: auth
+
+**Owns:** `apps/web/src/features/auth/auth.module.css`, `apps/web/src/features/auth/components/second-passkey.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/auth/components/second-passkey.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/auth/auth.module.css`
+
+```
+--pk-field	3
+--pk-cyan-ink	7
+--pk-pink-ink	1
+--pk-magenta-tint	2
+--pk-amber-tint	1
+--pk-cyan-tint	1
+```
+
+`apps/web/src/features/auth/components/second-passkey.module.css`
+
+```
+--pk-amber-tint	1
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Correct the comment that names a token that is going**
+
+`maps/17-auth-comment.json` rewrites the comment above `.info`, which named `--cyan-ink` and `--cyan-tint`.
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/auth/auth.module.css $PLAN/maps/17-auth-comment.json
+```
+
+Expected: `1 edit(s) applied`.
+
+- [ ] **Step 3: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/auth/auth.module.css apps/web/src/features/auth/components/second-passkey.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/auth/auth.module.css apps/web/src/features/auth/components/second-passkey.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add,studio-home-second-passkey node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 5 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add,studio-home-second-passkey DESIGN_SHOTS_DIR=scripts/design/.shots/task-17 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-17 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/auth/auth.module.css \
+  apps/web/src/features/auth/components/second-passkey.module.css
+git commit -m "$(cat <<'MSG'
+Auth: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/auth/auth.module.css \
+  apps/web/src/features/auth/components/second-passkey.module.css
+```
+
+## Task 18: Legacy tokens: markets
+
+**Owns:** `apps/web/src/features/markets/markets.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/markets/markets.module.css`
+
+```
+--pk-ink-placeholder	5
+--pk-surface-strong	1
+--pk-field	1
+--pk-border	5
+--pk-cyan	1
+--pk-cyan-ink	2
+--pk-pink-ink	6
+--pk-lime-tint	1
+--pk-amber-tint	2
+--pk-cyan-tint	1
+--pk-violet-tint	2
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Correct the comment that names a token that is going**
+
+`maps/18-markets-comment.json` rewrites the comment above `.column[data-off] .columnLabel`, which listed `--pk-ink-placeholder` among the inks.
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/18-markets-comment.json
+```
+
+Expected: `1 edit(s) applied`.
+
+- [ ] **Step 3: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/markets/markets.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/markets/markets.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 4: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 5 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked DESIGN_SHOTS_DIR=scripts/design/.shots/task-18 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-18 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/markets/markets.module.css
+git commit -m "$(cat <<'MSG'
+Markets: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/markets/markets.module.css
+```
+
+## Task 19: Legacy tokens: studio
+
+**Owns:** `apps/web/src/features/studio/studio.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/studio/studio.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/studio/studio.module.css`
+
+```
+--pk-ink-placeholder	2
+--pk-surface	5
+--pk-surface-strong	5
+--pk-field	7
+--pk-border	14
+--pk-pink-ink	4
+--pk-lime-tint	4
+--pk-magenta-tint	2
+--pk-violet-tint	5
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/studio/studio.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/studio/studio.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=studio-picks,studio-activity,studio-skills,studio-token node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 4 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=studio-picks,studio-activity,studio-skills,studio-token DESIGN_SHOTS_DIR=scripts/design/.shots/task-19 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-19 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/studio/studio.module.css
+git commit -m "$(cat <<'MSG'
+Studio: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/studio/studio.module.css
+```
+
+## Task 20: Legacy tokens: home and create
+
+**Owns:** `apps/web/src/features/studio/home/home.module.css`, `apps/web/src/features/studio/create/create.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/studio/home/home.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/studio/create/create.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/studio/home/home.module.css`
+
+```
+--pk-border	11
+--pk-lime-tint	3
+--pk-violet-tint	3
+```
+
+`apps/web/src/features/studio/create/create.module.css`
+
+```
+--pk-ink-placeholder	1
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/studio/home/home.module.css apps/web/src/features/studio/create/create.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/studio/home/home.module.css apps/web/src/features/studio/create/create.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey,create-describe,create-reading,create-name,create-trades,create-looks,create-reads,create-skills,create-decides,create-review,create-run node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 20 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=studio,studio-home-live,studio-home-researching,studio-home-decided,studio-home-empty,studio-brief-running,studio-brief-done,studio-brief-stale,studio-home-draft,studio-home-second-passkey,create-describe,create-reading,create-name,create-trades,create-looks,create-reads,create-skills,create-decides,create-review,create-run DESIGN_SHOTS_DIR=scripts/design/.shots/task-20 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-20 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/studio/home/home.module.css \
+  apps/web/src/features/studio/create/create.module.css
+git commit -m "$(cat <<'MSG'
+Home and create: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/studio/home/home.module.css \
+  apps/web/src/features/studio/create/create.module.css
+```
+
+## Task 21: Legacy tokens: the small sheets
+
+**Owns:** `apps/web/src/features/apply/apply.module.css`, `apps/web/src/features/account/account.module.css`, `apps/web/src/app/globals.css`, `apps/web/src/features/wallet/components/activity-page.module.css`, `apps/web/src/features/wallet/components/claim-handle.module.css`, `apps/web/src/features/wallet/components/connect-gate.module.css`, `apps/web/src/features/wallet/components/connect-modal.module.css`
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The fourteen that go" and "What the tool prints, file by file".
+
+- [ ] **Step 1: Replace the reads**
+
+```sh
+node $PLAN/tools/retoken.mjs apps/web/src/features/apply/apply.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/account/account.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/app/globals.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/wallet/components/activity-page.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/wallet/components/claim-handle.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/wallet/components/connect-gate.module.css $PLAN/maps/legacy.json
+node $PLAN/tools/retoken.mjs apps/web/src/features/wallet/components/connect-modal.module.css $PLAN/maps/legacy.json
+```
+
+Expected, file by file:
+
+`apps/web/src/features/apply/apply.module.css`
+
+```
+--pk-ink-placeholder	2
+--pk-cyan	2
+--pk-cyan-ink	4
+```
+
+`apps/web/src/features/account/account.module.css`
+
+```
+--pk-cyan-ink	1
+```
+
+`apps/web/src/app/globals.css`
+
+```
+--pk-cyan-ink	1
+```
+
+`apps/web/src/features/wallet/components/activity-page.module.css`
+
+```
+--pk-border	1
+--pk-cyan-ink	1
+```
+
+`apps/web/src/features/wallet/components/claim-handle.module.css`
+
+```
+--pk-border	1
+```
+
+`apps/web/src/features/wallet/components/connect-gate.module.css`
+
+```
+--pk-border	1
+--pk-violet-tint	1
+```
+
+`apps/web/src/features/wallet/components/connect-modal.module.css`
+
+```
+--pk-surface	1
+--pk-surface-strong	1
+--pk-border	4
+--pk-cyan-ink	1
+--pk-pink-ink	1
+--pk-lime-tint	1
+--pk-cyan-tint	1
+```
+
+A count that differs means the file has changed since the plan was written. Read the diff before going on: every changed line must be a `var(--pk-…)` whose name moved as the table says.
+
+- [ ] **Step 2: Format, and prove no legacy token is read**
+
+```sh
+npx prettier --write apps/web/src/features/apply/apply.module.css apps/web/src/features/account/account.module.css apps/web/src/app/globals.css apps/web/src/features/wallet/components/activity-page.module.css apps/web/src/features/wallet/components/claim-handle.module.css apps/web/src/features/wallet/components/connect-gate.module.css apps/web/src/features/wallet/components/connect-modal.module.css
+grep -nE 'var\(--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)\)' apps/web/src/features/apply/apply.module.css apps/web/src/features/account/account.module.css apps/web/src/app/globals.css apps/web/src/features/wallet/components/activity-page.module.css apps/web/src/features/wallet/components/claim-handle.module.css apps/web/src/features/wallet/components/connect-gate.module.css apps/web/src/features/wallet/components/connect-modal.module.css
+npm run design:source | tail -1
+```
+
+Expected: the `grep` prints nothing. The static report's numbers are what they were before this task: a legacy token is still defined until task 22, so reading one was never a violation.
+
+- [ ] **Step 3: The checks, on this task's routes**
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=apply-no-seat,account,account-security,account-profile,portfolio,portfolio-connected,portfolio-no-positions,reads-gate,activity-gate node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 9 route(s).`, and `exit 0`.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=apply-no-seat,account,account-security,account-profile,portfolio,portfolio-connected,portfolio-no-positions,reads-gate,activity-gate DESIGN_SHOTS_DIR=scripts/design/.shots/task-21 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-21 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. Each token read is the one the old name resolved to. Every line the comparison prints must start with `NOISE`; a `DIFFERS` on any screen is a defect of this task.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/web/src/features/apply/apply.module.css \
+  apps/web/src/features/account/account.module.css \
+  apps/web/src/app/globals.css \
+  apps/web/src/features/wallet/components/activity-page.module.css \
+  apps/web/src/features/wallet/components/claim-handle.module.css \
+  apps/web/src/features/wallet/components/connect-gate.module.css \
+  apps/web/src/features/wallet/components/connect-modal.module.css
+git commit -m "$(cat <<'MSG'
+The small sheets: v2 tokens where a carried-forward one was read
+
+Each read takes the token the old name already resolved to on both
+surfaces. No value changes.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/apply/apply.module.css \
+  apps/web/src/features/account/account.module.css \
+  apps/web/src/app/globals.css \
+  apps/web/src/features/wallet/components/activity-page.module.css \
+  apps/web/src/features/wallet/components/claim-handle.module.css \
+  apps/web/src/features/wallet/components/connect-gate.module.css \
+  apps/web/src/features/wallet/components/connect-modal.module.css
+```
+
+## Task 22: The fourteen legacy definitions go
+
+Runs alone, after tasks 16–21 are committed.
+
+**Owns:** `packages/ui/src/styles.css`, `packages/ui/src/chart.tsx` (one line), `scripts/design/levels.test.mjs` (the list of inks)
+
+**Table:** `$PLAN/mapping-legacy-tokens.md`, "The token file's own edits", task 22.
+
+- [ ] **Step 1: Prove nothing reads them**
+
+```sh
+grep -rnE -- '--pk-(ink-placeholder|surface|surface-strong|field|field-autofill|border|cyan|cyan-ink|pink-ink|lime-tint|magenta-tint|amber-tint|cyan-tint|violet-tint)([^A-Za-z0-9_-]|$)' \
+  apps/web/src packages/ui/src scripts/design apps/web/test \
+  | grep -v '^packages/ui/src/styles.css' | grep -vE '^[^:]+:[0-9]+:\s*(/?\*|//)'
+```
+
+Expected: exactly three lines, the three this task changes: `packages/ui/src/chart.tsx` reading `--pk-border`, and `scripts/design/levels.test.mjs` naming `--pk-cyan-ink` and `--pk-pink-ink`. Any other line is a read a task of this batch missed: stop and report.
+
+- [ ] **Step 2: Make the ink test name the tokens that stay, and see it still pass**
+
+`maps/22-levels.json` replaces `"--pk-cyan-ink"` and `"--pk-pink-ink"` in the list `INKS` with `"--pk-state-cool-ink"`; `--pk-magenta-ink`, which the pink resolved to, is already in the list.
+
+```sh
+node $PLAN/tools/reline.mjs scripts/design/levels.test.mjs $PLAN/maps/22-levels.json
+node --test scripts/design/levels.test.mjs
+```
+
+Expected: `1 edit(s) applied`; PASS, `tests 5`, `fail 0`.
+
+- [ ] **Step 3: Remove the definitions**
+
+`maps/22-styles.json` replaces the two "Carried forward" blocks, on the light and on the dark surface, with the seven tokens that stay (J16), each with a comment saying what it is. `maps/22-chart.json` makes the chart's grid read `--pk-rule-strong`.
+
+```sh
+node $PLAN/tools/reline.mjs packages/ui/src/styles.css $PLAN/maps/22-styles.json
+node $PLAN/tools/reline.mjs packages/ui/src/chart.tsx $PLAN/maps/22-chart.json
+npx prettier --write packages/ui/src/styles.css packages/ui/src/chart.tsx scripts/design/levels.test.mjs
+```
+
+Expected: `2 edit(s) applied` and `1 edit(s) applied`.
+
+- [ ] **Step 4: Verify**
+
+```sh
+npm run design:source | tail -1
+node --import tsx --test scripts/design/*.test.mjs
+```
+
+Expected: `source: 203 violation(s) — colour-in-ts 21, colour-literal 85, undefined-token 1, unused-class 96.` — `undefined-token` is still 1, the `--pk-font-mono` of task 25, which proves no removed token is read anywhere. Then PASS, `tests 52`, `fail 0`.
+
+- [ ] **Step 5: The whole harness, and the batch's picture**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-22 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-22 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: four times `clean over all 51 route(s).`, `exit 0`.
+
+**Expected differences, for the whole batch since task 15:** none. Every line starts with `NOISE`. A `DIFFERS` names a screen where a legacy token was read through a name the map sent somewhere else: open both PNGs, find the element, and report it with the file and the token.
+
+- [ ] **Step 6: Gates**
+
+Check the ports are free. Run, and check each exit status is 0: `npm run build:shared`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add packages/ui/src/styles.css \
+  packages/ui/src/chart.tsx \
+  scripts/design/levels.test.mjs
+git commit -m "$(cat <<'MSG'
+Tokens: fourteen carried-forward names are gone
+
+Nothing read them any more. The seven with no single v2 equivalent stay
+as part of the system: --pk-ink-dim, --pk-border-strong and the five
+edges.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- packages/ui/src/styles.css \
+  packages/ui/src/chart.tsx \
+  scripts/design/levels.test.mjs
+```

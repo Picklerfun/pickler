@@ -1,0 +1,90 @@
+{
+  "apps/web/src/features/agents/agents.module.css": {
+    "--pk-field": 7,
+    "--pk-cyan": 3,
+    "--pk-cyan-ink": 10,
+    "--pk-pink-ink": 7
+  },
+  "apps/web/src/features/auth/auth.module.css": {
+    "--pk-field": 3,
+    "--pk-cyan-ink": 7,
+    "--pk-pink-ink": 1,
+    "--pk-magenta-tint": 2,
+    "--pk-amber-tint": 1,
+    "--pk-cyan-tint": 1
+  },
+  "apps/web/src/features/auth/components/second-passkey.module.css": {
+    "--pk-amber-tint": 1
+  },
+  "apps/web/src/features/markets/markets.module.css": {
+    "--pk-ink-placeholder": 5,
+    "--pk-surface-strong": 1,
+    "--pk-field": 1,
+    "--pk-border": 5,
+    "--pk-cyan": 1,
+    "--pk-cyan-ink": 2,
+    "--pk-pink-ink": 6,
+    "--pk-lime-tint": 1,
+    "--pk-amber-tint": 2,
+    "--pk-cyan-tint": 1,
+    "--pk-violet-tint": 2
+  },
+  "apps/web/src/features/studio/studio.module.css": {
+    "--pk-ink-placeholder": 2,
+    "--pk-surface": 5,
+    "--pk-surface-strong": 5,
+    "--pk-field": 7,
+    "--pk-border": 14,
+    "--pk-pink-ink": 4,
+    "--pk-lime-tint": 4,
+    "--pk-magenta-tint": 2,
+    "--pk-violet-tint": 5
+  },
+  "apps/web/src/features/studio/home/home.module.css": {
+    "--pk-border": 11,
+    "--pk-lime-tint": 3,
+    "--pk-violet-tint": 3
+  },
+  "apps/web/src/features/studio/create/create.module.css": {
+    "--pk-ink-placeholder": 1
+  },
+  "apps/web/src/features/apply/apply.module.css": {
+    "--pk-ink-placeholder": 2,
+    "--pk-cyan": 2,
+    "--pk-cyan-ink": 4
+  },
+  "apps/web/src/features/account/account.module.css": {
+    "--pk-cyan-ink": 1
+  },
+  "apps/web/src/app/globals.css": {
+    "--pk-cyan-ink": 1
+  },
+  "apps/web/src/features/wallet/components/activity-page.module.css": {
+    "--pk-border": 1,
+    "--pk-cyan-ink": 1
+  },
+  "apps/web/src/features/wallet/components/claim-handle.module.css": {
+    "--pk-border": 1
+  },
+  "apps/web/src/features/wallet/components/connect-gate.module.css": {
+    "--pk-border": 1,
+    "--pk-violet-tint": 1
+  },
+  "apps/web/src/features/wallet/components/connect-modal.module.css": {
+    "--pk-surface": 1,
+    "--pk-surface-strong": 1,
+    "--pk-border": 4,
+    "--pk-cyan-ink": 1,
+    "--pk-pink-ink": 1,
+    "--pk-lime-tint": 1,
+    "--pk-cyan-tint": 1
+  },
+  "packages/ui/src/styles.css": {
+    "--pk-ink-placeholder": 1,
+    "--pk-surface": 3,
+    "--pk-surface-strong": 2,
+    "--pk-field": 3,
+    "--pk-field-autofill": 2,
+    "--pk-border": 8
+  }
+}
