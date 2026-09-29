@@ -284,6 +284,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
           new PostgresPerpsPaperStore(research.pool, undefined, {
             ...scope,
             owner: lease.owner,
+            ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
             signal,
           }),
         leaseDiagnostic: diagnostic,
