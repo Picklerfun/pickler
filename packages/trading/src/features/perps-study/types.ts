@@ -51,7 +51,8 @@ export interface PerpsCall {
   result: unknown;
 }
 export interface PerpsRound {
-  executionStatus: "pending" | "complete" | "incomplete";
+  executionStatus: "pending" | "complete" | "skipped_data_unavailable" | "incomplete";
+  executionReason?: "DATA_UNAVAILABLE";
   key: string;
   slot: number;
   status: "reserved" | "completed" | "failed" | "interrupted";
@@ -76,6 +77,8 @@ export interface PerpsStudyRecord {
   stopRequested: boolean;
   lastObservationAt: number | null;
   lastRoundSlot: number;
+  lastAttemptedSlot?: number;
+  dataPolicy?: "coherent-20s-v1";
 }
 export interface PerpsStudyView {
   record: PerpsStudyRecord;
@@ -90,6 +93,7 @@ export interface PerpsStudyRepository {
   initialize(config: PerpsStudyConfig, metadata: unknown): Promise<PerpsStudyView>;
   view(scope: PerpsStudyScope): Promise<PerpsStudyView>;
   claim(scope: PerpsStudyScope): Promise<PerpsStudyLease>;
+  claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number): Promise<boolean>;
   renew(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
   release(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
   guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid?: boolean): Promise<void>;
@@ -143,7 +147,7 @@ export interface PerpsStudyRepository {
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     key: string,
-    complete: boolean,
+    result: "complete" | "skipped_data_unavailable" | "incomplete",
   ): Promise<void>;
   complete(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
 }
