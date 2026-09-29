@@ -74,8 +74,8 @@ export function OnboardingScreen() {
           </View>
           <View style={{ marginLeft: "auto" }}>
             {last
-              ? <Btn label={next ? "Continue" : "Go to markets"} variant="lime" onPress={close} accessibilityLabel="onboarding-cta" />
-              : <Btn label="Next" variant="ink" onPress={() => setStep(step + 1)} accessibilityLabel="onboarding-cta" />}
+              ? <Btn label={next ? "Continue" : "Go to markets"} variant="lime" arrow onPress={close} accessibilityLabel="onboarding-cta" />
+              : <Btn label="Next" variant="ink" arrow onPress={() => setStep(step + 1)} accessibilityLabel="onboarding-cta" />}
           </View>
         </View>
       </View>
@@ -112,20 +112,26 @@ function ArtReads() {
 }
 
 function ArtBoard() {
+  // La banda (ruling visual-fixes #5b) es una sola pieza a todo el ancho de las 3 columnas, incluidos los gaps:
+  // no una por columna (eso la partía en 3 tramos separados por el `gap: 4` de la fila).
   return (
     <View style={{ height: 150, borderRadius: 20, backgroundColor: C.limeBg, alignItems: "center", justifyContent: "center" }}>
-      <View style={{ flexDirection: "row", gap: 4 }}>
-        {[0, 1, 2].map((col) => (
-          <View key={col} style={{ width: 44, gap: 4 }}>
-            <View style={{ height: 30, borderRadius: 8, backgroundColor: col === 1 ? C.lime : C.bg, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: 44 * 3 + 4 * 2, gap: 4 }}>
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          {[0, 1, 2].map((col) => (
+            <View key={col} style={{ width: 44, height: 30, borderRadius: 8, backgroundColor: col === 1 ? C.lime : C.bg, alignItems: "center", justifyContent: "center" }}>
               {col === 1 ? <T w={700} s={8} lh={1} mono color={C.ink}>LONG</T> : null}
             </View>
-            <View style={{ height: 12, backgroundColor: C.ink }} />
-            <View style={{ height: 30, borderRadius: 8, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }}>
-              {col === 1 ? <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: C.agentDot }} /> : null}
+          ))}
+        </View>
+        <View style={{ height: 12, borderRadius: 6, backgroundColor: C.ink }} />
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          {[0, 1, 2].map((col) => (
+            <View key={col} style={{ width: 44, height: 30, borderRadius: 8, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }}>
+              {col === 1 ? <View style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: C.agentDot }} /> : null}
             </View>
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -139,8 +145,8 @@ function ArtWays() {
         <T w={600} s={14} lh={1} color={C.onInk}>Ask</T>
       </View>
       <View style={{ width: "80%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 14, borderRadius: 999, backgroundColor: C.lime }}>
-        <Icon name="arrow" size={16} color={C.ink} />
         <T w={600} s={14} lh={1} color={C.ink}>Trade</T>
+        <Icon name="arrow" size={16} color={C.ink} />
       </View>
     </View>
   );
