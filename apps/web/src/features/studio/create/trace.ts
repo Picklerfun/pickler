@@ -62,6 +62,22 @@ function words(event: RunEvent): { text: string; tint: TraceTint } {
         tint: "lime",
       };
     }
+    case "brief_evaluation": {
+      const entries = field(event.data, "entries");
+      if (!Array.isArray(entries)) {
+        return { text: "Checked its entry rules", tint: "blue" };
+      }
+      const fired = entries.flatMap((entry, i) => (field(entry, "fired") === true ? [i + 1] : []));
+      if (fired.length === 0) {
+        const noun = entries.length === 1 ? "entry" : "entries";
+        return { text: `Checked ${entries.length} ${noun} · none fired`, tint: "magenta" };
+      }
+      const held = entries.length - fired.length;
+      return {
+        text: `Entry ${fired.join(" and ")} fired${held ? ` · ${held} held` : ""}`,
+        tint: "blue",
+      };
+    }
     case "model_failure":
     case "provider_failure":
     case "persistence_failure":
