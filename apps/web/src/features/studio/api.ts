@@ -15,6 +15,7 @@ import type {
   PreviewRunDto,
   PreviewRunRequestDto,
 } from "@pickler/api-schema";
+import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export { DEFAULT_PROFILE, type Profile } from "./profile";
 /**
@@ -60,30 +61,6 @@ export class StudioError extends Error {
 export const errorCode = (caught: unknown): string =>
   caught instanceof StudioError ? caught.code : "";
 
-const messages: Record<string, string> = {
-  NOT_READY:
-    "Scheduling requires a connection check and a successful manual research with the current settings.",
-  ADMISSIONS_PAUSED:
-    "The operator has paused new research. Your existing results remain available.",
-  RESEARCH_ACCESS_DENIED: "Research access is pending or you do not own this workspace.",
-  CONFLICT:
-    "The configuration changed or this handle is already taken. Reload before saving again.",
-  QUOTA:
-    "This agent has reached its research allowance. Try again after the rolling window clears.",
-  PLUGIN_NOT_CONFIGURED: "An enabled plugin needs operator credentials before it can run.",
-  PLUGIN_DISABLED: "A capability required for this action is disabled.",
-  UNAUTHORIZED: "Your session has expired. Sign in again.",
-  NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
-  UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
-  INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
-  INVALID_BRIEF: "Check the brief: a section is empty, too long or has too many lines.",
-  PREVIEW_RATE_LIMITED: "Five paper runs an hour. The next one opens soon.",
-  PREVIEW_UNAVAILABLE: "Paper runs are not available here yet.",
-  RUN_STALE: "The brief changed since the run. Run it again, then create.",
-  HANDLE_TAKEN: "That handle is taken. Change the name.",
-  PREVIEW_UNUSABLE: "That paper run can't be used any more. Run it again, then create.",
-  DAILY_CAP_REACHED: "Today's paper trades reached its daily cap.",
-};
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
   if (!supabase) {
@@ -91,7 +68,7 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
   }
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) {
-    throw new StudioError("UNAUTHORIZED", messages.UNAUTHORIZED!);
+    throw new StudioError("UNAUTHORIZED", messageFor("UNAUTHORIZED", undefined));
   }
   const response = await fetch(`/api/v1/studio${path}`, {
     ...init,
@@ -108,7 +85,7 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
     const serverMessage = typeof body?.message === "string" ? body.message : undefined;
     throw new StudioError(
       code,
-      messages[code] ?? `Request failed: ${serverMessage ?? code}`,
+      messageFor(code, serverMessage),
       serverMessage,
       body && typeof body === "object" ? (body as Record<string, unknown>) : undefined,
     );
@@ -273,7 +250,7 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body?.success) {
     const code = body?.error ?? String(response.status);
-    throw new StudioError(code, messages[code] ?? body?.message ?? "Request failed");
+    throw new StudioError(code, knownMessage(code) ?? body?.message ?? "Request failed");
   }
   return body.data as T;
 }

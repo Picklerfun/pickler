@@ -3,10 +3,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import { createGate } from "../create/gate";
+import { DRAFT_LIMIT_NOTE, newAgentGate, newAgentLock } from "../create/gate";
 import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
-import { MIN_FUNDED_AUSD } from "./status";
 import styles from "./home.module.css";
 
 interface Item {
@@ -16,8 +15,8 @@ interface Item {
 }
 
 /**
- * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
- * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
+ * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time and at most three
+ * drafts, as the API decided it), then every studio section the rail reaches, grouped as the canvas groups them, and the
  * person's other agents when there is more than one.
  *
  * With no agent yet the Menu still opens, so a person can see everything an agent gets before
@@ -45,17 +44,15 @@ export function HomeMenu({
   onSwitch(agentId: string): void;
 }) {
   const [open, setOpen] = useState(false);
-  const name = agent?.name ?? "this agent";
-  const unfundedHere = (agent?.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD;
-  const canCreate = agent ? agent.canCreateAnother.ok : createGate(agents).open;
-  const fundLock = unfundedHere
-    ? `Fund ${name} first. One unfunded agent at a time.`
-    : "Fund your other agent first. One unfunded agent at a time.";
+  /* The lock is the workspace's, not the selected agent's: a selected draft is never the one to
+     fund, and the reason names the agent with the wallet or the draft limit. */
+  const gate = newAgentGate(agents);
   const access = menuAccess({
     hasAgent: agent !== null,
     canManage,
     researchLock,
-    fundLock: canCreate ? "" : fundLock,
+    fundLock: !gate.open && gate.reason === "unfunded_agent" ? newAgentLock(agents) : "",
+    draftLock: !gate.open && gate.reason === "draft_limit" ? DRAFT_LIMIT_NOTE : "",
   });
   const plugins = agent?.config.plugins?.enabled.length ?? 0;
   const groups: { title: string; items: Item[] }[] = [

@@ -1,7 +1,7 @@
 /**
  * What the home's Menu lets a person reach, and the one reason it gives when it does not: the
  * sections, which need an agent, and "+ New agent", which needs the workspace's permission, research
- * access and the unfunded-agent lock. The empty home's own "Create your first agent" reads the same
+ * access, the unfunded-agent lock and the draft limit. The empty home's own "Create your first agent" reads the same
  * answer, so the button and the Menu never give two different reasons. Pure, and pinned in
  * `studio-landing.test.ts`.
  */
@@ -27,6 +27,7 @@ export function menuAccess({
   canManage,
   researchLock,
   fundLock,
+  draftLock,
 }: {
   hasAgent: boolean;
   canManage: boolean;
@@ -34,6 +35,8 @@ export function menuAccess({
   researchLock: string;
   /** The unfunded-agent lock's note, or "" when another agent may be created. */
   fundLock: string;
+  /** The draft limit's note, or "" below it. Last: funding closes more than drafts do. */
+  draftLock: string;
 }): MenuAccess {
   // Research first: the API's canManage is false whenever research is off, even for the owner,
   // so checking it first told an owner waiting on research that they were only a viewer.
@@ -44,6 +47,8 @@ export function menuAccess({
     createNote = VIEW_ONLY;
   } else if (fundLock) {
     createNote = fundLock;
+  } else if (draftLock) {
+    createNote = draftLock;
   }
   return {
     create: createNote === "",

@@ -116,7 +116,13 @@ export function EmptyHome({
 }) {
   const researchLock = locked ? `${locked.title} ${locked.note}` : "";
   /* No agents, so no unfunded-agent lock: the same answer the Menu's "+ New agent" reads. */
-  const access = menuAccess({ hasAgent: false, canManage, researchLock, fundLock: "" });
+  const access = menuAccess({
+    hasAgent: false,
+    canManage,
+    researchLock,
+    fundLock: "",
+    draftLock: "",
+  });
   const now = useNow(15_000);
   const directory = useMarketplaceHref("/agents");
 

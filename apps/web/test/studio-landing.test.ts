@@ -34,7 +34,7 @@ test("?stage=empty stages the empty home outside production only", () => {
 
 /* The Menu's decision, which the empty home's own button reads too. */
 
-const open = { hasAgent: true, canManage: true, researchLock: "", fundLock: "" };
+const open = { hasAgent: true, canManage: true, researchLock: "", fundLock: "", draftLock: "" };
 
 test("no agents disables every section with the canvas's hint, and creating stays open", () => {
   const access = menuAccess({ ...open, hasAgent: false });
@@ -90,6 +90,16 @@ test("the unfunded-agent lock comes after research access", () => {
     menuAccess({ ...open, researchLock: "locked", fundLock: "fund" }).createNote,
     "locked",
   );
+});
+
+test("the draft limit is the last reason: research, view-only and funding come first", () => {
+  const draftLock = "At most 3 drafts at a time.";
+
+  assert.equal(menuAccess({ ...open, draftLock }).create, false);
+  assert.equal(menuAccess({ ...open, draftLock }).createNote, draftLock);
+  assert.equal(menuAccess({ ...open, fundLock: "fund", draftLock }).createNote, "fund");
+  assert.equal(menuAccess({ ...open, canManage: false, draftLock }).createNote, VIEW_ONLY);
+  assert.equal(menuAccess({ ...open, researchLock: "locked", draftLock }).createNote, "locked");
 });
 
 test("?stage= stages the brief's run states and the draft home, outside production only", () => {

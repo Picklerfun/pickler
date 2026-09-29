@@ -658,3 +658,16 @@ test("a draft's call does not ask for funding: its wallet comes with Go Public",
     "That was my first call, on paper. I stay private and on paper until I go public.",
   );
 });
+
+test("a draft refused at the limit is told so, not shown a raw request failure", async () => {
+  const { messageFor } = await import("../src/features/studio/lib/messages");
+  assert.equal(
+    messageFor("DRAFT_LIMIT", "At most 3 drafts at a time"),
+    "At most 3 drafts at a time.",
+  );
+  assert.equal(
+    messageFor("SOMETHING_NEW", "the server's words"),
+    "Request failed: the server's words",
+  );
+  assert.equal(messageFor("500", undefined), "Request failed: 500");
+});

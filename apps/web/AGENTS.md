@@ -288,6 +288,13 @@ reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx
 (`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to the studio
 opened on that agent, `gateHref(agent, useStudioHref())`) instead of the flow; "Create and run it once" goes through
 `startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
+That gate is the funding lock only, and a private draft is never the agent it names: a draft has
+no wallet to fund. The API's other reason, `draft_limit` (three drafts), closes only the making of
+drafts, so `/studio/new` stays open at three. The menus' "+ New agent" (the home's Menu and the
+shell's) read `newAgentGate(agents)` / `newAgentLock(agents)`, which answer funding first
+("Fund <wallet agent> first. One unfunded agent at a time.") and then the draft limit ("At most 3
+drafts at a time."); `menuAccess` orders the reasons research, view-only, funding, draft limit. A
+409 `DRAFT_LIMIT` on the brief's create reads the same sentence (`lib/messages.ts`).
 An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
 "New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
 message for `CONFLICT` and `NOT_FOUND` ("Approve the wallet's rules first", "That wallet already
