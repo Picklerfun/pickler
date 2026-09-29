@@ -158,3 +158,44 @@ test("the fill spends the budget the daily check admitted, even if the cap rises
   assert.ok(Number(order.fill!.totalCost) <= 5);
   assert.ok(Number(order.fill!.totalCost) >= 4.99);
 });
+
+test("a pending order counts at its own budget when the per-trade cap is lowered after", async (t) => {
+  const f = await setup(t);
+  await f.store.updateSpend(f.scope, { perCallAusd: 10, perDayAusd: 10 });
+  const first = await f.makeRun("1");
+  const pending = await f.paper.begin("alpha", first.id, "k1");
+  assert.equal(pending.budgetAusd, 10);
+
+  await f.store.updateSpend(f.scope, { perCallAusd: 1, perDayAusd: 10 });
+  const second = await f.makeRun("2");
+
+  await assert.rejects(f.service.create("alpha", second.id, "k2"), { code: "DAILY_CAP_REACHED" });
+});
+
+test("a pending order counts at its own budget when the per-trade cap is raised after", async (t) => {
+  const f = await setup(t);
+  await f.store.updateSpend(f.scope, { perCallAusd: 1, perDayAusd: 10 });
+  const first = await f.makeRun("1");
+  const pending = await f.paper.begin("alpha", first.id, "k1");
+  assert.equal(pending.budgetAusd, 1);
+
+  await f.store.updateSpend(f.scope, { perCallAusd: 9, perDayAusd: 10 });
+  const second = await f.makeRun("2");
+  const order = await f.service.create("alpha", second.id, "k2");
+
+  assert.equal(order.status, "filled");
+});
+
+test("a pending order written before snapshots carried a budget counts as 10 AUSD", async (t) => {
+  const f = await setup(t);
+  await f.store.updateSpend(f.scope, { perCallAusd: 1, perDayAusd: 10 });
+  const first = await f.makeRun("1");
+  const pending = await f.paper.begin("alpha", first.id, "k1");
+  await f.store.pool.query(
+    "UPDATE pickler.paper_orders SET snapshot = snapshot - 'budgetAusd' WHERE id = $1",
+    [pending.order.id],
+  );
+  const second = await f.makeRun("2");
+
+  await assert.rejects(f.service.create("alpha", second.id, "k2"), { code: "DAILY_CAP_REACHED" });
+});

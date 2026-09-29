@@ -114,10 +114,12 @@ export class PostgresPaperStore implements PaperRepository, PaperSettlementRepos
       const budget = paperBudgetAusd(spend);
       if (spend) {
         const today = await client.query<{ spent: string }>(
-          `SELECT coalesce(sum(CASE WHEN status = 'filled' THEN (fill->>'totalCost')::numeric ELSE $4::numeric END), 0)::text AS spent
+          // A pending order holds the budget it was admitted with, whatever the limits say now.
+          // Snapshots written before they carried a budget were sized at the fixed one.
+          `SELECT coalesce(sum(CASE WHEN status = 'filled' THEN (fill->>'totalCost')::numeric ELSE coalesce((snapshot->>'budgetAusd')::numeric, $4::numeric) END), 0)::text AS spent
           FROM pickler.paper_orders
           WHERE tenant_id = $1 AND agent_id = $2 AND created_at >= $3 AND status IN ('filled', 'pending')`,
-          [tenantId, context.run.agentId, utcDayStart(now), budget],
+          [tenantId, context.run.agentId, utcDayStart(now), PAPER_BUDGET_AUSD],
         );
         assertPaperDailyCap(spend, Number(today.rows[0]!.spent), budget);
       }
