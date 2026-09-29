@@ -116,9 +116,14 @@ export function EmptyHome({
   const now = useNow(15_000);
 
   const [form, setForm] = useState<BriefForm>(staged?.form ?? emptyForm());
-  const [availability, setAvailability] = useState<{ handle: string; available: boolean } | null>(
+  const [availability, setAvailability] = useState<{
+    handle: string;
+    available: boolean | "failed";
+  } | null>(
     staged ? { handle: deriveHandle(staged.form.name), available: staged.available } : null,
   );
+  /* Bumped by the name's "Try again", to ask the availability check once more. */
+  const [recheck, setRecheck] = useState(0);
   const [paper, setPaper] = useState<Paper | null>(staged?.paper ?? null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<SectionKey, string>>>({});
   const [retryAt, setRetryAt] = useState<number | null>(null);
@@ -143,7 +148,7 @@ export function EmptyHome({
         },
         () => {
           if (active) {
-            setAvailability(null);
+            setAvailability({ handle, available: "failed" });
           }
         },
       );
@@ -152,10 +157,15 @@ export function EmptyHome({
       active = false;
       clearTimeout(timer);
     };
-  }, [handle, preview]);
+  }, [handle, preview, recheck]);
 
   const onUpdate = useCallback((run: PreviewRun) => {
     setPaper((current) => (current && current.id === run.id ? { ...current, run } : current));
+  }, []);
+  /* The run is gone (read after its 24 h, or cleaned up): back to IDLE, asking for a new one. */
+  const onExpired = useCallback(() => {
+    setPaper(null);
+    setRunError("That paper run expired. Run it again to create.");
   }, []);
 
   const available = availability?.handle === handle ? availability.available : null;
@@ -347,17 +357,28 @@ export function EmptyHome({
               fieldErrors={fieldErrors}
               disabled={starting || creating}
               onChange={edit}
+              onRecheck={() => {
+                setAvailability(null);
+                setRecheck((count) => count + 1);
+              }}
             />
 
             {access.createNote && <p className={styles.newAgentNote}>{access.createNote}</p>}
             <div className={styles.briefActions}>
-              <Button variant="secondary" size="lg" disabled={!runnable} onClick={() => void run()}>
+              {/* aria-disabled, not disabled: a shut button stays focusable, so its label (the
+                  reason it is shut) is announced. run() and create() refuse while shut. */}
+              <Button
+                variant="secondary"
+                size="lg"
+                aria-disabled={!runnable}
+                onClick={() => void run()}
+              >
                 {runLabel(form, starting ? "LIVE" : state, nextRunAt)}
               </Button>
               <Button
                 variant="primary"
                 size="lg"
-                disabled={!creatable}
+                aria-disabled={!creatable}
                 onClick={() => void create()}
               >
                 {creating ? "Creating" : createLabel(form, nameState, state, completed)}
@@ -419,6 +440,7 @@ export function EmptyHome({
               perTrade={paper?.perTrade ?? form.perTrade}
               idleNote={idleNote(form)}
               onUpdate={onUpdate}
+              onExpired={onExpired}
             />
           </aside>
         </div>

@@ -230,8 +230,41 @@ test("model.ts's copies match api-schema's and core's", async () => {
     "nfl.com",
     "@AdamSchefter",
     "x.com/AdamSchefter",
+    "https://twitter.com/AdamSchefter",
+    "mobile.x.com/AdamSchefter",
     "the Thursday report",
   ]) {
     assert.equal(readKind(line), core.classifyRead(line).kind === "site" ? "site" : "soon", line);
   }
+});
+
+test("a failed availability check is its own state: pink, a retry label, no create", async () => {
+  const model = await import("../src/features/studio/brief/model");
+  assert.equal(handleState("Halftime", "failed"), "failed");
+  assert.equal(handleState("Al", "failed"), "invalid");
+  assert.equal(handleTone("failed"), "pink");
+  assert.equal(
+    createLabel(filled(), "failed", "DONE", true),
+    "Couldn't check @halftime · try again",
+  );
+  assert.equal(canCreate("failed", "DONE", true), false);
+  assert.equal(model.handleAnnouncement(filled(), "failed"), "Couldn't check @halftime");
+});
+
+test("the handle line announces what the check found, and nothing while it asks", async () => {
+  const { handleAnnouncement } = await import("../src/features/studio/brief/model");
+  assert.equal(handleAnnouncement(filled(), "free"), "@halftime is available");
+  assert.equal(handleAnnouncement(filled(), "taken"), "@halftime is taken");
+  assert.equal(handleAnnouncement(filled({ name: "Al" }), "invalid"), "@al can't be a handle");
+  assert.equal(handleAnnouncement(filled(), "checking"), "");
+  assert.equal(handleAnnouncement(filled({ name: "" }), "empty"), "");
+});
+
+test("polling a paper run gives up only when the run is gone", async () => {
+  const { readGivesUp } = await import("../src/features/studio/brief/model");
+  assert.equal(readGivesUp("NOT_FOUND"), true);
+  assert.equal(readGivesUp("404"), true);
+  assert.equal(readGivesUp("INTERNAL_OR_PROVIDER_FAILURE"), false);
+  assert.equal(readGivesUp("503"), false);
+  assert.equal(readGivesUp(""), false);
 });

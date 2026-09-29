@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon, Tag } from "@pickler/ui";
-import { readPreviewRun, type PreviewRun, type RunEvent } from "../api";
+import { errorCode, readPreviewRun, type PreviewRun, type RunEvent } from "../api";
 import { traceLines } from "../create/trace";
 import { startPolling } from "../lib/polling";
-import { isTerminal, type RunState } from "./model";
+import { isTerminal, readGivesUp, type RunState } from "./model";
 import { runResult } from "./result";
 import create from "../create/create.module.css";
 import styles from "../home/home.module.css";
@@ -30,6 +30,7 @@ export function PaperRun({
   perTrade,
   idleNote,
   onUpdate,
+  onExpired,
 }: {
   previewId: string | null;
   staged: PaperRunView | null;
@@ -38,6 +39,8 @@ export function PaperRun({
   perTrade: number;
   idleNote: string;
   onUpdate(run: PreviewRun): void;
+  /** The run can no longer be read (404: expired or cleaned up). Polling has stopped. */
+  onExpired(): void;
 }) {
   const [view, setView] = useState<PaperRunView>(staged ?? { run: null, events: [] });
   const [pollError, setPollError] = useState<string | null>(null);
@@ -48,7 +51,16 @@ export function PaperRun({
     }
     return startPolling(
       async (signal) => {
-        const read = await readPreviewRun(previewId, signal);
+        let read;
+        try {
+          read = await readPreviewRun(previewId, signal);
+        } catch (caught) {
+          if (!signal.aborted && readGivesUp(errorCode(caught))) {
+            onExpired();
+            return null;
+          }
+          throw caught;
+        }
         if (signal.aborted) {
           return null;
         }
@@ -61,7 +73,7 @@ export function PaperRun({
         setPollError(caught instanceof Error ? caught.message : "");
       },
     );
-  }, [previewId, staged, onUpdate]);
+  }, [previewId, staged, onUpdate, onExpired]);
 
   const run = view.run;
   const lines = traceLines(view.events, run?.startedAt ?? run?.createdAt ?? 0);

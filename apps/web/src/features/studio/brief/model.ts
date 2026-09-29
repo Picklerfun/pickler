@@ -135,10 +135,13 @@ export const deriveHandle = (name: string): string =>
 
 const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
 
-export type HandleState = "empty" | "invalid" | "checking" | "free" | "taken";
+export type HandleState = "empty" | "invalid" | "checking" | "free" | "taken" | "failed";
 
-/** `available` is the availability check's answer for the current handle, or null while asking. */
-export function handleState(name: string, available: boolean | null): HandleState {
+/**
+ * `available` is the availability check's answer for the current handle, null while asking, or
+ * "failed" when the check itself did not answer (the name offers a retry and Create stays shut).
+ */
+export function handleState(name: string, available: boolean | null | "failed"): HandleState {
   if (!name.trim()) {
     return "empty";
   }
@@ -148,7 +151,27 @@ export function handleState(name: string, available: boolean | null): HandleStat
   if (available === null) {
     return "checking";
   }
+  if (available === "failed") {
+    return "failed";
+  }
   return available ? "free" : "taken";
+}
+
+/** The handle line's words for a screen reader, once the check has an answer. */
+export function handleAnnouncement(form: BriefForm, state: HandleState): string {
+  const handle = `@${deriveHandle(form.name) || "handle"}`;
+  switch (state) {
+    case "free":
+      return `${handle} is available`;
+    case "taken":
+      return `${handle} is taken`;
+    case "invalid":
+      return `${handle} can't be a handle`;
+    case "failed":
+      return `Couldn't check ${handle}`;
+    default:
+      return "";
+  }
 }
 
 /** The handle line's colour: faint when empty, lime when OK, pink when it cannot be used. */
@@ -277,6 +300,9 @@ export function createLabel(
   if (handle === "checking") {
     return `Checking @${derived}…`;
   }
+  if (handle === "failed") {
+    return `Couldn't check @${derived} · try again`;
+  }
   if (state !== "DONE" || !completed) {
     return "Run it once, then create";
   }
@@ -323,6 +349,12 @@ export function readKind(line: string): "site" | "soon" {
   }
   return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host) ? "site" : "soon";
 }
+
+/**
+ * Whether polling a paper run should stop on this error code: the run is gone (expired after 24 h,
+ * or cleaned up), so reading again can never succeed. Anything else is retried.
+ */
+export const readGivesUp = (code: string): boolean => code === "NOT_FOUND" || code === "404";
 
 const FIELD_SECTION: Record<string, SectionKey> = {
   thesis: "thesis",

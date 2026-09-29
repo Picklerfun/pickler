@@ -108,3 +108,66 @@ test("no result until the run completed with a decision", () => {
   assert.equal(runResult(run(null, "running"), [], 5), null);
   assert.equal(runResult(run(null, "failed"), [], 5), null);
 });
+
+test("a stand-down the policy made reads as a person would say it, not its code", () => {
+  const policy = (codes: string[]) =>
+    run({
+      action: "ABSTAIN",
+      outcomeId: null,
+      abstentionReason: `Policy rejected proposal: ${codes.join(", ")}`,
+      policyEvaluation: { finalAction: "ABSTAIN", reasonCodes: codes },
+    });
+  assert.equal(
+    runResult(policy(["PRICE_EXCEEDS_LIMIT"]), [market], 5)?.meta,
+    "THE PRICE MOVED PAST ITS LIMIT",
+  );
+  assert.equal(
+    runResult(policy(["WIDE_PROBABILITY_RANGE", "HIGH_UNCERTAINTY"]), [market], 5)?.meta,
+    "ITS RANGE WAS TOO WIDE",
+  );
+  assert.equal(
+    runResult(policy(["SOMETHING_NEW"]), [market], 5)?.meta,
+    "ITS RULES STOPPED THE TRADE",
+  );
+  // An older decision without policyEvaluation still carries the codes in its reason.
+  assert.equal(
+    runResult(
+      run({
+        action: "ABSTAIN",
+        outcomeId: null,
+        abstentionReason: "Policy rejected proposal: HIGH_UNCERTAINTY",
+      }),
+      [],
+      5,
+    )?.meta,
+    "TOO UNCERTAIN TO CALL",
+  );
+});
+
+test("every policy reason code has its own words", async () => {
+  const { policyReasonText } = await import("../src/features/studio/brief/result");
+  const schema = await import("@pickler/api-schema");
+  // The enum the stored decision is parsed with: a code added there without words here fails.
+  const codes = schema.decisionV2Schema.shape.policyEvaluation.shape.reasonCodes.element.options;
+  assert.ok(codes.length >= 9);
+  for (const code of codes) {
+    assert.notEqual(policyReasonText(code), policyReasonText("SOMETHING_NEW"), code);
+  }
+});
+
+test("a model that stood down on its own keeps its own words, whatever codes came with it", () => {
+  const result = runResult(
+    run({
+      action: "ABSTAIN",
+      outcomeId: null,
+      abstentionReason: "The injury news is already priced",
+      policyEvaluation: {
+        finalAction: "ABSTAIN",
+        reasonCodes: ["MODEL_ABSTAINED", "HIGH_UNCERTAINTY"],
+      },
+    }),
+    [market],
+    5,
+  );
+  assert.equal(result?.meta, "THE INJURY NEWS IS ALREADY PRICED");
+});

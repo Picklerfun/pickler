@@ -5,6 +5,7 @@ import {
   STEPPERS,
   capsProblem,
   deriveHandle,
+  handleAnnouncement,
   handleTone,
   lines,
   readKind,
@@ -27,6 +28,7 @@ export function BriefFields({
   fieldErrors,
   disabled,
   onChange,
+  onRecheck,
 }: {
   form: BriefForm;
   handle: HandleState;
@@ -34,6 +36,8 @@ export function BriefFields({
   fieldErrors: Partial<Record<SectionKey, string>>;
   disabled: boolean;
   onChange(next: BriefForm): void;
+  /** Ask the availability check again after it failed. */
+  onRecheck(): void;
 }) {
   const problem = capsProblem(form);
   return (
@@ -58,6 +62,14 @@ export function BriefFields({
             {form.name.trim() ? `@${deriveHandle(form.name)}` : "@handle"}
           </span>
           <small>BLANK BRIEF</small>
+          {handle === "failed" && (
+            <button type="button" className={styles.handleRetry} onClick={onRecheck}>
+              Couldn&apos;t check · try again
+            </button>
+          )}
+        </p>
+        <p className={styles.srOnly} role="status" aria-live="polite">
+          {handleAnnouncement(form, handle)}
         </p>
       </div>
 
