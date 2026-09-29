@@ -26,6 +26,15 @@
 // clipboard, listo para pegar al array de abajo.
 
 window.DOCS = [
+  {
+    date: '2026-09-29',
+    title: 'TestFlight build 11 · rediseño light',
+    summary: 'Build 0.1.0 (11) con el rediseño claro del Handoff (mobile-light F1+F2): 4 pestañas, Portfolio, Read, board nivel × tiempo, barras fijas, perfil de agente y onboarding.',
+    file: 'dev/2026-09-29-testflight-build11.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios'],
+  },
   // ← Las entradas nuevas se pegan aquí (más reciente primero).
   {
     date: '2026-09-28',
