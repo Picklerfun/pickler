@@ -67,6 +67,14 @@ export interface AgentConfig {
    * value cap). Absent until the person sets it.
    */
   spend?: SpendLimits | undefined;
+  /**
+   * The brief written on `/studio` (docs/specs/studio-brief-v1.md §2). Absent for agents made in
+   * `/studio/new`, which behave exactly as before. Stored normalized; `assertBrief` refuses
+   * anything else.
+   */
+  brief?: AgentBrief | undefined;
+  /** The brief's MAX LEVERAGE. Stored only: it applies to perps, which are `SOON_VENUES`. */
+  maxLeverage?: number | undefined;
 }
 
 export interface SpendLimits {
@@ -202,6 +210,16 @@ export interface ModelAssessment extends Omit<LegacyDecision, "estimatedProbabil
   uncertaintyLevel: "LOW" | "MEDIUM" | "HIGH";
   missingInformation: string[];
   report?: ResearchReport;
+  /** The model's answer to each brief rule; required when the run's config has a brief (§3.2). */
+  brief?: BriefEvaluation | undefined;
+}
+
+/** One answer per rule, in the brief's order. The policy layer checks it (`briefVerdict`). */
+export interface BriefEvaluation {
+  entries: { rule: string; fired: boolean; why: string }[];
+  /** The `exitsWhen` line it set, copied exactly, or null. */
+  exitArmed: string | null;
+  neverChecked: { rule: string; respected: boolean }[];
 }
 export type PolicyReason =
   | "MODEL_ABSTAINED"
@@ -210,7 +228,9 @@ export type PolicyReason =
   | "MISSING_PROBABILITY"
   | "WIDE_PROBABILITY_RANGE"
   | "INSUFFICIENT_CONSERVATIVE_MARGIN"
-  | "PRICE_EXCEEDS_LIMIT";
+  | "PRICE_EXCEEDS_LIMIT"
+  | "BRIEF_ENTRY_NOT_MET"
+  | "BRIEF_NEVER_BROKEN";
 export interface DecisionV2 extends LegacyDecision {
   schemaVersion: 2;
   modelAssessment: ModelAssessment;
@@ -324,6 +344,8 @@ export interface ResearchModel {
     /** Trusted host capture of the exact tool-free finalizer evidence, never model input. */
     onDecisionInput?(input: DecisionInputSnapshot): void;
     selectionSteps?: number;
+    /** The run's brief, so the decision can answer each rule. Absent without one. */
+    brief?: AgentBrief | undefined;
   }): Promise<{ decision: ModelAssessment; usage: unknown }>;
   metadata(): {
     model: string;
@@ -334,6 +356,7 @@ export interface ResearchModel {
       decision?: PromptSnapshot;
       nflDecision?: PromptSnapshot;
       generalDecision?: PromptSnapshot;
+      briefDecision?: PromptSnapshot;
     };
   };
 }
@@ -431,6 +454,123 @@ export class PersistenceFailure extends PilotError {
       "Research persistence failed; inspect the persistence_failure event",
     );
   }
+}
+
+/** The brief a person writes on `/studio` (§2). Lines are trimmed and never blank. */
+export interface AgentBrief {
+  /** Why this edge exists, in plain words. May be empty. */
+  thesis: string;
+  /** One source per line: a site, an @account or a named feed. */
+  reads: string[];
+  /** Every line must be true for it to enter. At least one. */
+  entersWhen: string[];
+  /** The first line that turns true closes it. */
+  exitsWhen: string[];
+  /** Hard lines it will not cross. */
+  never: string[];
+}
+
+/** The canvas sets none; these exist so a brief fits a prompt. */
+export const BRIEF_LIMITS = {
+  thesis: 600,
+  line: 200,
+  reads: 12,
+  entersWhen: 8,
+  exitsWhen: 8,
+  never: 8,
+} as const;
+
+export type BriefField = keyof AgentBrief;
+export type BriefProblem = "required" | "too_long" | "too_many" | "not_trimmed";
+
+/** 400 INVALID_BRIEF, naming the section and why, so the screen can say it under that section. */
+export class BriefError extends PilotError {
+  constructor(
+    public readonly field: BriefField,
+    public readonly reason: BriefProblem,
+  ) {
+    super("INVALID_BRIEF", `Brief ${field}: ${reason}`);
+  }
+}
+
+const BRIEF_LISTS = ["reads", "entersWhen", "exitsWhen", "never"] as const;
+
+/** The canvas's `split('\n').map(trim).filter(Boolean)`, for text or for lines already split. */
+export function briefLines(value: string | readonly string[]): string[] {
+  const raw =
+    typeof value === "string" ? value.split("\n") : value.flatMap((line) => line.split("\n"));
+  return raw.map((line) => line.trim()).filter(Boolean);
+}
+
+export function normalizeBrief(input: AgentBrief): AgentBrief {
+  return {
+    thesis: input.thesis.trim(),
+    reads: briefLines(input.reads),
+    entersWhen: briefLines(input.entersWhen),
+    exitsWhen: briefLines(input.exitsWhen),
+    never: briefLines(input.never),
+  };
+}
+
+/** Every write path runs this on a normalized brief; it never fixes one up. */
+export function assertBrief(brief: AgentBrief): void {
+  if (typeof brief.thesis !== "string" || brief.thesis !== brief.thesis.trim()) {
+    throw new BriefError("thesis", "not_trimmed");
+  }
+  if (brief.thesis.length > BRIEF_LIMITS.thesis) {
+    throw new BriefError("thesis", "too_long");
+  }
+  for (const field of BRIEF_LISTS) {
+    const lines: unknown = brief[field];
+    if (!Array.isArray(lines)) {
+      throw new BriefError(field, "required");
+    }
+    if (lines.length > BRIEF_LIMITS[field]) {
+      throw new BriefError(field, "too_many");
+    }
+    for (const line of lines) {
+      if (typeof line !== "string" || !line || line !== line.trim() || line.includes("\n")) {
+        throw new BriefError(field, "not_trimmed");
+      }
+      if (line.length > BRIEF_LIMITS.line) {
+        throw new BriefError(field, "too_long");
+      }
+    }
+  }
+  if (brief.entersWhen.length === 0) {
+    throw new BriefError("entersWhen", "required");
+  }
+}
+
+/** MAX LEVERAGE: stored, shown with "Soon", applied once perps run. */
+export const LEVERAGE_BOUNDS = { min: 1, max: 10 } as const;
+
+export function assertMaxLeverage(value: number): void {
+  if (!Number.isInteger(value) || value < LEVERAGE_BOUNDS.min || value > LEVERAGE_BOUNDS.max) {
+    throw new PilotError("INVALID_INPUT", "Leverage must be a whole number from 1 to 10");
+  }
+}
+
+/**
+ * The eight inputs a run was made from (§5): thesis, reads, enters, exits, never, per trade, per
+ * day, leverage. Taken on the normalized brief, so whitespace alone never makes a run stale.
+ */
+export function briefFingerprint(input: {
+  brief: AgentBrief;
+  spend: SpendLimits;
+  maxLeverage: number;
+}): string {
+  const { brief, spend, maxLeverage } = input;
+  return JSON.stringify([
+    brief.thesis,
+    brief.reads,
+    brief.entersWhen,
+    brief.exitsWhen,
+    brief.never,
+    spend.perCallAusd,
+    spend.perDayAusd,
+    maxLeverage,
+  ]);
 }
 
 export const DEFAULT_CONFIG: AgentConfig = {
@@ -544,6 +684,12 @@ export function assertConfig(config: AgentConfig): void {
   }
   if (config.spend !== undefined) {
     assertSpendLimits(config.spend);
+  }
+  if (config.brief !== undefined) {
+    assertBrief(config.brief);
+  }
+  if (config.maxLeverage !== undefined) {
+    assertMaxLeverage(config.maxLeverage);
   }
   if (config.skills) {
     if (config.skills.length > MAX_SKILLS) {
