@@ -153,6 +153,7 @@ export { publicSourceUrl } from "./features/research/source-url.js";
 export * from "./features/paper/orders.js";
 export * from "./features/studio/access.js";
 export * from "./features/studio/draft.js";
+export * from "./features/studio/brief-config.js";
 export * from "./features/studio/locks.js";
 
 export * from "./features/trading/types.js";
