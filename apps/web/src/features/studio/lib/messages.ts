@@ -18,6 +18,7 @@ const messages: Record<string, string> = {
   NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
   UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
   DRAFT_LIMIT: "At most 3 drafts at a time.",
+  BALANCES_UNAVAILABLE: "Balances and deposits are not available here yet.",
   INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
   INVALID_BRIEF: "Check the brief: a section is empty, too long or has too many lines.",
   PREVIEW_RATE_LIMITED: "Five paper runs an hour. The next one opens soon.",

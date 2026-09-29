@@ -12,6 +12,7 @@ import {
   capsProblem,
   createLabel,
   createPress,
+  createProblem,
   createdLabel,
   deriveHandle,
   emptyForm,
@@ -393,4 +394,31 @@ test("a press while a create or a reload is under way does nothing", () => {
 test("a failed reload says the agent was created, and offers the reload", () => {
   assert.equal(createdLabel(CREATED, "failed"), "Created Half Time. Couldn't load it · reload");
   assert.equal(createdLabel(CREATED, "opening"), "Opening Half Time");
+});
+
+/* What a refused create says, and what it does to the screen. */
+
+test("a retried create under another name says the name changed", () => {
+  // 409 CONFLICT from POST /drafts: this run already became a draft, under a different name.
+  assert.deepEqual(createProblem("CONFLICT", "Name or handle already used"), {
+    kind: "message",
+    text: "That name changed since the draft was created · reload",
+  });
+});
+
+test("the refusals the screen already shows in place stay where they are", () => {
+  assert.deepEqual(createProblem("RUN_STALE", "x"), { kind: "stale" });
+  assert.deepEqual(createProblem("HANDLE_TAKEN", "x"), { kind: "taken" });
+  assert.deepEqual(createProblem("PREVIEW_UNUSABLE", "x"), {
+    kind: "rerun",
+    text: "That paper run can't be used any more. Run it again, then create.",
+  });
+});
+
+test("any other refusal is said in the words it came with", () => {
+  assert.deepEqual(createProblem("DRAFT_LIMIT", "At most 3 drafts at a time."), {
+    kind: "message",
+    text: "At most 3 drafts at a time.",
+  });
+  assert.deepEqual(createProblem("", ""), { kind: "message", text: "It was not created." });
 });

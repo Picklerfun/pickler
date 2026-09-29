@@ -40,10 +40,17 @@ test("an unfunded agent closes the gate and is the one named", () => {
   assert.deepEqual(createGate([funded, unfunded]), { open: false, agent: unfunded });
 });
 
-test("an agent without a wallet reads as unfunded", () => {
+test("an agent without a wallet is not the one to fund: there is nothing to fund", () => {
+  // Made before wallets existed. The API does not count it as unfunded, so neither does the gate.
   const bare = agent("a", null, locked);
+  const unfunded = agent("b", 4, locked);
 
-  assert.deepEqual(createGate([bare]), { open: false, agent: bare });
+  assert.deepEqual(createGate([bare, unfunded]), { open: false, agent: unfunded });
+});
+
+test("a lock with no wallet behind it is not one the gate can explain, so it does not invent one", () => {
+  // The API answers `unfunded_agent` only over agents with a wallet, and refuses the create itself.
+  assert.deepEqual(createGate([agent("a", null, locked)]), { open: true });
 });
 
 test("a closed lock with no agent below the minimum still names one", () => {
@@ -170,4 +177,14 @@ test("three drafts do not close /studio/new: the limit is on drafts, and it crea
 
   assert.equal(started, 1);
   assert.deepEqual(outcome, { started: true, value: "ceremony" });
+});
+
+test("the staged draft home models the lock the API gives a lone draft: open", async () => {
+  // One draft, no wallet agents: nothing is unfunded and the drafts are below their limit.
+  const { draftFixture } = await import("../src/features/studio/home/fixture");
+  const staged = draftFixture().agent;
+
+  assert.equal(staged.draft, true);
+  assert.deepEqual(staged.canCreateAnother, { ok: true, reason: null });
+  assert.equal(newAgentLock([staged]), "");
 });

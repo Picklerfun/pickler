@@ -22,6 +22,7 @@ import {
   canRun,
   createLabel,
   createPress,
+  createProblem,
   createdLabel,
   deriveHandle,
   emptyForm,
@@ -278,17 +279,20 @@ export function EmptyHome({
         previewRunId: paper.id,
       }));
     } catch (caught) {
-      const code = errorCode(caught);
-      if (code === "RUN_STALE") {
+      const problem = createProblem(
+        errorCode(caught),
+        caught instanceof Error ? caught.message : "",
+      );
+      if (problem.kind === "stale") {
         // The server saw a different brief than the run's: say so the way the screen does.
         setPaper((current) => (current ? { ...current, ranFor: "" } : current));
-      } else if (code === "HANDLE_TAKEN") {
+      } else if (problem.kind === "taken") {
         setAvailability({ handle, available: false });
-      } else if (code === "PREVIEW_UNUSABLE") {
-        setPaper(null);
-        setCreateError("That paper run can't be used any more. Run it again, then create.");
       } else {
-        setCreateError(caught instanceof Error ? caught.message : "It was not created.");
+        if (problem.kind === "rerun") {
+          setPaper(null);
+        }
+        setCreateError(problem.text);
       }
       return;
     } finally {

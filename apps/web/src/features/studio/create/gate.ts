@@ -27,13 +27,15 @@ const closedBy = (agent: GateAgent, reason: "unfunded_agent" | "draft_limit"): b
  * The funding lock, which is the whole gate for `/studio/new`. Open with no agents, when the API
  * says another may be created, and when all it says is that the drafts are full. Closed otherwise,
  * naming the agent to fund among those that have a wallet to fund: the first one below the
- * minimum, or the first of them when none reads as unfunded. Never a draft.
+ * minimum, or the first of them when none reads as unfunded. Never a draft, and never an agent
+ * without a wallet.
  */
 export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGate<A> {
   if (!agents.some((agent) => closedBy(agent, "unfunded_agent"))) {
     return { open: true };
   }
-  const fundable = agents.filter((agent) => !agent.draft);
+  // A draft has no wallet yet and an agent made before wallets never will: the API counts neither.
+  const fundable = agents.filter((agent) => !agent.draft && agent.wallet !== null);
   const unfunded = fundable.find((agent) => (agent.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD);
   const named = unfunded ?? fundable[0];
   // No agent with a wallet is a lock the API cannot have meant; it refuses the create itself.

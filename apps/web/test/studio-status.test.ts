@@ -671,3 +671,11 @@ test("a draft refused at the limit is told so, not shown a raw request failure",
   );
   assert.equal(messageFor("500", undefined), "Request failed: 500");
 });
+
+test("balances switched off are said in words", async () => {
+  const { messageFor } = await import("../src/features/studio/lib/messages");
+  assert.equal(
+    messageFor("BALANCES_UNAVAILABLE", "Balances are not available"),
+    "Balances and deposits are not available here yet.",
+  );
+});

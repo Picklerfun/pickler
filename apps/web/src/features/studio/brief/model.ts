@@ -312,6 +312,37 @@ export function createLabel(
 export const canCreate = (handle: HandleState, state: RunState, completed: boolean): boolean =>
   handle === "free" && state === "DONE" && completed;
 
+export type CreateProblem =
+  | { kind: "stale" }
+  | { kind: "taken" }
+  | { kind: "rerun"; text: string }
+  | { kind: "message"; text: string };
+
+/**
+ * What a refused create does to the screen. A stale run and a taken handle are shown where they
+ * are (the run's state, the name's line); an unusable run asks for a new one; the rest is a line
+ * under the buttons, in the words the refusal came with. `CONFLICT` here is one case only: this
+ * run already became a draft, under a different name.
+ */
+export function createProblem(code: string, message: string): CreateProblem {
+  if (code === "RUN_STALE") {
+    return { kind: "stale" };
+  }
+  if (code === "HANDLE_TAKEN") {
+    return { kind: "taken" };
+  }
+  if (code === "PREVIEW_UNUSABLE") {
+    return {
+      kind: "rerun",
+      text: "That paper run can't be used any more. Run it again, then create.",
+    };
+  }
+  if (code === "CONFLICT") {
+    return { kind: "message", text: "That name changed since the draft was created · reload" };
+  }
+  return { kind: "message", text: message || "It was not created." };
+}
+
 /** A draft the API answered 201 for: it exists whatever happens to the screen afterwards. */
 export interface CreatedDraft {
   productId: string;

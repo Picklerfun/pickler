@@ -188,7 +188,8 @@ export function draftFixture(): HomeFixture {
       draft: true,
       wallet: null,
       canSchedule: { ok: false, reason: "unfunded" },
-      canCreateAnother: { ok: false, reason: "unfunded_agent" },
+      // A lone draft: not counted as unfunded, and below the draft limit.
+      canCreateAnother: { ok: true, reason: null },
     },
     order: null,
   };
