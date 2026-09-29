@@ -10,7 +10,7 @@
 
 **Spec:** `docs/specs/cleanup-and-design-system-v1.md` (section 8 overrides sections 2–3). **Evidence:** `docs/specs/cleanup-inventory-2026-09-29.md`. **Visual authority:** `docs/specs/design-system-v2.md`.
 
-**How this plan was checked.** Every tool, mapping table and patch was applied, in this order, to a throwaway clone of this branch at `5c07c97`, and the design checks were run there after each batch; the patches in `patches/` are the diffs of that run. The numbers quoted as "Expected" are what that run printed. If a command here prints something else, the tree has moved since the plan was written: stop and read the difference before going on.
+**How this plan was checked.** Every tool, mapping table and patch was applied, in this order, to a throwaway clone of this branch at `5c07c97`, and the design checks were run there after each batch; the patches in `patches/` are the diffs of that run. The committed tools, maps and patches were then replayed on a second clean checkout and gave the same tree, byte for byte. On that tree `typecheck`, `lint`, `format:check`, `npm test` (1768 tests, 1767 passing, 1 skipped, 0 failing), `build`, `check:staging` and `build:workers` exit 0, the static check is clean, and the four rendered checks are clean over all 60 routes. The numbers quoted as "Expected" are what that run printed. If a command here prints something else, the tree has moved since the plan was written: stop and read the difference before going on.
 
 ---
 
@@ -116,6 +116,7 @@ These are not resolved by this plan. They are listed so nobody takes the plan's 
 10. **The runtime checks read no `::before` or `::after` and nothing a `<canvas>` draws.** Spec 3.4 does not ask for them; the static check covers what a pseudo-element's rule declares.
 11. **`::backdrop` and tokens.** `--pk-scrim` is read inside `::backdrop`, which inherits custom properties only in browsers from 2024 on (Chrome 122, Firefox 120, Safari 17.4). In an older browser the two dialogs open over an undimmed page. Nothing else in the product reads a token from `::backdrop` today.
 12. **The inventory counts 72 plain aliases and 24 hex literals in TypeScript; the check counts 100 and 21.** The check counts the 28 variant definitions whose value is `var(--pk-…)` as aliases, leaves the four Google colours out, and counts the one `rgba()` in `chart.tsx`. The same code, counted by the rule that will judge it.
+13. **The passkey sheet does not hydrate cleanly in development.** On `/signup` the dev server logs a hydration mismatch at `features/auth/components/passkey-sheet.tsx:128`, and Next's overlay shows "1 Issue" in the corner of the auth screenshots. It was there before this work and no task touches it; it is outside the spec. It matters here only because the overlay is in the pictures: if the count of issues changes, those shots differ in their bottom-left corner.
 
 ## How to run the design harness
 
