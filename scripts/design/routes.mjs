@@ -111,28 +111,11 @@ const ALL = [
    * BTC-PERP a symbol in createSampleMarketBoard. An invented one answers 404, which this file
    * reports as "not built yet" — the one wrong answer available here.
    */
-  /* The three /agents screens declare `dark`, and they are the only marketplace routes that do
-   * besides /apply. That is not this file disagreeing with the product — it is this file recording
-   * a redraw the product already admits it owes.
-   *
-   * public-shell.tsx takes a `surface` prop and says what it is for: "It is light, which is what
-   * the marketplace is. `surface` exists for the routes whose *bodies* still compose against a
-   * dark ground — the agent pages — because one wrapper cannot hold two surfaces and those bodies
-   * are not this task's to redraw. The prop goes when the last body is redrawn." Only these three
-   * pass `surface="dark"`, and /agents/[handle]/ask carries the same admission in its own words.
-   *
-   * So the ground they paint today is night blue and the ground the marketplace is, is white.
-   * Declaring `light` here would put six standing failures in surfaces.mjs that say only what this
-   * comment says, on three screens nobody disputes; declaring `dark` measures the ground they
-   * actually ship on, which is what makes their inversions and their contrast numbers mean
-   * anything. When those bodies are redrawn and the prop goes, these three flip to `light` in one
-   * edit and surfaces.mjs is what catches a body that was missed.
-   */
   {
     path: "/agents",
     name: "agents",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
     // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
@@ -145,7 +128,7 @@ const ALL = [
     path: "/agents/halftime",
     name: "agent-profile",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // The activity panel, on a page that also carries this agent's token link. The panel alone
     // would report green for any profile; the token link says it is Halftime's, which is the
@@ -157,7 +140,7 @@ const ALL = [
     path: "/agents/halftime/ask",
     name: "agent-ask",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // COMPOSE, which is step one of three and the only one a GET reaches. The market chooser and
     // the sentence under the fixed question both belong to that step: REVIEW replaces them, so

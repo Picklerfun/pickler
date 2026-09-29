@@ -51,27 +51,6 @@
   outline-offset: 2px;
 }
 
-.space {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    120% 70% at 50% 0%,
-    var(--pk-space-core) 0%,
-    var(--pk-space-mid) 45%,
-    var(--pk-space-edge) 100%
-  );
-}
-
-.stars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.4;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.7) 1px, transparent 1px);
-  background-size: 130px 130px;
-}
-
 .label {
   margin: 0;
   font: 500 11px/1 var(--label);
@@ -2031,9 +2010,11 @@
   align-items: center;
 }
 
+/* The beat, in the agent's own colour: its ink, because the accent itself is a fill and cannot be
+   read on a light ground. */
 .beatChip {
   letter-spacing: 0.06em;
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent-ink);
 }
 
