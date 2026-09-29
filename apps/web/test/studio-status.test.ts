@@ -643,3 +643,18 @@ test("every staged agent carries an accent from the palette", () => {
     assert.equal(homeFixture(stage).agent.accent, "lime");
   }
 });
+
+test("a draft's call does not ask for funding: its wallet comes with Go Public", () => {
+  const status = homeStatus({
+    run: decided(),
+    events: traced,
+    agent: agent({ draft: true, wallet: null }),
+    now: T0 + 140_000,
+    runCount: 1,
+  });
+
+  assert.equal(
+    status.say,
+    "That was my first call, on paper. I stay private and on paper until I go public.",
+  );
+});

@@ -32,6 +32,8 @@ export interface StatusAgent {
   config: { intervalHours: number };
   wallet: { balanceAusd: number } | null;
   canSchedule: { ok: boolean; reason: string | null };
+  /** A private draft (studio-brief-v1 §6): no wallet to fund until it goes public. */
+  draft?: boolean;
 }
 
 export interface StatusInput {
@@ -271,7 +273,9 @@ export function homeStatus({ run, events, agent, now, runCount }: StatusInput): 
       ? pickTitle(market, decision.outcomeId ?? null, decision.marketId)
       : (market?.question ?? `Market ${decision.marketId}`);
     moodSub = `${title} · ${which} call`;
-    if (!funded(agent)) {
+    if (agent.draft) {
+      say = `That was my ${which} call, on paper. I stay private and on paper until I go public.`;
+    } else if (!funded(agent)) {
       say = `That was my ${which} call, on paper. Fund my wallet and I can keep going on my own.`;
     } else if (agent.canSchedule.ok) {
       say = "Funded. Turn on the schedule and I will keep going on my own.";

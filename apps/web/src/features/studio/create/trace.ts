@@ -36,6 +36,10 @@ function words(event: RunEvent): { text: string; tint: TraceTint } {
     }
     case "selection":
       return { text: "Chose the market to call", tint: "violet" };
+    case "market":
+      return { text: "Read the market", tint: "violet" };
+    case "final_market":
+      return { text: "Read its price again", tint: "violet" };
     case "market_classification":
       return { text: "Read what kind of market it is", tint: "violet" };
     case "plugin_availability":

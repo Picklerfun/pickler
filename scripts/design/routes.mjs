@@ -370,6 +370,41 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-empty",
   },
+  // The brief home with its paper run live, done and stale (`?stage=brief-*`), and the draft home
+  // after create (`?stage=draft`). Each proves the state it stages, so a stage that fell back to
+  // another is not reported green.
+  {
+    path: "/studio?stage=brief-running",
+    name: "studio-brief-running",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="LIVE"]',
+  },
+  {
+    path: "/studio?stage=brief-done",
+    name: "studio-brief-done",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="DONE"]',
+  },
+  {
+    path: "/studio?stage=brief-stale",
+    name: "studio-brief-stale",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="STALE"]',
+  },
+  {
+    path: "/studio?stage=draft",
+    name: "studio-home-draft",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: "#home-go-public",
+  },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
   {

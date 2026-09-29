@@ -38,9 +38,10 @@ import { Context } from "./sections/context";
 import { Stub } from "./sections/stub";
 import type { SectionKey } from "./sections/stub";
 import { Home } from "./home/home";
+import { briefFixture } from "./brief/fixture";
 import { EmptyHome } from "./home/empty";
-import { homeFixture } from "./home/fixture";
-import type { StudioStage } from "./home/stage";
+import { draftFixture, homeFixture } from "./home/fixture";
+import { isBriefStage, isHomeStage, type StudioStage } from "./home/stage";
 import { studioLanding } from "./lib/landing";
 import styles from "./studio.module.css";
 
@@ -152,8 +153,11 @@ export function Studio({
 }) {
   const router = useRouter();
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
-  const [staged] = useState(() => (stage && stage !== "empty" ? homeFixture(stage) : null));
-  const [stagedEmpty] = useState(stage === "empty");
+  const [staged] = useState(() =>
+    isHomeStage(stage) ? homeFixture(stage) : stage === "draft" ? draftFixture() : null,
+  );
+  const [stagedBrief] = useState(() => (isBriefStage(stage) ? briefFixture(stage) : null));
+  const [stagedEmpty] = useState(stage === "empty" || isBriefStage(stage));
   /* Either staged home stands alone: no session is read and nothing is fetched. */
   const staging = staged !== null || stagedEmpty;
   const [section, setSection] = useState<View>(openSection ?? "home");
@@ -463,7 +467,7 @@ export function Studio({
         preview={preview}
         locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
         error={error}
-        staged={null}
+        staged={stagedBrief}
         onCreated={async (productId) => {
           await loadAgents();
           setAgentId(productId);

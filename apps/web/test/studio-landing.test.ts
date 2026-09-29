@@ -91,3 +91,27 @@ test("the unfunded-agent lock comes after research access", () => {
     "locked",
   );
 });
+
+test("?stage= stages the brief's run states and the draft home, outside production only", () => {
+  for (const stage of ["brief-running", "brief-done", "brief-stale", "draft"]) {
+    assert.equal(stageFromSearch("development", stage), stage);
+    assert.equal(stageFromSearch("production", stage), undefined);
+  }
+  assert.equal(stageFromSearch("development", "brief-nope"), undefined);
+});
+
+test("each staged brief draws the state it is named for", async () => {
+  const { briefFixture } = await import("../src/features/studio/brief/fixture");
+  const { fingerprint, runState, isTerminal } = await import("../src/features/studio/brief/model");
+  const stateOf = (stage: "brief-running" | "brief-done" | "brief-stale") => {
+    const staged = briefFixture(stage);
+    const run = staged.paper.view!.run!;
+    return runState(
+      { started: true, terminal: isTerminal(run.status), ranFor: staged.paper.ranFor },
+      fingerprint(staged.form),
+    );
+  };
+  assert.equal(stateOf("brief-running"), "LIVE");
+  assert.equal(stateOf("brief-done"), "DONE");
+  assert.equal(stateOf("brief-stale"), "STALE");
+});

@@ -656,26 +656,32 @@ a.start:hover {
 }
 .caps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
 }
 .cap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 6px 6px 6px 12px;
   border-radius: var(--pk-radius-lg);
   background: var(--pk-bg);
 }
-.capTitle {
+.capText {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.capTitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font: 600 10px/1.2 var(--pk-font);
-  letter-spacing: 0.1em;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
   color: var(--pk-ink-muted);
 }
 .capButton {
@@ -685,10 +691,10 @@ a.start:hover {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: var(--pk-radius-sm);
-  background: var(--pk-panel-2);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
   color: var(--pk-ink);
-  font: 600 15px/1 var(--pk-font);
+  font: 600 14px/1 var(--pk-font);
   cursor: pointer;
 }
 .capButton:hover:not(:disabled) {
@@ -699,9 +705,8 @@ a.start:hover {
   cursor: not-allowed;
 }
 .capValue {
-  min-width: 64px;
-  text-align: center;
-  font: 600 13px/1 var(--pk-font);
+  font: 700 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
   color: var(--pk-ink);
 }
 .sideState[data-state="LIVE"] {
@@ -1449,6 +1454,11 @@ a.start:hover {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+/* A step's number, not a tick: it reads in muted ink on the panel, where on-lime would vanish. */
+.goSteps .check {
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 /* ---------- Motion ---------- */

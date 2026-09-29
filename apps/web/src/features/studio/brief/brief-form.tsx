@@ -111,6 +111,9 @@ export function BriefFields({
       <div className={styles.briefCard} id="brief-risk">
         <div className={styles.briefCardHead}>
           <span className={styles.briefLabel}>RISK</span>
+          <span className={styles.briefSub}>
+            hard caps · its paper trades keep to them · small on purpose for a first agent
+          </span>
           <span className={styles.briefTag} data-filled={riskTag(form) === "EDITED"}>
             {riskTag(form)}
           </span>
@@ -121,9 +124,15 @@ export function BriefFields({
             const label = stepper.title.toLowerCase();
             return (
               <div key={stepper.key} className={styles.cap}>
-                <span className={styles.capTitle}>
-                  {stepper.title}
-                  {stepper.soon && <Tag className={styles.soon}>SOON</Tag>}
+                <span className={styles.capText}>
+                  <span className={styles.capTitle}>
+                    {stepper.title}
+                    {stepper.soon && <Tag className={styles.soon}>SOON</Tag>}
+                  </span>
+                  <span className={styles.capValue}>
+                    {value}
+                    {stepper.unit}
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -134,10 +143,6 @@ export function BriefFields({
                 >
                   −
                 </button>
-                <span className={styles.capValue}>
-                  {value}
-                  {stepper.unit}
-                </span>
                 <button
                   type="button"
                   className={styles.capButton}

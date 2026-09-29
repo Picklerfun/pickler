@@ -174,3 +174,22 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     : null;
   return { now: START + (decided ? 140_000 : 60_000), agent, runs: [run], events, order };
 }
+
+/**
+ * `?stage=draft`: the home right after "Create Halftime" on the brief. The decided run is its first
+ * run; it is a private draft with no wallet, so it holds nothing and cannot be scheduled.
+ */
+export function draftFixture(): HomeFixture {
+  const decided = homeFixture("decided");
+  return {
+    ...decided,
+    agent: {
+      ...decided.agent,
+      draft: true,
+      wallet: null,
+      canSchedule: { ok: false, reason: "unfunded" },
+      canCreateAnother: { ok: false, reason: "unfunded_agent" },
+    },
+    order: null,
+  };
+}
