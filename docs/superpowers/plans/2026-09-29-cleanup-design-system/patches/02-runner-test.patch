@@ -1,0 +1,164 @@
+diff --git a/scripts/design/compare.test.mjs b/scripts/design/compare.test.mjs
+new file mode 100644
+index 0000000..691ae86
+--- /dev/null
++++ b/scripts/design/compare.test.mjs
+@@ -0,0 +1,65 @@
++// What the screenshot comparison says about a pair of shots, without a browser.
++import assert from "node:assert/strict";
++import test from "node:test";
++import { line, readNoise } from "./lib/compare-report.mjs";
++
++const moved = (changed) => ({
++  resized: false,
++  changed,
++  box: { left: 10, top: 20, right: 30, bottom: 40 },
++  before: [1400, 1000],
++  after: [1400, 1000],
++});
++
++test("identical shots say nothing", () => {
++  assert.equal(line("landing-desktop.png", { ...moved(0), box: null }), null);
++});
++
++test("a shot that moved says how much and where", () => {
++  assert.equal(
++    line("agents-desktop.png", moved(0.25)),
++    "DIFFERS  agents-desktop.png  25.000% of pixels, inside x 10–30, y 20–40",
++  );
++});
++
++test("a shot that changed size is not compared pixel by pixel", () => {
++  const said = line("apply-phone.png", {
++    resized: true,
++    changed: null,
++    box: null,
++    before: [390, 844],
++    after: [390, 900],
++  });
++
++  assert.equal(said, "RESIZED  apply-phone.png  390×844 → 390×900 (not compared pixel by pixel)");
++});
++
++test("a noise file is read from this script's own output", () => {
++  const noise = readNoise(
++    "DIFFERS  token-desktop.png  0.031% of pixels, inside x 184–677, y 658–666\n" +
++      "compare: 78 screen(s) identical, 0 within noise, 1 to look at, of 79.\n",
++  );
++
++  assert.deepEqual([...noise], [["token-desktop.png", 0.031]]);
++});
++
++test("a screen that moves by itself is noise up to three times what it moved", () => {
++  const noise = new Map([["studio-activity-desktop.png", 0.174]]);
++
++  assert.match(
++    line("studio-activity-desktop.png", moved(0.005), noise),
++    /^NOISE {4}studio-activity/,
++  );
++  assert.match(
++    line("studio-activity-desktop.png", moved(0.006), noise),
++    /^DIFFERS {2}studio-activity/,
++  );
++});
++
++test("very small noise still allows 0.05%, and a screen with no noise allows none", () => {
++  const noise = new Map([["account-phone.png", 0.001]]);
++
++  assert.match(line("account-phone.png", moved(0.0005), noise), /^NOISE/);
++  assert.match(line("account-phone.png", moved(0.0006), noise), /^DIFFERS/);
++  assert.match(line("landing-phone.png", moved(0.0001), noise), /^DIFFERS/);
++});
+diff --git a/scripts/design/only.test.mjs b/scripts/design/only.test.mjs
+new file mode 100644
+index 0000000..4762f51
+--- /dev/null
++++ b/scripts/design/only.test.mjs
+@@ -0,0 +1,22 @@
++// Which routes a run visits, when DESIGN_ROUTES names some.
++import assert from "node:assert/strict";
++import test from "node:test";
++import { only } from "./lib/only.mjs";
++
++const routes = [{ name: "landing" }, { name: "agents" }, { name: "agent-ask" }];
++
++test("without the variable every route is visited", () => {
++  assert.deepEqual(only(routes, undefined), routes);
++  assert.deepEqual(only(routes, ""), routes);
++});
++
++test("the routes named are visited, in the list's own order", () => {
++  assert.deepEqual(only(routes, "agent-ask, landing"), [
++    { name: "landing" },
++    { name: "agent-ask" },
++  ]);
++});
++
++test("a name that matches nothing is refused, not skipped", () => {
++  assert.throws(() => only(routes, "agents,agnets"), /no such route: agnets/);
++});
+diff --git a/scripts/design/servers.test.mjs b/scripts/design/servers.test.mjs
+new file mode 100644
+index 0000000..a729d00
+--- /dev/null
++++ b/scripts/design/servers.test.mjs
+@@ -0,0 +1,59 @@
++// What the runner does about the two servers is decided by a pure function, so every position of
++// the decision is pinned here without starting anything.
++import assert from "node:assert/strict";
++import { createServer } from "node:net";
++import test from "node:test";
++import { BASE_URL, listening, plan, webEnv } from "./lib/servers.mjs";
++
++test("with both ports free the runner starts the servers and measures its own", () => {
++  assert.deepEqual(plan({ baseUrl: undefined, fixtureBusy: false, webBusy: false }), {
++    start: true,
++    baseUrl: BASE_URL,
++    refuse: null,
++  });
++});
++
++test("a named server is measured as it is, and nothing is started beside it", () => {
++  const decided = plan({ baseUrl: "http://localhost:3001", fixtureBusy: true, webBusy: true });
++
++  assert.deepEqual(decided, { start: false, baseUrl: "http://localhost:3001", refuse: null });
++});
++
++test("a taken web port is refused rather than measured on a guess", () => {
++  const decided = plan({ baseUrl: undefined, fixtureBusy: false, webBusy: true });
++
++  assert.equal(decided.start, false);
++  assert.match(decided.refuse, /port 3001 already in use/);
++});
++
++test("a taken fixture port is refused too, and both are named when both are taken", () => {
++  assert.match(
++    plan({ baseUrl: undefined, fixtureBusy: true, webBusy: false }).refuse,
++    /port 8799 already in use/,
++  );
++  assert.match(
++    plan({ baseUrl: undefined, fixtureBusy: true, webBusy: true }).refuse,
++    /port 8799 and 3001 already in use/,
++  );
++});
++
++test("the web app is pointed at the fixture with authentication switched off", () => {
++  const env = webEnv({ PATH: "/bin", NEXT_PUBLIC_SUPABASE_URL: "https://x.supabase.co" });
++
++  assert.equal(env.PATH, "/bin");
++  assert.equal(env.PICKLER_API_LOCAL_URL, "http://127.0.0.1:8799");
++  assert.equal(env.NEXT_PUBLIC_SUPABASE_URL, "");
++  assert.equal(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, "");
++});
++
++test("a port something listens on is seen, and a free one is not", async () => {
++  const server = createServer();
++  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
++  const { port } = server.address();
++  try {
++    assert.equal(await listening(port), true);
++  } finally {
++    await new Promise((resolve) => server.close(resolve));
++  }
++  assert.equal(await listening(port), false);
++});

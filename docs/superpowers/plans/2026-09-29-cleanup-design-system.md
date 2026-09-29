@@ -325,3 +325,801 @@ The stylesheets are touched by several batches, which is why the batches are seq
 | 40  | The last comparison and every gate                                                | J     | nothing                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Paths beginning `features/` and `app/` are under `apps/web/src/`.
+
+---
+
+# Batch A — foundations
+
+Sequential: task 1, then 2, then 3, then 4.
+
+## Task 1: The static source check, report only
+
+The measure of done. It reads the source and reports every violation of six rules without failing, so every later task has a number that has to fall. Task 35 makes it fail.
+
+**Owns:** `scripts/design/lib/source-rules.mjs`, `scripts/design/source.mjs`, `scripts/design/source.test.mjs`, `scripts/design/fixtures/source/` (18 files) — all created; `package.json` — modified.
+
+**The rules** (`rule` is the word the report prints):
+
+| Rule               | Fails when                                                                                                                                                            | Where                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `colour-literal`   | a declaration's value holds a hex colour, `rgb()`, `rgba()`, `hsl()`, `hsla()` or a named colour other than `transparent`, `currentColor` and `inherit`               | every CSS file; in `packages/ui/src/styles.css` a literal is allowed inside a `--pk-*` definition and nowhere else      |
+| `token-definition` | `--pk-*` is defined                                                                                                                                                   | every CSS file but `styles.css`; every TypeScript file but `apps/web/src/lib/accent.ts` and `packages/ui/src/tokens.ts` |
+| `token-alias`      | a custom property's whole value is `var(--pk-…)`; in TypeScript, a string holds `var(--pk-`                                                                           | every CSS file but `styles.css`; every TypeScript file but `apps/web/src/lib/accent.ts`                                 |
+| `undefined-token`  | a `--pk-*` name is read and `styles.css` does not define it                                                                                                           | everywhere                                                                                                              |
+| `colour-in-ts`     | a string holds a hex colour or `rgb()`/`hsl()`; a string given to `href`, `to`, `id`, `htmlFor`, `aria-controls` or `aria-labelledby` is an address and is not judged | every TypeScript file but `packages/ui/src/tokens.ts` and `packages/ui/src/brand.tsx`                                   |
+| `unused-class`     | a CSS module defines a class no importer names, and it is not in `KEEP`                                                                                               | every `*.module.css`                                                                                                    |
+
+`tokens.ts` and the swatch half of `accent.ts` do not exist yet. The check names both files now so that task 26, which writes them, need not touch it. `KEEP`, in `source.mjs`, lists the ten classes reached only through a computed `styles[...]`, each with the file that computes it.
+
+**The fixtures**, one that breaks each rule and one that does not. Every test reads real files, so what is tested is what the check reads: whole stylesheets with comments, continued values and selectors.
+
+| Fixture                                                 | Pins                                                                                                                                                                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tokens.css`                                            | the token file the others are judged against; a name in a comment defines nothing                                                                                                                      |
+| `colour-literal.pass.module.css` / `.fail.module.css`   | tokens, keywords, a font called Tan, an animation called `pink` pass; hex, short hex, `rgba()`, a triple inside `rgba()`, `hsl()`, `white`, and a literal on the second line of a continued value fail |
+| `token-file.pass.css` / `.fail.css`                     | in the token file a literal passes in a definition and fails in a rule                                                                                                                                 |
+| `token-definition.pass.module.css` / `.fail.module.css` | a module's own `--width` passes; `--pk-ink` in a module fails                                                                                                                                          |
+| `token-alias.pass.module.css` / `.fail.module.css`      | `--edge: 1px solid var(--pk-rule)` passes; `--ink: var(--pk-ink)` and a per-variant `--hue: var(--pk-lime)` fail                                                                                       |
+| `undefined-token.pass.module.css` / `.fail.module.css`  | a read with a fallback is still a read of something undefined                                                                                                                                          |
+| `colour-in-ts.pass.tsx` / `.fail.tsx`                   | `href="#feed"`, selectors, comments and prose pass; hex and `rgb()` in strings, templates and JSX attributes fail                                                                                      |
+| `token-ts.pass.ts` / `.fail.ts`                         | reading a token by name and a template family pass; an alias, a definition and an undefined name fail                                                                                                  |
+| `token-mirror.pass.ts`                                  | token-named keys pass in the mirror and fail anywhere else                                                                                                                                             |
+| `unused-class.module.css` + `unused-class.reader.tsx`   | classes named, quoted, composed or kept pass; an orphan, and one inside `@media`, are reported                                                                                                         |
+
+- [ ] **Step 1: Write the failing test and its fixtures**
+
+```sh
+git apply --check $PLAN/patches/01-source-test.patch && git apply $PLAN/patches/01-source-test.patch
+```
+
+It creates `scripts/design/source.test.mjs` (24 tests) and the 18 fixture files.
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node --test scripts/design/source.test.mjs`
+
+Expected: FAIL, naming the missing module: `Cannot find module '…/scripts/design/lib/source-rules.mjs'`.
+
+- [ ] **Step 3: Write the rules and the command**
+
+```sh
+git apply --check $PLAN/patches/01-source-impl.patch && git apply $PLAN/patches/01-source-impl.patch
+```
+
+It creates `scripts/design/lib/source-rules.mjs` (the rules, as pure functions over text: `definedTokens`, `declarations`, `literalsIn`, `checkCss`, `strings`, `checkTs`, `definedClasses`, `composedClasses`, `readClasses`, `unusedClasses`) and `scripts/design/source.mjs` (the command). In `package.json` it appends `scripts/design/*.test.mjs` to the `test` script's list of globs, which also puts the thirteen tests of `colour.test.mjs` and `levels.test.mjs` under `npm test` for the first time, and adds:
+
+```json
+    "design:source": "node scripts/design/source.mjs"
+```
+
+Read both new files before going on. `source.mjs` lists tracked and untracked files (`git ls-files --cached --others --exclude-standard`), so a file somebody has just written is checked before it is added.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node --test scripts/design/source.test.mjs`
+
+Expected: PASS, `tests 24`, `pass 24`, `fail 0`.
+
+- [ ] **Step 5: Run the check over the tree, and record the number**
+
+Run: `npm run design:source | tail -1`
+
+Expected, exactly, with exit status 0:
+
+```
+source: 320 violation(s) — colour-in-ts 21, colour-literal 102, token-alias 100, undefined-token 1, unused-class 96. Report only; --strict fails on them.
+```
+
+These five numbers are the starting point. Each later task says what they are after it.
+
+- [ ] **Step 6: Gates**
+
+Run: `node --import tsx --test scripts/design/*.test.mjs` — expected `tests 37`, `fail 0`.
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add scripts/design/lib/source-rules.mjs scripts/design/source.mjs \
+  scripts/design/source.test.mjs scripts/design/fixtures/source package.json
+git commit -m "$(cat <<'MSG'
+Design: a static source check, reporting only
+
+Six rules over apps/web/src and packages/ui/src: colour literals, --pk-*
+definitions and aliases outside the token file, tokens read and never
+defined, colours in TypeScript, and classes nothing names. It reports
+320 violations today and fails on none of them yet.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- scripts/design/lib/source-rules.mjs scripts/design/source.mjs \
+  scripts/design/source.test.mjs scripts/design/fixtures/source package.json
+```
+
+## Task 2: The runner, the screenshot folder and the comparison
+
+One command that starts the two servers, runs the checks and stops what it started; screenshots into a named folder; a comparison of two folders; and a way to visit only some routes. Nothing here changes what a check measures.
+
+**Owns:** created — `scripts/design/lib/browser.mjs`, `lib/servers.mjs`, `lib/only.mjs`, `lib/compare-page.mjs`, `lib/compare-report.mjs`, `scripts/design/run.mjs`, `compare.mjs`, `servers.test.mjs`, `compare.test.mjs`, `only.test.mjs`; modified — `scripts/design/lib/render.mjs`, `scripts/design/shots.mjs`, `scripts/design/routes.mjs` (the export only), `.gitignore`, `package.json`.
+
+- [ ] **Step 1: Write the failing tests**
+
+```sh
+git apply --check $PLAN/patches/02-runner-test.patch && git apply $PLAN/patches/02-runner-test.patch
+node --test scripts/design/servers.test.mjs scripts/design/compare.test.mjs scripts/design/only.test.mjs
+```
+
+Expected: FAIL in all three files, with `Cannot find module` naming `lib/servers.mjs`, `lib/compare-report.mjs` and `lib/only.mjs`.
+
+What they pin: the runner starts the servers only when both ports are free, measures a named server as it is, and refuses a taken port by name (`servers.test.mjs`, 6 tests); what a difference is called — nothing, `DIFFERS`, `RESIZED`, and `NOISE` when a screen listed in a noise file moved no more than three times what it moved there, or 0.05% (`compare.test.mjs`, 6 tests); `DESIGN_ROUTES` visits the routes named and refuses a name that matches nothing (`only.test.mjs`, 3 tests).
+
+- [ ] **Step 2: Write the implementation**
+
+```sh
+git apply --check $PLAN/patches/02-runner-impl.patch && git apply $PLAN/patches/02-runner-impl.patch
+git apply --check $PLAN/patches/02-routes-filter.patch && git apply $PLAN/patches/02-routes-filter.patch
+git apply --check $PLAN/patches/02-package.patch && git apply $PLAN/patches/02-package.patch
+```
+
+What each does:
+
+| File                                                            | Change                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/servers.mjs`                                               | `FIXTURE_PORT` 8799, `WEB_PORT` 3001; `listening(port)`; `webEnv(env)` (the fixture's URL, both Supabase variables empty); `plan({ baseUrl, fixtureBusy, webBusy })`; `start(root, log)`, which spawns both servers in their own process groups, waits for each to answer, and returns `stop()`. `stop()` also puts back `apps/web/next-env.d.ts`, which `next dev` rewrites. |
+| `run.mjs`                                                       | the runner: the static check, then the rendered checks named, against servers it starts, or against `DESIGN_BASE_URL` when that is set. `--strict` is handed to the static check. Exit 0, 1 or 2.                                                                                                                                                                             |
+| `lib/browser.mjs`                                               | `openBrowser()`: finding Playwright and launching Chromium, moved here unchanged from `lib/render.mjs` so the comparison can use it without a server                                                                                                                                                                                                                          |
+| `lib/render.mjs`                                                | imports `openBrowser`; its remedies name `npm run design:check` and the environment the web app needs                                                                                                                                                                                                                                                                         |
+| `lib/only.mjs`, `routes.mjs`                                    | `ROUTES` becomes `only(ALL, process.env.DESIGN_ROUTES)`                                                                                                                                                                                                                                                                                                                       |
+| `shots.mjs`                                                     | writes to `DESIGN_SHOTS_DIR` when set; `animations: "disabled"`                                                                                                                                                                                                                                                                                                               |
+| `lib/compare-page.mjs`, `lib/compare-report.mjs`, `compare.mjs` | the comparison; `--noise <file>`, `--partial`                                                                                                                                                                                                                                                                                                                                 |
+| `.gitignore`                                                    | `scripts/design/.shots/`                                                                                                                                                                                                                                                                                                                                                      |
+| `package.json`                                                  | `design:check`, `design:shots`, `design:compare`                                                                                                                                                                                                                                                                                                                              |
+
+- [ ] **Step 3: Run the tests to verify they pass**
+
+Run: `node --test scripts/design/servers.test.mjs scripts/design/compare.test.mjs scripts/design/only.test.mjs`
+
+Expected: PASS, `tests 15`, `fail 0`.
+
+- [ ] **Step 4: Prove the refusal**
+
+Occupy the web port with something that is not the app, and run one check:
+
+```sh
+lsof -nP -iTCP:3001 -sTCP:LISTEN   # must print nothing; if it prints, stop and see "How to run the design harness"
+node -e '
+const net = require("node:net");
+const { spawnSync } = require("node:child_process");
+net.createServer().listen(3001, "127.0.0.1", () => {
+  const run = spawnSync(process.execPath, ["scripts/design/run.mjs", "type"], { encoding: "utf8" });
+  process.stdout.write(run.stderr + "exit " + run.status + "\n");
+  process.exit(0);
+});'
+```
+
+Expected: `port 3001 already in use, and this runner did not start what is there.`, a second line naming `DESIGN_BASE_URL`, and `exit 2`.
+
+- [ ] **Step 5: Prove the run**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+lsof -nP -iTCP:3001 -sTCP:LISTEN; lsof -nP -iTCP:8799 -sTCP:LISTEN
+git status --short apps/web/next-env.d.ts
+```
+
+Expected:
+
+- the static report, ending `source: 320 violation(s) — …`;
+- `starting the fixture API and the web app (log: …/scripts/design/.shots/servers.log)`;
+- four checks, each ending `<check>: 1 of 50 route(s) could not be visited at all…`. The one blocked route is `/tokens`, whose proof went stale when main replaced the token board; task 3 repairs it. No line starts with `FAIL`;
+- `exit 1`, because a blocked route is a failure;
+- the two `lsof` commands print nothing: the runner stopped what it started;
+- `git status` prints nothing: the runner put `next-env.d.ts` back.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add scripts/design/lib/browser.mjs scripts/design/lib/servers.mjs scripts/design/lib/only.mjs \
+  scripts/design/lib/compare-page.mjs scripts/design/lib/compare-report.mjs \
+  scripts/design/lib/render.mjs scripts/design/run.mjs scripts/design/compare.mjs \
+  scripts/design/shots.mjs scripts/design/routes.mjs scripts/design/servers.test.mjs \
+  scripts/design/compare.test.mjs scripts/design/only.test.mjs .gitignore package.json
+git commit -m "$(cat <<'MSG'
+Design: one command that starts its servers, and a way to compare shots
+
+npm run design:check starts the fixture API and the web app, runs the
+checks and stops what it started; a port already taken is refused
+rather than measured. Screenshots go to a named folder with animations
+off, design:compare says which screens differ between two folders, and
+DESIGN_ROUTES visits only the routes it names.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- scripts/design/lib/browser.mjs scripts/design/lib/servers.mjs scripts/design/lib/only.mjs \
+  scripts/design/lib/compare-page.mjs scripts/design/lib/compare-report.mjs \
+  scripts/design/lib/render.mjs scripts/design/run.mjs scripts/design/compare.mjs \
+  scripts/design/shots.mjs scripts/design/routes.mjs scripts/design/servers.test.mjs \
+  scripts/design/compare.test.mjs scripts/design/only.test.mjs .gitignore package.json
+```
+
+## Task 3: Every route where a check can see it
+
+Two routes cannot be measured today. `/tokens` is blocked because its proof names a screen main replaced, and the fixture API has no `/v1/launches`. `/passkey` has no entry, and without a session its only screen is "your account could not be read". After this task the harness visits 51 routes and blocks none.
+
+**Owns:** created — `apps/web/src/features/auth/lib/passkey-entry.ts`, `apps/web/test/passkey-entry.test.ts`, `scripts/design/fixtures/sample-launches.mts`; modified — `apps/web/src/app/(auth)/passkey/page.tsx`, `apps/web/src/features/auth/components/passkey-flow.tsx`, `apps/web/src/features/auth/components/steps/add-passkey-step.tsx`, `apps/web/src/features/agents/components/launch-board.tsx`, `scripts/design/fixture-api.mjs`, `scripts/design/routes.mjs`.
+
+- [ ] **Step 1: Write the failing test for the door**
+
+```sh
+git apply --check $PLAN/patches/03-door-test.patch && git apply $PLAN/patches/03-door-test.patch
+node --import tsx --test apps/web/test/passkey-entry.test.ts
+```
+
+Expected: FAIL with `Cannot find module '../src/features/auth/lib/passkey-entry'`.
+
+The five tests: `?state=add` opens the screen outside production; in production the same link is the ordinary page; an unknown state is no preview; a repeated parameter reads its first value; the preview's account holds one passkey.
+
+- [ ] **Step 2: Write the door, and give both screens a hook**
+
+```sh
+git apply --check $PLAN/patches/03-door-impl.patch && git apply $PLAN/patches/03-door-impl.patch
+node --import tsx --test apps/web/test/passkey-entry.test.ts
+```
+
+Expected: PASS, `tests 5`, `fail 0`.
+
+| File                                                  | Change                                                                                                                      |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `features/auth/lib/passkey-entry.ts`                  | `passkeyPreviewFromSearch(nodeEnv, asked)`, shut in production, and `PREVIEW_PASSKEYS`, one fixture passkey on a fixed date |
+| `app/(auth)/passkey/page.tsx`                         | reads `searchParams.state` and passes `passkeyPreview`                                                                      |
+| `features/auth/components/passkey-flow.tsx`           | `PasskeyAddFlow` takes `preview`; with it, the screen opens on `add` with the fixture list and its effect reads nothing     |
+| `features/auth/components/steps/add-passkey-step.tsx` | `id="passkey-add"`                                                                                                          |
+| `features/agents/components/launch-board.tsx`         | `id="launch-board"` on the board, `id="launch-board-empty"` on its empty states                                             |
+
+- [ ] **Step 3: Give the fixture API a launch catalogue, and the harness its two routes**
+
+```sh
+git apply --check $PLAN/patches/03-harness.patch && git apply $PLAN/patches/03-harness.patch
+```
+
+`scripts/design/fixtures/sample-launches.mts` holds two launches, typed by `LaunchSummaryDto`: `$HALF`, on the curve and linked to an agent, and `$TAPE`, graduated and linked to none, so the board's UNLINKED AGENT chip is measured too. `fixture-api.mjs` serves them at `/v1/launches` and defaults to port 8799, the port every remedy already names. In `routes.mjs` the `/tokens` route proves `#launch-board a[href="/tokens/HALF"]`, and `/passkey?state=add`, named `passkey-add`, proving `#passkey-add`, becomes the fifty-first route.
+
+- [ ] **Step 4: Run the checks**
+
+Look at the ports, then run, with a timeout of twenty minutes: `npm run design:check; echo "exit $?"`
+
+Expected: the static report (still 320), then
+
+```
+surfaces: clean over all 51 route(s).
+tokens: clean over all 51 route(s).
+contrast: clean over all 51 route(s).
+type: clean over all 51 route(s).
+exit 0
+```
+
+No line starts with `BLOCKED` or `FAIL`.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add "apps/web/src/app/(auth)/passkey/page.tsx" \
+  apps/web/src/features/auth/components/passkey-flow.tsx \
+  apps/web/src/features/auth/components/steps/add-passkey-step.tsx \
+  apps/web/src/features/auth/lib/passkey-entry.ts \
+  apps/web/src/features/agents/components/launch-board.tsx \
+  apps/web/test/passkey-entry.test.ts \
+  scripts/design/fixtures/sample-launches.mts scripts/design/fixture-api.mjs \
+  scripts/design/routes.mjs
+git commit -m "$(cat <<'MSG'
+Design: no route the harness cannot see
+
+/tokens proves the launch board, from two sample launches the fixture
+API now serves. /passkey?state=add, outside production only, draws the
+add-a-passkey screen without a session, and is the fifty-first route.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- "apps/web/src/app/(auth)/passkey/page.tsx" \
+  apps/web/src/features/auth/components/passkey-flow.tsx \
+  apps/web/src/features/auth/components/steps/add-passkey-step.tsx \
+  apps/web/src/features/auth/lib/passkey-entry.ts \
+  apps/web/src/features/agents/components/launch-board.tsx \
+  apps/web/test/passkey-entry.test.ts \
+  scripts/design/fixtures/sample-launches.mts scripts/design/fixture-api.mjs \
+  scripts/design/routes.mjs
+```
+
+## Task 4: The baseline
+
+Nothing is committed in this task. It produces the pictures every visual task is judged against, and the list of screens that move by themselves.
+
+**Owns:** nothing in git. Writes `scripts/design/.shots/baseline/`, `baseline-2/`, `noise.txt` and `baseline-check.txt`.
+
+**Precondition:** tasks 1–3 are committed and `git status --short apps/web/src packages/ui/src` prints nothing. A baseline taken over somebody's uncommitted edit is a baseline of that edit.
+
+- [ ] **Step 1: Record what the checks say before anything changes**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check > scripts/design/.shots/baseline-check.txt 2>&1; echo "exit $?"
+grep -c '^looked at' scripts/design/.shots/baseline-check.txt
+grep -E '^(BLOCKED|FAIL)' scripts/design/.shots/baseline-check.txt
+```
+
+Expected: `exit 0`; `204` (51 routes, four checks); the last command prints nothing.
+
+- [ ] **Step 2: Capture the baseline, twice**
+
+```sh
+DESIGN_SHOTS_DIR=scripts/design/.shots/baseline npm run design:shots
+DESIGN_SHOTS_DIR=scripts/design/.shots/baseline-2 npm run design:shots
+ls scripts/design/.shots/baseline | wc -l
+ls scripts/design/.shots/baseline-2 | wc -l
+```
+
+Expected: each run ends `shots: clean over all 51 route(s).`, and each folder holds `102` files (51 routes at two widths).
+
+- [ ] **Step 3: Measure the noise**
+
+```sh
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/baseline-2 \
+  > scripts/design/.shots/noise.txt
+cat scripts/design/.shots/noise.txt
+```
+
+Expected: about twenty `DIFFERS` lines, each under 0.5% of pixels, and a last line of the form `compare: 83 screen(s) identical, 0 within noise, 19 to look at, of 102.` Nothing changed between the two captures, so every one of them is noise: screens that draw a clock, a countdown or a chart from the current time. In the verified run they were the eight `market-*` shots, `token`, `studio-picks` and `studio-activity` at both widths, and a handful of pixels on `account-phone`, `account-security-phone`, `read-phone`, `passkey-add-desktop` and `studio-home-draft-phone`.
+
+The list is not the same on every machine or every run. A screen of those families that shows up later as `DIFFERS` by less than 0.5%, inside the same small box, without being in `noise.txt`, is noise too: capture it once more with `DESIGN_ROUTES` and compare the two captures before calling it a change.
+
+If a line shows more than 5%, or `RESIZED`, that screen is not stable enough to compare: open both PNGs, and tell the team lead which screen before going on.
+
+- [ ] **Step 4: Report**
+
+Report to the team lead: the two counts, the last line of `noise.txt`, and the names of the screens in it. There is no commit.
+
+---
+
+# Batch B — the backdrop and the surfaces
+
+Tasks 5, 6, 7 and 8 share no file and may run in parallel. Task 9 runs after all four are committed.
+
+**The harness has one pair of ports.** Implementers working in parallel take turns at it: look at the ports first, and if they are taken, wait and look again. Each of these tasks captures only its own routes (`DESIGN_ROUTES`), which takes about a minute once the server is warm, and compares them with the baseline using `--partial`.
+
+## Task 5: The three `/agents` routes on the light surface
+
+**Owns:**
+
+- Modify: `apps/web/src/features/agents/components/public-shell.tsx`
+- Modify: `apps/web/src/app/agents/page.tsx`
+- Modify: `apps/web/src/app/agents/[handle]/page.tsx`
+- Modify: `apps/web/src/app/agents/[handle]/ask/page.tsx`
+- Modify: `apps/web/src/features/agents/agents.module.css` (the rules `.space`, `.stars` and `.beatChip` only)
+- Modify: `scripts/design/routes.mjs`
+
+What was measured before writing this task: with `data-surface` flipped to `light` in the browser and the backdrop removed, `/agents` (161 text elements), `/agents/halftime` (41) and `/agents/halftime/ask` (32) paint no colour outside the tokens and have one contrast failure between them — the beat chip on the profile, lime on `#F5F6FA` at 1.22:1 (J26). The bodies already read tokens; what made them dark was the shell.
+
+- [ ] **Step 1: Make the harness expect light, and see it fail**
+
+`maps/05-routes.json` holds four edits to `scripts/design/routes.mjs`: the comment that explains why the three routes are declared dark is removed, and `surface: "dark"` becomes `surface: "light"` on `agents`, `agent-profile` and `agent-ask`.
+
+```sh
+node $PLAN/tools/reline.mjs scripts/design/routes.mjs $PLAN/maps/05-routes.json
+npx prettier --write scripts/design/routes.mjs
+```
+
+Expected: `scripts/design/routes.mjs: 4 edit(s) applied`.
+
+Look at the ports, then run: `DESIGN_ROUTES=agents,agent-profile,agent-ask node scripts/design/run.mjs surfaces; echo "exit $?"`
+
+Expected: `FAIL` lines for each of the three routes, of the form `agents paints rgb(11, 13, 26) at div.agents-module__…__page but is a light surface, which is rgb(255, 255, 255)`, and `exit 1`.
+
+- [ ] **Step 2: Take the prop and the backdrop out of the shell and its three callers**
+
+```sh
+git apply --check $PLAN/patches/05-shell.patch && git apply $PLAN/patches/05-shell.patch
+```
+
+`SiteNav` keeps its own `surface` prop, whose default is `"light"`; the landing still passes it.
+
+- [ ] **Step 3: Remove the sky and the stars, and give the beat chip an ink**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/agents/agents.module.css --classes space,stars
+```
+
+Expected:
+
+```
+removed  .space
+removed  .stars
+apps/web/src/features/agents/agents.module.css: 2 rule(s) or selector(s) removed
+```
+
+Then the beat chip (J26). `maps/05-agents-css.json` holds one edit: in `.beatChip`, `color: var(--accent)` becomes `color: var(--accent-ink)`, with a comment saying why.
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/agents/agents.module.css $PLAN/maps/05-agents-css.json
+npx prettier --write apps/web/src/features/agents/agents.module.css
+```
+
+Expected: `apps/web/src/features/agents/agents.module.css: 1 edit(s) applied`.
+
+- [ ] **Step 4: Verify**
+
+Run: `npm run design:source | tail -1`
+
+Expected: `colour-literal` is one lower than before this task (101 if this task is the first of the batch to land; 90 when all of tasks 5–8 have). The other four numbers are unchanged.
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=agents,agent-profile,agent-ask node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 3 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=agents,agent-profile,agent-ask DESIGN_SHOTS_DIR=scripts/design/.shots/task-05 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-05 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** all six shots, each `DIFFERS` at more than 99% of pixels — `agents`, `agent-profile` and `agent-ask`, desktop and phone. The ground goes from the night sky to white and every ink with it. Open `task-05/agents-desktop.png` and `task-05/agent-profile-desktop.png` and check by eye: a white ground; grey panels (`#F5F6FA`); near-black titles; the Ask buttons violet with white text; on the profile, the beat chip ("SPORTS") readable in dark green. No star, no gradient. Nothing else may differ, because nothing else was captured.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/agents/components/public-shell.tsx apps/web/src/app/agents/page.tsx \
+  "apps/web/src/app/agents/[handle]/page.tsx" "apps/web/src/app/agents/[handle]/ask/page.tsx" \
+  apps/web/src/features/agents/agents.module.css scripts/design/routes.mjs
+git commit -m "$(cat <<'MSG'
+Marketplace: the agent pages on the light surface
+
+/agents, /agents/[handle] and /agents/[handle]/ask were the only
+marketplace routes on dark, and only because the shell drew a night sky
+behind them. The sky and the stars are gone, PublicShell has no surface
+prop, and the beat chip takes the accent's ink so it reads on white.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/agents/components/public-shell.tsx apps/web/src/app/agents/page.tsx \
+  "apps/web/src/app/agents/[handle]/page.tsx" "apps/web/src/app/agents/[handle]/ask/page.tsx" \
+  apps/web/src/features/agents/agents.module.css scripts/design/routes.mjs
+```
+
+## Task 6: `/apply` on the plain dark ground
+
+**Owns:**
+
+- Modify: `apps/web/src/features/apply/components/apply-shell.tsx`
+- Modify: `apps/web/src/features/apply/apply.module.css` (the backdrop rules and the seven veil reads only)
+
+The mapping (J5). Every row is one declaration in `apply.module.css`:
+
+| Selector                 | Property            | Was                                       | Becomes                    |
+| ------------------------ | ------------------- | ----------------------------------------- | -------------------------- |
+| `.space`                 | the whole rule      | sky gradient                              | removed                    |
+| `.stars`                 | the whole rule      | two dot layers, animated                  | removed                    |
+| `.floorGrid`             | the whole rule      | neon floor                                | removed                    |
+| `@keyframes stars`       | the whole block     | —                                         | removed                    |
+| `.page .secondaryButton` | `background`        | `var(--pk-space-veil)`                    | `var(--pk-bg)`             |
+| `.header`                | `background`        | `var(--pk-space-veil-strong)`             | `var(--pk-nav-bg)`         |
+| `.header`                | `backdrop-filter`   | `blur(16px)`                              | removed: the bar is opaque |
+| `.chip`                  | `background`        | `var(--pk-space-veil)`                    | `var(--pk-bg)`             |
+| `.piece`                 | second `box-shadow` | `0 26px 60px var(--pk-space-veil-strong)` | `var(--pk-popover-shadow)` |
+| `.well`                  | `background-color`  | `var(--pk-space-veil)`                    | `var(--pk-bg)`             |
+| `.tile`                  | `background`        | `var(--pk-space-veil)`                    | `var(--pk-bg)`             |
+| `.post`                  | `background`        | `var(--pk-space-veil-strong)`             | `var(--pk-bg)`             |
+
+- [ ] **Step 1: Take the backdrop out of the shell**
+
+```sh
+git apply --check $PLAN/patches/06-shell.patch && git apply $PLAN/patches/06-shell.patch
+```
+
+- [ ] **Step 2: Remove the backdrop's rules**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/apply/apply.module.css \
+  --classes space,stars,floorGrid --keyframes stars
+```
+
+Expected:
+
+```
+removed  .space
+removed  .stars
+removed  .floorGrid
+removed  @keyframes stars
+apps/web/src/features/apply/apply.module.css: 4 rule(s) or selector(s) removed
+```
+
+- [ ] **Step 3: Move the veil's readers**
+
+`maps/06-apply-css.json` holds the eight edits of the table above. Its first removes the `Background` section header the rules above left empty.
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/apply/apply.module.css $PLAN/maps/06-apply-css.json
+npx prettier --write apps/web/src/features/apply/apply.module.css
+grep -c 'pk-space' apps/web/src/features/apply/apply.module.css
+```
+
+Expected: `8 edit(s) applied`, then `0`.
+
+- [ ] **Step 4: Verify**
+
+Run: `npm run design:source | tail -1`
+
+Expected: `colour-literal` is six lower than before this task.
+
+Look at the ports, then run: `DESIGN_ROUTES=apply-no-seat node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"`
+
+Expected: four times `clean over all 1 route(s).`, and `exit 0`.
+
+- [ ] **Step 5: Capture and compare**
+
+```sh
+DESIGN_ROUTES=apply-no-seat DESIGN_SHOTS_DIR=scripts/design/.shots/task-06 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-06 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** `apply-no-seat-desktop.png` and `apply-no-seat-phone.png`, each `DIFFERS` at more than 95% of pixels: the ground goes from the blue sky to the flat night blue `#0B0D1A`, and the stars and the floor are gone. Open the desktop shot: the header, "GET IN LINE FIRST.", the paragraph and the lime JOIN WAITLIST button are where they were, and nothing else is on the page.
+
+The form behind the apply cookie (`ApplyFlow`) is not on any harness route. Its seven veil reads are covered by the static check and by this table, not by a picture; say so in your report.
+
+- [ ] **Step 6: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/src/features/apply/components/apply-shell.tsx apps/web/src/features/apply/apply.module.css
+git commit -m "$(cat <<'MSG'
+Apply: the plain dark ground, no backdrop
+
+The sky, the moving stars and the neon floor are gone. What read the
+sky's veil reads the ground it now sits on: insets take --pk-bg, the
+header --pk-nav-bg, the piece's drop shadow --pk-popover-shadow.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/apply/components/apply-shell.tsx apps/web/src/features/apply/apply.module.css
+```
+
+## Task 7: The sign-in screens without the floor
+
+**Owns:**
+
+- Modify: `apps/web/src/app/(auth)/layout.tsx`
+- Modify: `apps/web/src/features/auth/auth.module.css` (the rule `.floor` and `@keyframes grid` only)
+
+`.signinGlow`, `.signinStars` and the second `@keyframes stars` in the same file are already dead; task 28 removes them with the other dead classes.
+
+- [ ] **Step 1: Take the floor out of the layout**
+
+```sh
+git apply --check $PLAN/patches/07-layout.patch && git apply $PLAN/patches/07-layout.patch
+```
+
+- [ ] **Step 2: Remove the floor's rule and its keyframes**
+
+```sh
+node $PLAN/tools/derule.mjs apps/web/src/features/auth/auth.module.css \
+  --classes floor --keyframes grid
+npx prettier --write apps/web/src/features/auth/auth.module.css
+```
+
+Expected:
+
+```
+removed  .floor
+removed  @keyframes grid
+apps/web/src/features/auth/auth.module.css: 2 rule(s) or selector(s) removed
+```
+
+- [ ] **Step 3: Verify**
+
+Run: `npm run design:source | tail -1`
+
+Expected: `colour-literal` is four lower than before this task.
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 4 route(s).`, and `exit 0`. The contrast check's note about elements "over a background image" names fewer elements than in `baseline-check.txt`: the floor was one of the images.
+
+- [ ] **Step 4: Capture and compare**
+
+```sh
+DESIGN_ROUTES=signin,signup,signup-passkey,passkey-add DESIGN_SHOTS_DIR=scripts/design/.shots/task-07 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-07 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** all eight shots, each `DIFFERS` by less than 0.5% of pixels, and only along the bottom of the viewport: on the desktop shots inside about `y 960–999` (`passkey-add-desktop.png` from `y 332`, where its page is shorter), on the phone shots inside `y 829–843`. That strip is where the floor's lines were. A difference anywhere above it is not expected.
+
+- [ ] **Step 5: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add "apps/web/src/app/(auth)/layout.tsx" apps/web/src/features/auth/auth.module.css
+git commit -m "$(cat <<'MSG'
+Auth: no neon floor under the sign-in screens
+
+The floor was the same pre-v2 drawing as the sky. /signin, /signup and
+/passkey keep the dark surface and lose the grid.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- "apps/web/src/app/(auth)/layout.tsx" apps/web/src/features/auth/auth.module.css
+```
+
+## Task 8: The trade ticket's orders off the sky's edge
+
+**Owns:**
+
+- Modify: `apps/web/src/features/markets/markets.module.css` (the rule `.order` only)
+
+`.order` is the last reader of `--pk-space-edge-rgb` outside the token file. It draws in the trade ticket's review phase, on the ticket's light panel (J6).
+
+- [ ] **Step 1: Move the reader**
+
+`maps/08-markets-css.json` holds one edit: in `.order`, the nine-line comment about "the eighth scrim" and `background: rgba(var(--pk-space-edge-rgb), 0.4)` become a one-line comment and `background: var(--pk-panel-3)`.
+
+```sh
+node $PLAN/tools/reline.mjs apps/web/src/features/markets/markets.module.css $PLAN/maps/08-markets-css.json
+npx prettier --write apps/web/src/features/markets/markets.module.css
+grep -rn 'pk-space' apps/web/src
+```
+
+Expected: `1 edit(s) applied`. The `grep` prints only lines of files another task of this batch owns and has not yet committed (`apply.module.css`, `agents.module.css`); none in `markets.module.css`.
+
+- [ ] **Step 2: Verify**
+
+Run: `npm run design:source | tail -1`
+
+Expected: `colour-literal` is one lower than before this task.
+
+Look at the ports, then run:
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked node scripts/design/run.mjs surfaces tokens contrast type; echo "exit $?"
+```
+
+Expected: four times `clean over all 5 route(s).`, and `exit 0`.
+
+- [ ] **Step 3: Capture and compare**
+
+```sh
+DESIGN_ROUTES=markets,market-ask,market-trade,market-trade-picked,market-ask-picked DESIGN_SHOTS_DIR=scripts/design/.shots/task-08 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-08 \
+  --noise scripts/design/.shots/noise.txt --partial
+```
+
+**Expected differences:** none. The review phase is behind a connected wallet and no route reaches it, so no shot shows `.order`. Every line the comparison prints for the `market-*` screens must start with `NOISE`. Say in your report that this change was verified by the static check and the table, not by a picture.
+
+- [ ] **Step 4: Gates**
+
+Run, and check each exit status is 0: `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/web/src/features/markets/markets.module.css
+git commit -m "$(cat <<'MSG'
+Markets: the ticket's orders sit on a panel step, not on the sky's edge
+
+.order was the last reader of --pk-space-edge-rgb outside the token
+file, on a light panel where that colour never belonged.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- apps/web/src/features/markets/markets.module.css
+```
+
+## Task 9: The sky's tokens, and the batch's picture
+
+Runs alone, after tasks 5–8 are committed.
+
+**Owns:**
+
+- Modify: `packages/ui/src/styles.css` (the `:root` block only)
+
+- [ ] **Step 1: Prove nothing reads them**
+
+Run: `grep -rn 'pk-space' apps/web/src packages/ui/src scripts/design | grep -v '^packages/ui/src/styles.css'`
+
+Expected: no output. If a line is printed, a task of this batch is not finished: stop and report.
+
+- [ ] **Step 2: Remove the six tokens and the comments that describe them**
+
+`maps/09-styles.json` holds two edits to `packages/ui/src/styles.css`, both inside `:root`. The first deletes everything from the comment that begins `/* The night sky the dark shells paint behind their content` through `--pk-space-veil-strong`: three comment blocks and the six definitions `--pk-space-core`, `--pk-space-mid`, `--pk-space-edge`, `--pk-space-edge-rgb`, `--pk-space-veil` and `--pk-space-veil-strong`. The second rewrites the comment above `--pk-glow-rim`, which still spoke of the sky, to name the three things that wear the rim.
+
+```sh
+node $PLAN/tools/reline.mjs packages/ui/src/styles.css $PLAN/maps/09-styles.json
+```
+
+Expected: `packages/ui/src/styles.css: 2 edit(s) applied`.
+
+Run: `npx prettier --write packages/ui/src/styles.css && grep -c 'pk-space' packages/ui/src/styles.css`
+
+Expected: `0`.
+
+- [ ] **Step 3: The whole harness, and the batch's picture**
+
+Look at the ports, then run, with a timeout of twenty minutes:
+
+```sh
+npm run design:check; echo "exit $?"
+DESIGN_SHOTS_DIR=scripts/design/.shots/task-09 npm run design:shots
+npm run --silent design:compare -- scripts/design/.shots/baseline scripts/design/.shots/task-09 \
+  --noise scripts/design/.shots/noise.txt
+```
+
+Expected from the check: the static report ending `source: 308 violation(s) — colour-in-ts 21, colour-literal 90, token-alias 100, undefined-token 1, unused-class 96.`; four times `clean over all 51 route(s).`; `exit 0`.
+
+**Expected differences, for the whole batch — sixteen shots and no others:**
+
+| Screens                                                                 | How much                         | Why                                 |
+| ----------------------------------------------------------------------- | -------------------------------- | ----------------------------------- |
+| `agents`, `agent-profile`, `agent-ask` (desktop and phone)              | more than 99%                    | task 5: dark to light               |
+| `apply-no-seat` (desktop and phone)                                     | more than 95%                    | task 6: the sky to the plain ground |
+| `signin`, `signup`, `signup-passkey`, `passkey-add` (desktop and phone) | less than 0.5%, along the bottom | task 7: the floor                   |
+
+Every other line starts with `NOISE`. The comparison's last line reads `compare: 71 screen(s) identical, 15 within noise, 16 to look at, of 102.`, give or take the noise count. This task's own change removes definitions nothing reads, so it moves no pixel.
+
+- [ ] **Step 4: Move the baseline forward**
+
+The sixteen differences are the ones the spec asks for. From here on, later tasks compare with the tree as it is now:
+
+```sh
+rm -rf scripts/design/.shots/baseline
+cp -R scripts/design/.shots/task-09 scripts/design/.shots/baseline
+```
+
+- [ ] **Step 5: Gates**
+
+Stop nothing you did not start; check the ports are free. Run, and check each exit status is 0: `npm run build:shared`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/ui/src/styles.css
+git commit -m "$(cat <<'MSG'
+Tokens: the night sky's six are gone
+
+--pk-space-core, -mid, -edge, -edge-rgb, -veil and -veil-strong had no
+reader left. --pk-glow-rim stays: the glow button, the auth primary
+action and the apply pixels wear it.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+MSG
+)" -- packages/ui/src/styles.css
+```
