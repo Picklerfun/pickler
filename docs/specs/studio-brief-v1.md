@@ -244,3 +244,10 @@ The layout is the visual base (`ef63752`). What becomes real:
   a running, a done and a stale run, and a created draft.
 - **Real validation (the person):** with model and data keys, write a brief, run it, see which
   entries fired, create it, and see the draft home.
+
+## 11. Deploy order
+
+Apply migration 0017 (`npm run db:migrate`) before deploying the API, the research worker or the
+local runner built from this work. Every research claim now reads `pickler.preview_runs` (runs and
+previews share the execution limits), so a research worker on a database without 0017 fails every
+claim.

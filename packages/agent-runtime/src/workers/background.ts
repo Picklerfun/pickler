@@ -46,19 +46,18 @@ export async function claimNext(
     claimed && previews
       ? { run: claimed, lease: previews.repository, execute: previews.execute }
       : null;
+  const at = now();
   if (previews) {
-    const overdue = preview(
-      await previews.repository.claim(now(), now() - PREVIEW_PRIORITY_AFTER_MS),
-    );
+    const overdue = preview(await previews.repository.claim(at, at - PREVIEW_PRIORITY_AFTER_MS));
     if (overdue) {
       return overdue;
     }
   }
-  const run = await repository.claim(now());
+  const run = await repository.claim(at);
   if (run) {
     return { run, lease: repository, execute };
   }
-  return previews ? preview(await previews.repository.claim(now())) : null;
+  return previews ? preview(await previews.repository.claim(at)) : null;
 }
 
 export async function consumeWakeup(

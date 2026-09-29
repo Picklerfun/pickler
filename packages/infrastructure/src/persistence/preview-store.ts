@@ -243,7 +243,7 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
       const queued = await client.query<PreviewRow & { userId: string }>(
         `SELECT ${COLUMNS}, user_id AS "userId" FROM pickler.preview_runs
         WHERE status = 'queued' AND ($1::bigint IS NULL OR created_at < $1::bigint)
-        ORDER BY created_at, id LIMIT 20 FOR UPDATE SKIP LOCKED`,
+        ORDER BY created_at, id FOR UPDATE SKIP LOCKED`,
         [queuedBefore ?? null],
       );
       const tenantRunning = (tenantId: string) =>

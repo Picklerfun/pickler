@@ -258,3 +258,21 @@ test("two creations racing for the fifth slot: only one is queued", async (t) =>
   ]);
   assert.equal(rows.rows.length, 5);
 });
+
+test("another tenant's preview is claimed behind many from a tenant at its limit", async (t) => {
+  const f = await setup(t);
+  await f.store.setConcurrency(5, 1);
+  const busy = await f.person("owner_one");
+  const first = f.now();
+  // 13 minutes apart keeps every rolling hour under the five-run limit.
+  for (let i = 0; i < 22; i++) {
+    await f.create(busy, first + i * 13 * 60_000);
+  }
+  f.advance(22 * 13 * 60_000);
+  const running = await f.previews.claim(f.now());
+  assert.ok(running);
+  const other = await f.person("other_one");
+  const { id } = await f.create(other);
+  const claimed = await f.previews.claim(f.now());
+  assert.equal(claimed?.id, id);
+});
