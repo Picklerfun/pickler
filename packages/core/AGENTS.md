@@ -89,8 +89,10 @@ web on, style policy, six-hour interval). api-schema mirrors these lists; a work
 `features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
 §6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
 reasons in `LOCK_REASONS`). `canSchedule({ ready, balanceAusd })` answers `first_run` until `ready`
-and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances)` answers
-`unfunded_agent` unless every balance reaches the minimum; no agents is open. `ready` is
+and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances, drafts)` answers
+`unfunded_agent` unless every balance reaches the minimum, then `draft_limit` once `drafts` reaches
+`MAX_DRAFTS_PER_WORKSPACE` (3); no agents is open. The balances are those of agents with a wallet:
+a private draft has none and never counts as unfunded. `ready` is
 `isReadyToSchedule(agent, readiness)` in `features/research/policy.ts`, the same predicate
 `assertCanSchedule` refuses with `NOT_READY`; its facts (`ScheduleReadiness`: connections checked
 and a completed manual run, both for the current config version) come from the new

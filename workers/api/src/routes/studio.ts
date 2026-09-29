@@ -14,6 +14,7 @@ import {
   AuthenticationRequiredError,
   unsupported,
   canCreateAnother,
+  MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
   isReadyToSchedule,
   SPEND_ENFORCED,
@@ -312,33 +313,33 @@ export function studioRoutes(services: StudioServices) {
   }
 
   /**
-   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. A private
-   * draft has no wallet yet and holds 0 AUSD, so it closes the lock until it is funded (§6). An
-   * agent without a wallet that is not a draft (created before wallets existed) cannot be funded
-   * and is not counted.
+   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. The lock
+   * counts the balances of agents that have a wallet. A private draft has none and is not counted
+   * as unfunded (§6); drafts close the lock only at `MAX_DRAFTS_PER_WORKSPACE`. An agent without a
+   * wallet that is not a draft (created before wallets existed) cannot be funded and is not
+   * counted either.
    */
   async function fleet(current: StudioAccess) {
     const listed = await services.directory.list(current);
     const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
-    const balances = wallets.flatMap((wallet, index) => {
-      if (wallet) {
-        return [wallet.balanceAusd];
-      }
-      return listed[index]?.draft ? [0] : [];
-    });
-    return { listed, wallets, another: canCreateAnother(balances) };
+    const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
+    const drafts = listed.filter((agent) => agent.draft).length;
+    return { listed, wallets, another: canCreateAnother(balances, drafts) };
   }
 
   /**
    * "+ New agent"'s lock as the create runs it: inside its transaction, after the workspace row is
-   * locked, so two concurrent creates serialize and the second counts the first (a draft as 0
-   * AUSD).
+   * locked, so two concurrent creates serialize and the second counts the first. Creating an agent
+   * with its wallet meets the funding lock alone; a draft also meets the draft limit.
    */
-  function fundingLock(current: StudioAccess) {
+  function fundingLock(current: StudioAccess, creating: "agent" | "draft") {
     return async () => {
       const { another } = await fleet(current);
-      if (!another.ok) {
+      if (another.reason === "unfunded_agent") {
         throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+      }
+      if (another.reason === "draft_limit" && creating === "draft") {
+        throw new PilotError("DRAFT_LIMIT", `At most ${MAX_DRAFTS_PER_WORKSPACE} drafts at a time`);
       }
     };
   }
@@ -398,7 +399,11 @@ export function studioRoutes(services: StudioServices) {
     try {
       // A retry of a create that already happened replays inside `create` (which still refuses
       // different terms under the key) before the funding lock; only a genuinely new agent meets it.
-      scope = await access.create(c.get("principal"), { ...input, key }, fundingLock(current));
+      scope = await access.create(
+        c.get("principal"),
+        { ...input, key },
+        fundingLock(current, "agent"),
+      );
     } catch (error) {
       // Creation's refusals share one code for different fixes ("Approve the wallet's rules
       // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
@@ -446,13 +451,22 @@ export function studioRoutes(services: StudioServices) {
     const current = await access.authorize(principal, true);
     const body = draftCreateSchema.parse(await c.req.json());
     const { fingerprint } = preparePreview(body);
-    const created = await services.directory.createDraft(
-      current,
-      principal.id,
-      { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
-      Date.now(),
-      fundingLock(current),
-    );
+    let created;
+    try {
+      created = await services.directory.createDraft(
+        current,
+        principal.id,
+        { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
+        Date.now(),
+        fundingLock(current, "draft"),
+      );
+    } catch (error) {
+      // The limit is a number the person has to read, so this refusal alone carries its message.
+      if (error instanceof PilotError && error.code === "DRAFT_LIMIT") {
+        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
+      }
+      throw error;
+    }
     return c.json(
       {
         productId: created.productId,

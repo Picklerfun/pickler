@@ -92,7 +92,7 @@ export const studioAccessSchema = z.object({
 });
 
 // Mirrors `LockReason` in core's `features/studio/locks.ts`; a workers/api test pins it.
-export const LOCK_REASONS = ["first_run", "unfunded", "unfunded_agent"] as const;
+export const LOCK_REASONS = ["first_run", "unfunded", "unfunded_agent", "draft_limit"] as const;
 export type LockReasonDto = (typeof LOCK_REASONS)[number];
 
 /** A lock the API has already decided; the screen shows `reason` and never re-derives it. */
@@ -120,7 +120,11 @@ export const studioAgentSchema = agentResponseSchema.extend({
   wallet: studioAgentWalletSchema.nullable(),
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
   canSchedule: lockSchema,
-  /** "+ New agent": every agent the person owns holds at least 10 AUSD. */
+  /**
+   * "+ New agent": every agent with a wallet holds at least 10 AUSD (`unfunded_agent`), and the
+   * workspace holds fewer than three private drafts (`draft_limit`). A draft is not counted as
+   * unfunded.
+   */
   canCreateAnother: lockSchema,
   /** The config's spend limits, or null when the person has not set them. */
   spend: spendLimitsSchema.nullable(),

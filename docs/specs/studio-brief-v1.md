@@ -174,7 +174,7 @@ The layout is the visual base (`ef63752`). What becomes real:
 
 ## 6. "Create {Name}": the private draft
 
-- `POST /v1/studio/agents/draft` with `{ name, handle, previewRunId }`. The server:
+- `POST /v1/studio/drafts` with `{ name, handle, previewRunId }` and the brief. The server:
   1. loads the preview run, checks it is the caller's, not expired, completed and not yet adopted;
   2. checks the fingerprint of the submitted brief against the run's, returning 409 `RUN_STALE` on
      a mismatch;
@@ -182,8 +182,16 @@ The layout is the visual base (`ef63752`). What becomes real:
   4. in one transaction, creates the agent with the run's config snapshot and `status: draft`,
      `public: false`, no wallet; copies the preview run in as the agent's first run; and marks the
      preview run adopted.
-- The existing `createGate` (`canCreateAnother`) still applies. A draft has no wallet, so it holds
-  0 AUSD. Its first run counts as done for `canSchedule`, but scheduling still needs ≥ 10 AUSD,
+- The existing `createGate` (`canCreateAnother`) still applies, over agents that have a wallet: a
+  funded or unfunded agent is one with a wallet. **A draft does not count toward the funding
+  lock.** It is private, has no wallet and runs on paper, and it cannot be funded until Go Public
+  exists, so counting it would close "+ New agent" for good.
+- Drafts are capped instead: at most **3 drafts per workspace** (`MAX_DRAFTS_PER_WORKSPACE`). The
+  fourth is refused inside the create transaction with 409
+  `{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, and `canCreateAnother` answers
+  `{ ok: false, reason: "draft_limit" }` while three exist. `unfunded_agent` comes first when both
+  hold. Creating an agent with its wallet (`POST /v1/studio/agents`) meets the funding lock only.
+- A draft's first run counts as done for `canSchedule`, but scheduling still needs ≥ 10 AUSD,
   which needs a wallet, which comes in Go Public. So a draft cannot schedule. That is intended.
   A draft can still run manual paper research, like any unfunded agent ("IT RUNS ON PAPER UNTIL
   YOU FUND IT"); only scheduling waits for funds.
@@ -203,6 +211,7 @@ The layout is the visual base (`ef63752`). What becomes real:
 | Stale at create                                         | 409 `RUN_STALE`                            | "Brief changed · run again"             |
 | Handle taken at create                                  | 409 `HANDLE_TAKEN`                         | "@x is taken"                           |
 | Preview expired or adopted                              | 409 `PREVIEW_UNUSABLE`                     | asks for a new run                      |
+| Three drafts already                                    | 409 `DRAFT_LIMIT`, with a message          | the draft-limit reason on "+ New agent" |
 
 ## 8. What stays as it is
 

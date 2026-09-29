@@ -200,8 +200,10 @@ helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` (
 profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
-balances of every listed agent that has a wallet (agents created before wallets have none and are
-not counted). An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
+balances of every listed agent that has a wallet, plus the number of private drafts. Agents created
+before wallets have none and are not counted. A draft has no wallet either and does not count as
+unfunded (studio-brief-v1 §6); three drafts (`MAX_DRAFTS_PER_WORKSPACE`) close the lock with
+`draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
 turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
 wallet, and nothing has launched. A balance read that fails fails the request (500); it is never shown as zero.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
@@ -213,6 +215,16 @@ directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, m
 404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
+
+`POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
+rights) adopts a completed paper run as a private draft through `directory.createDraft`
+(studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
+`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN` and `UNFUNDED_AGENT` (an agent with a wallet below
+the minimum). The fourth draft in a workspace is 409
+`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, the one studio refusal besides
+creation's `CONFLICT`/`NOT_FOUND` that carries a message. Both locks run in the admit callback,
+inside the create transaction, after the workspace row is locked. `POST /agents` meets the funding
+lock only, never the draft limit.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,

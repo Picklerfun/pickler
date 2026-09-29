@@ -32,9 +32,11 @@ const body = { ...request, name: "Halftime", handle: "halftime", previewRunId: R
 function app({
   listed = [] as { id: string; draft: boolean; wallet: boolean }[],
   refuse,
+  balance = 50,
 }: {
   listed?: { id: string; draft: boolean; wallet: boolean }[];
   refuse?: string;
+  balance?: number;
 } = {}) {
   const drafts: { handle: string; fingerprint: string }[] = [];
   const config = { ...DEFAULT_CONFIG };
@@ -88,7 +90,7 @@ function app({
           ? { walletId: `w-${id}`, address: "0x1111111111111111111111111111111111111111" }
           : null,
     },
-    balances: { read: async () => 50 },
+    balances: { read: async () => balance },
     authenticate: async () => ({
       principal: buildUserPrincipal({
         user: { id: "user" },
@@ -145,20 +147,61 @@ test("an invalid brief is refused before anything is written", async () => {
   assert.equal(f.drafts.length, 0);
 });
 
-test("an unfunded draft already there closes the lock: 409 UNFUNDED_AGENT", async () => {
-  const f = app({ listed: [{ id: DRAFT, draft: true, wallet: false }] });
+const draftAgents = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    id: `5555555${index}-5555-4555-8555-555555555555`,
+    draft: true,
+    wallet: false,
+  }));
+
+test("a draft holds no wallet and does not close the lock", async () => {
+  const f = app({ listed: draftAgents(1) });
+
   const response = await f.root.request("/drafts", post(body));
+
+  assert.equal(response.status, 201);
+});
+
+test("an unfunded agent with a wallet still closes the lock for a draft", async () => {
+  const f = app({ listed: [{ id: FUNDED, draft: false, wallet: true }], balance: 3 });
+
+  const response = await f.root.request("/drafts", post(body));
+
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: "UNFUNDED_AGENT" });
 });
 
-test("the agents list says which are drafts, and a draft counts as 0 AUSD", async () => {
-  const f = app({ listed: [{ id: DRAFT, draft: true, wallet: false }] });
+test("the fourth draft is refused: 409 DRAFT_LIMIT, naming the limit", async () => {
+  const f = app({ listed: draftAgents(3) });
+
+  const response = await f.root.request("/drafts", post(body));
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: "DRAFT_LIMIT",
+    message: "At most 3 drafts at a time",
+  });
+  assert.equal(f.drafts.length, 0);
+});
+
+test("the agents list says which are drafts, and drafts leave the lock open", async () => {
+  const f = app({ listed: draftAgents(2) });
+
   const response = await f.root.request("/agents", { headers: { Authorization: "Bearer t" } });
+
   const { agents } = await response.json();
   assert.equal(agents[0].draft, true);
   assert.equal(agents[0].wallet, null);
-  assert.deepEqual(agents[0].canCreateAnother, { ok: false, reason: "unfunded_agent" });
+  assert.deepEqual(agents[0].canCreateAnother, { ok: true, reason: null });
+});
+
+test("at the draft limit the lock says so", async () => {
+  const f = app({ listed: draftAgents(3) });
+
+  const response = await f.root.request("/agents", { headers: { Authorization: "Bearer t" } });
+
+  const { agents } = await response.json();
+  assert.deepEqual(agents[0].canCreateAnother, { ok: false, reason: "draft_limit" });
 });
 
 test("a funded agent without a draft leaves the lock open", async () => {

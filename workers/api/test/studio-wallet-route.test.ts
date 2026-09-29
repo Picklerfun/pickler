@@ -46,6 +46,8 @@ interface Options {
   signedIn?: boolean;
   /** What the directory refuses a new creation with. */
   createError?: Error;
+  /** Which of `agents` are private drafts. */
+  drafts?: string[];
 }
 
 function fixture({
@@ -55,6 +57,7 @@ function fixture({
   failRead = false,
   signedIn = true,
   createError,
+  drafts = [],
 }: Options = {}) {
   let agents = initial;
   const scheduled: boolean[] = [];
@@ -106,7 +109,7 @@ function fixture({
         name: `Agent ${id.slice(0, 1)}`,
         handle: `h${id.slice(0, 4)}`,
         accent: id === FIRST ? ("magenta" as const) : ("lime" as const),
-        draft: false,
+        draft: drafts.includes(id),
         scope: scope(id),
       })),
     runs: async () => [],
@@ -320,6 +323,20 @@ test("a second agent is refused while the first holds 3 AUSD", async () => {
   assert.equal(response.status, 409);
   assert.deepEqual(await response.json(), { error: "UNFUNDED_AGENT" });
   assert.deepEqual(created, []);
+});
+
+test("an agent with its wallet is created even at the draft limit", async () => {
+  const drafts = ["d1", "d2", "d3"];
+  const { app, created } = fixture({ agents: drafts, drafts });
+
+  const response = await app.request("/agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
+    body: JSON.stringify(createBody),
+  });
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(created, ["second"]);
 });
 
 test("the first agent, and a next one once every agent is funded, are created", async () => {

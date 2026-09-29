@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { PilotError, preparePreview, type Decision } from "@pickler/core";
+import { MAX_DRAFTS_PER_WORKSPACE, PilotError, preparePreview, type Decision } from "@pickler/core";
 import { PostgresPreviewStore } from "../src/persistence/preview-store.js";
 import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { createTestStore } from "./database.js";
@@ -213,32 +213,38 @@ test("a failure mid-way leaves no agent, and the run is not adopted", async (t) 
   assert.equal(preview.rows[0].adopted_at, null);
 });
 
-test("two concurrent drafts serialize on the funding lock: only one is created", async (t) => {
+test("two concurrent drafts serialize on the create lock: the draft limit admits only one", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
-  const first = await f.completed(owner);
-  const second = await f.completed(owner);
-  // The route's lock over this directory: an unfunded draft (0 AUSD) closes it.
+  // The route's lock over this directory: drafts are refused at their limit.
   const admit = async () => {
-    if ((await f.directory.list(owner.access)).some((agent) => agent.draft)) {
-      throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+    const drafts = (await f.directory.list(owner.access)).filter((agent) => agent.draft);
+    if (drafts.length >= MAX_DRAFTS_PER_WORKSPACE) {
+      throw new PilotError("DRAFT_LIMIT", "At most 3 drafts at a time");
     }
   };
-  const draft = (id: string, handle: string) =>
+  const draft = async (handle: string) =>
     f.directory.createDraft(
       owner.access,
       owner.userId,
-      { name: "Agent", handle, previewRunId: id, fingerprint: f.fingerprint },
+      {
+        name: "Agent",
+        handle,
+        previewRunId: await f.completed(owner),
+        fingerprint: f.fingerprint,
+      },
       f.clock,
       admit,
     );
+  await draft("agent_one");
+  await draft("agent_two");
 
-  const results = await Promise.allSettled([draft(first, "agent_one"), draft(second, "agent_two")]);
+  const results = await Promise.allSettled([draft("agent_three"), draft("agent_four")]);
 
   assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
   const refused = results.find((result) => result.status === "rejected");
-  assert.equal((refused as PromiseRejectedResult).reason.code, "UNFUNDED_AGENT");
-  assert.equal((await f.directory.list(owner.access)).length, 1);
+  assert.equal((refused as PromiseRejectedResult).reason.code, "DRAFT_LIMIT");
+  assert.equal((await f.directory.list(owner.access)).length, MAX_DRAFTS_PER_WORKSPACE);
 });
 
 test("while a create holds the workspace lock, a paper run for that workspace still starts", async (t) => {

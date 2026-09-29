@@ -21,7 +21,7 @@ export interface AgentWalletLink {
 }
 
 /**
- * The "+ New agent" funding lock, run by a create inside its transaction after the workspace row
+ * The "+ New agent" lock (funding, and the draft limit for a draft), run by a create inside its transaction after the workspace row
  * is locked, so two creates in one workspace serialize and the second sees the first. It throws to
  * refuse; the create then writes nothing.
  */
@@ -65,7 +65,7 @@ export interface StudioDirectory {
   runs(scope: Scope, before: number | null): Promise<string[]>;
   /**
    * The person's agents, oldest first, with the accent their profile was created with ("lime"
-   * without one), and whether each is a private draft (no wallet yet; it holds 0 AUSD).
+   * without one), and whether each is a private draft (no wallet yet, so the funding lock skips it).
    */
   list(
     access: StudioAccess,
