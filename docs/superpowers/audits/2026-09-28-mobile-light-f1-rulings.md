@@ -126,6 +126,37 @@ Lo que el propio proceso afirmó o dejó y resultó falso:
   · 4H (32 %, NO, creada 17:42 CST del 28 sep, resuelve ~21:42) y gastó **1 crédito simulado** (20 → 19).
 - **Sin AUSD ni MON no hay camino a Trade**: Enable trading exige 100 AUSD y gas; el faucet de MON es externo.
 
+## Revisión final de rama
+
+Revisión de toda la rama sobre `7988e81`; los hallazgos se corrigieron en un commit posterior.
+
+- **I1 (Important) — respuestas tardías de otra cuenta en `useReads`**: `loadReads` y `fetchOne` capturan
+  `addressRef.current` antes del `await` y descartan el resultado, tanto el éxito como el error (incluido el
+  `dropSession` por 401), si la cuenta cambió mientras la petición estaba en vuelo. Guard puro
+  `isStaleAccount(requested, current)` en `src/reads/session.ts` (compara en minúsculas) con su test en
+  `__tests__/reads-session.test.ts`. **Contra el defecto** (guard reemplazado por `return false`): el test falla
+  (`Expected: true / Received: false`); restaurado, pasa. El cableado en el hook no tiene test propio: el repo
+  sólo tiene pruebas de lógica pura.
+- **I2 (Important) — Read sin salida en el estado "missing"**: botón **Try again** (contador `attempt` en las
+  deps del efecto, que además limpia `missing`) y copy neutral según la sesión de reads: sin sesión lista,
+  «Unlock to open this read»; con sesión, «Couldn't load this read. Check your connection and try again.» Ya no
+  se sugiere que la read sea de otra wallet. Copy en `src/screens/readCopy.ts` con test; **contra el defecto**
+  (copy anterior fija) fallan los dos tests nuevos.
+- **m1** Agents muestra `EmptyPanel` «No agents yet.» cuando `agents-list` llega vacío.
+- **m2** Portfolio → Reads con `reads === null` y `listError`: sólo el aviso con **Retry** (`reads.refresh()`),
+  sin skeletons eternos ni aviso duplicado.
+- **m3** Market: «See it in Portfolio» vuelve el ticket a `edit` antes de navegar; al regresar no queda el
+  «Filled» viejo.
+- **m4** Comentarios: `primitives.tsx:12` dice «display (Archivo wdth 112)»; en `Navigator.tsx` sólo el stub de
+  `agent` sigue provisional (F2).
+
+**Desviación declarada de D26**: `READS_SCREENS` también hace polling de `reads-list` (y puede firmar solo la
+sesión diaria con la wallet abierta) en Markets, Agents y Read. Se conserva a propósito (conteo de Agents,
+pantalla Read); el costo es una petición cada 15 s mientras Markets está visible.
+
+**Nota de proceso**: la primera pasada de T15 usó un `pkill` amplio para detener Metro, que pudo haber parado
+el Metro de otra sesión. En adelante, detener sólo el proceso propio (por PID o puerto).
+
 ## Residuales abiertos (de mayor a menor peso)
 
 1. **Sin evidencia en simulador, por falta de key y fondos**: ticket del Handoff con key (Long · up / Short ·
@@ -149,11 +180,17 @@ Lo que el propio proceso afirmó o dejó y resultó falso:
    cambio quedan recortadas hasta relanzar.
 10. **Minors diferidos del ledger aún abiertos**: `archivo-instance.sh` descarga de `google/fonts@main` sin pin
     y no limpia `$TMP` (T0); JSDoc desactualizados en `Avatar` y `SegmentedProps.tone` y el comentario
-    «display (Chakra Petch)» en `primitives.tsx:12` (T2); comentario obsoleto en `comingSoonCopy.ts:5` (T3);
-    `TabBar.select` y el cast `TAB_ROOT[name] as keyof TABS` (T4); carrera preexistente en `loadReads` al
-    cambiar de cuenta (T6); `fetchOne` abre Face ID desde el efecto de Read (T6, aceptado); DevControls sigue
+    (T2; el comentario «display (Chakra Petch)» quedó corregido en la revisión final); comentario obsoleto en `comingSoonCopy.ts:5` (T3);
+    `TabBar.select` y el cast `TAB_ROOT[name] as keyof TABS` (T4); `fetchOne` abre Face ID desde el efecto de Read (T6, aceptado); DevControls sigue
     listando Launchpad/Activity y «Coming soon · Portfolio» y no tiene Agents (dev-only). Los de copy de
-    T2/T3/T4/T8/T10 que T14 barrió (Ruling 5) quedan cerrados en `d5dfc53`.
+    T2/T3/T4/T8/T10 que T14 barrió (Ruling 5) quedan cerrados en `d5dfc53`; la carrera de `loadReads` al
+    cambiar de cuenta (T6) quedó cerrada en la revisión final (I1).
+11. **Close perdido al cambiar de segmento**: si el usuario cambia de segmento en Portfolio a mitad de un
+    Close, el resultado se pierde (`portfolio`/`tradingGate`).
+12. **Wallet**: las filas pendientes quedan ocultas tras el skeleton de Activity mientras cargan los movements.
+13. **Book L2**: el socket del book corre aunque la BookCard esté plegada (`App.tsx`, `bookActive`).
+14. **Face ID sin gesto desde Read tras un 401**: `fetchOne` → `ensureSession` puede abrir Face ID sin que el
+    usuario toque nada.
 
 ## Rollback
 
