@@ -251,7 +251,7 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       canSchedule: { ok: true, reason: null },
       canCreateAnother: { ok: true, reason: null },
       spend: { perCallAusd: 5, perDayAusd: 20 },
-      spendEnforced: false,
+      spendEnforced: true,
     },
   ];
   const runs: Run[] = [

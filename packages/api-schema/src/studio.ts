@@ -122,7 +122,7 @@ export const studioAgentSchema = agentResponseSchema.extend({
   canCreateAnother: lockSchema,
   /** The config's spend limits, or null when the person has not set them. */
   spend: spendLimitsSchema.nullable(),
-  /** False until the trading work enforces `spend`: "Applies when it trades for real". */
+  /** Whether `spend` is enforced: true, on paper orders. */
   spendEnforced: z.boolean(),
 });
 export type StudioAgentDto = z.infer<typeof studioAgentSchema>;

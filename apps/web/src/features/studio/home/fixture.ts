@@ -149,7 +149,7 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     canSchedule: decided ? { ok: false, reason: "unfunded" } : { ok: false, reason: "first_run" },
     canCreateAnother: { ok: false, reason: "unfunded_agent" },
     spend: null,
-    spendEnforced: false,
+    spendEnforced: true,
   };
   const order = decided
     ? ({

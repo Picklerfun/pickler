@@ -395,8 +395,7 @@ export function studioRoutes(services: StudioServices) {
     );
   });
   // Spend limits write only `config.spend`: the version, the schedule and readiness stay, because
-  // the deposit sheet sets them right before the schedule is turned on. Stored and shown; not
-  // enforced until the trading work (`spendEnforced` says so).
+  // the deposit sheet sets them right before the schedule is turned on. Paper orders enforce them.
   api.put("/agents/:id/limits", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
     const scope = await services.directory.agentScope(current, c.req.param("id"));

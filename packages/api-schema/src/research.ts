@@ -92,9 +92,11 @@ export const marketCatalogSchema = z.object({
     }),
   ),
 });
+/** Mirror of core's `PAPER_BUDGET_AUSD`: the virtual bankroll one paper order spends. */
+export const PAPER_BUDGET_AUSD = 10;
 /**
- * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Stored and shown; not enforced until the
- * trading work does it, which `spendEnforced` on the studio agent DTO states.
+ * Spend limits in AUSD, mirroring `SPEND_BOUNDS` in core. Paper orders enforce them, which
+ * `spendEnforced` on the studio agent DTO states.
  */
 export const spendLimitsSchema = z
   .object({

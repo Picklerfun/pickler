@@ -15,6 +15,7 @@ import {
   LEVERAGE_BOUNDS as CORE_LEVERAGE_BOUNDS,
   normalizeBrief,
   briefToConfig,
+  PAPER_BUDGET_AUSD as CORE_PAPER_BUDGET_AUSD,
 } from "@pickler/core";
 import {
   ACCENTS,
@@ -36,6 +37,7 @@ import {
   agentConfigSchema,
   previewRunRequestSchema,
   draftCreateSchema,
+  PAPER_BUDGET_AUSD,
 } from "@pickler/api-schema";
 
 /* api-schema may not import core, so it carries its own copy of each list. This is the one place
@@ -129,4 +131,8 @@ test("the preview request leaves lengths to core, and the draft request adds the
   assert.throws(() =>
     draftCreateSchema.parse({ ...request, name: "H", handle: "Half Time", previewRunId: "x" }),
   );
+});
+
+test("the paper budget in api-schema is core's", () => {
+  assert.equal(PAPER_BUDGET_AUSD, CORE_PAPER_BUDGET_AUSD);
 });

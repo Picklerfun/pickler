@@ -62,9 +62,8 @@ export interface AgentConfig {
   /** Routines the person added; appended to the brief at run time (see brief.ts). */
   skills?: Skill[] | undefined;
   /**
-   * What the person allows it to spend, in AUSD. Stored and shown, not enforced yet: nothing spends
-   * today, and the trading work enforces it (a per-call and daily ledger period, or a Turnkey
-   * value cap). Absent until the person sets it.
+   * What the person allows it to spend, in AUSD. Paper orders enforce it: one order's notional is
+   * capped at `perCallAusd` and a UTC day's at `perDayAusd`. Absent until the person sets it.
    */
   spend?: SpendLimits | undefined;
   /**
@@ -88,8 +87,11 @@ export const SPEND_BOUNDS = {
   perDayAusd: { min: 1, max: 10_000 },
 } as const;
 
-/** False until the trading work enforces `spend`; the DTO says so rather than implying a guard. */
-export const SPEND_ENFORCED = false;
+/**
+ * Paper orders enforce `spend` (per-trade notional and the UTC day's sum, `paper/orders.ts`). Real
+ * money limits come with Go Public and the trading work, as Turnkey value caps.
+ */
+export const SPEND_ENFORCED = true;
 
 /** Bounds and the day ≥ call rule; `assertConfig` and `updateSpend` both apply it. */
 export function assertSpendLimits(spend: SpendLimits): void {

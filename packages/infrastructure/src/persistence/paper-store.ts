@@ -4,10 +4,13 @@ import {
   PilotError,
   PLUGINS,
   assertPaperAllowed,
+  assertPaperDailyCap,
   assertPaperFillCurrent,
   assertPaperSettlementAccess,
+  paperBudgetAusd,
   settlePaperOrder,
   summarizePaperOrders,
+  utcDayStart,
   type PaperResolution,
   type Scope,
   type PaperSettlementRepository,
@@ -100,6 +103,18 @@ export class PostgresPaperStore implements PaperRepository, PaperSettlementRepos
         return { order, owned: false };
       }
       assertPaperAllowed(context.run, context.agent, now);
+      // The agent row is locked (`context`), so two orders cannot both fit under the same cap.
+      const spend = context.agent.config.spend;
+      if (spend) {
+        const budget = paperBudgetAusd(spend);
+        const today = await client.query<{ spent: string }>(
+          `SELECT coalesce(sum(CASE WHEN status = 'filled' THEN (fill->>'totalCost')::numeric ELSE $4::numeric END), 0)::text AS spent
+          FROM pickler.paper_orders
+          WHERE tenant_id = $1 AND agent_id = $2 AND created_at >= $3 AND status IN ('filled', 'pending')`,
+          [tenantId, context.run.agentId, utcDayStart(now), budget],
+        );
+        assertPaperDailyCap(spend, Number(today.rows[0]!.spent), budget);
+      }
       const id = randomUUID();
       const owner = randomUUID();
       const decision = context.run.decision!;

@@ -416,7 +416,7 @@ test("saving limits keeps the version, the schedule lock open and readiness", as
 
   assert.equal(agent.version, 1);
   assert.deepEqual(agent.spend, { perCallAusd: 5, perDayAusd: 50 });
-  assert.equal(agent.spendEnforced, false);
+  assert.equal(agent.spendEnforced, true);
   assert.deepEqual(agent.canSchedule, { ok: true, reason: null });
 
   const on = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
@@ -460,13 +460,13 @@ test("limits outside their bounds, or a day below a call, are refused before any
   assert.deepEqual(spends, []);
 });
 
-test("an agent without limits says so, and that limits are not enforced", async () => {
+test("an agent without limits says so, and that limits are enforced on paper", async () => {
   const { app } = fixture({ balances: { [FIRST]: 10 } });
 
   const agent = await (await app.request(`/agents/${FIRST}`)).json();
 
   assert.equal(agent.spend, null);
-  assert.equal(agent.spendEnforced, false);
+  assert.equal(agent.spendEnforced, true);
 });
 
 test("changing the interval keeps the version, the schedule lock open and readiness", async () => {
