@@ -53,7 +53,10 @@ export function createStudyData(
             series.candles.filter((c) => c.closed).length !== 60 ||
             series.missingOpenTimes.length
           ) {
-            throw new PilotError("INCOMPLETE_CANDLES", "Sixty closed hourly candles required");
+            throw new PilotError(
+              "DATA_UNAVAILABLE",
+              "Sixty consecutive closed hourly candles required",
+            );
           }
           candles.push(series);
         }
