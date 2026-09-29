@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -16,6 +17,7 @@ import { getProvider, TARGET_CHAIN } from "./provider";
 import { signIn } from "./connect";
 import { fromInjectedProvider } from "./signer-adapters";
 import { signInWords } from "./sign-in-words";
+import { decideSession, dropWalletSession, heldBy, type WalletSession } from "./wallet-session";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
@@ -132,9 +134,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
   const [chooserOpen, setChooserOpen] = useState(false);
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("none");
+  const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  // The session is kept with the address it was issued for, never as a bare token: see
+  // wallet-session.ts. The ref is the same value for the callbacks that run outside a render.
+  const [held, setHeld] = useState<WalletSession | null>(null);
+  const heldRef = useRef<WalletSession | null>(null);
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
@@ -165,49 +170,84 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const hold = useCallback((next: WalletSession | null) => {
+    heldRef.current = next;
+    setHeld(next);
+  }, []);
+
+  /**
+   * Lets go of the session unless it belongs to `next`: the token is forgotten and the browser is
+   * signed out of it, so nothing done as the next wallet can go out under the last one's name.
+   * A change of chain keeps the address, and so keeps the session.
+   */
+  const release = useCallback(
+    (next: SignerAccount | null) => {
+      const cached = heldRef.current;
+      setSessionError(null);
+      if (!cached || heldBy(cached, next && { address: next.address, namespace: "eip155" })) {
+        return;
+      }
+      hold(null);
+      // Best effort: the token is already forgotten here, which is what keeps it from being sent.
+      void dropWalletSession(getSupabase(), cached).catch(() => {});
+    },
+    [hold],
+  );
+
   // Follow the active signer when it changes underneath the page.
   useEffect(() => {
     if (!adapter?.subscribe) {
       return;
     }
     return adapter.subscribe((next) => {
+      release(next);
       setAccount(next);
       if (!next) {
         setKind(null);
       }
     });
-  }, [adapter]);
+  }, [adapter, release]);
 
-  const connectWith = useCallback(async (picked: SignerKind) => {
-    const signer = SIGNERS.find((candidate) => candidate.kind === picked);
-    if (!signer) {
-      return;
-    }
-    setConnecting(true);
-    setError(null);
-    try {
-      const connected = await signer.connect();
-      if (connected) {
-        setKind(picked);
-        setAccount(connected);
-        remember(picked);
-        setChooserOpen(false);
-        setHolding(null);
+  const connectWith = useCallback(
+    async (picked: SignerKind) => {
+      const signer = SIGNERS.find((candidate) => candidate.kind === picked);
+      if (!signer) {
+        return;
       }
-    } catch (caught) {
-      // 4001 is the person closing the prompt, which is an answer rather than a failure.
-      const code = (caught as { code?: number }).code;
-      setError(code === 4001 ? null : "That wallet could not connect. Try again.");
-    } finally {
-      setConnecting(false);
-    }
-  }, []);
+      setConnecting(true);
+      setError(null);
+      try {
+        const connected = await signer.connect();
+        if (connected) {
+          release(connected);
+          setKind(picked);
+          setAccount(connected);
+          remember(picked);
+          setChooserOpen(false);
+          setHolding(null);
+        }
+      } catch (caught) {
+        // 4001 is the person closing the prompt, which is an answer rather than a failure.
+        const code = (caught as { code?: number }).code;
+        setError(code === 4001 ? null : "That wallet could not connect. Try again.");
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [release],
+  );
 
   const signInWithWallet = useCallback(async (): Promise<string | null> => {
-    // Already signed in: hand back what we have rather than spend another prompt on a signature
-    // that would prove the same thing twice.
-    if (sessionStatus === "active" && token) {
-      return token;
+    // Already signed in as this address, with a token that has not run out: hand back what we
+    // have rather than spend another prompt on a signature that would prove the same thing twice.
+    // A token issued to another address, or an expired one, is never handed back.
+    const decided = decideSession(
+      heldRef.current,
+      account && { address: account.address, namespace: "eip155" },
+      new Date(),
+    );
+    if (decided.action === "reuse") {
+      return decided.token;
     }
     const provider = getProvider();
     const supabase = getSupabase();
@@ -221,7 +261,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSessionError("Signing in is not configured in this build.");
       return null;
     }
-    setSessionStatus("signing");
+    setSigning(true);
     setSessionError(null);
     try {
       const signer = fromInjectedProvider(
@@ -237,15 +277,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (refused) {
         throw new Error(refused.message);
       }
-      setToken(result.session.accessToken);
-      setSessionStatus("active");
+      // Stored against the address that signed, not whichever is connected by now.
+      hold({
+        token: result.session.accessToken,
+        userId: result.userId,
+        address: signer.address,
+        namespace: "eip155",
+      });
       return result.session.accessToken;
     } catch (caught) {
-      setSessionStatus("none");
       setSessionError(signInWords(caught));
       return null;
+    } finally {
+      setSigning(false);
     }
-  }, [account, sessionStatus, token]);
+  }, [account, hold]);
 
   const connect = useCallback((held?: string) => {
     setHolding(held ?? null);
@@ -254,11 +300,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnect = useCallback(async () => {
+    // First, and whatever the wallet then answers: a disconnect that failed half-way must not
+    // leave the last address's session behind.
+    release(null);
     await adapter?.disconnect();
     setAccount(null);
     setKind(null);
     remember(null);
-  }, [adapter]);
+  }, [adapter, release]);
 
   const switchChain = useCallback(async () => {
     const switched = await adapter?.switchChain?.();
@@ -279,6 +328,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<WalletState>(() => {
     const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
+    // Derived from whose session is held, so it cannot say "active" for a wallet it was not
+    // issued to.
+    const session: SessionStatus = signing
+      ? "signing"
+      : heldBy(held, account && { address: account.address, namespace: "eip155" })
+        ? "active"
+        : "none";
 
     return {
       status,
@@ -290,7 +346,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       onTargetChain: account?.chainId == null || account.chainId === TARGET_CHAIN.chainId,
       canSwitchChain: adapter?.switchChain !== undefined,
       error,
-      session: sessionStatus,
+      session,
       sessionError,
       signInWithWallet,
       connect,
@@ -304,10 +360,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     connecting,
     disconnect,
     error,
+    held,
     kind,
     sessionError,
-    sessionStatus,
     signInWithWallet,
+    signing,
     switchChain,
   ]);
 
