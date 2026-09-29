@@ -61,23 +61,28 @@ function Calibration({ mine }: { mine: readonly Read[] }) {
       {buckets ? (
         <View style={{ height: 150 }}>
           <View style={{ position: "absolute", left: 0, right: 0, top: 0, height: 118 }} pointerEvents="none">
+            {/* Barra de p mide 108·p desde la base (y=118): y = 118 − 108·p, o y = 100 − 91.53·p en este viewBox de 118. */}
             <Svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-              <Line x1={0} y1={88} x2={100} y2={8} stroke="#6E7490" strokeWidth={1.5} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
+              <Line x1={0} y1={100} x2={100} y2={8.47} stroke="#6E7490" strokeWidth={1.5} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
             </Svg>
           </View>
           <View style={{ height: 118, flexDirection: "row", alignItems: "flex-end", gap: 7 }}>
             {buckets.map((b, i) => (
-              <View key={i} style={{ flex: 1, gap: 9, alignItems: "stretch" }}>
-                <View
-                  accessibilityLabel={`calib-${i}`}
-                  style={{
-                    height: b.actual === null ? 0 : Math.max(2, b.actual * 108),
-                    borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-                    backgroundColor: i < 2 ? C.vio : C.lime,
-                  }}
-                />
-                <T w={500} s={9} mono color={C.onInkDim} style={{ textAlign: "center" }}>{`${Math.round(b.lo * 100)}–${Math.round(b.hi * 100)}`}</T>
-              </View>
+              <View
+                key={i}
+                accessibilityLabel={`calib-${i}`}
+                style={{
+                  flex: 1,
+                  height: b.actual === null ? 0 : Math.max(2, b.actual * 108),
+                  borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+                  backgroundColor: i < 2 ? C.vio : C.lime,
+                }}
+              />
+            ))}
+          </View>
+          <View style={{ flexDirection: "row", gap: 7, marginTop: 9 }}>
+            {buckets.map((b, i) => (
+              <T key={i} w={500} s={9} mono color={C.onInkDim} style={{ flex: 1, textAlign: "center" }}>{`${Math.round(b.lo * 100)}–${Math.round(b.hi * 100)}`}</T>
             ))}
           </View>
         </View>
