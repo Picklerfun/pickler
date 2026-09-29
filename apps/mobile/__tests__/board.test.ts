@@ -51,6 +51,19 @@ test("trajectory: fewer than 2 marks draws nothing", () => {
 });
 
 test("sticky phrase: with a level it names target and horizon; without, a market order", () => {
-  expect(stickyPhrase("long", "BTC", { target: 770181, horizonMin: 240 }, 1)).toBe("Long to 77018.1 within 4H");
+  expect(stickyPhrase("long", "BTC", { target: 770181, horizonMin: 240, levelBps: 100 }, 1)).toBe("Long to 77018.1 within 4H");
   expect(stickyPhrase("short", "ETH", undefined, 2)).toBe("Short ETH at market");
+});
+
+test("sticky phrase: a side that disagrees with the level's implied side falls back to the plain market order (item 4)", () => {
+  // Nivel por encima del mark (levelBps > 0 ⇒ long) con lado Short elegido: "Short to <precio arriba>" sería contradictorio.
+  expect(stickyPhrase("short", "BTC", { target: 781619, horizonMin: 60, levelBps: 250 }, 1)).toBe("Short BTC at market");
+  // Coincide (levelBps < 0 ⇒ short, lado short): sí se usa el nivel.
+  expect(stickyPhrase("short", "BTC", { target: 758742, horizonMin: 60, levelBps: -50 }, 1)).toBe("Short to 75874.2 within 1H");
+});
+
+test("caption: an explicit target on the cell is used instead of the mark-derived price (item 2)", () => {
+  expect(boardCaption("trade", { levelBps: 100, horizonMin: 240, target: 999999 }, MARK, 1)).toEqual({ text: "LONG TO 99999.9 WITHIN 4H", tone: "long" });
+  // Sin target explícito, sigue calculando desde el mark (compatibilidad con Ask).
+  expect(boardCaption("trade", { levelBps: 100, horizonMin: 240 }, MARK, 1)).toEqual({ text: "LONG TO 77018.1 WITHIN 4H", tone: "long" });
 });

@@ -18,9 +18,10 @@ export function boardRows(mark: number): BoardRow[] {
 
 export const cellTone = (mode: BoardMode, bps: number): "long" | "short" | "ask" => (mode === "ask" ? "ask" : bps > 0 ? "long" : "short");
 
-export function boardCaption(mode: BoardMode, cell: { levelBps: number; horizonMin: number } | undefined, mark: number, pd: number): { text: string; tone: "long" | "short" | "ask" | "none" } {
+export function boardCaption(mode: BoardMode, cell: { levelBps: number; horizonMin: number; target?: number } | undefined, mark: number, pd: number): { text: string; tone: "long" | "short" | "ask" | "none" } {
   if (!cell) return { text: "TAP A SQUARE", tone: "none" };
-  const price = formatPrice(targetFor(mark, cell.levelBps), pd);
+  // Con `target` explícito (nivel ya armado en Trade), se usa ése y no el que recalcularía el mark vivo (item 2 de la ola final).
+  const price = formatPrice(cell.target ?? targetFor(mark, cell.levelBps), pd);
   const h = horizonLabel(cell.horizonMin);
   if (mode === "ask") return { text: `ASK ABOUT ${price} WITHIN ${h}`, tone: "ask" };
   const tone = cellTone(mode, cell.levelBps) as "long" | "short";
@@ -51,7 +52,10 @@ export function trajectory(marks: readonly number[], mark: number): [number, num
   return marks.map((m, i) => [Math.round((i / last) * 1000) / 10, yFor(((m - mark) / mark) * 10000)]);
 }
 
-export function stickyPhrase(side: Side, symbol: string, level: { target: number; horizonMin: number } | undefined, pd: number): string {
+export function stickyPhrase(side: Side, symbol: string, level: { target: number; horizonMin: number; levelBps: number } | undefined, pd: number): string {
   const s = side === "long" ? "Long" : "Short";
-  return level ? `${s} to ${formatPrice(level.target, pd)} within ${horizonLabel(level.horizonMin)}` : `${s} ${symbol} at market`;
+  // Si el lado elegido no coincide con el que implica el nivel (levelBps > 0 ⇒ long), el nivel no aplica a este lado:
+  // la barra dice el mercado liso, no un precio que contradiría "Short" (item 4 de la ola final).
+  const matches = level !== undefined && (level.levelBps > 0) === (side === "long");
+  return matches ? `${s} to ${formatPrice(level!.target, pd)} within ${horizonLabel(level!.horizonMin)}` : `${s} ${symbol} at market`;
 }

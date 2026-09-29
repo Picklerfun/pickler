@@ -26,7 +26,9 @@ function Pill({ tone }: { tone: "long" | "short" | "ask" }) {
   );
 }
 
-/** Capa de trayectoria detrás de las filas: área + línea sobre los marks en memoria, punto "now" al final. */
+/** Capa de trayectoria encima de las filas y de la banda MARK: área + línea sobre los marks en memoria, punto "now" al
+ *  final. Va pintada DESPUÉS del grid (ruling del coordinador, item 1 de la ola final): un `View` `position: "absolute"`
+ *  no sube de plano solo por ser absoluto, así que si se pinta antes que las filas, éstas (que no son absolutas) la tapan. */
 function Trajectory({ marks, mark }: { marks: readonly number[]; mark: number }) {
   const pts = trajectory(marks, mark);
   if (pts.length === 0) return null;
@@ -44,12 +46,13 @@ function Trajectory({ marks, mark }: { marks: readonly number[]; mark: number })
   );
 }
 
-export function Board({ mode, market, marks, dots, selected, onSelect }: {
-  mode: BoardMode; market: Market; marks: readonly number[]; dots: Set<string>; selected?: Cell; onSelect: (c: Cell) => void;
+export function Board({ mode, market, marks, dots, selected, target, onSelect }: {
+  mode: BoardMode; market: Market; marks: readonly number[]; dots: Set<string>; selected?: Cell; target?: number; onSelect: (c: Cell) => void;
 }) {
   const pd = market.priceDecimals;
   const rows = boardRows(market.mark);
-  const caption = boardCaption(mode, selected, market.mark, pd);
+  // `target`: en Trade, el precio ya fijado por el nivel (item 2 de la ola final); sin él, `boardCaption` lo recalcula del mark vivo.
+  const caption = boardCaption(mode, selected ? { ...selected, target } : undefined, market.mark, pd);
   return (
     <View style={{ gap: 8 }}>
       <Card radius={20} bg={C.card} pad={0}>
@@ -58,7 +61,6 @@ export function Board({ mode, market, marks, dots, selected, onSelect }: {
           <T w={500} s={10} lh={1} ls={0.06} mono color={CAPTION_FG[caption.tone]}>{caption.text}</T>
         </View>
         <View style={{ marginHorizontal: 6, marginBottom: 6, borderRadius: 14, backgroundColor: C.bg, overflow: "hidden" }}>
-          <Trajectory marks={marks} mark={market.mark} />
           {rows.map((row) => {
             if (row.kind === "mark") {
               return (
@@ -79,8 +81,11 @@ export function Board({ mode, market, marks, dots, selected, onSelect }: {
                   const cell = { levelBps: row.bps, horizonMin: h } as Cell;
                   const isSel = selected?.levelBps === row.bps && selected?.horizonMin === h;
                   return (
+                    // La fila (`View` de arriba) no fija su alto: lo toma del hijo más alto más su borde inferior de 1.
+                    // Con la celda a BOARD_CELL_H (48) completos, la fila mediría 49 y el grid 5×49+26 ≠ BOARD_H (item 3
+                    // de la ola final). La celda mide BOARD_CELL_H − 1 para que el borde complete los 48 reales.
                     <Touch key={h} onPress={() => onSelect(cell)} accessibilityLabel={`cell-${row.bps}-${h}`}
-                      style={{ flex: 1, height: BOARD_CELL_H, alignItems: "center", justifyContent: "center", backgroundColor: isSel ? TINT[tone] : "transparent" }}>
+                      style={{ flex: 1, height: BOARD_CELL_H - 1, alignItems: "center", justifyContent: "center", backgroundColor: isSel ? TINT[tone] : "transparent" }}>
                       {isSel ? <Pill tone={tone} /> : (
                         <View style={{ width: 6, height: 6, borderRadius: 2, backgroundColor: dots.has(dotKey(cell)) ? C.agentDot : C.empty }} />
                       )}
@@ -90,6 +95,7 @@ export function Board({ mode, market, marks, dots, selected, onSelect }: {
               </View>
             );
           })}
+          <Trajectory marks={marks} mark={market.mark} />
         </View>
         <View style={{ flexDirection: "row", marginHorizontal: 6 }}>
           <View style={{ width: 84, paddingLeft: 12, justifyContent: "center" }}>

@@ -54,6 +54,7 @@ function TradeTab(ctx: AppCtx & { head: ReactNode }) {
   const board = (
     <Board mode="trade" market={market} marks={perpl.marks[market.id] ?? []} dots={dots}
       selected={level ? { levelBps: level.levelBps, horizonMin: level.horizonMin } as Cell : undefined}
+      target={level?.target}
       onSelect={(c) => set({ tradeLevel: levelFromCell(market, c, new Date()), perpsSide: sideFor(c.levelBps) })} />
   );
 
