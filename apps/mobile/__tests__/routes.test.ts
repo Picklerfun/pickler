@@ -2,10 +2,10 @@ import { GATED, ROOT_OF, type Screen } from "../src/store";
 import { ALL_TABS, gateTarget, SCREENS_ALL, screenOfRoute, TAB_OF, TAB_ORDER, TAB_ROOT } from "../src/navigation/routes";
 
 test("every screen except signin belongs to exactly one tab; only four tabs are visible (D1)", () => {
-  const screens = SCREENS_ALL.filter((s) => s !== "signin");
+  const screens = SCREENS_ALL.filter((s) => s !== "signin" && s !== "onboarding");
   expect(screens).toHaveLength(12);
   for (const s of screens) {
-    const tab = TAB_OF[s as Exclude<Screen, "signin">];
+    const tab = TAB_OF[s as Exclude<Screen, "signin" | "onboarding">];
     expect(ALL_TABS).toContain(tab);
     expect(ROOT_OF[s]).toBe(TAB_ROOT[tab]);
   }
@@ -14,6 +14,12 @@ test("every screen except signin belongs to exactly one tab; only four tabs are 
   expect(TAB_OF.perpsFunds).toBe("WalletTab");
   expect(TAB_OF.read).toBe("PortfolioTab");
   expect(TAB_OF.agent).toBe("AgentsTab");
+});
+
+test("onboarding lives in the RootStack, outside the tabs (D21)", () => {
+  expect(SCREENS_ALL).toContain("onboarding");
+  expect(screenOfRoute("onboarding")).toBe("onboarding");
+  expect(GATED).not.toContain("onboarding");
 });
 
 test("screenOfRoute maps route names back to screens and ignores navigator names", () => {

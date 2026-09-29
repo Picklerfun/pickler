@@ -6,6 +6,7 @@ import { AgentsScreen } from "../screens/agents";
 import { ComingSoonScreen } from "../screens/comingSoon";
 import { MarkBadge, MarketScreen } from "../screens/market";
 import { MarketsScreen } from "../screens/markets";
+import { OnboardingScreen } from "../screens/onboarding";
 import { PerpsFundsScreen } from "../screens/perpsFunds";
 import { PortfolioScreen } from "../screens/portfolio";
 import { ReadScreen } from "../screens/read";
@@ -108,6 +109,8 @@ export function Navigator({ initial }: { initial: "Tabs" | "signin" }) {
       <Root.Navigator initialRouteName={initial} screenOptions={STACK}>
         <Root.Screen name="Tabs" component={TabsNav} />
         <Root.Screen name="signin" component={Signin} />
+        {/* Pantalla completa, sin cabecera propia (D21): no usa withPage. */}
+        <Root.Screen name="onboarding" component={OnboardingScreen} options={{ gestureEnabled: false, animation: "fade" }} />
       </Root.Navigator>
     </NavigationContainer>
   );

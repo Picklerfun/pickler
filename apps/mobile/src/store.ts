@@ -136,6 +136,7 @@ export function headerFor(screen: Screen, perpsSymbol?: string, agent?: { name: 
     case "read": return ["Read", ""];
     case "agent": return agent ? [agent.name, `By ${agent.owner}`] : ["Agent", ""];
     case "signin": return ["Pickler", ""];
+    case "onboarding": return ["Pickler", ""];
     case "launchpad": case "activity": return [COMING_SOON_COPY[screen].title, "Coming soon"];
   }
 }
@@ -148,8 +149,10 @@ export type AppStore = {
   requireAccount: (target: Screen, patch?: Patch) => void;
   /** Tab bar: enfoca la pestaña conservando su pila; sin cuenta, las pestañas con gate pasan por signin. */
   switchTab: (tab: TabName) => void;
-  /** Sign in terminado: vuelve a Tabs y aterriza en el `next` del gate (D5). */
-  finishSignin: () => void;
+  /** Sign in terminado: vuelve a Tabs y aterriza en el `next` del gate (D5), o en `fallback` si no había uno (D21: el onboarding cierra en Markets salvo acción retenida). */
+  finishSignin: (fallback?: Screen) => void;
+  /** Sign up recién creado, sin onboarding visto: sale del ctx hacia la ruta `onboarding`, con los mismos params de signin (D21). */
+  startOnboarding: () => void;
   signedOut: () => void;
   hasAccount: boolean;
   /** Pantalla enfocada según react-navigation (D4). */
@@ -173,11 +176,12 @@ export function useAppStore({ hasAccount, scr }: { hasAccount: boolean; scr: Scr
     if (g.screen === "signin") { navigateTo("signin", { next: g.next }); return; }
     switchTabRoute(tab);
   }, [hasAccount]);
-  const finishSignin = useCallback(() => {
+  const finishSignin = useCallback((fallback?: Screen) => {
     const p = currentParams();
     if (signinIsRoot()) resetRootTo("Tabs"); // arranque sin cuenta: no hay Tabs debajo (P3)
-    nav(p?.next ?? "wallet", p?.patch); // con Tabs debajo, el `pop: true` del RootStack vuelve a Tabs y saca signin
+    nav(p?.next ?? fallback ?? "wallet", p?.patch); // con Tabs debajo, el `pop: true` del RootStack vuelve a Tabs y saca signin/onboarding
   }, [nav]);
+  const startOnboarding = useCallback(() => navigateTo("onboarding", currentParams()), []);
   const signedOut = useCallback(() => { setS(signedOutState); resetRootTo("signin"); }, []);
-  return { S, set, nav, back, requireAccount, switchTab, finishSignin, signedOut, hasAccount, scr, comingSoon: isComingSoonTab(scr) };
+  return { S, set, nav, back, requireAccount, switchTab, finishSignin, startOnboarding, signedOut, hasAccount, scr, comingSoon: isComingSoonTab(scr) };
 }

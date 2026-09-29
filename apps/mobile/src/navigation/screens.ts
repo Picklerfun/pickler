@@ -7,7 +7,7 @@ export type Screen =
   | "agents" | "agent"
   | "portfolio" | "read"
   | "wallet" | "deposit" | "withdraw" | "perpsFunds"
-  | "launchpad" | "activity" | "signin";
+  | "launchpad" | "activity" | "signin" | "onboarding";
 
 /** Pantallas que exigen cuenta (D23). La lista de Agents es pública; los coming soon nunca la piden. */
 export const GATED: readonly Screen[] = ["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "portfolio", "read", "agent"];
@@ -20,5 +20,5 @@ export const ROOT_OF: Record<Screen, Screen> = {
   agents: "agents", agent: "agents",
   portfolio: "portfolio", read: "portfolio",
   wallet: "wallet", deposit: "wallet", withdraw: "wallet", perpsFunds: "wallet",
-  launchpad: "launchpad", activity: "activity", signin: "wallet",
+  launchpad: "launchpad", activity: "activity", signin: "wallet", onboarding: "wallet",
 };

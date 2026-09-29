@@ -22,15 +22,15 @@ export type TabParamList = {
   LaunchpadTab: NavigatorScreenParams<SoloStackParamList<"launchpad">> | undefined;
   ActivityTab: NavigatorScreenParams<SoloStackParamList<"activity">> | undefined;
 };
-export type RootParamList = { Tabs: NavigatorScreenParams<TabParamList> | undefined; signin: SigninParams };
+export type RootParamList = { Tabs: NavigatorScreenParams<TabParamList> | undefined; signin: SigninParams; onboarding: SigninParams };
 
 /** Pestañas pintadas en la barra (D1/D2). */
 export const TAB_ORDER: readonly TabName[] = ["MarketsTab", "AgentsTab", "PortfolioTab", "WalletTab"];
 /** Todas las registradas: Launchpad y Activity se integran después, fuera de la barra (D1). */
 export const ALL_TABS: readonly TabName[] = [...TAB_ORDER, "LaunchpadTab", "ActivityTab"];
 
-/** Pestaña dueña de cada pantalla (signin vive en el RootStack). */
-export const TAB_OF: Record<Exclude<Screen, "signin">, TabName> = {
+/** Pestaña dueña de cada pantalla (signin y onboarding viven en el RootStack). */
+export const TAB_OF: Record<Exclude<Screen, "signin" | "onboarding">, TabName> = {
   markets: "MarketsTab", market: "MarketsTab",
   agents: "AgentsTab", agent: "AgentsTab",
   portfolio: "PortfolioTab", read: "PortfolioTab",
@@ -43,7 +43,7 @@ export const TAB_ROOT: Record<TabName, Screen> = {
 };
 
 export const SCREENS_ALL: readonly Screen[] = [
-  "markets", "market", "agents", "agent", "portfolio", "read", "wallet", "deposit", "withdraw", "perpsFunds", "launchpad", "activity", "signin",
+  "markets", "market", "agents", "agent", "portfolio", "read", "wallet", "deposit", "withdraw", "perpsFunds", "launchpad", "activity", "signin", "onboarding",
 ];
 
 /** Nombre de ruta enfocada → pantalla; null para navegadores (`Tabs`, `*Tab`) o sin estado. */

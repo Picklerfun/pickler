@@ -4,6 +4,8 @@ import { ActivityIndicator, View } from "react-native";
 import { shortHash } from "../config/chain";
 import type { AppCtx } from "../ctx";
 import type { SigninParams } from "../navigation/routes";
+import { shouldOnboard } from "../onboarding";
+import { loadOnboarded } from "../storage/onboarding";
 import { heldActionFor } from "../store";
 import { Card, Icon, Page, Segmented, T, Tag, Touch } from "../ui/primitives";
 import { C } from "../ui/theme";
@@ -13,7 +15,7 @@ type Mode = "in" | "up";
 type Phase = { step: "idle" } | { step: "busy" } | { step: "done"; address: string };
 const DONE_MS = 1000; // el banner ACCOUNT CREATED / WELCOME BACK se ve antes de navegar (D20)
 
-export function SigninScreen({ onWallet, finishSignin }: AppCtx) {
+export function SigninScreen({ onWallet, finishSignin, startOnboarding }: AppCtx) {
   const held = heldActionFor((useRoute().params as SigninParams)?.next);
   const [mode, setMode] = useState<Mode>("in");
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
@@ -30,7 +32,8 @@ export function SigninScreen({ onWallet, finishSignin }: AppCtx) {
       const wallet = mode === "up" ? await createAccount() : await signIn();
       onWallet(wallet);
       setPhase({ step: "done", address: wallet.address });
-      doneTimer.current = setTimeout(finishSignin, DONE_MS);
+      const onboard = shouldOnboard(mode, await loadOnboarded());
+      doneTimer.current = setTimeout(onboard ? startOnboarding : () => finishSignin(), DONE_MS);
     } catch (e) {
       setError(describeError(e));
       setPhase({ step: "idle" });

@@ -47,6 +47,7 @@ test("headers", () => {
   expect(headerFor("read")).toEqual(["Read", ""]);
   expect(headerFor("agent")).toEqual(["Agent", ""]);
   expect(headerFor("signin")).toEqual(["Pickler", ""]);
+  expect(headerFor("onboarding")).toEqual(["Pickler", ""]);
 });
 
 test("agent header: the agent's name and owner once agents-list is loaded (D16)", () => {
