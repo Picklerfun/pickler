@@ -211,9 +211,8 @@ test("the server's field names map to the sections, with a reason a person reads
 
 // Literal copies, pinned. A dynamic import reaches an "import"-only package from this CommonJS
 // test (see apps/web/src/features/studio/create/draft.ts for the constraint).
-test("model.ts's copies match api-schema's and core's", async () => {
+test("model.ts's copies match api-schema's", async () => {
   const schema = await import("@pickler/api-schema");
-  const core = await import("@pickler/core");
   assert.deepEqual(BRIEF_LIMITS, schema.BRIEF_LIMITS);
   assert.deepEqual(LEVERAGE_BOUNDS, schema.LEVERAGE_BOUNDS);
   assert.equal(PAPER_BUDGET_AUSD, schema.PAPER_BUDGET_AUSD);
