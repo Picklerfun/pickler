@@ -3,12 +3,14 @@
 // `task` is the plan task that builds each screen. A route that answers 404 has not been built yet
 // rather than broken, and naming the task turns "this is missing" into "this is not your turn".
 //
-// `proves` is the floor, and it is the most important field here. /studio answered 200 and rendered
-// a sign-in stub wherever Supabase was unconfigured — which is every environment these checks run
-// in — so all four checks walked 33 elements of the stub and reported green. A check that matches
-// nothing reports what a check that passes reports. So every route names something the real screen
-// contains and a stub cannot, and a route that does not show it is reported like a route that never
-// loaded: named, not measured, not counted as passing.
+// `proves` is the floor, and it is the most important field here. /studio once answered 200 and
+// rendered a sign-in stub, so all four checks walked 33 elements of the stub and reported green.
+// A check that matches nothing reports what a check that passes reports. So every route names
+// something the real screen contains and a stub cannot, and a route that does not show it is
+// reported like a route that never loaded: named, not measured, not counted as passing.
+//
+// The checks run with authentication switched off (lib/servers.mjs), which is what lets the studio
+// and the account render from their preview fixtures. A server with it on sends both to /signin.
 //
 // A selector is preferred over `floor`, a minimum count of text-carrying elements, because a count
 // drifts into passing as a stub grows. `floor` is only for screens with no authored hook to point
@@ -170,13 +172,10 @@ const ALL = [
     product: "marketplace",
     surface: "light",
     task: "Marketplace",
-    // Two screens, one of which must be present. #tokens-empty is the launch-day screen: no token
-    // has launched, so the board draws that instead of a stage filter over an empty grid. The other
-    // selector is the populated board — the graduation meter is drawn once per token card, so it
-    // is a row and not a heading, because the board's own title renders with nothing behind it. A
-    // page with neither is the stub this pairing refuses.
-    proves:
-      '#tokens-empty, main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
+    // The launch catalogue with rows in it: the harness's fixture API serves two launches, and
+    // the link proves the first of them is on the board. #launch-board-empty is the screen the
+    // product shows today, and a page showing it here means the fixture was not what answered.
+    proves: '#launch-board a[href="/tokens/HALF"]',
   },
   {
     path: "/tokens/half",
@@ -588,6 +587,17 @@ const ALL = [
     surface: "dark",
     task: "Auth",
     proves: "#signup-passkey",
+  },
+  // /passkey adds a passkey to an account that has one, so a real visit needs a session, a
+  // master wallet and a profile. `?state=add` draws the screen from one fixture passkey instead,
+  // outside production only (apps/web/src/features/auth/lib/passkey-entry.ts).
+  {
+    path: "/passkey?state=add",
+    name: "passkey-add",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: "#passkey-add",
   },
   // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
   // not one of them was /signin or /signup, so those two screens were never unconverted — nobody

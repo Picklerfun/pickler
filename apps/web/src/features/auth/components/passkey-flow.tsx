@@ -7,6 +7,7 @@ import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
 import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
+import { PREVIEW_PASSKEYS, type PasskeyPreview } from "../lib/passkey-entry";
 import {
   CUSTODY_API,
   SessionExpired,
@@ -136,6 +137,7 @@ export function PasskeyFlow({
   mode,
   destination,
   preview,
+  passkeyPreview,
 }: {
   board: AuthBoardData;
   /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
@@ -149,9 +151,11 @@ export function PasskeyFlow({
   destination?: string | undefined;
   /** `up` only, outside production: open on this step without a session or any read. */
   preview?: SignupPreview | undefined;
+  /** `add` only, outside production: the add-a-passkey screen without a session or any read. */
+  passkeyPreview?: PasskeyPreview | undefined;
 }) {
   if (mode === "add") {
-    return <PasskeyAddFlow board={board} destination={destination} />;
+    return <PasskeyAddFlow board={board} destination={destination} preview={passkeyPreview} />;
   }
   return (
     <SignFlow
@@ -631,18 +635,26 @@ interface AddSheetState {
 function PasskeyAddFlow({
   board,
   destination,
+  preview,
 }: {
   board: AuthBoardData;
   destination?: string | undefined;
+  preview: PasskeyPreview | undefined;
 }) {
   const router = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [screen, setScreen] = useState<AddFlowScreen>("loading");
-  const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
+  // A preview opens on the screen with its fixture list and reads nothing.
+  const [screen, setScreen] = useState<AddFlowScreen>(preview === "add" ? "add" : "loading");
+  const [passkeysState, setPasskeysState] = useState<PasskeysRead>(
+    preview === "add" ? { kind: "ready", passkeys: PREVIEW_PASSKEYS } : { kind: "loading" },
+  );
   const [sheet, setSheet] = useState<AddSheetState | null>(null);
 
   useEffect(() => {
+    if (preview !== undefined) {
+      return;
+    }
     let live = true;
     void (async () => {
       try {
@@ -679,7 +691,7 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, preview]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {
