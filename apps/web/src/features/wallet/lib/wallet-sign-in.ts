@@ -1,6 +1,6 @@
 import type { ConnectResult, Signer } from "./connect";
 import { signInWords } from "./sign-in-words";
-import { decideSession, type WalletSession } from "./wallet-session";
+import { decideSession, type HeldSession, type WalletSession } from "./wallet-session";
 
 /**
  * What signing in answered. The error travels in the result rather than through the context's
@@ -22,7 +22,7 @@ export interface SignInClient {
 }
 
 export interface SignInAttempt {
-  cached: WalletSession | null;
+  cached: HeldSession | null;
   /** The connected wallet, or null when nothing is connected. */
   signer: Signer | null;
   supabase: SignInClient | null;

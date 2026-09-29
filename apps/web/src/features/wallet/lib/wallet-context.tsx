@@ -16,7 +16,13 @@ import { injectedSigner } from "./injected-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
 import { signIn } from "./connect";
 import { fromInjectedProvider } from "./signer-adapters";
-import { dropWalletSession, heldBy, type WalletSession } from "./wallet-session";
+import {
+  adoptSession,
+  dropWalletSession,
+  heldBy,
+  releases,
+  type HeldSession,
+} from "./wallet-session";
 import { signInAs, type SignInResult } from "./wallet-sign-in";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
@@ -139,8 +145,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
   // wallet-session.ts. The ref is the same value for the callbacks that run outside a render.
-  const [held, setHeld] = useState<WalletSession | null>(null);
-  const heldRef = useRef<WalletSession | null>(null);
+  const [held, setHeld] = useState<HeldSession | null>(null);
+  const heldRef = useRef<HeldSession | null>(null);
+  // The account as of the last render, for telling a change of chain from a change of
+  // address when the held session has no address of its own.
+  const accountRef = useRef<SignerAccount | null>(null);
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
@@ -171,10 +180,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const hold = useCallback((next: WalletSession | null) => {
+  const hold = useCallback((next: HeldSession | null) => {
     heldRef.current = next;
     setHeld(next);
   }, []);
+
+  useEffect(() => {
+    accountRef.current = account;
+  }, [account]);
+
+  // A reload forgets what the page held, but not the browser's session. If that is a wallet
+  // account's, hold it again, so that switching or disconnecting still signs the browser out.
+  useEffect(() => {
+    let live = true;
+    const supabase = getSupabase();
+    if (!supabase) {
+      return;
+    }
+    void supabase.auth.getSession().then(
+      ({ data }) => {
+        // A sign-in that finished first is the better answer: it knows its address.
+        if (live && !heldRef.current) {
+          hold(adoptSession(data.session));
+        }
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [hold]);
 
   /**
    * Lets go of the session unless it belongs to `next`: the token is forgotten and the browser is
@@ -185,7 +220,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     (next: SignerAccount | null) => {
       const cached = heldRef.current;
       setSessionError(null);
-      if (!cached || heldBy(cached, next && { address: next.address, namespace: "eip155" })) {
+      const previous = accountRef.current;
+      const changed = releases(
+        cached,
+        previous && { address: previous.address, namespace: "eip155" },
+        next && { address: next.address, namespace: "eip155" },
+      );
+      if (!cached || !changed) {
         return;
       }
       hold(null);

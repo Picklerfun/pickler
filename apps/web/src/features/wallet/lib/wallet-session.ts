@@ -22,6 +22,19 @@ export interface WalletSession extends ConnectedWallet {
   userId: string;
 }
 
+/**
+ * A wallet account's session that was already in the browser when the page loaded. The page did
+ * not see it being made, and the session does not say which address it is for — the token carries
+ * a digest of the address, never the address — so it is held without one. It is never handed back
+ * as the connected wallet's token, and it is let go of as soon as the wallet changes.
+ */
+export interface AdoptedSession {
+  adopted: true;
+  userId: string;
+}
+
+export type HeldSession = WalletSession | AdoptedSession;
+
 export type SessionDecision =
   { action: "reuse"; token: string } | { action: "sign" } | { action: "none" };
 
@@ -60,19 +73,43 @@ function sameWallet(one: ConnectedWallet, other: ConnectedWallet): boolean {
     : one.address === other.address;
 }
 
-export function heldBy(cached: WalletSession | null, connected: ConnectedWallet | null): boolean {
-  return cached !== null && connected !== null && sameWallet(cached, connected);
+export function heldBy(cached: HeldSession | null, connected: ConnectedWallet | null): boolean {
+  return (
+    cached !== null && !("adopted" in cached) && connected !== null && sameWallet(cached, connected)
+  );
+}
+
+/**
+ * Whether the held session is let go of when the wallet goes from `previous` to `next`.
+ *
+ * A session with an address is kept exactly while that address is connected; a change of chain
+ * arrives as the same address again and keeps it. An adopted one has no address to compare, so it
+ * is kept only while the connected address does not change — and when nothing was connected,
+ * whose it is cannot be known, so connecting lets go of it.
+ */
+export function releases(
+  cached: HeldSession | null,
+  previous: ConnectedWallet | null,
+  next: ConnectedWallet | null,
+): boolean {
+  if (!cached) {
+    return false;
+  }
+  if ("adopted" in cached) {
+    return !(previous !== null && next !== null && sameWallet(previous, next));
+  }
+  return !heldBy(cached, next);
 }
 
 export function decideSession(
-  cached: WalletSession | null,
+  cached: HeldSession | null,
   connected: ConnectedWallet | null,
   now: Date,
 ): SessionDecision {
   if (!connected) {
     return { action: "none" };
   }
-  if (!cached || !sameWallet(cached, connected)) {
+  if (!cached || "adopted" in cached || !sameWallet(cached, connected)) {
     return { action: "sign" };
   }
   const expiry = tokenExpiry(cached.token);
@@ -104,6 +141,11 @@ export function madeByWalletSignIn(session: ClientSession | null): boolean {
   return session?.user.app_metadata?.[ACCOUNT_KEY] === WALLET_ACCOUNT;
 }
 
+/** What to hold for a session found in the browser on load: a wallet account's, or nothing. */
+export function adoptSession(session: ClientSession | null): AdoptedSession | null {
+  return session && madeByWalletSignIn(session) ? { adopted: true, userId: session.user.id } : null;
+}
+
 /** The two verbs of Supabase's auth client this needs, so a test can stand in for it. */
 export interface SessionClient {
   auth: {
@@ -120,7 +162,7 @@ export interface SessionClient {
  */
 export async function dropWalletSession(
   supabase: SessionClient | null,
-  cached: { userId: string } | null,
+  cached: HeldSession | null,
 ): Promise<void> {
   if (!supabase || !cached) {
     return;
