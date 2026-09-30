@@ -36,20 +36,20 @@ and on iOS (Mera), and the agent's owner, who sees their holders and volume.
 
 ## 2. Decisions
 
-| #   | Decision                                                                                                                                                                                                                                                                                                                 | Reason                                                                                                                                                                                                              | Reversible? |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| T1  | **The token page reads the launch.** New public route `GET /v1/marketplace/tokens/:ticker` answers from `market.tokens` and the launch read model, left-joined to the agent. An unlisted token (no `launch.agent_keys` row, `launchpad-deploy-v1` D13) renders with "No linked agent" and is hidden from `/tokens`.      | A launch the chain has is real whether or not we know its agent (`market.ts:45-52`). Hiding it from the board keeps squat-like tokens out of discovery; its page stays reachable by address for honesty.            | yes         |
-| T2  | **Quotes are on-chain, at the latest block, never cached and never locked.** The API runs `eth_call` on `quoteBuy`, `quoteBuyExactOutput`, `quoteSell` and `getCurveState`, and refuses with `503 QUOTE_STALE` when the RPC head is older than 30 s or the indexer lags the head by more than 60 s.                      | `launchpad-monad-v1.md` §8 "The quote is on-chain". The TypeScript port (`packages/core/src/features/launch/domain/curve-math.ts:26,45`) only previews while the person types.                                      | yes         |
-| T3  | **The trade quote is the prepare step.** `POST /v1/me/trades/quote` (mobile contract) returns a `quoteId`, the unsigned approval (or null) and the unsigned trade transaction. The server builds calldata; the client signs and broadcasts; the server never holds a buyer key.                                          | The page never composes calldata (`marketplace-wallets-v1.md` §3.6). One route for web and mobile. The parent brief's `/v1/me/tokens/:ticker/trades/prepare` is merged into this route to keep the mobile contract. | yes         |
-| T4  | **Approvals are exact-amount**, to the curve (buy: AUSD; sell: the agent token), and only when the current allowance is short. No unlimited approvals.                                                                                                                                                                   | A compromised curve could otherwise drain every approving wallet. Costs one extra signature per trade when allowance is short; the sheet says why.                                                                  | yes         |
-| T5  | **Slippage default 1 %, maximum 5 %, deadline now + 120 s.** `minOut` (exact-in) or `maxIn` (exact-out) is computed by the API from the on-chain quote.                                                                                                                                                                  | Curve trades are deterministic given state; slippage only covers state moving between quote and inclusion. 5 % caps what a sandwich can take.                                                                       | yes         |
-| T6  | **Modes**: buy exact-in (spend N AUSD), buy exact-out (get N tokens), sell exact-in (sell N tokens). When an exact-in buy would exceed `remainingTokens()`, the quote answers `remainder: true` with a `buyExactOutput` for exactly the remaining tokens.                                                                | The curve reverts rather than partially filling (`PicklerBondingCurve.sol:185-187,201-203`); offering the remainder is the honest alternative.                                                                      | yes         |
-| T7  | **Trade states** `quoted → submitted → included → confirmed`, or `reverted` / `expired` / `dropped`. `confirmed` means the indexer projected the trade at its `CONFIRMATIONS`. The sheet never shows a fill before `included`.                                                                                           | Never fake a charge (`marketplace-wallets-v1.md` §3.6). A receipt, not a hash, is the truth.                                                                                                                        | yes         |
-| T8  | **Graduation is kept moving by a keeper.** `READY_TO_GRADUATE` shows "Graduating". A Cron in `workers/trading` calls the permissionless `finalizeGraduation(curve)` (`PicklerGraduationAdapterV4.sol:100`) from a gas-only EOA within a minute; the page also offers "Finalize" to any connected wallet as a fallback.   | Nobody has a reason to pay gas for graduation; a stuck token is a broken market. The keeper holds only MON and can do nothing but call a public function.                                                           | yes         |
-| T9  | **After graduation, trades go through the Uniswap V4 Universal Router recorded in `packages/chain` for that chain.** On testnet, the Monad-maintained V4 has no Universal Router recorded in `packages/chain/src/deployments.ts`: v1 shows the pool price and an explorer link, read-only, labelled "Trades on the DEX". | Only verified, code-hashed addresses are used (`deployments.ts:3-11`). Building a V4 swap path against an unverified router on a testnet build that differs from mainnet proves nothing about mainnet.              | yes         |
-| T10 | **Portfolio = holdings of every wallet linked to the account** (`identity.wallet_links`), from `market.holders`, valued at the last trade price, with cost basis from the account's `market.trades` rows (average cost, FIFO not needed in v1).                                                                          | One account, several wallets (`marketplace-wallets-v1.md` D12). Indexed data, not per-request RPC.                                                                                                                  | yes         |
-| T11 | **Prices and amounts in the API are integers in base units** (`amountMicro` for AUSD, `amountWei`-style base units for the 18-decimal token, as decimal strings). Candles are quote per whole token as decimal strings.                                                                                                  | Conventions "Money: integers in micro-units"; token amounts exceed `bigint` JSON safety, so strings.                                                                                                                | yes         |
-| T12 | **Mobile trades use the same routes**; the app broadcasts with the Mera SDK's `signTransaction` and posts the hash.                                                                                                                                                                                                      | `mobile-backend-v1.md` §3.4.                                                                                                                                                                                        | yes         |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                              | Reason                                                                                                                                                                                                              | Reversible? |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| T1  | **The token page reads the launch.** New public route `GET /v1/marketplace/tokens/:ticker` answers from `market.tokens` and the launch read model, left-joined to the agent. An unlisted token (no `launch.agent_keys` row, `launchpad-deploy-v1` D13) renders with "No linked agent" and is hidden from `/tokens`.                                                                   | A launch the chain has is real whether or not we know its agent (`market.ts:45-52`). Hiding it from the board keeps squat-like tokens out of discovery; its page stays reachable by address for honesty.            | yes         |
+| T2  | **Quotes are on-chain, at the latest block, never cached and never locked.** The API runs `eth_call` on `quoteBuy`, `quoteBuyExactOutput`, `quoteSell` and `getCurveState`, and refuses with `503 QUOTE_STALE` when the RPC head is older than 30 s or the indexer lags the head by more than 60 s.                                                                                   | `launchpad-monad-v1.md` §8 "The quote is on-chain". The TypeScript port (`packages/core/src/features/launch/domain/curve-math.ts:26,45`) only previews while the person types.                                      | yes         |
+| T3  | **The trade quote is the prepare step.** `POST /v1/me/trades/quote` (mobile contract) returns a `quoteId`, the unsigned approval (or null) and the unsigned trade transaction. The server builds calldata; the client signs and broadcasts; the server never holds a buyer key.                                                                                                       | The page never composes calldata (`marketplace-wallets-v1.md` §3.6). One route for web and mobile. The parent brief's `/v1/me/tokens/:ticker/trades/prepare` is merged into this route to keep the mobile contract. | yes         |
+| T4  | **Approvals are exact-amount**, to the curve (buy: AUSD; sell: the agent token), and only when the current allowance is short. No unlimited approvals.                                                                                                                                                                                                                                | A compromised curve could otherwise drain every approving wallet. Costs one extra signature per trade when allowance is short; the sheet says why.                                                                  | yes         |
+| T5  | **Slippage default 1 %, maximum 5 %, deadline now + 120 s.** `minOut` (exact-in) or `maxIn` (exact-out) is computed by the API from the on-chain quote.                                                                                                                                                                                                                               | Curve trades are deterministic given state; slippage only covers state moving between quote and inclusion. 5 % caps what a sandwich can take.                                                                       | yes         |
+| T6  | **Modes**: buy exact-in (spend N AUSD), buy exact-out (get N tokens), sell exact-in (sell N tokens). When an exact-in buy would exceed `remainingTokens()`, the quote answers `remainder: true` with a `buyExactOutput` for exactly the remaining tokens.                                                                                                                             | The curve reverts rather than partially filling (`PicklerBondingCurve.sol:185-187,201-203`); offering the remainder is the honest alternative.                                                                      | yes         |
+| T7  | **Trade states** `quoted → submitted → included → confirmed`, or `reverted` / `expired` / `dropped`. `confirmed` means the indexer projected the trade at its `CONFIRMATIONS`. The sheet never shows a fill before `included`.                                                                                                                                                        | Never fake a charge (`marketplace-wallets-v1.md` §3.6). A receipt, not a hash, is the truth.                                                                                                                        | yes         |
+| T8  | **Graduation is kept moving by a keeper.** `READY_TO_GRADUATE` shows "Graduating". A `workers/jobs` Cron (conventions decision 15) drives it every minute; the permissionless `finalizeGraduation(curve)` (`PicklerGraduationAdapterV4.sol:100`) is signed by a gas-only EOA held by `workers/trading` (§6.3); the page also offers "Finalize" to any connected wallet as a fallback. | Nobody has a reason to pay gas for graduation; a stuck token is a broken market. The keeper holds only MON and can do nothing but call a public function.                                                           | yes         |
+| T9  | **After graduation, trades go through the Uniswap V4 Universal Router recorded in `packages/chain` for that chain.** On testnet, the Monad-maintained V4 has no Universal Router recorded in `packages/chain/src/deployments.ts`: v1 shows the pool price and an explorer link, read-only, labelled "Trades on the DEX".                                                              | Only verified, code-hashed addresses are used (`deployments.ts:3-11`). Building a V4 swap path against an unverified router on a testnet build that differs from mainnet proves nothing about mainnet.              | yes         |
+| T10 | **Portfolio = holdings of every wallet linked to the account** (`identity.wallet_links`), from `market.holders`, valued at the last trade price, with cost basis from the account's `market.trades` rows (average cost, FIFO not needed in v1).                                                                                                                                       | One account, several wallets (`marketplace-wallets-v1.md` D12). Indexed data, not per-request RPC.                                                                                                                  | yes         |
+| T11 | **Prices and amounts in the API are integers in base units** (`amountMicro` for AUSD, `amountWei`-style base units for the 18-decimal token, as decimal strings). Candles are quote per whole token as decimal strings.                                                                                                                                                               | Conventions "Money: integers in micro-units"; token amounts exceed `bigint` JSON safety, so strings.                                                                                                                | yes         |
+| T12 | **Mobile trades use the same routes**; the app broadcasts with the Mera SDK's `signTransaction` and posts the hash.                                                                                                                                                                                                                                                                   | `mobile-backend-v1.md` §3.4.                                                                                                                                                                                        | yes         |
 
 ## 3. User flows
 
@@ -207,12 +207,12 @@ to `market.holders` on `address`.
 
 ### Jobs
 
-- **Trade watcher** (Cron every minute in `workers/api`'s scheduled handler, or the research
-  Worker's Cron if `workers/api` has none at build time): for `submitted` rows, read the receipt;
+- **Trade watcher** (a `workers/jobs` Cron every minute, conventions decision 15; it calls
+  `POST /v1/internal/tokens/trades/watch` on the API through its service binding): for `submitted` rows, read the receipt;
   set `included` or `reverted` (decode the revert with the curve ABI); after the deadline plus
   5 minutes with no receipt and no pending tx, `dropped`. For `included` rows, link the projected
   `market.trades` row by `(tx_hash, log_index)` and set `confirmed`.
-- **Quote expiry**: `quoted` rows past their deadline become `expired`.
+- **Quote expiry**: `quoted` rows past their deadline become `expired` (same job).
 
 ## 6. Integrations
 
@@ -233,30 +233,34 @@ Addresses come from the Pickler manifest `packages/chain/src/deployments/pickler
 
 - Web: `SignerKind = "injected" | "mera"` (`signer.ts:14`; `marketplace-wallets-v1.md` D1). EOA
   uses `eth_sendTransaction`; Mera builds from the `TxRequest`, `signTransaction`, then the page
-  broadcasts through the API-provided RPC (`eth_sendRawTransaction` on `NEXT_PUBLIC_MONAD_RPC_URL`).
+  broadcasts through the public Monad RPC constant in `@pickler/chain` (`marketplace-wallets-v1.md`; a
+  private RPC URL never reaches the web, cross-review C23).
 - Mobile: the Mera React Native client, same `TxRequest`.
 - Gas: the buyer pays MON. `INSUFFICIENT_GAS` is answered before signing when
   `balance < gas × maxFeePerGas × (approval ? 2 : 1)`.
 
 ### 6.3 Keeper
 
-- `workers/trading` gains a Cron step `graduation-keeper` (every minute): list tokens whose curve
-  phase is `READY_TO_GRADUATE` from the index, confirm with `getCurveState`, and send
-  `finalizeGraduation`. It never sends a second tx while one is pending for the same curve.
+- The schedule runs in `workers/jobs` (conventions decision 15): a Cron every minute calls
+  `POST /v1/internal/launch/graduation-keeper/run` on the API, which lists tokens whose curve phase
+  is `READY_TO_GRADUATE` from the index, confirms each with `getCurveState`, and asks
+  `workers/trading` (service binding, `POST /internal/graduation/finalize { curve }`) to send
+  `finalizeGraduation`. The signing stays in `workers/trading` because `workers/jobs` holds no
+  secret (`production-environment-v1.md`, Workers inventory). No second tx is sent while one is
+  pending for the same curve.
 - Secret `LAUNCH_KEEPER_PRIVATE_KEY` (gas-only EOA, holds ≤ 5 MON; an alert fires under 0.5 MON);
   var `LAUNCH_KEEPER_ENABLED` (default `false` until the launchpad is deployed). The keeper key is
   not the launch authority and not the operator.
 
 ### 6.4 Env vars
 
-| Name                          | Where                      | Purpose                                             |
-| ----------------------------- | -------------------------- | --------------------------------------------------- |
-| `RPC_URLS`                    | `workers/api`              | quotes and receipts (shared with the launch routes) |
-| `QUOTE_MAX_HEAD_AGE_SECONDS`  | `workers/api`, default 30  | T2                                                  |
-| `QUOTE_MAX_INDEX_LAG_SECONDS` | `workers/api`, default 60  | T2                                                  |
-| `TRADE_DEADLINE_SECONDS`      | `workers/api`, default 120 | T5                                                  |
-| `NEXT_PUBLIC_MONAD_RPC_URL`   | `apps/web`                 | Mera broadcast                                      |
-| `LAUNCH_KEEPER_*`             | `workers/trading`          | §6.3                                                |
+| Name                          | Where                      | Purpose                                                                 |
+| ----------------------------- | -------------------------- | ----------------------------------------------------------------------- |
+| `MONAD_RPC_URL`, `CHAIN_ID`   | `workers/api`              | quotes and receipts; the shared names of `production-environment-v1.md` |
+| `QUOTE_MAX_HEAD_AGE_SECONDS`  | `workers/api`, default 30  | T2                                                                      |
+| `QUOTE_MAX_INDEX_LAG_SECONDS` | `workers/api`, default 60  | T2                                                                      |
+| `TRADE_DEADLINE_SECONDS`      | `workers/api`, default 120 | T5                                                                      |
+| `LAUNCH_KEEPER_*`             | `workers/trading`          | §6.3                                                                    |
 
 ## 7. Design work
 
@@ -291,8 +295,8 @@ the new token route.
   mempool in v1.
 - **Wrong token**: the ticker resolves only to listed tokens on the board; the page of an unlisted
   token carries a warning "Not linked to a Pickler agent".
-- **Quote abuse**: `POST /me/trades/quote` is rate limited to 30/min per user and 120/min per IP
-  (429 with `retryAt`); the public quote to 60/min per IP.
+- **Quote abuse**: the signed-in and public quote routes are rate limited as `operations-v1.md`
+  §4.1 (the table of record, cross-review C16) sets them; this spec sets no numbers.
 - **Keeper**: a gas-only key calling a public function; worst case is wasted MON.
 - **Privacy**: holders are public chain data; the portfolio is private to the account.
 
@@ -321,6 +325,9 @@ the new token route.
    (default off) until the end-to-end run passes.
 5. Keeper on (`LAUNCH_KEEPER_ENABLED=true`).
 6. Mobile app release using the same routes (`mobile-backend-v1`).
+
+Also needs `production-environment-v1.md` (the `workers/jobs` Worker and the keeper secret on
+`workers/trading`) and `operations-v1.md` (rate limits, keeper balance alert).
 
 ## 11. Out of scope
 
