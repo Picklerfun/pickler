@@ -183,8 +183,10 @@ and sizes are stored as `numeric(78,0)` with the market's decimals alongside.
 `pickler.decisions` (from `decision-resolution-v1` §5.1) gets its `venue` check extended to `perpl`
 by that spec's owner. Live P&L goes to `pickler.decision_live_pnl`, whose shape and rules
 `decision-resolution-v1.md` §5.7 owns (conventions decision 19). This spec writes one row per
-closed position that has a `run_id`, with `source_ref` = the position id as text, exactly as §5.7 specifies (fill ids go in the
-receipt, not in `source_ref`),
+closed position that has a `run_id`, with `source_ref` = `perpl:<network>:<position_id>` (`network` is `testnet` or `mainnet`, the
+position id a lower-case uuid), exactly as §5.7 specifies. The position's fill ids go in that row's
+`fills jsonb` column, never in `source_ref`. A correction row repeats the `source_ref` of the row it
+corrects,
 and describes nothing else about that table.
 
 ## 6. Integrations
@@ -303,7 +305,9 @@ key vault round trip and AAD mismatch failure; live exit precedence (a position 
 kill, risk stop, stop-loss, take-profit and horizon on the same tick closes once, with reason
 `kill`; each lower rule wins only when the higher ones do not match); a horizon exit at
 `exit_due_at`; the tick is idempotent (two ticks on one position send one close); the
-`decision_live_pnl` row uses `source_ref` = the position id and a replay inserts nothing.
+`decision_live_pnl` row uses `source_ref` = `perpl:<network>:<position_id>` (lower-case uuid) with
+the fill ids in `fills`, a replay inserts nothing, and a correction repeats the corrected row's
+`source_ref`.
 
 Policy engine (the person, a Turnkey test sub-organization, like `studio-create-and-fund-v1.md`
 Validation items 1-4): the delegated user **can** sign `allowOrderForwarding(false)` to the exchange
