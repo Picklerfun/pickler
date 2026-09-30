@@ -408,15 +408,18 @@ const ALL = [
   // (apps/web/src/features/studio/sections/rail.ts). Seven are screens; five are the Soon panel
   // and the board is the same panel with its two links. `limits` is also where the trading panel
   // is measured, because trading has no section of its own.
-  // The panel carries the section it is showing, so each of these proves the query param put the
-  // screen it named on the page rather than proving the shell loaded around another one.
+  // Each proves an id on the root of the section itself (`#studio-section-<key>`), or on the Soon
+  // panel drawn for that key (`#studio-soon-<key>`). Not the main container's
+  // `#studio-panel-<key>`: that id names the section asked for whatever the container holds, so it
+  // also matched while the studio read its agents ("Reading your agents…") or showed an error —
+  // the stub-proves-green failure this file exists to refuse.
   {
     path: "/studio?section=overview",
     name: "studio-overview",
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-overview",
+    proves: "#studio-section-overview",
   },
   {
     path: "/studio?section=context",
@@ -424,7 +427,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-context",
+    proves: "#studio-section-context",
   },
   {
     path: "/studio?section=picks",
@@ -432,7 +435,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-picks",
+    proves: "#studio-section-picks",
   },
   {
     path: "/studio?section=activity",
@@ -440,7 +443,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-activity",
+    proves: "#studio-section-activity",
   },
   {
     path: "/studio?section=brief",
@@ -448,7 +451,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-brief",
+    proves: "#studio-section-brief",
   },
   {
     path: "/studio?section=skills",
@@ -456,7 +459,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-skills",
+    proves: "#studio-section-skills",
   },
   {
     path: "/studio?section=sources",
@@ -464,7 +467,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-sources",
+    proves: "#studio-soon-sources",
   },
   {
     path: "/studio?section=limits",
@@ -472,7 +475,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-limits",
+    proves: "#studio-section-limits",
   },
   {
     path: "/studio?section=identity",
@@ -480,7 +483,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-identity",
+    proves: "#studio-soon-identity",
   },
   {
     path: "/studio?section=profile",
@@ -488,7 +491,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-profile",
+    proves: "#studio-soon-profile",
   },
   {
     path: "/studio?section=audience",
@@ -496,7 +499,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-audience",
+    proves: "#studio-soon-audience",
   },
   {
     path: "/studio?section=token",
@@ -504,7 +507,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-token",
+    proves: "#studio-soon-token",
   },
   {
     path: "/studio?section=board",
@@ -512,7 +515,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-board",
+    proves: "#studio-soon-board",
   },
   // A person with no agents is sent from /studio to the creation flow, and each of its screens is
   // a URL of its own (`?step=`). Outside production a link past Describe opens on the canvas's

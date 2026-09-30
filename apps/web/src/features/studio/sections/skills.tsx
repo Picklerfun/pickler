@@ -64,7 +64,7 @@ export function Skills({
   }
 
   return (
-    <div className={styles.section} data-narrow="true">
+    <div className={styles.section} id="studio-section-skills" data-narrow="true">
       <div className={styles.sectionHead}>
         <h1>Skills</h1>
         <span className={styles.count}>

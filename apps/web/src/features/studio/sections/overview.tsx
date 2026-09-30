@@ -78,7 +78,7 @@ export function Overview({
         : `NEXT DUE ${clock(agent.nextDueAt)} · LAST ${clock(runs[0]?.createdAt ?? null)}`;
 
   return (
-    <div className={styles.section}>
+    <div className={styles.section} id="studio-section-overview">
       <div className={styles.sectionHead}>
         <h1>Overview</h1>
         <p>what it is about to do, and what it just did</p>

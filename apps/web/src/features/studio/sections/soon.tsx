@@ -17,7 +17,7 @@ export function Soon({ section, agent }: { section: PanelKey; agent?: Agent | un
   const page = PANELS[section];
   const handle = agent?.handle;
   return (
-    <div className={styles.section} data-narrow="true">
+    <div className={styles.section} id={`studio-soon-${section}`} data-narrow="true">
       <p className={styles.eyebrow} data-tint="grey">
         {page.tag}
         {isSoon(section) && <span className={styles.stubState}>SOON</span>}

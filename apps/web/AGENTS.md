@@ -501,4 +501,6 @@ already taken is refused, not reused. `npm run design:source` is the static chec
 `npm run design:compare -- <before> <after>` says which screens differ. A screen that needs a
 session to render gets a door that is shut in production (`?stage=`, `?step=`, `?section=`,
 `/signup?state=passkey`, `/passkey?state=add`, `/portfolio?state=connected`) and a route that
-proves it. A new screen gets a route in the same change.
+proves it. A route proves an id the screen itself renders, never a container that is there
+whatever it holds: each studio section's root carries `studio-section-<key>` and the Soon panel
+`studio-soon-<key>`. A new screen gets a route in the same change.
