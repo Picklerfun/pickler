@@ -200,7 +200,7 @@ exposed through the Supabase Data API (root `AGENTS.md`, "Never expose `pickler`
 | `public_id`                        | text unique null            | `dcs_` + 20 base32 chars; set at publication (`public-record-v1`); check: null unless `audience = 'public'`                     |
 | `public_at`                        | timestamptz null            | when it became public; null for owner-only decisions                                                                            |
 | `audience`                         | text                        | `public` \| `owner` \| `buyer` (D16); `public` iff not a read run and `published_at IS NOT NULL AND decided_at >= published_at` |
-| `read_id`                          | text null                   | the paid read a `buyer` decision answered (`paid-reads-v1`), from `runs.read_id`                                                |
+| `read_id`                          | uuid null                   | the paid read a `buyer` decision answered, copied from `pickler.runs.read_id` (uuid, `paid-reads-v1`)                           |
 | `state`                            | text                        | `awaiting` \| `disputed` \| `resolved` \| `void` \| `identity_missing` \| `unresolvable`                                        |
 | `next_check_at`, `stale_at`        | timestamptz null            |                                                                                                                                 |
 | `attempts`, `last_error`           | integer, text null          | `last_error` is a stable code, never a provider message                                                                         |
