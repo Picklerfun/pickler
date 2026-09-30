@@ -262,3 +262,9 @@ Core keeps the market predicates trading reads: `nflMarketEligible` and
 trading's `assertPaperMarket` and `assertLivePreview` call.
 
 `src/features/launch` holds the launchpad domain: `domain/curve-math.ts` previews curve pricing and is held to the Solidity library by a generated fixture, and `ports/chain-reader.ts` describes what the domain needs from a chain without naming one. No blockchain SDK is imported here.
+
+Launch indexing validates every height and parent link before proposing any writes, including
+bootstrap and overlapping ranges. Gaps refuse the entire batch. Duplicate heights or mixed
+ancestry fail as invalid input without requesting a rollback of persisted history; a coherent
+range contradicting the persisted cursor remains a reorg. These checks do not establish RPC
+finality, cursor concurrency safety or projection rollback.

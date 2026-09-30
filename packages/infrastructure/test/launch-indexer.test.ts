@@ -340,3 +340,34 @@ test("announcements are planned per event and enqueued once", async (t) => {
 
   assert.equal(await store.countPendingOutbox(CHAIN), 1, "a replay enqueued a second time");
 });
+
+for (const seeded of [false, true]) {
+  test(`mixed-branch batch preserves PostgreSQL state (${seeded ? "existing" : "fresh"} cursor)`, async (t) => {
+    const store = await createStore(t);
+    const chain = chainOf(11n, { "10": "a", "11": "b" });
+    chain.addLog(11n, "b", 0);
+    const pass = { reader: chain, store, source: SOURCE, decode };
+
+    if (seeded) {
+      await runIndexerPass(pass);
+    }
+
+    const beforeCursor = await store.readCursor(CHAIN, FACTORY, "launches");
+    const beforeEvents = await store.readCanonicalEvents(CHAIN);
+    const beforeOutbox = await store.countPendingOutbox(CHAIN);
+    chain.setBlock(12n, "c", "b");
+    chain.setBlock(13n, "d", "another-branch");
+    chain.setTip(13n);
+    chain.addLog(12n, "c", 0);
+
+    await assert.rejects(runIndexerPass(pass), /inconsistent block ancestry/);
+    assert.deepEqual(await store.readCursor(CHAIN, FACTORY, "launches"), beforeCursor);
+    assert.deepEqual(await store.readCanonicalEvents(CHAIN), beforeEvents);
+    assert.equal(await store.countPendingOutbox(CHAIN), beforeOutbox);
+
+    chain.setBlock(13n, "d", "c");
+    assert.equal((await runIndexerPass(pass)).kind, "applied");
+    assert.equal((await store.readCursor(CHAIN, FACTORY, "launches"))?.lastBlock, 13n);
+    assert.equal((await store.readCanonicalEvents(CHAIN)).length, 2);
+  });
+}
