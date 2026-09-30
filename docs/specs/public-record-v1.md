@@ -190,14 +190,17 @@ It depends on `decision_resolutions` (`decision-resolution-v1` §5).
 
 ### 5.1 `agents.follows`
 
-| Column       | Type                                                                                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user_id`    | uuid, → `identity.profiles.user_id` (every wallet account has one: `marketplace-wallets-v1.md` §5 has SIWE `verify` create it, cross-review D5) |
-| `agent_id`   | uuid, → `agents.agents.id` on delete restrict                                                                                                   |
-| `created_at` | timestamptz default now()                                                                                                                       |
+| Column       | Type                                                                                                                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_id`    | uuid, the marketplace account's `auth.users.id` (the Supabase JWT `sub`); no foreign key to `identity.profiles`, because wallet sign-in creates no profile row (`marketplace-wallets-v1.md`) |
+| `agent_id`   | uuid, → `agents.agents.id` on delete restrict                                                                                                                                                |
+| `created_at` | timestamptz default now()                                                                                                                                                                    |
 
 PK `(user_id, agent_id)`; index `(agent_id)` for the count. RLS enabled with no Data API policy;
-the API reads and writes through its own connection. Follows of a killed agent are kept.
+the API reads and writes through its own connection. Follows of a killed agent are kept. With no
+foreign key on `user_id`, a deleted account's follows are removed by the account-deletion job
+(`custody-v2.md` lists `agents.follows`, cross-review D11). Every other marketplace-account column
+this spec adds follows the same rule: `auth.users.id`, no `identity.profiles` reference.
 
 ### 5.2 `agents.public_activity`
 
@@ -369,8 +372,7 @@ Needs first: `decision-resolution-v1` (tables, job, acceptance) — nothing here
 resolutions exist. `go-public-v1` adds `visibility` and `published_at`; every public route here
 filters on `visibility = 'public'` as it prescribes (its D1). `paid-reads-v1` writes `answer` rows
 at evaluation (P12). `mobile-backend-v1` owns the universal-link list and the envelope timing;
-`product-hosts-cutover-v2` serves the AASA (cross-review C27, K4). `marketplace-wallets-v1` creates
-the profile row follows reference. `production-environment-v1` lists `PERPL_BOARD_*` and
+`product-hosts-cutover-v2` serves the AASA (cross-review C27, K4). `production-environment-v1` lists `PERPL_BOARD_*` and
 `PUBLIC_RECORD_ENABLED` in `deploy/required-bindings.json`, and its smoke list gains one anonymous
 route from this spec, `GET /api/v1/marketplace/activity` → 200 (cross-review E12).
 
