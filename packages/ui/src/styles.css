@@ -221,33 +221,16 @@
 
   --pk-focus: var(--pk-violet);
 
-  /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
-   * names, and every one of them was written against a ground that is now white. So each resolves
-   * onto the new palette instead of being deleted out from under a page nobody has touched yet.
-   * They retire as those pages are redrawn, not before. */
+  /* The third ink level on this surface, which is the muted grey: light has two inks, and a
+   * component that asks for the dim one gets the quieter of them. */
   --pk-ink-dim: var(--pk-ink-muted);
-  --pk-ink-placeholder: var(--pk-ink-faint);
-  --pk-surface: var(--pk-panel);
-  --pk-surface-strong: var(--pk-panel-2);
-  --pk-field: var(--pk-panel);
-  --pk-field-autofill: var(--pk-panel);
-  --pk-border: var(--pk-rule-strong);
   /* A control's edge has to be seen, and a 12% hairline on white is not seen. */
   --pk-border-strong: rgba(11, 13, 26, 0.28);
-  /* The accent tints predate the state pairs and say the same thing less precisely, so each one
-   * resolves to the state it was always naming. The edge is that state's ink, held back. */
-  --pk-cyan: var(--pk-blue);
-  --pk-cyan-ink: var(--pk-state-cool-ink);
-  --pk-pink-ink: var(--pk-magenta-ink);
-  --pk-lime-tint: var(--pk-state-good-bg);
+  /* The edge of a tinted object: that state's ink, held back. good, loss, caution, cool, info. */
   --pk-lime-edge: rgba(63, 107, 0, 0.28);
-  --pk-magenta-tint: var(--pk-state-loss-bg);
   --pk-magenta-edge: rgba(187, 42, 93, 0.28);
-  --pk-amber-tint: var(--pk-state-caution-bg);
   --pk-amber-edge: rgba(133, 94, 0, 0.28);
-  --pk-cyan-tint: var(--pk-state-cool-bg);
   --pk-cyan-edge: rgba(47, 85, 200, 0.28);
-  --pk-violet-tint: var(--pk-state-info-bg);
   --pk-violet-edge: rgba(91, 60, 224, 0.28);
 }
 
@@ -326,27 +309,13 @@
 
   --pk-focus: var(--pk-lime);
 
-  /* Carried forward, as above. */
+  /* Dark has the room for a softened ink, and the dim level is it. */
   --pk-ink-dim: var(--pk-ink-soft);
-  --pk-ink-placeholder: var(--pk-ink-faint);
-  --pk-surface: var(--pk-panel);
-  --pk-surface-strong: var(--pk-panel-2);
-  --pk-field: var(--pk-panel);
-  --pk-field-autofill: var(--pk-panel);
-  --pk-border: var(--pk-rule-strong);
   --pk-border-strong: rgba(255, 255, 255, 0.32);
-  --pk-cyan: var(--pk-blue);
-  --pk-cyan-ink: var(--pk-state-cool-ink);
-  --pk-pink-ink: var(--pk-magenta-ink);
-  --pk-lime-tint: var(--pk-state-good-bg);
   --pk-lime-edge: rgba(200, 240, 58, 0.4);
-  --pk-magenta-tint: var(--pk-state-loss-bg);
   --pk-magenta-edge: rgba(255, 158, 198, 0.4);
-  --pk-amber-tint: var(--pk-state-caution-bg);
   --pk-amber-edge: rgba(255, 201, 63, 0.4);
-  --pk-cyan-tint: var(--pk-state-cool-bg);
   --pk-cyan-edge: rgba(91, 140, 255, 0.4);
-  --pk-violet-tint: var(--pk-state-info-bg);
   --pk-violet-edge: rgba(185, 166, 255, 0.4);
 }
 

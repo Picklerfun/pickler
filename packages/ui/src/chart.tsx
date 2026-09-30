@@ -44,7 +44,7 @@ const readTheme = (element: HTMLElement) => {
   const value = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
   return {
     ink: value("--pk-ink-faint", "#6b7186"),
-    grid: value("--pk-border", "rgba(11, 13, 26, 0.12)"),
+    grid: value("--pk-rule-strong", "rgba(11, 13, 26, 0.12)"),
     up: value("--pk-win", "#2e7d32"),
     down: value("--pk-loss", "#c62c62"),
     font: value("--pk-font", "sans-serif"),
