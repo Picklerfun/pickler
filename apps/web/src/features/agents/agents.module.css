@@ -29,7 +29,7 @@
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
 .page :focus-visible:not(:global(.pk-input)):not(:global(.pk-input-inner)) {
-  outline: 2px solid var(--pk-cyan);
+  outline: 2px solid var(--pk-blue);
   outline-offset: 2px;
 }
 
@@ -57,10 +57,10 @@
   color: var(--pk-lime-ink);
 }
 .toneLoss {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 .toneOpen {
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 .toneMuted {
   color: var(--pk-ink-faint);
@@ -120,7 +120,7 @@
   margin: 0 0 10px;
   font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .boardTitle {
@@ -143,7 +143,7 @@
 
 .sortButton {
   padding: 10px 14px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border-color: var(--pk-rule-strong);
   font: 600 13px/1 var(--pk-font);
 }
@@ -384,7 +384,7 @@
   border-radius: var(--pk-radius-pill);
   font: 600 12.5px/1 var(--pk-font);
   letter-spacing: 0;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .empty {
@@ -608,13 +608,13 @@
 .resultLost {
   background: var(--pk-state-loss-bg);
   border-color: var(--pk-magenta-edge);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .resultOpen {
   background: var(--pk-state-cool-bg);
   border-color: var(--pk-cyan-edge);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .sideCard {
@@ -981,7 +981,7 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-mark);
   overflow: hidden;
@@ -999,7 +999,7 @@
   gap: 7px;
   padding: 4px 12px 4px 4px;
   border-color: var(--pk-cyan-edge);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -1199,7 +1199,7 @@
 .kindPOSITION {
   background: var(--pk-state-cool-bg);
   border-color: var(--pk-cyan-edge);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 .kindPASS {
   background: var(--pk-state-caution-bg);
@@ -1214,7 +1214,7 @@
 .kindPERP {
   background: var(--pk-state-loss-bg);
   border-color: var(--pk-magenta-edge);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .activityText {
@@ -1391,7 +1391,7 @@
 }
 .splitPerps {
   flex: 1;
-  background: var(--pk-cyan);
+  background: var(--pk-blue);
 }
 
 .splitLegend {
@@ -1542,7 +1542,7 @@
 .sideToggle {
   display: flex;
   margin-bottom: 18px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
 }
 
 .sideButton {
@@ -1577,7 +1577,7 @@
 .unitChip {
   flex: none;
   padding: 9px 12px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border: 1px solid var(--pk-rule);
   border-radius: var(--pk-radius-sm);
   font: 700 13px/1 var(--pk-font);
@@ -1613,7 +1613,7 @@
   flex: 1 1 60px;
   justify-content: center;
   padding: 10px 6px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border-color: var(--pk-rule);
   border-radius: var(--pk-radius-sm);
   font-weight: 600;
@@ -1708,7 +1708,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-pill);
   overflow: hidden;
 }
@@ -1721,8 +1721,8 @@
 
 .page a.cardCta:hover {
   background: var(--pk-state-cool-bg);
-  border-color: var(--pk-cyan);
-  color: var(--pk-cyan-ink);
+  border-color: var(--pk-blue);
+  color: var(--pk-state-cool-ink);
 }
 
 /* The avatar keeps its small circle in rows, where it reads as a marker rather than a tile. */
@@ -1732,7 +1732,7 @@
 
 .page a.cardCta,
 .page a.cardCta:hover .cardCta {
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .chartFrame {
@@ -2009,7 +2009,7 @@
 
 .deliveryTag[data-state="preparing"] {
   border-color: var(--pk-cyan-edge);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .deliveryTag[data-state="delivered"] {
@@ -2019,13 +2019,13 @@
 
 .deliveryTag[data-state="failed"] {
   border-color: var(--pk-magenta-edge);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .evalTag[data-state="pending"] {
   background: var(--pk-state-cool-bg);
   border-color: var(--pk-cyan-edge);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .evalTag[data-state="happened"] {
@@ -2037,7 +2037,7 @@
 .evalTag[data-state="missed"] {
   background: var(--pk-state-loss-bg);
   border-color: var(--pk-magenta-edge);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .evalTag[data-state="not_evaluable"] {
@@ -2148,7 +2148,7 @@
 }
 
 .tonePink {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 /* The card itself */
@@ -2202,7 +2202,7 @@
   padding: 18px;
   margin-bottom: 20px;
   border: 1px solid var(--pk-rule);
-  background: var(--pk-field);
+  background: var(--pk-panel);
   border-radius: var(--pk-radius-sm);
 }
 
@@ -2361,7 +2361,7 @@
 }
 
 .readOutcome[data-tone="loss"] strong {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .readOutcome[data-tone="curve"] {
