@@ -74,3 +74,14 @@ The output includes report.json, report.csv, report.html and append-only events.
 New comparison records carry `coherent-20s-v1`. Data-unavailable rounds are skipped once, preserving proposals and known model cost, while execution failures after mutation remain incomplete and stop decisions. Reports exclude omitted rounds from completed comparisons rather than treating them as holds or zero returns. Historical records are not upgraded or restarted implicitly.
 
 The host also checks the elapsed local renewal gap synchronously before work. A gap of ninety seconds fails closed with `PROCESS_INTERRUPTED`, even if a delayed timer or temporarily lagging database clock would otherwise let a renewal appear successful after wake. This guard never renews or extends ownership. See [the recorded acceptance result](PERPL-RELIABILITY-VALIDATION.md); the first public run was interrupted by lid-close sleep and did not pass.
+
+### Perpl connectivity diagnostics
+
+The public stability command records safe DNS/connect/TLS error codes when the transport supplies
+one, plus response-header/body phases and timing. Unknown causes remain unknown. On a failed
+acquisition with a request error, it performs one guarded, three-second read of Cloudflare's
+public connectivity endpoint, without retaining its body. The control is separate from the
+20-second BTC/ETH acquisition budget and is never substitute price data. An HTTP response proves
+reachability at that instant, not that Perpl or the local network caused a historical outage.
+The existing 29/30 acceptance threshold, timestamps, lease protocol and zero-paid-call scope stay
+unchanged. Report v2 preserves the original acquisition duration separately from control duration.
