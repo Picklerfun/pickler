@@ -21,7 +21,7 @@
   margin: 0 0 10px;
   font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .title {
@@ -51,7 +51,7 @@
 }
 
 .toneLoss {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .toneWarn {
@@ -194,7 +194,7 @@
 
 .marketLev {
   padding: 3px 7px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
@@ -271,14 +271,14 @@
 /* Asking is violet wherever it appears, taking a position is the market's own accent. */
 .askAction {
   border-color: var(--pk-violet-edge);
-  background: var(--pk-violet-tint);
+  background: var(--pk-state-info-bg);
   color: var(--pk-violet-ink);
 }
 
 .tradeAction {
   border-color: var(--pk-cyan-edge);
-  background: var(--pk-cyan-tint);
-  color: var(--pk-cyan-ink);
+  background: var(--pk-state-cool-bg);
+  color: var(--pk-state-cool-ink);
 }
 
 .footnote {
@@ -296,7 +296,7 @@
   gap: 7px;
   margin-bottom: 18px;
   padding: 9px 13px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   font: 500 11.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
@@ -365,13 +365,13 @@
 /* Ask is violet and Trade is lime inside one track, so the choice carries its meaning. */
 .modes [data-value="ask"][aria-pressed="true"] {
   border-color: var(--pk-violet-edge);
-  background: var(--pk-violet-tint);
+  background: var(--pk-state-info-bg);
   color: var(--pk-violet-ink);
 }
 
 .modes [data-value="trade"][aria-pressed="true"] {
   border-color: var(--pk-lime-edge);
-  background: var(--pk-lime-tint);
+  background: var(--pk-state-good-bg);
   color: var(--pk-lime-ink);
 }
 
@@ -429,7 +429,7 @@
 }
 
 :where(.toneShort) .surfaceMode {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 :where(.toneAsk) .surfaceMode {
@@ -477,7 +477,7 @@
 
 .toneShort .railShort,
 .toneAsk .railShort {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .trail {
@@ -500,7 +500,7 @@
   left: 10px;
   font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 .rows {
@@ -540,7 +540,7 @@
   border-right: 1px solid var(--pk-rule);
   font: 500 9.5px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 .rowPrice {
@@ -554,7 +554,7 @@
 }
 
 :where(.toneShort) .rowLevelOn .rowPrice {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 :where(.toneAsk) .rowLevelOn .rowPrice {
@@ -564,7 +564,7 @@
 .rowPct {
   font: 500 9.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 .cell {
@@ -581,7 +581,7 @@
 }
 
 .cell:hover:not([data-blocked]):not(:disabled) {
-  background: var(--pk-surface-strong);
+  background: var(--pk-panel-2);
 }
 
 .cell[data-lit] {
@@ -632,7 +632,7 @@
 
 :where(.toneShort) .cellPill {
   border-color: var(--pk-magenta-edge);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 :where(.toneAsk) .cellPill {
@@ -674,7 +674,7 @@
 }
 
 :where(.toneShort) .column[data-on] .columnLabel {
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 :where(.toneAsk) .column[data-on] .columnLabel {
@@ -686,7 +686,7 @@
   margin-top: 4px;
   font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 /* A column Ask cannot use is marked, not hidden: the position side still has it.
@@ -711,8 +711,8 @@
  * touching a glyph. The labels go from 1.80:1 to 5.82:1.
  *
  * The ink is named rather than inherited so the declaration says what it means. Nothing dimmer is
- * available: on light `--pk-ink-faint`, `--pk-ink-muted`, `--pk-ink-dim` and `--pk-ink-placeholder`
- * all resolve to #5A5F78, and the palette explains why there is no level below it — a value that
+ * available: on light `--pk-ink-faint`, `--pk-ink-muted` and `--pk-ink-dim` all resolve to
+ * #5A5F78, and the palette explains why there is no level below it — a value that
  * clears 4.6 on --pk-panel-3 lands five channel steps from muted, which is one level with a
  * rounding error rather than two. */
 .column[data-off] .columnLabel {
@@ -720,7 +720,7 @@
 }
 
 .column[data-off] .columnTime {
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 /* ---------- Under the surface ---------- */
@@ -763,7 +763,7 @@
   padding: 12px 14px;
   border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-amber-tint);
+  background: var(--pk-state-caution-bg);
 }
 
 .noticeTitle {
@@ -821,7 +821,7 @@
 
 .ticket.warn {
   border-color: var(--pk-amber-edge);
-  background: var(--pk-amber-tint);
+  background: var(--pk-state-caution-bg);
 }
 
 .ticketLabel {
@@ -940,7 +940,7 @@
 .stepperButton {
   width: 28px;
   height: 28px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-mark);
   background: transparent;
   color: var(--pk-ink);
@@ -971,9 +971,9 @@
   align-items: center;
   gap: 8px;
   padding: 11px 13px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-field);
+  background: var(--pk-panel);
 }
 
 .marginInput {
@@ -1049,7 +1049,7 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   font: 700 10px/1 var(--pk-font);
   letter-spacing: 0.08em;
@@ -1112,7 +1112,7 @@
 }
 
 .pulseCyan {
-  background: var(--pk-cyan);
+  background: var(--pk-blue);
   box-shadow: 0 0 10px var(--pk-blue);
 }
 
