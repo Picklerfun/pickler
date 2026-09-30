@@ -303,16 +303,16 @@ The restore drill fails if a restored table's count differs from the manifest.
 
 A new project needs its own `AGENTS.md` (root `AGENTS.md:7`) and a row in the root project map.
 
-| Binding / setting                                                                                     | Purpose                                                       |
-| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `tail` handler; listed in every other Worker's `tail_consumers: [{ "service": "pickler-ops-<env>" }]` | receives trace events (logs, exceptions, outcome)             |
-| `DATABASE` (Hyperdrive, the environment's)                                                            | error groups, alerts, heartbeats, dead letters, retention     |
-| `API` service binding                                                                                 | `/v1/internal/ready`, `/v1/internal/ops/queues`               |
-| Queue consumers `pickler-research-dlq-<env>`, `pickler-trading-dlq-<env>`                             | O10                                                           |
-| `SEND_EMAIL` (`send_email`, destination = the verified owner address)                                 | O4                                                            |
-| `OPS_ALERT_WEBHOOK_URL` (secret, optional)                                                            | O4                                                            |
-| `PROBE_URLS` (var)                                                                                    | the smoke GETs (landing, marketplace pages, `/api/v1/health`) |
-| crons `* * * * *` (probe, rules), `0 4 * * *` (retention)                                             |                                                               |
+| Binding / setting                                                                                                                    | Purpose                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `tail` handler; listed in every other Worker's `tail_consumers: [{ "service": "pickler-ops-<env>" }]`                                | receives trace events (logs, exceptions, outcome)             |
+| `DATABASE` (Hyperdrive, the environment's)                                                                                           | error groups, alerts, heartbeats, dead letters, retention     |
+| `API` service binding                                                                                                                | `/v1/internal/ready`, `/v1/internal/ops/queues`               |
+| Queue consumers for every DLQ in `production-environment-v1.md` §6.4 (research, trading, launch events, account jobs, notifications) | O10                                                           |
+| `SEND_EMAIL` (`send_email`, destination = the verified owner address)                                                                | O4                                                            |
+| `OPS_ALERT_WEBHOOK_URL` (secret, optional)                                                                                           | O4                                                            |
+| `PROBE_URLS` (var)                                                                                                                   | the smoke GETs (landing, marketplace pages, `/api/v1/health`) |
+| crons `* * * * *` (probe, rules), `0 4 * * *` (retention)                                                                            |                                                               |
 
 Every other Worker gains `tail_consumers`, and research/trading gain
 `"dead_letter_queue": "pickler-<name>-dlq-<env>"` on their consumer. `check:staging` and
@@ -324,19 +324,24 @@ readiness verifier checks it).
 
 ### 6.2 Alert rules (evaluated by the ops Worker each minute)
 
-| Rule                 | Condition                                                                                   | Env        |
-| -------------------- | ------------------------------------------------------------------------------------------- | ---------- |
-| `new_error`          | a fingerprint seen for the first time                                                       | production |
-| `error_rate`         | > 2 % of API requests 5xx over 5 minutes (from tail outcomes), minimum 20 requests          | both       |
-| `probe_down`         | the same probe URL failed 3 consecutive minutes                                             | both       |
-| `heartbeat_stale`    | research or trading `last_cron_at` older than 3 minutes (indexer once deployed)             | both       |
-| `dead_letter`        | any `open` row in `ops.dead_letters`                                                        | both       |
-| `db_errors`          | > 5 `CONNECTION_LOST` or `QUERY_TIMEOUT` events in 5 minutes                                | both       |
-| `queue_backlog`      | `researchOldestQueuedSeconds` > 600                                                         | production |
-| `turnkey_rejections` | > 5 `activity_rejected` warnings in 15 minutes (`error-handler.ts:142-151` logs them)       | production |
-| `web_degraded`       | any `api_degraded` event from the web (skew or outage, `production-environment-v1.md` §0.1) | production |
-| `nonce_table`        | `identity.siwe_nonces` > 50 000 rows                                                        | production |
-| `draft_ceiling`      | the daily draft ceiling reached                                                             | production |
+| Rule                 | Condition                                                                                                        | Env        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
+| `new_error`          | a fingerprint seen for the first time                                                                            | production |
+| `error_rate`         | > 2 % of API requests 5xx over 5 minutes (from tail outcomes), minimum 20 requests                               | both       |
+| `probe_down`         | the same probe URL failed 3 consecutive minutes                                                                  | both       |
+| `heartbeat_stale`    | research or trading `last_cron_at` older than 3 minutes (indexer once deployed)                                  | both       |
+| `dead_letter`        | any `open` row in `ops.dead_letters`                                                                             | both       |
+| `db_errors`          | > 5 `CONNECTION_LOST` or `QUERY_TIMEOUT` events in 5 minutes                                                     | both       |
+| `queue_backlog`      | `researchOldestQueuedSeconds` > 600                                                                              | production |
+| `turnkey_rejections` | > 5 `activity_rejected` warnings in 15 minutes (`error-handler.ts:142-151` logs them)                            | production |
+| `web_degraded`       | any `api_degraded` event from the web (skew or outage, `production-environment-v1.md` §0.1)                      | production |
+| `nonce_table`        | `identity.siwe_nonces` > 50 000 rows                                                                             | production |
+| `draft_ceiling`      | the daily draft ceiling reached                                                                                  | production |
+| `treasury_mismatch`  | the daily reconcile (`paid-reads-v1.md` §4.4) reports a ledger/on-chain difference; sends are paused by that job | production |
+| `treasury_gas_low`   | the treasury wallet holds < 1 MON                                                                                | production |
+| `keeper_gas_low`     | the graduation keeper holds < 0.5 MON (`token-trading-v1.md` T8)                                                 | production |
+| `refund_stuck`       | a refund flagged for an operator after 5 attempts (`paid-reads-v1.md` §4.4)                                      | production |
+| `jobs_heartbeat`     | `jobs/<env>` heartbeat older than 2 minutes                                                                      | both       |
 
 Staging alerts go to the webhook only (if set), never to email, so staging noise cannot train the
 owner to ignore production mail.
