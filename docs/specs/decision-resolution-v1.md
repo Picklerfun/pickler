@@ -38,37 +38,41 @@ This spec owns the job, the tables and the formulas. The two specs above own wha
 
 ## 2. Decisions
 
-| #   | Decision                                                                                                                                                                                                                                                                                                                                                                           | Reason                                                                                                                                                                                             | Reversible?                            |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| D1  | **Every completed run with a decision is enrolled**, TRADE and ABSTAIN alike, including policy-held trades. Failed runs and preview runs (`pickler.preview_runs`, migration 0022) are not decisions and are never enrolled.                                                                                                                                                        | Conventions decision 2. Scoring only trades lets an agent hide bad forecasts behind abstentions.                                                                                                   | yes                                    |
-| D2  | **The only resolution authority for a Polymarket decision is the CTF payout vector on a finalized Polygon block**, read exactly as `PolymarketPaperResolution.resolutionFor` does today. Gamma (`closed`, `umaResolutionStatus`) only tells the job _when_ to look and whether a dispute is open. Sports data providers (balldontlie, The Odds API) are never a resolution source. | The payout vector is what money settles on. A sports score can disagree with how a market resolves (rules, voids, overtime clauses). One authority per venue keeps the record defensible.          | yes                                    |
-| D3  | **Resolution identity is captured at enrollment**, minutes after the decision: the job reads Gamma `/markets/:id` for the `conditionId`, outcome index and outcome count, the same fields `PolymarketMarketData.conditions` parses (`packages/infrastructure/src/polymarket/market-data.ts:218-262`). A paper fill's own identity wins when present.                               | Today only paper fills carry an identity (`orders.ts:23`), so abstentions cannot be resolved. `Market` (`packages/core/src/features/research/types.ts:145-159`) has no condition id.               | yes                                    |
-| D4  | **Calibration is scored with the Brier score**, not log loss. Per decision `(p − y)²`; per agent the mean. The public "calibration gap" is the expected calibration error over ten equal-width buckets, in points.                                                                                                                                                                 | Brier is bounded (0–1), so one confident miss cannot dominate a small record; log loss needs clamping at 0 and 1, which is an arbitrary knob. The laboratories already report Brier.               | yes (the formulas are versioned, §5.4) |
-| D5  | **Virtual P&L is 1 AUSD staked per TRADE at the fresh ask the policy saw** (`observedPrice`), fees excluded: `y / ask − 1`. Paper P&L comes from paper settlement; live P&L from live orders.                                                                                                                                                                                      | Every TRADE has an ask; not every TRADE has a paper fill. A fixed stake makes agents comparable regardless of their paper settings. Fees are venue-specific and would make P&L depend on settings. | yes                                    |
-| D6  | **Voided or split markets are resolved as `void`**: any payout fraction other than 0 or 1 for the decision's outcome. A void is excluded from hit rate, Brier and calibration, and included in P&L at its actual payout.                                                                                                                                                           | A 50/50 split is not evidence of skill either way; money still moved, so P&L tells the truth.                                                                                                      | yes                                    |
-| D7  | **Resolutions are append-only.** One row per `(run_id, revision)`; revision 1 is written by the job. A higher revision is written only by an operator command with a reason, and it writes an `audit.events` row.                                                                                                                                                                  | A CTF payout is immutable once reported, so corrections should be vanishingly rare, but the record must never be silently rewritten.                                                               | no (append-only is the point)          |
-| D8  | **Aggregates are recomputed from scratch per agent** in the same transaction that writes a resolution, into `pickler.agent_records`, with two scopes: `owner` (every enrolled decision) and `public` (decisions made while the agent was public, D11).                                                                                                                             | Per-agent resolution counts are in the hundreds to low thousands; a full recompute is milliseconds and cannot drift, unlike incremental counters.                                                  | yes                                    |
-| D9  | **The leaderboard score is the existing `agentScore`** (`packages/core/src/features/agents/domain/reads.ts:158-167`) with its inputs now defined (§5.4), and an agent is ranked only with ≥ 20 scored decisions, ≥ 5 resolved trades and a decision in the last 30 days.                                                                                                           | The formula is already published by the design ("calibration first, volume second, money last"); what was missing was its inputs. Minimums keep one lucky week off the top.                        | yes                                    |
-| D10 | **The job runs in `workers/research`** on a second Cron trigger every 5 minutes, beside the existing one-minute research Cron (`workers/research/wrangler.jsonc:27`, `workers/research/src/worker.ts:46`). It holds no signer and uses the trusted `DATABASE` Hyperdrive binding.                                                                                                  | It is background, read-only work against public chain data. `workers/trading` holds the signer and must stay small; `workers/api` serves requests.                                                 | yes                                    |
-| D11 | **"Public at decision time" comes from `agents.agents.published_at`**, which `docs/specs/go-public-v1.md` (D1, D2) adds, sets on publish and backfills to `created_at` for agents already public. Decisions before it, and every decision of a private agent, count only in the owner scope.                                                                                       | A draft's decisions were never offered to the public; counting them would let an owner curate a record in private and publish only the good stretch. The reverse is also true, so both are kept.   | yes                                    |
-| D12 | **Each decision gets a public commitment at enrollment**: `sha256` of the canonical JSON of its public projection (the fields `public-record-v1` §5 lists). The hash can be shown immediately; the content is revealed at resolution and anyone can recompute the hash.                                                                                                            | It proves the record was not written with hindsight, without revealing the pick before it resolves (conventions decision 1).                                                                       | yes                                    |
-| D13 | **Open paper positions are exit-monitored** (§3.4): an exit check every 30 minutes evaluates the brief's `exitsWhen` lines from the config the position was opened under, and closes the paper position at the best bid when one turns true. Resolution auto-settles paper positions, replacing the manual settle button as the normal path.                                       | The brief says "the first line that turns true closes it" (`docs/specs/studio-brief-v1.md` §2), and today nothing does.                                                                            | yes                                    |
-| D14 | **Exit checks are a small model call with no search**: the position, the entry decision, a fresh book and the exit lines in; one boolean and one sentence per line out. They are not research runs and do not take the one-running-agent lock (`schema.ts`, `one_running_agent`).                                                                                                  | Exit rules are written in plain language and cannot be parsed into price triggers in general. No search keeps the cost at a few cents per check. A research run would block scheduled research.    | yes                                    |
-| D15 | **Live orders and Perpl are designed in, built later.** `live_pnl_micro` is computed for a settled Polymarket live order when its market resolves; Perpl decisions resolve against the Perpl mark price at their horizon (§6.3) once a Perpl agent exists.                                                                                                                         | Keeps one table and one formula set across venues without blocking v1 on venues that are not live.                                                                                                 | yes                                    |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Reason                                                                                                                                                                                                                                                | Reversible?                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| D1  | **Every completed run with a decision is enrolled**, TRADE and ABSTAIN alike, including policy-held trades. Failed runs and preview runs (`pickler.preview_runs`, migration 0022) are not decisions and are never enrolled. The enrollment query takes every `run_trigger` `research-runtime-v2` defines (`manual`, `schedule`, `follow_up`, `read`). Each decision gets an **audience** (D16).                                                                                       | Conventions decision 2. Scoring only trades lets an agent hide bad forecasts behind abstentions.                                                                                                                                                      | yes                                    |
+| D2  | **The only resolution authority for a Polymarket decision is the CTF payout vector on a finalized Polygon block**, read exactly as `PolymarketPaperResolution.resolutionFor` does today. Gamma (`closed`, `umaResolutionStatus`) only tells the job _when_ to look and whether a dispute is open. Sports data providers (balldontlie, The Odds API) are never a resolution source.                                                                                                    | The payout vector is what money settles on. A sports score can disagree with how a market resolves (rules, voids, overtime clauses). One authority per venue keeps the record defensible.                                                             | yes                                    |
+| D3  | **Resolution identity is captured at enrollment**, minutes after the decision: the job reads Gamma `/markets/:id` for the `conditionId`, outcome index and outcome count, the same fields `PolymarketMarketData.conditions` parses (`packages/infrastructure/src/polymarket/market-data.ts:218-262`). A paper fill's own identity wins when present.                                                                                                                                  | Today only paper fills carry an identity (`orders.ts:23`), so abstentions cannot be resolved. `Market` (`packages/core/src/features/research/types.ts:145-159`) has no condition id.                                                                  | yes                                    |
+| D4  | **Calibration is scored with the Brier score**, not log loss. Per decision `(p − y)²`; per agent the mean. The public "calibration gap" is the expected calibration error over ten equal-width buckets, in points.                                                                                                                                                                                                                                                                    | Brier is bounded (0–1), so one confident miss cannot dominate a small record; log loss needs clamping at 0 and 1, which is an arbitrary knob. The laboratories already report Brier.                                                                  | yes (the formulas are versioned, §5.4) |
+| D5  | **Virtual P&L is 1 AUSD staked per TRADE at the fresh ask the policy saw** (`observedPrice`), fees excluded: `y / ask − 1`. Paper P&L comes from paper settlement; live P&L from live orders.                                                                                                                                                                                                                                                                                         | Every TRADE has an ask; not every TRADE has a paper fill. A fixed stake makes agents comparable regardless of their paper settings. Fees are venue-specific and would make P&L depend on settings.                                                    | yes                                    |
+| D6  | **Voided or split markets are resolved as `void`**: any payout fraction other than 0 or 1 for the decision's outcome. A void is excluded from hit rate, Brier and calibration, and included in P&L at its actual payout.                                                                                                                                                                                                                                                              | A 50/50 split is not evidence of skill either way; money still moved, so P&L tells the truth.                                                                                                                                                         | yes                                    |
+| D7  | **Resolutions are append-only.** One row per `(run_id, revision)`; revision 1 is written by the job. A higher revision is written only by an operator command with a reason, and it writes an `audit.events` row.                                                                                                                                                                                                                                                                     | A CTF payout is immutable once reported, so corrections should be vanishingly rare, but the record must never be silently rewritten.                                                                                                                  | no (append-only is the point)          |
+| D8  | **Aggregates are recomputed from scratch per agent** in the same transaction that writes a resolution, into `pickler.agent_records`, with two scopes: `owner` (every enrolled decision, paid-read runs included) and `public` (decisions with `audience = 'public'` only, D11, D16).                                                                                                                                                                                                  | Per-agent resolution counts are in the hundreds to low thousands; a full recompute is milliseconds and cannot drift, unlike incremental counters.                                                                                                     | yes                                    |
+| D9  | **The leaderboard score is the existing `agentScore`** (`packages/core/src/features/agents/domain/reads.ts:158-167`) with its inputs now defined (§5.4), and an agent is ranked only with ≥ 20 scored decisions, ≥ 5 resolved trades and a decision in the last 30 days.                                                                                                                                                                                                              | The formula is already published by the design ("calibration first, volume second, money last"); what was missing was its inputs. Minimums keep one lucky week off the top.                                                                           | yes                                    |
+| D10 | **Resolution runs in `workers/research`** (conventions decision 15) on a second Cron trigger every 5 minutes, beside the existing one-minute research Cron (`workers/research/wrangler.jsonc:27`, `workers/research/src/worker.ts:46`). It holds no signer and uses the trusted `DATABASE` Hyperdrive binding. Exit checks do not run here (D13).                                                                                                                                     | It is background, read-only work against public chain data. `workers/trading` holds the signer and must stay small; `workers/api` serves requests.                                                                                                    | yes                                    |
+| D11 | **"Public at decision time" comes from `agents.agents.published_at`**, which `docs/specs/go-public-v1.md` (D1, D2) adds, sets on publish and backfills to `created_at` for agents already public. Decisions before it, and every decision of a private agent, count only in the owner scope.                                                                                                                                                                                          | A draft's decisions were never offered to the public; counting them would let an owner curate a record in private and publish only the good stretch. The reverse is also true, so both are kept.                                                      | yes                                    |
+| D12 | **Each decision gets a public commitment at enrollment**: `sha256` of the canonical JSON of its public projection (the fields `public-record-v1` §5 lists). The hash can be shown immediately; the content is revealed at resolution and anyone can recompute the hash.                                                                                                                                                                                                               | It proves the record was not written with hindsight, without revealing the pick before it resolves (conventions decision 1).                                                                                                                          | yes                                    |
+| D13 | **Open paper positions are exit-monitored** (§3.4): an exit check every 30 minutes evaluates the brief's `exitsWhen` lines from the config the position was opened under, and closes the paper position at the best bid when one turns true. Exit checks are a product job and run from `workers/jobs` (conventions decision 15), not from the resolution Cron. Resolution auto-settles paper positions, replacing the manual settle button as the normal path.                       | The brief says "the first line that turns true closes it" (`docs/specs/studio-brief-v1.md` §2), and today nothing does.                                                                                                                               | yes                                    |
+| D14 | **Exit checks are a small model call with no search**: the position, the entry decision, a fresh book and the exit lines in; one boolean and one sentence per line out. They are not research runs and do not take the one-running-agent lock (`schema.ts`, `one_running_agent`).                                                                                                                                                                                                     | Exit rules are written in plain language and cannot be parsed into price triggers in general. No search keeps the cost at a few cents per check. A research run would block scheduled research.                                                       | yes                                    |
+| D15 | **Live orders and Perpl are designed in, built later.** Live P&L arrives after resolution and on its own clock, so it is never a column of the append-only resolution: it is written as rows of `pickler.decision_live_pnl` (§5.7) by the venue's own worker (`perpl-live-v1.md` for Perpl; the Polymarket live pilot for a settled live order) and summed into `agent_records`. Perpl decisions resolve against the Perpl mark price per `perpl-agent-runtime-v1.md` (§6.3).         | Keeps one table and one formula set across venues without blocking v1 on venues that are not live.                                                                                                                                                    | yes                                    |
+| D16 | **Every decision has an `audience`**: `public` (the agent was public at decision time, D11), `owner` (a private agent, or before `published_at`) or `buyer` (a paid-read run, `run_trigger = 'read'`). Paid-read runs are enrolled and scored like any decision, never get a `public_id`, never reach publication, and count only in the owner scope. A paid read's public trace, if any, is its outcome card, written by `paid-reads-v1`'s evaluation step (`public-record-v1` P12). | Conventions decision 10. Scoring read runs keeps the owner's view honest; publishing them would give away what the buyer paid for. A read counts in its read service's `evaluated`/`gap` (`paid-reads-v1`), not in `agent_records` (cross-review G8). | yes                                    |
+| D17 | **This spec owns price observations**: a `PriceObservationSource` port (§6.4) returns the Polymarket CLOB price of an outcome at a target time (±5 min, from Polymarket's public price history) and the Perpl mark price. `paid-reads-v1` uses it for the second clock; the name "Pons" is retired.                                                                                                                                                                                   | Conventions decision 13. Resolution (who won) and observation (what the price was at a time) are different questions with different sources; both belong to the one spec that talks to venues after the fact.                                         | yes                                    |
 
 ## 3. User flows
 
 ### 3.1 A decision is enrolled
 
-1. A run finishes with `status = 'completed'` and a non-null `decision` (`run-research.ts:512-513`).
+1. A run finishes with `status = 'completed'` and a non-null `decision` (`run-research.ts:512-513`),
+   whatever its trigger (`manual`, `schedule`, `follow_up` or `read`).
 2. Within 5 minutes the resolution Cron finds it (`LEFT JOIN pickler.decisions ... WHERE d.run_id IS NULL`).
 3. It reads, from the run and its events: the market question and outcome labels (`selection`,
    `eligible_candidates`, `market` events), the market's close or start time, the web sources
    (`source` events), and the outcome's best bid and ask at the `initial_quote` event
    (`run-research.ts:248`), whose midpoint is the **market price at decision**.
 4. It fetches the resolution identity from Gamma (D3), unless the run's paper order already has one.
-5. It writes one `pickler.decisions` row with `state = 'awaiting'`, the decision hash, the public
-   commitment (D12) and `next_check_at` (§3.2).
+5. It writes one `pickler.decisions` row with `state = 'awaiting'`, the audience (D16), the
+   decision hash, the public commitment (D12, `audience = 'public'` only; null otherwise) and
+   `next_check_at` (§3.2).
 6. If Gamma cannot give an identity (market gone, malformed), the row is written with
    `state = 'identity_missing'` and retried with backoff for 7 days, then left as
    `unresolvable`. Such a decision counts as a decision in totals and never in scores.
@@ -90,14 +94,15 @@ This spec owns the job, the tables and the formulas. The two specs above own wha
      `PaperSettlementRepository.settle` path (`packages/trading/src/features/paper/settlement.ts:42-51`)
      with the same `PaperResolution`, so the paper order and the record agree by construction;
    - recomputes both `agent_records` rows for the agent (D8);
-   - hands the decision to publication (`public-record-v1` §3.1), which writes the public activity
-     row when the agent was public at decision time.
+   - for `audience = 'public'` only, hands the decision to publication (`public-record-v1` §3.1),
+     which writes the public activity row; `owner` and `buyer` decisions are never handed over.
 5. Backoff for `next_check_at`, from the market's expected end (`closesAt`, or `startsAt` + 4 h for
    a match market):
    - before the expected end: at the expected end;
    - first 6 h after it: every 15 min;
    - to 48 h: hourly;
-   - to 30 days: every 6 h (at 30 days, `stale_at` is set and an ops alert fires);
+   - to 30 days: every 6 h (at 30 days, `stale_at` is set and the `resolution_stale` alert fires,
+     §8);
    - to 180 days: daily; after that `state = 'unresolvable'`.
 
 ### 3.3 The owner sees it
@@ -108,8 +113,10 @@ The studio reads the owner-scope record and each decision's resolution
 ### 3.4 Exit monitoring of an open paper position
 
 1. A paper order is **open** when `status = 'filled'`, `settlement IS NULL` and `exit IS NULL`.
-2. Every 30 minutes (a third branch of the same Cron, at most 20 positions per tick, oldest check
-   first), for each open position whose run config has a non-empty `brief.exitsWhen`:
+2. Every 30 minutes, the `workers/jobs` Cron calls `POST /v1/internal/exits/tick` on the API
+   through its service binding (conventions decision 15; `production-environment-v1.md` lists the
+   jobs Worker's crons and `API` binding). At most 20 positions per tick, oldest check first, for
+   each open position whose run config has a non-empty `brief.exitsWhen`:
    - fetch a fresh order book for the held outcome;
    - if the market is closed or no bid exists, skip (resolution will settle it);
    - call the exit model (D14) with: the entry decision's thesis and probability band, the entry
@@ -137,19 +144,24 @@ The studio reads the owner-scope record and each decision's resolution
 This spec adds only internal and operator routes. The public and studio reads are in
 `public-record-v1` §4 and `studio-decision-review-v1` §4. Envelope and errors follow the conventions.
 
-| Method | Path                                        | Auth                             | Request                                                                                      | Response                                                                  | Errors                                                               |
-| ------ | ------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| POST   | `/v1/internal/resolutions/tick`             | service binding only             | `{ now?: string }` (tests only; ignored in prod)                                             | `{ data: { enrolled, checked, resolved, voided, disputed, exits } }`      | 503 `DATABASE_UNAVAILABLE`                                           |
-| GET    | `/v1/internal/resolutions/health`           | service binding only             | —                                                                                            | `{ data: { awaitingDue, oldestDueAt, stale, identityMissing, lagP95s } }` | —                                                                    |
-| POST   | `/v1/internal/resolutions/:runId/revisions` | service binding + operator claim | `{ reason: string (10–500), payout: {numerator, denominator}, evidence }`, `Idempotency-Key` | `{ data: ResolutionDto }` (the new revision)                              | 404 `DECISION_NOT_FOUND`, 409 `NOT_RESOLVED`, 400 `INVALID_REVISION` |
-| POST   | `/v1/internal/resolutions/backfill`         | service binding + operator claim | `{ since: string, limit ≤ 1000 }`                                                            | `{ data: { enrolled, skipped } }`                                         | 400 `INVALID_INPUT`                                                  |
+| Method | Path                                        | Auth                                  | Request                                                                                      | Response                                                                  | Errors                                                               |
+| ------ | ------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| POST   | `/v1/internal/resolutions/tick`             | service binding only                  | `{ now?: string }` (tests only; ignored in prod)                                             | `{ data: { enrolled, checked, resolved, voided, disputed } }`             | 503 `DATABASE_UNAVAILABLE`                                           |
+| POST   | `/v1/internal/exits/tick`                   | service binding only (`workers/jobs`) | —                                                                                            | `{ data: { checked, exited, failed, skipped } }`                          | 503 `DATABASE_UNAVAILABLE`, 503 `EXIT_MONITOR_DISABLED`              |
+| GET    | `/v1/internal/resolutions/health`           | service binding only                  | —                                                                                            | `{ data: { awaitingDue, oldestDueAt, stale, identityMissing, lagP95s } }` | —                                                                    |
+| POST   | `/v1/internal/resolutions/:runId/revisions` | service binding + operator claim      | `{ reason: string (10–500), payout: {numerator, denominator}, evidence }`, `Idempotency-Key` | `{ data: ResolutionDto }` (the new revision)                              | 404 `DECISION_NOT_FOUND`, 409 `NOT_RESOLVED`, 400 `INVALID_REVISION` |
+| POST   | `/v1/internal/resolutions/backfill`         | service binding + operator claim      | `{ since: string, limit ≤ 1000 }`                                                            | `{ data: { enrolled, skipped } }`                                         | 400 `INVALID_INPUT`                                                  |
 
-The Cron calls the same use case the `tick` route exposes; the route exists so staging acceptance
-can drive a tick deterministically. `/v1/internal/*` is never routed by the web proxy.
+The research Cron calls the same use case the resolutions `tick` route exposes; the route exists so
+staging acceptance can drive a tick deterministically. `/v1/internal/*` is never routed by the web
+proxy. "Operator claim" routes are reached only through the operator CLI of `operations-v1.md`
+§4.3, never by hand-crafted requests (cross-review E2).
 
-`POST /v1/studio/runs/:id/paper-order/settle` (`studio.ts:663`) stays for the owner as "check now";
-it calls the same resolution use case for that one decision and returns the paper order, so it can
-never disagree with the job.
+`POST /v1/studio/runs/:id/paper-order/settle` (`studio.ts:663`) becomes an **alias** of
+`POST /v1/studio/decisions/:runId/check-resolution` (`studio-decision-review-v1` §4): the same
+resolution use case for that one decision, rate limited to one check per decision per 5 minutes
+(429 `CHECK_RATE_LIMITED` with `error.detail.retryAt`), returning the paper order, so it can never
+disagree with the job.
 
 DTOs in `packages/api-schema/src/resolutions.ts` (new): `ResolutionDto`, `AgentRecordDto`,
 `CalibrationBucketDto`, `ReceiptDto`. `AgentRecordDto` is shared by the public and studio specs.
@@ -163,39 +175,41 @@ exposed through the Supabase Data API (root `AGENTS.md`, "Never expose `pickler`
 
 ### 5.1 `pickler.decisions` (enrollment and resolution state)
 
-| Column                             | Type                        | Notes                                                                                                                  |
-| ---------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `run_id`                           | text PK → `pickler.runs.id` | one row per decision                                                                                                   |
-| `tenant_id`, `agent_id`            | text                        | FK to `pickler.agents`; `agent_id` equals the product agent uuid as text (`schema-boundaries-v1` §2)                   |
-| `config_version`                   | integer                     | copied from the run                                                                                                    |
-| `venue`                            | text                        | `polymarket` in v1; `perpl` later; check constraint                                                                    |
-| `market_id`, `outcome_id`          | text, text null             | `outcome_id` null for an abstention that named none                                                                    |
-| `market_question`                  | text                        | from the trace; `Market <id>` when none, never invented (`apps/web/src/features/studio/sections/picks.tsx:15-40` rule) |
-| `outcome_label`                    | text null                   |                                                                                                                        |
-| `model_action`, `final_action`     | text                        | `TRADE`/`ABSTAIN`; legacy decisions copy `action` into both                                                            |
-| `policy_reasons`                   | text[]                      | `policyEvaluation.reasonCodes`, empty for legacy                                                                       |
-| `stopped_by`                       | jsonb null                  | `{ kind, rule }` from `briefVerdict` (`decision-policy.ts:18`)                                                         |
-| `p_estimate`, `p_lower`, `p_upper` | numeric(7,6) null           | `modelAssessment.probability`, else legacy `estimatedProbability` (estimate only)                                      |
-| `ask_at_decision`                  | numeric(7,6) null           | `observedPrice` (TRADE and policy-held TRADE only)                                                                     |
-| `market_price_at_decision`         | numeric(7,6) null           | midpoint at `initial_quote`; null when one side of the book was empty                                                  |
-| `limit_price`                      | numeric(7,6) null           |                                                                                                                        |
-| `decided_at`                       | timestamptz                 | `runs.finished_at`                                                                                                     |
-| `expected_end_at`                  | timestamptz null            | `closesAt` or `startsAt + 4h`                                                                                          |
-| `resolution_identity`              | jsonb null                  | `{ conditionId, outcomeIndex, outcomeCount }`                                                                          |
-| `identity_source`                  | text null                   | `paper_fill` \| `enrollment` \| `backfill`                                                                             |
-| `decision_hash`                    | text                        | sha256 hex of canonical JSON of `runs.decision`                                                                        |
-| `public_commitment`                | text                        | sha256 hex of canonical JSON of the public projection (D12)                                                            |
-| `public_id`                        | text unique null            | `dcs_` + 20 base32 chars; set at publication (`public-record-v1`)                                                      |
-| `public_at`                        | timestamptz null            | when it became public; null for owner-only decisions                                                                   |
-| `counts_publicly`                  | boolean                     | `published_at IS NOT NULL AND decided_at >= published_at` at enrollment (D11)                                          |
-| `state`                            | text                        | `awaiting` \| `disputed` \| `resolved` \| `void` \| `identity_missing` \| `unresolvable`                               |
-| `next_check_at`, `stale_at`        | timestamptz null            |                                                                                                                        |
-| `attempts`, `last_error`           | integer, text null          | `last_error` is a stable code, never a provider message                                                                |
-| `lease_owner`, `lease_expires_at`  | text null, timestamptz null | same lease discipline as runs (`running_requires_lease`)                                                               |
-| `enrolled_at`                      | timestamptz                 |                                                                                                                        |
+| Column                             | Type                        | Notes                                                                                                                           |
+| ---------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `run_id`                           | text PK → `pickler.runs.id` | one row per decision                                                                                                            |
+| `tenant_id`, `agent_id`            | text                        | FK to `pickler.agents`; `agent_id` equals the product agent uuid as text (`schema-boundaries-v1` §2)                            |
+| `config_version`                   | integer                     | copied from the run                                                                                                             |
+| `venue`                            | text                        | `polymarket` in v1; `perpl` later; check constraint                                                                             |
+| `market_id`, `outcome_id`          | text, text null             | `outcome_id` null for an abstention that named none                                                                             |
+| `market_question`                  | text                        | from the trace; `Market <id>` when none, never invented (`apps/web/src/features/studio/sections/picks.tsx:15-40` rule)          |
+| `outcome_label`                    | text null                   |                                                                                                                                 |
+| `model_action`, `final_action`     | text                        | `TRADE`/`ABSTAIN`; legacy decisions copy `action` into both                                                                     |
+| `policy_reasons`                   | text[]                      | `policyEvaluation.reasonCodes`, empty for legacy                                                                                |
+| `stopped_by`                       | jsonb null                  | `{ kind, rule }` from `briefVerdict` (`decision-policy.ts:18`)                                                                  |
+| `p_estimate`, `p_lower`, `p_upper` | numeric(7,6) null           | `modelAssessment.probability`, else legacy `estimatedProbability` (estimate only)                                               |
+| `ask_at_decision`                  | numeric(7,6) null           | `observedPrice` (TRADE and policy-held TRADE only)                                                                              |
+| `market_price_at_decision`         | numeric(7,6) null           | midpoint at `initial_quote`; null when one side of the book was empty                                                           |
+| `limit_price`                      | numeric(7,6) null           |                                                                                                                                 |
+| `decided_at`                       | timestamptz                 | `runs.finished_at`                                                                                                              |
+| `expected_end_at`                  | timestamptz null            | `closesAt` or `startsAt + 4h`                                                                                                   |
+| `resolution_identity`              | jsonb null                  | `{ conditionId, outcomeIndex, outcomeCount }`                                                                                   |
+| `identity_source`                  | text null                   | `paper_fill` \| `enrollment` \| `backfill`                                                                                      |
+| `decision_hash`                    | text                        | sha256 hex of canonical JSON of `runs.decision`                                                                                 |
+| `public_commitment`                | text null                   | sha256 hex of canonical JSON of the public projection (D12); null unless `audience = 'public'`                                  |
+| `public_id`                        | text unique null            | `dcs_` + 20 base32 chars; set at publication (`public-record-v1`); check: null unless `audience = 'public'`                     |
+| `public_at`                        | timestamptz null            | when it became public; null for owner-only decisions                                                                            |
+| `audience`                         | text                        | `public` \| `owner` \| `buyer` (D16); `public` iff not a read run and `published_at IS NOT NULL AND decided_at >= published_at` |
+| `read_id`                          | text null                   | the paid read a `buyer` decision answered (`paid-reads-v1`), from `runs.read_id`                                                |
+| `state`                            | text                        | `awaiting` \| `disputed` \| `resolved` \| `void` \| `identity_missing` \| `unresolvable`                                        |
+| `next_check_at`, `stale_at`        | timestamptz null            |                                                                                                                                 |
+| `attempts`, `last_error`           | integer, text null          | `last_error` is a stable code, never a provider message                                                                         |
+| `lease_owner`, `lease_expires_at`  | text null, timestamptz null | same lease discipline as runs (`running_requires_lease`)                                                                        |
+| `enrolled_at`                      | timestamptz                 |                                                                                                                                 |
 
 Indexes: `(next_check_at) WHERE state IN ('awaiting','disputed','identity_missing')`;
-`(agent_id, decided_at DESC)`; `(agent_id, state)`; unique `public_id`.
+`(agent_id, decided_at DESC)`; `(agent_id, state)`; `(agent_id, audience, decided_at DESC)`; unique
+`public_id`.
 
 ### 5.2 `pickler.decision_resolutions` (append-only)
 
@@ -210,7 +224,6 @@ Indexes: `(next_check_at) WHERE state IN ('awaiting','disputed','identity_missin
 | `virtual_pnl_micro`                      | bigint null       | TRADE only (D5)                                                                                            |
 | `held_pnl_micro`                         | bigint null       | policy-held TRADE only: what the 1 AUSD would have made (§5.4)                                             |
 | `paper_pnl_micro`                        | bigint null       | from paper settlement or exit                                                                              |
-| `live_pnl_micro`                         | bigint null       | settled live order only (D15)                                                                              |
 | `evidence`                               | jsonb             | `{ chainId: 137, contract, blockNumber, blockHash, observedAt, gamma: { closedAt, umaResolutionStatus } }` |
 | `receipt`                                | jsonb             | §5.3                                                                                                       |
 | `receipt_hash`                           | text              | sha256 hex of canonical `receipt`                                                                          |
@@ -292,10 +305,13 @@ payout fraction for that outcome, `a` the ask at decision, `q` the market price 
 PK `(agent_id, scope)` with `scope ∈ {owner, public}`. Columns: `record_version`, `computed_at`,
 `decisions`, `trades`, `abstentions`, `held_trades`, `resolved_trades`, `hits`, `hit_rate`,
 `scored`, `brier`, `market_brier`, `brier_skill`, `calibration_gap`, `calibration_buckets jsonb`,
-`virtual_net_micro`, `held_net_micro`, `paper_net_micro`, `live_net_micro`, `current_streak`,
+`virtual_net_micro`, `held_net_micro`, `paper_net_micro`, `live_net_micro` (sum of
+`decision_live_pnl`, §5.7), `current_streak`,
 `best_win_streak`, `form jsonb`, `open_trades`, `sealed_pending`, `last_decided_at`, `score`,
 `rank_eligible`, `method_version`. Recomputed by one SQL statement per scope (§3.2 step 4) and also
 by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute, not a migration.
+The public scope reads only `audience = 'public'`; the owner scope reads all three audiences. A
+new `decision_live_pnl` row also triggers a recompute of both scopes.
 
 ### 5.6 Exit monitoring (migration `paper_position_exits`)
 
@@ -310,6 +326,22 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
   `(paper_order_id, checked_at DESC)`.
 - `agents.agents.published_at` (D11) comes from the Go Public migration (`go-public-v1` §5); this
   spec adds no column to `agents.agents`.
+
+### 5.7 `pickler.decision_live_pnl` (late P&L, append-only; in migration `decision_resolutions`)
+
+| Column                        | Type        | Notes                                                      |
+| ----------------------------- | ----------- | ---------------------------------------------------------- |
+| `id`                          | uuid PK     |                                                            |
+| `run_id`                      | text        | → `pickler.decisions.run_id`                               |
+| `venue`                       | text        | `polymarket` \| `perpl`                                    |
+| `realized_micro`              | bigint      | signed; a correction is a new row with the opposite amount |
+| `fees_micro`, `funding_micro` | bigint      | default 0                                                  |
+| `source_ref`                  | text        | the venue receipt (live order id, Perpl fill ids)          |
+| `recorded_at`                 | timestamptz |                                                            |
+
+Unique `(run_id, venue, source_ref)` so a replay is a no-op; a trigger rejects `UPDATE` and
+`DELETE`. Writers: `perpl-live-v1.md` (its reconciliation) and the Polymarket live pilot; this spec
+only sums it (cross-review C5, D4).
 
 ## 6. Integrations
 
@@ -335,26 +367,58 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
 
 ### 6.3 Perpl (later, designed now)
 
-- A Perpl decision (once a Perpl agent runs, per `perpl-live-v1.md`) carries a direction, an entry mark and a
-  horizon. It resolves against the **Perpl mark price** at `decided_at + horizon`, read through
+- A Perpl decision follows the `perps-direction-v1` protocol that `perpl-agent-runtime-v1.md`
+  defines (conventions decision 12): instrument, direction, entry, horizon. Until that spec sets the
+  horizon, it is **fixed at 24 h after `decided_at`**, and `close` and `hold` decisions are enrolled
+  but never scored (cross-review C3). It resolves against the **Perpl mark price** at
+  `decided_at + horizon`, observed through `PriceObservationSource` (§6.4), read through
   `PerplMarketData.snapshot`/`candles` (`packages/infrastructure/src/perpl/data.ts:86,258,353`)
   within a ±5-minute tolerance window; no observation inside it is `void` with reason
   `NOT_EVALUABLE`, mirroring `READ_EVALUATIONS` (`reads.ts:20`). `y` is 1 when the mark moved in
   the called direction. The probability the model gave for its direction is scored with the same
   Brier.
-- The same venue-outcome port (`DecisionOutcomeSource`, §9) serves the paid-read evaluation clock
-  (`docs/specs/paid-reads-v1.md`), which calls it as `priceAt(venue, market, time, tolerance)`: a read
-  is "above the price at delivery, 24 h later".
 
-### 6.4 Environment
+### 6.4 `PriceObservationSource` (D17)
 
-| Var / binding           | Worker        | Default / note                            |
-| ----------------------- | ------------- | ----------------------------------------- |
-| `DATABASE` (Hyperdrive) | research      | existing                                  |
-| `POLYGON_RPC_URL`       | research, api | `https://polygon-bor-rpc.publicnode.com`  |
-| `RESOLUTION_ENABLED`    | research      | `"false"` until acceptance, then `"true"` |
-| `EXIT_MONITOR_ENABLED`  | research      | `"false"` until acceptance                |
-| Cron `*/5 * * * *`      | research      | new trigger, dispatched by `event.cron`   |
+```ts
+interface PriceObservationSource {
+  priceAt(query: {
+    venue: "polymarket" | "perpl";
+    market: string; // Polymarket outcome token id; Perpl symbol
+    at: string; // ISO target time
+    toleranceMs?: number; // default 300 000 (±5 min)
+  }): Promise<
+    | { status: "observed"; price: string; observedAt: string; source: string }
+    | { status: "not_evaluable"; reason: "NO_OBSERVATION_IN_WINDOW" | "MARKET_UNKNOWN" }
+  >;
+}
+```
+
+- **Polymarket**: `GET https://clob.polymarket.com/prices-history?market=<tokenId>&startTs=<at−tol>&endTs=<at+tol>&fidelity=1`
+  (public, no key). The point nearest `at` inside the window is the observation; ties take the
+  earlier point; none is `not_evaluable`. A provider failure throws (retry later), never
+  `not_evaluable`.
+- **Perpl**: the mark from `PerplMarketData.candles` (1-minute) or `snapshot` when `at` is within
+  30 s of now, on the network the decision or read was made on.
+- Adapters in `packages/infrastructure/src/prices/`; the port and the nearest-point rule in
+  `packages/core/src/features/resolution/`. `paid-reads-v1` calls it for clock 2 (reference at
+  delivery, observation at +24 h). This spec uses it for Perpl resolution and for
+  `market_price_at_decision` when a run's `initial_quote` is missing.
+
+### 6.5 Environment
+
+| Var / binding           | Worker        | Default / note                                                                                       |
+| ----------------------- | ------------- | ---------------------------------------------------------------------------------------------------- |
+| `DATABASE` (Hyperdrive) | research      | existing                                                                                             |
+| `POLYGON_RPC_URL`       | research, api | `https://polygon-bor-rpc.publicnode.com`                                                             |
+| `RESOLUTION_ENABLED`    | research      | `"false"` until acceptance, then `"true"`                                                            |
+| `EXIT_MONITOR_ENABLED`  | api           | `"false"` until acceptance; read by `/v1/internal/exits/tick`                                        |
+| Cron `*/5 * * * *`      | jobs          | existing jobs trigger (`production-environment-v1.md`); dispatches the exit tick on minutes 0 and 30 |
+| Cron `*/5 * * * *`      | research      | new trigger, dispatched by `event.cron`                                                              |
+
+Every name above goes into `deploy/required-bindings.json` in the same PR
+(`production-environment-v1.md` §6.1). The exit-check model's provider credentials on `workers/api`
+are listed there too.
 
 ## 7. Design work
 
@@ -387,15 +451,21 @@ Every other screen is in `public-record-v1` §7 and `studio-decision-review-v1` 
 - **Chain data spoofing.** Only finalized blocks, `requireCanonical`, chain id `0x89` and an outcome
   count that matches the snapshot are accepted (`paper-resolution.ts:100-139`).
 - **Exit checks cannot trade real money.** The exit path calls only the paper service; no signer is
-  reachable from `workers/research` (root `AGENTS.md`, "Cloudflare trading pilot").
+  reachable from `workers/jobs` or `workers/api` (root `AGENTS.md`, "Cloudflare trading pilot").
 - **Cost.** Exit checks are capped per agent per day and stop with the agent paused.
+- **Paid-read privacy.** A `buyer` decision has no commitment and no `public_id` (checked by
+  constraint), so no public route can reach it (D16).
+- **Alerts** are registered in `operations-v1.md` §6.2 in the same PR (cross-review W6):
+  `resolution_stale` (a decision reaches `stale_at`), `resolution_lag` (oldest due check older than
+  1 h), `identity_missing_backlog` (more than 20 `identity_missing` rows) and `exit_check_failures`
+  (more than 20% failed checks in an hour).
 
 ## 9. Acceptance criteria and tests
 
 Business rules in `packages/core/src/features/resolution/` (new): `scoreDecision`,
 `computeRecord`, `nextCheckAt`, `resolutionOutcome`, `canonicalJson`, `publicProjection` (the last
-shared with `public-record-v1`). Ports: `DecisionRepository`, `DecisionOutcomeSource`,
-`ExitCheckModel`. Adapters in `packages/infrastructure`.
+shared with `public-record-v1`). Ports: `DecisionRepository`, `DecisionOutcomeSource` (who won),
+`PriceObservationSource` (what the price was), `ExitCheckModel`. Adapters in `packages/infrastructure`.
 
 Unit (core):
 
@@ -417,33 +487,42 @@ Integration (real Postgres, `packages/infrastructure/test/`):
 10. `UPDATE`/`DELETE` on `decision_resolutions` raise.
 11. A decision before `published_at` changes the owner record and not the public one.
 12. A failing Gamma or RPC call reschedules and writes no resolution; a failing database raises.
-13. An exit check that fires closes the position, frees the unique index and records the P&L; a
+13. A paid-read run is enrolled with `audience = 'buyer'`, changes the owner record, and has no
+    commitment, no `public_id` and no activity row after it resolves.
+14. `decision_live_pnl` rows are summed into both scopes; a replayed `source_ref` is a no-op.
+15. `PriceObservationSource` (Polymarket) against recorded price-history captures: nearest point,
+    tie to the earlier, empty window → `not_evaluable`, provider 5xx → throws.
+16. An exit check that fires closes the position, frees the unique index and records the P&L; a
     misaligned answer records `failed` and changes nothing.
 
 Staging acceptance (recorded in a deployment record, not claimed from local runs):
 
-14. With `RESOLUTION_ENABLED=true`, at least 10 real staging decisions on already-finished sports
+17. With `RESOLUTION_ENABLED=true`, at least 10 real staging decisions on already-finished sports
     markets are enrolled and resolved, each verified by hand against polygonscan.
-15. One paper position is closed by an exit check on a live market.
+18. One paper position is closed by an exit check on a live market.
 
 ## 10. Rollout and dependencies
 
 1. Migration `decision_resolutions` (tables), core rules, adapters, the tick route.
 2. Backfill every historical completed run (identity via Gamma; `identity_source = 'backfill'`).
    Historical decisions count in the owner scope; in the public scope only from `published_at`.
-3. Enable the Cron on staging, run acceptance item 14, then flip `RESOLUTION_ENABLED`.
+3. Enable the Cron on staging, run acceptance item 17, then flip `RESOLUTION_ENABLED`.
 4. `PostgresAgentDirectory` reads `agent_records` (`public-record-v1`).
-5. Migration `paper_position_exits`, exit monitor, acceptance item 15, then `EXIT_MONITOR_ENABLED`.
+5. Migration `paper_position_exits`, exit monitor in `workers/jobs`, acceptance item 18, then
+   `EXIT_MONITOR_ENABLED`.
 
 Needs first: `go-public-v1` for `published_at` (step 1 can ship without it by treating every
-agent as owner-only). `research-runtime-v2` meters exit-check spend; until it lands, exit checks are
-bounded only by the daily cap. Perpl resolution waits on `perpl-live-v1.md`.
+agent as owner-only). `research-runtime-v2` for the `run_trigger` values and exit-check spend;
+until it lands, exit checks are bounded only by the daily cap. `production-environment-v1` for the
+binding inventory and the `workers/jobs` Worker; `operations-v1` for the alert registry and the
+operator CLI. Perpl resolution waits on `perpl-agent-runtime-v1.md` (protocol) and
+`perpl-live-v1.md` (live P&L rows).
 
 ## 11. Out of scope
 
 - Live Polymarket redemption and sells (the live pilot has none).
 - Perpl live P&L, funding and liquidations (`perpl-live-v1.md`, whose receipts and P&L feed this job).
-- The paid-read evaluation job itself (`paid-reads-v1`); it reuses `DecisionOutcomeSource`.
+- The paid-read evaluation job itself (`paid-reads-v1`); it uses `PriceObservationSource`.
 - A reviewer model (conventions decision 8; `studio-decision-review-v1` §2).
 - Market categories beyond what the runtime already runs (sports).
 - Price-trigger exits parsed from rule text; every exit rule goes through the exit check.

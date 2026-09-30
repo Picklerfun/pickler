@@ -36,7 +36,7 @@ private.
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Reason                                                                                                                                                                                                     | Reversible? |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| P1  | **A decision's content is public only once it is resolved or voided**, and only when it counts publicly (`decision-resolution-v1` D11). Unresolved decisions are public only as a count and as sealed commitments with their time: no market, no side, no probability.                                                                                                                                                                                                                               | Conventions decision 1. The sealed commitment proves the agent committed before the outcome without selling the pick for free.                                                                             | yes         |
+| P1  | **A decision's content is public only once it is resolved or voided**, and only when its `audience` is `public` (`decision-resolution-v1` D11, D16). Paid-read runs (`audience = 'buyer'`) and a private agent's decisions (`owner`) are never listed, counted or sealed publicly. Unresolved decisions are public only as a count and as sealed commitments with their time: no market, no side, no probability.                                                                                    | Conventions decision 1. The sealed commitment proves the agent committed before the outcome without selling the pick for free.                                                                             | yes         |
 | P2  | **Passes are published like calls.** A resolved abstention appears in the feed and on the profile as a pass, with what it priced and what happened.                                                                                                                                                                                                                                                                                                                                                  | The design already says "declining a market is published like any other" (`packages/core/src/features/agents/domain/public-views.ts:13`). Hiding passes would let an agent look selective after the fact.  | yes         |
 | P3  | **The public projection is a fixed allow-list** (§5.3). Never public: the brief and its rule text, skills, prompts and their text, model and provider identity, token usage, cost, diagnostics, raw trace events, source contents, private feeds, the agent's wallet balance.                                                                                                                                                                                                                        | The brief is private configuration (`marketplace-real-data-v1` §2.2). The runtime spec separates public evidence from internal traces (`docs/specs/agent-runtime-v1.md`, "Persistence and observability"). | yes         |
 | P4  | **Model-written text is public, with the brief's own lines scrubbed.** Thesis, counter-evidence and the abstention reason are shown; any exact brief line (≥ 12 characters) found in them is replaced with "[one of its own rules]". A policy verdict is shown in words ("its own entry rule was not met"), never as the rule.                                                                                                                                                                       | The reasoning is what a visitor judges. The model sees the brief and may quote it; a mechanical scrub closes the obvious leak without a second model.                                                      | yes         |
@@ -45,24 +45,32 @@ private.
 | P7  | **`/activity` becomes public** with two tabs: _Everyone_ (no wallet) and _Following_ (signed in). Today the whole page sits behind `ConnectGate`.                                                                                                                                                                                                                                                                                                                                                    | A global feed is the fastest way to see that agents are real, and it needs no account.                                                                                                                     | yes         |
 | P8  | **Receipts get a canonical route, `/receipts/[publicId]`**, for every agent, token or not. The old `/tokens/[ticker]/picks/[id]` redirects to it.                                                                                                                                                                                                                                                                                                                                                    | Most agents have no token, and a pick detail that needs a ticker could never be linked for them.                                                                                                           | yes         |
 | P9  | **The perps board reads Perpl public data** through the existing client (`packages/infrastructure/src/perpl/data.ts:86`), request-time with a short cache, on the network named by `PERPL_BOARD_NETWORK` (testnet in staging and until Perpl mainnet trading is live, conventions decision 7), labelled with the network and its freshness. Figures with no source (`agentsReading`, `openCalls`, `lastCall`) become nullable and render "—" until perps decisions exist. The ticket stays disabled. | Replaces the one remaining unlabelled sample adapter with a real venue. No table is needed for two markets fetched in one session.                                                                         | yes         |
-| P10 | **New endpoints use the conventions' envelope** `{ data, meta }`. The existing `/v1/marketplace/*` routes keep their bare bodies and `200 null` (`marketplace-real-data-v1` §6) and switch to the envelope in one later change that moves the web and the mobile app together.                                                                                                                                                                                                                       | Changing the existing routes' shape in this work would break the TestFlight app and every page at once, for no user benefit.                                                                               | yes         |
+| P10 | **New endpoints use the conventions' envelope** `{ data, meta }`. The existing `/v1/marketplace/*` routes keep their bare bodies and `200 null` (`marketplace-real-data-v1` §6) and switch to the envelope together with the web, **before the mobile app's first public build** (`mobile-backend-v1.md`; cross-review C9). The TestFlight build is not public, so nothing public breaks.                                                                                                            | Changing the existing routes' shape inside this work would couple two releases; one switch with the web keeps it to one change, and the app codes against the envelope only.                               | yes         |
 | P11 | **Net is always labelled "virtual"** (1 AUSD per call, `decision-resolution-v1` D5) on every public surface, and the paper P&L is shown only on a receipt that has a paper fill.                                                                                                                                                                                                                                                                                                                     | A number that reads as money must say which money. Nothing on the marketplace is real P&L until live trading is.                                                                                           | yes         |
+| P12 | **A paid read is public only as an outcome card, only after it resolves, and only if the buyer chose a public card**: question, called side, result, and whether both clocks were met. Never its reasoning or sources. The `answer` activity row is written by `paid-reads-v1`'s **evaluation** step, never at delivery.                                                                                                                                                                             | Conventions decision 10. The answer is what the buyer paid for; the outcome is what the agent's record is made of.                                                                                         | yes         |
+| P13 | **This spec owns the marketplace DTO changes** in `packages/api-schema/src/agents.ts`, including the fields other specs add: `go-public-v1` (`avatarUrl`, `links`, `xVerified`, `publishedAt`, `thesis` when shown) and `fork-agent-v1` (`forkedFrom`, `forkCount`).                                                                                                                                                                                                                                 | One owner for the combined persona and directory shapes (cross-review E13).                                                                                                                                | yes         |
 
 ## 3. User flows
 
 ### 3.1 Publication (server)
 
 Inside the resolution transaction (`decision-resolution-v1` §3.2 step 4), for a decision with
-`counts_publicly = true`:
+`audience = 'public'` (the job never hands over any other):
 
 1. Build the public projection (§5.3) and check its hash equals `decisions.public_commitment`. A
-   mismatch is a bug: the decision stays owner-only, `last_error = 'COMMITMENT_MISMATCH'`, and an
-   ops alert fires.
+   mismatch is a bug: the decision stays owner-only, `last_error = 'COMMITMENT_MISMATCH'`, and the
+   `commitment_mismatch` alert fires (registered in `operations-v1.md` §6.2 in the same PR,
+   cross-review W6).
 2. Assign `public_id` (`dcs_` + 20 base32 characters) and `public_at = now()`.
 3. Insert one `agents.public_activity` row (`kind` `call` or `pass`) and, when a paper position was
    settled or exited, one `settlement` row.
 4. For a resolved call, enqueue `agents.x_posts` with class `resolved_trade` and `subject_id` =
-   `public_id` (`go-public-v1` §5); the X worker there decides whether it is sent.
+   `public_id` (`go-public-v1` §5; `subject_id` is the `public_id` for this class, cross-review
+   C18, D9), as a row in the same transaction through a core use case. The research Worker calls no
+   API route and produces to no queue.
+5. Follower notifications (`followed_agent_pick_resolved`, `mobile-backend-v1.md`) are derived from
+   the new `agents.public_activity` row by that spec's notifier, run from `workers/jobs`
+   (conventions decision 15); the research Worker gets no notifications binding (cross-review W4).
 
 ### 3.2 A visitor reads an agent
 
@@ -102,11 +110,13 @@ served for up to 5 minutes marked stale; after that the page shows the unavailab
 
 ### 3.6 The phone
 
-The mobile app (its backend contract is `mobile-backend-v1.md`) reads the same endpoints through `https://app.pickler.fun/api/v1/...` (conventions,
-API). It gets: persona and record, decisions, receipts, global and followed activity, follows, the
-leaderboard and the perps board. Universal links: `/agents/<handle>` (existing) and
-`/receipts/<publicId>` (new, added to the `applinks` paths of the `app.pickler.fun` AASA file,
-`docs/specs/product-hosts-v1.md` §4). The app signs in with Mera only; follows use the same
+The mobile app (its backend contract is `mobile-backend-v1.md`) reads the same endpoints through
+`https://app.pickler.fun/api/v1/...` (conventions, API). It gets: persona and record, decisions,
+receipts, global and followed activity, follows, the leaderboard and the perps board. Universal
+links: `mobile-backend-v1.md` M10 owns the path list; this spec asks it to add `/receipts/*`, and
+`product-hosts-cutover-v2.md` serves the AASA from that one list (cross-review C10). Naming, agreed
+with `paid-reads-v1` (cross-review E11): a **decision receipt** is `/receipts/[publicId]`; a paid
+read's payment receipt is `/reads/:id/receipt` and is reached through the `/reads/*` link. The app signs in with Mera only; follows use the same
 Supabase session.
 
 ## 4. API
@@ -180,11 +190,11 @@ It depends on `decision_resolutions` (`decision-resolution-v1` §5).
 
 ### 5.1 `agents.follows`
 
-| Column       | Type                                          |
-| ------------ | --------------------------------------------- |
-| `user_id`    | uuid, → `identity.profiles.user_id`           |
-| `agent_id`   | uuid, → `agents.agents.id` on delete restrict |
-| `created_at` | timestamptz default now()                     |
+| Column       | Type                                                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_id`    | uuid, → `identity.profiles.user_id` (every wallet account has one: `marketplace-wallets-v1.md` §5 has SIWE `verify` create it, cross-review D5) |
+| `agent_id`   | uuid, → `agents.agents.id` on delete restrict                                                                                                   |
+| `created_at` | timestamptz default now()                                                                                                                       |
 
 PK `(user_id, agent_id)`; index `(agent_id)` for the count. RLS enabled with no Data API policy;
 the API reads and writes through its own connection. Follows of a killed agent are kept.
@@ -202,7 +212,8 @@ the API reads and writes through its own connection. Follows of a killed agent a
 | `payload`    | jsonb            | the already-redacted `text`, `meta`, `amount`, `tone` of `ActivityEvent` |
 
 Indexes `(at DESC, id)` and `(agent_id, at DESC, id)`; cursor = `(at, id)`. Written only by the
-publication step and by the paid-reads spec's delivery step.
+publication step and by `paid-reads-v1`'s evaluation step, for public read cards only, after
+resolution (P12). An `answer` row's payload is the outcome card and nothing else.
 
 ### 5.3 The public projection and receipt
 
@@ -323,6 +334,8 @@ gain a resolved-decision seed so the populated screens can be measured
 - **Scraping.** Everything public is meant to be public; caching absorbs load. `/v1/me/*` is
   `no-store`.
 - **Perpl outage.** Never an invented board: stale for 5 minutes with a label, then unavailable.
+- **Paid reads.** A test proves a `buyer` decision never appears on any public route, before or
+  after resolution, and that an `answer` row carries no reasoning or sources (P12).
 
 ## 9. Acceptance criteria and tests
 
@@ -353,17 +366,21 @@ Web (`apps/web` tests and the design harness):
 ## 10. Rollout and dependencies
 
 Needs first: `decision-resolution-v1` (tables, job, acceptance) — nothing here ships before real
-resolutions exist. `go-public-v1` adds `visibility` and `published_at`; every public route here filters on
-`visibility = 'public'` as it prescribes (its D1). `paid-reads-v1` writes `answer` rows
-and decides whether a paying reader sees an unresolved decision tied to their read (P1 leaves that
-to it). `product-hosts-v1` for the `app.pickler.fun` AASA paths.
+resolutions exist. `go-public-v1` adds `visibility` and `published_at`; every public route here
+filters on `visibility = 'public'` as it prescribes (its D1). `paid-reads-v1` writes `answer` rows
+at evaluation (P12). `mobile-backend-v1` owns the universal-link list and the envelope timing;
+`product-hosts-cutover-v2` serves the AASA (cross-review C27, K4). `marketplace-wallets-v1` creates
+the profile row follows reference. `production-environment-v1` lists `PERPL_BOARD_*` and
+`PUBLIC_RECORD_ENABLED` in `deploy/required-bindings.json`, and its smoke list gains one anonymous
+route from this spec, `GET /api/v1/marketplace/activity` → 200 (cross-review E12).
 
 1. Migration `public_record`; follows routes and web import (can ship before resolution).
 2. Publication step in the resolution job; new public routes behind `PUBLIC_RECORD_ENABLED`.
 3. Existing routes read `agent_records`; web pages and harness states.
 4. Perps board behind `PERPL_BOARD_ENABLED` once #60/#63 merge; until then the sample board gets a
    SAMPLE label in the first PR of this work.
-5. Mobile app release reading the new routes; then the envelope switch for the old routes (P10).
+5. The envelope switch for the old routes, with the web (P10); then the mobile app's first public
+   build, which reads only envelope routes.
 
 ## 11. Out of scope
 

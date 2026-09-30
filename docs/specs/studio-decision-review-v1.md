@@ -54,8 +54,9 @@ work**, which needs human labels on real decisions (`apps/agent-service/AGENTS.m
 2. The list shows, per row: decided time, market question, the call (`TRADE` outcome at ask /
    `PASS` / `HELD` when a rule stopped a trade), stated band, market price, resolution chip
    (`AWAITING`, `DISPUTED`, `WON`, `LOST`, `VOID`, `UNRESOLVABLE`), virtual P&L (and held P&L for
-   held trades), and a review mark.
-3. Filters: action (`trade`, `pass`, `held`), resolution state, policy reason code, the rule that
+   held trades), an audience mark (`PUBLIC`, `OWNER ONLY`, `PAID READ`; `decision-resolution-v1`
+   D16), and a review mark.
+3. Filters: action (`trade`, `pass`, `held`), audience (`public`, `owner`, `buyer`), resolution state, policy reason code, the rule that
    stopped it (by rule text from the current or any past brief version), reviewed / not reviewed /
    verdict, and a date range. The URL carries the filters so a view can be shared within the
    workspace.
@@ -81,7 +82,9 @@ The detail (`GET /v1/studio/decisions/:runId`) shows, top to bottom:
 6. **Resolution**, when it arrives: outcome, payout, block and link, Brier, hit, virtual / held /
    paper P&L, the paper fill and any exit check that closed it (`decision-resolution-v1` §3.4).
 7. **Receipt**: decision hash, public commitment, receipt hash; "Public at …" with a link to the
-   public receipt, or "Owner only (made before the agent was public)".
+   public receipt, or "Owner only (made before the agent was public)", or "Paid read · never
+   public" with a link to the read in the studio (conventions decision 10: a paid read's reasoning
+   and sources are never public; only its outcome card may be).
 8. **Your review** panel (§3.3).
 9. **Run**: usage, model steps, cost, duration, and a link to the full trace (the existing Activity
    view filtered to this run).
@@ -128,23 +131,24 @@ Auth: the studio session (Supabase JWT); scope via the existing `access.authoriz
 envelope; the existing studio routes keep their bodies. DTOs in
 `packages/api-schema/src/decision-review.ts` (new).
 
-| Method | Path                                 | Request                                                                                                                  | Response `data`                                     | Errors                                                                                                                               |
-| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/agents/:id/decisions`              | `?action=trade,pass,held&state=&reason=&rule=&reviewed=yes\|no\|wrong\|right\|unsure&from=&to=&cursor=&limit=` (max 100) | `DecisionRowDto[]`, `meta.nextCursor`, `meta.total` | 404 `AGENT_NOT_FOUND`, 400 `INVALID_FILTER`                                                                                          |
-| GET    | `/decisions/:runId`                  | —                                                                                                                        | `DecisionReviewDto` (§5.2)                          | 404 `DECISION_NOT_FOUND` (not enrolled yet: the web falls back to the run view)                                                      |
-| GET    | `/agents/:id/performance`            | `?window=30d\|90d\|all`                                                                                                  | `AgentPerformanceDto` (§5.3)                        | 404 `AGENT_NOT_FOUND`                                                                                                                |
-| PUT    | `/decisions/:runId/review`           | `{ verdict, reasons: ReasonTag[], note: string ≤ 1000, expectedVersion: number \| null }`                                | `ReviewDto` (with `version`)                        | 400 `INVALID_REVIEW` (`other` without note, unknown tag), 403 `READ_ONLY` (member without write), 404, 409 `REVIEW_VERSION_CONFLICT` |
-| DELETE | `/decisions/:runId/review`           | `?expectedVersion=`                                                                                                      | `{ cleared: true }`                                 | 404, 409                                                                                                                             |
-| POST   | `/decisions/:runId/check-resolution` | `Idempotency-Key`                                                                                                        | `ResolutionStateDto`                                | 404, 429 `CHECK_RATE_LIMITED` (1 per decision per 5 min, `retryAt`)                                                                  |
+| Method | Path                                 | Request                                                                                                                                              | Response `data`                                     | Errors                                                                                                                               |
+| ------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/agents/:id/decisions`              | `?action=trade,pass,held&audience=public,owner,buyer&state=&reason=&rule=&reviewed=yes\|no\|wrong\|right\|unsure&from=&to=&cursor=&limit=` (max 100) | `DecisionRowDto[]`, `meta.nextCursor`, `meta.total` | 404 `AGENT_NOT_FOUND`, 400 `INVALID_FILTER`                                                                                          |
+| GET    | `/decisions/:runId`                  | —                                                                                                                                                    | `DecisionReviewDto` (§5.2)                          | 404 `DECISION_NOT_FOUND` (not enrolled yet: the web falls back to the run view)                                                      |
+| GET    | `/agents/:id/performance`            | `?window=30d\|90d\|all`                                                                                                                              | `AgentPerformanceDto` (§5.3)                        | 404 `AGENT_NOT_FOUND`                                                                                                                |
+| PUT    | `/decisions/:runId/review`           | `{ verdict, reasons: ReasonTag[], note: string ≤ 1000, expectedVersion: number \| null }`                                                            | `ReviewDto` (with `version`)                        | 400 `INVALID_REVIEW` (`other` without note, unknown tag), 403 `READ_ONLY` (member without write), 404, 409 `REVIEW_VERSION_CONFLICT` |
+| DELETE | `/decisions/:runId/review`           | `?expectedVersion=`                                                                                                                                  | `{ cleared: true }`                                 | 404, 409                                                                                                                             |
+| POST   | `/decisions/:runId/check-resolution` | `Idempotency-Key`                                                                                                                                    | `ResolutionStateDto`                                | 404, 429 `CHECK_RATE_LIMITED` (1 per decision per 5 min, `error.detail.retryAt`)                                                     |
 
 `check-resolution` runs `decision-resolution-v1`'s use case for one decision, the same code as the
-Cron; `POST /runs/:id/paper-order/settle` (`studio.ts:663`) becomes an alias of it.
+Cron, under the same rate limit; `POST /runs/:id/paper-order/settle` (`studio.ts:663`) becomes an
+alias of it, as `decision-resolution-v1` §4 states (cross-review C20).
 
 Internal (disabled until R7 is answered):
 
-| Method | Path                                   | Auth                                                           | Response                                                                                                                                                                                                                   |
-| ------ | -------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/internal/decision-reviews/export` | service binding + operator claim; `REVIEW_EXPORT_ENABLED=true` | JSONL stream: `{ runId, agentId, verdict, reasons, note, resolutionStateAtReview, decision, resolution }` in the `{run, events}` shape `prepare:decision-evidence` reads (`apps/agent-service/DECISION-EVALUATION.md:110`) |
+| Method | Path                                   | Auth                                                                                                                                               | Response                                                                                                                                                                                                                   |
+| ------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/internal/decision-reviews/export` | service binding + operator claim, reached only through the operator CLI of `operations-v1.md` §4.3 (cross-review E2); `REVIEW_EXPORT_ENABLED=true` | JSONL stream: `{ runId, agentId, verdict, reasons, note, resolutionStateAtReview, decision, resolution }` in the `{run, events}` shape `prepare:decision-evidence` reads (`apps/agent-service/DECISION-EVALUATION.md:110`) |
 
 ## 5. Data model and migrations
 
@@ -224,7 +228,7 @@ interface DecisionReviewDto {
     publicCommitment: string;
     receiptHash: string | null;
     publicId: string | null;
-    countsPublicly: boolean;
+    audience: "public" | "owner" | "buyer";
   };
   run: { usage: unknown; durationMs: number | null; promptHashes: Record<string, string> };
   review: ReviewDto | null;
@@ -272,7 +276,8 @@ resolution check, which goes through `decision-resolution-v1`.
 - **Storage**: its own table `pickler.decision_assistant_reviews (run_id, reviewer_id,
 reviewer_version, verdict, findings, usage, created_at)`, never `decision_reviews`. Created by the
   reviewer's own spec, not by this one.
-- **Where it runs**: after a decision is enrolled, as a background job in `workers/research`, never
+- **Where it runs**: after a decision is enrolled, as a product job in `workers/jobs` (conventions
+  decision 15), never
   inside the research run and never before the policy verdict. Moving a reviewer into the runtime
   as a veto (`packages/agent-runtime/AGENTS.md:105-125`) is a separate spec with its own failure
   policy (the open `invalidAnswerPolicy: "block-case"` question,
