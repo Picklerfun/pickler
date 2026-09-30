@@ -13,7 +13,7 @@
  * argument, so the gate is pinned in both positions. Its button opens the sheet, whose challenge
  * the API refuses without a session, so nothing on it can create anything.
  */
-export const SIGNUP_PREVIEWS = ["passkey"] as const;
+const SIGNUP_PREVIEWS = ["passkey"] as const;
 
 export type SignupPreview = (typeof SIGNUP_PREVIEWS)[number];
 

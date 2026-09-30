@@ -8,7 +8,7 @@
  */
 import { ORDER, emptyDraft, ready, type Draft, type OrderStep, type Step } from "./draft";
 
-export type Mode = "auto" | "manual";
+type Mode = "auto" | "manual";
 
 export interface FlowState {
   draft: Draft;
@@ -28,7 +28,7 @@ export interface FlowState {
   held: boolean;
 }
 
-export type FlowAction =
+type FlowAction =
   | { type: "patch"; patch: Partial<Draft> }
   | { type: "replace"; draft: Draft }
   | { type: "go"; step: Step }
@@ -144,7 +144,7 @@ const STEP_PARAMS = [
   "review",
   "run",
 ] as const;
-export type StepParam = (typeof STEP_PARAMS)[number];
+type StepParam = (typeof STEP_PARAMS)[number];
 
 export function stepFromParam(value: string | string[] | undefined): Step {
   const raw = Array.isArray(value) ? value[0] : value;

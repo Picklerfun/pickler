@@ -716,30 +716,6 @@
 
 /* ---------- Chain marks and chips ---------- */
 
-.marks {
-  display: flex;
-  flex: none;
-  justify-content: flex-end;
-  gap: 5px;
-}
-
-.mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  background: var(--pk-panel);
-  border: 1px solid var(--pk-rule-strong);
-  border-radius: var(--pk-radius-mark);
-  overflow: hidden;
-}
-
-.mark img {
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-}
-
 .venueChip {
   display: inline-flex;
   align-items: center;

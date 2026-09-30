@@ -30,16 +30,6 @@ export const SHAPES = {
 
 export type ShapeKey = keyof typeof SHAPES;
 
-export const SHAPE_ACCENT: Record<ShapeKey, AccentDto> = {
-  I: "cyan",
-  O: "amber",
-  T: "violet",
-  S: "lime",
-  Z: "magenta",
-  J: "blue",
-  L: "orange",
-};
-
 const ACCENT_SHAPE: Record<AccentDto, ShapeKey> = {
   cyan: "I",
   amber: "O",

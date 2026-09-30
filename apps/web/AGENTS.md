@@ -226,7 +226,7 @@ loader even from a CommonJS file, unlike this module's own static `import`.
 
 `api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
 funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
-`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`), `updateConfig`,
+`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`),
 `setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
 `depositPrepare`/`depositConfirm`, and
 the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/

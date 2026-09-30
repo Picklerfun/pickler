@@ -7,7 +7,7 @@
 import type { PreviewRun, RunEvent } from "../api";
 import { PAPER_BUDGET_AUSD } from "./model";
 
-export interface RunResult {
+interface RunResult {
   trade: boolean;
   eyebrow: "ITS TRADE" | "STOOD DOWN";
   title: string;

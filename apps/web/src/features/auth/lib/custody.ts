@@ -41,7 +41,7 @@ export class SessionExpired extends Error {
 }
 
 /** The four signing routes a ceremony touches. A test hands the same shape with fakes. */
-export interface CustodyApi {
+interface CustodyApi {
   challenge(token: string): Promise<ChallengeOptionsDto>;
   register(
     token: string,
@@ -181,7 +181,7 @@ export const alreadyEnrolled = (error: unknown): boolean =>
   error instanceof Error && error.name === "InvalidStateError";
 
 /** Which screen a signed-in person belongs on. */
-export type Landing = "handle" | "passkey" | "recover" | "welcome";
+type Landing = "handle" | "passkey" | "recover" | "welcome";
 
 /**
  * Where to put somebody who has just proved an email address, from what the account actually
@@ -208,7 +208,7 @@ export function landing(account: {
 }
 
 /** `window.localStorage`, narrowed to what the mark needs and nullable where there is none. */
-export interface EnrolmentStore {
+interface EnrolmentStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }

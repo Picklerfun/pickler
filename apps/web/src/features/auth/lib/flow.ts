@@ -25,7 +25,7 @@ export type Step =
   "auth" | "code" | "handle" | "passkey" | "welcome" | "recover" | "approve" | "recovered";
 
 /** Which rail is on screen: creating an account, returning to one, or adding a device to one. */
-export type Mode = "up" | "in" | "recover";
+type Mode = "up" | "in" | "recover";
 
 export interface FlowState {
   mode: Mode;

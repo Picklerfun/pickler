@@ -10,7 +10,7 @@
  * The test pins each copy through a dynamic import.
  */
 export type SectionKey = "thesis" | "reads" | "enters" | "exits" | "never";
-export type StepperKey = "perTrade" | "perDay" | "leverage";
+type StepperKey = "perTrade" | "perDay" | "leverage";
 
 export interface BriefForm {
   name: string;
@@ -237,7 +237,7 @@ export function capsProblem(form: BriefForm): string {
 
 export type RunState = "IDLE" | "LIVE" | "DONE" | "STALE";
 
-export const TERMINAL = ["completed", "failed", "cancelled"] as const;
+const TERMINAL = ["completed", "failed", "cancelled"] as const;
 export const isTerminal = (status: string): boolean =>
   (TERMINAL as readonly string[]).includes(status);
 
@@ -312,7 +312,7 @@ export function createLabel(
 export const canCreate = (handle: HandleState, state: RunState, completed: boolean): boolean =>
   handle === "free" && state === "DONE" && completed;
 
-export type CreateProblem =
+type CreateProblem =
   | { kind: "stale" }
   | { kind: "taken" }
   | { kind: "rerun"; text: string }
@@ -349,8 +349,7 @@ export interface CreatedDraft {
   name: string;
 }
 
-export type CreatePress =
-  { kind: "none" } | { kind: "create" } | { kind: "reload"; productId: string };
+type CreatePress = { kind: "none" } | { kind: "create" } | { kind: "reload"; productId: string };
 
 /**
  * What a press on the create button does. Creating and opening what was created are two steps,

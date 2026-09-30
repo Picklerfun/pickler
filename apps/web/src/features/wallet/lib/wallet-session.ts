@@ -9,9 +9,9 @@
  * Pure, and taking the clock as an argument, so every branch is pinned without a browser.
  */
 
-export type SessionNamespace = "eip155" | "solana";
+type SessionNamespace = "eip155" | "solana";
 
-export interface ConnectedWallet {
+interface ConnectedWallet {
   address: string;
   namespace: SessionNamespace;
 }
@@ -28,15 +28,14 @@ export interface WalletSession extends ConnectedWallet {
  * a digest of the address, never the address — so it is held without one. It is never handed back
  * as the connected wallet's token, and it is let go of as soon as the wallet changes.
  */
-export interface AdoptedSession {
+interface AdoptedSession {
   adopted: true;
   userId: string;
 }
 
 export type HeldSession = WalletSession | AdoptedSession;
 
-export type SessionDecision =
-  { action: "reuse"; token: string } | { action: "sign" } | { action: "none" };
+type SessionDecision = { action: "reuse"; token: string } | { action: "sign" } | { action: "none" };
 
 /**
  * How long before its expiry a token stops being handed out. A token that is valid now and lapses
@@ -128,7 +127,7 @@ const ACCOUNT_KEY = "pickler_account";
 const WALLET_ACCOUNT = "wallet";
 
 /** As much of Supabase's session as this reads. */
-export interface ClientSession {
+interface ClientSession {
   user: { id: string; app_metadata?: Record<string, unknown> | null };
 }
 
@@ -147,7 +146,7 @@ export function adoptSession(session: ClientSession | null): AdoptedSession | nu
 }
 
 /** The two verbs of Supabase's auth client this needs, so a test can stand in for it. */
-export interface SessionClient {
+interface SessionClient {
   auth: {
     getSession(): Promise<{ data: { session: ClientSession | null } }>;
     signOut(options: { scope: "local" }): Promise<unknown>;

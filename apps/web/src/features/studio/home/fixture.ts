@@ -14,7 +14,7 @@ import type { Agent, PaperOrder, Run, RunEvent } from "../api";
 import { previewConfig } from "../preview";
 import type { HomeStage } from "./stage";
 
-export interface HomeFixture {
+interface HomeFixture {
   now: number;
   agent: Agent;
   runs: Run[];

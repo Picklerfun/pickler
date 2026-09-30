@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ConnectError } from "../src/features/wallet/lib/connect";
-import { PasskeyUnusableError } from "../src/features/wallet/lib/signer-adapters";
 import { signInWords } from "../src/features/wallet/lib/sign-in-words";
 
 test("a stale nonce asks for another go, because nothing is actually wrong", () => {
@@ -18,18 +17,6 @@ test("a refused signature does not say the same thing as a stale nonce", () => {
   const bad = signInWords(new ConnectError("bad signature", "401"));
   assert.ok(bad);
   assert.notEqual(stale, bad);
-});
-
-test("a passkey that cannot hold a wallet keeps its own words, whole", () => {
-  // The shape the adapters actually throw: Mera's own error, recognised by its stable `code`. An
-  // earlier version of this test passed a PasskeyUnusableError in directly, which proved nothing —
-  // that object's message comes back whether or not anything converts it. This one fails if the
-  // conversion is skipped, because a raw MeraError carries Mera's wording, not ours.
-  const fromMera = Object.assign(new Error("prf unsupported"), {
-    name: "MeraError",
-    code: "PRF_UNAVAILABLE",
-  });
-  assert.equal(signInWords(fromMera), new PasskeyUnusableError().message);
 });
 
 test("closing the wallet prompt is an answer, not a failure", () => {

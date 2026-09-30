@@ -11,7 +11,7 @@ export const NEEDS_AGENT = "After you create your agent";
 
 export const VIEW_ONLY = "You can view this workspace but not create agents.";
 
-export interface MenuAccess {
+interface MenuAccess {
   /** Whether "+ New agent" is a link. */
   create: boolean;
   /** Why it is not, or "" when it is. */

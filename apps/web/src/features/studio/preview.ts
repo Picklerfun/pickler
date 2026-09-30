@@ -18,7 +18,7 @@
 import { isAuthConfigured } from "../auth/lib/config";
 import type { Agent, Catalog, Options, Run, RunEvent } from "./api";
 
-export type PreviewState = {
+type PreviewState = {
   agents: Agent[];
   runs: Run[];
   events: RunEvent[];

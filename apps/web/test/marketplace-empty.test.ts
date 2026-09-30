@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentSummaryDto, LeaderboardDto } from "@pickler/api-schema";
-import { agentsWithToken, noAgents, nothingRanked } from "../src/features/agents/lib/empty";
+import { noAgents, nothingRanked } from "../src/features/agents/lib/empty";
 
 /* The launch-day decisions. No test here renders a component — none in this suite does — so what
    is tested is the predicate each board asks before choosing its empty screen over its filters.
@@ -22,18 +22,6 @@ const summary = (handle: string, token: AgentSummaryDto["token"]): AgentSummaryD
   token,
 });
 
-const curve: NonNullable<AgentSummaryDto["token"]> = {
-  stage: "pre-graduation",
-  marketCap: 0,
-  raised: 0,
-  graduationTarget: 1000,
-  volume24h: 0,
-  price: 0,
-  change24h: 0,
-  address: null,
-  chain: "monad-testnet",
-};
-
 const board = (entries: LeaderboardDto["entries"]): LeaderboardDto => ({
   entries,
   weights: [{ label: "Calibration", weight: 0.4, note: "Said versus did." }],
@@ -46,21 +34,6 @@ test("a directory with no agents is the launch-day screen", () => {
 
 test("a directory with one agent is the populated directory, filters and all", () => {
   assert.equal(noAgents([summary("halftime", null)]), false);
-});
-
-test("the token board keeps only the agents that have launched a token", () => {
-  const rows = agentsWithToken([summary("halftime", curve), summary("tapereader", null)]);
-
-  assert.deepEqual(
-    rows.map((agent) => agent.handle),
-    ["halftime"],
-  );
-});
-
-test("agents with no token among them leave the token board with nothing, which is its empty screen", () => {
-  const rows = agentsWithToken([summary("halftime", null), summary("tapereader", null)]);
-
-  assert.equal(noAgents(rows), true);
 });
 
 test("a board with no entries has nothing to rank, whatever its weights say", () => {
