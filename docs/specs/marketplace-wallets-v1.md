@@ -200,11 +200,22 @@ The link cap (D10) and last-wallet rule (D11) live in core (`wallet-sign-in.ts`)
 inside the same transaction as the insert and reads `pickler_account` and the login identities
 through the existing `WalletAccounts` port.
 
-**No profile row at sign-in (cross-review D5).** `verify` does not create an `identity.profiles` row:
-that table requires a handle and a display name (`identity.ts:36-49`), and a handle is claimed later
-and on purpose (user-profiles-and-products-v1 §4). Marketplace tables that belong to a person (follows,
-trades, reads, notifications, devices) key on the Supabase user id (`auth.users.id`) with no foreign key
-to `identity.profiles`, so a wallet-only account without a handle can follow, trade and buy.
+**Wallet sign-in creates the profile row (cross-review D5).** `verify` makes sure that every account
+it signs in has an `identity.profiles` row. It inserts `(user_id)` with `on conflict do nothing` in the
+same transaction as the link, so a returning sign-in is a no-op and a studio account's existing row is
+untouched. The row carries what other specs attach to a person before any handle exists:
+`paid-reads-v1.md`'s notification email columns and the account that `public-record-v1.md`'s follows
+reference. A second migration in this spec, **`profiles_handle_optional`**, therefore relaxes the table
+(`identity.ts:36-49`):
+
+- `handle` and `display_name` become nullable. The format and length checks apply only when they are
+  not null. `profiles_handle_key` stays unique, and in Postgres several nulls do not collide.
+- The handle claim (`POST /v1/profile`, `ProfileRepository.create` at
+  `packages/infrastructure/src/persistence/profile-repository.ts:41`) becomes "set the handle and
+  display name on the caller's row where the handle is null". It still refuses a second claim, and it
+  inserts the row itself for a studio account that has none.
+- Readers that assumed a handle (the persona, directory and account screens) treat null as "no handle
+  yet", and show the short address, as the account menu does today.
 
 ## 6. Integrations
 
