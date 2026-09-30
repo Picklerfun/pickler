@@ -403,14 +403,29 @@ const ALL = [
     task: "Auth",
     proves: "#home-second-passkey",
   },
-  // The studio keeps its section in state, so /studio alone has only ever shown the overview —
-  // three screens' worth of composition behind a rail click that no check has ever read. The one
-  // most affected by a token change is always the one nothing measures. `?section=` opens each,
-  // outside production only. Picks carries the forecast, the policy codes and the report; activity
-  // carries the trace; skills carries the plugin rows; token is a section with no backend, which is
-  // where the copy saying so lives.
+  // The studio keeps its section in state, so /studio alone shows the home and nothing behind the
+  // rail. `?section=` opens each of the thirteen, outside production only, in the rail's own order
+  // (apps/web/src/features/studio/sections/rail.ts). Seven are screens; five are the Soon panel
+  // and the board is the same panel with its two links. `limits` is also where the trading panel
+  // is measured, because trading has no section of its own.
   // The panel carries the section it is showing, so each of these proves the query param put the
-  // screen it named on the page rather than proving the shell loaded around the overview again.
+  // screen it named on the page rather than proving the shell loaded around another one.
+  {
+    path: "/studio?section=overview",
+    name: "studio-overview",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-overview",
+  },
+  {
+    path: "/studio?section=context",
+    name: "studio-context",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-context",
+  },
   {
     path: "/studio?section=picks",
     name: "studio-picks",
@@ -428,6 +443,14 @@ const ALL = [
     proves: "#studio-panel-activity",
   },
   {
+    path: "/studio?section=brief",
+    name: "studio-brief",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-brief",
+  },
+  {
     path: "/studio?section=skills",
     name: "studio-skills",
     product: "studio",
@@ -436,12 +459,60 @@ const ALL = [
     proves: "#studio-panel-skills",
   },
   {
+    path: "/studio?section=sources",
+    name: "studio-sources",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-sources",
+  },
+  {
+    path: "/studio?section=limits",
+    name: "studio-limits",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-limits",
+  },
+  {
+    path: "/studio?section=identity",
+    name: "studio-identity",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-identity",
+  },
+  {
+    path: "/studio?section=profile",
+    name: "studio-profile",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-profile",
+  },
+  {
+    path: "/studio?section=audience",
+    name: "studio-audience",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-audience",
+  },
+  {
     path: "/studio?section=token",
     name: "studio-token",
     product: "studio",
     surface: "dark",
     task: "Task 11",
     proves: "#studio-panel-token",
+  },
+  {
+    path: "/studio?section=board",
+    name: "studio-board",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-panel-board",
   },
   // A person with no agents is sent from /studio to the creation flow, and each of its screens is
   // a URL of its own (`?step=`). Outside production a link past Describe opens on the canvas's
