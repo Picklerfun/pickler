@@ -137,10 +137,11 @@ person who is over.
 
 ### 4.2 Internal routes (service binding only, `production-environment-v1.md` §4.2 rules)
 
-| Method | Path                      | Caller    | Response                                                                                                                 |
-| ------ | ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/v1/internal/ready`      | ops probe | defined in `production-environment-v1.md` §4.2                                                                           |
-| GET    | `/v1/internal/ops/queues` | ops probe | `{ data: { researchQueued, researchOldestQueuedSeconds, tradingPending, previewQueued } }` read from Postgres job tables |
+| Method | Path                       | Caller                 | Response                                                                                                                                                                                                           |
+| ------ | -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/v1/internal/ready`       | ops probe              | defined in `production-environment-v1.md` §4.2                                                                                                                                                                     |
+| GET    | `/v1/internal/ops/queues`  | ops probe              | `{ data: { researchQueued, researchOldestQueuedSeconds, tradingPending, previewQueued } }` read from Postgres job tables                                                                                           |
+| POST   | `/v1/internal/media/sweep` | ops, daily `0 3 * * *` | deletes uploads unreferenced for 24 h and their `MEDIA` objects, bounded to 1 000 per call; `{ data: { deleted, bytes } }`; records the run in `ops.job_runs` (`token-launch-v1.md` §6.1, conventions decision 18) |
 
 No public operations endpoint and no status page in v1.
 
@@ -358,16 +359,16 @@ restored table's count differs from the manifest.
 
 A new project needs its own `AGENTS.md` (root `AGENTS.md:7`) and a row in the root project map.
 
-| Binding / setting                                                                                                                    | Purpose                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `tail` handler; listed in every other Worker's `tail_consumers: [{ "service": "pickler-ops-<env>" }]`                                | receives trace events (logs, exceptions, outcome)             |
-| `DATABASE` (Hyperdrive, the environment's)                                                                                           | error groups, alerts, heartbeats, dead letters, retention     |
-| `API` service binding                                                                                                                | `/v1/internal/ready`, `/v1/internal/ops/queues`               |
-| Queue consumers for every DLQ in `production-environment-v1.md` §6.4 (research, trading, launch events, account jobs, notifications) | O10                                                           |
-| `SEND_EMAIL` (`send_email`, destination = the verified owner address)                                                                | O4                                                            |
-| `OPS_ALERT_WEBHOOK_URL` (secret, optional)                                                                                           | O4                                                            |
-| `PROBE_URLS` (var)                                                                                                                   | the smoke GETs (landing, marketplace pages, `/api/v1/health`) |
-| crons `* * * * *` (probe, rules), `*/15 * * * *` (sweepers), `0 4 * * *` (retention); route `ops.pickler.fun/__operator` only (§4.3) |                                                               |
+| Binding / setting                                                                                                                                                                  | Purpose                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `tail` handler; listed in every other Worker's `tail_consumers: [{ "service": "pickler-ops-<env>" }]`                                                                              | receives trace events (logs, exceptions, outcome)             |
+| `DATABASE` (Hyperdrive, the environment's)                                                                                                                                         | error groups, alerts, heartbeats, dead letters, retention     |
+| `API` service binding                                                                                                                                                              | `/v1/internal/ready`, `/v1/internal/ops/queues`               |
+| Queue consumers for every DLQ in `production-environment-v1.md` §6.4 (research, trading, launch events, account jobs, notifications)                                               | O10                                                           |
+| `SEND_EMAIL` (`send_email`, destination = the verified owner address)                                                                                                              | O4                                                            |
+| `OPS_ALERT_WEBHOOK_URL` (secret, optional)                                                                                                                                         | O4                                                            |
+| `PROBE_URLS` (var)                                                                                                                                                                 | the smoke GETs (landing, marketplace pages, `/api/v1/health`) |
+| crons `* * * * *` (probe, rules), `*/15 * * * *` (sweepers), `0 3 * * *` (media sweeper, through the API), `0 4 * * *` (retention); route `ops.pickler.fun/__operator` only (§4.3) |                                                               |
 
 All seven other Workers gain `tail_consumers`, and research/trading gain
 `"dead_letter_queue": "pickler-<name>-dlq-<env>"` on their consumer. `check:staging` and
@@ -379,29 +380,32 @@ readiness verifier checks it).
 
 ### 6.2 Alert rules (evaluated by the ops Worker each minute)
 
-| Rule                   | Condition                                                                                                                                                         | Env        |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `new_error`            | a fingerprint seen for the first time                                                                                                                             | production |
-| `error_rate`           | > 2 % of API requests 5xx over 5 minutes (from tail outcomes), minimum 20 requests                                                                                | both       |
-| `probe_down`           | the same probe URL failed 3 consecutive minutes                                                                                                                   | both       |
-| `heartbeat_stale`      | research or trading `last_cron_at` older than 3 minutes (indexer once deployed)                                                                                   | both       |
-| `dead_letter`          | any `open` row in `ops.dead_letters`                                                                                                                              | both       |
-| `db_errors`            | > 5 `CONNECTION_LOST` or `QUERY_TIMEOUT` events in 5 minutes                                                                                                      | both       |
-| `queue_backlog`        | `researchOldestQueuedSeconds` > 600                                                                                                                               | production |
-| `turnkey_rejections`   | > 5 `activity_rejected` warnings in 15 minutes (`error-handler.ts:142-151` logs them)                                                                             | production |
-| `web_degraded`         | any `api_degraded` event from the web (skew or outage, `production-environment-v1.md` §0.1)                                                                       | production |
-| `nonce_table`          | `identity.siwe_nonces` > 50 000 rows                                                                                                                              | production |
-| `draft_ceiling`        | the daily draft ceiling reached                                                                                                                                   | production |
-| `treasury_mismatch`    | the daily reconcile (`paid-reads-v1.md` §4.4) reports a ledger/on-chain difference; sends are paused by that job                                                  | production |
-| `treasury_heartbeat`   | `treasury/<env>` heartbeat older than 26 hours (the daily self-check did not run)                                                                                 | production |
-| `treasury_gas_low`     | the treasury wallet holds < 1 MON                                                                                                                                 | production |
-| `keeper_gas_low`       | the graduation keeper holds < 0.5 MON (`token-trading-v1.md` T8)                                                                                                  | production |
-| `refund_stuck`         | a refund flagged for an operator after 5 attempts (`paid-reads-v1.md` §4.4)                                                                                       | production |
-| `resolution_stale`     | a decision awaiting resolution for more than 30 days (`decision-resolution-v1.md`)                                                                                | production |
-| `commitment_mismatch`  | a public record's commitment does not match its stored decision (`public-record-v1.md`, `COMMITMENT_MISMATCH`)                                                    | both       |
-| `launch_without_grant` | the indexer sees a `LaunchCreated` with no matching grant (`launchpad-deploy-v1.md`)                                                                              | production |
-| `perpl_agent_frozen`   | reconciliation froze a Perpl agent (`perpl-live-v1.md`)                                                                                                           | production |
-| `jobs_stalled`         | a minute job's `ops.job_runs.last_started_at` older than 2 minutes, or any job with `consecutive_failures >= 3` (jobs has no database, so it writes no heartbeat) | both       |
+| Rule                       | Condition                                                                                                                                                                                                                                   | Env        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `new_error`                | a fingerprint seen for the first time                                                                                                                                                                                                       | production |
+| `error_rate`               | > 2 % of API requests 5xx over 5 minutes (from tail outcomes), minimum 20 requests                                                                                                                                                          | both       |
+| `probe_down`               | the same probe URL failed 3 consecutive minutes                                                                                                                                                                                             | both       |
+| `heartbeat_stale`          | research or trading `last_cron_at` older than 3 minutes (indexer once deployed); the API's exit-tick row in `ops.job_runs` (`exits/tick`) older than 35 minutes while `EXIT_MONITOR_ENABLED` is `"true"` (`decision-resolution-v1.md` §3.4) | both       |
+| `dead_letter`              | any `open` row in `ops.dead_letters`                                                                                                                                                                                                        | both       |
+| `db_errors`                | > 5 `CONNECTION_LOST` or `QUERY_TIMEOUT` events in 5 minutes                                                                                                                                                                                | both       |
+| `queue_backlog`            | `researchOldestQueuedSeconds` > 600                                                                                                                                                                                                         | production |
+| `turnkey_rejections`       | > 5 `activity_rejected` warnings in 15 minutes (`error-handler.ts:142-151` logs them)                                                                                                                                                       | production |
+| `web_degraded`             | any `api_degraded` event from the web (skew or outage, `production-environment-v1.md` §0.1)                                                                                                                                                 | production |
+| `nonce_table`              | `identity.siwe_nonces` > 50 000 rows                                                                                                                                                                                                        | production |
+| `draft_ceiling`            | the daily draft ceiling reached                                                                                                                                                                                                             | production |
+| `treasury_mismatch`        | the daily reconcile (`paid-reads-v1.md` §4.4) reports a ledger/on-chain difference; sends are paused by that job                                                                                                                            | production |
+| `treasury_heartbeat`       | `treasury/<env>` heartbeat older than 26 hours (the daily self-check did not run)                                                                                                                                                           | production |
+| `treasury_gas_low`         | the treasury wallet holds < 1 MON                                                                                                                                                                                                           | production |
+| `keeper_gas_low`           | the graduation keeper holds < 0.5 MON (`token-trading-v1.md` T8)                                                                                                                                                                            | production |
+| `refund_stuck`             | a refund flagged for an operator after 5 attempts (`paid-reads-v1.md` §4.4)                                                                                                                                                                 | production |
+| `resolution_stale`         | a decision reaches `stale_at` (`decision-resolution-v1.md` §8)                                                                                                                                                                              | production |
+| `resolution_lag`           | the oldest due resolution check is older than 1 hour (`decision-resolution-v1.md` §8)                                                                                                                                                       | production |
+| `identity_missing_backlog` | more than 20 decisions in `identity_missing` (`decision-resolution-v1.md` §8)                                                                                                                                                               | production |
+| `exit_check_failures`      | more than 20 % of exit checks failed in the last hour (`decision-resolution-v1.md` §8)                                                                                                                                                      | production |
+| `commitment_mismatch`      | a public record's commitment does not match its stored decision (`public-record-v1.md`, `COMMITMENT_MISMATCH`)                                                                                                                              | both       |
+| `launch_without_grant`     | the indexer sees a `LaunchCreated` with no matching grant (`launchpad-deploy-v1.md`)                                                                                                                                                        | production |
+| `perpl_agent_frozen`       | reconciliation froze a Perpl agent (`perpl-live-v1.md`)                                                                                                                                                                                     | production |
+| `jobs_stalled`             | a minute job's `ops.job_runs.last_started_at` older than 2 minutes, or any job with `consecutive_failures >= 3` (jobs has no database, so it writes no heartbeat)                                                                           | both       |
 
 This table is the **alert rule registry** (cross-review W6): a spec that needs an alert adds its
 row here in the same PR, with the condition stated against a table or log event the ops Worker can
