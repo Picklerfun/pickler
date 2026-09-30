@@ -70,3 +70,60 @@ Read-back confirmed `completed`, released ownership, thirty diagnostic events, z
 A separate bounded connectivity check on 2026-09-30 returned HTTP 200 from the Perpl metadata endpoint (2.192 seconds), Perpl homepage (1.975 seconds), and a Cloudflare connectivity control (0.933 seconds). This proves later reachability only. The available historical diagnostics do not distinguish a provider outage from local connectivity/DNS/TLS problems; do not attribute the twelve-cycle failure to either without further evidence.
 
 Continuity and normal lease renewal were observed on the final implementation; public availability did not pass. PR #63 remains draft. No third public window or paid study was started. Before another acceptance attempt, diagnose the transport interruption with safe connection-stage metadata; do not increase deadlines, relax timestamp checks or erase failed cycles to obtain a pass.
+
+## Connection-diagnostic revision and authorized window — 2026-09-30
+
+The subsequent user authorization covered safe connection diagnostics, an independent connectivity
+control, controlled tests and exactly one new thirty-minute public window. The frozen code commit
+was `485be086a0b906c3b02290550927006f33c5f06f`. Each revision commit changes one file.
+
+Request records now distinguish the observed response-header, response-body and validation phases,
+header latency, total duration and allowlisted nested network error codes. Generic timeout or socket
+errors do not establish DNS/TLS causality. The control performs one guarded public Cloudflare read
+only after an unavailable cycle with request errors; it cannot supply prices or change validity.
+Its three-second network deadline is separate from the unchanged acquisition deadline.
+
+Controlled validation passed: 37 focused tests; the full suite passed 1,428 tests with zero failures
+and one explicitly gated local Workers/Supabase E2E test skipped. Isolated PostgreSQL tests ran.
+Format, lint, typechecks, all Worker builds and the Node/Mastra build passed. Tests cover sanitized
+nested/aggregate causes, unknown errors, header versus body failures, control timeout, no retries,
+revoked ownership and cancellation. No paid calls occurred.
+
+Diagnostic identity: `stability-20260930T102010101Z`.
+Artifacts: `.data/perps-studies/stability-20260930-connectivity/{report.json,report.csv,report.html,events.jsonl}`.
+
+| Measurement                                     | Result                                       |
+| ----------------------------------------------- | -------------------------------------------- |
+| UTC window                                      | 2026-09-30 10:20:10.272 through 10:50:10.292 |
+| Scheduled / recorded cycles                     | 30 / 30                                      |
+| Joint BTC/ETH valid                             | **26 / 30 (86.7%)**                          |
+| Per-market valid at cycle reference time        | BTC 26/30; ETH 29/30                         |
+| Omitted cycles (zero-based slots)               | 3, 7, 12, 18                                 |
+| Missed cycles                                   | 0                                            |
+| Successful renewals / failures                  | 89 / 0                                       |
+| Public requests                                 | 192; all HTTP 200, no transport failures     |
+| Maximum acquisition / maximum valid acquisition | 12.874 seconds / 10.991 seconds              |
+| Connectivity controls                           | 0; no request failure triggered one          |
+| Models, virtual purchases, real orders          | 0 / 0 / 0                                    |
+| Acceptance                                      | **Failed: below 29/30**                      |
+
+All four omissions exhausted the unchanged twelve-request session limit while attempting to repair
+ticker/book timestamp skew. The observed skew in those slots reached 16, 7, 11 and 6 seconds,
+respectively; the allowed maximum remains five seconds. Repeated successful ticker responses
+retained the same timestamp during several attempts. Subsequent slots recovered, including a
+successful slot that repaired an initial sixteen-second skew to four seconds. This establishes
+intermittent temporal incoherence under the current acquisition rules, not a network outage or a
+strategy abstention. It does not establish why the provider state timestamps stopped advancing.
+
+Read-back confirmed `completed`, released ownership, thirty events, zero model rounds and zero
+paper accounts for this diagnostic identity. No historical study or position was changed. The
+process exited normally; no additional window or paid continuation was started.
+
+The historical twelve-cycle transport outage was not reproduced and its cause remains unknown.
+The new failure classifier and external control have controlled-test coverage, not live failure
+validation in this window. The official [REST documentation](https://github.com/PerplFoundation/api-docs/blob/main/rest-endpoints.md)
+describes the ticker as the same market state published over WebSocket and each market's `at` as
+its own as-of timestamp. Therefore, switching transports alone is not proven to fix this mismatch.
+A follow-up should examine source update cadence and acquisition scheduling before choosing a
+transport change. Do not relabel received-at time as market time, relax thresholds or rerun a paid
+comparison to work around the failed availability criterion. PR #63 remains draft.
