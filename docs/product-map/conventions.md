@@ -74,3 +74,32 @@ env vars), 7 Design work (screens, states, which canvas exists or must be drawn,
 8 Security and abuse, 9 Acceptance criteria and tests, 10 Rollout and dependencies (specs it needs
 first), 11 Out of scope, 12 Open questions for the owner. Cite current code as file:line when it
 constrains the design.
+
+## Decisions taken after the cross-review (2026-09-30)
+
+These resolve the blockers in `docs/product-map/cross-review.md`. Specs follow them.
+
+10. **Paid-read answers stay private to the buyer.** A paid read is never published at delivery. After
+    it resolves, only its outcome card (question, called side, result, both clocks met or not) may be
+    public, never the reasoning or sources. The resolution job scores paid reads with
+    `audience = buyer` and public-record only lists decisions with `audience = public`.
+11. **Pickler pays for the research behind a paid read,** out of its fee, never the owner's research
+    budget. `paid-reads-v1` sets the per-read compute ceiling (default: the lower of 20% of the price
+    and 2 AUSD); `research-runtime-v2` enforces it as a separate `reads` budget scope.
+12. **Perps decisions get their own protocol spec,** `perpl-agent-runtime-v1.md`, which defines
+    `perps-direction-v1` (instrument, direction, entry, horizon, resolution by Perpl mark price). The
+    cycle between `perpl-live-v1` and `research-runtime-v2` is broken by both depending on it.
+13. **Price observations are owned by `decision-resolution-v1`,** as a `PriceObservationSource` port:
+    the Polymarket CLOB price at a target time (±5 min, from Polymarket's public price history),
+    Perpl mark price for perps. `paid-reads-v1` uses it for the second clock. The name "Pons" is
+    retired.
+14. **Moving Mera's relying party gets a migration window.** For 90 days after the cutover the apex
+    `pickler.fun` keeps serving `webcredentials` for the app, and the app offers "Move your funds":
+    it derives the legacy (pickler.fun) address, shows its balance and sweeps it to the new
+    (app.pickler.fun) address. Owned by `mobile-backend-v1` and `product-hosts-cutover-v2`.
+15. **Scheduled work has two homes:** product jobs (payouts, refunds, notifications, graduation
+    keeper, exit checks) run in `workers/jobs`; platform housekeeping (sweepers, retention, alerts,
+    DLQ consumers) runs in `workers/ops`. Decision resolution stays in `workers/research`. The API
+    has no crons.
+16. **The nonce rate limit is owned by `operations-v1`** (one `RATE_LIMIT_SALT`, one table).
+17. **Backups include every schema,** the `reads` ledger first among them.
