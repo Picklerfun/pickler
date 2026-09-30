@@ -118,16 +118,21 @@ module refuses to bind any address other than loopback.
 
 ### 4.1 Degraded and empty states (new routes in `routes.mjs`)
 
-| Route name                                                                                                     | Path                                                                | Mode / fixture                                                          | `proves`                         |
-| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
-| `agents-degraded`                                                                                              | `/agents`                                                           | `fixture: { fail: { path: "/v1/marketplace/directory", status: 404 } }` | `[data-degraded="true"]`         |
-| `leaderboard-degraded`                                                                                         | `/leaderboard`                                                      | fail `/v1/marketplace/leaderboard` 503                                  | `[data-degraded="true"]`         |
-| `agents-empty`                                                                                                 | `/agents`                                                           | `DESIGN_DATA=empty` only                                                | the directory's empty-state hook |
-| `leaderboard-populated`                                                                                        | `/leaderboard`                                                      | `DESIGN_DATA=seed` only                                                 | a leaderboard row hook           |
-| `token-priced`                                                                                                 | `/tokens/<seed ticker>`                                             | `seed` only                                                             | the price element hook           |
-| `profile-record`                                                                                               | `/agents/<seed handle>`                                             | `seed` only                                                             | the record/hit-rate hook         |
-| `connect-rate-limited`                                                                                         | `/portfolio?state=…`                                                | fail `/v1/auth/wallet/nonce` 429                                        | the rate-limited message hook    |
-| `apply-with-seat`, `ask-step-2`, `ask-step-3`, `reads-connected`, `activity-connected`, `limits-trading-panel` | as listed in `docs/specs/cleanup-inventory-2026-09-29.md:1586-1590` | existing `?state=` parameters or `act` clicks                           | each screen's own hook           |
+| Route name                                                                                                     | Path                                                                | Mode / fixture                                                          | `proves`                            |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------- |
+| `agents-degraded`                                                                                              | `/agents`                                                           | `fixture: { fail: { path: "/v1/marketplace/directory", status: 404 } }` | `[data-degraded="true"]`            |
+| `leaderboard-degraded`                                                                                         | `/leaderboard`                                                      | fail `/v1/marketplace/leaderboard` 503                                  | `[data-degraded="true"]`            |
+| `agents-empty`                                                                                                 | `/agents`                                                           | `DESIGN_DATA=empty` only                                                | the directory's empty-state hook    |
+| `leaderboard-populated`                                                                                        | `/leaderboard`                                                      | `DESIGN_DATA=seed` only                                                 | a leaderboard row hook              |
+| `token-priced`                                                                                                 | `/tokens/<seed ticker>`                                             | `seed` only                                                             | the price element hook              |
+| `profile-record`                                                                                               | `/agents/<seed handle>`                                             | `seed` only                                                             | the record/hit-rate hook            |
+| `connect-rate-limited`                                                                                         | `/portfolio?state=…`                                                | fail `/v1/auth/wallet/nonce` 429                                        | the rate-limited message hook       |
+| `draft-rate-limited`                                                                                           | `/studio/new`                                                       | fail `/v1/studio/agents/draft` 429 (`DRAFT_RATE_LIMITED`)               | the draft rate-limited message hook |
+| `waitlist-rate-limited`                                                                                        | `/`                                                                 | fail `/v1/waitlist` 429; `act` submits the form                         | the waitlist inline error hook      |
+| `apply-with-seat`, `ask-step-2`, `ask-step-3`, `reads-connected`, `activity-connected`, `limits-trading-panel` | as listed in `docs/specs/cleanup-inventory-2026-09-29.md:1586-1590` | existing `?state=` parameters or `act` clicks                           | each screen's own hook              |
+
+Degraded routes cover both failure classes `production-environment-v1.md` §0.1 degrades on: a 404
+(skew) and a 503 (outage). Every rate-limited state `operations-v1.md` §7 lists has a route.
 
 Routes gain an optional `modes: ["sample"] | ["seed"] | ["empty"] | …` (default `["sample"]`), so a
 route runs only in the data modes where its screen can exist. The hooks named "the … hook" are added
@@ -147,7 +152,10 @@ to the components in the PR that adds the route, following `routes.mjs`'s `prove
 - A new check **`hosts.mjs`** (split mode only): for every route, a request on each **other** host
   must answer 404, except marketplace routes on the landing host, which must answer 308 to the
   marketplace host (`product-hosts-cutover-v2.md` H4). It also requests
-  `/.well-known/apple-app-site-association` on each host and expects 200 only on the marketplace.
+  `/.well-known/apple-app-site-association` on each host and expects, following
+  `product-hosts-cutover-v2.md` H8/H9: 200 with `applinks` on the marketplace; 200 with
+  `webcredentials` only on the landing when the run sets `AASA_ON_LANDING=true` (the 90-day window),
+  404 otherwise; 404 on the studio always; 200 on `either` (localhost).
 
 ---
 
