@@ -145,6 +145,12 @@ envelope; the existing studio routes keep their bodies. DTOs in
 Cron, under the same rate limit; `POST /runs/:id/paper-order/settle` (`studio.ts:663`) becomes an
 alias of it, as `decision-resolution-v1` §4 states (cross-review C20).
 
+**The settle alias's body.** Request: no body (any body is ignored); `Idempotency-Key` optional, as
+today. Response: unchanged from today, the bare `PaperOrder` body `GET /runs/:id/paper-order`
+returns (`studio.ts:702`), with `settlement` filled when the check resolved it, so existing callers
+keep working. Errors: those of `check-resolution` plus today's `PAPER_NOT_FILLED` (409) for a run
+without a filled paper order. The web moves to `check-resolution`; the alias stays for old clients.
+
 Internal (disabled until R7 is answered):
 
 | Method | Path                                   | Auth                                                                                                                                               | Response                                                                                                                                                                                                                   |
@@ -226,7 +232,7 @@ interface DecisionReviewDto {
   paper: { order: PaperOrderDto | null; exitChecks: ExitCheckDto[] };
   receipt: {
     decisionHash: string;
-    publicCommitment: string;
+    publicCommitment: string | null; // null unless audience = "public" (decision-resolution-v1 §5.1)
     receiptHash: string | null;
     publicId: string | null;
     audience: "public" | "owner" | "buyer";
@@ -236,6 +242,58 @@ interface DecisionReviewDto {
   assistantReviews: []; // always empty in v1 (R8, §6.2)
 }
 ```
+
+### 5.2.1 Row, review and resolution-state DTOs
+
+```ts
+type ResolutionChip = "AWAITING" | "DISPUTED" | "WON" | "LOST" | "VOID" | "UNRESOLVABLE";
+
+interface DecisionRowDto {
+  runId: string;
+  decidedAt: string;
+  audience: "public" | "owner" | "buyer";
+  network: "mainnet" | "testnet";
+  market: { id: string; question: string; outcome: string | null };
+  call: "TRADE" | "PASS" | "HELD";
+  stated: { lower: number; estimate: number; upper: number } | null;
+  marketPrice: number | null;
+  ask: number | null;
+  chip: ResolutionChip;
+  virtualPnlMicro: number | null; // calls only
+  heldPnlMicro: number | null; // held trades only
+  stoppedBy: { kind: "entry" | "never"; rule: string } | null;
+  reasons: string[]; // policy reason codes
+  review: { verdict: "wrong" | "right" | "unsure"; tags: ReasonTag[] } | null;
+}
+
+interface ReviewDto {
+  runId: string;
+  reviewer: { userId: string; handle: string | null };
+  verdict: "wrong" | "right" | "unsure";
+  reasons: ReasonTag[];
+  note: string;
+  stateAtReview:
+    "awaiting" | "disputed" | "resolved" | "void" | "identity_missing" | "unresolvable";
+  outcomeAtReview: "won" | "lost" | "void" | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ResolutionStateDto {
+  runId: string;
+  state: ReviewDto["stateAtReview"];
+  chip: ResolutionChip;
+  checkedAt: string; // when this check ran
+  nextCheckAt: string | null; // null once resolved, void or unresolvable
+  resolution: ResolutionDto | null; // decision-resolution-v1 §4, current revision
+  paperOrder: PaperOrderDto | null; // with its settlement when this check settled it
+}
+```
+
+`chip` maps `state` (`identity_missing` shows as `AWAITING`) and, when resolved, the outcome.
+Micro amounts are JSON numbers here because they are bounded by the 1 AUSD stake (conventions,
+money rule: integers in micro-units).
 
 ### 5.3 `AgentPerformanceDto`
 
