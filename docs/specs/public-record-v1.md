@@ -61,6 +61,8 @@ Inside the resolution transaction (`decision-resolution-v1` §3.2 step 4), for a
 2. Assign `public_id` (`dcs_` + 20 base32 characters) and `public_at = now()`.
 3. Insert one `agents.public_activity` row (`kind` `call` or `pass`) and, when a paper position was
    settled or exited, one `settlement` row.
+4. For a resolved call, enqueue `agents.x_posts` with class `resolved_trade` and `subject_id` =
+   `public_id` (`go-public-v1` §5); the X worker there decides whether it is sent.
 
 ### 3.2 A visitor reads an agent
 
@@ -117,7 +119,7 @@ and `resolutions.ts` (`decision-resolution-v1` §4).
 
 | Method | Path                                    | Request                                               | Response `data`                                               | Errors                                      |
 | ------ | --------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
-| GET    | `/marketplace/agents/:handle/record`    | —                                                     | `PublicRecordDto` (§5.4)                                      | 404 `AGENT_NOT_FOUND` (unknown or draft)    |
+| GET    | `/marketplace/agents/:handle/record`    | —                                                     | `PublicRecordDto` (§5.4)                                      | 404 `AGENT_NOT_FOUND` (unknown or private)  |
 | GET    | `/marketplace/agents/:handle/decisions` | `?kind=all\|call\|pass&cursor=&limit=` (max 100)      | `PublicDecisionDto[]`, `meta.nextCursor`                      | 404 `AGENT_NOT_FOUND`, 400 `INVALID_CURSOR` |
 | GET    | `/marketplace/agents/:handle/sealed`    | `?cursor=&limit=`                                     | `{ pending: number, items: { commitment, decidedAt }[] }`     | 404 `AGENT_NOT_FOUND`                       |
 | GET    | `/marketplace/agents/:handle/activity`  | `?cursor=&limit=`                                     | `ActivityEventDto[]` (existing DTO + `ref: publicId \| null`) | 404 `AGENT_NOT_FOUND`                       |
@@ -313,8 +315,8 @@ gain a resolved-decision seed so the populated screens can be measured
   URLs, times) that it cannot be brute-forced back to a side.
 - **Leaking private configuration.** P3 allow-list, P4 scrub; a property test fails if any brief
   line or prompt text appears in any public DTO built from generated runs.
-- **Drafts.** Draft agents answer 404 on every public route, as today
-  (`agent-directory.ts:175-179,210-214`).
+- **Private agents.** A private agent (`visibility = 'private'`, `go-public-v1` D1) answers 404 on
+  every public route, as drafts do today (`agent-directory.ts:175-179,210-214`).
 - **Follow abuse.** 500 follows per account, 60 writes per minute, counts from `agents.follows`
   only. Follow lists are never public. Fake-account inflation of counts is possible and accepted in
   v1; counts do not affect the score.
@@ -329,7 +331,7 @@ Adapter tests against real Postgres (`packages/infrastructure/test/`, as `market
 
 1. An awaiting decision appears in no public route; after resolution it appears in record,
    decisions, activity and its receipt, with `publicId` stable across calls.
-2. A decision made before `public_since` never appears publicly and still changes the owner record.
+2. A decision made before `published_at` never appears publicly and still changes the owner record.
 3. The receipt's projection hashes to the stored commitment.
 4. The scrub replaces a brief line quoted in a thesis; the policy verdict never contains rule text.
 5. The leaderboard excludes an agent at 19 scored decisions and includes it at 20 (with 5 trades
@@ -351,7 +353,8 @@ Web (`apps/web` tests and the design harness):
 ## 10. Rollout and dependencies
 
 Needs first: `decision-resolution-v1` (tables, job, acceptance) — nothing here ships before real
-resolutions exist. The Go Public spec sets `public_since`. `paid-reads-v1` writes `answer` rows
+resolutions exist. `go-public-v1` adds `visibility` and `published_at`; every public route here filters on
+`visibility = 'public'` as it prescribes (its D1). `paid-reads-v1` writes `answer` rows
 and decides whether a paying reader sees an unresolved decision tied to their read (P1 leaves that
 to it). `product-hosts-v1` for the `app.pickler.fun` AASA paths.
 

@@ -50,7 +50,7 @@ This spec owns the job, the tables and the formulas. The two specs above own wha
 | D8  | **Aggregates are recomputed from scratch per agent** in the same transaction that writes a resolution, into `pickler.agent_records`, with two scopes: `owner` (every enrolled decision) and `public` (decisions made while the agent was public, D11).                                                                                                                             | Per-agent resolution counts are in the hundreds to low thousands; a full recompute is milliseconds and cannot drift, unlike incremental counters.                                                  | yes                                    |
 | D9  | **The leaderboard score is the existing `agentScore`** (`packages/core/src/features/agents/domain/reads.ts:158-167`) with its inputs now defined (§5.4), and an agent is ranked only with ≥ 20 scored decisions, ≥ 5 resolved trades and a decision in the last 30 days.                                                                                                           | The formula is already published by the design ("calibration first, volume second, money last"); what was missing was its inputs. Minimums keep one lucky week off the top.                        | yes                                    |
 | D10 | **The job runs in `workers/research`** on a second Cron trigger every 5 minutes, beside the existing one-minute research Cron (`workers/research/wrangler.jsonc:27`, `workers/research/src/worker.ts:46`). It holds no signer and uses the trusted `DATABASE` Hyperdrive binding.                                                                                                  | It is background, read-only work against public chain data. `workers/trading` holds the signer and must stay small; `workers/api` serves requests.                                                 | yes                                    |
-| D11 | **"Public at decision time" comes from a new `agents.agents.public_since` column**, set by Go Public, backfilled to `created_at` for existing non-draft agents. Decisions before it count only in the owner scope.                                                                                                                                                                 | A draft's decisions were never offered to the public; counting them would let an owner curate a record in private and publish only the good stretch. The reverse is also true, so both are kept.   | yes                                    |
+| D11 | **"Public at decision time" comes from `agents.agents.published_at`**, which `docs/specs/go-public-v1.md` (D1, D2) adds, sets on publish and backfills to `created_at` for agents already public. Decisions before it, and every decision of a private agent, count only in the owner scope.                                                                                       | A draft's decisions were never offered to the public; counting them would let an owner curate a record in private and publish only the good stretch. The reverse is also true, so both are kept.   | yes                                    |
 | D12 | **Each decision gets a public commitment at enrollment**: `sha256` of the canonical JSON of its public projection (the fields `public-record-v1` §5 lists). The hash can be shown immediately; the content is revealed at resolution and anyone can recompute the hash.                                                                                                            | It proves the record was not written with hindsight, without revealing the pick before it resolves (conventions decision 1).                                                                       | yes                                    |
 | D13 | **Open paper positions are exit-monitored** (§3.4): an exit check every 30 minutes evaluates the brief's `exitsWhen` lines from the config the position was opened under, and closes the paper position at the best bid when one turns true. Resolution auto-settles paper positions, replacing the manual settle button as the normal path.                                       | The brief says "the first line that turns true closes it" (`docs/specs/studio-brief-v1.md` §2), and today nothing does.                                                                            | yes                                    |
 | D14 | **Exit checks are a small model call with no search**: the position, the entry decision, a fresh book and the exit lines in; one boolean and one sentence per line out. They are not research runs and do not take the one-running-agent lock (`schema.ts`, `one_running_agent`).                                                                                                  | Exit rules are written in plain language and cannot be parsed into price triggers in general. No search keeps the cost at a few cents per check. A research run would block scheduled research.    | yes                                    |
@@ -127,7 +127,7 @@ The studio reads the owner-scope record and each decision's resolution
 4. A closed position's decision still resolves normally: the **decision** is scored on the market
    outcome (the forecast); the **paper P&L** is the realized exit P&L, not the payout.
 5. Limits: at most 48 exit checks per agent per UTC day; exit-check model spend is charged exactly
-   as research spend is (the research spend budget spec). With the agent paused or killed, checks
+   as research spend is (the research budget in `docs/specs/research-runtime-v2.md`). With the agent paused or killed, checks
    stop; with paper trading disabled for the agent (`assertPaperSettlementAccess`,
    `settlement.ts:54-59`), checks stop and resolution still settles.
 6. Live positions are out of scope: the live pilot has no sells (`LIVE-TRADING.md:101,123`).
@@ -187,7 +187,7 @@ exposed through the Supabase Data API (root `AGENTS.md`, "Never expose `pickler`
 | `public_commitment`                | text                        | sha256 hex of canonical JSON of the public projection (D12)                                                            |
 | `public_id`                        | text unique null            | `dcs_` + 20 base32 chars; set at publication (`public-record-v1`)                                                      |
 | `public_at`                        | timestamptz null            | when it became public; null for owner-only decisions                                                                   |
-| `counts_publicly`                  | boolean                     | `decided_at >= agents.agents.public_since` at enrollment (D11)                                                         |
+| `counts_publicly`                  | boolean                     | `published_at IS NOT NULL AND decided_at >= published_at` at enrollment (D11)                                          |
 | `state`                            | text                        | `awaiting` \| `disputed` \| `resolved` \| `void` \| `identity_missing` \| `unresolvable`                               |
 | `next_check_at`, `stale_at`        | timestamptz null            |                                                                                                                        |
 | `attempts`, `last_error`           | integer, text null          | `last_error` is a stable code, never a provider message                                                                |
@@ -308,8 +308,8 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
   `checked_at`, `book jsonb`, `answers jsonb`, `fired_rule text null`, `status`
   (`no_exit`, `exited`, `failed`, `skipped`), `failure_code`, `usage jsonb`, lease columns. Index
   `(paper_order_id, checked_at DESC)`.
-- `agents.agents` gains `public_since timestamptz null` (D11), in the `decision_resolutions`
-  migration, backfilled `created_at` where `status <> 'draft'`.
+- `agents.agents.published_at` (D11) comes from the Go Public migration (`go-public-v1` §5); this
+  spec adds no column to `agents.agents`.
 
 ## 6. Integrations
 
@@ -343,7 +343,8 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
   the called direction. The probability the model gave for its direction is scored with the same
   Brier.
 - The same venue-outcome port (`DecisionOutcomeSource`, §9) serves the paid-read evaluation clock
-  (`paid-reads-v1`): a read is "above the price at delivery, 24 h later".
+  (`docs/specs/paid-reads-v1.md`), which calls it as `priceAt(venue, market, time, tolerance)`: a read
+  is "above the price at delivery, 24 h later".
 
 ### 6.4 Environment
 
@@ -414,7 +415,7 @@ Integration (real Postgres, `packages/infrastructure/test/`):
 9. Resolution and paper settlement agree: after one tick, `paper_orders.settlement.resolution`
    equals the resolution's evidence.
 10. `UPDATE`/`DELETE` on `decision_resolutions` raise.
-11. A decision before `public_since` changes the owner record and not the public one.
+11. A decision before `published_at` changes the owner record and not the public one.
 12. A failing Gamma or RPC call reschedules and writes no resolution; a failing database raises.
 13. An exit check that fires closes the position, frees the unique index and records the P&L; a
     misaligned answer records `failed` and changes nothing.
@@ -427,18 +428,16 @@ Staging acceptance (recorded in a deployment record, not claimed from local runs
 
 ## 10. Rollout and dependencies
 
-1. Migration `decision_resolutions` (tables, `public_since`), core rules, adapters, the tick route.
+1. Migration `decision_resolutions` (tables), core rules, adapters, the tick route.
 2. Backfill every historical completed run (identity via Gamma; `identity_source = 'backfill'`).
-   Historical decisions count in the owner scope; in the public scope only from `public_since`.
+   Historical decisions count in the owner scope; in the public scope only from `published_at`.
 3. Enable the Cron on staging, run acceptance item 14, then flip `RESOLUTION_ENABLED`.
 4. `PostgresAgentDirectory` reads `agent_records` (`public-record-v1`).
 5. Migration `paper_position_exits`, exit monitor, acceptance item 15, then `EXIT_MONITOR_ENABLED`.
 
-Needs first: nothing for steps 1–3. Go Public (the spec defining the draft → public transition)
-sets `public_since` going forward; until it exists, `studio.ts` creation sets it for `/studio/new`
-agents, which are public at creation (`packages/infrastructure/src/studio/directory.ts:152`). The
-research spend budget spec meters exit-check spend; until it lands, exit checks are bounded only by
-the daily cap. Perpl resolution waits on `perpl-agent-runtime-v1`.
+Needs first: `go-public-v1` for `published_at` (step 1 can ship without it by treating every
+agent as owner-only). `research-runtime-v2` meters exit-check spend; until it lands, exit checks are
+bounded only by the daily cap. Perpl resolution waits on `perpl-agent-runtime-v1`.
 
 ## 11. Out of scope
 
@@ -458,4 +457,4 @@ the daily cap. Perpl resolution waits on `perpl-agent-runtime-v1`.
    Pickler), and is 48 checks per agent per day acceptable?
 3. **Backfill visibility.** Should decisions made before this ships count in public records of
    agents that were already public, or should every public record start at the ship date? Default
-   decided here: they count (D11 backfills `public_since` to `created_at`).
+   decided here: they count (Go Public backfills `published_at` to `created_at`).

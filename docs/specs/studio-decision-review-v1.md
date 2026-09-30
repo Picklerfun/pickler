@@ -282,7 +282,7 @@ reviewer_version, verdict, findings, usage, created_at)`, never `decision_review
 - **Gate before enabling**: at least 200 human-reviewed real decisions from this spec, across at
   least 10 agents; the reviewer's `concern` agrees with human `wrong` verdicts (reviewed before
   resolution) at a precision and recall the enabling spec states; zero `invalid` answers on a held-out
-  set; cost per review charged through the research spend budget. Until then `assistantReviews` is
+  set; cost per review charged through the research budget (`docs/specs/research-runtime-v2.md`). Until then `assistantReviews` is
   always `[]`.
 
 ## 7. Design work
