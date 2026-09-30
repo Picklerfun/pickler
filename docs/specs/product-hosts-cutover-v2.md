@@ -230,8 +230,9 @@ This table is the zone's full inventory (cross-review W9): a spec that adds a ho
 here in the same PR.
 
 A custom domain can be attached to only one Worker at a time; moving `pickler.fun` from
-`pickler-web-staging` to `pickler-web-production` is a detach then attach (seconds of 522), done in
-the production cutover of `production-environment-v1.md` §10 step 6, not here.
+`pickler-web-staging` to `pickler-web-production` is a detach then attach (seconds of 522). **This
+spec owns that move, at §10.1 step 2** of the production run; `production-environment-v1.md` §10
+cites it and does not move the domain itself.
 
 ### 6.2 Supabase Auth (per project)
 
