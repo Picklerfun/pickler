@@ -101,11 +101,11 @@
   height: 26px;
   flex: none;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 10px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
   text-transform: uppercase;
 }
 .menu {
@@ -172,11 +172,11 @@
   gap: 7px;
   padding: 8px 12px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 10.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .dot {
   width: 6px;
@@ -304,11 +304,11 @@
   flex: none;
   padding: 3px 7px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
   white-space: nowrap;
 }
 .railFoot {
@@ -377,8 +377,8 @@
   margin: 18px 24px 0;
   padding: 15px 18px;
   border-radius: var(--pk-radius-2xl);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
 }
 .blockedMark {
   display: grid;
@@ -387,9 +387,9 @@
   height: 36px;
   flex: none;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
-  color: var(--tint-fg);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
+  color: var(--pk-tint-fg);
 }
 .blockedBody {
   min-width: 0;
@@ -408,10 +408,10 @@
 .code {
   padding: 3px 8px;
   border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--tint-bd);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.04em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
   white-space: nowrap;
 }
 .blockedNote {
@@ -637,7 +637,7 @@
   margin-bottom: 4px;
   font: 700 19px/1 var(--pk-font);
   letter-spacing: -0.035em;
-  color: var(--tint-fg, var(--pk-ink));
+  color: var(--pk-tint-fg, var(--pk-ink));
 }
 .stat[data-tint="plain"] b {
   color: var(--pk-ink);
@@ -742,8 +742,8 @@
   width: 7px;
   height: 7px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-fg);
-  box-shadow: 0 0 8px var(--tint-fg);
+  background: var(--pk-tint-fg);
+  box-shadow: 0 0 8px var(--pk-tint-fg);
 }
 .rowId {
   flex: none;
@@ -764,11 +764,11 @@
   flex: none;
   padding: 4px 10px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 10px/1 var(--pk-font);
   letter-spacing: 0.04em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
   white-space: nowrap;
 }
 .mark[data-quiet="true"] {
@@ -1068,18 +1068,18 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--pk-radius-sm);
-  background: var(--tint-bg);
-  border: 1px solid var(--tint-bd);
+  background: var(--pk-tint-bg);
+  border: 1px solid var(--pk-tint-bd);
 }
 .reason svg {
   flex: none;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .reason code {
   flex: none;
   font: 600 11px/1 var(--pk-font);
   letter-spacing: 0.03em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .reason span {
   flex: 1 1 200px;
@@ -1126,7 +1126,7 @@
   margin: 0 0 8px;
   font: 600 10.5px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .abstention {
   margin: 12px 0 0;
@@ -1209,7 +1209,7 @@
   width: 7px;
   height: 7px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-fg);
+  background: var(--pk-tint-fg);
 }
 .reportRow {
   display: flex;
@@ -1225,8 +1225,8 @@
   height: 8px;
   margin-top: 5px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-fg);
-  box-shadow: 0 0 8px var(--tint-fg);
+  background: var(--pk-tint-fg);
+  box-shadow: 0 0 8px var(--pk-tint-fg);
 }
 .reportKey {
   flex: 0 0 110px;
@@ -1248,7 +1248,7 @@
   border: 1px solid var(--pk-rule);
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .reportSources {
   flex: none;
@@ -1332,7 +1332,7 @@ a.source:hover {
   width: 8px;
   height: 8px;
   border-radius: var(--pk-radius-pill);
-  background: var(--tint-fg);
+  background: var(--pk-tint-fg);
   border: 1px solid var(--pk-rule-strong);
 }
 /* A step the model or the policy took, drawn in the accent rather than in the accent's ink. */
@@ -1470,10 +1470,10 @@ a.source:hover {
 .stubState {
   padding: 3px 8px;
   border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--tint-bd);
+  border: 1px solid var(--pk-tint-bd);
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .stubBody {
   margin: 0;
@@ -1642,7 +1642,7 @@ a.source:hover {
   flex: none;
   font: 600 10.5px/1 var(--pk-font);
   letter-spacing: 0.04em;
-  color: var(--tint-fg);
+  color: var(--pk-tint-fg);
 }
 .stampKey {
   font-style: normal;
@@ -1671,12 +1671,12 @@ a.source:hover {
 /* The banner's action belongs to the banner, not to the page: it borrows the state's colour so a
    blocked screen reads as one object instead of a warning with an unrelated call to action. */
 .blocked button.blockedCta {
-  background: var(--tint-fg);
+  background: var(--pk-tint-fg);
   color: var(--pk-bg);
   border-color: transparent;
 }
 .blocked button.blockedCta:hover:not(:disabled) {
-  background: var(--tint-fg);
+  background: var(--pk-tint-fg);
   filter: brightness(1.12);
 }
 .note[data-warn="true"] {
