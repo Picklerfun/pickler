@@ -21,18 +21,18 @@
    buttons out is why a lime action keeps its dark ink when the cursor lands on it. The exclusion
    sits in :where() so the rule still weighs what it did, and a feature's own link rules still win. */
 .page a:where(:not(:global(.pk-button)):not(:global(.pk-chip))):hover {
-  color: var(--pk-cyan);
+  color: var(--pk-blue);
 }
 
 /* Shared inputs own their focus border, including the frame around prefixed inputs. */
 .page :focus-visible:not(:global(.pk-input)):not(:global(.pk-input-inner)) {
-  outline: 2px solid var(--pk-cyan);
+  outline: 2px solid var(--pk-blue);
   outline-offset: 2px;
 }
 
 .page input::placeholder,
 .page textarea::placeholder {
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 /* Accent-driven pixel. Set --accent and --accent-rgb inline. */
@@ -79,7 +79,7 @@
 .primaryButton:disabled {
   opacity: 1;
   background: rgba(245, 246, 255, 0.08);
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
   border-color: rgba(245, 246, 255, 0.2);
   box-shadow: none;
   cursor: not-allowed;
@@ -177,7 +177,7 @@
   margin: 0 0 14px;
   font: 500 13px/1 var(--pk-font);
   letter-spacing: 0.14em;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .title {
@@ -595,7 +595,7 @@
 }
 
 .tileCyan dd {
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .held {
@@ -664,7 +664,7 @@
   margin: 0 0 10px;
   font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .crowdTitle {
@@ -718,7 +718,7 @@
   overflow-wrap: anywhere;
   font: 500 12.5px/1.4 var(--pk-font);
   letter-spacing: 0.08em;
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .tile.small dd {
