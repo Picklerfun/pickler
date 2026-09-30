@@ -106,7 +106,7 @@ test("a signal while the servers are still coming up stops what has been spawned
     children.push(child);
     return child;
   };
-  const pending = start(tmpdir(), () => {}, {
+  const pending = start(tmpdir(), null, {
     target,
     spawn: spawnSleeper,
     timeouts: { fixture: 1500, web: 1500 },

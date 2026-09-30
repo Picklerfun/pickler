@@ -9,7 +9,7 @@
 // --strict is handed to the static check, which otherwise only reports.
 // Exit 0 clean, 1 a check found something, 2 refused to measure.
 import { spawnSync } from "node:child_process";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIXTURE_PORT, WEB_PORT, listening, plan, start } from "./lib/servers.mjs";
@@ -59,7 +59,7 @@ if (rendered.length) {
     writeFileSync(log, "");
     process.stdout.write(`starting the fixture API and the web app (log: ${log})\n`);
     try {
-      servers = await start(ROOT, (text) => appendFileSync(log, text));
+      servers = await start(ROOT, log);
     } catch (error) {
       process.stderr.write(`${error.message}; read ${log}\n`);
       process.exit(2);

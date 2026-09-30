@@ -6,7 +6,7 @@
  * checkout of this repository serves the same application on a neighbouring port and measuring it
  * would report somebody else's branch. */
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import path from "node:path";
 
@@ -93,13 +93,20 @@ async function answers(url, timeoutMs) {
 /**
  * Starts both servers and answers how to stop them. Throws if either never comes up.
  *
+ * Their output goes straight to `logFile` (or nowhere, when it is null), never through a pipe this
+ * process reads. The runner runs each check with spawnSync, which blocks its event loop for the
+ * whole check, so a pipe would go unread for minutes. On Linux a write to a full pipe blocks, and
+ * `next dev` logs a line per request: on the CI runner the 64 KiB pipe filled during the third
+ * check and the dev server froze mid-write, answering nothing for the rest of the run. (On macOS
+ * Node writes to a pipe asynchronously, so Next buffered in memory instead and nothing froze.)
+ *
  * A signal that arrives while they are still coming up, which can take minutes, stops whatever
  * has been spawned by then: the handler is registered before the first child is. The options
  * exist for a test that stands in another process for the servers and waits less.
  */
 export async function start(
   root,
-  log = () => {},
+  logFile = null,
   {
     target = process,
     spawn: spawnProcess = spawn,
@@ -108,12 +115,22 @@ export async function start(
 ) {
   const children = [];
   const launch = (command, args, options) => {
-    // Its own process group, so stopping it stops whatever it started too.
-    const child = spawnProcess(command, args, { ...options, detached: true, stdio: "pipe" });
-    child.stdout.on("data", (chunk) => log(String(chunk)));
-    child.stderr.on("data", (chunk) => log(String(chunk)));
-    children.push(child);
-    return child;
+    const out = logFile ? openSync(logFile, "a") : "ignore";
+    try {
+      // Its own process group, so stopping it stops whatever it started too.
+      const child = spawnProcess(command, args, {
+        ...options,
+        detached: true,
+        stdio: ["ignore", out, out],
+      });
+      children.push(child);
+      return child;
+    } finally {
+      // The child holds its own copy of the descriptor.
+      if (logFile) {
+        closeSync(out);
+      }
+    }
   };
   const found = REWRITTEN.map((file) => path.join(root, file))
     .filter((file) => existsSync(file))
