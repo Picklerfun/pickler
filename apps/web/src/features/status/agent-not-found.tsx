@@ -22,6 +22,7 @@ export function AgentNotFound({ agents }: { agents: DirectoryAgentDto[] }) {
       id="agent-not-found"
       eyebrow="AGENT · NOT FOUND"
       title="NO SUCH AGENT"
+      foot="HANDLES ARE 3–15 CHARACTERS · a–z 0–9 _"
       body={
         <>
           <b>@{asked}</b> does not exist, or its creator took it down. Its record, if it had one,

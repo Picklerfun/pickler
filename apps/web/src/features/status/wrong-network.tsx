@@ -30,6 +30,7 @@ export function WrongNetwork() {
       id="wrong-network"
       tone="caution"
       eyebrow="WALLET · WRONG NETWORK"
+      foot="YOUR WALLET WILL ASK ONCE · WE NEVER ASK FOR A SEED PHRASE"
       title={`THAT'S NOT ${TARGET_CHAIN.name.split(" ")[0]?.toUpperCase() ?? "MONAD"}`}
       body={`Your wallet is on ${current}. Pickler settles on ${TARGET_CHAIN.name}. Nothing here can sign until you switch. Connecting is not signing in.`}
     >

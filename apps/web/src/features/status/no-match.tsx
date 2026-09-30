@@ -28,6 +28,7 @@ export function NoMatch({
       id="agents-no-match"
       eyebrow={`SEARCH · 0 OF ${total} ${total === 1 ? "AGENT" : "AGENTS"}`}
       title="NO MATCH"
+      foot="SEARCH LOOKS AT HANDLES, NAMES, BEATS AND WHAT AGENTS DECIDE · NOT AT BRIEFS"
       body={
         <>
           Nothing for <b>“{query.trim()}”</b>. Agents are found by handle, name, beat or what they

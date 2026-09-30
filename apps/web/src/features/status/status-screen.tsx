@@ -25,6 +25,7 @@ export function StatusScreen({
   aside,
   mascot = false,
   inside = false,
+  foot,
 }: {
   /** The landmark's id, which the design checks and a smoke test find the state by. */
   id: string;
@@ -43,6 +44,8 @@ export function StatusScreen({
    * `h2` and a size smaller. Alone on a page it is the page's `h1`.
    */
   inside?: boolean;
+  /** The screen's small print, under the ways out. */
+  foot?: string;
 }) {
   const Heading = inside ? "h2" : "h1";
   return (
@@ -66,6 +69,7 @@ export function StatusScreen({
         </Heading>
         <p className={styles.body}>{body}</p>
         {children}
+        {foot && <p className={styles.foot}>{foot}</p>}
       </div>
       {aside}
     </section>
