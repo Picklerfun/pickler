@@ -166,7 +166,7 @@ create type market.trade_request_status as enum
 
 create table market.trade_requests (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references identity.profiles(user_id) on delete cascade,
+  user_id uuid not null,                      -- auth.users.id; no foreign key to identity.profiles
   wallet text not null,                       -- ^0x[0-9a-f]{40}$
   token_id uuid not null references market.tokens(id) on delete restrict,
   venue text not null check (venue in ('pickler_curve', 'uniswap_v4')),
@@ -195,7 +195,11 @@ create index trade_requests_user_idx on market.trade_requests (user_id, created_
 create index trade_requests_open_idx on market.trade_requests (status) where status in ('submitted', 'included');
 ```
 
-RLS on, no Data API exposure, `service_role` grants as `0016_launch_grants.sql`. Reorg: a
+`user_id` is the Supabase `auth.users.id` of the marketplace account, with no foreign key to
+`identity.profiles`: wallet sign-in creates no profile row (`marketplace-wallets-v1.md`), so every
+buyer-keyed table in this spec references the user id directly. Deleting an account deletes its
+rows through the account-deletion job, not a cascade. RLS on, no Data API exposure, `service_role`
+grants as `0016_launch_grants.sql`. Reorg: a
 `confirmed` row whose `market.trades` row is deleted by the projector's rollback returns to
 `submitted` and is re-watched (the foreign key is `on delete set null` in the build; written here as
 a plain reference for readability).
