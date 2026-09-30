@@ -246,12 +246,12 @@ Addresses come from the Pickler manifest `packages/chain/src/deployments/pickler
 ### 6.3 Keeper
 
 - The schedule runs in `workers/jobs` (conventions decision 15): a Cron every minute calls
-  `POST /v1/internal/launch/graduation-keeper/run` on the API, which lists tokens whose curve phase
-  is `READY_TO_GRADUATE` from the index, confirms each with `getCurveState`, and asks
-  `workers/trading` (service binding, `POST /internal/graduation/finalize { curve }`) to send
-  `finalizeGraduation`. The signing stays in `workers/trading` because `workers/jobs` holds no
-  secret (`production-environment-v1.md`, Workers inventory). No second tx is sent while one is
-  pending for the same curve.
+  `workers/trading` directly through the `TRADING` service binding
+  (`POST /internal/graduation-keeper/run`; `production-environment-v1.md` §6.6). The API is not in
+  the path. `workers/trading` lists tokens whose curve phase is `READY_TO_GRADUATE` from the index
+  (read through its `DATABASE` binding), confirms each with `getCurveState`, and sends
+  `finalizeGraduation` with the keeper key. The signing stays in `workers/trading` because
+  `workers/jobs` holds no secret. No second tx is sent while one is pending for the same curve.
 - Secret `LAUNCH_KEEPER_PRIVATE_KEY` (gas-only EOA, holds ≤ 5 MON; an alert fires under 0.5 MON);
   var `LAUNCH_KEEPER_ENABLED` (default `false` until the launchpad is deployed). The keeper key is
   not the launch authority and not the operator.
