@@ -53,7 +53,8 @@ work**, which needs human labels on real decisions (`apps/agent-service/AGENTS.m
 1. Studio → an agent → **Decisions** (rail key `picks`, relabelled; `apps/web/src/features/studio/sections/rail.ts:32`).
 2. The list shows, per row: decided time, market question, the call (`TRADE` outcome at ask /
    `PASS` / `HELD` when a rule stopped a trade), stated band, market price, resolution chip
-   (`AWAITING`, `DISPUTED`, `WON`, `LOST`, `VOID`, `UNRESOLVABLE`), virtual P&L (and held P&L for
+   (`AWAITING`, `DISPUTED`, `WON`, `LOST`, `VOID`, `UNRESOLVABLE`), a `TESTNET` tag on testnet
+   decisions (`decision-resolution-v1` D18), virtual P&L (and held P&L for
    held trades), an audience mark (`PUBLIC`, `OWNER ONLY`, `PAID READ`; `decision-resolution-v1`
    D16), and a review mark.
 3. Filters: action (`trade`, `pass`, `held`), audience (`public`, `owner`, `buyer`), resolution state, policy reason code, the rule that
@@ -276,8 +277,8 @@ resolution check, which goes through `decision-resolution-v1`.
 - **Storage**: its own table `pickler.decision_assistant_reviews (run_id, reviewer_id,
 reviewer_version, verdict, findings, usage, created_at)`, never `decision_reviews`. Created by the
   reviewer's own spec, not by this one.
-- **Where it runs**: after a decision is enrolled, as a product job in `workers/jobs` (conventions
-  decision 15), never
+- **Where it runs**: after a decision is enrolled, dispatched by a `workers/jobs` cron that calls an
+  internal API route, with the API doing the work (conventions decisions 15 and 18), never
   inside the research run and never before the policy verdict. Moving a reviewer into the runtime
   as a veto (`packages/agent-runtime/AGENTS.md:105-125`) is a separate spec with its own failure
   policy (the open `invalidAnswerPolicy: "block-case"` question,

@@ -49,6 +49,7 @@ private.
 | P11 | **Net is always labelled "virtual"** (1 AUSD per call, `decision-resolution-v1` D5) on every public surface, and the paper P&L is shown only on a receipt that has a paper fill.                                                                                                                                                                                                                                                                                                                     | A number that reads as money must say which money. Nothing on the marketplace is real P&L until live trading is.                                                                                           | yes         |
 | P12 | **A paid read is public only as an outcome card, only after it resolves, and only if the buyer chose a public card**: question, called side, result, and whether both clocks were met. Never its reasoning or sources. The `answer` activity row is written by `paid-reads-v1`'s **evaluation** step, never at delivery.                                                                                                                                                                             | Conventions decision 10. The answer is what the buyer paid for; the outcome is what the agent's record is made of.                                                                                         | yes         |
 | P13 | **This spec owns the marketplace DTO changes** in `packages/api-schema/src/agents.ts`, including the fields other specs add: `go-public-v1` (`avatarUrl`, `links`, `xVerified`, `publishedAt`, `thesis` when shown) and `fork-agent-v1` (`forkedFrom`, `forkCount`).                                                                                                                                                                                                                                 | One owner for the combined persona and directory shapes (cross-review E13).                                                                                                                                | yes         |
+| P14 | **Testnet is labelled everywhere it counts** (conventions decision 20; `decision-resolution-v1` D18): a receipt of a `network = 'testnet'` decision carries a `TESTNET` tag, a record with `testnetDecisions > 0` says "includes N testnet decisions", and live testnet P&L appears only on its receipt, tagged, never in `net`.                                                                                                                                                                     | A testnet forecast is a real forecast; its money is not.                                                                                                                                                   | yes         |
 
 ## 3. User flows
 
@@ -69,8 +70,10 @@ Inside the resolution transaction (`decision-resolution-v1` §3.2 step 4), for a
    C18, D9), as a row in the same transaction through a core use case. The research Worker calls no
    API route and produces to no queue.
 5. Follower notifications (`followed_agent_pick_resolved`, `mobile-backend-v1.md`) are derived from
-   the new `agents.public_activity` row by that spec's notifier, run from `workers/jobs`
-   (conventions decision 15); the research Worker gets no notifications binding (cross-review W4).
+   the new `agents.public_activity` row: a `workers/jobs` cron calls that spec's internal API route,
+   and the API reads the new rows, writes the notifications and consumes the notifications queue
+   (conventions decisions 15 and 18). The research Worker gets no notifications binding
+   (cross-review W4).
 
 ### 3.2 A visitor reads an agent
 
@@ -242,7 +245,9 @@ interface PublicDecisionDto {
 }
 ```
 
-`PublicReceiptDto` = `PublicDecisionDto` + `resolution: { outcome, y, resolvedAt, chainId,
+`PublicDecisionDto` also carries `network: "mainnet" | "testnet"` (hashed with the rest).
+`PublicReceiptDto` = `PublicDecisionDto` + `live: { netMicro, collateral, network } | null` (P14) +
+`resolution: { outcome, y, resolvedAt, chainId,
 contract, blockNumber, blockHash }` + `metrics: { brier, hit, virtualPnl }` + `paper: { cost,
 realizedPnl, exitedBy: "rule" | null } | null` + `receiptHash` + `revision`. The projection (hashed)
 excludes the resolution, which did not exist when it was committed.
@@ -390,7 +395,7 @@ route from this spec, `GET /api/v1/marketplace/activity` → 200 (cross-review E
 - Trading from the board's ticket (`perpl-live-v1.md`).
 - Push notifications and email for followed agents (`mobile-backend-v1.md` owns push).
 - Comments, likes or replies on decisions.
-- Public live positions and real P&L (none exist).
+- Open live positions, and mainnet live P&L beyond what a receipt shows (P14).
 - Perps decisions on agent profiles (after `perpl-live-v1.md`).
 
 ## 12. Open questions for the owner
