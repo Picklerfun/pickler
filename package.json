@@ -40,8 +40,8 @@
     "contracts:test:fork": "forge test --root contracts --match-path 'test/fork/*'",
     "contracts:abi": "npm run contracts:build && node scripts/generate-abi.mjs",
     "typecheck:design": "tsc -p scripts/design/tsconfig.json",
-    "design:source": "node scripts/design/source.mjs",
-    "design:check": "node scripts/design/run.mjs",
+    "design:source": "node scripts/design/source.mjs --strict",
+    "design:check": "node scripts/design/run.mjs --strict",
     "design:shots": "node scripts/design/run.mjs shots",
     "design:compare": "node scripts/design/compare.mjs"
   },
