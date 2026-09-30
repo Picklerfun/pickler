@@ -196,3 +196,5 @@ export { PerplRequestSchedule } from "./perpl/transport.js";
 export type { PerplRequestDiagnostic } from "./perpl/transport.js";
 
 export { abortable as abortablePerplRead } from "./perpl/transport.js";
+
+export { checkPublicConnectivity, type ConnectivityControl } from "./perpl/connectivity-control.js";
