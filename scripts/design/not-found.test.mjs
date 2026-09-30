@@ -22,11 +22,8 @@ test("a second 404 from a route with no page file is a screen not built yet", ()
   assert.deepEqual(afterNotFound({ attempts: 2, built: false }), { kind: "not-built" });
 });
 
-test("a second 404 from a built route is the server's fault, not a missing screen", () => {
-  assert.deepEqual(afterNotFound({ attempts: 2, built: true }), {
-    kind: "server-error",
-    detail: "404 from a built route",
-  });
+test("a second 404 from a built route is its data or its server, not a missing screen", () => {
+  assert.deepEqual(afterNotFound({ attempts: 2, built: true }), { kind: "not-found-built" });
 });
 
 test("a path finds its page through route groups and dynamic segments", () => {

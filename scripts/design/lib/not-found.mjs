@@ -16,7 +16,7 @@ export function afterNotFound({ attempts, built }) {
   if (attempts <= RETRIES) {
     return { retry: true };
   }
-  return built ? { kind: "server-error", detail: "404 from a built route" } : { kind: "not-built" };
+  return built ? { kind: "not-found-built" } : { kind: "not-built" };
 }
 
 /* Next's routing, as far as it matters here: a route group `(name)` adds no segment, `[name]`

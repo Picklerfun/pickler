@@ -148,6 +148,14 @@ const KINDS = {
     remedy:
       "Nothing is broken. Those screens are not your turn, and this check will cover them the day they exist.",
   },
+  "not-found-built": {
+    line: (route) => `${route.path} — 404 twice from a built route`,
+    remedy:
+      "Not a design failure, and not a missing screen: the page file exists. Two causes. Either the\n" +
+      "  page called notFound() for this data — check the handle, ticker or id in the route's path in\n" +
+      "  routes.mjs against what fixture-api.mjs serves — or the server failed behind it: check the\n" +
+      "  fixture is alive on the port PICKLER_API_LOCAL_URL names, then read the dev server log.",
+  },
   "server-error": {
     line: (route, detail) =>
       `${route.path} — HTTP ${detail}, the app is up and something behind it is not`,
