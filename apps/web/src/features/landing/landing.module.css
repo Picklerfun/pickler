@@ -37,13 +37,6 @@
   border: 0;
 }
 
-/* Anything in the display face carries the width axis. The `font` shorthand resets
-   font-variation-settings, so the longhand always follows it, never precedes it. */
-.display {
-  font-family: var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-}
-
 /* The small wide-tracked label that replaced the monospace everywhere in the canvases. */
 .label {
   margin: 0;
