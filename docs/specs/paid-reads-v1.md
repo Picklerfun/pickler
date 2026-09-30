@@ -194,8 +194,9 @@ buyer's list comes from `/v1/me/reads` (research 01 "Per-wallet reads"). The por
 
 ### 4.4 Internal (service binding; never public)
 
-Scheduled work runs in **`workers/jobs`** (conventions decision 15): its crons call these routes on
-the API over the `API` binding, and the API asks `workers/treasury` to sign. The API itself has no
+Scheduled work is dispatched by **`workers/jobs`**, a scheduler with no database and no secrets
+(conventions decisions 15 and 18): its crons call these routes on the API over the `API` binding,
+the API does the work and writes the heartbeat, and it asks `workers/treasury` to sign. The API itself has no
 cron. Delivery is not here: it is the `deliverRead` core use case inside the research Worker's run
 transaction (§3.4).
 
@@ -441,6 +442,9 @@ as backing a token.
    delivered; force a missed deadline and see the refund arrive; after 24 h see the evaluation and,
    the next day, the payout on the owner's master wallet.
 10. Design harness: 0 FAIL on every new state.
+11. Price and capacity: below 5 AUSD is refused; a price whose ceiling is below the estimated
+    read-run cost is refused with the minimum that would pass; the in-flight cap
+    `3 × floor(delivery_minutes / 5)` answers `CAPACITY_FULL` once reached.
 
 ## 10. Rollout and dependencies
 
