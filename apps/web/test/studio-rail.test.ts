@@ -55,3 +55,10 @@ test("no panel is left without words", () => {
 
   assert.deepEqual(silent, []);
 });
+
+test("the identity row is short enough for the rail; its panel keeps the full title", () => {
+  const identity = items.find((item) => item.key === "identity");
+
+  assert.equal(identity?.label, "Identity");
+  assert.equal(PANELS.identity.title, "Identity & voice");
+});

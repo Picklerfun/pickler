@@ -40,7 +40,7 @@ export const RAIL: readonly RailGroup[] = [
       { key: "skills", icon: "sliders", label: "Skills", soon: false },
       { key: "sources", icon: "link", label: "Sources", soon: true },
       { key: "limits", icon: "wallet", label: "Limits & funding", soon: false },
-      { key: "identity", icon: "user", label: "Identity & voice", soon: true },
+      { key: "identity", icon: "user", label: "Identity", soon: true },
     ],
   },
   {
