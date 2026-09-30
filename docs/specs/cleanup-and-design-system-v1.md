@@ -84,6 +84,17 @@ Nothing here changes what the product does. No route is removed that a person ca
 - **Automation:** `npm run design:check` runs the static check and the runtime checks. CI runs the
   static check on every pull request. The runtime checks run in CI if a headless browser is
   available there without new paid services; otherwise they stay a local gate and the spec says so.
+- **As built (2026-09-29):** `npm run design:source` and `npm run design:check` both pass
+  `--strict`, so any static violation exits 1. The token check reads `background-image`,
+  `box-shadow`, `text-shadow`, `filter`, a drawn `outline` and SVG `fill`/`stroke`, judged against
+  the tokens of the nearest `[data-surface]`; it skips `[data-third-party-mark]`, `::before`,
+  `::after` and canvas pixels. Every studio section has a route (60 in all). The `Design` workflow
+  runs the static check and the harness unit tests on every pull request (job `source`), and
+  `npm run design:check` with Playwright's Chromium installed on the GitHub runner (job
+  `rendered`), which is free and needs no paid service. The `rendered` job had not yet run on
+  GitHub when this was written. If it cannot render there for a reason in the runner rather than
+  the tree, it becomes manual (`workflow_dispatch` only), `npm run design:check` becomes a local gate
+  before each pull request, and this paragraph gives the reason.
 
 ### 3.5 Infrastructure (D11)
 
