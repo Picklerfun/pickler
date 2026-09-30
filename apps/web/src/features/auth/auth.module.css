@@ -69,7 +69,7 @@
   display: block;
   width: 26px;
   height: auto;
-  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));
+  filter: drop-shadow(0 0 12px var(--pk-cyan-edge));
 }
 
 .brandName {
@@ -113,12 +113,12 @@
 
 .primary {
   padding: 16px 22px;
-  /* The rim of a lit fill, which is what this is; 0.45 folds into the token's 0.5 (styles.css). */
+  /* The rim of a lit fill, which is what this is. */
   border-color: var(--pk-glow-rim);
   font: 700 13px/1 var(--pk-font);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 0 26px rgba(200, 240, 58, 0.38);
+    inset 0 1px 0 var(--pk-glow-rim),
+    0 0 26px var(--pk-glow-lime);
 }
 
 .page a.primary,
@@ -429,7 +429,7 @@
   width: 76px;
   height: 76px;
   object-fit: contain;
-  filter: drop-shadow(0 0 26px rgba(200, 240, 58, 0.35));
+  filter: drop-shadow(0 0 26px var(--pk-glow-lime));
   animation: float 6s ease-in-out infinite;
 }
 
@@ -448,7 +448,7 @@
   height: 6px;
   border-radius: var(--pk-radius-pill);
   background: var(--pk-lime);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.8);
+  box-shadow: 0 0 10px var(--pk-lime);
   animation: blink 1.6s steps(1, end) infinite;
 }
 
@@ -458,7 +458,7 @@
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.03em;
   color: var(--pk-lime-ink);
-  text-shadow: 0 0 26px rgba(200, 240, 58, 0.45);
+  text-shadow: 0 0 26px var(--pk-glow-lime-strong);
 }
 
 .smallNote {
@@ -502,8 +502,8 @@
   border-radius: var(--pk-radius-sm);
   background-color: var(--pk-bg);
   background-image:
-    linear-gradient(rgba(243, 241, 236, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(243, 241, 236, 0.06) 1px, transparent 1px);
+    linear-gradient(var(--pk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);
   background-size: 17px 17px;
 }
 
@@ -513,11 +513,11 @@
   z-index: 3;
   display: grid;
   place-items: center;
-  background: rgba(200, 240, 58, 0.2);
+  background: var(--pk-glow-lime);
   font: 700 15px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: 0.06em;
-  text-shadow: 0 0 20px rgba(200, 240, 58, 0.9);
+  text-shadow: 0 0 20px var(--pk-lime);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -551,8 +551,8 @@
   border: 1px solid var(--pk-border-strong);
   background: var(--accent);
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.4),
-    0 0 13px rgba(var(--accent-rgb), 0.55);
+    inset 0 2px 0 var(--pk-glow-rim),
+    0 0 13px var(--accent);
 }
 
 .dropText strong {
@@ -1150,15 +1150,15 @@
 }
 
 .codeFilled {
-  border-color: rgba(200, 240, 58, 0.6);
+  border-color: var(--pk-lime-edge);
 }
 
 .codeCaret {
-  border-color: rgba(243, 241, 236, 0.4);
+  border-color: var(--pk-border-strong);
 }
 
 .codeWrong {
-  border-color: rgba(255, 95, 162, 0.8);
+  border-color: var(--pk-magenta-edge);
 }
 
 /* The one real input, over the boxes. The caret and autofill stay the operating system's; the
@@ -1181,7 +1181,7 @@
 /* An invisible input shows no focus ring, so the boxes wear it. Without this the keyboard user
    loses the caret entirely — the usual way this pattern fails. */
 .codeInput:focus-visible ~ .codeCell {
-  border-color: rgba(200, 240, 58, 0.45);
+  border-color: var(--pk-focus);
 }
 
 .codeInput:focus-visible ~ .codeCaret {
@@ -1377,7 +1377,7 @@
 }
 
 .sheet::backdrop {
-  background: rgba(6, 6, 9, 0.72);
+  background: var(--pk-scrim);
   backdrop-filter: blur(6px);
 }
 
