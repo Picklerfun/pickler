@@ -9,6 +9,8 @@ import {
   PostgresResearchStore,
   PostgresPerpsStudyStore,
   PerplRequestSchedule,
+  checkPublicConnectivity,
+  type ConnectivityControl,
   type PerplRequestDiagnostic,
 } from "@pickler/infrastructure";
 import { createCoherentPerplReader } from "@pickler/agent-runtime/plugins/perps-paper";
@@ -66,6 +68,7 @@ export async function runPerpsStability(
     code: string | null;
     diagnostics: AcquisitionDiagnostic[];
     requests: PerplRequestDiagnostic[];
+    connectivityControl: ConnectivityControl | null;
   }> = [];
   const renewals: LeaseDiagnostic[] = [];
   let writes: Promise<void> = Promise.resolve();
@@ -115,7 +118,7 @@ export async function runPerpsStability(
       }),
     );
     const report = {
-      version: 1,
+      version: 2,
       kind: "perpl-public-stability",
       id,
       commit,
@@ -230,10 +233,17 @@ export async function runPerpsStability(
           code = safeCode(cause);
         }
       }
+      // Outside the market acquisition deadline, once per failed slot, never a price fallback.
+      const acquisitionMs = Date.now() - at;
+      let connectivityControl: ConnectivityControl | null = null;
+      if (code === "DATA_UNAVAILABLE" && requests.some((request) => request.code !== null)) {
+        connectivityControl = await checkPublicConnectivity({ signal, guard });
+      }
       const cycle = {
         slot,
         at,
-        durationMs: Date.now() - at,
+        durationMs: acquisitionMs,
+        connectivityControl,
         valid: code === null,
         code,
         diagnostics,
