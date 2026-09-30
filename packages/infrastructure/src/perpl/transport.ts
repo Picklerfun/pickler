@@ -1,4 +1,5 @@
 import { PilotError, type PerpNetwork, type PerpReadContext } from "@pickler/core";
+import { networkFailure, type NetworkFailure } from "./network-diagnostics.js";
 export const PERPL_NETWORKS = {
   mainnet: { chainId: 143, base: "https://app.perpl.xyz/api" },
   testnet: { chainId: 10143, base: "https://testnet.perpl.xyz/api" },
@@ -13,6 +14,9 @@ export interface PerplRequestDiagnostic {
   status: number | null;
   durationMs: number;
   code: string | null;
+  phase: "response_headers" | "response_body" | "validation" | "complete";
+  headersMs: number | null;
+  network: NetworkFailure | null;
 }
 /** Shared by all read sessions in one evaluation host, including retries. */
 export class PerplRequestSchedule {
@@ -106,12 +110,17 @@ export class PerplTransport {
     const started = Date.now();
     let status: number | null = null;
     let code: string | null = null;
+    let phase: PerplRequestDiagnostic["phase"] = "response_headers";
+    let headersMs: number | null = null;
+    let networkDiagnostic: NetworkFailure | null = null;
     try {
       const response = await abortable(
         (this.options.transport ?? fetch)(url, { method: "GET", redirect: "manual", signal }),
         signal,
       );
       status = response.status;
+      headersMs = Date.now() - started;
+      phase = "response_body";
       if (status === 429) {
         const retry = response.headers.get("retry-after");
         const seconds =
@@ -156,13 +165,19 @@ export class PerplTransport {
         void reader.cancel().catch(() => {});
         reader.releaseLock();
       }
+      phase = "validation";
       signal.throwIfAborted();
       await ctx.guard();
       await this.options.guard?.();
       const result = { url, receivedAt: this.now(), body };
       await this.options.onResponse?.(result);
+      phase = "complete";
       return result;
     } catch (error) {
+      networkDiagnostic = networkFailure(
+        error,
+        ctx.signal.aborted ? "cancelled" : signal.aborted ? "timeout" : undefined,
+      );
       const failure =
         error instanceof PilotError
           ? error
@@ -191,6 +206,9 @@ export class PerplTransport {
                 ? "funding"
                 : "metadata",
         status,
+        phase,
+        headersMs,
+        network: networkDiagnostic,
         durationMs: Date.now() - started,
         code,
       });
