@@ -186,8 +186,7 @@ by that spec's owner. Live P&L goes to `pickler.decision_live_pnl`, whose shape 
 closed position that has a `run_id`, with `source_ref` = `perpl:<network>:<position_id>` (`network` is `testnet` or `mainnet`, the
 position id a lower-case uuid), exactly as §5.7 specifies. The position's fill ids go in that row's
 `fills jsonb` column, never in `source_ref`. A correction row repeats the `source_ref` of the row it
-corrects,
-and describes nothing else about that table.
+corrects. This spec describes nothing else about that table.
 
 ## 6. Integrations
 
