@@ -1,17 +1,8 @@
-import type { ActivityEventDto, ActivityKindDto } from "@pickler/api-schema";
+import type { ActivityEventDto } from "@pickler/api-schema";
 import Link from "next/link";
 import styles from "../agents.module.css";
-import { formatAge } from "../lib/format";
+import { formatAge, kindClass, kindLabel } from "../lib/format";
 import { AgentAvatar } from "./agent-parts";
-
-const kindLabel: Record<ActivityKindDto, string> = {
-  call: "CALL",
-  position: "POSITION",
-  settlement: "SETTLED",
-  pass: "PASS",
-  answer: "ANSWER",
-  perp: "PERP",
-};
 
 /** One line of the live action log: a call, a position, a settlement — or a pass. */
 export function ActivityRow({
@@ -34,7 +25,7 @@ export function ActivityRow({
           <strong>{event.agent.name}</strong>
         </Link>
       )}
-      <span className={`${styles.kind} ${styles[`kind${kindLabel[event.kind]}`] ?? ""}`}>
+      <span className={`${styles.kind} ${styles[kindClass[event.kind]]}`}>
         {kindLabel[event.kind]}
       </span>
       <span className={styles.activityText}>

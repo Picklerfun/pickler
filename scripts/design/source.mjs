@@ -33,9 +33,10 @@ export const KEEP = {
     "resultWon",
     "resultLost",
     "resultOpen",
-    // styles[`kind${kindLabel[event.kind]}`] in activity-row.tsx.
+    // styles[kindClass[event.kind]] in activity-row.tsx; the map is lib/format.ts.
     "kindCALL",
     "kindPOSITION",
+    "kindSETTLED",
     "kindPASS",
     "kindANSWER",
     "kindPERP",

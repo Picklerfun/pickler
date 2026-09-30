@@ -911,6 +911,13 @@
   border-color: var(--pk-magenta-edge);
   color: var(--pk-magenta-ink);
 }
+/* A settlement is neither a side nor a state of its own: whether it won is the amount's tone, so
+ * its chip is the system's grey tint. */
+.kindSETTLED {
+  background: var(--pk-panel);
+  border-color: var(--pk-rule-strong);
+  color: var(--pk-ink-muted);
+}
 
 .activityText {
   flex: 1 1 240px;

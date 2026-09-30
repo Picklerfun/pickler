@@ -1,4 +1,4 @@
-import type { PickOutcomeDto } from "@pickler/api-schema";
+import type { ActivityKindDto, PickOutcomeDto } from "@pickler/api-schema";
 
 const MINUS = "−";
 const integer = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -65,3 +65,23 @@ export const outcomeClass = {
   lost: "resultLost",
   open: "resultOpen",
 } as const satisfies Record<PickOutcomeDto, string>;
+
+/** The word on an activity row's kind chip. */
+export const kindLabel = {
+  call: "CALL",
+  position: "POSITION",
+  settlement: "SETTLED",
+  pass: "PASS",
+  answer: "ANSWER",
+  perp: "PERP",
+} as const satisfies Record<ActivityKindDto, string>;
+
+/** Each kind's chip class in `agents.module.css`. */
+export const kindClass = {
+  call: "kindCALL",
+  position: "kindPOSITION",
+  settlement: "kindSETTLED",
+  pass: "kindPASS",
+  answer: "kindANSWER",
+  perp: "kindPERP",
+} as const satisfies Record<ActivityKindDto, string>;
