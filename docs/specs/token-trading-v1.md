@@ -155,7 +155,8 @@ Internal routes (service binding only; scheduled by `workers/jobs`, conventions 
 | Method | Path                               | Worker            | Caller                                                     | Response                                                                 |
 | ------ | ---------------------------------- | ----------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
 | POST   | `/v1/internal/tokens/trades/watch` | `workers/api`     | `workers/jobs`, every minute                               | `{ checked, included, confirmed, reverted, dropped, expired }` (§5 Jobs) |
-| POST   | `/internal/graduation-keeper/run`  | `workers/trading` | `workers/jobs` through the `TRADING` binding, every minute | `{ ready, sent: [{ curve, txHash }], skippedPending }` (§6.3)            |
+| POST   | `/v1/internal/graduation/keeper`   | `workers/api`     | `workers/jobs`, every minute                               | forwards to trading's keeper RPC; records the run in `ops.job_runs`       |
+| POST   | `/internal/graduation-keeper/run`  | `workers/trading` | the API over `TRADING_EXECUTOR` (never jobs directly)      | `{ ready, sent: [{ curve, txHash }], skippedPending }` (§6.3)            |
 
 DTOs: `packages/api-schema/src/token-trading.ts` (new) — `TokenDetailDto`, `CandleDto`,
 `HolderDto`, `TokenQuoteDto`, `TradeQuoteRequest`, `TradeQuoteDto`, `TxRequestDto`, `TradeDto`,
@@ -252,10 +253,10 @@ Addresses come from the Pickler manifest `packages/chain/src/deployments/pickler
 
 ### 6.3 Keeper
 
-- The schedule runs in `workers/jobs` (conventions decision 15): a Cron every minute calls
-  `workers/trading` directly through the `TRADING` service binding
-  (`POST /internal/graduation-keeper/run`; `production-environment-v1.md` §6.6). The API is not in
-  the path. `workers/trading` lists tokens whose curve phase is `READY_TO_GRADUATE` from the index
+- The schedule runs in `workers/jobs` (conventions decision 18): a Cron every minute calls the API's
+  `POST /v1/internal/graduation/keeper`, and the API calls trading's
+  `POST /internal/graduation-keeper/run` over its `TRADING_EXECUTOR` binding and records the run in
+  `ops.job_runs` (`production-environment-v1.md` §6.6; jobs' only binding is the API). `workers/trading` lists tokens whose curve phase is `READY_TO_GRADUATE` from the index
   (read through its `DATABASE` binding), confirms each with `getCurveState`, and sends
   `finalizeGraduation` with the keeper key. The signing stays in `workers/trading` because
   `workers/jobs` holds no secret. No second tx is sent while one is pending for the same curve.

@@ -224,8 +224,9 @@ Origin Whitelisting); this is an operator request to Perpl before §9.
   `perplKillSwitchPolicy({ delegatedUserId, walletId, exchange })` beside `agentWalletPolicies`,
   with pinned-text tests like the existing ones.
 - `workers/trading/src/index.ts`: the Perpl consumer (`perpl-decision`, `perpl-kill`) and the minute
-  tick `POST /internal/perpl/tick`, dispatched by `workers/jobs` through the `TRADING` binding
-  (conventions decision 18). Each tick runs, in order: reconciliation (P11), live exits in P9's
+  tick `POST /internal/perpl/tick`. `workers/jobs` calls the API's `POST /v1/internal/perpl/tick`
+  every minute, and the API forwards it over `TRADING_EXECUTOR` and records the run in
+  `ops.job_runs` (conventions decision 18; jobs' only binding is the API). Each tick runs, in order: reconciliation (P11), live exits in P9's
   precedence, key expiry; today it composes Polymarket only
   (`workers/trading/src/index.ts:24-64`). The Polymarket path is unchanged.
 - `workers/api`: the studio routes and the Turnkey activity builders; it never holds the Perpl key.

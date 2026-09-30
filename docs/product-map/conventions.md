@@ -110,8 +110,10 @@ These resolve the blockers in `docs/product-map/cross-review.md`. Specs follow t
 These close the disagreements listed in `docs/product-map/scope-v1.md` §9.4.
 
 18. **`workers/jobs` is a scheduler only:** no database binding and no secrets. Each cron calls an
-    internal route on the API (`/v1/internal/*`) or on trading (through the `TRADING` binding), and
-    that Worker does the work, writes its own heartbeat and consumes the queues. Queues are consumed
+    internal route on the API (`/v1/internal/*`); the API is jobs' only binding. Work that lives in
+    trading (the graduation keeper, the Perpl tick) is forwarded by the API over `TRADING_EXECUTOR`,
+    so every job run lands in `ops.job_runs`. The Worker that does the work writes its own heartbeat
+    and consumes the queues. Queues are consumed
     by the API (notifications, account jobs) or by trading (orders). Money housekeeping that needs
     product rules (deposit reconciler, refunds, payouts) is dispatched by jobs; pure housekeeping
     (sweepers, retention, the media sweeper, alerts, DLQ consumers) runs in `workers/ops`.
