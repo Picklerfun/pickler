@@ -122,11 +122,18 @@ test("third-party mark: a selector, a comment and other data attributes pass", (
   assert.deepEqual(typescript("third-party-mark.pass.tsx"), []);
 });
 
-test("third-party mark: the attribute, a spread key and a setAttribute fail outside MARKS", () => {
+test("third-party mark: every way of naming it fails outside MARKS, in any case", () => {
   assert.deepEqual(rules(typescript("third-party-mark.fail.tsx")), [
     "third-party-mark:2",
     "third-party-mark:5",
     "third-party-mark:8",
+    "third-party-mark:9",
+    "third-party-mark:10",
+    "third-party-mark:11",
+    "third-party-mark:16",
+    "third-party-mark:19",
+    "third-party-mark:20",
+    "third-party-mark:21",
   ]);
 });
 

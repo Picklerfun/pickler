@@ -320,7 +320,9 @@ plausible one.
 (`scripts/design/source.mjs`) fails the build on a colour literal outside a token's definition in
 `packages/ui/src/styles.css`, on a `--pk-*` defined anywhere else, on a stylesheet's alias of a
 token, on a token read that `styles.css` does not define, on a token handed to CSS from TypeScript
-anywhere but `apps/web/src/lib/accent.ts`, and on a CSS-module class no component names.
+anywhere but `apps/web/src/lib/accent.ts`, on a CSS-module class no component names, and on
+`data-third-party-mark` (under which the runtime token check measures nothing) in any file not
+listed in `MARKS` in `scripts/design/source.mjs`.
 Every token has that one source; `packages/ui/src/tokens.ts` (values code must hold, pinned by
 `scripts/design/mirror.test.mjs`) and `packages/ui/src/brand.tsx` (a third party's logo) are its
 only named exemptions. Seven tokens carried forward from before this document stay in the system

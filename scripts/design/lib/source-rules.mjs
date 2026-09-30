@@ -320,27 +320,45 @@ export function strings(file, source) {
 
 const MARK = "data-third-party-mark";
 
+/** Whether a string names the mark anywhere but inside a selector's brackets. */
+function namesMark(text) {
+  const outsideSelectors = text.replace(/\[[^\]]*\]/g, " ");
+  return /third-party-mark/i.test(outsideSelectors);
+}
+
 /**
- * Lines that put `data-third-party-mark` on an element: as a JSX attribute, or as the name in a
- * string (an object key spread onto an element, a setAttribute). A selector that looks for it
- * (`[data-third-party-mark]`) and a comment that mentions it put it on nothing.
+ * Lines that may put `data-third-party-mark` on an element. HTML lowercases attribute names and
+ * the runtime check's `closest()` matches any case, so every comparison ignores case:
+ *   - a JSX attribute of that name;
+ *   - any string or template part containing `third-party-mark`, which covers setAttribute, an
+ *     object key spread onto an element, and a name built from pieces (`"data-" + "third-party-mark"`,
+ *     `` `data-${part}` `` where `part` holds it);
+ *   - the dataset name, `thirdPartyMark`, as a property, a key or a quoted index
+ *     (`el.dataset.thirdPartyMark`, `el.dataset["thirdPartyMark"]`).
+ * A selector that looks for it (`[data-third-party-mark]`) and a comment put it on nothing.
  */
 export function markAttributes(file, source) {
   const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, kind);
-  const lines = [];
+  const lines = new Set();
   const visit = (node) => {
+    const stringy =
+      ts.isStringLiteral(node) ||
+      ts.isNoSubstitutionTemplateLiteral(node) ||
+      ts.isTemplateHead(node) ||
+      ts.isTemplateMiddle(node) ||
+      ts.isTemplateTail(node);
     const named =
-      (ts.isJsxAttribute(node) && node.name.getText(tree) === MARK) ||
-      ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-        node.text === MARK);
+      (ts.isJsxAttribute(node) && node.name.getText(tree).toLowerCase() === MARK) ||
+      (stringy && (namesMark(node.text) || node.text.toLowerCase() === "thirdpartymark")) ||
+      (ts.isIdentifier(node) && node.text.toLowerCase() === "thirdpartymark");
     if (named) {
-      lines.push(tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1);
+      lines.add(tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1);
     }
     ts.forEachChild(node, visit);
   };
   visit(tree);
-  return lines;
+  return [...lines];
 }
 
 /**
