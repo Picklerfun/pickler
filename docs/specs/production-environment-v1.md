@@ -543,6 +543,20 @@ G11); the operator allowlist and typed SHA replace them.
 so staging and production never share one. The same applies to every queue a sibling spec names
 without an environment.
 
+### 6.5 New Workers and the MEDIA bucket, at a glance
+
+| Project / resource                  | Deployed as                                                 | Config files (new)                                                              | Secrets                                                                                      | Bindings                                                                          | Deploy step (§3.4) | Readiness items (§4.3)                                        |
+| ----------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------- |
+| `workers/ops`                       | `pickler-ops-<env>`                                         | `wrangler.jsonc`, `wrangler.production.jsonc`, `wrangler.<env>.bootstrap.jsonc` | `OPS_ALERT_WEBHOOK_URL` (optional)                                                           | `DATABASE`, `API`, every DLQ consumer, `SEND_EMAIL`; tail consumer of all Workers | 4 (first)          | `queues.all`, ops heartbeat                                   |
+| `workers/treasury`                  | `pickler-treasury-<env>`                                    | `wrangler.jsonc`, `wrangler.production.jsonc`                                   | `TREASURY_TURNKEY_API_PUBLIC_KEY`, `TREASURY_TURNKEY_API_PRIVATE_KEY`, `MONAD_RPC_URL`       | `DATABASE`; bound by the API as `TREASURY`                                        | 6                  | `health.treasury`, `chain.treasury`, `flags.explicit`         |
+| `workers/jobs`                      | `pickler-jobs-<env>`                                        | `wrangler.jsonc`, `wrangler.production.jsonc`                                   | none                                                                                         | `API`; crons `* * * * *`, `*/5 * * * *`, `30 0 * * *`, `0 1 * * *`                | 10                 | `health.jobs`                                                 |
+| `workers/trading` (Perpl additions) | existing `pickler-trading-<env>`                            | existing files gain the Perpl vars                                              | `PERPL_KEY_ENCRYPTION_KEY`, `TURNKEY_DELEGATED_API_PRIVATE_KEY`, `LAUNCH_KEEPER_PRIVATE_KEY` | existing                                                                          | 5                  | `flags.explicit` (`PERPL_ADMISSIONS_ENABLED`), `chain.keeper` |
+| R2 `MEDIA`                          | bucket `pickler-media-<env>`, public at `media.pickler.fun` | created by `scripts/provision.mjs`                                              | none                                                                                         | `MEDIA` on `workers/api`, with `MEDIA_PUBLIC_BASE_URL` and `IMAGES`               | before step 4      | `storage.r2`                                                  |
+
+Sources: `paid-reads-v1.md` R18 and §4.4 (treasury, jobs), `go-public-v1.md` §6 (jobs, avatars in
+`MEDIA`), `token-launch-v1.md` T5 and §6 (`MEDIA`, `IMAGES`), `perpl-live-v1.md` §6.3 (trading),
+`operations-v1.md` §6.1 (ops).
+
 ---
 
 ## 7. Design work

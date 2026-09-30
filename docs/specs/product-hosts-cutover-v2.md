@@ -43,7 +43,7 @@ the iOS app (its associated domains must name a host that serves the right file)
 | H3  | A **deployed build refuses to compile without all three `NEXT_PUBLIC_*_HOST` values** (`apps/web/scripts/assert-hosts.mjs`, run by `build:worker` when `PICKLER_DEPLOY_ENV` is `staging` or `production`). Previews leave them unset and stay `"either"`.        | Fallbacks are for development; `user-profiles-and-products-v1.md:552-571` shows a missing build value fails silently.                                                                                | Yes.                                                         |
 | H4  | **Departure from v1:** on the landing host, marketplace paths answer **308 to the same path on `app.pickler.fun`** (query kept). Studio paths on the landing answer 404.                                                                                         | v1 §6 assumed "nothing has ever been deployed". Since 2026-09-20 `pickler.fun/agents` and friends are public, shared and in TestFlight builds. A redirect costs one branch; a dead link costs trust. | Yes (drop the branch after 90 days of no hits in logs).      |
 | H5  | **`TURNKEY_RPID=studio.pickler.fun`** — one-way door, still choosable because no passkey has been enrolled on any deployed environment (`/v1/signing` is unmounted everywhere hosted, research 05 §2.6).                                                         | v1 §3.                                                                                                                                                                                               | **No**, once the first passkey is enrolled.                  |
-| H6  | **Mera's relying party is `app.pickler.fun` on web and mobile.** The web Mera connector (a separate spec, `marketplace-mera-web-v1`) must use `rpId: "app.pickler.fun"`, the same as the phone, and must not ship before this cutover.                           | Owner's rule. Same RP and the PRF model give the same derived address on web and phone (research 05 §7.3). Different hosts keep the two passkey kinds apart (§2.1).                                  | **No** once a Mera passkey is enrolled on it (v1 §8).        |
+| H6  | **Mera's relying party is `app.pickler.fun` on web and mobile.** The web Mera connector (`marketplace-wallets-v1.md`) must use `rpId: "app.pickler.fun"`, the same as the phone, and must not ship before this cutover.                                          | Owner's rule. Same RP and the PRF model give the same derived address on web and phone (research 05 §7.3). Different hosts keep the two passkey kinds apart (§2.1).                                  | **No** once a Mera passkey is enrolled on it (v1 §8).        |
 | H7  | `SIWE_DOMAIN=app.pickler.fun`, one value for web EOA, web Mera and phone. `WALLET_EMAIL_DOMAIN=wallet.pickler.fun` (never MX).                                                                                                                                   | v1 §4; `user-profiles-and-products-v1.md` §14.                                                                                                                                                       | Yes (re-sign after a change).                                |
 | H8  | **AASA and `assetlinks.json` move out of `public/`** into route handlers that answer per host: 200 on the marketplace host only, 404 on landing and studio, 200 on `either`. `assets.run_worker_first: ["/.well-known/*"]` is added as a second guard.           | With the file out of `public/`, no asset matches, so the Worker always runs; `run_worker_first` keeps that true if someone puts a file back.                                                         | Yes.                                                         |
 | H9  | **The apex stops serving the AASA at cutover.** TestFlight builds that still name `pickler.fun` lose passkey association until a build with `app.pickler.fun` ships. A pure flag `AASA_ON_LANDING` (build env, default `false`) can restore it for a transition. | An apex `webcredentials` association makes a Mera credential with `rpId: pickler.fun` requestable from every subdomain, the studio included (§2.1).                                                  | Yes (the flag).                                              |
@@ -78,7 +78,7 @@ Landing → "Build an agent" → `https://studio.pickler.fun/apply` → signup o
 
 ### 3.3 A marketplace reader who connects a wallet (web)
 
-`https://app.pickler.fun/agents` → connect → chooser offers Mera (after `marketplace-mera-web-v1`
+`https://app.pickler.fun/agents` → connect → chooser offers Mera (after `marketplace-wallets-v1.md`
 ships) or a browser wallet → SIWE message built by the API with `domain: app.pickler.fun`
 (`packages/core/src/features/identity/application/wallet-sign-in.ts:190-209`) → verify → session
 cookie on `app.pickler.fun` only.
@@ -331,14 +331,14 @@ Run once on staging hosts (H11), then on production. Each step has a check; stop
   so the header is `max-age=86400`, not immutable.
 
 Depends on: `production-environment-v1.md` (§0, the verifier, the ledger). Enables:
-`marketplace-mera-web-v1` (web Mera, H6), the mobile backend spec, every studio feature that needs a
+`marketplace-wallets-v1.md` (web Mera, H6), `mobile-backend-v1.md`, every studio feature that needs a
 public studio. `design-harness-v3.md` takes the third base URL.
 
 ---
 
 ## 11. Out of scope
 
-- The web Mera connector itself (`marketplace-mera-web-v1`), the marketplace wallets section (v1 §5),
+- The web Mera connector itself (`marketplace-wallets-v1.md`), the marketplace wallets section (v1 §5),
   and `wallet_links.kind` on verify/link — identity-area specs.
 - Giving the API its own public hostname (`api.pickler.fun`); the proxy is enough today.
 - WalletConnect, ERC-1271, Solana (v1 §7).
