@@ -150,6 +150,13 @@ needs the marketplace Supabase JWT.
 `to` with the curve and `input` with the quote's calldata byte for byte. `wallet` must be linked to
 the account (`identity.wallet_links`); the trade's `recipient` is always `wallet`.
 
+Internal routes (service binding only; scheduled by `workers/jobs`, conventions decision 18):
+
+| Method | Path                               | Worker            | Caller                                                     | Response                                                                 |
+| ------ | ---------------------------------- | ----------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| POST   | `/v1/internal/tokens/trades/watch` | `workers/api`     | `workers/jobs`, every minute                               | `{ checked, included, confirmed, reverted, dropped, expired }` (§5 Jobs) |
+| POST   | `/internal/graduation-keeper/run`  | `workers/trading` | `workers/jobs` through the `TRADING` binding, every minute | `{ ready, sent: [{ curve, txHash }], skippedPending }` (§6.3)            |
+
 DTOs: `packages/api-schema/src/token-trading.ts` (new) — `TokenDetailDto`, `CandleDto`,
 `HolderDto`, `TokenQuoteDto`, `TradeQuoteRequest`, `TradeQuoteDto`, `TxRequestDto`, `TradeDto`,
 `PortfolioDto`. Business rules (slippage bounds, mode selection, remainder, `minOut` rounding
