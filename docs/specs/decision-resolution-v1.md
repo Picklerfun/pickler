@@ -335,7 +335,7 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
 
 ### 6.3 Perpl (later, designed now)
 
-- A Perpl decision (once `perpl-agent-runtime-v1` exists) carries a direction, an entry mark and a
+- A Perpl decision (once `perpl-live-v1.md` exists) carries a direction, an entry mark and a
   horizon. It resolves against the **Perpl mark price** at `decided_at + horizon`, read through
   `PerplMarketData.snapshot`/`candles` (`packages/infrastructure/src/perpl/data.ts:86,258,353`)
   within a ±5-minute tolerance window; no observation inside it is `void` with reason
@@ -437,12 +437,12 @@ Staging acceptance (recorded in a deployment record, not claimed from local runs
 
 Needs first: `go-public-v1` for `published_at` (step 1 can ship without it by treating every
 agent as owner-only). `research-runtime-v2` meters exit-check spend; until it lands, exit checks are
-bounded only by the daily cap. Perpl resolution waits on `perpl-agent-runtime-v1`.
+bounded only by the daily cap. Perpl resolution waits on `perpl-live-v1.md`.
 
 ## 11. Out of scope
 
 - Live Polymarket redemption and sells (the live pilot has none).
-- Perpl live P&L, funding and liquidations (`perpl-live-execution-v1`).
+- Perpl live P&L, funding and liquidations (`perpl-live-v1.md`, whose receipts and P&L feed this job).
 - The paid-read evaluation job itself (`paid-reads-v1`); it reuses `DecisionOutcomeSource`.
 - A reviewer model (conventions decision 8; `studio-decision-review-v1` §2).
 - Market categories beyond what the runtime already runs (sports).

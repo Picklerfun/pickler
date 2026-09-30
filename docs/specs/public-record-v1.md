@@ -102,7 +102,7 @@ served for up to 5 minutes marked stale; after that the page shows the unavailab
 
 ### 3.6 The phone
 
-The mobile app reads the same endpoints through `https://app.pickler.fun/api/v1/...` (conventions,
+The mobile app (its backend contract is `mobile-backend-v1.md`) reads the same endpoints through `https://app.pickler.fun/api/v1/...` (conventions,
 API). It gets: persona and record, decisions, receipts, global and followed activity, follows, the
 leaderboard and the perps board. Universal links: `/agents/<handle>` (existing) and
 `/receipts/<publicId>` (new, added to the `applinks` paths of the `app.pickler.fun` AASA file,
@@ -302,7 +302,7 @@ Existing canvases in the Claude Design project:
 | mobile (React Native)    | persona record, receipt, activity tabs, follow | Same content as the web, phone layouts                                                                                                                                                                        | **new canvas: Pickler Mobile Record**               |
 | web, dark (studio)       | Public profile panel copy                      | Copy only (`apps/web/src/features/studio/sections/rail.ts:91-95`): the record fills as decisions resolve                                                                                                      | none                                                |
 
-Every new state gets a harness id and a route in `scripts/design/routes.mjs`; the design fixtures
+Every new state gets a harness id and a route in `scripts/design/routes.mjs` (`design-harness-v3.md`); the design fixtures
 gain a resolved-decision seed so the populated screens can be measured
 (`marketplace-real-data-v1` §5 names this gap).
 
@@ -368,11 +368,11 @@ to it). `product-hosts-v1` for the `app.pickler.fun` AASA paths.
 ## 11. Out of scope
 
 - Paid reads, their cards and who sees unresolved decisions through a read (`paid-reads-v1`).
-- Trading from the board's ticket (`perpl-live-execution-v1`).
-- Push notifications and email for followed agents.
+- Trading from the board's ticket (`perpl-live-v1.md`).
+- Push notifications and email for followed agents (`mobile-backend-v1.md` owns push).
 - Comments, likes or replies on decisions.
 - Public live positions and real P&L (none exist).
-- Perps decisions on agent profiles (after `perpl-agent-runtime-v1`).
+- Perps decisions on agent profiles (after `perpl-live-v1.md`).
 
 ## 12. Open questions for the owner
 
