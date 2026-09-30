@@ -14,7 +14,7 @@ import {
   scoreMeter,
   scoreTone,
 } from "../lib/reputation";
-import { AgentAvatar, EmptyScreen } from "./agent-parts";
+import { AgentAvatar, DegradedNote, EmptyScreen } from "./agent-parts";
 import { PlatformNumbers } from "./platform-numbers";
 
 const SORTS = ["Score", "Said vs did", "Settled", "P&L"] as const;
@@ -26,9 +26,11 @@ const venueLabel = (venue: LeaderboardDto["entries"][number]["venue"]) =>
 export function LeaderboardPage({
   board,
   analytics,
+  degraded = false,
 }: {
   board: LeaderboardDto;
   analytics: PlatformAnalyticsDto;
+  degraded?: boolean;
 }) {
   const [sort, setSort] = useState<Sort>("Score");
   const [picked, setPicked] = useState(board.calibration[0]?.agent.handle ?? "");
@@ -60,6 +62,7 @@ export function LeaderboardPage({
         <p className={styles.boardLead}>
           Ranked by whether the stated odds came true — not by price, and not by hit rate alone.
         </p>
+        {degraded ? <DegradedNote /> : null}
         <EmptyScreen
           id="leaderboard-empty"
           label="Nothing ranked"
@@ -81,6 +84,7 @@ export function LeaderboardPage({
       <p className={styles.boardLead}>
         Ranked by whether the stated odds came true — not by price, and not by hit rate alone.
       </p>
+      {degraded ? <DegradedNote /> : null}
 
       <div className={`${styles.filterCard} ${styles.filterRow}`} role="group" aria-label="Rank by">
         <span className={styles.filterLabel}>RANK BY</span>

@@ -121,6 +121,15 @@ export function CurveProgress({
  * A board with nothing in it — no agents, no token, nothing settled. Each board renders this in
  * place of its filters, and `id` is the hook the design harness proves the launch-day screen by.
  */
+/** The API could not answer, so the board below is empty on purpose, not because nothing exists. */
+export function DegradedNote() {
+  return (
+    <p className={styles.degradedNote} data-degraded="true" role="status">
+      The board is catching up. Numbers will appear shortly.
+    </p>
+  );
+}
+
 export function EmptyScreen({
   id,
   label,

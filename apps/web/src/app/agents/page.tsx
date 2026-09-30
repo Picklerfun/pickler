@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Agents() {
-  const agents = await services.listDirectory();
+  const { data: agents, degraded } = await services.listDirectory();
   return (
     <PublicShell>
-      <AgentsDirectory agents={agents} />
+      <AgentsDirectory agents={agents} degraded={degraded} />
     </PublicShell>
   );
 }

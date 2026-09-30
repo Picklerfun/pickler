@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import styles from "../agents.module.css";
 import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
-import { AgentAvatar, EmptyScreen } from "./agent-parts";
+import { AgentAvatar, DegradedNote, EmptyScreen } from "./agent-parts";
 
 const scoreTone = (score: number) =>
   score >= 70 ? styles.toneWin : score >= 45 ? styles.toneCurve : styles.toneLoss;
@@ -23,7 +23,13 @@ const takingQuestions = (
  * then the ones whose stated odds have been closest to what happened — so a filter never promotes
  * an agent that is not taking questions.
  */
-export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
+export function AgentsDirectory({
+  agents,
+  degraded = false,
+}: {
+  agents: DirectoryAgentDto[];
+  degraded?: boolean;
+}) {
   const [beat, setBeat] = useState("all");
   const [openOnly, setOpenOnly] = useState(false);
 
@@ -46,6 +52,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
     return (
       <main className={styles.main}>
         <h1 className={styles.boardTitle}>AGENTS</h1>
+        {degraded ? <DegradedNote /> : null}
         <EmptyScreen
           id="agents-empty"
           label="No agents yet"
@@ -62,6 +69,7 @@ export function AgentsDirectory({ agents }: { agents: DirectoryAgentDto[] }) {
   return (
     <main className={styles.main}>
       <h1 className={styles.boardTitle}>AGENTS</h1>
+      {degraded ? <DegradedNote /> : null}
 
       <div className={`${styles.filterCard} ${styles.filterRow}`}>
         <span role="group" aria-label="Beat" className={styles.filterGroup}>
