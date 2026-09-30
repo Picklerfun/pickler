@@ -1,12 +1,21 @@
 /* Browser-side helpers. Playwright serialises these functions and runs them in the page, so each
- * one has to be self-contained: it may not close over anything in this module or this repository. */
+ * one has to be self-contained: it may not close over anything in this module or this repository.
+ * What a function needs from here is handed to it as an argument. */
 
-/** Every colour the --pk-* tokens actually paint, per surface scope on this page.
+/** A colour as a computed value spells it: rgb(), rgba() or color(), whatever the source wrote. */
+export const COLOUR = String.raw`(?:rgba?|color)\([^()]*\)`;
+
+/** Every colour written in one computed value: a shadow list, a gradient, a filter. */
+export function coloursIn(value) {
+  return String(value).match(new RegExp(COLOUR, "g")) ?? [];
+}
+
+/** Every colour the --pk-* tokens hold, per surface scope on this page.
  *
- *  Reading the custom properties as text would compare `#0b0d1a` against `rgb(11, 13, 26)` and call
- *  the same colour a stray, so each token is instead painted onto a probe element and read back as
- *  the browser resolves it. The probe sits inside the scope it is measuring, which is what makes a
- *  nested data-surface report its own values rather than the page's. */
+ *  A token that is a colour is painted onto a probe and read back as the browser resolves it, so
+ *  `#0b0d1a` and `rgb(11, 13, 26)` are one value. A token that is not a colour but contains some —
+ *  a whole shadow — has each of its colours painted the same way, so a rule that reads the shadow
+ *  token paints colours the palette holds. Scope 0 is the page; every `[data-surface]` follows. */
 export function resolveTokens() {
   const names = new Set();
   const walk = (rules) => {
@@ -29,41 +38,67 @@ export function resolveTokens() {
     }
   }
 
-  // Anything the tokens cannot be: if `var(--x)` is not a colour the declaration is invalid at
-  // computed-value time, so `color` falls back to inherited — which is how a radius, a duration or
-  // a shadow is told apart from an ink without parsing any of them.
   const SENTINEL = "rgb(1, 2, 3)";
-  const scopes = new Set([document.body, ...document.querySelectorAll("[data-surface]")]);
-  const values = new Set();
-  for (const scope of scopes) {
+  const scopes = [document.body, ...document.querySelectorAll("[data-surface]")];
+  const values = scopes.map((scope) => {
+    const held = new Set();
     const host = document.createElement("div");
     host.style.color = SENTINEL;
     const probe = document.createElement("div");
     host.append(probe);
     scope.append(host);
-    for (const name of names) {
-      probe.style.color = `var(${name})`;
+    const paint = (text) => {
+      probe.style.color = "";
+      probe.style.color = text;
       const painted = getComputedStyle(probe).color;
       if (painted !== SENTINEL) {
-        values.add(painted);
+        held.add(painted);
+      }
+      return painted !== SENTINEL;
+    };
+    for (const name of names) {
+      if (paint(`var(${name})`)) {
+        continue;
+      }
+      const written = getComputedStyle(probe).getPropertyValue(name);
+      for (const colour of written.match(/#[0-9a-f]{3,8}\b|(?:rgba?|hsla?|color)\([^()]*\)/gi) ??
+        []) {
+        paint(colour);
       }
     }
     host.remove();
-  }
-  return { names: [...names], values: [...values] };
+    return [...held];
+  });
+  return { names: [...names], values };
 }
 
-/** Every colour this page actually paints — ink, ground and the edges that have a width to show.
- *  A colour on screen that no token holds is a literal someone typed, wherever it lives. */
-export function paintedColours() {
-  const painted = [];
+/** Every colour this page paints, with the scope whose tokens it has to come from.
+ *
+ *  Ink, ground and edges, and also what the first version never read: gradients, shadows, text
+ *  shadows, drop-shadows, outlines and SVG paint. A night sky is a `background-image` and a glow is
+ *  a `box-shadow`, so a check that reads neither passes both.
+ *
+ *  Not read: `::before` and `::after`, which have no element to ask, and what a canvas draws. */
+export function paintedColours(pattern) {
+  const scopes = [document.body, ...document.querySelectorAll("[data-surface]")];
+  const scopeOf = (el) => {
+    const owner = el.closest("[data-surface]");
+    return owner ? scopes.indexOf(owner) : 0;
+  };
+  // `pattern` is COLOUR above, handed in because nothing here can reach the module.
+  const colours = (value) => String(value).match(new RegExp(pattern, "g")) ?? [];
   const name = (node) =>
     node.tagName.toLowerCase() +
     (node.id ? `#${node.id}` : "") +
     (node.classList.length ? `.${node.classList[0]}` : "");
+  const painted = [];
   for (const el of document.querySelectorAll("body *")) {
     // The Next dev overlay is not this product's design, and it is not on the deployed page.
     if (el.closest("nextjs-portal") || el.tagName.toLowerCase() === "nextjs-portal") {
+      continue;
+    }
+    // A third party's mark keeps its own colours; recolouring a logo is not ours to do.
+    if (el.closest("[data-third-party-mark]")) {
       continue;
     }
     if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
@@ -71,20 +106,47 @@ export function paintedColours() {
     }
     const style = getComputedStyle(el);
     const selector = name(el);
+    const scope = scopeOf(el);
+    const say = (value, role) => painted.push({ value, selector, role, scope });
     if (!style.backgroundColor.endsWith(", 0)")) {
-      painted.push({ value: style.backgroundColor, selector, role: "background" });
+      say(style.backgroundColor, "background");
     }
     const carriesText = [...el.childNodes].some(
       (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0,
     );
     if (carriesText) {
-      painted.push({ value: style.color, selector, role: "text" });
+      say(style.color, "text");
+      for (const colour of colours(style.textShadow)) {
+        say(colour, "text-shadow");
+      }
     }
     for (const side of ["Top", "Right", "Bottom", "Left"]) {
       // An edge with no width paints nothing, and its colour defaults to currentColor, so reading
       // it would invent a border on every element on the page.
       if (parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none") {
-        painted.push({ value: style[`border${side}Color`], selector, role: "border" });
+        say(style[`border${side}Color`], "border");
+      }
+    }
+    for (const colour of colours(style.backgroundImage)) {
+      say(colour, "background-image");
+    }
+    for (const colour of colours(style.boxShadow)) {
+      say(colour, "box-shadow");
+    }
+    for (const colour of colours(style.filter)) {
+      say(colour, "filter");
+    }
+    if (style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0) {
+      say(style.outlineColor, "outline");
+    }
+    if (el instanceof SVGElement && !(el instanceof SVGSVGElement)) {
+      for (const [property, role] of [
+        ["fill", "fill"],
+        ["stroke", "stroke"],
+      ]) {
+        for (const colour of colours(style[property])) {
+          say(colour, role);
+        }
       }
     }
   }
