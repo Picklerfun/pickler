@@ -2,11 +2,13 @@
 
 import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { ButtonLink, Chip, Tag } from "@pickler/ui";
+import { ButtonLink, Chip, Input, Tag } from "@pickler/ui";
 import { useMemo, useState } from "react";
 import styles from "../agents.module.css";
 import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
+import { matches } from "@/features/status/near";
+import { NoMatch } from "@/features/status/no-match";
 import { AgentAvatar, DegradedNote, EmptyScreen } from "./agent-parts";
 
 const scoreTone = (score: number) =>
@@ -26,12 +28,28 @@ const takingQuestions = (
 export function AgentsDirectory({
   agents,
   degraded = false,
+  query: asked = "",
 }: {
   agents: DirectoryAgentDto[];
   degraded?: boolean;
+  /** `?q=`, so a search can be linked to and a plain form can land on one. */
+  query?: string;
 }) {
   const [beat, setBeat] = useState("all");
   const [openOnly, setOpenOnly] = useState(false);
+  const [query, setQuery] = useState(asked);
+
+  /* The address follows the search without a navigation, so reloading or sharing keeps it. */
+  function search(next: string) {
+    setQuery(next);
+    const url = new URL(window.location.href);
+    if (next.trim()) {
+      url.searchParams.set("q", next);
+    } else {
+      url.searchParams.delete("q");
+    }
+    window.history.replaceState(null, "", url);
+  }
 
   // The beats are whatever the agents actually work, so a new one never needs a code change here.
   const beats = useMemo(
@@ -43,9 +61,30 @@ export function AgentsDirectory({
     () =>
       agents
         .filter((entry) => beat === "all" || entry.beat === beat)
-        .filter((entry) => !openOnly || takingQuestions(entry)),
-    [agents, beat, openOnly],
+        .filter((entry) => !openOnly || takingQuestions(entry))
+        .filter((entry) =>
+          matches(query, [
+            entry.agent.handle,
+            entry.agent.name,
+            entry.beat,
+            entry.venue,
+            entry.decides,
+          ]),
+        ),
+    [agents, beat, openOnly, query],
   );
+
+  /* What a search that found nothing offers instead: the beats that do have agents, busiest first. */
+  const busiest = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of agents) {
+      counts.set(entry.beat, (counts.get(entry.beat) ?? 0) + 1);
+    }
+    return [...counts]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+      .slice(0, 4);
+  }, [agents]);
 
   // Nobody yet is a screen of its own, not a beat filter with nothing under it.
   if (noAgents(agents)) {
@@ -72,6 +111,15 @@ export function AgentsDirectory({
       {degraded ? <DegradedNote /> : null}
 
       <div className={`${styles.filterCard} ${styles.filterRow}`}>
+        <Input
+          shape="pill"
+          className={styles.directorySearch}
+          type="search"
+          placeholder="search agents…"
+          aria-label="Search agents"
+          value={query}
+          onChange={(event) => search(event.target.value)}
+        />
         <span role="group" aria-label="Beat" className={styles.filterGroup}>
           {beats.map((option) => (
             <Chip
@@ -94,81 +142,99 @@ export function AgentsDirectory({
         </Chip>
       </div>
 
-      <div className={styles.directory}>
-        {shown.map((entry) => (
-          <article
-            key={entry.agent.handle}
-            className={styles.agentCard}
-            data-open={takingQuestions(entry)}
-          >
-            <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
-              <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
-              <span className={styles.agentCardName}>
-                <strong>{entry.agent.name}</strong>
-                <span className={styles.label}>{entry.beat.toUpperCase()}</span>
-              </span>
-              <span className={styles.agentCardScore}>
-                {entry.score === null ? (
-                  <strong>—</strong>
+      {query.trim() !== "" && shown.length === 0 ? (
+        <NoMatch
+          query={query}
+          total={agents.length}
+          beats={busiest}
+          onPick={(term) => {
+            setBeat("all");
+            setOpenOnly(false);
+            search(term);
+          }}
+          onClear={() => {
+            setBeat("all");
+            setOpenOnly(false);
+            search("");
+          }}
+        />
+      ) : (
+        <div className={styles.directory}>
+          {shown.map((entry) => (
+            <article
+              key={entry.agent.handle}
+              className={styles.agentCard}
+              data-open={takingQuestions(entry)}
+            >
+              <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
+                <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
+                <span className={styles.agentCardName}>
+                  <strong>{entry.agent.name}</strong>
+                  <span className={styles.label}>{entry.beat.toUpperCase()}</span>
+                </span>
+                <span className={styles.agentCardScore}>
+                  {entry.score === null ? (
+                    <strong>—</strong>
+                  ) : (
+                    <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                  )}
+                  <span className={styles.label}>SCORE</span>
+                </span>
+              </Link>
+
+              <p className={styles.agentCardDecides}>{entry.decides}</p>
+
+              <dl className={styles.agentStats}>
+                <div className={styles.agentStat}>
+                  <dt className={styles.label}>HIT RATE</dt>
+                  <dd className={styles.toneOpen}>
+                    {entry.hitRate === null ? "—" : formatPercent(entry.hitRate)}
+                  </dd>
+                </div>
+                <div className={styles.agentStat}>
+                  <dt className={styles.label}>PREDICTIONS</dt>
+                  <dd>{formatInteger(entry.resolved)}</dd>
+                </div>
+                <div className={styles.agentStat}>
+                  <dt className={styles.label}>P&amp;L</dt>
+                  <dd className={entry.net < 0 ? styles.toneLoss : styles.toneWin}>
+                    {entry.net < 0 ? "−" : "+"}${formatInteger(Math.abs(entry.net))}
+                  </dd>
+                </div>
+                <div className={styles.agentStat}>
+                  <dt className={styles.label}>REPLIES IN</dt>
+                  <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
+                </div>
+              </dl>
+
+              <div className={styles.agentCardActions}>
+                {takingQuestions(entry) ? (
+                  <ButtonLink
+                    as={Link}
+                    href={`/agents/${entry.agent.handle}/ask`}
+                    className={styles.askButton}
+                    size="sm"
+                  >
+                    Ask · ${entry.service.price}
+                  </ButtonLink>
                 ) : (
-                  <strong className={scoreTone(entry.score)}>{entry.score}</strong>
+                  <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
                 )}
-                <span className={styles.label}>SCORE</span>
-              </span>
-            </Link>
-
-            <p className={styles.agentCardDecides}>{entry.decides}</p>
-
-            <dl className={styles.agentStats}>
-              <div className={styles.agentStat}>
-                <dt className={styles.label}>HIT RATE</dt>
-                <dd className={styles.toneOpen}>
-                  {entry.hitRate === null ? "—" : formatPercent(entry.hitRate)}
-                </dd>
-              </div>
-              <div className={styles.agentStat}>
-                <dt className={styles.label}>PREDICTIONS</dt>
-                <dd>{formatInteger(entry.resolved)}</dd>
-              </div>
-              <div className={styles.agentStat}>
-                <dt className={styles.label}>P&amp;L</dt>
-                <dd className={entry.net < 0 ? styles.toneLoss : styles.toneWin}>
-                  {entry.net < 0 ? "−" : "+"}${formatInteger(Math.abs(entry.net))}
-                </dd>
-              </div>
-              <div className={styles.agentStat}>
-                <dt className={styles.label}>REPLIES IN</dt>
-                <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
-              </div>
-            </dl>
-
-            <div className={styles.agentCardActions}>
-              {takingQuestions(entry) ? (
                 <ButtonLink
                   as={Link}
-                  href={`/agents/${entry.agent.handle}/ask`}
-                  className={styles.askButton}
+                  href={`/agents/${entry.agent.handle}`}
+                  variant="secondary"
                   size="sm"
                 >
-                  Ask · ${entry.service.price}
+                  Profile
                 </ButtonLink>
-              ) : (
-                <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
-              )}
-              <ButtonLink
-                as={Link}
-                href={`/agents/${entry.agent.handle}`}
-                variant="secondary"
-                size="sm"
-              >
-                Profile
-              </ButtonLink>
-            </div>
-          </article>
-        ))}
-      </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
 
-      {shown.length === 0 && (
+      {query.trim() === "" && shown.length === 0 && (
         <p className={styles.emptyNote}>No agent on this beat is taking questions right now.</p>
       )}
     </main>

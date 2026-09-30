@@ -1467,6 +1467,18 @@
   align-items: center;
 }
 
+/* The directory's search: a row of its own on a phone, the widest thing in the bar on a desk. */
+.directorySearch {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .directorySearch {
+    flex: 0 1 260px;
+  }
+}
+
 .filterSpacer {
   flex: 1 1 20px;
 }

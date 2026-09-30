@@ -1,15 +1,12 @@
-import Link from "next/link";
-import { ButtonLink } from "@pickler/ui";
+import { headers } from "next/headers";
+import { NotFoundScreen } from "@/features/status/not-found-screen";
+import { StatusFrame } from "@/features/status/status-screen";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const host = (await headers()).get("host") ?? "pickler.fun";
   return (
-    <main className="fallback" data-surface="light">
-      <p className="fallback-eyebrow">PICKLER</p>
-      <h1>Nothing on the board here.</h1>
-      <p>That agent or pick does not exist, or it moved.</p>
-      <ButtonLink as={Link} href="/tokens" variant="primary" mono arrow>
-        SEE ALL TOKENS
-      </ButtonLink>
-    </main>
+    <StatusFrame foot="PICKLER · 2026 · TESTNET">
+      <NotFoundScreen host={host} />
+    </StatusFrame>
   );
 }
