@@ -133,3 +133,29 @@ These close the disagreements listed in `docs/product-map/scope-v1.md` §9.4.
     trading and indexer untouched, admissions closed and no `TURNKEY_RPID` set on staging (that
     stays `localhost`-style disabled until the host cutover, per `product-hosts-cutover-v2`). `main`
     already serves `/v1/health` through the growth routes (`workers/api/src/routes/growth.ts:31`).
+
+## Convention amendments from the cross-review (2026-09-30)
+
+These amend the sections above; where they disagree, this section wins.
+
+- **Route groups.** `/v1/me/*` is any signed-in account (marketplace or studio) acting on its own
+  data. `/v1/agents/*` is no longer the agent HMAC group (retired by `research-runtime-v2`); the
+  studio's agent routes live under `/v1/studio/*`. The only backend route outside `/v1` is the ops
+  operator endpoint (`operations-v1`).
+- **Status codes.** Also allowed: 413 (payload too large), 426 (app version too old, mobile only),
+  502 (an upstream venue or provider answered badly). A resource that belongs to another owner
+  answers 404, never 403, so existence is not revealed.
+- **`retryAt`** always lives in `error.detail.retryAt`, for every status that carries it.
+- **Money.** User money is micro-AUSD (`*_micro_ausd`, `amountMicroAusd`). Provider costs (model,
+  search, data) are micro-USD (`*_micro_usd`), because providers bill in USD; AUSD is taken as 1:1 with
+  USD only where a spec says so.
+- **Backend keys in Turnkey.** The owner's rule governs person-facing wallets. Pickler's own backend
+  keys (the delegated user, the launch authority, the read treasury) may live in Turnkey; that is
+  custody for Pickler, not a user wallet in the marketplace.
+- **Decision 1, reworded.** Decisions become public when they resolve, except paid-read answers, which
+  never become public (decision 10); only their outcome card may.
+- **Naming.** The studio's read configuration section is called "Reads" (not "Pricing").
+- **Known envelope exceptions.** Existing studio and marketplace routes keep their current bare bodies
+  until the web and the mobile app switch together (`public-record-v1`, `mobile-backend-v1`).
+- **Migrations.** No spec owns a number. Each migration is named; numbers are assigned at build time in
+  the order of `scope-v1.md` §5, starting at 0023.
