@@ -263,6 +263,11 @@ comment saying why and that the attribute goes when a canvas exists. A page whos
 dark belongs on the dark surface. The same test applies to any module not listed here: painting its
 own opaque ground earns the pin, merely reading tokens does not.
 
+**Correction, 2026-09-29.** Neither pin stands any more. The opaque layers themselves were removed
+(`cleanup-and-design-system-v1.md`, D1–D3): the three `/agents` routes are on the light surface
+like the rest of the marketplace, and `/apply` is on the dark surface because it is a studio route,
+not because it paints a ground.
+
 Any page that reads a token this document removes must be migrated in the same change. That is the
 monospace family and any `--pk-*` name that does not survive into the new set.
 
@@ -310,6 +315,20 @@ whether it _reads_ like the canvas are not, and want eyes.
 **No literals in source.** After migration, no `#rrggbb` outside the token file. A grep is the test,
 and it is the weakest of these — it catches the careless case, while the DOM checks catch the
 plausible one.
+
+**Correction, 2026-09-29.** The grep became a check with rules: `npm run design:source`
+(`scripts/design/source.mjs`) fails the build on a colour literal outside a token's definition in
+`packages/ui/src/styles.css`, on a `--pk-*` defined anywhere else, on a stylesheet's alias of a
+token, on a token read that `styles.css` does not define, on a token handed to CSS from TypeScript
+anywhere but `apps/web/src/lib/accent.ts`, and on a CSS-module class no component names.
+Every token has that one source; `packages/ui/src/tokens.ts` (values code must hold, pinned by
+`scripts/design/mirror.test.mjs`) and `packages/ui/src/brand.tsx` (a third party's logo) are its
+only named exemptions. Seven tokens carried forward from before this document stay in the system
+under their own names, each defined in the light and the dark block of `styles.css`:
+`--pk-ink-dim`, `--pk-border-strong`, `--pk-lime-edge`, `--pk-magenta-edge`, `--pk-amber-edge`,
+`--pk-cyan-edge` and `--pk-violet-edge` (`cleanup-and-design-system-v1.md`, appendix). The rendered
+checks run through `npm run design:check`, which starts its own servers, and screenshots go to
+`scripts/design/.shots/`.
 
 ## 8. Out of scope
 
@@ -499,6 +518,11 @@ alpha as a border.
 **Closed afterwards.** `/signin` and `/signup` are now in `routes.mjs` and the four checks are clean
 over **seventeen** routes, with no literal colour left in any declaration in the product — only in
 comments explaining why the tokens exist.
+
+**Correction, 2026-09-29.** That last claim was false when it was written: the inventory of that
+date (`cleanup-inventory-2026-09-29.md`, 4.5) counted 102 colour literals in declarations, most of
+them in `box-shadow`, `filter` and `background-image`, which the token check did not read. It
+reads them now, and `scripts/design/source.mjs` reads the source itself.
 
 Measuring those two screens for the first time found nine violation classes and two defects nothing
 else could have reported.

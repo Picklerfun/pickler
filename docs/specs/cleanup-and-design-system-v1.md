@@ -156,3 +156,52 @@ The inventory (`cleanup-inventory-2026-09-29.md`, commit 763ec44) contradicted p
 | A9  | Three unused adapter files export schemas and a constant that live Postgres code imports.                                                                             | Those exports move to the module that uses them first; then the adapters go. `PasskeyUnusableError` goes with `fromViemAccount` if no production code imports it.                                                             |
 | A10 | `?section=trading` is refused: trading renders inside `limits`.                                                                                                       | Unchanged here; listed as a follow-up.                                                                                                                                                                                        |
 | A11 | `typecheck:design` is already wired through turbo and CI; the runtime checks and the harness unit tests are not. The fixture API is `scripts/design/fixture-api.mjs`. | Section 3.4 stands, with those paths.                                                                                                                                                                                         |
+
+## Appendix: the tokens after this work
+
+Decided in the implementation plan (`docs/superpowers/plans/2026-09-29-cleanup-design-system.md`),
+where each call has its reason.
+
+**Carried forward and kept (D5, A4).** They have no single v2 equivalent and are part of the
+system under their own names: `--pk-ink-dim` (the muted ink on light, the soft ink on dark),
+`--pk-border-strong`, `--pk-lime-edge`, `--pk-magenta-edge`, `--pk-amber-edge`, `--pk-cyan-edge`,
+`--pk-violet-edge`. Each is defined twice in `packages/ui/src/styles.css`, once in the light block
+(`[data-surface="light"], :root`) and once in `[data-surface="dark"]`, and nowhere else. A1 keeps
+`--pk-glow-rim`, defined once on `:root`.
+
+**Carried forward and removed (D5).** Each reader now reads the v2 token on the right.
+
+| Removed                | Reads now               |
+| ---------------------- | ----------------------- |
+| `--pk-ink-placeholder` | `--pk-ink-faint`        |
+| `--pk-surface`         | `--pk-panel`            |
+| `--pk-surface-strong`  | `--pk-panel-2`          |
+| `--pk-field`           | `--pk-panel`            |
+| `--pk-field-autofill`  | `--pk-panel`            |
+| `--pk-border`          | `--pk-rule-strong`      |
+| `--pk-cyan`            | `--pk-blue`             |
+| `--pk-cyan-ink`        | `--pk-state-cool-ink`   |
+| `--pk-pink-ink`        | `--pk-magenta-ink`      |
+| `--pk-lime-tint`       | `--pk-state-good-bg`    |
+| `--pk-magenta-tint`    | `--pk-state-loss-bg`    |
+| `--pk-amber-tint`      | `--pk-state-caution-bg` |
+| `--pk-cyan-tint`       | `--pk-state-cool-bg`    |
+| `--pk-violet-tint`     | `--pk-state-info-bg`    |
+
+**Removed with the backdrop (D1, A2).** `--pk-space-core`, `--pk-space-mid`, `--pk-space-edge`,
+`--pk-space-edge-rgb`, `--pk-space-veil`, `--pk-space-veil-strong`.
+
+**Added (D6, A2).** Defined on `:root`, the same on both surfaces.
+
+| Token                   | Value                       | For                                         |
+| ----------------------- | --------------------------- | ------------------------------------------- |
+| `--pk-lit-edge`         | `rgba(255, 255, 255, 0.22)` | the inset highlight along a raised top edge |
+| `--pk-glow-lime`        | `rgba(200, 240, 58, 0.32)`  | a lime halo                                 |
+| `--pk-glow-lime-strong` | `rgba(200, 240, 58, 0.5)`   | the same halo under the cursor              |
+| `--pk-scrim`            | `rgba(11, 13, 26, 0.72)`    | what a dialog dims the page with            |
+
+**Renamed.** `--tint-fg`, `--tint-bg` and `--tint-bd` are `--pk-tint-fg`, `--pk-tint-bg` and
+`--pk-tint-bd`.
+
+**Runtime checks in CI (3.4).** They run, in the `rendered` job of `.github/workflows/design.yml`,
+with Playwright installed on the runner and not in `package.json`.
