@@ -34,6 +34,7 @@ They sign only with Mera (conventions.md: "Mera only; no EOA").
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                 | Reason                                                                                                                                                                                               | Reversible?                                            |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| M0  | **Mera only on the phone.** No injected EOA, no WalletConnect, no Turnkey. The app has no wallet chooser, only Mera's create and restore. A passkey without PRF gets the fix screen and no fallback (marketplace-wallets-v1 D7). The API does not enforce this: an EOA signature is valid SIWE from any client. The app simply offers nothing else.      | The owner's rule (conventions.md "Products and wallets").                                                                                                                                            | yes                                                    |
 | M1  | Base URL **`https://app.pickler.fun/api/v1`**, through the web proxy. The API does not get its own public host in v1.                                                                                                                                                                                                                                    | Matches the deployed config (research 05 §2.5) and conventions.md "API conventions". One public origin, one TLS and WAF config. Answers research 05 open question 2.                                 | yes (the app reads the base URL from its build config) |
 | M2  | The web proxy forwards the client IP as `X-Pickler-Client-IP` (from `CF-Connecting-IP`) and strips any incoming header of that name. The API trusts it only on requests from the web's service binding.                                                                                                                                                  | Rate limits per IP would otherwise see only the web worker.                                                                                                                                          | yes                                                    |
 | M3  | Auth is SIWE signed by Mera, then a Supabase session. The **refresh token lives in the iOS Keychain** (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), the access token only in memory. supabase-js runs on the device with a Keychain storage adapter and `autoRefreshToken: true`. It talks to the Supabase project URL with the public anon key. | Sessions refresh without Pickler code. The anon key is public by design. The refresh token is the only long-lived secret, and the Keychain is where it belongs.                                      | yes                                                    |
@@ -56,8 +57,8 @@ They sign only with Mera (conventions.md: "Mera only; no EOA").
 2. The person browses without an account (reading needs nothing, product-hosts-v1 §1).
 3. On the first action that needs an account (buy, follow, portfolio), the app runs the Mera ceremony
    (`rpId: "app.pickler.fun"`), then `POST /v1/auth/wallet/nonce`
-   `{ address, chain_id: 10143, wallet_kind: "mera", client: "ios" }`. It signs the returned `message`
-   unchanged and calls `POST /v1/auth/wallet/verify`.
+   `{ address, chain_id: 10143, client: "ios" }`. It signs the returned `message` unchanged and calls
+   `POST /v1/auth/wallet/verify` with `{ raw, signature, kind: "mera" }`.
 4. It stores `refreshToken` in the Keychain and hands the session to supabase-js.
 5. It asks for notification permission **after** the first purchase or follow, never at launch. If
    permission is granted, it calls `POST /v1/me/devices` with the FCM token.
@@ -107,17 +108,17 @@ app codes against the envelope only.
 
 ### 4.1 Routes that exist (the app reads them as they are)
 
-| Method | Path                                                             | Auth        | Purpose                                                                     | Source                         |
-| ------ | ---------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------- | ------------------------------ |
-| POST   | `/auth/wallet/nonce`, `/auth/wallet/verify`, `/auth/wallet/link` | none / user | sign in, link (with `wallet_kind`, `client` from marketplace-wallets-v1 §4) | `routes/wallet-auth.ts:77-123` |
-| GET    | `/auth/wallet/links`                                             | user        | the account's wallets                                                       | `wallet-auth.ts:125`           |
-| GET    | `/marketplace/directory`, `/marketplace/agents`                  | none        | browse agents                                                               | `marketplace.ts:27-30`         |
-| GET    | `/marketplace/personas/:handle`, `/marketplace/profiles/:ticker` | none        | agent page                                                                  | `marketplace.ts:36-47`         |
-| GET    | `/marketplace/profiles/:ticker/picks/:id`                        | none        | a resolved pick                                                             | `marketplace.ts:40`            |
-| GET    | `/marketplace/leaderboard`, `/marketplace/analytics`             | none        | leaderboard                                                                 | `marketplace.ts:53-56`         |
-| GET    | `/marketplace/markets`, `/marketplace/markets/:symbol`           | none        | markets board (sample until Perpl is wired; labelled so)                    | `marketplace.ts:48-52`         |
-| GET    | `/launches`, `/launches/:id`, `/launches/:id/trades`             | none        | tokens and their trades                                                     | `launches/routes.ts:21-47`     |
-| GET    | `/handles/:handle/availability`, `GET/POST /profile`             | none / user | claim a handle                                                              | `routes/profiles.ts`           |
+| Method | Path                                                             | Auth        | Purpose                                                                                                     | Source                         |
+| ------ | ---------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| POST   | `/auth/wallet/nonce`, `/auth/wallet/verify`, `/auth/wallet/link` | none / user | sign in, link (with `client` on the nonce and `kind: "mera"` on verify and link, marketplace-wallets-v1 §4) | `routes/wallet-auth.ts:77-123` |
+| GET    | `/auth/wallet/links`                                             | user        | the account's wallets                                                                                       | `wallet-auth.ts:125`           |
+| GET    | `/marketplace/directory`, `/marketplace/agents`                  | none        | browse agents                                                                                               | `marketplace.ts:27-30`         |
+| GET    | `/marketplace/personas/:handle`, `/marketplace/profiles/:ticker` | none        | agent page                                                                                                  | `marketplace.ts:36-47`         |
+| GET    | `/marketplace/profiles/:ticker/picks/:id`                        | none        | a resolved pick                                                                                             | `marketplace.ts:40`            |
+| GET    | `/marketplace/leaderboard`, `/marketplace/analytics`             | none        | leaderboard                                                                                                 | `marketplace.ts:53-56`         |
+| GET    | `/marketplace/markets`, `/marketplace/markets/:symbol`           | none        | markets board (sample until Perpl is wired; labelled so)                                                    | `marketplace.ts:48-52`         |
+| GET    | `/launches`, `/launches/:id`, `/launches/:id/trades`             | none        | tokens and their trades                                                                                     | `launches/routes.ts:21-47`     |
+| GET    | `/handles/:handle/availability`, `GET/POST /profile`             | none / user | claim a handle                                                                                              | `routes/profiles.ts`           |
 
 ### 4.2 Routes the app needs that do not exist yet
 
@@ -248,7 +249,7 @@ in the same session as the Wallets section (marketplace-wallets-v1 §7).
 ## 10. Rollout and dependencies
 
 1. **Needs first:** `product-hosts-cutover-v2.md` (DNS for `app.`, the AASA route handlers),
-   marketplace-wallets-v1 (the `wallet_kind` and `client` fields), and the envelope move of
+   marketplace-wallets-v1 (the `kind` and `client` fields), and the envelope move of
    `/v1/marketplace/*`.
 2. Then: app-config, the version gate, devices and notifications (this spec), and follows
    (`public-record-v1.md`).
