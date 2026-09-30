@@ -335,7 +335,7 @@ by `POST /v1/internal/resolutions/backfill`, so a formula change is a recompute,
 
 ### 6.3 Perpl (later, designed now)
 
-- A Perpl decision (once `perpl-live-v1.md` exists) carries a direction, an entry mark and a
+- A Perpl decision (once a Perpl agent runs, per `perpl-live-v1.md`) carries a direction, an entry mark and a
   horizon. It resolves against the **Perpl mark price** at `decided_at + horizon`, read through
   `PerplMarketData.snapshot`/`candles` (`packages/infrastructure/src/perpl/data.ts:86,258,353`)
   within a ±5-minute tolerance window; no observation inside it is `void` with reason
