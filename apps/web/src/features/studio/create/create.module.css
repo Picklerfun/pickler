@@ -213,7 +213,7 @@
   outline: none;
 }
 .prose::placeholder {
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 .prompts {
   display: flex;
