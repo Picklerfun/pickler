@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Icon, Input } from "@pickler/ui";
 import type { Agent, Run } from "../api";
 import { clock, runMark, runSummary } from "../decision";
-import type { SectionKey } from "./stub";
+import type { SectionKey } from "./keys";
 import styles from "../studio.module.css";
 
 /** How long until the next scheduled run, said the way a person would say it. */

@@ -187,6 +187,13 @@ requiring those bindings are unavailable. A successful preview is not full-stack
 
 The private studio uses the Studio shell and sections under `features/studio/sections`, reached
 from the home's Menu.
+`sections/rail.ts` is the one list of sections: `RAIL`, four groups (RUN, BUILD, GROW, PUBLIC) of
+the thirteen keys of `sections/keys.ts`, in their order, each with its icon, label and `soon`. The
+shell's rail, the home's Menu and the empty home's rail all draw it. `sources`, `identity`,
+`profile`, `audience` and `token` have no screen: `isSoon` marks them SOON in all three, and they
+open on the one Soon panel (`sections/soon.tsx`, copy in `PANELS`), which the board also draws,
+without SOON, for its two links out. `isPanel` decides which sections draw it; both are pinned in
+`studio-rail.test.ts`. `sections/brief.tsx` is the Brief row's editor for an existing agent.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
 The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
@@ -309,7 +316,8 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 
 With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`), drawn from the
 "Pickler Studio Empty v4" canvas: a top bar with the dashed "No agent yet" chip, TESTNET and the
-profile; the studio rail with every section disabled ("After you create your agent"); and the first
+profile; the studio rail (`RAIL`, the five soon sections tagged SOON) with every section disabled
+("After you create your agent"); and the first
 agent's brief — its five sections (thesis, reads, enters, exits, never) drawn blank as prompts, a
 "Starting point: Blank" card and an idle paper run beside it, the second-passkey suggestion above it.
 The canvas edits the brief and runs it on paper in place; neither has a backend (the brief is not
@@ -340,7 +348,7 @@ rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
-instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
+instead of the rail. The Menu reaches every section the rail does, built from `RAIL` in its four groups, and
 the rail has a Home item back. `/studio?agent=<id>` opens on that agent (the creation flow's
 "Open the studio" links there); without it, or for an id that is not the person's, the studio opens
 on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it

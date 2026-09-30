@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Button, ButtonLink, Icon, Tag, type IconName } from "@pickler/ui";
+import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
 import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
 import { useMarketplaceHref } from "@/features/site/studio-href";
@@ -42,31 +42,9 @@ import {
 import { PaperRun, type PaperRunView } from "../brief/paper-run";
 import { menuAccess } from "./access";
 import { HomeMenu } from "./menu";
+import { RAIL } from "../sections/rail";
 import shell from "../studio.module.css";
 import styles from "./home.module.css";
-
-/* The rail the "Pickler Studio Empty v4" canvas draws, every row disabled until an agent exists. */
-const RAIL: { title: string; items: [IconName, string][] }[] = [
-  {
-    title: "RUN",
-    items: [
-      ["grid", "Overview"],
-      ["chat", "Console"],
-      ["target", "Trades"],
-      ["activity", "Activity"],
-    ],
-  },
-  {
-    title: "BUILD",
-    items: [
-      ["file", "Brief"],
-      ["sliders", "Sources & rules"],
-      ["wallet", "Limits & funding"],
-      ["user", "Identity & voice"],
-    ],
-  },
-  { title: "GROW", items: [["globe", "Public profile"]] },
-];
 
 const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
 
@@ -343,19 +321,21 @@ export function EmptyHome({
 
       <div className={styles.emptyBody}>
         <nav className={styles.emptyRail} aria-label="Studio sections">
+          {/* The same sections the shell's rail draws, every row disabled until an agent exists. */}
           {RAIL.map((group) => (
             <div key={group.title}>
               <p className={shell.railTitle}>{group.title}</p>
               <div className={shell.railItems}>
-                {group.items.map(([icon, label]) => (
+                {group.items.map((item) => (
                   <span
-                    key={label}
+                    key={item.key}
                     className={styles.emptyRailItem}
                     title={access.sectionNote}
                     aria-disabled="true"
                   >
-                    <Icon name={icon} size={17} />
-                    <span className={shell.railLabel}>{label}</span>
+                    <Icon name={item.icon} size={17} />
+                    <span className={shell.railLabel}>{item.label}</span>
+                    {item.soon && <Tag className={styles.soon}>SOON</Tag>}
                   </span>
                 ))}
               </div>

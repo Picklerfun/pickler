@@ -1,7 +1,7 @@
 "use client";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import type { SectionKey } from "./stub";
+import type { SectionKey } from "./keys";
 import styles from "../studio.module.css";
 
 /**
