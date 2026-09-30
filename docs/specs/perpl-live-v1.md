@@ -179,11 +179,10 @@ and sizes are stored as `numeric(78,0)` with the market's decimals alongside.
 | `wallets.agent_wallet_venue_policies` | `agent_id`, `venue`, `policy_ids text[]`, `approved_at`; PK `(agent_id, venue)`                                                                                                                                                                                                                                                                                                                                             | the round-two policies (P4), beside `go-public-v1`'s `agent_wallet_caps` |
 
 `pickler.decisions` (from `decision-resolution-v1` §5.1) gets its `venue` check extended to `perpl`
-by that spec's owner. Live P&L is written as rows of `pickler.decision_live_pnl` in the shape
-`decision-resolution-v1.md` §5.7 owns (conventions decision 19): per closed position with a `run_id`,
-one row with `venue = 'perpl'`, `realized_micro`, `fees_micro`, `funding_micro` and
-`source_ref = 'perpl:' || perpl_positions.id` (plus the fill ids), so a replay is a no-op; a
-correction is a new row with the opposite amount. This spec defines no columns of that table.
+by that spec's owner. Live P&L goes to `pickler.decision_live_pnl`, whose shape and rules
+`decision-resolution-v1.md` §5.7 owns (conventions decision 19). This spec writes one row per
+closed position that has a `run_id`, with `source_ref` = `perpl:<position id>` plus the fill ids,
+and describes nothing else about that table.
 
 ## 6. Integrations
 
