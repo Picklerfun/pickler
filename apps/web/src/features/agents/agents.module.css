@@ -85,17 +85,6 @@
   border-color: var(--pk-ink);
 }
 
-.page a.navTab {
-  color: var(--pk-ink-muted);
-}
-
-.page a.navTabActive,
-.page a.navTabActive:hover {
-  background: var(--pk-state-good-bg);
-  border-bottom: 2px solid var(--pk-lime);
-  color: var(--pk-lime-ink);
-}
-
 /* ---------- Board ---------- */
 
 .main {
@@ -137,10 +126,6 @@
   color: var(--pk-ink-soft);
 }
 
-.spacer {
-  flex: 1 1 20px;
-}
-
 .sortButton {
   padding: 10px 14px;
   background: var(--pk-panel);
@@ -150,89 +135,6 @@
 
 .sortButton:hover {
   border-color: var(--pk-ink);
-}
-
-.search {
-  flex: 0 1 280px;
-  border-color: var(--pk-rule);
-}
-
-.stageButton {
-  gap: 8px;
-  padding: 9px 13px;
-  font-size: 12.5px;
-}
-
-.stageButton:hover {
-  border-color: var(--pk-ink);
-}
-
-/* A stage is where a token is, not a filter you switch on, so it lights in ink, not in lime. */
-.stageButton[aria-pressed="true"] {
-  background: var(--pk-panel-2);
-  border-color: var(--pk-ink);
-  color: var(--pk-ink);
-}
-
-.stageButton span {
-  color: var(--pk-ink-faint);
-}
-
-.resultCount {
-  align-self: center;
-  margin-left: auto;
-  font: 500 11.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.card {
-  composes: pk-panel from global;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--pk-panel);
-  overflow: hidden;
-}
-
-.card:hover {
-  border-color: var(--pk-border-strong);
-  border-radius: var(--pk-radius-lg);
-}
-
-.cardTop {
-  display: block;
-  padding: 16px 18px 0;
-  border-radius: var(--pk-radius-lg);
-}
-
-.page a.cardTop:hover {
-  color: var(--pk-ink);
-}
-
-.cardFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 14px;
-  margin-top: auto;
-  padding: 0 18px 16px;
-}
-
-.cardHead {
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  margin-bottom: 14px;
 }
 
 .avatar {
@@ -263,28 +165,6 @@
   font-variation-settings: var(--pk-display-wdth);
 }
 
-.cardName {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.cardName strong {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font: 700 17px/1.15 var(--pk-font);
-  letter-spacing: -0.02em;
-}
-
-.cardName > span {
-  display: block;
-  margin-top: 2px;
-  font: 500 12px/1.3 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-}
-
 .stage {
   flex: none;
   padding: 4px 9px;
@@ -311,80 +191,12 @@
   border-radius: var(--pk-radius-pill);
 }
 
-.cardStats {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0 0 13px;
-  border-top: 1px solid var(--pk-rule);
-  border-bottom: 1px solid var(--pk-rule);
-}
-
-.cardStat {
-  display: flex;
-  flex: 1 1 120px;
-  flex-direction: column;
-  min-width: 0;
-  padding: 11px 12px 11px 0;
-}
-
-.cardStat:first-child {
-  padding-left: 0;
-  border-radius: var(--pk-radius-lg);
-}
-
-.cardStat:last-child {
-  padding-right: 0;
-  border-radius: var(--pk-radius-lg);
-}
-
-.cardStat dd {
-  margin: 5px 0 0;
-  overflow: hidden;
-  font: 700 18px/1 var(--pk-font);
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cardStat dt {
-  margin: 0;
-  font: 500 10px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-}
-
-.cardFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.curve {
-  flex: 1 1 180px;
-  min-width: 0;
-}
-
 .curveNote {
   display: block;
   margin-top: 6px;
   font: 500 11.5px/1.4 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
-}
-
-.cardCta {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 13px 18px;
-  background: var(--pk-state-cool-bg);
-  border: 1px solid var(--pk-cyan-edge);
-  border-radius: var(--pk-radius-pill);
-  font: 600 12.5px/1 var(--pk-font);
-  letter-spacing: 0;
-  color: var(--pk-state-cool-ink);
 }
 
 .empty {
@@ -440,10 +252,6 @@
 .page a.chip:hover {
   color: var(--pk-ink);
   border-color: var(--pk-ink);
-}
-
-.page a.followChip {
-  color: var(--pk-ink);
 }
 
 .change {
@@ -654,20 +462,6 @@
   font: 500 13.5px/1.3 var(--pk-font);
   font-variant-numeric: tabular-nums;
   color: var(--pk-ink-faint);
-}
-
-.backCurve .bar {
-  height: 8px;
-  border-color: var(--pk-rule-strong);
-}
-
-.backCurve .barFill {
-  height: 6px;
-}
-
-.backCurve .curveNote {
-  margin-top: 7px;
-  color: var(--pk-ink-dim);
 }
 
 .disclaimer {
@@ -882,21 +676,6 @@
 
 /* ---------- Responsive ---------- */
 
-@media (min-width: 760px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .chartStats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1060px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (min-width: 860px) {
   .record {
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -910,20 +689,6 @@
   .record > :last-child {
     grid-column: span 2;
   }
-}
-
-@media (max-width: 640px) {
-  .heroPrice {
-    text-align: left;
-  }
-  .navCta {
-    margin-left: 0;
-  }
-}
-
-.page a.navItem:hover {
-  background: var(--pk-panel);
-  color: var(--pk-ink);
 }
 
 /* ---------- Board filters ---------- */
@@ -943,27 +708,9 @@
   padding: 12px 13px;
 }
 
-.filterRowSplit {
-  border-top: 1px solid var(--pk-rule);
-}
-
 .filterLabel {
   font: 500 10px/1 var(--pk-font);
   letter-spacing: 0.1em;
-  color: var(--pk-ink-faint);
-}
-
-.viewToggle {
-  gap: 2px;
-  border: 1px solid var(--pk-rule-strong);
-  background: transparent;
-}
-
-.viewButton {
-  flex: none;
-  padding: 7px 13px;
-  font: 600 11px/1 var(--pk-font);
-  letter-spacing: 0.06em;
   color: var(--pk-ink-faint);
 }
 
@@ -1006,21 +753,6 @@
 .page a.meetChip {
   border-color: var(--pk-lime-edge);
   color: var(--pk-lime-ink);
-}
-
-.curveLabel {
-  display: block;
-  font: 500 10px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-  white-space: nowrap;
-}
-
-.curve strong {
-  display: block;
-  margin: 6px 0 8px;
-  font: 700 20px/1 var(--pk-font);
-  font-variant-numeric: tabular-nums;
 }
 
 .toneCurve {
@@ -1066,11 +798,6 @@
   color: var(--pk-ink-faint);
 }
 
-.tableMark {
-  flex: none;
-  width: 30px;
-}
-
 .tableName {
   display: flex;
   flex: 1 1 160px;
@@ -1099,10 +826,6 @@
   color: var(--pk-ink-faint);
 }
 
-.tableStage {
-  flex: none;
-  width: 96px;
-}
 .tableNum {
   flex: none;
   width: 74px;
@@ -1110,11 +833,7 @@
   font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.08em;
 }
-.tableCta {
-  flex: none;
-  width: 84px;
-  text-align: center;
-}
+
 .tableRank {
   display: grid;
   flex: none;
@@ -1238,24 +957,6 @@
   font: 500 12px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
-}
-
-.ghostButton {
-  display: inline-block;
-  padding: 10px 14px;
-  background: transparent;
-  border: 1px solid var(--pk-rule-strong);
-  border-radius: var(--pk-radius-pill);
-  font: 600 12px/1 var(--pk-font);
-  color: var(--pk-ink-dim);
-  cursor: pointer;
-}
-
-.page a.ghostButton:hover,
-.ghostButton:hover {
-  border-color: var(--pk-lime);
-  color: var(--pk-lime-ink);
-  border-radius: var(--pk-radius-pill);
 }
 
 .quiet {
@@ -1719,20 +1420,9 @@
   object-fit: contain;
 }
 
-.page a.cardCta:hover {
-  background: var(--pk-state-cool-bg);
-  border-color: var(--pk-blue);
-  color: var(--pk-state-cool-ink);
-}
-
 /* The avatar keeps its small circle in rows, where it reads as a marker rather than a tile. */
 .avatarSmall {
   border-radius: var(--pk-radius-pill);
-}
-
-.page a.cardCta,
-.page a.cardCta:hover .cardCta {
-  color: var(--pk-state-cool-ink);
 }
 
 .chartFrame {
