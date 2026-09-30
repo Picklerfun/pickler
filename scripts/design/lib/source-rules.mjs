@@ -318,13 +318,40 @@ export function strings(file, source) {
   return found;
 }
 
+const MARK = "data-third-party-mark";
+
+/**
+ * Lines that put `data-third-party-mark` on an element: as a JSX attribute, or as the name in a
+ * string (an object key spread onto an element, a setAttribute). A selector that looks for it
+ * (`[data-third-party-mark]`) and a comment that mentions it put it on nothing.
+ */
+export function markAttributes(file, source) {
+  const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, kind);
+  const lines = [];
+  const visit = (node) => {
+    const named =
+      (ts.isJsxAttribute(node) && node.name.getText(tree) === MARK) ||
+      ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+        node.text === MARK);
+    if (named) {
+      lines.push(tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return lines;
+}
+
 /**
  * The rules over one TypeScript file.
  *
  * `mirror` is the one module allowed to hold colour values, keyed by the token each one copies
- * (it is pinned to styles.css by mirror.test.mjs); `marks` holds third-party logos, whose colours are theirs and may not be
- * recoloured; `channel` is the one module allowed to hand a token to CSS through an inline custom
- * property, because which agent a screen shows is data.
+ * (it is pinned to styles.css by mirror.test.mjs); `marks` holds third-party logos, whose colours
+ * are theirs and may not be recoloured, and only those files may carry `data-third-party-mark`,
+ * because the runtime token check skips every colour under it; `channel` is the one module allowed
+ * to hand a token to CSS through an inline custom property, because which agent a screen shows is
+ * data.
  */
 export function checkTs(file, source, { tokens, mirror, marks, channel }) {
   const problems = [];
@@ -347,6 +374,15 @@ export function checkTs(file, source, { tokens, mirror, marks, channel }) {
       if (!open && !tokens.has(name)) {
         say("undefined-token", line, `${name} is named and never defined in styles.css`);
       }
+    }
+  }
+  if (!marks.includes(file)) {
+    for (const line of markAttributes(file, source)) {
+      say(
+        "third-party-mark",
+        line,
+        `${MARK} hides colours from the checks; only a file in MARKS may carry it`,
+      );
     }
   }
   if (file !== channel && file !== mirror) {

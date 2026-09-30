@@ -118,6 +118,22 @@ test("colour in TypeScript: the mirror and the third-party marks are the two exe
   assert.deepEqual(typescript("colour-in-ts.fail.tsx", "packages/ui/src/brand.tsx"), []);
 });
 
+test("third-party mark: a selector, a comment and other data attributes pass", () => {
+  assert.deepEqual(typescript("third-party-mark.pass.tsx"), []);
+});
+
+test("third-party mark: the attribute, a spread key and a setAttribute fail outside MARKS", () => {
+  assert.deepEqual(rules(typescript("third-party-mark.fail.tsx")), [
+    "third-party-mark:2",
+    "third-party-mark:5",
+    "third-party-mark:8",
+  ]);
+});
+
+test("third-party mark: a file in MARKS may carry it", () => {
+  assert.deepEqual(typescript("third-party-mark.fail.tsx", "packages/ui/src/brand.tsx"), []);
+});
+
 test("tokens in TypeScript: reading one by name, a local index and a template family pass", () => {
   assert.deepEqual(typescript("token-ts.pass.ts"), []);
 });
