@@ -9,7 +9,7 @@ import {
   type TickerAvailabilityResponse,
 } from "@pickler/api-schema";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { colorVars } from "@/lib/accent";
+import { swatchVars, type Swatch } from "@/lib/accent";
 import { Button, Input, Textarea } from "@pickler/ui";
 import styles from "../apply.module.css";
 import {
@@ -22,7 +22,6 @@ import {
   sanitizeTickerInput,
   suggestTicker,
   SWATCHES,
-  type Swatch,
 } from "../lib/options";
 
 type TickerStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "unknown";
@@ -164,11 +163,7 @@ export function ApplicationForm({
       <div className={styles.columns}>
         <form className={styles.formColumn} onSubmit={onSubmit} noValidate>
           <div className={styles.inviteBar}>
-            <span
-              className={styles.pixel}
-              style={colorVars(SWATCHES.cyan.color, SWATCHES.cyan.rgb)}
-              aria-hidden="true"
-            />
+            <span className={styles.pixel} style={swatchVars(SWATCHES.cyan)} aria-hidden="true" />
             <span className={styles.monoLabel}>INVITE GOES TO</span>
             <span className={styles.inviteEmail}>{email}</span>
             <span className={styles.inviteSource}>FROM YOUR SIGN-UP</span>
@@ -482,7 +477,7 @@ function Card({
     >
       <legend className={styles.srOnly}>{label}</legend>
       <div id={labelId} className={styles.cardLabel} aria-hidden="true">
-        <span className={styles.pixel} style={colorVars(swatch.color, swatch.rgb)} />
+        <span className={styles.pixel} style={swatchVars(swatch)} />
         {label}
       </div>
       {children(labelId)}
@@ -498,7 +493,7 @@ function ChoiceGroup({
   onChange,
 }: {
   labelId: string;
-  options: readonly ({ name: string } & Swatch)[];
+  options: readonly { name: string; swatch: Swatch }[];
   value: string;
   onChange: (name: string) => void;
 }) {
@@ -511,7 +506,7 @@ function ChoiceGroup({
           role="radio"
           aria-checked={option.name === value}
           className={styles.chip}
-          style={colorVars(option.color, option.rgb)}
+          style={swatchVars(option.swatch)}
           onClick={() => onChange(option.name)}
         >
           <span className={styles.pixel} aria-hidden="true" />
@@ -585,11 +580,7 @@ function YourPiece({
       </div>
       <ul className={styles.well}>
         {all.map((block) => (
-          <li
-            key={block.id}
-            className={styles.block}
-            style={colorVars(block.swatch.color, block.swatch.rgb)}
-          >
+          <li key={block.id} className={styles.block} style={swatchVars(block.swatch)}>
             <span className={styles.blockCells} aria-hidden="true">
               <span className={styles.pixel} />
               <span className={styles.pixel} />
