@@ -121,15 +121,17 @@ details.
 
 Every signature opens Pickler's confirmation sheet (D14). There are three request types in v1.
 
-| Request                                | What the sheet shows                                                                                                                                             | Mera (web)                                                                                                      | EOA (web)                                                                                      | Mera (phone)                                        |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| **Sign in** (SIWE, EIP-191)            | "Sign in to Pickler as 0xAB…CD. This proves the wallet is yours. It costs nothing and moves nothing." The raw message is behind "Show message".                  | `getPasskeyPrfOutput` → `signMessage` → drop                                                                    | `personal_sign` through the extension                                                          | the same as the web; may reuse a live 5-min session |
-| **Pay for a read** (AUSD `transfer`)   | the agent, the question, the price in AUSD, the recipient "Pickler read treasury" with its address, chain "Monad testnet", estimated gas in MON, the refund rule | the page builds the EIP-1559 tx (from the paid-reads quote), then `signTransaction`, broadcasts, posts the hash | `eth_sendTransaction` with the same fields. The extension shows its own screen after Pickler's | the same as the web                                 |
-| **Trade a token** (launchpad buy/sell) | the token, the side, the amount in and the minimum out, slippage, the contract "Pickler launchpad", gas                                                          | the same as a payment, with calldata from the launchpad quote                                                   | `eth_sendTransaction`                                                                          | the same as the web                                 |
+| Request                                | What the sheet shows                                                                                                                                             | Mera (web)                                                                                                                                          | EOA (web)                                                                                      | Mera (phone)                                        |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Sign in** (SIWE, EIP-191)            | "Sign in to Pickler as 0xAB…CD. This proves the wallet is yours. It costs nothing and moves nothing." The raw message is behind "Show message".                  | `getPasskeyPrfOutput` → `signMessage` → drop                                                                                                        | `personal_sign` through the extension                                                          | the same as the web; may reuse a live 5-min session |
+| **Pay for a read** (AUSD `transfer`)   | the agent, the question, the price in AUSD, the recipient "Pickler read treasury" with its address, chain "Monad testnet", estimated gas in MON, the refund rule | the page builds `transfer(treasury, amount)` from the payment intent of `paid-reads-v1.md` §4.3, then `signTransaction`, broadcasts, posts the hash | `eth_sendTransaction` with the same fields. The extension shows its own screen after Pickler's | the same as the web                                 |
+| **Trade a token** (launchpad buy/sell) | the token, the side, the amount in and the minimum out, slippage, the contract "Pickler launchpad", gas                                                          | the same as a payment, with the `tx` (and `approval`) of the `token-trading-v1.md` quote                                                            | `eth_sendTransaction`                                                                          | the same as the web                                 |
 
-The builder of every transaction is the API's **quote** endpoint of the owning spec (paid reads,
-launchpad). The page never composes calldata itself, in the same way that it never composes a SIWE
-message (`lib/connect.ts:31-35`). Before signing, the page checks the quote's `to`, `value`,
+Every transaction comes from the API: the payment intent of `paid-reads-v1.md` (token, treasury,
+amount) or the trade quote of `token-trading-v1.md` (`tx`, `approval`). The page adds nothing of its
+own. For a read it encodes exactly `transfer(intent.to, intent.amount)`, and for a trade it signs the
+quote's calldata unchanged, in the same way that it never composes a SIWE message
+(`lib/connect.ts:31-35`). Before signing, the page checks the quote's `to`, `value`,
 `chainId` and decoded amount against what the sheet displayed, and refuses on a mismatch
 (`SIGNING_MISMATCH`).
 
@@ -225,7 +227,7 @@ types, fed by fixtures.
   context, logs, error reports or storage. A unit test with a spy on `Storage.prototype.setItem`
   proves that nothing is written during a ceremony.
 - **Shared picker.** Enforced by D3/D4: the build check, and `hosts.ts` without the
-  `app.pickler.fun` studio fallback (product-hosts implementation).
+  `app.pickler.fun` studio fallback (`product-hosts-cutover-v2.md` H2).
 - **Kind spoofing.** `wallet_kind` grants nothing (D9). A test asserts that no branch in core or the
   API reads `kind` except the DTO mapper.
 - **Nonce flooding.** A per-IP cap on `/nonce` (`NONCE_IP_CAP` per 10 minutes, 429 with `retryAt`). The
@@ -234,7 +236,7 @@ types, fed by fixtures.
   session user's link list, and that list is fetched from `/links` on the server, never cached across
   users. A switch to an unlinked address drops the token before asking.
 - **Transaction integrity.** The page compares the quote to the displayed summary (§3.6). The API
-  verifies the transfer on chain (paid reads spec). Nothing is trusted from the page but a hash.
+  verifies the transfer on chain (`paid-reads-v1.md` §4.3, `TX_MISMATCH`). Nothing is trusted from the page but a hash.
 - **Account takeover by linking.** Linking needs a session and a fresh signature from the new wallet.
   An address held by another account is refused, never moved (`wallet-sign-in.ts:237-239`).
 - **Phishing of the sign-in message.** The message names `app.pickler.fun` (`SIWE_DOMAIN`). The sheet
@@ -259,14 +261,14 @@ types, fed by fixtures.
 
 ## 10. Rollout and dependencies
 
-1. **Needs first:** the product-hosts-v1 implementation (three hosts, DNS, the AASA host rule,
+1. **Needs first:** `product-hosts-cutover-v2.md` (three hosts, DNS, the AASA host rule,
    `hosts.ts` without the `app.pickler.fun` studio fallback), and `TURNKEY_RPID=studio.pickler.fun`
    on every deployed environment.
 2. The migration and API changes can ship before the web signer. They are backwards compatible
    (`wallet_kind` defaults to `external`).
 3. The web Mera signer ships behind `NEXT_PUBLIC_MERA_WEB=off`, and is turned on after acceptance
    item 7.
-4. The paid-reads and launchpad-trading specs provide the quote endpoints that §3.6 signs. Until
+4. `paid-reads-v1.md` and `token-trading-v1.md` provide the intents and quotes that §3.6 signs. Until
    they exist, only the sign-in request type ships.
 5. The same change updates `apps/web/AGENTS.md` "The wallet", the comment at `signer.ts:9-11`,
    `turnkey-passkey-custody-v1.md` §6, `product-hosts-v1.md` §2/§7, and the product-split table in

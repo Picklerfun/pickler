@@ -204,7 +204,7 @@ outside Pickler.
 | Cloudflare Queues | export and deletion jobs                                                                                           | queue `pickler-account-jobs`, consumed by `workers/api`                                                                                                       |
 | Supabase Auth     | revoke sessions (admin `signOut(userId, 'global')`), `deleteUser`                                                  | the existing admin client (`wallet-accounts.ts`)                                                                                                              |
 | API vars          |                                                                                                                    | `MON_GAS_TOPUP_WEI=20000000000000000`, `ACCOUNT_DELETION_GRACE_DAYS=7`, `HANDLE_QUARANTINE_DAYS=90`, `DUST_AUSD_MICRO=10000`, `DUST_MON_WEI=1000000000000000` |
-| Email             | "your export is ready", "your account will be deleted on …"                                                        | the paid-reads spec's email provider                                                                                                                          |
+| Email             | "your export is ready", "your account will be deleted on …"                                                        | the email provider of `paid-reads-v1.md`                                                                                                                      |
 
 ## 7. Design work
 
@@ -271,10 +271,10 @@ the delete flow's scheduled state.
 ## 10. Rollout and dependencies
 
 1. **Needs first:** `TURNKEY_RPID=studio.pickler.fun` and the Turnkey secrets bound on the deployed API
-   (research 05 §2.6; the identity-custody rollout), and a real testnet deposit done once.
+   (research 05 §2.6; `production-environment-v1.md`), and a real testnet deposit done once.
 2. Order: sweepers and incidents (no UI risk) → Wallets list (C14) → withdraw → send → remove passkey and
    reconcile → orphan cleanup → export → deletion.
-3. Deletion needs the `me` schema (mobile-backend-v1) and the paid-reads tables to exist, so that its
+3. Deletion needs the `me` schema (mobile-backend-v1) and the `paid-reads-v1.md` tables to exist, so that its
    table of removed and kept rows is complete. Until then it covers what exists and the job's list is
    extended with each new table (a test fails when a table that has a `user_id` column is in neither
    list).
