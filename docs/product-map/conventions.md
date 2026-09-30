@@ -84,8 +84,9 @@ These resolve the blockers in `docs/product-map/cross-review.md`. Specs follow t
     public, never the reasoning or sources. The resolution job scores paid reads with
     `audience = buyer` and public-record only lists decisions with `audience = public`.
 11. **Pickler pays for the research behind a paid read,** out of its fee, never the owner's research
-    budget. `paid-reads-v1` sets the per-read compute ceiling (default: the lower of 20% of the price
-    and 2 AUSD); `research-runtime-v2` enforces it as a separate `reads` budget scope.
+    budget. `paid-reads-v1` sets the per-read compute ceiling at the lower of 10% of the price and
+    2 AUSD, so a read never costs Pickler more than its 10% fee; `research-runtime-v2` enforces it as a
+    separate `reads` budget scope. (Amended after review: an earlier 20% ceiling exceeded the fee.)
 12. **Perps decisions get their own protocol spec,** `perpl-agent-runtime-v1.md`, which defines
     `perps-direction-v1` (instrument, direction, entry, horizon, resolution by Perpl mark price). The
     cycle between `perpl-live-v1` and `research-runtime-v2` is broken by both depending on it.
