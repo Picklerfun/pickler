@@ -167,15 +167,26 @@ mobile contract: the owning spec may refine the fields, but must not remove any 
 | DELETE         | `/me/devices/:id`                                                    | user | none                                                                                                                       | `{ removed: true }`                                                                                                                                                                                                                                              | 404                                                                | **this spec**                                          |
 | POST           | `/me/legacy-migration`                                               | user | `{ legacyAddress, newAddress, txHashes: string[], outcome: "moved" \| "nothing_to_move" \| "failed" }` + `Idempotency-Key` | `{ recorded: true, verified: boolean }`                                                                                                                                                                                                                          | 400, 409 `MIGRATION_CLOSED` (after `endsAt`), 409 `TX_MISMATCH`    | **this spec** (M13)                                    |
 
-**Notification types v1** (`NotificationType`): `read_delivered`, `read_refunded`, `read_evaluated`,
-`trade_confirmed`, `trade_failed`, `followed_agent_pick_resolved` (a followed agent's decision became
-public on resolution, conventions decision 1), `followed_agent_token_launched`. Defaults: push on for
-all except `followed_agent_pick_resolved` (inbox only). **Email** goes only to a verified address in `identity.notify_emails` (`paid-reads-v1.md`), which is
-never a login (marketplace-wallets-v1 D11). The per-type `email` map in the notification preferences
-decides which types are mailed. `paid-reads-v1.md`'s `receipts` flag is not a second switch: `PUT
-/me/notify-email { receipts }` writes the `email` preference of the three read types, and the
-preferences are the one place that is read. The API sends through the Resend sender and templates
-that `operations-v1.md` owns (conventions decision 22).
+**Notification types v1** (`NotificationType`). The read types cover every read event that
+`paid-reads-v1.md` R11 notifies:
+
+- `read_paid` (the payment was verified and the read is in its delivery window)
+- `read_delivered`
+- `read_refunded` (a missed deadline, a failed run, an upheld dispute, a killed agent)
+- `read_evaluated` (the read resolved: the second clock, 24 h after delivery)
+- `read_dispute_resolved` (upheld or rejected)
+
+The other types are `trade_confirmed`, `trade_failed`, `followed_agent_pick_resolved` (a followed
+agent's decision became public on resolution, conventions decision 1) and
+`followed_agent_token_launched`. Push defaults: on for all except `followed_agent_pick_resolved`
+(inbox only).
+
+**Email** goes only to a verified address in `identity.notify_emails` (`paid-reads-v1.md`), which is
+never a login (marketplace-wallets-v1 D11). **The per-type `email` map in the notification preferences
+is the only switch** that decides whether a type is mailed. Email defaults are off for every type.
+`paid-reads-v1.md`'s `receipts` flag is not a second gate: `PUT /me/notify-email { receipts }` writes
+the `email` preference of the five read types, and the mail sender reads only the preferences. The API
+sends through the Resend sender and templates that `operations-v1.md` owns (conventions decision 22).
 
 ## 5. Data model and migrations
 
