@@ -104,3 +104,32 @@ These resolve the blockers in `docs/product-map/cross-review.md`. Specs follow t
     has no crons.
 16. **The nonce rate limit is owned by `operations-v1`** (one `RATE_LIMIT_SALT`, one table).
 17. **Backups include every schema,** the `reads` ledger first among them.
+
+## Decisions taken after the scope map (2026-09-30)
+
+These close the disagreements listed in `docs/product-map/scope-v1.md` §9.4.
+
+18. **`workers/jobs` is a scheduler only:** no database binding and no secrets. Each cron calls an
+    internal route on the API (`/v1/internal/*`) or on trading (through the `TRADING` binding), and
+    that Worker does the work, writes its own heartbeat and consumes the queues. Queues are consumed
+    by the API (notifications, account jobs) or by trading (orders). Money housekeeping that needs
+    product rules (deposit reconciler, refunds, payouts) is dispatched by jobs; pure housekeeping
+    (sweepers, retention, the media sweeper, alerts, DLQ consumers) runs in `workers/ops`.
+19. **`decision-resolution-v1` owns the shape of `pickler.decision_live_pnl`;** `perpl-live-v1` writes
+    rows in that shape.
+20. **`perpl-agent-runtime-v1` owns the perps decision and the paper account; `perpl-live-v1` owns live
+    positions and live exits.** A live testnet agent is scored on testnet and labelled so. The
+    default perps horizon is 24 h and the default schedule every 6 h, leaving runs for follow-ups.
+21. **A paid read's price must fund its run:** `paid-reads-v1` refuses a price whose compute ceiling
+    (decision 11) is below `research-runtime-v2`'s estimated read-run cost, and the minimum price is
+    5 AUSD. The read lane allows up to 3 concurrent read runs per agent and 10 globally, and an
+    agent's daily capacity is capped by what the lane can deliver within its clock.
+22. **Email:** addresses for receipts and notifications live only in `identity.notify_emails`; the
+    API sends through Resend (the sender and templates are owned by `operations-v1`); no route
+    returns `EMAIL_REQUIRED`.
+23. **Every marketplace-account table keys on `auth.users.id`,** including `media.uploads`; none has a
+    foreign key to `identity.profiles`. Account deletion removes rows explicitly (`custody-v2`).
+24. **The incident fix never opens anything:** Step A deploys only the API from main, with research,
+    trading and indexer untouched, admissions closed and no `TURNKEY_RPID` set on staging (that
+    stays `localhost`-style disabled until the host cutover, per `product-hosts-cutover-v2`). `main`
+    already serves `/v1/health` through the growth routes (`workers/api/src/routes/growth.ts:31`).
