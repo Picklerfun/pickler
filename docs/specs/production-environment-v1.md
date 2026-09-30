@@ -508,8 +508,9 @@ Every spec that adds a binding adds its name to `deploy/required-bindings.json` 
   `dead_letter_queue`, and admissions `false`.
 - New projects, each with `wrangler.jsonc` (staging, following the existing research/trading
   pattern), `wrangler.production.jsonc` and its own `AGENTS.md` (root `AGENTS.md:7`):
-  `workers/treasury`, `workers/jobs`, `workers/ops`. All three have `workers_dev: false`,
-  `preview_urls: false` and no routes; `check:production` asserts it, and asserts that `workers/ops`, `workers/jobs` and `workers/treasury` each have a production config, appear in `scripts/release.mjs`'s step list and in the ledger's `workers` object (cross-review W2).
+  `workers/treasury`, `workers/jobs`, `workers/ops`. All three have `workers_dev: false` and
+  `preview_urls: false`; treasury and jobs have no routes, and ops has exactly one, the operator
+  endpoint `ops.pickler.fun/__operator` (`operations-v1.md` §4.3); `check:production` asserts it, and asserts that `workers/ops`, `workers/jobs` and `workers/treasury` each have a production config, appear in `scripts/release.mjs`'s step list and in the ledger's `workers` object (cross-review W2).
 - `scripts/check-production.mjs` (`npm run check:production`) — the assertions of
   `scripts/check-staging.mjs` generalised by a table of names per environment, plus: web has exactly
   the three custom domains; no backend has routes; every Worker's `account_id` matches; production

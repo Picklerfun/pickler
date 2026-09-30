@@ -222,6 +222,7 @@ Worker's config (`production-environment-v1.md` D5):
 | `media.pickler.fun`            | R2 bucket `pickler-media-production` (R2 custom domain)                           | managed by R2; `token-launch-v1.md` T5                                                          |
 | `media-staging.pickler.fun`    | R2 bucket `pickler-media-staging`                                                 | managed by R2                                                                                   |
 | `mail.pickler.fun`             | sending domain for Resend (Auth and transactional mail)                           | SPF `include:` Resend, DKIM CNAMEs, DMARC `p=quarantine`; no inbound MX (`operations-v1.md` O9) |
+| `ops.pickler.fun`              | `pickler-ops-production` (custom domain), operator endpoint only                  | managed by Custom Domains; `operations-v1.md` §4.3                                              |
 | `sign.app.pickler.fun`         | reserved for the v1.1 signer iframe (`marketplace-wallets-v1.md`)                 | none yet; two levels deep, so it needs an Advanced Certificate or a one-level name when built   |
 
 This table is the zone's full inventory (cross-review W9): a spec that adds a hostname adds its row
