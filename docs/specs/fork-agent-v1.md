@@ -136,13 +136,13 @@ CREATE INDEX brief_loads_user_idx ON agents.brief_loads (loaded_by, created_at D
 - `linesFromSource` is computed by comparing the fork's current brief lines with `source_brief`
   (trimmed, case-sensitive).
 - The forkable list is a read over `agents.agents` (public, not killed) ⨝ `agent_profiles`
-  (`forkable`) ⨝ the active config with a non-null brief, ordered per F3 with the settlement read
+  (`forkable`) ⨝ the active config with a non-null brief, ordered per F3 with `decision-resolution-v1.md`'s
   model's score when it exists.
 
 ## 6. Integrations
 
-None external. Internal: the settlement/record read model for score, 30-day hit rate and net
-(conventions decision 2); until it exists these are `null` and drawn as NEW / "—". The marketplace
+None external. Internal: the record read model for score, 30-day hit rate and net
+(`decision-resolution-v1.md`, conventions decision 2; shown publicly per `public-record-v1.md`); until it exists these are `null` and drawn as NEW / "—". The marketplace
 profile pages for "SEE ITS RECEIPTS →", through `hrefFor`/`marketplaceUrl`
 (`apps/web/src/server/hosts.ts:106-137`).
 
@@ -190,7 +190,7 @@ profile pages for "SEE ITS RECEIPTS →", through `hrefFor`/`marketplaceUrl`
 ## 10. Rollout and dependencies
 
 Needs first: `studio-brief-v1.md` (built), `go-public-v1.md` (visibility and the Public profile
-section, where the opt-in lives). Useful but not blocking: the settlement read model for scores
+section, where the opt-in lives). Useful but not blocking: `decision-resolution-v1.md`'s scores
 (without it, every chip says NEW). Order: migration → opt-in switch → list and brief endpoints →
 the home's START FROM → attribution on profiles.
 
