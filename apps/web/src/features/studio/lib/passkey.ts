@@ -16,7 +16,7 @@ import { remembered } from "./remembered";
  */
 
 /** The access token, read again after every prompt: a prompt can outlive a session. */
-export async function session() {
+async function session() {
   const supabase = getSupabase();
   const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
   if (!data.session) {

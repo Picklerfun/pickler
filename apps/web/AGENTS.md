@@ -65,9 +65,9 @@ next dev. Check cookies, protected routes, session refresh, signout and tenant i
 
 ## Design system
 
-Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — landing, apply, the public pages — uses `data-surface="light"`, and the studio, account and auth screens use `data-surface="dark"`. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
+Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — the landing and every page inside `PublicShell`, the agent pages included — uses `data-surface="light"`, and the studio, account, auth and apply screens use `data-surface="dark"`. No screen paints a ground of its own: the night sky, the starfield and the neon floor were removed on 2026-09-29. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
 
-Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is the lit marketing call to action — the hero, the waitlist, the application), `Chip` for filters and toggles (`ChipLink` when it navigates, `ChipText` when it only reads), `Segmented` for an exclusive choice that is always on screen, `Tag` for read-only status, `Meter` for a filled track, `Icon` for every icon. Feature stylesheets keep only what a control does differently and pass it through `className`; they do not re-declare shape, type or state. Colour is the same: each sheet aliases the system tokens (`--ink: var(--pk-ink)`) and holds no literal. Panels take the shared surface with `composes: pk-panel from global` instead of redeclaring a border and a radius.
+Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is the lit marketing call to action — the hero, the waitlist, the application), `Chip` for filters and toggles (`ChipLink` when it navigates, `ChipText` when it only reads), `Segmented` for an exclusive choice that is always on screen, `Tag` for read-only status, `Meter` for a filled track, `Icon` for every icon. Feature stylesheets keep only what a control does differently and pass it through `className`; they do not re-declare shape, type or state. Colour is the same: each sheet reads the system tokens by name (`var(--pk-ink)`) and holds no literal, no alias of a token (`--ink: var(--pk-ink)`) and no `--pk-*` definition. Every token has one source, `packages/ui/src/styles.css`; that includes the seven carried forward from before v2 and kept under their own names — `--pk-ink-dim`, `--pk-border-strong` and the five `--pk-*-edge` (lime, magenta, amber, cyan, violet) — which are defined per surface there like the rest. A custom property of a sheet's own is for a computed value that is not a colour. The one place a token reaches CSS from TypeScript is `src/lib/accent.ts` (`accentVars`, `swatchVars`), because which agent a screen shows is data. `npm run design:source` fails on any of these, on a class no component names, and on `data-third-party-mark` (which the runtime check skips) anywhere but `packages/ui/src/brand.tsx`. Panels take the shared surface with `composes: pk-panel from global` instead of redeclaring a border and a radius.
 
 Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — the price panel on a token page and every series under the leaderboard. Features hand them timestamped buckets and nothing else; colours and type come from the surface. The library's own logo is off, so `PublicShell` carries the TradingView credit its licence asks for; any new surface that shows a chart needs that credit too.
 
@@ -187,6 +187,13 @@ requiring those bindings are unavailable. A successful preview is not full-stack
 
 The private studio uses the Studio shell and sections under `features/studio/sections`, reached
 from the home's Menu.
+`sections/rail.ts` is the one list of sections: `RAIL`, four groups (RUN, BUILD, GROW, PUBLIC) of
+the thirteen keys of `sections/keys.ts`, in their order, each with its icon, label and `soon`. The
+shell's rail, the home's Menu and the empty home's rail all draw it. `sources`, `identity`,
+`profile`, `audience` and `token` have no screen: `isSoon` marks them SOON in all three, and they
+open on the one Soon panel (`sections/soon.tsx`, copy in `PANELS`), which the board also draws,
+without SOON, for its two links out. `isPanel` decides which sections draw it; both are pinned in
+`studio-rail.test.ts`. `sections/brief.tsx` is the Brief row's editor for an existing agent.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
 The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
@@ -226,7 +233,7 @@ loader even from a CommonJS file, unlike this module's own static `import`.
 
 `api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
 funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
-`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`), `updateConfig`,
+`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`),
 `setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
 `depositPrepare`/`depositConfirm`, and
 the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
@@ -309,7 +316,8 @@ order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s st
 
 With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`), drawn from the
 "Pickler Studio Empty v4" canvas: a top bar with the dashed "No agent yet" chip, TESTNET and the
-profile; the studio rail with every section disabled ("After you create your agent"); and the first
+profile; the studio rail (`RAIL`, the five soon sections tagged SOON) with every section disabled
+("After you create your agent"); and the first
 agent's brief — its five sections (thesis, reads, enters, exits, never) drawn blank as prompts, a
 "Starting point: Blank" card and an idle paper run beside it, the second-passkey suggestion above it.
 The canvas edits the brief and runs it on paper in place; neither has a backend (the brief is not
@@ -340,7 +348,7 @@ rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
-instead of the rail. The Menu reaches every section the rail does, grouped RUN / BUILD / GROW, and
+instead of the rail. The Menu reaches every section the rail does, built from `RAIL` in its four groups, and
 the rail has a Home item back. `/studio?agent=<id>` opens on that agent (the creation flow's
 "Open the studio" links there); without it, or for an id that is not the person's, the studio opens
 on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
@@ -481,4 +489,18 @@ needs a session with no wallet and the design harness has none;
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
 
-The historical `/console` URL redirects to `/studio` with its query preserved. `/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.
+`/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.
+
+## Design checks
+
+`npm run design:check` runs the static source check and then the rendered checks (surfaces, tokens,
+contrast, type) over every route in `scripts/design/routes.mjs`. It starts the fixture API on 8799
+and this app on 3001 with authentication switched off, and stops both when it ends; a port that is
+already taken is refused, not reused. `npm run design:source` is the static check alone.
+`npm run design:shots` writes screenshots to the folder `DESIGN_SHOTS_DIR` names, and
+`npm run design:compare -- <before> <after>` says which screens differ. A screen that needs a
+session to render gets a door that is shut in production (`?stage=`, `?step=`, `?section=`,
+`/signup?state=passkey`, `/passkey?state=add`, `/portfolio?state=connected`) and a route that
+proves it. A route proves an id the screen itself renders, never a container that is there
+whatever it holds: each studio section's root carries `studio-section-<key>` and the Soon panel
+`studio-soon-<key>`. A new screen gets a route in the same change.

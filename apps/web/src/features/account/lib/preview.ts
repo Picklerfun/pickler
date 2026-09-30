@@ -23,7 +23,7 @@ import { isAuthConfigured } from "../../auth/lib/config";
 import type { PasskeyDto, WalletDto } from "../../auth/lib/custody-api";
 import type { ProfileDto } from "../../auth/lib/pickler-api";
 
-export interface PreviewState {
+interface PreviewState {
   profile: ProfileDto;
   wallet: WalletDto;
   passkeys: PasskeyDto[];

@@ -1,0 +1,534 @@
+diff --git a/scripts/design/fixtures/source/colour-in-ts.fail.tsx b/scripts/design/fixtures/source/colour-in-ts.fail.tsx
+new file mode 100644
+index 0000000..a3d9941
+--- /dev/null
++++ b/scripts/design/fixtures/source/colour-in-ts.fail.tsx
+@@ -0,0 +1,7 @@
++export const lime = { color: "#C8F03A", rgb: "200,240,58" };
++export const grid = "rgba(11, 13, 26, 0.12)";
++export const glow = `0 0 12px #ff5fa2`;
++
++export function Mark() {
++  return <path fill="#4285F4" d="M0 0h24v24H0z" />;
++}
+diff --git a/scripts/design/fixtures/source/colour-in-ts.pass.tsx b/scripts/design/fixtures/source/colour-in-ts.pass.tsx
+new file mode 100644
+index 0000000..1545891
+--- /dev/null
++++ b/scripts/design/fixtures/source/colour-in-ts.pass.tsx
+@@ -0,0 +1,14 @@
++// A comment may quote #c8f03a and rgba(0, 0, 0, 0.5).
++import Link from "next/link";
++
++export const anchor = "#how";
++export const selector = "#tape, #mascot-card";
++export const ticker = "$HALF";
++
++export function Row() {
++  return (
++    <Link href="#feed" style={{ color: "currentColor" }}>
++      Issue #12 is fixed
++    </Link>
++  );
++}
+diff --git a/scripts/design/fixtures/source/colour-literal.fail.module.css b/scripts/design/fixtures/source/colour-literal.fail.module.css
+new file mode 100644
+index 0000000..82a3adc
+--- /dev/null
++++ b/scripts/design/fixtures/source/colour-literal.fail.module.css
+@@ -0,0 +1,29 @@
++.hex {
++  color: #c8f03a;
++}
++
++.short {
++  color: #000;
++}
++
++.functional {
++  background: rgba(245, 246, 255, 0.06);
++}
++
++.triple {
++  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
++}
++
++.hsl {
++  border-color: hsl(210 40% 50%);
++}
++
++.named {
++  color: white;
++}
++
++.continued {
++  box-shadow:
++    inset 0 1px 0 var(--pk-rule),
++    0 0 24px rgba(200, 240, 58, 0.32);
++}
+diff --git a/scripts/design/fixtures/source/colour-literal.pass.module.css b/scripts/design/fixtures/source/colour-literal.pass.module.css
+new file mode 100644
+index 0000000..029412b
+--- /dev/null
++++ b/scripts/design/fixtures/source/colour-literal.pass.module.css
+@@ -0,0 +1,13 @@
++/* Comments may quote a value: #c8f03a, rgba(0, 0, 0, 0.5), white. */
++.card {
++  color: var(--pk-ink);
++  border: 1px solid var(--pk-rule);
++  background: transparent;
++  outline-color: currentColor;
++  fill: inherit;
++  white-space: nowrap;
++  font-family: Tan, sans-serif;
++  animation: pink 2s linear infinite;
++  transition: color 140ms;
++  mask-image: linear-gradient(to top, var(--pk-ink) 0%, transparent 88%);
++}
+diff --git a/scripts/design/fixtures/source/token-alias.fail.module.css b/scripts/design/fixtures/source/token-alias.fail.module.css
+new file mode 100644
+index 0000000..7cb7f11
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-alias.fail.module.css
+@@ -0,0 +1,8 @@
++.page {
++  --ink: var(--pk-ink);
++  --label: var(--pk-font);
++}
++
++.mark[data-hue="lime"] {
++  --hue: var(--pk-lime);
++}
+diff --git a/scripts/design/fixtures/source/token-alias.pass.module.css b/scripts/design/fixtures/source/token-alias.pass.module.css
+new file mode 100644
+index 0000000..3997ec6
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-alias.pass.module.css
+@@ -0,0 +1,7 @@
++.row {
++  --gap: 12px;
++  --edge: 1px solid var(--pk-rule);
++  gap: var(--gap);
++  border-bottom: var(--edge);
++  color: var(--pk-ink);
++}
+diff --git a/scripts/design/fixtures/source/token-definition.fail.module.css b/scripts/design/fixtures/source/token-definition.fail.module.css
+new file mode 100644
+index 0000000..90e4907
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-definition.fail.module.css
+@@ -0,0 +1,3 @@
++.page {
++  --pk-ink: var(--pk-lime);
++}
+diff --git a/scripts/design/fixtures/source/token-definition.pass.module.css b/scripts/design/fixtures/source/token-definition.pass.module.css
+new file mode 100644
+index 0000000..128c989
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-definition.pass.module.css
+@@ -0,0 +1,6 @@
++.rail {
++  --width: 218px;
++  --delay: calc(var(--i) * 40ms);
++  width: var(--width);
++  transition-delay: var(--delay);
++}
+diff --git a/scripts/design/fixtures/source/token-file.fail.css b/scripts/design/fixtures/source/token-file.fail.css
+new file mode 100644
+index 0000000..87fa481
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-file.fail.css
+@@ -0,0 +1,8 @@
++:root {
++  --pk-lime: #c8f03a;
++  --pk-rule: rgba(11, 13, 26, 0.08);
++}
++
++.pk-button {
++  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3);
++}
+diff --git a/scripts/design/fixtures/source/token-file.pass.css b/scripts/design/fixtures/source/token-file.pass.css
+new file mode 100644
+index 0000000..a365d9c
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-file.pass.css
+@@ -0,0 +1,9 @@
++:root {
++  --pk-lime: #c8f03a;
++  --pk-rule: rgba(11, 13, 26, 0.08);
++}
++
++.pk-button {
++  color: var(--pk-lime);
++  border-color: var(--pk-rule);
++}
+diff --git a/scripts/design/fixtures/source/token-mirror.pass.ts b/scripts/design/fixtures/source/token-mirror.pass.ts
+new file mode 100644
+index 0000000..6e171c9
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-mirror.pass.ts
+@@ -0,0 +1,6 @@
++export const MIRROR = {
++  light: {
++    "--pk-ink": "#0b0d1a",
++    "--pk-rule": "rgba(11, 13, 26, 0.08)",
++  },
++} as const;
+diff --git a/scripts/design/fixtures/source/token-ts.fail.ts b/scripts/design/fixtures/source/token-ts.fail.ts
+new file mode 100644
+index 0000000..4cc03b2
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-ts.fail.ts
+@@ -0,0 +1,3 @@
++export const alias = { "--accent": "var(--pk-lime)" };
++export const define = { "--pk-ink": "currentColor" };
++export const ghost = (style: CSSStyleDeclaration) => style.getPropertyValue("--pk-ghost");
+diff --git a/scripts/design/fixtures/source/token-ts.pass.ts b/scripts/design/fixtures/source/token-ts.pass.ts
+new file mode 100644
+index 0000000..1dfb419
+--- /dev/null
++++ b/scripts/design/fixtures/source/token-ts.pass.ts
+@@ -0,0 +1,3 @@
++export const read = (style: CSSStyleDeclaration) => style.getPropertyValue("--pk-ink").trim();
++export const index = (position: number) => ({ "--i": position });
++export const family = (hue: string) => `--pk-agent-${hue}-fill`;
+diff --git a/scripts/design/fixtures/source/tokens.css b/scripts/design/fixtures/source/tokens.css
+new file mode 100644
+index 0000000..0b8d9ed
+--- /dev/null
++++ b/scripts/design/fixtures/source/tokens.css
+@@ -0,0 +1,16 @@
++/* The token file the fixtures are judged against. `--pk-ghost` is named here in a comment only,
++ * which is not a definition. */
++:root {
++  --pk-lime: #c8f03a;
++  --pk-font: "Instrument Sans", sans-serif;
++}
++
++[data-surface="light"],
++:root {
++  --pk-ink: #0b0d1a;
++  --pk-rule: rgba(11, 13, 26, 0.08);
++}
++
++[data-surface="dark"] {
++  --pk-ink: #ffffff;
++}
+diff --git a/scripts/design/fixtures/source/undefined-token.fail.module.css b/scripts/design/fixtures/source/undefined-token.fail.module.css
+new file mode 100644
+index 0000000..2c53eeb
+--- /dev/null
++++ b/scripts/design/fixtures/source/undefined-token.fail.module.css
+@@ -0,0 +1,4 @@
++.title {
++  font: 600 11px/1.2 var(--pk-font-mono, var(--pk-font));
++  color: var(--pk-ghost);
++}
+diff --git a/scripts/design/fixtures/source/undefined-token.pass.module.css b/scripts/design/fixtures/source/undefined-token.pass.module.css
+new file mode 100644
+index 0000000..e7b9d44
+--- /dev/null
++++ b/scripts/design/fixtures/source/undefined-token.pass.module.css
+@@ -0,0 +1,4 @@
++.title {
++  font: 600 11px/1.2 var(--pk-font);
++  color: var(--pk-ink);
++}
+diff --git a/scripts/design/fixtures/source/unused-class.module.css b/scripts/design/fixtures/source/unused-class.module.css
+new file mode 100644
+index 0000000..c9bd126
+--- /dev/null
++++ b/scripts/design/fixtures/source/unused-class.module.css
+@@ -0,0 +1,33 @@
++.page {
++  color: var(--pk-ink);
++}
++
++.page a.link:hover {
++  color: var(--pk-lime);
++}
++
++.panel {
++  composes: base;
++}
++
++.base {
++  border: 1px solid var(--pk-rule);
++}
++
++.resultWon {
++  color: var(--pk-lime);
++}
++
++.orphan {
++  color: var(--pk-ink);
++}
++
++.page :global(.pk-button) {
++  color: var(--pk-ink);
++}
++
++@media (max-width: 640px) {
++  .ghost {
++    display: none;
++  }
++}
+diff --git a/scripts/design/fixtures/source/unused-class.reader.tsx b/scripts/design/fixtures/source/unused-class.reader.tsx
+new file mode 100644
+index 0000000..dca4934
+--- /dev/null
++++ b/scripts/design/fixtures/source/unused-class.reader.tsx
+@@ -0,0 +1,13 @@
++import styles from "./unused-class.module.css";
++
++const outcome = { won: "resultWon" } as const;
++
++export function Reader({ won }: { won: keyof typeof outcome }) {
++  return (
++    <div className={`${styles.page} ${styles["panel"]} ${styles[outcome[won]]}`}>
++      <a className={styles.link} href="#top">
++        top
++      </a>
++    </div>
++  );
++}
+diff --git a/scripts/design/source.test.mjs b/scripts/design/source.test.mjs
+new file mode 100644
+index 0000000..4387e1a
+--- /dev/null
++++ b/scripts/design/source.test.mjs
+@@ -0,0 +1,234 @@
++// The static check's rules, each against a file that breaks it and a file that does not. The
++// fixtures are real files rather than strings so that what is tested is what the check reads: a
++// whole stylesheet with comments, continued values and selectors in it.
++import assert from "node:assert/strict";
++import { execFileSync, spawnSync } from "node:child_process";
++import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import path from "node:path";
++import { test } from "node:test";
++import { fileURLToPath } from "node:url";
++import {
++  checkCss,
++  checkTs,
++  declarations,
++  definedTokens,
++  readClasses,
++  unusedClasses,
++} from "./lib/source-rules.mjs";
++
++const HERE = path.dirname(fileURLToPath(import.meta.url));
++const fixture = (name) => readFileSync(path.join(HERE, "fixtures/source", name), "utf8");
++const tokens = definedTokens(fixture("tokens.css"));
++
++const css = (name, isTokenFile = false) => checkCss(name, fixture(name), { tokens, isTokenFile });
++const typescript = (name, as = name) =>
++  checkTs(as, fixture(name), {
++    tokens,
++    mirror: "packages/ui/src/tokens.ts",
++    marks: ["packages/ui/src/brand.tsx"],
++    channel: "apps/web/src/lib/accent.ts",
++  });
++const rules = (problems) => problems.map((problem) => `${problem.rule}:${problem.line}`);
++
++test("the token file's definitions are found on every selector, and a comment defines nothing", () => {
++  assert.deepEqual([...tokens].sort(), ["--pk-font", "--pk-ink", "--pk-lime", "--pk-rule"]);
++});
++
++test("a value continued over several lines is one declaration, at its property's line", () => {
++  const found = declarations(fixture("colour-literal.fail.module.css"));
++  const shadow = found.find((one) => one.property === "box-shadow" && one.line === 26);
++
++  assert.equal(shadow?.value, "inset 0 1px 0 var(--pk-rule), 0 0 24px rgba(200, 240, 58, 0.32)");
++});
++
++test("colour literal: tokens, keywords and names that are not colours pass", () => {
++  assert.deepEqual(css("colour-literal.pass.module.css"), []);
++});
++
++test("colour literal: hex, rgb, a triple in rgba, hsl, a named colour and a continued value fail", () => {
++  assert.deepEqual(rules(css("colour-literal.fail.module.css")), [
++    "colour-literal:2",
++    "colour-literal:6",
++    "colour-literal:10",
++    "colour-literal:14",
++    "colour-literal:18",
++    "colour-literal:22",
++    "colour-literal:26",
++  ]);
++});
++
++test("colour literal: the token file may hold one in a definition", () => {
++  assert.deepEqual(css("token-file.pass.css", true), []);
++});
++
++test("colour literal: the token file may not hold one in a rule", () => {
++  assert.deepEqual(rules(css("token-file.fail.css", true)), ["colour-literal:7"]);
++});
++
++test("token definition: a module's own local values pass", () => {
++  assert.deepEqual(css("token-definition.pass.module.css"), []);
++});
++
++test("token definition: --pk-* outside the token file fails", () => {
++  assert.deepEqual(rules(css("token-definition.fail.module.css")), [
++    "token-definition:2",
++    "token-alias:2",
++  ]);
++});
++
++test("token alias: a computed local value that reads a token passes", () => {
++  assert.deepEqual(css("token-alias.pass.module.css"), []);
++});
++
++test("token alias: a property whose whole value is one token fails, per variant too", () => {
++  assert.deepEqual(rules(css("token-alias.fail.module.css")), [
++    "token-alias:2",
++    "token-alias:3",
++    "token-alias:7",
++  ]);
++});
++
++test("undefined token: every token read is defined", () => {
++  assert.deepEqual(css("undefined-token.pass.module.css"), []);
++});
++
++test("undefined token: a read with a fallback is still a read of something undefined", () => {
++  assert.deepEqual(rules(css("undefined-token.fail.module.css")), [
++    "undefined-token:2",
++    "undefined-token:3",
++  ]);
++});
++
++test("colour in TypeScript: anchors, selectors, comments and prose pass", () => {
++  assert.deepEqual(typescript("colour-in-ts.pass.tsx"), []);
++});
++
++test("colour in TypeScript: hex and rgb() in strings, templates and JSX attributes fail", () => {
++  assert.deepEqual(rules(typescript("colour-in-ts.fail.tsx")), [
++    "colour-in-ts:1",
++    "colour-in-ts:2",
++    "colour-in-ts:3",
++    "colour-in-ts:6",
++  ]);
++});
++
++test("colour in TypeScript: the mirror and the third-party marks are the two exemptions", () => {
++  assert.deepEqual(typescript("colour-in-ts.fail.tsx", "packages/ui/src/tokens.ts"), []);
++  assert.deepEqual(typescript("colour-in-ts.fail.tsx", "packages/ui/src/brand.tsx"), []);
++});
++
++test("tokens in TypeScript: reading one by name, a local index and a template family pass", () => {
++  assert.deepEqual(typescript("token-ts.pass.ts"), []);
++});
++
++test("tokens in TypeScript: an alias, a definition and an undefined name fail", () => {
++  assert.deepEqual(rules(typescript("token-ts.fail.ts")), [
++    "token-alias:1",
++    "token-definition:2",
++    "undefined-token:3",
++  ]);
++});
++
++test("tokens in TypeScript: the mirror may key its values by the token each one copies", () => {
++  assert.deepEqual(typescript("token-mirror.pass.ts", "packages/ui/src/tokens.ts"), []);
++});
++
++test("tokens in TypeScript: the same keys anywhere else are definitions", () => {
++  assert.deepEqual(rules(typescript("token-mirror.pass.ts")), [
++    "colour-in-ts:3",
++    "token-definition:3",
++    "colour-in-ts:4",
++    "token-definition:4",
++  ]);
++});
++
++test("tokens in TypeScript: the accent channel may hand a token to CSS", () => {
++  const found = typescript("token-ts.fail.ts", "apps/web/src/lib/accent.ts");
++
++  assert.deepEqual(rules(found), ["undefined-token:3"]);
++});
++
++test("unused class: named, quoted, composed and kept classes pass; the rest are reported", () => {
++  const used = readClasses(fixture("unused-class.reader.tsx"), "styles");
++  const found = unusedClasses("unused-class.module.css", fixture("unused-class.module.css"), used, [
++    "resultWon",
++  ]);
++
++  assert.deepEqual(
++    found.map((problem) => `${problem.text.split(" ")[0]}:${problem.line}`),
++    [".orphan:21", ".ghost:30"],
++  );
++});
++
++test("unused class: without the keep list a computed access is reported", () => {
++  const used = readClasses(fixture("unused-class.reader.tsx"), "styles");
++  const found = unusedClasses(
++    "unused-class.module.css",
++    fixture("unused-class.module.css"),
++    used,
++    [],
++  );
++
++  assert.equal(
++    found.some((problem) => problem.text.startsWith(".resultWon")),
++    true,
++  );
++});
++
++/* The command itself, over a tree built for the test: report-only exits 0 on a violation and
++ * --strict exits 1 on the same one, and a clean tree exits 0 either way. */
++function tree(moduleCss) {
++  const root = mkdtempSync(path.join(tmpdir(), "design-source-"));
++  const write = (file, text) => {
++    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
++    writeFileSync(path.join(root, file), text);
++  };
++  write("packages/ui/src/styles.css", fixture("tokens.css"));
++  write("apps/web/src/features/x/x.module.css", moduleCss);
++  write(
++    "apps/web/src/features/x/x.tsx",
++    'import styles from "./x.module.css";\nexport const name = styles.card;\n',
++  );
++  execFileSync("git", ["init", "--quiet"], { cwd: root });
++  execFileSync("git", ["add", "."], { cwd: root });
++  return root;
++}
++
++function run(root, ...flags) {
++  return spawnSync(process.execPath, [path.join(HERE, "source.mjs"), ...flags], {
++    encoding: "utf8",
++    env: { ...process.env, DESIGN_SOURCE_ROOT: root },
++  });
++}
++
++test("the command reports and exits 0, and --strict exits 1 on the same tree", () => {
++  const root = tree(".card {\n  color: #c8f03a;\n}\n");
++  try {
++    const report = run(root);
++    const strict = run(root, "--strict");
++
++    assert.equal(report.status, 0);
++    assert.match(
++      report.stdout,
++      /note {2}colour-literal {2}apps\/web\/src\/features\/x\/x\.module\.css:2/,
++    );
++    assert.match(report.stdout, /source: 1 violation\(s\)/);
++    assert.equal(strict.status, 1);
++    assert.match(strict.stdout, /FAIL {2}colour-literal/);
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++});
++
++test("the command exits 0 under --strict on a clean tree", () => {
++  const root = tree(".card {\n  color: var(--pk-ink);\n}\n");
++  try {
++    const strict = run(root, "--strict");
++
++    assert.equal(strict.status, 0);
++    assert.match(strict.stdout, /source: clean over 3 file\(s\)\./);
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++});

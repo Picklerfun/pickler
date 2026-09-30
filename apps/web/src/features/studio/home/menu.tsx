@@ -6,6 +6,7 @@ import type { Agent } from "../api";
 import { newAgentLock } from "../create/gate";
 import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
+import { RAIL } from "../sections/rail";
 import styles from "./home.module.css";
 
 interface Item {
@@ -16,8 +17,8 @@ interface Item {
 
 /**
  * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
- * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
- * person's other agents when there is more than one.
+ * it), then every studio section the rail reaches, from the same list the rails draw
+ * (`sections/rail.ts`), and the person's other agents when there is more than one.
  *
  * With no agent yet the Menu still opens, so a person can see everything an agent gets before
  * making one: "+ New agent" is open (the lock needs an agent to fund) and each section is listed
@@ -54,36 +55,20 @@ export function HomeMenu({
     draftLock: "",
   });
   const plugins = agent?.config.plugins?.enabled.length ?? 0;
-  const groups: { title: string; items: Item[] }[] = [
-    {
-      title: "RUN",
-      items: [
-        { key: "overview", label: "Overview", note: "" },
-        { key: "context", label: "Context", note: "" },
-        { key: "picks", label: "Picks", note: calls ? String(calls) : "" },
-        { key: "activity", label: "Activity", note: running ? "RUNNING" : "" },
-      ],
-    },
-    {
-      title: "BUILD",
-      items: [
-        { key: "brief", label: "Brief", note: "" },
-        { key: "skills", label: "Skills", note: plugins ? `${plugins} PLUGINS` : "" },
-        { key: "sources", label: "Sources", note: "" },
-        { key: "limits", label: "Limits & funding", note: "" },
-        { key: "identity", label: "Identity & voice", note: "" },
-      ],
-    },
-    {
-      title: "GROW",
-      items: [
-        { key: "profile", label: "Public page", note: "" },
-        { key: "audience", label: "Audience", note: "" },
-        { key: "token", label: "Token", note: "OPTIONAL" },
-        { key: "board", label: "The board", note: "" },
-      ],
-    },
-  ];
+  /* What each section carries beside its name: SOON for one with no screen, else what is live. */
+  const notes: Partial<Record<SectionKey, string>> = {
+    picks: calls ? String(calls) : "",
+    activity: running ? "RUNNING" : "",
+    skills: plugins ? `${plugins} PLUGINS` : "",
+  };
+  const groups: { title: string; items: Item[] }[] = RAIL.map((group) => ({
+    title: group.title,
+    items: group.items.map((item) => ({
+      key: item.key,
+      label: item.label,
+      note: item.soon ? "SOON" : (notes[item.key] ?? ""),
+    })),
+  }));
   const others = agent
     ? agents.filter((other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id))
     : [];

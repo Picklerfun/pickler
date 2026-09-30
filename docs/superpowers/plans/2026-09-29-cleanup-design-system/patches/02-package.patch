@@ -1,0 +1,16 @@
+diff --git a/package.json b/package.json
+index fc00524..f86bb0b 100644
+--- a/package.json
++++ b/package.json
+@@ -40,7 +40,10 @@
+     "contracts:test:fork": "forge test --root contracts --match-path 'test/fork/*'",
+     "contracts:abi": "npm run contracts:build && node scripts/generate-abi.mjs",
+     "typecheck:design": "tsc -p scripts/design/tsconfig.json",
+-    "design:source": "node scripts/design/source.mjs"
++    "design:source": "node scripts/design/source.mjs",
++    "design:check": "node scripts/design/run.mjs",
++    "design:shots": "node scripts/design/run.mjs shots",
++    "design:compare": "node scripts/design/compare.mjs"
+   },
+   "devDependencies": {
+     "@types/node": "^22.0.0",

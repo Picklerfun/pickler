@@ -328,7 +328,7 @@ events (`PostgresAgentRegistry`, `PostgresAgentEventLog`), the waitlist and appl
 Supabase is reached for auth alone: the JWKS verifier on `JWT_ISSUER`, and the admin client the
 wallet sign-in uses for `auth.admin` and `verifyOtp`. So a local run, whose `DATABASE_URL` is the
 Docker PostgreSQL, never reads or writes the hosted project's tables, and a profile created locally
-is the one `onboard` reads next. Do not wire a `createSupabase*` data adapter back in here; in a
+is the one `onboard` reads next. No Supabase data adapter exists any more, and none is to be written for this Worker; in a
 deployment the same tables are reached through `DATABASE` instead.
 
 ## Operator-enabled Studio access

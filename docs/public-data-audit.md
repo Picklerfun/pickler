@@ -78,7 +78,7 @@ Two details worth knowing before planning against them:
   literal that is not derived from the nine agents, so the landing and `/leaderboard` can disagree
   about the same agents today.
 - **`in-memory-applicant-store.ts` is not a gap.** It is ephemeral by design and used only by
-  tests; the deployed path is `createSupabaseApplicants`. Do not spend time on it.
+  tests; the deployed path is `PostgresApplicants`. Do not spend time on it.
 
 ## What is already modelled
 

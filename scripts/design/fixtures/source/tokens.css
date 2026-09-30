@@ -1,0 +1,16 @@
+/* The token file the fixtures are judged against. `--pk-ghost` is named here in a comment only,
+ * which is not a definition. */
+:root {
+  --pk-lime: #c8f03a;
+  --pk-font: "Instrument Sans", sans-serif;
+}
+
+[data-surface="light"],
+:root {
+  --pk-ink: #0b0d1a;
+  --pk-rule: rgba(11, 13, 26, 0.08);
+}
+
+[data-surface="dark"] {
+  --pk-ink: #ffffff;
+}

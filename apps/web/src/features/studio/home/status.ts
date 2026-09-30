@@ -22,8 +22,8 @@ export const INTERVALS = [3, 6, 12, 24] as const;
 export type IntervalHours = (typeof INTERVALS)[number];
 
 export type Pill = "WORKING" | "FIRST CALL IN" | "LIVE" | "NO CALL YET";
-export type Mood = "THINKING" | "RESEARCHING" | "PICKED" | "PASSED" | "WAITING" | "STOPPED";
-export type Tint = "violet" | "lime" | "grey" | "magenta";
+type Mood = "THINKING" | "RESEARCHING" | "PICKED" | "PASSED" | "WAITING" | "STOPPED";
+type Tint = "violet" | "lime" | "grey" | "magenta";
 
 /** What the home reads of the studio agent DTO: a structural subset, so a test can build one. */
 export interface StatusAgent {
@@ -36,7 +36,7 @@ export interface StatusAgent {
   draft?: boolean;
 }
 
-export interface StatusInput {
+interface StatusInput {
   /** The agent's latest run, or null before it has one. */
   run: Run | null;
   /** That run's events, oldest first. */
@@ -123,7 +123,7 @@ function assessed(events: readonly RunEvent[]): { lower: number; upper: number }
 }
 
 /** "2m 11s", "48s": a run's length as the strip writes it. */
-export function elapsed(ms: number): string {
+function elapsed(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
   if (seconds < 60) {
     return `${seconds}s`;
@@ -463,7 +463,7 @@ export function pickCard(input: {
 
 // ─── Run on its own ─────────────────────────────────────────────────────────────────────────────
 
-export interface ScheduleView {
+interface ScheduleView {
   /** The switch cannot turn on. A schedule that is on can always be turned off. */
   locked: boolean;
   note: string;

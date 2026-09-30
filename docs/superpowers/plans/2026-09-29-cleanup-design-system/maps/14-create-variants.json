@@ -1,0 +1,46 @@
+[
+  {
+    "find": "  background: var(--dot, var(--pk-ink-faint));\n",
+    "replace": "  background: var(--pk-ink-faint);\n"
+  },
+  {
+    "find": "  border-radius: var(--pk-radius-mark);\n  background: var(--dot);\n}\n@media (max-width: 460px) {",
+    "replace": "  border-radius: var(--pk-radius-mark);\n}\n@media (max-width: 460px) {"
+  },
+  {
+    "find": "  background: var(--dot, var(--pk-panel-3));\n",
+    "replace": "  background: var(--pk-panel-3);\n"
+  },
+  {
+    "find": ".cells i {\n  width: 15px;\n  height: 15px;\n  border-radius: var(--pk-radius-mark);\n  background: var(--dot);\n}\n",
+    "replace": ".cells i {\n  width: 15px;\n  height: 15px;\n  border-radius: var(--pk-radius-mark);\n}\n"
+  },
+  {
+    "find": ".dot[data-tint=\"lime\"],\n.cells[data-tint=\"lime\"],\n.pieceMark[data-tint=\"lime\"],\n.beatDot[data-tint=\"lime\"] {\n  --dot: var(--pk-agent-lime-fill);\n}",
+    "replace": ".dot[data-tint=\"lime\"],\n.cells[data-tint=\"lime\"] i,\n.pieceMark[data-tint=\"lime\"],\n.beatDot[data-tint=\"lime\"] {\n  background: var(--pk-agent-lime-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"violet\"],\n.cells[data-tint=\"violet\"],\n.pieceMark[data-tint=\"violet\"],\n.beatDot[data-tint=\"violet\"] {\n  --dot: var(--pk-agent-violet-fill);\n}",
+    "replace": ".dot[data-tint=\"violet\"],\n.cells[data-tint=\"violet\"] i,\n.pieceMark[data-tint=\"violet\"],\n.beatDot[data-tint=\"violet\"] {\n  background: var(--pk-agent-violet-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"amber\"],\n.cells[data-tint=\"amber\"],\n.pieceMark[data-tint=\"amber\"],\n.beatDot[data-tint=\"amber\"] {\n  --dot: var(--pk-agent-amber-fill);\n}",
+    "replace": ".dot[data-tint=\"amber\"],\n.cells[data-tint=\"amber\"] i,\n.pieceMark[data-tint=\"amber\"],\n.beatDot[data-tint=\"amber\"] {\n  background: var(--pk-agent-amber-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"blue\"],\n.cells[data-tint=\"blue\"],\n.pieceMark[data-tint=\"blue\"],\n.beatDot[data-tint=\"blue\"] {\n  --dot: var(--pk-agent-blue-fill);\n}",
+    "replace": ".dot[data-tint=\"blue\"],\n.cells[data-tint=\"blue\"] i,\n.pieceMark[data-tint=\"blue\"],\n.beatDot[data-tint=\"blue\"] {\n  background: var(--pk-agent-blue-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"orange\"],\n.cells[data-tint=\"orange\"],\n.pieceMark[data-tint=\"orange\"],\n.beatDot[data-tint=\"orange\"] {\n  --dot: var(--pk-agent-orange-fill);\n}",
+    "replace": ".dot[data-tint=\"orange\"],\n.cells[data-tint=\"orange\"] i,\n.pieceMark[data-tint=\"orange\"],\n.beatDot[data-tint=\"orange\"] {\n  background: var(--pk-agent-orange-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"magenta\"],\n.cells[data-tint=\"magenta\"],\n.pieceMark[data-tint=\"magenta\"],\n.beatDot[data-tint=\"magenta\"] {\n  --dot: var(--pk-agent-magenta-fill);\n}",
+    "replace": ".dot[data-tint=\"magenta\"],\n.cells[data-tint=\"magenta\"] i,\n.pieceMark[data-tint=\"magenta\"],\n.beatDot[data-tint=\"magenta\"] {\n  background: var(--pk-agent-magenta-fill);\n}"
+  },
+  {
+    "find": ".dot[data-tint=\"ink\"],\n.cells[data-tint=\"ink\"],\n.pieceMark[data-tint=\"ink\"],\n.beatDot[data-tint=\"ink\"] {\n  --dot: var(--pk-ink);\n}",
+    "replace": ".dot[data-tint=\"ink\"],\n.cells[data-tint=\"ink\"] i,\n.pieceMark[data-tint=\"ink\"],\n.beatDot[data-tint=\"ink\"] {\n  background: var(--pk-ink);\n}"
+  }
+]

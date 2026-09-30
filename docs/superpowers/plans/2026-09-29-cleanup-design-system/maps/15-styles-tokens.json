@@ -1,0 +1,27 @@
+[
+  {
+    "find": "  --pk-glow-rim: rgba(255, 255, 255, 0.5);\n",
+    "replace": "  --pk-glow-rim: rgba(255, 255, 255, 0.5);\n\n  /* The light along the top edge of something raised: a panel's inset highlight, the bevel of a\n   * lit button. Quieter than the rim above, and white on both surfaces because it is light\n   * falling on the object, not a colour the surface owns. The places that draw it had typed\n   * 0.22, 0.25, 0.26, 0.3 and 0.35; nobody chose between them, so they are one weight. */\n  --pk-lit-edge: rgba(255, 255, 255, 0.22);\n\n  /* Lime as light rather than as a fill: the halo under the glow button, and the same halo under\n   * the cursor. Two weights, because resting and hovered have to be told apart; every other lime\n   * glow in the product takes the nearer of the two. */\n  --pk-glow-lime: rgba(200, 240, 58, 0.32);\n  --pk-glow-lime-strong: rgba(200, 240, 58, 0.5);\n\n  /* What a dialog dims the page with. The dark ground at a fraction, on both surfaces: a scrim\n   * darkens whatever is behind it, and a light one would wash a light page out instead. */\n  --pk-scrim: rgba(11, 13, 26, 0.72);\n"
+  },
+  {
+    "find": "    inset 0 2px 0 rgba(255, 255, 255, 0.3),\n    0 0 24px rgba(200, 240, 58, 0.32);",
+    "replace": "    inset 0 2px 0 var(--pk-lit-edge),\n    0 0 24px var(--pk-glow-lime);"
+  },
+  {
+    "find": "    inset 0 2px 0 rgba(255, 255, 255, 0.3),\n    0 0 40px rgba(200, 240, 58, 0.5);",
+    "replace": "    inset 0 2px 0 var(--pk-lit-edge),\n    0 0 40px var(--pk-glow-lime-strong);"
+  },
+  {
+    "find": "  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);",
+    "replace": "  box-shadow: inset 0 1px 0 var(--pk-lit-edge);"
+  },
+  {
+    "find": "--tint-",
+    "replace": "--pk-tint-",
+    "count": 21
+  },
+  {
+    "find": " * belong together, so a badge, a banner, a status row and a dot all say \"caution\" the same way. Use\n * it for what something *is*; a button's fill still comes from its variant. The names are the old\n * accent names because that is what the features write, but each one resolves to the state pair it\n * was always describing, which is the reason a tint stays legible when the ground turns white. */",
+    "replace": " * belong together, so a badge, a banner, a status row and a dot all say \"caution\" the same way. Use\n * it for what something *is*; a button's fill still comes from its variant. The names are the old\n * accent names because that is what the features write, but each one resolves to the state pair it\n * was always describing, which is the reason a tint stays legible when the ground turns white.\n *\n * The three properties are tokens like any other, set per tint instead of per surface. */"
+  }
+]

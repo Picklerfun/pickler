@@ -1,0 +1,13 @@
+/* Comments may quote a value: #c8f03a, rgba(0, 0, 0, 0.5), white. */
+.card {
+  color: var(--pk-ink);
+  border: 1px solid var(--pk-rule);
+  background: transparent;
+  outline-color: currentColor;
+  fill: inherit;
+  white-space: nowrap;
+  font-family: Tan, sans-serif;
+  animation: pink 2s linear infinite;
+  transition: color 140ms;
+  mask-image: linear-gradient(to top, var(--pk-ink) 0%, transparent 88%);
+}

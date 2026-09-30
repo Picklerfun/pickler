@@ -7,9 +7,9 @@
  */
 import type { RunEvent } from "../api";
 
-export type TraceTint = "lime" | "violet" | "amber" | "blue" | "magenta";
+type TraceTint = "lime" | "violet" | "amber" | "blue" | "magenta";
 
-export interface TraceLine {
+interface TraceLine {
   id: number;
   text: string;
   meta: string;

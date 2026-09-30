@@ -79,7 +79,7 @@ export function Activity({
   const failed = runs.filter((run) => run.status === "failed").length;
 
   return (
-    <div className={styles.section}>
+    <div className={styles.section} id="studio-section-activity">
       <div className={styles.sectionHead}>
         <h1>Activity</h1>
         <span className={styles.count}>

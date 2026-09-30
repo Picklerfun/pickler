@@ -24,18 +24,13 @@ export { DEFAULT_PROFILE, type Profile } from "./profile";
  */
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
 /** The bare runtime record the writes answer (`POST /agents`, `PUT /config|limits|interval`). */
-export type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
+type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
 export type Run = ReturnType<typeof runResponseSchema.parse>;
 export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
-export type Plugin = {
-  id: NonNullable<Config["plugins"]>["enabled"][number];
-  version: string;
-  tools: Config["tools"];
-};
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
-export type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
+type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
 export type { AgentDraftDto };
 /** A paper run of a brief, as its owner reads it. */
 export type PreviewRun = PreviewRunDto["run"];
@@ -171,16 +166,6 @@ export const paperOrder = (runId: string, key: string) =>
   });
 
 /**
- * `PUT /agents/:id/config`: a new version, which turns the schedule off and asks for another
- * manual run. It never writes `spend`; the interval has its own route below.
- */
-export const updateConfig = (agentId: string, expectedVersion: number, config: Config) =>
-  studioApi<AgentRecord>(`/agents/${agentId}/config`, {
-    method: "PUT",
-    body: JSON.stringify({ expectedVersion, config }),
-  });
-
-/**
  * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the
  * version, the schedule and readiness, so it can be tuned right before the schedule is turned on.
  */
@@ -202,7 +187,7 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
     body: JSON.stringify({ enabled }),
   });
 
-export interface DepositPrepared {
+interface DepositPrepared {
   url: string;
   body: string;
   timestampMs: string;
@@ -255,7 +240,7 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   return body.data as T;
 }
 
-export interface UnsignedActivityDto {
+interface UnsignedActivityDto {
   url: string;
   body: string;
   timestampMs: string;
@@ -285,7 +270,7 @@ export const confirmDelegated = (signed: SignedActivityDto) =>
     body: JSON.stringify({ signed }),
   }).then((data) => ({ delegatedUserId: data.delegated_user_id }));
 
-export type PrepareWalletResult =
+type PrepareWalletResult =
   | { existing: { walletId: string; address: string; policiesApproved: boolean } }
   | UnsignedActivityDto;
 
@@ -327,7 +312,7 @@ export const confirmPolicies = (walletId: string, signed: SignedActivityDto) =>
     { method: "POST", body: JSON.stringify({ signed }) },
   ).then((data) => ({ policyIds: data.policy_ids }));
 
-export interface HandleAvailability {
+interface HandleAvailability {
   handle: string;
   available: boolean;
   reason?: "too_short" | "too_long" | "invalid_characters" | "reserved" | "taken";

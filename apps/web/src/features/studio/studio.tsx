@@ -36,8 +36,9 @@ import { Brief } from "./sections/brief";
 import { Trading } from "./sections/trading";
 import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
-import { Stub } from "./sections/stub";
-import type { SectionKey } from "./sections/stub";
+import type { SectionKey } from "./sections/keys";
+import { RAIL, isPanel, isSoon } from "./sections/rail";
+import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
 import { briefFixture } from "./brief/fixture";
 import { EmptyHome } from "./home/empty";
@@ -47,37 +48,6 @@ import { studioLanding } from "./lib/landing";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
-
-const GROUPS: { title: string; items: { key: SectionKey; icon: IconName; label: string }[] }[] = [
-  {
-    title: "RUN",
-    items: [
-      { key: "overview", icon: "grid", label: "Overview" },
-      { key: "context", icon: "chat", label: "Context" },
-      { key: "picks", icon: "target", label: "Picks" },
-      { key: "activity", icon: "activity", label: "Activity" },
-    ],
-  },
-  {
-    title: "BUILD",
-    items: [
-      { key: "brief", icon: "file", label: "Brief" },
-      { key: "skills", icon: "sliders", label: "Skills" },
-      { key: "sources", icon: "link", label: "Sources" },
-      { key: "limits", icon: "wallet", label: "Limits & funding" },
-      { key: "identity", icon: "user", label: "Identity & voice" },
-    ],
-  },
-  {
-    title: "GROW",
-    items: [
-      { key: "profile", icon: "globe", label: "Public profile" },
-      { key: "audience", icon: "users", label: "Audience" },
-      { key: "token", icon: "coin", label: "Token" },
-    ],
-  },
-  { title: "PUBLIC", items: [{ key: "board", icon: "bars", label: "The board" }] },
-];
 
 /**
  * The states a person actually lands in. Each one is a code the API returns, so the banner says the
@@ -439,10 +409,9 @@ export function Studio({
     activity: counts.running
       ? { text: `${counts.running} RUNNING`, tint: "lime" }
       : { text: "", tint: "grey" },
-    profile: { text: "SAMPLE", tint: "amber" },
-    audience: { text: "PLANNED", tint: "grey" },
-    token: { text: "PLANNED", tint: "grey" },
   };
+  const badgeFor = (key: SectionKey) =>
+    isSoon(key) ? { text: "SOON", tint: "grey" } : badges[key];
 
   function go(next: View) {
     if (next === "picks" && !runs.find((run) => run.id === runId)?.decision) {
@@ -662,12 +631,12 @@ export function Studio({
                 {wide && <span className={styles.railLabel}>Home</span>}
               </button>
             </div>
-            {GROUPS.map((group) => (
+            {RAIL.map((group) => (
               <div key={group.title}>
                 {wide && <p className={styles.railTitle}>{group.title}</p>}
                 <div className={styles.railItems}>
                   {group.items.map((item) => {
-                    const badge = badges[item.key];
+                    const badge = badgeFor(item.key);
                     return (
                       <button
                         key={item.key}
@@ -848,9 +817,9 @@ export function Studio({
             </>
           ) : section === "context" ? (
             <Context agent={agent} go={go} />
-          ) : section === "home" ? null : (
-            <Stub section={section} agent={agent} />
-          )}
+          ) : section !== "home" && isPanel(section) ? (
+            <Soon section={section} agent={agent} />
+          ) : null}
 
           {error && (
             <p role="alert" className={styles.mainAlert}>

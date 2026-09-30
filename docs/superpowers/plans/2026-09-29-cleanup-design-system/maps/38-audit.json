@@ -1,0 +1,6 @@
+[
+  {
+    "find": "tests; the deployed path is `createSupabaseApplicants`. Do not spend time on it.",
+    "replace": "tests; the deployed path is `PostgresApplicants`. Do not spend time on it."
+  }
+]

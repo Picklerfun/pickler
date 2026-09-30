@@ -21,7 +21,7 @@ export interface SignInClient {
   };
 }
 
-export interface SignInAttempt {
+interface SignInAttempt {
   cached: HeldSession | null;
   /** The connected wallet, or null when nothing is connected. */
   signer: Signer | null;

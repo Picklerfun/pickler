@@ -46,7 +46,7 @@ import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
  * There is no "unsupported" any more. A browser with nothing to connect still opens the chooser,
  * which names what is missing rather than presenting a dead button.
  */
-export type WalletStatus = "disconnected" | "connecting" | "connected";
+type WalletStatus = "disconnected" | "connecting" | "connected";
 
 /**
  * Whether there is an account behind the connection.
@@ -57,7 +57,7 @@ export type WalletStatus = "disconnected" | "connecting" | "connected";
  * on top of connecting. A signature prompt nobody asked for is how people learn to approve
  * prompts without reading them.
  */
-export type SessionStatus = "none" | "signing" | "active";
+type SessionStatus = "none" | "signing" | "active";
 
 const SIGNERS: SignerAdapter[] = [injectedSigner];
 

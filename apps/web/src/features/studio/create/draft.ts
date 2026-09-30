@@ -82,7 +82,7 @@ export const STYLE_POLICIES: Record<
   },
 };
 
-export interface CustomSkill {
+interface CustomSkill {
   name: string;
   prompt: string;
 }
@@ -187,7 +187,7 @@ export function ready(step: Step, d: Draft): boolean {
 
 const VENUE_LABELS: Record<VenueOnMap, string> = { polymarket: "Polymarket", perpl: "Perpl" };
 
-export interface SoonRow {
+interface SoonRow {
   label: "TRADES ON" | "CALLS";
   reason: string;
 }
@@ -384,7 +384,7 @@ function venueFor(venues: readonly VenueOnMap[]): VenueDto {
   return venues.includes("perpl") ? "perps" : "predictions";
 }
 
-export type CreateAgentBody = {
+type CreateAgentBody = {
   name: string;
   handle: string;
   config: Config;

@@ -33,7 +33,7 @@ import shell from "../studio.module.css";
 import styles from "./home.module.css";
 
 /** What a preview hands the home instead of the API: a fixed clock, runs, events and an order. */
-export interface HomePreview {
+interface HomePreview {
   now: number;
   runs: Run[];
   events: RunEvent[];

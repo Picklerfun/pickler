@@ -18,7 +18,7 @@ export const STAGES = ["live", "researching", "decided"] as const;
 export type HomeStage = (typeof STAGES)[number];
 
 /** The brief home with its paper run live, done, and stale after an edit (studio-brief-v1 §10). */
-export const BRIEF_STAGES = ["brief-running", "brief-done", "brief-stale"] as const;
+const BRIEF_STAGES = ["brief-running", "brief-done", "brief-stale"] as const;
 
 export type BriefStage = (typeof BRIEF_STAGES)[number];
 

@@ -51,7 +51,7 @@ export function Limits({
   const policy = draft.uncertaintyPolicy;
 
   return (
-    <div className={styles.section} data-narrow="true">
+    <div className={styles.section} id="studio-section-limits" data-narrow="true">
       <p className={styles.eyebrow} data-tint="amber">
         LIMITS
         <span className={styles.stubState}>HALF BUILT</span>

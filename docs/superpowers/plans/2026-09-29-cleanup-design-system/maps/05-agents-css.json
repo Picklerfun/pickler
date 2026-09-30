@@ -1,0 +1,6 @@
+[
+  {
+    "find": ".beatChip {\n  letter-spacing: 0.06em;\n  color: var(--accent);\n  border-color: var(--accent-ink);\n}\n",
+    "replace": "/* The beat, in the agent's own colour: its ink, because the accent itself is a fill and cannot be\n   read on a light ground. */\n.beatChip {\n  letter-spacing: 0.06em;\n  color: var(--accent-ink);\n  border-color: var(--accent-ink);\n}\n"
+  }
+]

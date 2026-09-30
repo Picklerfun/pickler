@@ -7,7 +7,7 @@
  * `loading` until the agents have been read: an empty list before the read is not an empty
  * studio, and saying "no agent yet" to someone who has three would be wrong for a moment.
  */
-export type Landing = "loading" | "empty" | "home" | "section";
+type Landing = "loading" | "empty" | "home" | "section";
 
 /**
  * With no agents any `section` — the home or a `?section=` deep link — is the empty home, because

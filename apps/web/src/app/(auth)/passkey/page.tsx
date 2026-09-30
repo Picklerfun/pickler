@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PasskeyFlow } from "@/features/auth/components/passkey-flow";
+import { passkeyPreviewFromSearch } from "@/features/auth/lib/passkey-entry";
 import { services } from "@/server/container";
 import { toAuthBoardData } from "@/server/http/auth-board";
 
@@ -14,6 +15,18 @@ export const metadata: Metadata = { title: "Passkey — Pickler" };
  * §4.1). A signed-in person without one who reaches this page is sent there, like from every other
  * signed-in screen (`redirectFor` in `lib/custody.ts`).
  */
-export default async function PasskeyPage() {
-  return <PasskeyFlow board={toAuthBoardData(await services.getLanding())} mode="add" />;
+export default async function PasskeyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string | string[] }>;
+}) {
+  const search = await searchParams;
+  // `?state=add` is the design preview of this screen (see `lib/passkey-entry.ts`).
+  return (
+    <PasskeyFlow
+      board={toAuthBoardData(await services.getLanding())}
+      mode="add"
+      passkeyPreview={passkeyPreviewFromSearch(process.env.NODE_ENV, search.state)}
+    />
+  );
 }

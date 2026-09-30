@@ -1,0 +1,6 @@
+[
+  {
+    "find": "var(--pk-font-mono, var(--pk-font))",
+    "replace": "var(--pk-font)"
+  }
+]

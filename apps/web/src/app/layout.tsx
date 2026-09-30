@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import { TOKEN_MIRROR } from "@pickler/ui/tokens";
 import "@pickler/ui/styles.css";
 import "./globals.css";
 import { ProductProvider } from "@/features/site/studio-href";
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FFFFFF",
+  themeColor: TOKEN_MIRROR.light["--pk-bg"],
   colorScheme: "light",
 };
 
