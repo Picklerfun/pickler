@@ -35,14 +35,14 @@
   color: var(--pk-ink-faint);
 }
 
-/* Accent-driven pixel. Set --accent and --accent-rgb inline. */
+/* Accent-driven pixel. `swatchVars` sets --accent inline. */
 .pixel {
   flex: none;
   width: 13px;
   height: 13px;
   background: var(--accent);
   border: 1px solid var(--pk-glow-rim);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 12px var(--accent);
 }
 
 .srOnly {
@@ -62,33 +62,23 @@
 }
 
 .glass {
-  background: rgba(245, 246, 255, 0.06);
+  background: var(--pk-panel);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 246, 255, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  border: 1px solid var(--pk-rule-strong);
+  box-shadow: inset 0 1px 0 var(--pk-lit-edge);
   border-radius: var(--pk-radius-lg);
 }
 
-/* Shape, type and glow come from the system button; the flow keeps the disabled state the canvas
-   draws, and the share action its own size. */
+/* Shape, type, glow and the disabled state come from the system button; the share action keeps
+   its own size. */
 .page a.primaryButton,
 .page a.primaryButton:hover {
   color: var(--pk-on-lime);
 }
 
-.primaryButton:disabled {
-  opacity: 1;
-  background: rgba(245, 246, 255, 0.08);
-  color: var(--pk-ink-faint);
-  border-color: rgba(245, 246, 255, 0.2);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
 .page .secondaryButton {
   padding: 15px 18px;
   background: var(--pk-bg);
-  border-color: rgba(245, 246, 255, 0.3);
   font-size: 13px;
 }
 
@@ -125,7 +115,7 @@
   display: block;
   width: 26px;
   height: auto;
-  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));
+  filter: drop-shadow(0 0 12px var(--pk-cyan-edge));
 }
 
 .brandName {
@@ -217,8 +207,8 @@
   align-items: center;
   gap: 11px;
   padding: 14px 18px;
-  background: rgba(90, 216, 255, 0.1);
-  border: 1px solid rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border: 1px solid var(--pk-cyan-edge);
 }
 
 .inviteBar .monoLabel {
@@ -243,19 +233,19 @@
   margin: 0;
   padding: 18px 20px;
   min-width: 0;
-  background: rgba(245, 246, 255, 0.06);
+  background: var(--pk-panel);
   backdrop-filter: blur(16px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 var(--pk-lit-edge);
   transition: border-color 200ms ease;
 }
 
 .cardDone {
-  border-color: rgba(200, 240, 58, 0.45);
+  border-color: var(--pk-lime-edge);
   border-radius: var(--pk-radius-lg);
 }
 
 .cardError {
-  border-color: rgba(255, 95, 162, 0.6);
+  border-color: var(--pk-magenta-edge);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -285,7 +275,7 @@
 .tickerInput {
   flex: 0 1 132px;
   width: auto;
-  border-color: rgba(200, 240, 58, 0.45);
+  border-color: var(--pk-lime-edge);
   font-weight: 700;
   color: var(--pk-lime-ink);
 }
@@ -337,7 +327,7 @@
   gap: 8px;
   padding: 10px 13px;
   background: var(--pk-bg);
-  border: 1px solid rgba(245, 246, 255, 0.24);
+  border: 1px solid var(--pk-rule-strong);
   font: 600 14px/1 var(--pk-font);
   color: var(--pk-ink-soft);
   cursor: pointer;
@@ -345,21 +335,21 @@
 }
 
 .chip:hover {
-  border-color: rgba(245, 246, 255, 0.6);
+  border-color: var(--pk-border-strong);
   border-radius: var(--pk-radius-pill);
 }
 
 .chip .pixel {
   width: 12px;
   height: 12px;
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: var(--pk-lit-edge);
   box-shadow: none;
   opacity: 0.55;
   border-radius: var(--pk-radius-pill);
 }
 
 .chip[aria-checked="true"] {
-  background: rgba(245, 246, 255, 0.14);
+  background: var(--pk-panel-3);
   border-color: var(--pk-ink);
   color: var(--pk-ink);
   border-radius: var(--pk-radius-pill);
@@ -367,7 +357,7 @@
 
 .chip[aria-checked="true"] .pixel {
   border-color: var(--pk-glow-rim);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+  box-shadow: 0 0 12px var(--accent);
   opacity: 1;
   border-radius: var(--pk-radius-pill);
 }
@@ -401,11 +391,11 @@
   flex: 1 1 280px;
   min-width: 0;
   padding: 18px;
-  background: rgba(245, 246, 255, 0.05);
+  background: var(--pk-panel);
   backdrop-filter: blur(18px);
-  border: 1px solid rgba(245, 246, 255, 0.22);
+  border: 1px solid var(--pk-rule-strong);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 1px 0 var(--pk-lit-edge),
     var(--pk-popover-shadow);
 }
 
@@ -415,7 +405,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 0 2px 14px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.18);
+  border-bottom: 1px solid var(--pk-rule-strong);
 }
 
 .pieceCount {
@@ -434,11 +424,11 @@
   padding: 6px;
   overflow: hidden;
   list-style: none;
-  border: 1px solid rgba(245, 246, 255, 0.2);
+  border: 1px solid var(--pk-rule-strong);
   background-color: var(--pk-bg);
   background-image:
-    linear-gradient(rgba(245, 246, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 246, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(var(--pk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);
   background-size: 17px 17px;
   border-radius: var(--pk-radius-lg);
 }
@@ -460,8 +450,8 @@
   width: 15px;
   height: 15px;
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45),
-    0 0 12px rgba(var(--accent-rgb), 0.6);
+    inset 0 2px 0 var(--pk-glow-rim),
+    0 0 12px var(--accent);
 }
 
 .blockText {
@@ -507,12 +497,12 @@
   flex: 1 1 440px;
   min-width: 0;
   padding: 34px 28px;
-  background: rgba(155, 123, 255, 0.14);
+  background: var(--pk-state-info-bg);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(245, 246, 255, 0.3);
+  border: 1px solid var(--pk-border-strong);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 0 80px rgba(155, 123, 255, 0.28);
+    inset 0 1px 0 var(--pk-lit-edge),
+    0 0 80px var(--pk-violet-edge);
   border-radius: var(--pk-radius-lg);
 }
 
@@ -530,7 +520,7 @@
   width: 9px;
   height: 9px;
   background: var(--pk-lime);
-  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);
+  box-shadow: 0 0 10px var(--pk-lime);
   animation: blink 1.4s steps(1, end) infinite;
   border-radius: var(--pk-radius-pill);
 }
@@ -562,7 +552,7 @@
   flex-direction: column-reverse;
   padding: 14px 16px;
   background: var(--pk-bg);
-  border: 1px solid rgba(245, 246, 255, 0.24);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
 }
 
@@ -579,14 +569,14 @@
 }
 
 .tileLime {
-  background: rgba(200, 240, 58, 0.12);
-  border-color: rgba(200, 240, 58, 0.4);
+  background: var(--pk-state-good-bg);
+  border-color: var(--pk-lime-edge);
   border-radius: var(--pk-radius-sm);
 }
 
 .tileCyan {
-  background: rgba(90, 216, 255, 0.12);
-  border-color: rgba(90, 216, 255, 0.4);
+  background: var(--pk-state-cool-bg);
+  border-color: var(--pk-cyan-edge);
   border-radius: var(--pk-radius-sm);
 }
 
@@ -616,7 +606,7 @@
   align-items: center;
   gap: 11px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(245, 246, 255, 0.14);
+  border-bottom: 1px solid var(--pk-rule-strong);
   animation: pop 520ms cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
@@ -686,8 +676,8 @@
   font-size: 13px;
   letter-spacing: 0.08em;
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.4),
-    0 0 34px rgba(200, 240, 58, 0.45);
+    inset 0 2px 0 var(--pk-glow-rim),
+    0 0 34px var(--pk-glow-lime-strong);
   border-radius: var(--pk-radius-pill);
 }
 
@@ -700,7 +690,7 @@
   margin-bottom: 12px;
   padding: 16px 18px;
   background: var(--pk-bg);
-  border: 1px solid rgba(245, 246, 255, 0.24);
+  border: 1px solid var(--pk-rule-strong);
 }
 
 .post .monoLabel {
