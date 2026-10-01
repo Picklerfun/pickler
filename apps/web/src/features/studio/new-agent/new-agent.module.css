@@ -1273,3 +1273,23 @@
   inset: 8px;
   gap: 2px;
 }
+
+.accentOption:focus-visible,
+.patternOption:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.avatarCard {
+  max-width: 520px;
+  gap: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accentOption,
+  .patternOption {
+    transition: none;
+  }
+  .accentOption:hover,
+  .patternOption:hover {
+    transform: none;
+  }
+}

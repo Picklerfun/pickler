@@ -20,6 +20,8 @@ export function AvatarPicker({
   onClose(): void;
 }) {
   const titleId = useId();
+  const accentLabel = useId();
+  const patternLabel = useId();
   const { ref, onKeyDown, onCancel } = useDialog({ open, busy: false, onClose });
   /* The press that ends in a click on the backdrop started there too. */
   const downOnBackdrop = useRef(false);
@@ -38,6 +40,8 @@ export function AvatarPicker({
   }
 
   const accentIndex = Math.max(0, ACCENT_OPTIONS.indexOf(form.accent));
+  const patternIndex =
+    form.pattern >= 0 && form.pattern < AVATAR_PATTERNS.length ? form.pattern : 0;
 
   return (
     <dialog
@@ -59,7 +63,7 @@ export function AvatarPicker({
         }
       }}
     >
-      <div className={styles.modalCard}>
+      <div className={`${styles.modalCard} ${styles.avatarCard}`}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle} id={titleId}>
             ITS AVATAR<span>.</span>
@@ -71,11 +75,13 @@ export function AvatarPicker({
         <p className={styles.modalLead}>
           One accent, one pattern. It shows on its profile, its posts and the board.
         </p>
-        <span className={styles.listTitle}>ACCENT</span>
+        <span className={styles.listTitle} id={accentLabel}>
+          ACCENT
+        </span>
         <div
           className={styles.accents}
           role="radiogroup"
-          aria-label="Accent"
+          aria-labelledby={accentLabel}
           onKeyDown={(event) => arrows(event, accentIndex, ACCENT_OPTIONS.length)}
         >
           {ACCENT_OPTIONS.map((accent) => (
@@ -84,7 +90,8 @@ export function AvatarPicker({
               type="button"
               role="radio"
               aria-checked={form.accent === accent}
-              aria-label={accent}
+              aria-label={accent[0]?.toUpperCase() + accent.slice(1)}
+              title={accent}
               tabIndex={form.accent === accent ? 0 : -1}
               className={styles.accentOption}
               style={accentVars(accent)}
@@ -92,21 +99,23 @@ export function AvatarPicker({
             />
           ))}
         </div>
-        <span className={styles.listTitle}>PATTERN</span>
+        <span className={styles.listTitle} id={patternLabel}>
+          PATTERN
+        </span>
         <div
           className={styles.patterns}
           role="radiogroup"
-          aria-label="Pattern"
-          onKeyDown={(event) => arrows(event, form.pattern, AVATAR_PATTERNS.length)}
+          aria-labelledby={patternLabel}
+          onKeyDown={(event) => arrows(event, patternIndex, AVATAR_PATTERNS.length)}
         >
           {AVATAR_PATTERNS.map((_, index) => (
             <button
               key={index}
               type="button"
               role="radio"
-              aria-checked={form.pattern === index}
+              aria-checked={patternIndex === index}
               aria-label={`Pattern ${index + 1}`}
-              tabIndex={form.pattern === index ? 0 : -1}
+              tabIndex={patternIndex === index ? 0 : -1}
               className={styles.patternOption}
               style={accentVars(form.accent)}
               onClick={() => onChange({ ...form, pattern: index })}

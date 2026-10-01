@@ -6,7 +6,7 @@ import { useEffect, useRef, type KeyboardEvent, type SyntheticEvent } from "reac
 let outsideOpener: HTMLElement | null = null;
 
 /**
- * The create screen's dialog pattern, shared by the passkey sheet and the Wallets modal: a native
+ * The create screen's dialog pattern, shared by the passkey sheet and the Wallets, AI credits and avatar modals: a native
  * `<dialog>` opened with `showModal`, as the auth sheet is, so the page behind it is inert and the
  * focus stays inside. Every way out goes through `onClose`, which is refused while `busy` (a
  * passkey is up), so Escape cannot close a busy dialog. On close the focus goes back to what
