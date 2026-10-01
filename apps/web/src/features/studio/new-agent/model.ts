@@ -1,0 +1,335 @@
+// apps/web/src/features/studio/new-agent/model.ts
+/**
+ * The create screen's rules (docs/specs/studio-create-simplified-v1.md, the "Pickler Studio Empty
+ * v5" canvas): the handle a name becomes, when "Create" opens and what it says, the wallet's
+ * minimums and tag, the request, and the transfer form. Pure, no React and no transport, so each
+ * rule is pinned in `apps/web/test/studio-new-agent.test.ts`.
+ *
+ * `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`, `MIN_START` and `DEFAULT_BRIEF` are literal copies
+ * of core's (`packages/core/src/features/studio/create.ts`): this module is required by node:test
+ * from CommonJS, where an "import"-only package cannot be loaded statically. The test pins each
+ * copy through a dynamic import.
+ */
+export type VoiceKey = "analyst" | "contrarian" | "trash_talker" | "deadpan" | "hype" | "professor";
+export type Accent = "lime" | "cyan" | "amber" | "orange" | "magenta" | "violet" | "blue";
+export type WebMode = "anywhere" | "prefer" | "only";
+export type Token = "AUSD" | "MON";
+
+export const VOICES: readonly { key: VoiceKey; name: string; tint: Accent; sample: string }[] = [
+  {
+    key: "analyst",
+    name: "Analyst",
+    tint: "blue",
+    sample: "Long BTC at 3×, 25 AUSD. Headline first, price second. Out by the close.",
+  },
+  {
+    key: "contrarian",
+    name: "Contrarian",
+    tint: "orange",
+    sample: "Everyone is long and paying for it. That is the whole reason I am short.",
+  },
+  {
+    key: "trash_talker",
+    name: "Trash talker",
+    tint: "magenta",
+    sample: "You saw the headline a minute after me. I was already filled.",
+  },
+  {
+    key: "deadpan",
+    name: "Deadpan",
+    tint: "cyan",
+    sample: "Long BTC. 25 AUSD. 3×. That is the post.",
+  },
+  { key: "hype", name: "Hype", tint: "lime", sample: "WE ARE LONG. Full clip. Let it run." },
+  {
+    key: "professor",
+    name: "Professor",
+    tint: "amber",
+    sample: "Funding at 0.09% with OI up 22% is a crowded trade by any definition. Fading it.",
+  },
+];
+
+export const ACCENT_OPTIONS: readonly Accent[] = [
+  "lime",
+  "cyan",
+  "amber",
+  "orange",
+  "magenta",
+  "blue",
+  "violet",
+];
+
+export const AVATAR_PATTERNS = [
+  "1001011001101001",
+  "1111100110011111",
+  "0110100110010110",
+  "1010010110100101",
+  "1100110000110011",
+  "0000011001100000",
+] as const;
+
+export const STARTER_CAPS = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 } as const;
+export const MIN_START = { ausdMicro: 10_000_000n, monWei: 500_000_000_000_000_000n } as const;
+export const MAX_SITES = 20;
+
+export const DEFAULT_BRIEF = {
+  thesis:
+    "Headlines move BTC and ETH before the order book does. The edge is the 30 to 90 seconds between a credible headline and the first big print.",
+  enters:
+    "Two of my sources carry the same headline within 60s\nPrice has moved less than 0.3% since the headline\nFunding is not already leaning my way by more than 0.05%",
+  exits:
+    "+2% take profit or −1% stop, whichever comes first\nFour hours after entry, no matter what\nA second headline contradicts the first",
+  never:
+    "Trade a headline from a single source\nHold through a funding print\nAdd to a losing position",
+} as const;
+
+export interface NewAgentForm {
+  name: string;
+  /** "" follows the name. */
+  handle: string;
+  voice: VoiceKey | null;
+  accent: Accent;
+  pattern: number;
+  webOn: boolean;
+  webMode: WebMode;
+  sites: string[];
+  thesis: string;
+  enters: string;
+  exits: string;
+  never: string;
+  perTrade: number;
+  perDay: number;
+  leverage: number;
+}
+
+export const emptyForm = (): NewAgentForm => ({
+  name: "",
+  handle: "",
+  voice: null,
+  accent: "lime",
+  pattern: 0,
+  webOn: false,
+  webMode: "anywhere",
+  sites: [],
+  thesis: DEFAULT_BRIEF.thesis,
+  enters: DEFAULT_BRIEF.enters,
+  exits: DEFAULT_BRIEF.exits,
+  never: DEFAULT_BRIEF.never,
+  perTrade: STARTER_CAPS.perTradeAusd,
+  perDay: STARTER_CAPS.perDayAusd,
+  leverage: STARTER_CAPS.maxLeverage,
+});
+
+/** The agent's wallet as the screen knows it, in base units; null balances are unread. */
+export interface WalletView {
+  walletId: string;
+  address: string;
+  ausdMicro: bigint | null;
+  monWei: bigint | null;
+}
+
+const slug = (text: string) =>
+  text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 15);
+
+export const deriveHandle = (name: string, edited = ""): string =>
+  edited.trim() ? slug(edited) : slug(name);
+
+export type HandleState = "empty" | "invalid" | "checking" | "free" | "taken" | "failed";
+
+export function handleState(handle: string, available: boolean | null | "failed"): HandleState {
+  if (!handle) {
+    return "empty";
+  }
+  if (!/^[a-z0-9_]{3,15}$/.test(handle)) {
+    return "invalid";
+  }
+  if (available === null) {
+    return "checking";
+  }
+  if (available === "failed") {
+    return "failed";
+  }
+  return available ? "free" : "taken";
+}
+
+export const lines = (text: string): string[] =>
+  text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+export const funded = (wallet: WalletView | null): boolean =>
+  wallet !== null &&
+  wallet.ausdMicro !== null &&
+  wallet.monWei !== null &&
+  wallet.ausdMicro >= MIN_START.ausdMicro &&
+  wallet.monWei >= MIN_START.monWei;
+
+export function createLabel(
+  form: NewAgentForm,
+  handle: HandleState,
+  wallet: WalletView | null,
+): string {
+  const derived = deriveHandle(form.name, form.handle);
+  if (!form.name.trim()) {
+    return "Name it to create";
+  }
+  if (handle === "taken") {
+    return `@${derived} is taken`;
+  }
+  if (handle === "invalid" || handle === "empty") {
+    return `@${derived || "handle"} can't be a handle`;
+  }
+  if (handle === "checking") {
+    return `Checking @${derived}…`;
+  }
+  if (handle === "failed") {
+    return `Couldn't check @${derived} · try again`;
+  }
+  if (!form.voice) {
+    return "Pick a voice to create";
+  }
+  if (lines(form.enters).length === 0) {
+    return "Write an entry rule to create";
+  }
+  if (form.webOn && form.webMode === "only" && form.sites.length === 0) {
+    return "Name a site for “Only”";
+  }
+  if (!wallet) {
+    return "Create its wallet first";
+  }
+  if (!funded(wallet)) {
+    return "Deposit to create";
+  }
+  return `Create ${form.name.trim()}`;
+}
+
+export const canCreate = (
+  form: NewAgentForm,
+  handle: HandleState,
+  wallet: WalletView | null,
+): boolean => createLabel(form, handle, wallet) === `Create ${form.name.trim()}`;
+
+export function footNote(wallet: WalletView | null): string {
+  if (!wallet) {
+    return "CREATE ITS WALLET FIRST →";
+  }
+  if (!funded(wallet)) {
+    return "FUND ITS WALLET TO CREATE →";
+  }
+  return "ONE PASSKEY";
+}
+
+export function walletTag(wallet: WalletView | null): string {
+  if (!wallet) {
+    return "STEP 0 · CREATE IT";
+  }
+  return funded(wallet) ? "FUNDED" : "CREATED · EMPTY";
+}
+
+/** What `POST /v1/studio/drafts` is sent. */
+export function toDraftRequest(form: NewAgentForm, walletId: string) {
+  return {
+    name: form.name.trim(),
+    handle: deriveHandle(form.name, form.handle),
+    voice: form.voice ?? "analyst",
+    avatar: { accent: form.accent, pattern: form.pattern },
+    sources: { web: form.webOn ? { mode: form.webMode, sites: [...form.sites] } : null },
+    brief: {
+      thesis: form.thesis.trim(),
+      entersWhen: lines(form.enters),
+      exitsWhen: lines(form.exits),
+      never: lines(form.never),
+    },
+    caps: { perTradeAusd: form.perTrade, perDayAusd: form.perDay, maxLeverage: form.leverage },
+    walletId,
+  };
+}
+
+const DECIMALS: Record<Token, number> = { AUSD: 6, MON: 18 };
+
+/** A decimal amount in base units, or null when it is not a positive amount the token can hold. */
+export function parseAmount(text: string, token: Token): bigint | null {
+  const value = text.trim();
+  if (!/^\d+(\.\d+)?$/.test(value)) {
+    return null;
+  }
+  const [whole, fraction = ""] = value.split(".");
+  if (fraction.length > DECIMALS[token]) {
+    return null;
+  }
+  const units =
+    BigInt(whole!) * 10n ** BigInt(DECIMALS[token]) +
+    BigInt(fraction.padEnd(DECIMALS[token], "0") || "0");
+  return units > 0n ? units : null;
+}
+
+/** Base units as a short decimal: 1500000 AUSD-micro → "1.5". */
+export function formatUnits(units: bigint | null, token: Token): string {
+  if (units === null) {
+    return "—";
+  }
+  const scale = 10n ** BigInt(DECIMALS[token]);
+  const whole = units / scale;
+  const fraction = (units % scale)
+    .toString()
+    .padStart(DECIMALS[token], "0")
+    .replace(/0+$/, "")
+    .slice(0, 4);
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+export function transferLabel(input: {
+  amount: string;
+  token: Token;
+  toAgent: boolean;
+  held: bigint | null;
+  agentName: string;
+}): string {
+  const units = parseAmount(input.amount, input.token);
+  if (units === null) {
+    return "Enter an amount";
+  }
+  if (input.held === null || units > input.held) {
+    return `More ${input.token} than ${input.toAgent ? "the master wallet" : input.agentName} holds`;
+  }
+  return input.toAgent
+    ? `Send ${input.amount} ${input.token} to ${input.agentName}`
+    : `Pull ${input.amount} ${input.token} back`;
+}
+
+export const patternCells = (index: number): boolean[] =>
+  (AVATAR_PATTERNS[index] ?? AVATAR_PATTERNS[0]).split("").map((cell) => cell === "1");
+
+const HOST = /^[a-z0-9.-]+\.[a-z]{2,}$/;
+
+/** What a typed site becomes: a bare host, or null when it is not one. */
+export function siteHost(text: string): string | null {
+  const host = text
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./, "");
+  return HOST.test(host) ? host : null;
+}
+
+export function siteNote(form: NewAgentForm, draft: string): { text: string; bad: boolean } {
+  if (draft.trim() && !siteHost(draft)) {
+    return { text: "BARE HOSTNAMES ONLY · NO HTTPS, NO PATHS", bad: true };
+  }
+  if (draft.trim() && form.sites.includes(siteHost(draft)!)) {
+    return { text: "ALREADY LISTED", bad: true };
+  }
+  if (form.sites.length >= MAX_SITES) {
+    return { text: `${MAX_SITES} SITES IS THE LIMIT`, bad: false };
+  }
+  if (form.webMode === "only" && form.sites.length === 0) {
+    return { text: "“ONLY” NEEDS AT LEAST ONE SITE", bad: true };
+  }
+  return { text: `${form.sites.length} OF ${MAX_SITES} · ENTER TO ADD`, bad: false };
+}

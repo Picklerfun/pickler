@@ -12,6 +12,9 @@ import type {
   studioAgentSchema,
   AgentDraftDto,
   DraftCreateDto,
+  SignedActivityDto,
+  TransferRequestDto,
+  WalletsDto,
   PreviewRunDto,
   PreviewRunRequestDto,
 } from "@pickler/api-schema";
@@ -31,7 +34,8 @@ export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
-export type { AgentDraftDto };
+export type { AgentDraftDto, SignedActivityDto };
+export type StudioWallets = WalletsDto;
 /** A paper run of a brief, as its owner reads it. */
 export type PreviewRun = PreviewRunDto["run"];
 
@@ -105,7 +109,10 @@ export const startPreviewRun = (body: PreviewRunRequestDto) =>
 export const readPreviewRun = (id: string, signal?: AbortSignal) =>
   studioApi<PreviewRunDto>(`/preview-runs/${encodeURIComponent(id)}`, signal ? { signal } : {});
 
-/** `POST /drafts`: "Create {Name}", adopting the run. 409 RUN_STALE, HANDLE_TAKEN, PREVIEW_UNUSABLE. */
+/**
+ * `POST /drafts`: "Create {Name}" on a funded, policy-signed wallet. 409 WALLET_UNDERFUNDED,
+ * WALLET_ASSIGNED, POLICIES_MISSING, HANDLE_TAKEN; 404 WALLET_NOT_FOUND; 503 WALLETS_UNAVAILABLE.
+ */
 export const createDraft = (body: DraftCreateDto) =>
   studioApi<{ productId: string; agent: AgentRecord }>("/drafts", {
     method: "POST",
@@ -235,7 +242,12 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body?.success) {
     const code = body?.error ?? String(response.status);
-    throw new StudioError(code, knownMessage(code) ?? body?.message ?? "Request failed");
+    throw new StudioError(
+      code,
+      knownMessage(code) ?? body?.message ?? "Request failed",
+      body?.message,
+      body ? (body as unknown as Record<string, unknown>) : undefined,
+    );
   }
   return body.data as T;
 }
@@ -245,12 +257,6 @@ interface UnsignedActivityDto {
   body: string;
   timestampMs: string;
   organizationId: string;
-}
-
-export interface SignedActivityDto {
-  url: string;
-  body: string;
-  stamp: { stampHeaderName: string; stampHeaderValue: string };
 }
 
 export const agentState = () =>
@@ -275,13 +281,13 @@ type PrepareWalletResult =
   | UnsignedActivityDto;
 
 /** An unlinked wallet an earlier attempt left comes back as `existing`, with its rules' state. */
-export const prepareWallet = (handle: string) =>
+export const prepareWallet = () =>
   envelopeApi<
     | { existing: { wallet_id: string; address: string; policies_approved: boolean } }
     | UnsignedActivityDto
   >("/v1/signing/agents/wallet/prepare", {
     method: "POST",
-    body: JSON.stringify({ handle }),
+    body: "{}",
   }).then((data): PrepareWalletResult =>
     "existing" in data
       ? {
@@ -294,10 +300,10 @@ export const prepareWallet = (handle: string) =>
       : data,
   );
 
-export const confirmWallet = (handle: string, signed: SignedActivityDto) =>
+export const confirmWallet = (signed: SignedActivityDto) =>
   envelopeApi<{ wallet_id: string; address: string }>("/v1/signing/agents/wallet/confirm", {
     method: "POST",
-    body: JSON.stringify({ handle, signed }),
+    body: JSON.stringify({ signed }),
   }).then((data) => ({ walletId: data.wallet_id, address: data.address }));
 
 export const preparePolicies = (walletId: string) =>
@@ -321,3 +327,28 @@ interface HandleAvailability {
 /** `GET /v1/handles/:handle/availability`: public, and shared with the account handle check. */
 export const handleAvailable = (handle: string) =>
   envelopeApi<HandleAvailability>(`/v1/handles/${encodeURIComponent(handle)}/availability`);
+
+// ─── Wallets and transfers (`/v1/studio/wallets`) ──────────────────────────────────────────
+
+/** `GET /wallets`: the master wallet and the person's agent wallets with their balances. */
+export const studioWallets = () => studioApi<StudioWallets>("/wallets");
+
+/** What a transfer prepare answers: the unsigned activity and the amount in base units. */
+export type TransferPlan = UnsignedActivityDto & { baseUnits: string };
+
+/**
+ * `POST /wallets/transfers/prepare`. 400 INVALID_TRANSFER; 409 INSUFFICIENT_FUNDS, INSUFFICIENT_GAS;
+ * 404 WALLET_NOT_FOUND; 503 FEE_TOO_HIGH, NONCE_GAP, NOT_SENDABLE, WALLETS_UNAVAILABLE.
+ */
+export const transferPrepare = (body: TransferRequestDto) =>
+  studioApi<TransferPlan>("/wallets/transfers/prepare", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+/** `POST /wallets/transfers/confirm`: the same body and the passkey's stamp. 409 TRANSFER_ALREADY_RECORDED. */
+export const transferConfirm = (body: TransferRequestDto, signed: SignedActivityDto) =>
+  studioApi<{ txHash: string }>("/wallets/transfers/confirm", {
+    method: "POST",
+    body: JSON.stringify({ ...body, signed }),
+  });

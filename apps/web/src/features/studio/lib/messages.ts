@@ -26,6 +26,13 @@ const messages: Record<string, string> = {
   RUN_STALE: "The brief changed since the run. Run it again, then create.",
   HANDLE_TAKEN: "That handle is taken. Change the name.",
   PREVIEW_UNUSABLE: "That paper run can't be used any more. Run it again, then create.",
+  WALLET_UNDERFUNDED: "Fund its wallet with at least 10 AUSD and 0.5 MON first.",
+  wallet_underfunded: "Fund its wallet with at least 10 AUSD and 0.5 MON first.",
+  WALLET_ASSIGNED: "That wallet already belongs to an agent.",
+  POLICIES_MISSING: "Sign its caps first.",
+  INSUFFICIENT_FUNDS: "The wallet doesn't hold that much.",
+  TRANSFER_ALREADY_RECORDED: "That transfer already went through.",
+  INVALID_TRANSFER: "That transfer can't be made.",
   DAILY_CAP_REACHED: "Today's paper trades reached its daily cap.",
 };
 /** The studio's words for a code, when it has any. */
