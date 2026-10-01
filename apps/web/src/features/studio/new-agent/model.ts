@@ -10,7 +10,7 @@
  * from CommonJS, where an "import"-only package cannot be loaded statically. The test pins each
  * copy through a dynamic import.
  */
-import type { DraftCreateDto } from "@pickler/api-schema";
+import type { DraftCreateDto, WalletsDto } from "@pickler/api-schema";
 
 export type VoiceKey = "analyst" | "contrarian" | "trash_talker" | "deadpan" | "hype" | "professor";
 export type Accent = "lime" | "cyan" | "amber" | "orange" | "magenta" | "violet" | "blue";
@@ -207,6 +207,9 @@ export function createBlock(
   if (form.webOn && form.webMode === "only" && form.sites.length === 0) {
     return blocked("Name a site for “Only”");
   }
+  if (form.perDay < form.perTrade) {
+    return blocked("Fix the caps to create");
+  }
   if (!wallet) {
     return blocked("Create its wallet first");
   }
@@ -246,6 +249,49 @@ export function walletTag(wallet: WalletView | null): string {
     return "STEP 0 · CREATE IT";
   }
   return funded(wallet) ? "FUNDED" : "CREATED · EMPTY";
+}
+
+export type SectionKey = "thesis" | "enters" | "exits" | "never";
+
+/**
+ * An advanced section's tag, as the canvas words it: EMPTY, or DEFAULT / EDITED against the loaded
+ * default, with the line count for the three rule lists. `edited` lights the tag.
+ */
+export function sectionTag(key: SectionKey, value: string): { text: string; edited: boolean } {
+  if (!value.trim()) {
+    return { text: "EMPTY", edited: false };
+  }
+  const edited = value.trim() !== DEFAULT_BRIEF[key].trim();
+  const state = edited ? "EDITED" : "DEFAULT";
+  if (key === "thesis") {
+    return { text: state, edited };
+  }
+  const count = lines(value).length;
+  return { text: `${count} ${count === 1 ? "LINE" : "LINES"} · ${state}`, edited };
+}
+
+const big = (value: string | null): bigint | null => (value === null ? null : BigInt(value));
+
+/**
+ * The agent wallet a reload finds mid-setup: one of the person's with no agent yet, its balances in
+ * base units and whether its policies were already approved. Null when there is none.
+ */
+export function unlinkedWallet(
+  wallets: WalletsDto,
+): { wallet: WalletView; policiesApproved: boolean } | null {
+  const found = wallets.agents.find((agent) => agent.agentId === null);
+  if (!found) {
+    return null;
+  }
+  return {
+    wallet: {
+      walletId: found.walletId,
+      address: found.address,
+      ausdMicro: big(found.ausdMicro),
+      monWei: big(found.monWei),
+    },
+    policiesApproved: found.policiesApproved,
+  };
 }
 
 /** What `POST /v1/studio/drafts` is sent. */

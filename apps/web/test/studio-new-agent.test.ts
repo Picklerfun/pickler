@@ -19,6 +19,8 @@ import {
   handleState,
   parseAmount,
   patternCells,
+  sectionTag,
+  unlinkedWallet,
   toDraftRequest,
   toTransferBody,
   transferLabel,
@@ -243,4 +245,65 @@ test("an accented name becomes a plain handle", () => {
 test("an amount without a whole or a fraction part is not an amount", () => {
   assert.equal(parseAmount(".5", "AUSD"), null);
   assert.equal(parseAmount("1.", "AUSD"), null);
+});
+
+test("a day's cap below one trade's is 'Fix the caps to create'", () => {
+  const form = filled({ perTrade: 25, perDay: 20 });
+  assert.equal(createLabel(form, "free", wallet()), "Fix the caps to create");
+  assert.equal(canCreate(form, "free", wallet()), false);
+});
+
+test("a section's tag: empty, default, edited, and its line count", () => {
+  assert.deepEqual(sectionTag("thesis", "  "), { text: "EMPTY", edited: false });
+  assert.deepEqual(sectionTag("thesis", DEFAULT_BRIEF.thesis), { text: "DEFAULT", edited: false });
+  assert.deepEqual(sectionTag("thesis", "Mine."), { text: "EDITED", edited: true });
+  assert.deepEqual(sectionTag("enters", DEFAULT_BRIEF.enters), {
+    text: "3 LINES · DEFAULT",
+    edited: false,
+  });
+  assert.deepEqual(sectionTag("never", "One line"), { text: "1 LINE · EDITED", edited: true });
+});
+
+test("a reload mid-setup restores the unlinked agent wallet, its balances and its policies", () => {
+  const restored = unlinkedWallet({
+    master: { address: "0xm", ausdMicro: "1", monWei: "1" },
+    agents: [
+      {
+        walletId: "linked",
+        address: "0x1",
+        ausdMicro: "5",
+        monWei: "5",
+        agentId: "agent",
+        agentName: "Old",
+        caps: null,
+        policiesApproved: true,
+      },
+      {
+        walletId: "new",
+        address: "0x2",
+        ausdMicro: "10000000",
+        monWei: null,
+        agentId: null,
+        agentName: null,
+        caps: null,
+        policiesApproved: true,
+      },
+    ],
+    readAt: 0,
+  });
+  assert.deepEqual(restored, {
+    wallet: { walletId: "new", address: "0x2", ausdMicro: 10_000_000n, monWei: null },
+    policiesApproved: true,
+  });
+});
+
+test("no unlinked agent wallet restores nothing", () => {
+  assert.equal(
+    unlinkedWallet({
+      master: { address: "0xm", ausdMicro: null, monWei: null },
+      agents: [],
+      readAt: 0,
+    }),
+    null,
+  );
 });
