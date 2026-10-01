@@ -75,7 +75,13 @@ export function Chrome({
           TESTNET
         </span>
         {master && (
-          <button type="button" className={styles.topPill} title="Your wallets" onClick={onWallets}>
+          <button
+            type="button"
+            className={styles.topPill}
+            title="Your wallets"
+            aria-haspopup="dialog"
+            onClick={onWallets}
+          >
             <Image src="/brand/monad.png" alt="" width={16} height={16} />
             <span>
               {formatUnits(master.ausdMicro, "AUSD")}
@@ -88,7 +94,13 @@ export function Chrome({
             </span>
           </button>
         )}
-        <button type="button" className={styles.topPill} title="AI credits" onClick={onCredits}>
+        <button
+          type="button"
+          className={styles.topPill}
+          title="AI credits"
+          aria-haspopup="dialog"
+          onClick={onCredits}
+        >
           <i className={styles.creditsDot} aria-hidden="true" />
           <small>AI CREDITS</small>
           <span>Soon</span>

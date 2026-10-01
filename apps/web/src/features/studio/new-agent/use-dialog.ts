@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef, type KeyboardEvent, type SyntheticEvent } from "react";
 
+/* The last opener outside any dialog. A dialog opened from inside another one (the Wallets and AI
+   credits tabs switching) returns to this one, not to a button that is gone with its dialog. */
+let outsideOpener: HTMLElement | null = null;
+
 /**
  * The create screen's dialog pattern, shared by the passkey sheet and the Wallets modal: a native
  * `<dialog>` opened with `showModal`, as the auth sheet is, so the page behind it is inert and the
@@ -12,10 +16,13 @@ export function useDialog({
   open,
   busy,
   onClose,
+  nested = false,
 }: {
   open: boolean;
   busy: boolean;
   onClose(): void;
+  /** Opens above another dialog that stays up (the passkey sheet), so it returns into it. */
+  nested?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -31,8 +38,15 @@ export function useDialog({
       return;
     }
     if (open && !element.open) {
-      opener.current =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      if (active && (nested || !active.closest("dialog"))) {
+        opener.current = active;
+        if (!active.closest("dialog")) {
+          outsideOpener = active;
+        }
+      } else {
+        opener.current = outsideOpener;
+      }
       element.showModal();
     }
     if (!open) {

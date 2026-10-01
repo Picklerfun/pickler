@@ -186,7 +186,7 @@ export function WalletsModal({
       >
         <div className={styles.modalCard}>
           <div className={styles.modalHead}>
-            <span className={styles.tabs}>
+            <span className={styles.tabs} role="group" aria-label="Wallets and AI credits">
               <span className={styles.tab} aria-current="true">
                 Wallets
               </span>

@@ -18,6 +18,7 @@ export interface CreditsModalProps {
  */
 export function CreditsModal({ open, onClose, onWallets }: CreditsModalProps) {
   const titleId = useId();
+  const soonId = useId();
   const { ref, onKeyDown, onCancel } = useDialog({ open, busy: false, onClose });
   /* A drag that starts inside the card and ends on the backdrop does not close the modal. */
   const downOnBackdrop = useRef(false);
@@ -43,7 +44,7 @@ export function CreditsModal({ open, onClose, onWallets }: CreditsModalProps) {
     >
       <div className={styles.modalCard}>
         <div className={styles.modalHead}>
-          <span className={styles.tabs}>
+          <span className={styles.tabs} role="group" aria-label="Wallets and AI credits">
             <button type="button" className={styles.tab} onClick={onWallets}>
               Wallets
             </button>
@@ -66,9 +67,11 @@ export function CreditsModal({ open, onClose, onWallets }: CreditsModalProps) {
         <div className={styles.walletBox}>
           <div className={styles.walletBoxHead}>
             <span className={styles.webTitle}>ADD CREDITS · FROM MASTER WALLET</span>
-            <Tag className={styles.soon}>SOON</Tag>
+            <Tag id={soonId} className={styles.soon}>
+              SOON
+            </Tag>
           </div>
-          <Button block disabled>
+          <Button block disabled aria-describedby={soonId}>
             Add credits
           </Button>
           <span className={styles.note}>

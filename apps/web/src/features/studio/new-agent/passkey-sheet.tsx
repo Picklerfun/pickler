@@ -40,7 +40,7 @@ export function PasskeySheet({
   const titleId = useId();
   const bodyId = useId();
   const busy = phase === "busy";
-  const { ref: sheet, onKeyDown, onCancel } = useDialog({ open, busy, onClose });
+  const { ref: sheet, onKeyDown, onCancel } = useDialog({ open, busy, onClose, nested: true });
 
   /* Each phase puts the focus on its first action (Continue, Try again), or on the sheet itself
      while there is none, so a phase that removes the focused button never drops it to the page. */
