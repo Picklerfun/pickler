@@ -113,16 +113,19 @@ micro-AUSD integers (`*MicroAusd`), MON as wei decimal strings (`*Wei`).
 }
 ```
 
-`web: null` means the web is off. The server, in one transaction: validates the brief, sources,
-caps and handle; checks the wallet is the person's, `kind = 'agent'`, not linked, and has approved
-policies; re-reads both balances against the minimums; creates the draft (config with `brief`,
+`web: null` means the web is off. The server reads both balances on chain just before the
+transaction (a chain read cannot be part of a database transaction, and holding row locks across an
+RPC call buys nothing), then, in one transaction: validates the brief, sources, caps and handle;
+checks the wallet is the person's, `kind = 'agent'`, not linked, and has approved policies; checks
+that reading against the minimums; creates the draft (config with `brief`,
 `voice`, `sources`, `spend`, `maxLeverage`, Perpl), writes the profile (accent, avatar pattern, voice name)
 and links the wallet in `wallets.agent_wallets` with the approved policy ids. Answers `201 { productId,
 agent }`.
 
 Errors: `400 INVALID_BRIEF` (`{ error, field, reason }`, the shape the brief UI already reads), `404 WALLET_NOT_FOUND` (absent or another
 person's), `409 WALLET_ASSIGNED`, `409 POLICIES_MISSING`, `409 WALLET_UNDERFUNDED`,
-`409 HANDLE_TAKEN`, `409 DRAFT_LIMIT` (as today), `503` when Turnkey or the RPC is not configured.
+`409 HANDLE_TAKEN`, `409 DRAFT_LIMIT` (as today), `503 WALLETS_UNAVAILABLE` when Turnkey or the RPC is
+not configured or the chain cannot be read (an unreadable balance is never reported as underfunded).
 
 ### 4.2 New
 
