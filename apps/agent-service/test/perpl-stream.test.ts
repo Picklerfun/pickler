@@ -319,3 +319,97 @@ test("message bounds invalidate the socket without retaining an authenticated pa
     await bounded.close();
   }
 });
+
+test("identical subscription acknowledgments do not regress a reconstructed book", () => {
+  const state = ready();
+  state.apply(
+    {
+      mt: 6,
+      subs: state.streams().map((stream, i) => ({ stream, sid: i + 1, status: { code: 0 } })),
+    },
+    now,
+  );
+  assert.equal(state.frame("BTC", now).book.bids[0]!.price, "99.9");
+});
+
+test("proven discontinuity resubscribes within its bound and cannot reuse the prior book", async () => {
+  const sockets: Socket[] = [];
+  const stream = new PerplPublicStream({
+    markets,
+    signal: new AbortController().signal,
+    guard: async () => {},
+    now: () => now,
+    socket: () => {
+      const socket = new Socket();
+      sockets.push(socket);
+      queueMicrotask(() => {
+        socket.readyState = 1;
+        socket.emit("open");
+      });
+      return socket;
+    },
+  });
+  const signal = new AbortController().signal;
+  const message = (socket: Socket, raw: unknown) =>
+    socket.emit("message", { data: JSON.stringify(raw) });
+  const subscribe = (socket: Socket) =>
+    message(socket, {
+      mt: 6,
+      subs: stream.state
+        .streams()
+        .map((name, i) => ({ stream: name, sid: i + 1, status: { code: 0 } })),
+    });
+  try {
+    await stream.connect(signal);
+    subscribe(sockets[0]!);
+    message(sockets[0]!, snapshot());
+    message(sockets[0]!, snapshot(4));
+    message(sockets[0]!, ticker());
+    message(sockets[0]!, { mt: 100, sn: 1, h: 100 });
+    message(sockets[0]!, { mt: 100, sn: 3, h: 102 });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(sockets[0]!.readyState, 3);
+    await stream.connect(signal);
+    await assert.rejects(stream.frame("BTC", signal), { code: "DATA_UNAVAILABLE" });
+    subscribe(sockets[1]!);
+    message(sockets[1]!, snapshot());
+    message(sockets[1]!, snapshot(4));
+    message(sockets[1]!, ticker());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal((await stream.frame("BTC", signal)).snapshot.market.symbol, "BTC");
+    assert.equal(sockets.length, 2);
+  } finally {
+    await stream.close();
+  }
+});
+
+test("joint deadline also bounds a blocked ownership lookup without provider calls", async () => {
+  const { createPerplAcquisitionReader } =
+    await import("@pickler/agent-runtime/plugins/perps-paper");
+  const reader = createPerplAcquisitionReader(
+    { agent: () => new Promise(() => {}) },
+    { policy: "rest-paced-20s-v1" },
+  );
+  try {
+    await assert.rejects(
+      reader.read(
+        { tenantId: "tenant", agentId: "agent" },
+        ["BTC", "ETH"],
+        new AbortController().signal,
+        undefined,
+        Date.now() + 20,
+      ),
+      { code: "DATA_UNAVAILABLE" },
+    );
+  } finally {
+    await reader.close();
+  }
+  assert.throws(
+    () =>
+      createPerplAcquisitionReader(
+        { agent: () => new Promise(() => {}) },
+        { policy: "unknown" as "stream-20s-v1" },
+      ),
+    { code: "INVALID_INPUT" },
+  );
+});
