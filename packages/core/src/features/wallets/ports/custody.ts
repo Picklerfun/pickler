@@ -215,6 +215,31 @@ export interface AgentWalletRepository {
    * and reads whether its rules were approved before the attempt stopped.
    */
   findOrphanWallet(userId: string, name: string): Promise<OrphanAgentWallet | null>;
+  /** This person's newest agent wallet that no agent is linked to, whatever its name. */
+  findUnlinkedWallet(userId: string): Promise<OrphanAgentWallet | null>;
+  /** How many agent wallets this person has, linked or not: the next one is "Agent wallet N+1". */
+  countAgentWallets(userId: string): Promise<number>;
+  /** Every agent wallet of this person's, oldest first, with the agent it is linked to. */
+  listAgentWallets(userId: string): Promise<
+    {
+      walletId: string;
+      address: string;
+      agentId: string | null;
+      agentName: string | null;
+      policiesApproved: boolean;
+      caps: { perTradeAusd: number; perDayAusd: number; maxLeverage: number } | null;
+    }[]
+  >;
+  saveTransfer(input: {
+    userId: string;
+    fromWalletId: string;
+    toWalletId: string;
+    token: "ausd" | "mon";
+    amount: bigint;
+    txHash: string;
+  }): Promise<void>;
+  /** Whether a transfer with this transaction hash (any case) is recorded. */
+  transferRecorded(txHash: string): Promise<boolean>;
   /** This person's agent wallet with this id, linked or not; null for anyone else's. */
   findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
   /**

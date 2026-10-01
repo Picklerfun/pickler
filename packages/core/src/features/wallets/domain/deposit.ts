@@ -93,3 +93,11 @@ export class DepositsUnavailableError extends Error {
     this.name = "DepositsUnavailableError";
   }
 }
+
+/** A transfer with this transaction hash is already recorded (HTTP 409). */
+export class TransferAlreadyRecordedError extends Error {
+  constructor() {
+    super("This transfer is already recorded");
+    this.name = "TransferAlreadyRecordedError";
+  }
+}

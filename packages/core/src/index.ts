@@ -216,6 +216,7 @@ export {
   MAX_DEPOSIT_GAS,
   MAX_FEE_MULTIPLE,
   SignedTransactionMismatchError,
+  TransferAlreadyRecordedError,
   type DepositAmountAusd,
 } from "./features/wallets/domain/deposit.js";
 export {
