@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@pickler/ui";
-import { STARTER_CAPS, sectionTag, type NewAgentForm, type SectionKey } from "./model";
+import { capsEdited, capsInverted, sectionTag, type NewAgentForm, type SectionKey } from "./model";
 import styles from "./new-agent.module.css";
 
 const SECTIONS: readonly {
@@ -66,10 +66,7 @@ export function Advanced({
   onToggle(): void;
   onChange(next: NewAgentForm): void;
 }) {
-  const edited =
-    form.perTrade !== STARTER_CAPS.perTradeAusd ||
-    form.perDay !== STARTER_CAPS.perDayAusd ||
-    form.leverage !== STARTER_CAPS.maxLeverage;
+  const edited = capsEdited(form);
   return (
     <>
       <button
@@ -167,7 +164,7 @@ export function Advanced({
                 );
               })}
             </div>
-            {form.perDay < form.perTrade && (
+            {capsInverted(form) && (
               <p className={styles.alert} role="alert">
                 <Icon name="alert" size={12} />A day&apos;s cap can&apos;t be below one
                 trade&apos;s.

@@ -142,13 +142,16 @@ const slug = (text: string) =>
 export const deriveHandle = (name: string, edited = ""): string =>
   edited.trim() ? slug(edited) : slug(name);
 
+/** The handle rule the availability route applies: 3–15 of a–z, 0–9 and _. */
+export const validHandle = (handle: string): boolean => /^[a-z0-9_]{3,15}$/.test(handle);
+
 export type HandleState = "empty" | "invalid" | "checking" | "free" | "taken" | "failed";
 
 export function handleState(handle: string, available: boolean | null | "failed"): HandleState {
   if (!handle) {
     return "empty";
   }
-  if (!/^[a-z0-9_]{3,15}$/.test(handle)) {
+  if (!validHandle(handle)) {
     return "invalid";
   }
   if (available === null) {
@@ -172,6 +175,22 @@ export const funded = (wallet: WalletView | null): boolean =>
   wallet.monWei !== null &&
   wallet.ausdMicro >= MIN_START.ausdMicro &&
   wallet.monWei >= MIN_START.monWei;
+
+/** A day's cap below one trade's: the caps contradict each other. */
+export const capsInverted = (form: NewAgentForm): boolean => form.perDay < form.perTrade;
+
+/** Any cap moved off the starter caps. */
+export const capsEdited = (form: NewAgentForm): boolean =>
+  form.perTrade !== STARTER_CAPS.perTradeAusd ||
+  form.perDay !== STARTER_CAPS.perDayAusd ||
+  form.leverage !== STARTER_CAPS.maxLeverage;
+
+/**
+ * Where the wallet sheet starts: at step 2 when an earlier attempt made the wallet and its
+ * delegated user is still missing (a cancelled step 2), otherwise at step 1.
+ */
+export const walletSheetStep = (wallet: WalletView | null, delegated: boolean | null): 1 | 2 =>
+  wallet !== null && delegated === false ? 2 : 1;
 
 /** Why "Create" is closed, or that it is open. One rule feeds both the label and the button. */
 export type CreateBlock = { ok: true } | { ok: false; label: string };
@@ -207,7 +226,7 @@ export function createBlock(
   if (form.webOn && form.webMode === "only" && form.sites.length === 0) {
     return blocked("Name a site for “Only”");
   }
-  if (form.perDay < form.perTrade) {
+  if (capsInverted(form)) {
     return blocked("Fix the caps to create");
   }
   if (!wallet) {

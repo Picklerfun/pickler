@@ -120,7 +120,7 @@ export function Reads({
                   onChange={(event) => setDraft(event.target.value)}
                   onBlur={add}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === ",") {
+                    if (event.key === "Enter" || event.key === "," || event.key === " ") {
                       event.preventDefault();
                       add();
                     } else if (event.key === "Backspace" && !draft && form.sites.length) {

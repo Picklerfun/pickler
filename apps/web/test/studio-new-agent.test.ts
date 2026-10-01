@@ -9,6 +9,8 @@ import {
   DEFAULT_BRIEF,
   VOICES,
   canCreate,
+  capsEdited,
+  capsInverted,
   createLabel,
   deriveHandle,
   emptyForm,
@@ -21,6 +23,8 @@ import {
   patternCells,
   sectionTag,
   unlinkedWallet,
+  validHandle,
+  walletSheetStep,
   toDraftRequest,
   toTransferBody,
   transferLabel,
@@ -306,4 +310,30 @@ test("no unlinked agent wallet restores nothing", () => {
     }),
     null,
   );
+});
+
+test("the wallet sheet resumes at step 2 when the wallet exists and its delegated user does not", () => {
+  assert.equal(walletSheetStep(wallet(), false), 2);
+});
+
+test("the wallet sheet starts at step 1 with no wallet, or with the delegated user there", () => {
+  assert.equal(walletSheetStep(null, false), 1);
+  assert.equal(walletSheetStep(wallet(), true), 1);
+  assert.equal(walletSheetStep(wallet(), null), 1);
+});
+
+test("caps are inverted only when a day's cap is below one trade's", () => {
+  assert.equal(capsInverted(filled({ perTrade: 25, perDay: 20 })), true);
+  assert.equal(capsInverted(filled({ perTrade: 20, perDay: 20 })), false);
+});
+
+test("caps are edited once any of the three leaves the starter caps", () => {
+  assert.equal(capsEdited(filled()), false);
+  assert.equal(capsEdited(filled({ leverage: 2 })), true);
+});
+
+test("a handle is 3–15 of a–z, 0–9 and _", () => {
+  assert.equal(validHandle("ht_bot"), true);
+  assert.equal(validHandle("ab"), false);
+  assert.equal(validHandle("Halftime"), false);
 });

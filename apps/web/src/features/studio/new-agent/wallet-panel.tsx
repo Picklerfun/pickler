@@ -5,6 +5,11 @@ export interface WalletPanelProps {
   wallet: WalletView | null;
   /** No delegated user yet: creating the wallet is two signatures. */
   firstTime: boolean;
+  /**
+   * The wallet exists but Pickler's delegated user does not (step 2 was cancelled): `wallet` is
+   * null, and "Create its wallet" is step 2 only.
+   */
+  pendingDelegate: boolean;
   form: NewAgentForm;
   checkedAt: string;
   arrivals: { text: string; at: string }[];

@@ -42,6 +42,8 @@ import {
   handleState,
   toDraftRequest,
   unlinkedWallet,
+  validHandle,
+  walletSheetStep,
   type NewAgentForm,
   type Token,
   type WalletView,
@@ -53,7 +55,6 @@ import { WalletPanel } from "./wallet-panel";
 import { WalletsModal } from "./wallets-modal";
 import styles from "./new-agent.module.css";
 
-const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
 /** The two names a WebAuthn prompt fails with when the person closed it or it timed out. */
 const CLOSED_PROMPT = new Set(["NotAllowedError", "AbortError"]);
 /** How long the sheet shows its "done" before it closes. */
@@ -176,7 +177,7 @@ export function NewAgent({
   const handle = deriveHandle(form.name, form.handle);
   /* The handle check, debounced as the brief did it. */
   useEffect(() => {
-    if (preview || !HANDLE_RE.test(handle)) {
+    if (preview || !validHandle(handle)) {
       return;
     }
     let active = true;
@@ -271,6 +272,8 @@ export function NewAgent({
   /* A wallet without Pickler's delegated user is not ready: "Create its wallet" finishes it. */
   const ready = delegated === false ? null : wallet;
   const firstTime = delegated === false;
+  /* Step 2 was cancelled: the wallet exists, its delegated user does not. */
+  const resumeStep = walletSheetStep(wallet, delegated);
   const busy = sheet?.phase === "busy";
   const creatable =
     !preview && access.create && created === null && canCreate(form, nameState, ready);
@@ -293,7 +296,7 @@ export function NewAgent({
 
   async function runWallet() {
     setActionError("");
-    setSheet({ kind: "wallet", phase: "busy", step: 1 });
+    setSheet({ kind: "wallet", phase: "busy", step: resumeStep });
     try {
       await createWallet({
         state: agentState,
@@ -320,6 +323,8 @@ export function NewAgent({
       }
       if (closedPrompt(caught)) {
         setSheet((current) => current && { ...current, phase: "err" });
+        // A cancelled step 2 left the wallet: read it, so "Try again" starts at step 2.
+        void refresh();
         return;
       }
       setSheet(null);
@@ -395,7 +400,7 @@ export function NewAgent({
       return;
     }
     /* A wallet step 1 already made opens at step 2: that is all that is left. */
-    setSheet({ kind: "wallet", phase: "idle", step: wallet && firstTime ? 2 : 1 });
+    setSheet({ kind: "wallet", phase: "idle", step: resumeStep });
   }
 
   function onContinue() {
@@ -419,12 +424,17 @@ export function NewAgent({
     if (busy) {
       return;
     }
+    const wasWallet = sheet?.kind === "wallet";
+    setSheet(null);
     if (step2.current) {
+      // runWallet's catch reads the wallets again.
       const gate = step2.current;
       step2.current = null;
       gate.reject(new StepTwoClosed());
+    } else if (wasWallet) {
+      // Whatever the sheet made is kept; the panel must know it, to offer step 2 only.
+      void refresh();
     }
-    setSheet(null);
   }
 
   function press() {
@@ -442,7 +452,7 @@ export function NewAgent({
     sheet?.kind === "create"
       ? {
           title: `Create ${name}?`,
-          body: `SETS ITS CAPS · ${form.perTrade} / ${form.perDay} AUSD · ${form.leverage}× · IT CAN ONLY TRADE ON PERPL AND CAN'T WITHDRAW`,
+          body: `SETS ITS CAPS · ${form.perTrade} / ${form.perDay} AUSD · ${form.leverage}× · IT CAN ONLY TRADE ON PERPL AND CAN'T WITHDRAW · PICKLER HOLDS EVERY TRADE TO THESE CAPS`,
           done: `${name} is yours`,
         }
       : sheet?.step === 2
@@ -597,6 +607,7 @@ export function NewAgent({
           <WalletPanel
             wallet={ready}
             firstTime={firstTime}
+            pendingDelegate={resumeStep === 2}
             form={form}
             checkedAt={checkedAt}
             arrivals={arrivals}
