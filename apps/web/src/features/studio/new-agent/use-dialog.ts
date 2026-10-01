@@ -59,7 +59,7 @@ export function useDialog({
         }
       }
     }
-  }, [open]);
+  }, [open, nested]);
 
   /* A close the platform forces (a second Escape some browsers stop asking about) is answered
      like any other: closed when it may close, shown again while a passkey is up. */
