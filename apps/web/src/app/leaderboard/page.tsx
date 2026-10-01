@@ -22,7 +22,11 @@ export default async function Leaderboard({ searchParams }: { searchParams: Prom
   ]);
   return (
     <PublicShell charts>
-      <LeaderboardPage board={board} analytics={analytics} />
+      <LeaderboardPage
+        board={board.data}
+        analytics={analytics.data}
+        degraded={board.degraded || analytics.degraded}
+      />
     </PublicShell>
   );
 }

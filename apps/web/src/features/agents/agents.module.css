@@ -126,6 +126,17 @@
   color: var(--pk-ink-soft);
 }
 
+/* The API could not answer; the empty board under it is on purpose (DegradedNote). */
+.degradedNote {
+  display: inline-block;
+  margin: 0 0 22px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font: 500 14px/1.4 var(--pk-font);
+  color: var(--pk-state-caution-ink);
+  background: var(--pk-state-caution-bg);
+}
+
 .sortButton {
   padding: 10px 14px;
   background: var(--pk-panel);
