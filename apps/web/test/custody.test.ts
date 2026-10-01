@@ -326,11 +326,15 @@ test("a refused duplicate is recognised as the authenticator answering, not as a
   assert.equal(alreadyEnrolled(null), false);
 });
 
-test("where a signed-in person belongs follows what the account holds", () => {
+test("where a signed-in person belongs follows what the account holds, wallet first", () => {
   const wallet = { address: "0xabc", balances: {} } as never;
-  assert.equal(landing({ handle: null, wallet: null, enrolledHere: false }), "handle");
-  assert.equal(landing({ handle: null, wallet, enrolledHere: true }), "handle");
+  // No wallet is the passkey step whatever the profile: the handle is saved only after it.
+  assert.equal(landing({ handle: null, wallet: null, enrolledHere: false }), "passkey");
+  assert.equal(landing({ handle: null, wallet: null, enrolledHere: true }), "passkey");
   assert.equal(landing({ handle: "nightowl", wallet: null, enrolledHere: true }), "passkey");
+  // A wallet and no profile is the handle step, marked or not.
+  assert.equal(landing({ handle: null, wallet, enrolledHere: true }), "handle");
+  assert.equal(landing({ handle: null, wallet, enrolledHere: false }), "handle");
   assert.equal(landing({ handle: "nightowl", wallet, enrolledHere: true }), "welcome");
   assert.equal(landing({ handle: "nightowl", wallet, enrolledHere: false }), "recover");
 });

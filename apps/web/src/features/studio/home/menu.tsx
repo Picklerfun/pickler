@@ -3,8 +3,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
+import { newAgentLock } from "../create/gate";
+import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
-import { MIN_FUNDED_AUSD } from "./status";
+import { RAIL } from "../sections/rail";
 import styles from "./home.module.css";
 
 interface Item {
@@ -15,8 +17,12 @@ interface Item {
 
 /**
  * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
- * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
- * person's other agents when there is more than one.
+ * it), then every studio section the rail reaches, from the same list the rails draw
+ * (`sections/rail.ts`), and the person's other agents when there is more than one.
+ *
+ * With no agent yet the Menu still opens, so a person can see everything an agent gets before
+ * making one: "+ New agent" is open (the lock needs an agent to fund) and each section is listed
+ * but disabled, with the "Pickler Studio Empty" canvas's hint.
  */
 export function HomeMenu({
   agent,
@@ -24,57 +30,48 @@ export function HomeMenu({
   calls,
   running,
   canManage,
+  researchLock = "",
   onSection,
   onSwitch,
 }: {
-  agent: Agent;
+  agent: Agent | null;
   agents: Agent[];
   calls: number;
   running: boolean;
   canManage: boolean;
+  /** Why this workspace cannot create agents at all (research not enabled), or "". */
+  researchLock?: string;
   onSection(key: SectionKey): void;
   onSwitch(agentId: string): void;
 }) {
   const [open, setOpen] = useState(false);
-  const name = agent.name ?? "this agent";
-  const unfundedHere = (agent.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD;
-  const lockNote = unfundedHere
-    ? `Fund ${name} first. One unfunded agent at a time.`
-    : "Fund your other agent first. One unfunded agent at a time.";
-  const plugins = agent.config.plugins?.enabled.length ?? 0;
-  const groups: { title: string; items: Item[] }[] = [
-    {
-      title: "RUN",
-      items: [
-        { key: "overview", label: "Overview", note: "" },
-        { key: "context", label: "Context", note: "" },
-        { key: "picks", label: "Picks", note: calls ? String(calls) : "" },
-        { key: "activity", label: "Activity", note: running ? "RUNNING" : "" },
-      ],
-    },
-    {
-      title: "BUILD",
-      items: [
-        { key: "brief", label: "Brief", note: "" },
-        { key: "skills", label: "Skills", note: plugins ? `${plugins} PLUGINS` : "" },
-        { key: "sources", label: "Sources", note: "" },
-        { key: "limits", label: "Limits & funding", note: "" },
-        { key: "identity", label: "Identity & voice", note: "" },
-      ],
-    },
-    {
-      title: "GROW",
-      items: [
-        { key: "profile", label: "Public page", note: "" },
-        { key: "audience", label: "Audience", note: "" },
-        { key: "token", label: "Token", note: "OPTIONAL" },
-        { key: "board", label: "The board", note: "" },
-      ],
-    },
-  ];
-  const others = agents.filter(
-    (other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id),
-  );
+  /* The lock is the workspace's, not the selected agent's: a selected draft is never the one to
+     fund. Funding only, because "+ New agent" leads to /studio/new, which creates no draft. */
+  const access = menuAccess({
+    hasAgent: agent !== null,
+    canManage,
+    researchLock,
+    fundLock: newAgentLock(agents),
+    draftLock: "",
+  });
+  const plugins = agent?.config.plugins?.enabled.length ?? 0;
+  /* What each section carries beside its name: SOON for one with no screen, else what is live. */
+  const notes: Partial<Record<SectionKey, string>> = {
+    picks: calls ? String(calls) : "",
+    activity: running ? "RUNNING" : "",
+    skills: plugins ? `${plugins} PLUGINS` : "",
+  };
+  const groups: { title: string; items: Item[] }[] = RAIL.map((group) => ({
+    title: group.title,
+    items: group.items.map((item) => ({
+      key: item.key,
+      label: item.label,
+      note: item.soon ? "SOON" : (notes[item.key] ?? ""),
+    })),
+  }));
+  const others = agent
+    ? agents.filter((other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id))
+    : [];
 
   useEffect(() => {
     if (!open) {
@@ -113,17 +110,20 @@ export function HomeMenu({
       </button>
       {open && (
         <div className={styles.menu} id="home-menu-panel">
-          {agent.canCreateAnother.ok && canManage ? (
+          {access.create ? (
             <Link href="/studio/new" className={styles.newAgent}>
               + New agent
             </Link>
           ) : (
-            <div className={styles.newAgentLocked} title={lockNote} aria-disabled="true">
+            <div className={styles.newAgentLocked} title={access.createNote} aria-disabled="true">
               <span className={styles.newAgentLabel}>+ New agent</span>
-              <span className={styles.newAgentNote}>
-                {canManage ? lockNote : "You can view this workspace but not create agents."}
-              </span>
+              <span className={styles.newAgentNote}>{access.createNote}</span>
             </div>
+          )}
+          {!access.sections && (
+            <p className={styles.menuHint}>
+              Every section opens {access.sectionNote.toLowerCase()}.
+            </p>
           )}
           {groups.map((group) => (
             <div key={group.title} className={styles.menuGroup}>
@@ -133,13 +133,17 @@ export function HomeMenu({
                   key={item.key}
                   type="button"
                   className={styles.menuItem}
+                  disabled={!access.sections}
+                  title={access.sectionNote || undefined}
                   onClick={() => {
                     setOpen(false);
                     onSection(item.key);
                   }}
                 >
                   <span className={styles.grow}>{item.label}</span>
-                  {item.note && <span className={styles.menuNote}>{item.note}</span>}
+                  {access.sections && item.note && (
+                    <span className={styles.menuNote}>{item.note}</span>
+                  )}
                 </button>
               ))}
             </div>

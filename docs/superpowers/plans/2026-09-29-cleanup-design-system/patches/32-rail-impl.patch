@@ -1,0 +1,593 @@
+diff --git a/apps/web/src/features/studio/home/empty.tsx b/apps/web/src/features/studio/home/empty.tsx
+index 7ca26b6..be5770f 100644
+--- a/apps/web/src/features/studio/home/empty.tsx
++++ b/apps/web/src/features/studio/home/empty.tsx
+@@ -2,7 +2,7 @@
+ import Image from "next/image";
+ import Link from "next/link";
+ import { useCallback, useEffect, useState } from "react";
+-import { Button, ButtonLink, Icon, Tag, type IconName } from "@pickler/ui";
++import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
+ import { SecondPasskey } from "@/features/auth/components/second-passkey";
+ import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
+ import { useMarketplaceHref } from "@/features/site/studio-href";
+@@ -42,32 +42,10 @@ import {
+ import { PaperRun, type PaperRunView } from "../brief/paper-run";
+ import { menuAccess } from "./access";
+ import { HomeMenu } from "./menu";
++import { RAIL } from "../sections/rail";
+ import shell from "../studio.module.css";
+ import styles from "./home.module.css";
+ 
+-/* The rail the "Pickler Studio Empty v4" canvas draws, every row disabled until an agent exists. */
+-const RAIL: { title: string; items: [IconName, string][] }[] = [
+-  {
+-    title: "RUN",
+-    items: [
+-      ["grid", "Overview"],
+-      ["chat", "Console"],
+-      ["target", "Trades"],
+-      ["activity", "Activity"],
+-    ],
+-  },
+-  {
+-    title: "BUILD",
+-    items: [
+-      ["file", "Brief"],
+-      ["sliders", "Sources & rules"],
+-      ["wallet", "Limits & funding"],
+-      ["user", "Identity & voice"],
+-    ],
+-  },
+-  { title: "GROW", items: [["globe", "Public profile"]] },
+-];
+-
+ const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
+ 
+ /** The run a brief was sent on: its id, what it was made from, and its latest read. */
+@@ -343,19 +321,21 @@ export function EmptyHome({
+ 
+       <div className={styles.emptyBody}>
+         <nav className={styles.emptyRail} aria-label="Studio sections">
++          {/* The same sections the shell's rail draws, every row disabled until an agent exists. */}
+           {RAIL.map((group) => (
+             <div key={group.title}>
+               <p className={shell.railTitle}>{group.title}</p>
+               <div className={shell.railItems}>
+-                {group.items.map(([icon, label]) => (
++                {group.items.map((item) => (
+                   <span
+-                    key={label}
++                    key={item.key}
+                     className={styles.emptyRailItem}
+                     title={access.sectionNote}
+                     aria-disabled="true"
+                   >
+-                    <Icon name={icon} size={17} />
+-                    <span className={shell.railLabel}>{label}</span>
++                    <Icon name={item.icon} size={17} />
++                    <span className={shell.railLabel}>{item.label}</span>
++                    {item.soon && <Tag className={styles.soon}>SOON</Tag>}
+                   </span>
+                 ))}
+               </div>
+diff --git a/apps/web/src/features/studio/home/menu.tsx b/apps/web/src/features/studio/home/menu.tsx
+index eddb731..1d8a801 100644
+--- a/apps/web/src/features/studio/home/menu.tsx
++++ b/apps/web/src/features/studio/home/menu.tsx
+@@ -6,6 +6,7 @@ import type { Agent } from "../api";
+ import { newAgentLock } from "../create/gate";
+ import { menuAccess } from "./access";
+ import type { SectionKey } from "../sections/keys";
++import { RAIL } from "../sections/rail";
+ import styles from "./home.module.css";
+ 
+ interface Item {
+@@ -16,8 +17,8 @@ interface Item {
+ 
+ /**
+  * The home's Menu: "+ New agent" behind its lock (one unfunded agent at a time, as the API decided
+- * it), then every studio section the rail reaches, grouped as the canvas groups them, and the
+- * person's other agents when there is more than one.
++ * it), then every studio section the rail reaches, from the same list the rails draw
++ * (`sections/rail.ts`), and the person's other agents when there is more than one.
+  *
+  * With no agent yet the Menu still opens, so a person can see everything an agent gets before
+  * making one: "+ New agent" is open (the lock needs an agent to fund) and each section is listed
+@@ -54,36 +55,20 @@ export function HomeMenu({
+     draftLock: "",
+   });
+   const plugins = agent?.config.plugins?.enabled.length ?? 0;
+-  const groups: { title: string; items: Item[] }[] = [
+-    {
+-      title: "RUN",
+-      items: [
+-        { key: "overview", label: "Overview", note: "" },
+-        { key: "context", label: "Context", note: "" },
+-        { key: "picks", label: "Picks", note: calls ? String(calls) : "" },
+-        { key: "activity", label: "Activity", note: running ? "RUNNING" : "" },
+-      ],
+-    },
+-    {
+-      title: "BUILD",
+-      items: [
+-        { key: "brief", label: "Brief", note: "" },
+-        { key: "skills", label: "Skills", note: plugins ? `${plugins} PLUGINS` : "" },
+-        { key: "sources", label: "Sources", note: "" },
+-        { key: "limits", label: "Limits & funding", note: "" },
+-        { key: "identity", label: "Identity & voice", note: "" },
+-      ],
+-    },
+-    {
+-      title: "GROW",
+-      items: [
+-        { key: "profile", label: "Public page", note: "" },
+-        { key: "audience", label: "Audience", note: "" },
+-        { key: "token", label: "Token", note: "OPTIONAL" },
+-        { key: "board", label: "The board", note: "" },
+-      ],
+-    },
+-  ];
++  /* What each section carries beside its name: SOON for one with no screen, else what is live. */
++  const notes: Partial<Record<SectionKey, string>> = {
++    picks: calls ? String(calls) : "",
++    activity: running ? "RUNNING" : "",
++    skills: plugins ? `${plugins} PLUGINS` : "",
++  };
++  const groups: { title: string; items: Item[] }[] = RAIL.map((group) => ({
++    title: group.title,
++    items: group.items.map((item) => ({
++      key: item.key,
++      label: item.label,
++      note: item.soon ? "SOON" : (notes[item.key] ?? ""),
++    })),
++  }));
+   const others = agent
+     ? agents.filter((other) => (other.productId ?? other.id) !== (agent.productId ?? agent.id))
+     : [];
+diff --git a/apps/web/src/features/studio/sections/context.tsx b/apps/web/src/features/studio/sections/context.tsx
+index 77cb3ad..9035b72 100644
+--- a/apps/web/src/features/studio/sections/context.tsx
++++ b/apps/web/src/features/studio/sections/context.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ import { Icon } from "@pickler/ui";
+ import type { Agent } from "../api";
+-import type { SectionKey } from "./stub";
++import type { SectionKey } from "./keys";
+ import styles from "../studio.module.css";
+ 
+ /**
+diff --git a/apps/web/src/features/studio/sections/overview.tsx b/apps/web/src/features/studio/sections/overview.tsx
+index e01ed3b..1c87392 100644
+--- a/apps/web/src/features/studio/sections/overview.tsx
++++ b/apps/web/src/features/studio/sections/overview.tsx
+@@ -3,7 +3,7 @@ import { useState } from "react";
+ import { Button, Icon, Input } from "@pickler/ui";
+ import type { Agent, Run } from "../api";
+ import { clock, runMark, runSummary } from "../decision";
+-import type { SectionKey } from "./stub";
++import type { SectionKey } from "./keys";
+ import styles from "../studio.module.css";
+ 
+ /** How long until the next scheduled run, said the way a person would say it. */
+diff --git a/apps/web/src/features/studio/sections/rail.ts b/apps/web/src/features/studio/sections/rail.ts
+new file mode 100644
+index 0000000..e33ba0d
+--- /dev/null
++++ b/apps/web/src/features/studio/sections/rail.ts
+@@ -0,0 +1,116 @@
++import type { IconName } from "@pickler/ui";
++import type { SectionKey } from "./keys";
++
++/**
++ * The studio's sections as the rails draw them: one list for the shell's rail, the home's Menu and
++ * the empty home's rail, so a section cannot be in one and missing from another.
++ *
++ * `soon` is a section with no screen yet. It is listed everywhere and marked SOON, never hidden
++ * and never drawn as if it worked; opening it shows the Soon panel (`sections/soon.tsx`).
++ *
++ * Data only, with no `"use client"`, for the reason `keys.ts` gives: a server component and a test
++ * both have to be able to read it as values.
++ */
++export interface RailItem {
++  key: SectionKey;
++  icon: IconName;
++  label: string;
++  soon: boolean;
++}
++
++export interface RailGroup {
++  title: string;
++  items: readonly RailItem[];
++}
++
++export const RAIL: readonly RailGroup[] = [
++  {
++    title: "RUN",
++    items: [
++      { key: "overview", icon: "grid", label: "Overview", soon: false },
++      { key: "context", icon: "chat", label: "Context", soon: false },
++      { key: "picks", icon: "target", label: "Picks", soon: false },
++      { key: "activity", icon: "activity", label: "Activity", soon: false },
++    ],
++  },
++  {
++    title: "BUILD",
++    items: [
++      { key: "brief", icon: "file", label: "Brief", soon: false },
++      { key: "skills", icon: "sliders", label: "Skills", soon: false },
++      { key: "sources", icon: "link", label: "Sources", soon: true },
++      { key: "limits", icon: "wallet", label: "Limits & funding", soon: false },
++      { key: "identity", icon: "user", label: "Identity & voice", soon: true },
++    ],
++  },
++  {
++    title: "GROW",
++    items: [
++      { key: "profile", icon: "globe", label: "Public profile", soon: true },
++      { key: "audience", icon: "users", label: "Audience", soon: true },
++      { key: "token", icon: "coin", label: "Token", soon: true },
++    ],
++  },
++  {
++    title: "PUBLIC",
++    items: [{ key: "board", icon: "bars", label: "The board", soon: false }],
++  },
++];
++
++const ITEMS: readonly RailItem[] = RAIL.flatMap((group) => group.items);
++
++/** Whether a section has no screen yet. */
++export function isSoon(key: SectionKey): boolean {
++  return ITEMS.some((item) => item.key === key && item.soon);
++}
++
++/** The sections the Soon panel draws: every `soon` one, and the board, which is two links out. */
++export type PanelKey = "sources" | "identity" | "profile" | "audience" | "token" | "board";
++
++export interface PanelCopy {
++  title: string;
++  tag: string;
++  body: string;
++}
++
++/**
++ * What each of those sections says. The body is the honest part: it says what exists today and
++ * what does not, so a person deciding whether to wait knows what they are waiting for.
++ */
++export const PANELS: Record<PanelKey, PanelCopy> = {
++  sources: {
++    title: "Sources",
++    tag: "CONNECTORS",
++    body: "Sources are the plugins themselves — there is no separate catalog. Manage them under Skills; each plugin lists the tools it adds to a run, and turning a plugin off takes its tools out.",
++  },
++  identity: {
++    title: "Identity & voice",
++    tag: "WHO IT IS",
++    body: "Name (up to 40 characters) and handle (3–15, lowercase) live on the public profile and are set when the agent is created. Voice and personality are not modelled yet — today the brief is the only thing that shapes how it reasons.",
++  },
++  profile: {
++    title: "Public profile",
++    tag: "AUDIENCE",
++    body: "The page people land on from a post. It reads what the studio wrote when the agent was created — name, handle, accent, beat and blurb — and nothing invented. Its record stays empty until settlement exists: no pick has been held to what happened yet, so there is no hit rate to show and none is made up.",
++  },
++  audience: {
++    title: "Audience",
++    tag: "AUDIENCE",
++    body: "Followers, holders and replies. There are no followers in the backend yet, so this stays empty until they exist. Nothing here is a placeholder for a number that is being hidden from you.",
++  },
++  token: {
++    title: "Token",
++    tag: "GROW",
++    body: "Launching a token for this agent from the studio is not built. The public token board reads the launch catalogue, which stays empty until the launch contracts are deployed.",
++  },
++  board: {
++    title: "The board",
++    tag: "PUBLIC",
++    body: "Live picks, every agent and the leaderboard, exactly as the world sees them.",
++  },
++};
++
++/** Whether the Soon panel is what a section draws. */
++export function isPanel(key: SectionKey): key is PanelKey {
++  return Object.hasOwn(PANELS, key);
++}
+diff --git a/apps/web/src/features/studio/sections/soon.tsx b/apps/web/src/features/studio/sections/soon.tsx
+new file mode 100644
+index 0000000..919b2be
+--- /dev/null
++++ b/apps/web/src/features/studio/sections/soon.tsx
+@@ -0,0 +1,69 @@
++"use client";
++import Link from "next/link";
++import { Icon } from "@pickler/ui";
++import { useMarketplaceHref } from "@/features/site/studio-href";
++import type { Agent } from "../api";
++import { PANELS, isSoon, type PanelKey } from "./rail";
++import styles from "../studio.module.css";
++
++/**
++ * The one panel every section without a screen of its own draws: what it is, SOON when nothing is
++ * behind it yet, and why. What the product does not support is shown as Soon, never faked and
++ * never hidden. The board and the public profile keep their links out, because those pages exist.
++ */
++export function Soon({ section, agent }: { section: PanelKey; agent?: Agent | undefined }) {
++  const directory = useMarketplaceHref("/agents");
++  const leaderboard = useMarketplaceHref("/leaderboard");
++  const page = PANELS[section];
++  const handle = agent?.handle;
++  return (
++    <div className={styles.section} data-narrow="true">
++      <p className={styles.eyebrow} data-tint="grey">
++        {page.tag}
++        {isSoon(section) && <span className={styles.stubState}>SOON</span>}
++      </p>
++      <div className={styles.sectionHead}>
++        <h1>{page.title}</h1>
++      </div>
++      <p className={styles.stubBody}>{page.body}</p>
++      {section === "board" && (
++        <div className={styles.row}>
++          <Link className={styles.action} href={directory}>
++            <span className={styles.actionMark}>
++              <Icon name="users" size={16} />
++            </span>
++            <span>
++              <b>Every agent</b>
++              <small>The directory, ranked</small>
++            </span>
++            <Icon name="arrow" size={15} />
++          </Link>
++          <Link className={styles.action} href={leaderboard}>
++            <span className={styles.actionMark}>
++              <Icon name="bars" size={16} />
++            </span>
++            <span>
++              <b>Leaderboard</b>
++              <small>Score, weight by weight</small>
++            </span>
++            <Icon name="arrow" size={15} />
++          </Link>
++        </div>
++      )}
++      {section === "profile" && handle && (
++        <div className={styles.row}>
++          <Link className={styles.action} href={`${directory}/${handle}`}>
++            <span className={styles.actionMark}>
++              <Icon name="globe" size={16} />
++            </span>
++            <span>
++              <b>@{handle}</b>
++              <small>Open the public page</small>
++            </span>
++            <Icon name="arrow" size={15} />
++          </Link>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/apps/web/src/features/studio/sections/stub.tsx b/apps/web/src/features/studio/sections/stub.tsx
+deleted file mode 100644
+index b9e943e..0000000
+--- a/apps/web/src/features/studio/sections/stub.tsx
++++ /dev/null
+@@ -1,122 +0,0 @@
+-"use client";
+-import Link from "next/link";
+-import { Icon } from "@pickler/ui";
+-import { useMarketplaceHref } from "@/features/site/studio-href";
+-import type { Agent } from "../api";
+-import type { SectionKey } from "./keys";
+-import styles from "../studio.module.css";
+-
+-export type { SectionKey } from "./keys";
+-
+-/**
+- * A section with nothing behind it yet still says what it is, what state it is in and why it is
+- * empty. The state badge is the honest part: RECORD PENDING is not the same promise as NO BACKEND,
+- * and a person deciding whether to wait deserves to know which one they are looking at.
+- */
+-const PAGES: Record<
+-  string,
+-  { title: string; tag: string; state: string; tint: string; body: string }
+-> = {
+-  sources: {
+-    title: "Sources",
+-    tag: "CONNECTORS",
+-    state: "LIVES IN SKILLS",
+-    tint: "violet",
+-    body: "Sources are the plugins themselves — there is no separate catalog. Manage them under Skills; each plugin lists the tools it adds to a run, and turning a plugin off takes its tools out.",
+-  },
+-  identity: {
+-    title: "Identity & voice",
+-    tag: "WHO IT IS",
+-    state: "HALF BUILT",
+-    tint: "amber",
+-    body: "Name (up to 40 characters) and handle (3–15, lowercase) live on the public profile and are set when the agent is created. Voice and personality are not modelled yet — today the brief is the only thing that shapes how it reasons.",
+-  },
+-  profile: {
+-    title: "Public profile",
+-    tag: "AUDIENCE",
+-    state: "RECORD PENDING",
+-    tint: "amber",
+-    body: "The page people land on from a post. It reads what the studio wrote when the agent was created — name, handle, accent, beat and blurb — and nothing invented. Its record stays empty until settlement exists: no pick has been held to what happened yet, so there is no hit rate to show and none is made up.",
+-  },
+-  audience: {
+-    title: "Audience",
+-    tag: "AUDIENCE",
+-    state: "NO BACKEND",
+-    tint: "grey",
+-    body: "Followers, holders and replies. There are no followers in the backend yet, so this stays empty until they exist. Nothing here is a placeholder for a number that is being hidden from you.",
+-  },
+-  token: {
+-    title: "Token",
+-    tag: "GROW",
+-    state: "NO BACKEND",
+-    tint: "grey",
+-    body: "No curve, no contracts, no purchases. Tokenisation is a future decision and nothing here is wired — the agent spends research quota, not money.",
+-  },
+-  board: {
+-    title: "The board",
+-    tag: "PUBLIC",
+-    state: "BUILT",
+-    tint: "lime",
+-    body: "Live picks, every agent and the leaderboard, exactly as the world sees them.",
+-  },
+-};
+-
+-export function Stub({ section, agent }: { section: SectionKey; agent?: Agent | undefined }) {
+-  const directory = useMarketplaceHref("/agents");
+-  const leaderboard = useMarketplaceHref("/leaderboard");
+-  const page = PAGES[section];
+-  if (!page) {
+-    return null;
+-  }
+-  const handle = agent?.handle;
+-  return (
+-    <div className={styles.section} data-narrow="true">
+-      <p className={styles.eyebrow} data-tint={page.tint}>
+-        {page.tag}
+-        <span className={styles.stubState}>{page.state}</span>
+-      </p>
+-      <div className={styles.sectionHead}>
+-        <h1>{page.title}</h1>
+-      </div>
+-      <p className={styles.stubBody}>{page.body}</p>
+-      {section === "board" && (
+-        <div className={styles.row}>
+-          <Link className={styles.action} href={directory}>
+-            <span className={styles.actionMark}>
+-              <Icon name="users" size={16} />
+-            </span>
+-            <span>
+-              <b>Every agent</b>
+-              <small>The directory, ranked</small>
+-            </span>
+-            <Icon name="arrow" size={15} />
+-          </Link>
+-          <Link className={styles.action} href={leaderboard}>
+-            <span className={styles.actionMark}>
+-              <Icon name="bars" size={16} />
+-            </span>
+-            <span>
+-              <b>Leaderboard</b>
+-              <small>Score, weight by weight</small>
+-            </span>
+-            <Icon name="arrow" size={15} />
+-          </Link>
+-        </div>
+-      )}
+-      {section === "profile" && handle && (
+-        <div className={styles.row}>
+-          <Link className={styles.action} href={`${directory}/${handle}`}>
+-            <span className={styles.actionMark}>
+-              <Icon name="globe" size={16} />
+-            </span>
+-            <span>
+-              <b>@{handle}</b>
+-              <small>Open the public page</small>
+-            </span>
+-            <Icon name="arrow" size={15} />
+-          </Link>
+-        </div>
+-      )}
+-    </div>
+-  );
+-}
+diff --git a/apps/web/src/features/studio/studio.tsx b/apps/web/src/features/studio/studio.tsx
+index bb1efc8..0641cf9 100644
+--- a/apps/web/src/features/studio/studio.tsx
++++ b/apps/web/src/features/studio/studio.tsx
+@@ -36,8 +36,9 @@ import { Brief } from "./sections/brief";
+ import { Trading } from "./sections/trading";
+ import { Limits } from "./sections/limits";
+ import { Context } from "./sections/context";
+-import { Stub } from "./sections/stub";
+-import type { SectionKey } from "./sections/stub";
++import type { SectionKey } from "./sections/keys";
++import { RAIL, isPanel, isSoon } from "./sections/rail";
++import { Soon } from "./sections/soon";
+ import { Home } from "./home/home";
+ import { briefFixture } from "./brief/fixture";
+ import { EmptyHome } from "./home/empty";
+@@ -48,37 +49,6 @@ import styles from "./studio.module.css";
+ 
+ type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
+ 
+-const GROUPS: { title: string; items: { key: SectionKey; icon: IconName; label: string }[] }[] = [
+-  {
+-    title: "RUN",
+-    items: [
+-      { key: "overview", icon: "grid", label: "Overview" },
+-      { key: "context", icon: "chat", label: "Context" },
+-      { key: "picks", icon: "target", label: "Picks" },
+-      { key: "activity", icon: "activity", label: "Activity" },
+-    ],
+-  },
+-  {
+-    title: "BUILD",
+-    items: [
+-      { key: "brief", icon: "file", label: "Brief" },
+-      { key: "skills", icon: "sliders", label: "Skills" },
+-      { key: "sources", icon: "link", label: "Sources" },
+-      { key: "limits", icon: "wallet", label: "Limits & funding" },
+-      { key: "identity", icon: "user", label: "Identity & voice" },
+-    ],
+-  },
+-  {
+-    title: "GROW",
+-    items: [
+-      { key: "profile", icon: "globe", label: "Public profile" },
+-      { key: "audience", icon: "users", label: "Audience" },
+-      { key: "token", icon: "coin", label: "Token" },
+-    ],
+-  },
+-  { title: "PUBLIC", items: [{ key: "board", icon: "bars", label: "The board" }] },
+-];
+-
+ /**
+  * The states a person actually lands in. Each one is a code the API returns, so the banner says the
+  * same thing the transport did and the copy explains what unblocks it.
+@@ -439,10 +409,9 @@ export function Studio({
+     activity: counts.running
+       ? { text: `${counts.running} RUNNING`, tint: "lime" }
+       : { text: "", tint: "grey" },
+-    profile: { text: "SAMPLE", tint: "amber" },
+-    audience: { text: "PLANNED", tint: "grey" },
+-    token: { text: "PLANNED", tint: "grey" },
+   };
++  const badgeFor = (key: SectionKey) =>
++    isSoon(key) ? { text: "SOON", tint: "grey" } : badges[key];
+ 
+   function go(next: View) {
+     if (next === "picks" && !runs.find((run) => run.id === runId)?.decision) {
+@@ -662,12 +631,12 @@ export function Studio({
+                 {wide && <span className={styles.railLabel}>Home</span>}
+               </button>
+             </div>
+-            {GROUPS.map((group) => (
++            {RAIL.map((group) => (
+               <div key={group.title}>
+                 {wide && <p className={styles.railTitle}>{group.title}</p>}
+                 <div className={styles.railItems}>
+                   {group.items.map((item) => {
+-                    const badge = badges[item.key];
++                    const badge = badgeFor(item.key);
+                     return (
+                       <button
+                         key={item.key}
+@@ -848,9 +817,9 @@ export function Studio({
+             </>
+           ) : section === "context" ? (
+             <Context agent={agent} go={go} />
+-          ) : section === "home" ? null : (
+-            <Stub section={section} agent={agent} />
+-          )}
++          ) : section !== "home" && isPanel(section) ? (
++            <Soon section={section} agent={agent} />
++          ) : null}
+ 
+           {error && (
+             <p role="alert" className={styles.mainAlert}>

@@ -1,0 +1,33 @@
+.page {
+  color: var(--pk-ink);
+}
+
+.page a.link:hover {
+  color: var(--pk-lime);
+}
+
+.panel {
+  composes: base;
+}
+
+.base {
+  border: 1px solid var(--pk-rule);
+}
+
+.resultWon {
+  color: var(--pk-lime);
+}
+
+.orphan {
+  color: var(--pk-ink);
+}
+
+.page :global(.pk-button) {
+  color: var(--pk-ink);
+}
+
+@media (max-width: 640px) {
+  .ghost {
+    display: none;
+  }
+}

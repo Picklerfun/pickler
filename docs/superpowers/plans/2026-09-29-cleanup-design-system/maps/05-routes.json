@@ -1,0 +1,18 @@
+[
+  {
+    "find": "  /* The three /agents screens declare `dark`, and they are the only marketplace routes that do\n   * besides /apply. That is not this file disagreeing with the product — it is this file recording\n   * a redraw the product already admits it owes.\n   *\n   * public-shell.tsx takes a `surface` prop and says what it is for: \"It is light, which is what\n   * the marketplace is. `surface` exists for the routes whose *bodies* still compose against a\n   * dark ground — the agent pages — because one wrapper cannot hold two surfaces and those bodies\n   * are not this task's to redraw. The prop goes when the last body is redrawn.\" Only these three\n   * pass `surface=\"dark\"`, and /agents/[handle]/ask carries the same admission in its own words.\n   *\n   * So the ground they paint today is night blue and the ground the marketplace is, is white.\n   * Declaring `light` here would put six standing failures in surfaces.mjs that say only what this\n   * comment says, on three screens nobody disputes; declaring `dark` measures the ground they\n   * actually ship on, which is what makes their inversions and their contrast numbers mean\n   * anything. When those bodies are redrawn and the prop goes, these three flip to `light` in one\n   * edit and surfaces.mjs is what catches a body that was missed.\n   */\n",
+    "replace": ""
+  },
+  {
+    "find": "    path: \"/agents\",\n    name: \"agents\",\n    product: \"marketplace\",\n    surface: \"dark\",",
+    "replace": "    path: \"/agents\",\n    name: \"agents\",\n    product: \"marketplace\",\n    surface: \"light\","
+  },
+  {
+    "find": "    name: \"agent-profile\",\n    product: \"marketplace\",\n    surface: \"dark\",",
+    "replace": "    name: \"agent-profile\",\n    product: \"marketplace\",\n    surface: \"light\","
+  },
+  {
+    "find": "    name: \"agent-ask\",\n    product: \"marketplace\",\n    surface: \"dark\",",
+    "replace": "    name: \"agent-ask\",\n    product: \"marketplace\",\n    surface: \"light\","
+  }
+]

@@ -89,8 +89,10 @@ web on, style policy, six-hour interval). api-schema mirrors these lists; a work
 `features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
 §6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
 reasons in `LOCK_REASONS`). `canSchedule({ ready, balanceAusd })` answers `first_run` until `ready`
-and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances)` answers
-`unfunded_agent` unless every balance reaches the minimum; no agents is open. `ready` is
+and then `unfunded` below `MIN_FUNDED_AUSD` (10). `canCreateAnother(balances, drafts)` answers
+`unfunded_agent` unless every balance reaches the minimum, then `draft_limit` once `drafts` reaches
+`MAX_DRAFTS_PER_WORKSPACE` (3); no agents is open. The balances are those of agents with a wallet:
+a private draft has none and never counts as unfunded. `ready` is
 `isReadyToSchedule(agent, readiness)` in `features/research/policy.ts`, the same predicate
 `assertCanSchedule` refuses with `NOT_READY`; its facts (`ScheduleReadiness`: connections checked
 and a completed manual run, both for the current config version) come from the new
@@ -108,8 +110,9 @@ per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
 checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
 person picks it right before turning the schedule on. With the schedule on, the next run moves to
 `nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
-`StudioDirectory.createdWithKey(access, key)` returns the agent an earlier create with that
-idempotency key made, so a retry can be recognised before any lock is applied.
+A retried create is recognised inside `StudioDirectory.createAgent` (by workspace and
+idempotency key) and `createDraft` (by the adopted preview), before `admit` runs; the port has no
+separate lookup.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
@@ -254,4 +257,14 @@ Trading rules, financial contracts, simulations and evaluation coordination are 
 identity, research authorization and public Perpl market-data contracts. Never import trading
 from core. Consumers import trading subpaths directly; no compatibility exports remain here.
 
+Core keeps the market predicates trading reads: `nflMarketEligible` and
+`isSoccerFullGameWinner(market)` in `features/research/soccer.ts`, the one soccer predicate both
+trading's `assertPaperMarket` and `assertLivePreview` call.
+
 `src/features/launch` holds the launchpad domain: `domain/curve-math.ts` previews curve pricing and is held to the Solidity library by a generated fixture, and `ports/chain-reader.ts` describes what the domain needs from a chain without naming one. No blockchain SDK is imported here.
+
+Launch indexing validates every height and parent link before proposing any writes, including
+bootstrap and overlapping ranges. Gaps refuse the entire batch. Duplicate heights or mixed
+ancestry fail as invalid input without requesting a rollback of persisted history; a coherent
+range contradicting the persisted cursor remains a reorg. These checks do not establish RPC
+finality, cursor concurrency safety or projection rollback.

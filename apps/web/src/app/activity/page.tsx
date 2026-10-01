@@ -18,7 +18,11 @@ export default async function Activity() {
   ]);
   return (
     <PublicShell>
-      <ActivityPage agents={agents} log={analytics.log} nowMs={services.clock.now().getTime()} />
+      <ActivityPage
+        agents={agents.data}
+        log={analytics.data.log}
+        nowMs={services.clock.now().getTime()}
+      />
     </PublicShell>
   );
 }

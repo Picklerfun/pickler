@@ -1,0 +1,10 @@
+[
+  {
+    "find": "import { z } from \"zod\";\nimport type { SupabaseRestClient } from \"./supabase-rest-client.js\";\n",
+    "replace": "import { placementSchema } from \"../persistence/growth-store.js\";\nimport type { SupabaseRestClient } from \"./supabase-rest-client.js\";\n"
+  },
+  {
+    "find": "// growth.join_waitlist returns a single-row table.\nexport const placementSchema = z\n  .array(\n    z.object({\n      line_position: z.coerce.number().int().positive(),\n      already_joined: z.boolean(),\n      apply_token: z.uuid().nullable(),\n    }),\n  )\n  .length(1);\n\n",
+    "replace": ""
+  }
+]

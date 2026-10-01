@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { HOLDS } from "../routes.mjs";
+import { openBrowser } from "./browser.mjs";
+import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
+import { settle } from "./settle.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
@@ -112,84 +113,6 @@ async function passGuard(page, route) {
   await page.context().addCookies([{ name, value: "design-harness-not-a-session", url: base }]);
 }
 
-/* Playwright is installed globally and deliberately not a repository dependency, so `playwright`
- * does not resolve from here. Node ignores NODE_PATH for ESM, so the global install has to be
- * found and imported by absolute path. The in-repo import is tried first so that adding Playwright
- * to package.json some day just works. */
-async function playwright() {
-  try {
-    return await import("playwright");
-  } catch {
-    const root = execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim();
-    const entry = path.join(root, "playwright", "index.mjs");
-    if (!existsSync(entry)) {
-      throw new Error(
-        `Playwright is not installed here or globally. Run: npm install -g playwright`,
-      );
-    }
-    return await import(pathToFileURL(entry).href);
-  }
-}
-
-/* The build Playwright 1.63 wants (chromium-1243) is not in this machine's cache; chromium-1223 is,
- * and it drives fine over CDP for everything these checks do — computed styles, screenshots. So:
- * launch the bundled build when it is there, and otherwise fall back to the newest cached one and
- * say so, rather than failing with an "Executable doesn't exist" that looks like a broken script.
- * Set DESIGN_CHROMIUM to an executable path to override, or run `npx playwright install chromium`
- * to fetch the matching build and make this fallback stop firing. */
-const CACHE =
-  process.env.PLAYWRIGHT_BROWSERS_PATH ||
-  (process.platform === "darwin"
-    ? path.join(homedir(), "Library", "Caches", "ms-playwright")
-    : path.join(homedir(), ".cache", "ms-playwright"));
-
-// Where the binary sits inside a chromium-<rev> directory, per platform.
-const BINARIES = [
-  "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-  "chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-  "chrome-linux/chrome",
-  "chrome-win/chrome.exe",
-];
-
-function cachedChromium() {
-  if (process.env.DESIGN_CHROMIUM) {
-    return { executablePath: process.env.DESIGN_CHROMIUM, revision: "DESIGN_CHROMIUM" };
-  }
-  let revisions = [];
-  try {
-    revisions = readdirSync(CACHE)
-      .filter((name) => /^chromium-\d+$/.test(name))
-      .map((name) => ({ name, revision: Number(name.slice("chromium-".length)) }))
-      .sort((a, b) => b.revision - a.revision);
-  } catch {
-    return null;
-  }
-  for (const { name, revision } of revisions) {
-    for (const relative of BINARIES) {
-      const executablePath = path.join(CACHE, name, relative);
-      if (existsSync(executablePath)) {
-        return { executablePath, revision: String(revision) };
-      }
-    }
-  }
-  return null;
-}
-
-async function launch(chromium) {
-  try {
-    return await chromium.launch();
-  } catch (error) {
-    const cached = cachedChromium();
-    if (!cached) {
-      throw error;
-    }
-    process.stderr.write(
-      `note: Playwright's bundled Chromium is not installed; using cached ${cached.revision}.\n`,
-    );
-    return await chromium.launch({ executablePath: cached.executablePath });
-  }
-}
-
 /* Why a route can fail to render, in the words someone debugging it needs.
  *
  * Three processes can fail here and they fail independently: this script, the dev server, and the
@@ -200,8 +123,11 @@ async function launch(chromium) {
  *
  * The general rule, which this got wrong twice: a check that cannot tell which layer failed will
  * send someone to the wrong one, and the cost is paid by whoever reads the output. */
-const START_APP = "cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:8799 npx next dev -p 3001";
+const START_APP =
+  "cd apps/web && NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= " +
+  "PICKLER_API_LOCAL_URL=http://127.0.0.1:8799 npx next dev -p 3001";
 const START_FIXTURE = "node --import tsx scripts/design/fixture-api.mjs 8799";
+const START_BOTH = "npm run design:check";
 
 /* One short line per blocked route, and the remedy once per kind however many routes hit it. A dead
  * dev server blocks all five, and printing the same three-line fix five times is the same cost in a
@@ -210,15 +136,25 @@ const KINDS = {
   "server-down": {
     line: (route, detail) => `${route.path} — nothing answered at ${baseFor(route)} (${detail})`,
     remedy:
-      `The dev server is down, so nothing was measured and no design conclusion follows. Start it:\n` +
+      `The dev server is down, so nothing was measured and no design conclusion follows. Let the\n` +
+      `  runner start both servers, \`${START_BOTH}\`, or start it by hand:\n` +
       `    ${START_APP}\n` +
       `  Not \`npm run dev\`: turbo runs in strict env mode and the dev task declares no env, so it\n` +
       `  drops PICKLER_API_LOCAL_URL and every data route then answers 500.`,
   },
   "not-built": {
-    line: (route) => `${route.path} — 404, not built yet; ${route.task} builds it`,
+    line: (route) =>
+      `${route.path} — 404 twice, and no page file: not built yet; ${route.task} builds it`,
     remedy:
       "Nothing is broken. Those screens are not your turn, and this check will cover them the day they exist.",
+  },
+  "not-found-built": {
+    line: (route) => `${route.path} — 404 twice from a built route`,
+    remedy:
+      "Not a design failure, and not a missing screen: the page file exists. Two causes. Either the\n" +
+      "  page called notFound() for this data — check the handle, ticker or id in the route's path in\n" +
+      "  routes.mjs against what fixture-api.mjs serves — or the server failed behind it: check the\n" +
+      "  fixture is alive on the port PICKLER_API_LOCAL_URL names, then read the dev server log.",
   },
   "server-error": {
     line: (route, detail) =>
@@ -258,6 +194,13 @@ const KINDS = {
       "  measure the route against whichever host happened to be named, and once the two products\n" +
       "  sit on different origins that is a number about the wrong server — which is the one\n" +
       "  failure this whole file is built to refuse.",
+  },
+  unsettled: {
+    line: (route, detail) => `${route.path} — loaded and proved, but ${detail}`,
+    remedy:
+      "The route names a busy state in `settles` and the screen never left it. Usually the request\n" +
+      "  behind it: read the dev server log for the endpoint. Not measured, because a screen caught\n" +
+      "  mid-request is a different picture on every run.",
   },
   "error-boundary": {
     line: (route) =>
@@ -363,14 +306,14 @@ async function serving(page) {
  *  blocked rather than thrown on, so that one missing backend does not hide the other four routes'
  *  findings — but `finish` still exits non-zero for it. */
 export async function eachRoute(routes, visit, { width = 1400, height = 1000 } = {}) {
-  const { chromium } = await playwright();
-  const browser = await launch(chromium);
+  const browser = await openBrowser();
   const results = [];
   const blocked = [];
   // Which base URLs have been fingerprinted. A set rather than a flag because the two products can
   // sit on two origins, and verifying one of them while measuring both is the same mistake in a
   // smaller form. In development both resolve to DESIGN_BASE_URL, so this still runs exactly once.
   const checked = new Set();
+  const pages = appPages(fileURLToPath(new URL("../../..", import.meta.url)));
   try {
     for (const route of routes) {
       if (!route.product) {
@@ -381,8 +324,21 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
       try {
         await passGuard(page, route);
         let response;
+        let verdict = null;
         try {
-          response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
+          // A 404 is asked once more before it is believed: the dev server compiles routes on
+          // demand and answers 404 during a recompile (lib/not-found.mjs).
+          for (let attempts = 1; ; attempts++) {
+            response = await page.goto(baseFor(route) + route.path, { waitUntil: "networkidle" });
+            if (!response || response.status() !== 404) {
+              break;
+            }
+            verdict = afterNotFound({ attempts, built: Boolean(pageFor(route.path, pages)) });
+            if (!verdict.retry) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
         } catch (error) {
           blocked.push({
             route,
@@ -393,7 +349,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         }
         const status = response ? response.status() : 0;
         if (status === 404) {
-          blocked.push({ route, kind: "not-built" });
+          blocked.push({ route, ...verdict });
           continue;
         }
         if (!response || !response.ok()) {
@@ -451,6 +407,11 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           proof = `${carried} text elements ≥ floor ${route.floor}`;
         } else {
           blocked.push({ route, kind: "no-floor" });
+          continue;
+        }
+        const unsettled = await settle(page, route);
+        if (unsettled) {
+          blocked.push({ route, kind: "unsettled", detail: unsettled });
           continue;
         }
 

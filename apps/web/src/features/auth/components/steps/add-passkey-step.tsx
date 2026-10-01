@@ -28,7 +28,7 @@ export function AddPasskeyStep({
   destination: string;
 }) {
   return (
-    <div className={styles.flowStep}>
+    <div className={styles.flowStep} id="passkey-add">
       <h1 className={styles.flowTitle}>ADD A PASSKEY</h1>
       <p className={styles.subhead}>
         Every passkey on this account can move its funds. Add one from a phone, a security key or a

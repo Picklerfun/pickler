@@ -32,7 +32,29 @@ async function setup() {
 test("valid Supabase tokens resolve the user", async () => {
   const { verifier, sign } = await setup();
   const token = await sign({ sub: "user-1", email: "ana@x.io" });
-  assert.deepEqual(await verifier.verify(token), { userId: "user-1", email: "ana@x.io" });
+  assert.deepEqual(await verifier.verify(token), {
+    userId: "user-1",
+    email: "ana@x.io",
+    walletAccount: false,
+  });
+});
+
+test("only the server-only app_metadata marker makes a wallet account, never the email", async () => {
+  const { verifier, sign } = await setup();
+  const synthetic =
+    "eip155-2e911ddf15b7bd5963df3f09e9f34c2f580d701a2647bbca89cdb91e0941c59d@wallet.pickler.fun";
+  const marked = await sign({
+    sub: "w",
+    email: synthetic,
+    app_metadata: { pickler_account: "wallet" },
+  });
+  assert.equal((await verifier.verify(marked)).walletAccount, true);
+  // The spoof: anyone can sign up with an address in the synthetic domain. No marker, no exemption.
+  const spoofed = await sign({ sub: "s", email: synthetic, app_metadata: { provider: "email" } });
+  assert.equal((await verifier.verify(spoofed)).walletAccount, false);
+  // user_metadata is writable by the person, so the same key there means nothing.
+  const userWritten = await sign({ sub: "u", user_metadata: { pickler_account: "wallet" } });
+  assert.equal((await verifier.verify(userWritten)).walletAccount, false);
 });
 
 test("wrong signer, issuer, audience, expiry or missing sub are rejected", async () => {

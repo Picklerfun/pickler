@@ -1,0 +1,10 @@
+[
+  {
+    "find": "import type { SupabaseAdmin } from \"../supabase-admin-client.js\";\n",
+    "replace": "import { ANALYTICS_ROW_LIMIT } from \"../../persistence/agent-registry.js\";\nimport type { SupabaseAdmin } from \"../supabase-admin-client.js\";\n"
+  },
+  {
+    "find": "/** Upper bound on rows scanned for analytics; Relayer scanned without a limit. */\nexport const ANALYTICS_ROW_LIMIT = 10_000;\n\n",
+    "replace": ""
+  }
+]

@@ -16,13 +16,6 @@ export {
   type InMemoryApplicantStoreOptions,
 } from "./applicants/in-memory-applicant-store.js";
 export {
-  createSupabaseRestClient,
-  type SupabaseConfig,
-  type SupabaseRestClient,
-} from "./supabase/supabase-rest-client.js";
-export { createSupabaseWaitlist } from "./supabase/supabase-waitlist.js";
-export { createSupabaseApplicants } from "./supabase/supabase-applicants.js";
-export {
   decryptAes256Gcm,
   decryptLegacyAes256Gcm,
   decryptLegacySeparateColumns,
@@ -39,14 +32,6 @@ export {
   type SupabaseAdmin,
   type SupabaseAdminConfig,
 } from "./supabase/supabase-admin-client.js";
-export { createSupabaseWorkspaceDirectory } from "./supabase/access/supabase-workspace-directory.js";
-export { createSupabaseApiKeyDirectory } from "./supabase/access/supabase-api-key-directory.js";
-export {
-  ANALYTICS_ROW_LIMIT,
-  createSupabaseAgentEventLog,
-  createSupabaseAgentRegistry,
-} from "./supabase/agent-registry/supabase-agent-registry.js";
-export { createSupabaseBudgetSource } from "./supabase/agent-registry/supabase-budget-source.js";
 export {
   createTurnkeyReader,
   createTurnkeyStampingClient,
@@ -59,10 +44,12 @@ export {
   createTurnkeyActivityForwarder,
   type ActivityForwarderConfig,
 } from "./turnkey/turnkey-activity-forwarder.js";
-export { createSupabaseProfileRepository } from "./supabase/profiles/supabase-profile-repository.js";
 export {
+  createAuthUserLookup,
   createWalletAccounts,
   syntheticEmail,
+  walletAccountVerdict,
+  type AuthUserFacts,
   type WalletAccountsConfig,
 } from "./supabase/wallet-accounts.js";
 
@@ -70,7 +57,23 @@ export { PostgresResearchStore } from "./persistence/research-store.js";
 export { ExaResearch, exaSearchRequest } from "./research/exa.js";
 export { PolymarketData } from "./polymarket/market-data.js";
 export { PostgresPaperStore } from "./persistence/paper-store.js";
+export {
+  PostgresPreviewStore,
+  type PreviewExecutionRepository,
+} from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresProfileRepository } from "./persistence/profile-repository.js";
+export {
+  PostgresApiKeyDirectory,
+  PostgresWorkspaceDirectory,
+} from "./persistence/access-directory.js";
+export {
+  ANALYTICS_ROW_LIMIT,
+  PostgresAgentEventLog,
+  PostgresAgentRegistry,
+  PostgresBudgetSource,
+} from "./persistence/agent-registry.js";
+export { PostgresApplicants, PostgresWaitlist } from "./persistence/growth-store.js";
 export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";

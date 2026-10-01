@@ -37,7 +37,13 @@ const SORTS = [
  * is, because the two things you can do here — ask an agent, or take the position yourself — are
  * only as good as the coverage behind them.
  */
-export function MarketsBoard({ markets }: { markets: PerpMarketDto[] }) {
+export function MarketsBoard({
+  markets,
+  degraded = false,
+}: {
+  markets: PerpMarketDto[];
+  degraded?: boolean;
+}) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
   const [sort, setSort] = useState<(typeof SORTS)[number]["key"]>("agents");
   const [query, setQuery] = useState("");
@@ -61,6 +67,11 @@ export function MarketsBoard({ markets }: { markets: PerpMarketDto[] }) {
         Pick a level and a time. Ask an agent what it thinks, or take the position yourself. Both
         settle on the same mark price.
       </p>
+      {degraded ? (
+        <p className={styles.degradedNote} data-degraded="true" role="status">
+          The board is catching up. Numbers will appear shortly.
+        </p>
+      ) : null}
 
       <div className={styles.filterCard}>
         <div className={styles.filterRow} role="group" aria-label="Coverage">

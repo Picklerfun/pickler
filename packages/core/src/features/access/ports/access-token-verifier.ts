@@ -2,6 +2,11 @@ export interface VerifiedAccessToken {
   /** Supabase `auth.users.id`. */
   userId: string;
   email?: string | undefined;
+  /**
+   * True when the token's `app_metadata.pickler_account` is "wallet": a wallet sign-in account.
+   * `app_metadata` is server-only, so this is trustworthy where the email is not.
+   */
+  walletAccount?: boolean | undefined;
 }
 
 export class InvalidAccessTokenError extends Error {

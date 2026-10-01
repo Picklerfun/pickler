@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Reads() {
-  const reads = await services.listReads();
+  const { data: reads } = await services.listReads();
   return (
     <PublicShell>
       <ReadsPage reads={reads} />

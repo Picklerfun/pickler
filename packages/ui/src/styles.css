@@ -43,61 +43,29 @@
   /* The ink a filled accent carries. Lime is bright enough that this holds on either surface. */
   --pk-on-lime: #0b1200;
 
-  /* The night sky the dark shells paint behind their content: a core, a middle and an edge, read
-   * outward from the top of the page. Two features drew it from the same three literals — the
-   * marketplace's agent routes and /apply — which is a ground the product depends on and had never
-   * named. The edge is load-bearing beyond the gradient: eight scrims in apply and markets are the
-   * same colour at a fraction, so a change to it that reached only the gradient would leave the
-   * scrims behind. They now read it through the triple below rather than retyping it.
-   *
-   * These sit here rather than under the dark surface for the reason the agent fills do: a scene
-   * does not become a different scene because the page around it changed. Nothing paints them on
-   * light — both `.space` elements render only when their shell is dark. */
-  --pk-space-core: #1b1f6b;
-  --pk-space-mid: #0a0b2e;
-  --pk-space-edge: #05061a;
-
-  /* The edge again, as an `r, g, b` triple, because the eight scrims above could not be written
-   * from `--pk-space-edge`: rgba() will not take a custom property for its first three arguments.
-   * That is the same constraint `accentVars` documents for `--accent-rgb` and the same workaround,
-   * so this applies a precedent rather than setting one. It is written down twice on purpose, and
-   * a value that drifts apart shows up as a scrim that no longer matches the sky behind it.
-   *
-   * `color: var(--pk-space-edge-rgb)` is not a colour, so probe.mjs's sentinel excludes this from
-   * the values tokens.mjs compares against. The triple makes the scrims track the palette; the two
-   * veils below are what a check can recognise, because they hold the composited value and the
-   * check keys on alpha as well as hue. */
-  --pk-space-edge-rgb: 5, 6, 26;
-
-  /* The edge as a scrim, at the two weights the scene can actually tell apart.
-   *
-   * There were five: 0.45, 0.5, 0.55 and 0.6 across seven places, plus a 0.4 in markets that turned
-   * out not to belong to this scene at all. Nobody chose 0.45 over 0.5, and naming all five would
-   * have made a drift permanent by giving it the look of a decision — a literal is obviously
-   * unconsidered, a token is not.
-   *
-   * Two rather than three or one, decided by measuring rather than by eye. Every sky pixel /apply
-   * paints was sampled — 1.36M of them, from #05061A out to the brightest point of the core — and
-   * each alpha composited against every one. Adjacent fifths of an alpha differ by at most dE 1.9
-   * to 2.1, under the ~2.3 just-noticeable threshold, so 0.45 folds into 0.5 and 0.55 into 0.6 with
-   * nothing visible moving. The two that remain differ by dE 4.05, which is above it, so both names
-   * are earned. One weight was tested and refused: it lands 3.87 from the far end, which is a
-   * difference somebody could point at.
-   *
-   * Why these are colours and not an `opacity`, when .trailLine took the opposite route: that line
-   * IS the thing being painted and has no children, so weighting the element weights only it. A
-   * scrim sits *under* content — fading .header would fade the brand and the nav with it. */
-  --pk-space-veil: rgba(var(--pk-space-edge-rgb), 0.5);
-  --pk-space-veil-strong: rgba(var(--pk-space-edge-rgb), 0.6);
-
-  /* The rim a lit element carries: a bright hairline on a saturated fill against the night sky.
-   * Three places wanted it — the glow button below, and the two accent pixels in /apply — and all
-   * three had typed the same value, which is agreement by coincidence rather than by contract.
+  /* The rim a lit element carries: a bright hairline on a saturated fill. The glow button below,
+   * the auth screens' primary action and the accent pixels in /apply all wear it.
    *
    * Not `--pk-border-strong`, which is 0.32 on dark and deliberately quieter: the edge of a panel
    * and the rim of something lit are different questions, and answering one with the other is what
    * makes a rim look like a border. */
   --pk-glow-rim: rgba(255, 255, 255, 0.5);
+
+  /* The light along the top edge of something raised: a panel's inset highlight, the bevel of a
+   * lit button. Quieter than the rim above, and white on both surfaces because it is light
+   * falling on the object, not a colour the surface owns. The places that draw it had typed
+   * 0.22, 0.25, 0.26, 0.3 and 0.35; nobody chose between them, so they are one weight. */
+  --pk-lit-edge: rgba(255, 255, 255, 0.22);
+
+  /* Lime as light rather than as a fill: the halo under the glow button, and the same halo under
+   * the cursor. Two weights, because resting and hovered have to be told apart; every other lime
+   * glow in the product takes the nearer of the two. */
+  --pk-glow-lime: rgba(200, 240, 58, 0.32);
+  --pk-glow-lime-strong: rgba(200, 240, 58, 0.5);
+
+  /* What a dialog dims the page with. The dark ground at a fraction, on both surfaces: a scrim
+   * darkens whatever is behind it, and a light one would wash a light page out instead. */
+  --pk-scrim: rgba(11, 13, 26, 0.72);
 
   /* The palette's third member: the hue itself, for anything filled rather than written.
    *
@@ -253,33 +221,16 @@
 
   --pk-focus: var(--pk-violet);
 
-  /* Carried forward. The screens being redrawn are five of nineteen; the rest still read these
-   * names, and every one of them was written against a ground that is now white. So each resolves
-   * onto the new palette instead of being deleted out from under a page nobody has touched yet.
-   * They retire as those pages are redrawn, not before. */
+  /* The third ink level on this surface, which is the muted grey: light has two inks, and a
+   * component that asks for the dim one gets the quieter of them. */
   --pk-ink-dim: var(--pk-ink-muted);
-  --pk-ink-placeholder: var(--pk-ink-faint);
-  --pk-surface: var(--pk-panel);
-  --pk-surface-strong: var(--pk-panel-2);
-  --pk-field: var(--pk-panel);
-  --pk-field-autofill: var(--pk-panel);
-  --pk-border: var(--pk-rule-strong);
   /* A control's edge has to be seen, and a 12% hairline on white is not seen. */
   --pk-border-strong: rgba(11, 13, 26, 0.28);
-  /* The accent tints predate the state pairs and say the same thing less precisely, so each one
-   * resolves to the state it was always naming. The edge is that state's ink, held back. */
-  --pk-cyan: var(--pk-blue);
-  --pk-cyan-ink: var(--pk-state-cool-ink);
-  --pk-pink-ink: var(--pk-magenta-ink);
-  --pk-lime-tint: var(--pk-state-good-bg);
+  /* The edge of a tinted object: that state's ink, held back. good, loss, caution, cool, info. */
   --pk-lime-edge: rgba(63, 107, 0, 0.28);
-  --pk-magenta-tint: var(--pk-state-loss-bg);
   --pk-magenta-edge: rgba(187, 42, 93, 0.28);
-  --pk-amber-tint: var(--pk-state-caution-bg);
   --pk-amber-edge: rgba(133, 94, 0, 0.28);
-  --pk-cyan-tint: var(--pk-state-cool-bg);
   --pk-cyan-edge: rgba(47, 85, 200, 0.28);
-  --pk-violet-tint: var(--pk-state-info-bg);
   --pk-violet-edge: rgba(91, 60, 224, 0.28);
 }
 
@@ -358,27 +309,13 @@
 
   --pk-focus: var(--pk-lime);
 
-  /* Carried forward, as above. */
+  /* Dark has the room for a softened ink, and the dim level is it. */
   --pk-ink-dim: var(--pk-ink-soft);
-  --pk-ink-placeholder: var(--pk-ink-faint);
-  --pk-surface: var(--pk-panel);
-  --pk-surface-strong: var(--pk-panel-2);
-  --pk-field: var(--pk-panel);
-  --pk-field-autofill: var(--pk-panel);
-  --pk-border: var(--pk-rule-strong);
   --pk-border-strong: rgba(255, 255, 255, 0.32);
-  --pk-cyan: var(--pk-blue);
-  --pk-cyan-ink: var(--pk-state-cool-ink);
-  --pk-pink-ink: var(--pk-magenta-ink);
-  --pk-lime-tint: var(--pk-state-good-bg);
   --pk-lime-edge: rgba(200, 240, 58, 0.4);
-  --pk-magenta-tint: var(--pk-state-loss-bg);
   --pk-magenta-edge: rgba(255, 158, 198, 0.4);
-  --pk-amber-tint: var(--pk-state-caution-bg);
   --pk-amber-edge: rgba(255, 201, 63, 0.4);
-  --pk-cyan-tint: var(--pk-state-cool-bg);
   --pk-cyan-edge: rgba(91, 140, 255, 0.4);
-  --pk-violet-tint: var(--pk-state-info-bg);
   --pk-violet-edge: rgba(185, 166, 255, 0.4);
 }
 
@@ -453,7 +390,7 @@ h2 {
 }
 
 .pk-button[data-variant="secondary"]:hover:not(:disabled) {
-  background: var(--pk-surface);
+  background: var(--pk-panel);
   border-color: var(--pk-ink);
 }
 
@@ -471,8 +408,8 @@ h2 {
   justify-content: flex-start;
   text-align: left;
   padding: 14px 16px;
-  background: var(--pk-surface);
-  border-color: var(--pk-border);
+  background: var(--pk-panel);
+  border-color: var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
 }
 
@@ -510,8 +447,8 @@ h2 {
 .pk-button[data-glow="true"] {
   border-color: var(--pk-glow-rim);
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.3),
-    0 0 24px rgba(200, 240, 58, 0.32);
+    inset 0 2px 0 var(--pk-lit-edge),
+    0 0 24px var(--pk-glow-lime);
   transition:
     box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -519,8 +456,8 @@ h2 {
 
 .pk-button[data-glow="true"]:hover:not(:disabled) {
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.3),
-    0 0 40px rgba(200, 240, 58, 0.5);
+    inset 0 2px 0 var(--pk-lit-edge),
+    0 0 40px var(--pk-glow-lime-strong);
   transform: translateY(-2px);
 }
 
@@ -585,7 +522,7 @@ h2 {
   align-items: center;
   gap: 7px;
   padding: 8px 13px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   background: transparent;
   color: var(--pk-ink-dim);
@@ -618,7 +555,7 @@ h2 {
   /* A status reads on one line or it is not a status. */
   white-space: nowrap;
   padding: 4px 9px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   font: 700 9.5px/1 var(--pk-font);
   letter-spacing: 0.08em;
@@ -630,9 +567,9 @@ h2 {
 .pk-meter {
   display: block;
   height: 7px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-field);
+  background: var(--pk-panel);
   overflow: hidden;
 }
 
@@ -663,7 +600,7 @@ h2 {
   gap: 3px;
   padding: 3px;
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-field);
+  background: var(--pk-panel);
 }
 
 .pk-segment {
@@ -690,7 +627,7 @@ h2 {
 }
 
 .pk-segment[aria-pressed="true"] {
-  background: var(--pk-surface-strong);
+  background: var(--pk-panel-2);
   color: var(--pk-ink);
 }
 
@@ -739,9 +676,9 @@ h2 {
   width: 100%;
   min-width: 0;
   padding: 13px 15px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-field);
+  background: var(--pk-panel);
   color: var(--pk-ink);
   font: 400 14.5px/1.3 var(--pk-font);
   outline: none;
@@ -749,7 +686,7 @@ h2 {
 }
 
 .pk-input::placeholder {
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 
 .pk-input:focus,
@@ -822,13 +759,13 @@ h2 {
 /* Autofill paints the editable input only. Match its opaque fill to the entire frame. */
 .pk-input:is(:autofill, :-webkit-autofill),
 .pk-input-inner:is(:autofill, :-webkit-autofill) {
-  box-shadow: inset 0 0 0 1000px var(--pk-field-autofill);
+  box-shadow: inset 0 0 0 1000px var(--pk-panel);
   -webkit-text-fill-color: var(--pk-ink);
   caret-color: var(--pk-ink);
 }
 
 .pk-input-group:has(.pk-input-inner:is(:autofill, :-webkit-autofill)) {
-  background: var(--pk-field-autofill);
+  background: var(--pk-panel);
 }
 
 .pk-input-group[data-size="lg"] .pk-input-inner {
@@ -845,16 +782,16 @@ h2 {
 /* ---------- Panel: the surface content sits on ---------- */
 
 .pk-panel {
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
-  background: var(--pk-surface);
+  background: var(--pk-panel);
 }
 
 /* Raised: the card a form is built from, lit along its top edge. */
 .pk-panel[data-tone="raised"] {
-  background: var(--pk-surface-strong);
+  background: var(--pk-panel-2);
   backdrop-filter: blur(16px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 var(--pk-lit-edge);
 }
 
 .pk-panel[data-tone="quiet"] {
@@ -867,39 +804,41 @@ h2 {
  * belong together, so a badge, a banner, a status row and a dot all say "caution" the same way. Use
  * it for what something *is*; a button's fill still comes from its variant. The names are the old
  * accent names because that is what the features write, but each one resolves to the state pair it
- * was always describing, which is the reason a tint stays legible when the ground turns white. */
+ * was always describing, which is the reason a tint stays legible when the ground turns white.
+ *
+ * The three properties are tokens like any other, set per tint instead of per surface. */
 [data-tint] {
-  --tint-fg: var(--pk-ink-muted);
-  --tint-bg: transparent;
-  --tint-bd: var(--pk-border);
+  --pk-tint-fg: var(--pk-ink-muted);
+  --pk-tint-bg: transparent;
+  --pk-tint-bd: var(--pk-rule-strong);
 }
 [data-tint="lime"] {
-  --tint-fg: var(--pk-state-good-ink);
-  --tint-bg: var(--pk-state-good-bg);
-  --tint-bd: var(--pk-lime-edge);
+  --pk-tint-fg: var(--pk-state-good-ink);
+  --pk-tint-bg: var(--pk-state-good-bg);
+  --pk-tint-bd: var(--pk-lime-edge);
 }
 [data-tint="magenta"] {
-  --tint-fg: var(--pk-state-loss-ink);
-  --tint-bg: var(--pk-state-loss-bg);
-  --tint-bd: var(--pk-magenta-edge);
+  --pk-tint-fg: var(--pk-state-loss-ink);
+  --pk-tint-bg: var(--pk-state-loss-bg);
+  --pk-tint-bd: var(--pk-magenta-edge);
 }
 [data-tint="amber"] {
-  --tint-fg: var(--pk-state-caution-ink);
-  --tint-bg: var(--pk-state-caution-bg);
-  --tint-bd: var(--pk-amber-edge);
+  --pk-tint-fg: var(--pk-state-caution-ink);
+  --pk-tint-bg: var(--pk-state-caution-bg);
+  --pk-tint-bd: var(--pk-amber-edge);
 }
 [data-tint="cyan"] {
-  --tint-fg: var(--pk-state-cool-ink);
-  --tint-bg: var(--pk-state-cool-bg);
-  --tint-bd: var(--pk-cyan-edge);
+  --pk-tint-fg: var(--pk-state-cool-ink);
+  --pk-tint-bg: var(--pk-state-cool-bg);
+  --pk-tint-bd: var(--pk-cyan-edge);
 }
 [data-tint="violet"] {
-  --tint-fg: var(--pk-state-info-ink);
-  --tint-bg: var(--pk-state-info-bg);
-  --tint-bd: var(--pk-violet-edge);
+  --pk-tint-fg: var(--pk-state-info-ink);
+  --pk-tint-bg: var(--pk-state-info-bg);
+  --pk-tint-bd: var(--pk-violet-edge);
 }
 [data-tint="grey"] {
-  --tint-fg: var(--pk-ink-muted);
-  --tint-bg: var(--pk-panel);
-  --tint-bd: var(--pk-border);
+  --pk-tint-fg: var(--pk-ink-muted);
+  --pk-tint-bg: var(--pk-panel);
+  --pk-tint-bd: var(--pk-rule-strong);
 }

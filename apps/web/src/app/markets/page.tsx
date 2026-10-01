@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Markets() {
-  const markets = await services.listMarkets();
+  const { data: markets, degraded } = await services.listMarkets();
   return (
     <PublicShell>
-      <MarketsBoard markets={markets} />
+      <MarketsBoard markets={markets} degraded={degraded} />
     </PublicShell>
   );
 }

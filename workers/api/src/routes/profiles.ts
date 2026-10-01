@@ -49,10 +49,17 @@ export function profileRoutes(services: ProfileRouteServices) {
       if (!body || typeof body.display_name !== "string" || typeof body.handle !== "string") {
         throw badRequest("Fields 'display_name' and 'handle' must be strings");
       }
-      const profile = await services.profiles.createProfile(c.get("principal").id, {
-        displayName: body.display_name,
-        handle: body.handle,
-      });
+      const principal = c.get("principal");
+      // A studio (email or Google) account needs its master wallet first; a wallet sign-in account
+      // claiming a handle from the marketplace has its own wallet and never a custody account. Only
+      // the token's server-only app_metadata marker says which — never the email's domain, which
+      // anyone can register while email sign-up is open.
+      const account = principal.kind === "user" && principal.walletAccount ? "wallet" : "studio";
+      const profile = await services.profiles.createProfile(
+        principal.id,
+        { displayName: body.display_name, handle: body.handle },
+        account,
+      );
       await services.onboard?.(c.get("principal").id);
       return c.json(successEnvelope(profileDto(profile), c.req.path, "Profile created"), 201);
     });

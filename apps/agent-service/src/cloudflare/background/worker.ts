@@ -50,6 +50,7 @@ const worker = {
       }
       try {
         const services = await container(env);
+        // Local queue experiment only (isolated pickler_cf_queue_* database); it runs no previews.
         await consumeWakeup(services.repository, services.execute, env.RESEARCH_QUEUE);
         message.ack();
       } catch {

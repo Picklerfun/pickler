@@ -12,7 +12,7 @@
 // of them go stale; the root layout resolves it once, from the host that asked.
 
 import { createContext, useContext, type ReactNode } from "react";
-import { PRODUCT_HOSTS, studioHref, studioUrl, type Product } from "@/server/hosts";
+import { PRODUCT_HOSTS, marketplaceUrl, studioHref, studioUrl, type Product } from "@/server/hosts";
 
 /**
  * `either` is the fallback, and it is the right one to be wrong with: it yields the paths that are
@@ -33,4 +33,9 @@ export function useStudioHref(): string {
 /** Where some other studio path is from here. Absolute only when it has to cross an origin. */
 export function useStudioUrl(path: string): string {
   return studioUrl(useContext(ProductContext), PRODUCT_HOSTS, path);
+}
+
+/** Where a marketplace path is from here. Absolute only from the studio host, which 404s it. */
+export function useMarketplaceHref(path: string): string {
+  return marketplaceUrl(useContext(ProductContext), PRODUCT_HOSTS, path);
 }

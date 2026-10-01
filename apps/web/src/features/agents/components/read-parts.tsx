@@ -9,13 +9,13 @@ import { formatProbability } from "../lib/format";
  * market did with it. They are separate on purpose: an answer can arrive on time and still be wrong.
  */
 
-export const deliveryLabel: Record<AgentReadDto["delivery"], string> = {
+const deliveryLabel: Record<AgentReadDto["delivery"], string> = {
   delivered: "DELIVERED",
   preparing: "PREPARING",
   failed: "EXPIRED · REFUNDED",
 };
 
-export const evaluationLabel = (read: AgentReadDto) => {
+const evaluationLabel = (read: AgentReadDto) => {
   switch (read.evaluation) {
     case "pending":
       return `EVALUATES IN ${(read.evaluatesIn ?? "24h").toUpperCase()}`;

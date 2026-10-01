@@ -1,4 +1,4 @@
-import type { ResearchRepository, RunRecord } from "@pickler/core";
+import { PREVIEW_PRIORITY_AFTER_MS, type ResearchRepository, type RunRecord } from "@pickler/core";
 import { executeWithLease } from "./lease.js";
 
 export type BackgroundRepository = Pick<
@@ -17,22 +17,67 @@ async function notify(queue: WakeupQueue) {
   }
 }
 
+/** The preview runs of briefs (studio-brief-v1 §4), executed by the same runner. */
+export type PreviewExecution = {
+  repository: Pick<ResearchRepository, "recover" | "renew"> & {
+    /** With `queuedBefore`, only a preview queued before then. */
+    claim(now: number, queuedBefore?: number): Promise<RunRecord | null>;
+  };
+  execute: (run: RunRecord, signal: AbortSignal) => Promise<void>;
+};
+
+export type ClaimedJob = {
+  run: RunRecord;
+  lease: Pick<ResearchRepository, "renew">;
+  execute: (run: RunRecord, signal: AbortSignal) => Promise<void>;
+};
+
+/**
+ * The next job: a preview queued longer than `PREVIEW_PRIORITY_AFTER_MS`, else a research run,
+ * else any preview. Both claims share the execution policy's limits.
+ */
+export async function claimNext(
+  repository: Pick<ResearchRepository, "claim" | "renew">,
+  execute: (run: RunRecord, signal: AbortSignal) => Promise<void>,
+  previews: PreviewExecution | undefined,
+  now = Date.now,
+): Promise<ClaimedJob | null> {
+  const preview = (claimed: RunRecord | null): ClaimedJob | null =>
+    claimed && previews
+      ? { run: claimed, lease: previews.repository, execute: previews.execute }
+      : null;
+  const at = now();
+  if (previews) {
+    const overdue = preview(await previews.repository.claim(at, at - PREVIEW_PRIORITY_AFTER_MS));
+    if (overdue) {
+      return overdue;
+    }
+  }
+  const run = await repository.claim(at);
+  if (run) {
+    return { run, lease: repository, execute };
+  }
+  return previews ? preview(await previews.repository.claim(at)) : null;
+}
+
 export async function consumeWakeup(
   repository: BackgroundRepository,
   execute: (run: RunRecord, signal: AbortSignal) => Promise<void>,
   queue: WakeupQueue,
   now = Date.now,
+  previews?: PreviewExecution,
 ) {
   try {
     await repository.recover(now());
-    const run = await repository.claim(now());
-    if (!run) {
+    await previews?.repository.recover(now());
+    const job = await claimNext(repository, execute, previews, now);
+    if (!job) {
       return;
     }
     // Wake another invocation before research, so pending jobs can use spare capacity.
-    await executeWithLease(repository, run, async (claimed, signal) => {
+    await executeWithLease(job.lease, job.run, async (claimed, signal) => {
       await notify(queue);
-      await execute(claimed, signal);
+      await job.execute(claimed, signal);
     });
     await notify(queue);
   } finally {

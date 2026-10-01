@@ -1,5 +1,11 @@
 import type { Clock } from "../../../ports/clock.js";
-import { normalizeAddress, caip2, type Namespace } from "../domain/wallet-auth.js";
+import {
+  caip2,
+  InvalidChainError,
+  normalizeAddress,
+  type Namespace,
+  type NormalizedAddress,
+} from "../domain/wallet-auth.js";
 import type {
   AccountProvisioner,
   NonceStore,
@@ -36,6 +42,22 @@ export class AddressTakenError extends Error {
   constructor() {
     super("That wallet is already linked to another Pickler account");
     this.name = "AddressTakenError";
+  }
+}
+
+/**
+ * The auth account at this address's synthetic email was not made by wallet sign-in: it has a
+ * password, or an identity wallet sign-in never creates, and no wallet-account marker. Since the
+ * synthetic email is computable from a public address, that is what an account pre-registered
+ * to take over the wallet's sign-in looks like, so it is refused — never linked, marked or given a
+ * session.
+ */
+export class WalletAccountConflictError extends Error {
+  constructor() {
+    super(
+      "This wallet's sign-in is held by an account that wallet sign-in did not create. Contact support.",
+    );
+    this.name = "WalletAccountConflictError";
   }
 }
 
@@ -95,7 +117,14 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
    */
   async function proven(presented: Presented) {
     const parsed = deps.parseMessage(presented.raw);
-    const taken = await deps.nonces.consume(parsed.nonce);
+    // Before the nonce, because the nonce is kept under the address it was issued to. A message
+    // whose address is not one stops here with its nonce unspent, which gives nothing away: no
+    // signature over that message can ever verify.
+    const address = normalizeAddress(parsed.namespace, parsed.address);
+    const taken = await deps.nonces.consume(parsed.nonce, {
+      namespace: parsed.namespace,
+      address,
+    });
     if (!taken) {
       throw new UnknownNonceError();
     }
@@ -109,7 +138,6 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     if (parsed.domain !== deps.domain) {
       throw new WrongDomainError();
     }
-    const address = normalizeAddress(parsed.namespace, parsed.address);
     const ok = await deps.verifier.verify({
       message: presented.raw,
       signature: presented.signature,
@@ -121,6 +149,33 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     return { address, namespace: parsed.namespace, chainReference: parsed.chainReference };
   }
 
+  /**
+   * The address was linked to nobody when `verify` looked and is linked now: somebody else wrote
+   * the link first. Usually that is a second sign-in of the same wallet, which resolves to the
+   * same account. It can also be a signed-in account linking this wallet, and then the wallet is
+   * theirs — a session for the account made a moment ago would be a session for an account the
+   * wallet is not linked to. So the link is read again and its holder is who signs in, after the
+   * same `markWalletAccount` check every returning sign-in gets.
+   *
+   * The account made for nothing is removed, and only when this very call made it: an account
+   * that was already there belongs to whoever made it. Removing is tidying, so its failure does
+   * not refuse the sign-in — a leftover holds no wallet and no session is ever minted for it.
+   */
+  async function holderOfLostLink(
+    made: { userId: string; created: boolean },
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<string> {
+    const holder = await deps.links.findByAddress(namespace, address);
+    if (!holder) {
+      throw new Error("That wallet's link could not be written or read. Try again.");
+    }
+    if (holder.userId !== made.userId && made.created) {
+      await deps.accounts.discardAccount(made.userId, namespace, address).catch(() => {});
+    }
+    return holder.userId;
+  }
+
   return {
     /**
      * Returns the exact string to sign, not just a nonce. The browser signs what it is given and
@@ -129,17 +184,27 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * with no indication of why, and the failure looks exactly like the wrong wallet.
      *
      * The address is unverified at this point and that is fine: it goes into the message, and the
-     * signature is what proves it.
+     * signature is what proves it. It is checked for shape, though, and so is the chain: a
+     * malformed one is `InvalidAddressError` or `InvalidChainError` and stores nothing.
      */
     async issueNonce(input: { address: string; namespace: Namespace; chainReference: number }) {
+      // Everything that can refuse the request runs before the nonce is stored. This route is
+      // public, and a nonce stored ahead of a refusal is a row anyone can make for free.
+      const address = normalizeAddress(input.namespace, input.address);
+      if (!Number.isSafeInteger(input.chainReference) || input.chainReference <= 0) {
+        throw new InvalidChainError(String(input.chainReference));
+      }
       const nonce = deps.randomNonce();
-      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS));
       const message = deps.buildMessage({
         domain: deps.domain,
-        address: normalizeAddress(input.namespace, input.address),
+        address,
         chainReference: input.chainReference,
         nonce,
         issuedAt: deps.clock.now(),
+      });
+      await deps.nonces.issue(nonce, new Date(deps.clock.now().getTime() + NONCE_TTL_MS), {
+        namespace: input.namespace,
+        address,
       });
       return { nonce, message };
     },
@@ -149,16 +214,19 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
       const { address, namespace, chainReference } = await proven(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing) {
+        await deps.accounts.markWalletAccount(existing.userId, namespace, address);
         return { userId: existing.userId, session: await deps.accounts.session(existing.userId) };
       }
-      const { userId } = await deps.accounts.forAddress(namespace, address);
-      await deps.links.link({
-        userId,
+      const made = await deps.accounts.forAddress(namespace, address);
+      const { created } = await deps.links.link({
+        userId: made.userId,
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
         kind: "external",
       });
+      const userId = created ? made.userId : await holderOfLostLink(made, namespace, address);
+      await deps.accounts.markWalletAccount(userId, namespace, address);
       return { userId, session: await deps.accounts.session(userId) };
     },
 

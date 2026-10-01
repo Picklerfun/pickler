@@ -1,0 +1,14 @@
+[
+  {
+    "find": ".bubble[data-tint=\"violet\"] {\n  --mood: var(--pk-violet-ink);\n}\n.bubble[data-tint=\"lime\"] {\n  --mood: var(--pk-lime-ink);\n}\n.bubble[data-tint=\"grey\"] {\n  --mood: var(--pk-ink-muted);\n}\n.bubble[data-tint=\"magenta\"] {\n  --mood: var(--pk-magenta-ink);\n}\n",
+    "replace": ""
+  },
+  {
+    "find": "  letter-spacing: 0.12em;\n  color: var(--mood);\n}\n",
+    "replace": "  letter-spacing: 0.12em;\n}\n.bubble[data-tint=\"violet\"] .moodLabel {\n  color: var(--pk-violet-ink);\n}\n.bubble[data-tint=\"lime\"] .moodLabel {\n  color: var(--pk-lime-ink);\n}\n.bubble[data-tint=\"grey\"] .moodLabel {\n  color: var(--pk-ink-muted);\n}\n.bubble[data-tint=\"magenta\"] .moodLabel {\n  color: var(--pk-magenta-ink);\n}\n"
+  },
+  {
+    "find": "  border-radius: var(--pk-radius-mark);\n  background: var(--mood);\n}\n",
+    "replace": "  border-radius: var(--pk-radius-mark);\n}\n.bubble[data-tint=\"violet\"] .moodDot {\n  background: var(--pk-violet-ink);\n}\n.bubble[data-tint=\"lime\"] .moodDot {\n  background: var(--pk-lime-ink);\n}\n.bubble[data-tint=\"grey\"] .moodDot {\n  background: var(--pk-ink-muted);\n}\n.bubble[data-tint=\"magenta\"] .moodDot {\n  background: var(--pk-magenta-ink);\n}\n"
+  }
+]

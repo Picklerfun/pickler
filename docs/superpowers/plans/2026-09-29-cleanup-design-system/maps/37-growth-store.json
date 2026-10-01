@@ -1,0 +1,10 @@
+[
+  {
+    "find": "import {\n  DataSourceUnavailableError,\n  type Applicant,",
+    "replace": "import {\n  CATEGORIES,\n  DataSourceUnavailableError,\n  PERSONALITIES,\n  type Applicant,"
+  },
+  {
+    "find": "import { applicantSchema, outcomeSchema } from \"../supabase/supabase-applicants.js\";\nimport { placementSchema } from \"../supabase/supabase-waitlist.js\";\nimport { readRows } from \"./data-source.js\";\n\n// The growth schema's security-definer functions (drizzle/0006_product_functions_and_grants.sql)\n// over the API's pool: the same calls the Supabase adapters made through PostgREST, and the same\n// schemas check what comes back, so a function whose shape drifts fails as unavailable.\n",
+    "replace": "import { readRows } from \"./data-source.js\";\n\n// The growth schema's security-definer functions (drizzle/0006_product_functions_and_grants.sql)\n// over the API's pool. The schemas below check what comes back, so a function whose shape drifts\n// fails as unavailable.\n\n// growth.join_waitlist returns a single-row table.\nexport const placementSchema = z\n  .array(\n    z.object({\n      line_position: z.coerce.number().int().positive(),\n      already_joined: z.boolean(),\n      apply_token: z.uuid().nullable(),\n    }),\n  )\n  .length(1);\n\n// Mirrors growth.applicant_by_token() in the product functions migration.\nexport const applicantSchema = z\n  .object({\n    email: z.string(),\n    linePosition: z.coerce.number().int().positive(),\n    referralCode: z.string(),\n    referrals: z.coerce.number().int().nonnegative(),\n    application: z\n      .object({\n        agentName: z.string(),\n        ticker: z.string(),\n        xHandle: z.string(),\n        category: z.enum(CATEGORIES),\n        personality: z.enum(PERSONALITIES),\n        edge: z.string(),\n        whyYou: z.string(),\n        submittedAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),\n      })\n      .nullable(),\n  })\n  .nullable();\n\nexport const outcomeSchema = z.enum([\n  \"submitted\",\n  \"not_found\",\n  \"already_submitted\",\n  \"ticker_taken\",\n  \"handle_taken\",\n]);\n"
+  }
+]

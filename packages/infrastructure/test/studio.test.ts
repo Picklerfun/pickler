@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import {
   DEFAULT_CONFIG,
+  PilotError,
   createStudioAccess,
   type AgentConfig,
   type Principal,
@@ -96,13 +97,10 @@ test("concurrent creation preserves one handle, config, mapping and disabled sch
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  assert.equal(await directory.createdWithKey(access, input.key), null);
   const scopes = await Promise.all(
     Array.from({ length: 5 }, () => directory.createAgent(access, userId, { ...input, wallet })),
   );
   assert.equal(new Set(scopes.map((s) => s.agentId)).size, 1);
-  assert.deepEqual(await directory.createdWithKey(access, input.key), scopes[0]);
-  assert.equal(await directory.createdWithKey(access, "another-key"), null);
   const agent = await store.agent(scopes[0]!);
   assert.equal(agent.scheduleEnabled, false);
   assert.deepEqual(agent.config.marketScope, config.marketScope);
@@ -423,4 +421,35 @@ test("the idempotent retry with the same wallet returns the same agent; a retry 
     }),
     { code: "CONFLICT" },
   );
+});
+
+test("a replay under the same key returns the original agent even once the funding lock closes", async (t) => {
+  const { store, directory, userId, access, wallet } = await setup(t);
+  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  let admitted = 0;
+  const open = async () => {
+    admitted++;
+  };
+  const closed = async () => {
+    admitted++;
+    throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+  };
+
+  const first = await directory.createAgent(access, userId, { ...input, wallet }, open);
+  const replay = await directory.createAgent(access, userId, { ...input, wallet }, closed);
+
+  assert.equal(replay.agentId, first.agentId);
+  assert.equal(admitted, 1);
+  await assert.rejects(
+    directory.createAgent(
+      access,
+      userId,
+      { ...input, handle: "agent_two", key: "another", wallet },
+      closed,
+    ),
+    { code: "UNFUNDED_AGENT" },
+  );
+  assert.equal(admitted, 2);
 });

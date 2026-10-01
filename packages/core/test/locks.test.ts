@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MIN_FUNDED_AUSD, canCreateAnother, canSchedule } from "../src/features/studio/locks.js";
+import {
+  MAX_DRAFTS_PER_WORKSPACE,
+  MIN_FUNDED_AUSD,
+  canCreateAnother,
+  canSchedule,
+} from "../src/features/studio/locks.js";
 import { assertCanSchedule, isReadyToSchedule } from "../src/features/research/policy.js";
 import { DEFAULT_CONFIG, type AgentRecord } from "../src/features/research/types.js";
 
@@ -23,6 +28,13 @@ test("another agent needs every existing one funded", () => {
   assert.deepEqual(canCreateAnother([]), { ok: true, reason: null });
   assert.deepEqual(canCreateAnother([12, 40]), { ok: true, reason: null });
   assert.deepEqual(canCreateAnother([12, 3]), { ok: false, reason: "unfunded_agent" });
+});
+
+test("drafts hold no funds, so they close the lock only at their own limit", () => {
+  assert.equal(MAX_DRAFTS_PER_WORKSPACE, 3);
+  assert.deepEqual(canCreateAnother([], 2), { ok: true, reason: null });
+  assert.deepEqual(canCreateAnother([12], 3), { ok: false, reason: "draft_limit" });
+  assert.deepEqual(canCreateAnother([3], 3), { ok: false, reason: "unfunded_agent" });
 });
 
 test("isReadyToSchedule agrees with the NOT_READY refusal in every combination", () => {

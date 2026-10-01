@@ -15,6 +15,7 @@ import {
 } from "@/features/auth/lib/custody";
 import { wallet as readWallet } from "@/features/auth/lib/custody-api";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
+import { useStudioHref } from "@/features/site/studio-href";
 import {
   agentState,
   confirmDelegated,
@@ -34,6 +35,7 @@ import {
   type Options,
 } from "../api";
 import { custody } from "../lib/passkey";
+import { studioAgentHref } from "../lib/select";
 import { previewOptions, studioPreview } from "../preview";
 import {
   NoSubOrganization,
@@ -118,6 +120,7 @@ export function CreateAgent({
   allowSample: boolean;
 }) {
   const router = useRouter();
+  const studio = useStudioHref();
   const [state, dispatch] = useReducer(
     flowReducer,
     initialStep,
@@ -187,18 +190,19 @@ export function CreateAgent({
           router.replace("/signin");
           return;
         }
-        const account = await ensureProfile(supabase);
-        if (account.kind !== "ready") {
-          router.replace("/signup?complete=1");
-          return;
-        }
         /* The same door the studio shell has, before a draft is written: the agent ceremony needs a
            sub-organization, and a person without one would otherwise fill in every step only to be
-           sent away by "Create and run it once". */
+           sent away by "Create and run it once". The wallet is read first and the profile only
+           once there is one, as in the shell; a wallet without a profile goes to the handle step. */
         const token = data.session.access_token;
-        const away = redirectFor(await readSubOrganization(() => readWallet(token)));
-        if (away) {
-          if (active) {
+        const wallet = await readSubOrganization(() => readWallet(token));
+        const account = wallet === null ? null : await ensureProfile(supabase);
+        const away = redirectFor({
+          wallet,
+          profile: account?.kind === "ready" ? account.profile : null,
+        });
+        if (away || account?.kind !== "ready") {
+          if (away && active) {
             router.replace(away);
           }
           return;
@@ -448,7 +452,7 @@ export function CreateAgent({
         </Link>
         <span className={styles.newAgent}>NEW AGENT</span>
         <span className={shell.spacer} />
-        <Link href="/studio" className={styles.exit}>
+        <Link href={studio} className={styles.exit}>
           Exit
         </Link>
       </header>
@@ -599,9 +603,7 @@ export function CreateAgent({
         <Button
           size="lg"
           disabled={!settled}
-          onClick={() =>
-            router.push(ceremony.agentId ? `/studio?agent=${ceremony.agentId}` : "/studio")
-          }
+          onClick={() => router.push(studioAgentHref(studio, ceremony.agentId))}
         >
           {settled ? "Open the studio" : "Thinking…"}
         </Button>

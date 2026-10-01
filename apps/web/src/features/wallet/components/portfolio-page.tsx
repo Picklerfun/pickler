@@ -4,6 +4,7 @@ import type { AgentReadDto, AgentSummaryDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { useState } from "react";
 import { ButtonLink, Icon } from "@pickler/ui";
+import { WrongNetwork } from "@/features/status/wrong-network";
 import styles from "./portfolio-page.module.css";
 import { ConnectGate } from "./connect-gate";
 import { ClaimHandle } from "./claim-handle";
@@ -117,30 +118,11 @@ export function PortfolioPage({
             that had to find it by [data-surface] could not tell "the panel is gone" from "the panel
             lost its surface" — the two failures it most needs to tell apart. */}
         <section id="portfolio-balance" className={styles.total} data-surface="dark">
-          <p className={styles.totalLabel}>
-            {wallet.onTargetChain
-              ? `BALANCE · ${TARGET_CHAIN.name.toUpperCase()}`
-              : "WRONG NETWORK"}
+          <p className={styles.totalLabel}>BALANCE · {TARGET_CHAIN.name.toUpperCase()}</p>
+          <p className={styles.totalFigure} data-unknown={wallet.balance === null}>
+            {wallet.balance === null ? "—" : formatBalance(wallet.balance)}{" "}
+            <span>{TARGET_CHAIN.nativeCurrency.symbol}</span>
           </p>
-          {wallet.onTargetChain ? (
-            <p className={styles.totalFigure} data-unknown={wallet.balance === null}>
-              {wallet.balance === null ? "—" : formatBalance(wallet.balance)}{" "}
-              <span>{TARGET_CHAIN.nativeCurrency.symbol}</span>
-            </p>
-          ) : (
-            <>
-              <p className={styles.totalFigure} data-unknown="true">
-                —
-              </p>
-              <button
-                type="button"
-                className={styles.switch}
-                onClick={() => void wallet.switchChain()}
-              >
-                Switch to {TARGET_CHAIN.name}
-              </button>
-            </>
-          )}
           {/* Where the canvas carries a gain since entry. There is no entry and no position to have
               one, and a number here would be the only invented figure on the page. */}
           <p className={styles.totalNote}>
@@ -314,7 +296,9 @@ export function PortfolioPage({
           title="Connect to see your portfolio"
           lead="Pickler reads your balance and your holdings from the address you connect. Nothing is stored."
         >
-          {body}
+          {/* A balance read on the wrong chain is a number about the wrong money: the whole page
+              waits for the switch rather than showing a dash beside everything. */}
+          {wallet.onTargetChain ? body : <WrongNetwork />}
         </ConnectGate>
       )}
     </main>

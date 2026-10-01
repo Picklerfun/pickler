@@ -11,7 +11,11 @@ import type {
   createAgentSchema,
   studioAgentSchema,
   AgentDraftDto,
+  DraftCreateDto,
+  PreviewRunDto,
+  PreviewRunRequestDto,
 } from "@pickler/api-schema";
+import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export { DEFAULT_PROFILE, type Profile } from "./profile";
 /**
@@ -20,19 +24,16 @@ export { DEFAULT_PROFILE, type Profile } from "./profile";
  */
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
 /** The bare runtime record the writes answer (`POST /agents`, `PUT /config|limits|interval`). */
-export type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
+type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
 export type Run = ReturnType<typeof runResponseSchema.parse>;
 export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
-export type Plugin = {
-  id: NonNullable<Config["plugins"]>["enabled"][number];
-  version: string;
-  tools: Config["tools"];
-};
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
-export type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
+type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
 export type { AgentDraftDto };
+/** A paper run of a brief, as its owner reads it. */
+export type PreviewRun = PreviewRunDto["run"];
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -45,6 +46,8 @@ export class StudioError extends Error {
     message: string,
     /** The server's own words, when it sent any; `message` is the studio's for the code. */
     public readonly serverMessage?: string,
+    /** The rest of the error body: `field`/`reason` for INVALID_BRIEF, `retryAt` for a limit. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "StudioError";
@@ -53,23 +56,6 @@ export class StudioError extends Error {
 export const errorCode = (caught: unknown): string =>
   caught instanceof StudioError ? caught.code : "";
 
-const messages: Record<string, string> = {
-  NOT_READY:
-    "Scheduling requires a connection check and a successful manual research with the current settings.",
-  ADMISSIONS_PAUSED:
-    "The operator has paused new research. Your existing results remain available.",
-  RESEARCH_ACCESS_DENIED: "Research access is pending or you do not own this workspace.",
-  CONFLICT:
-    "The configuration changed or this handle is already taken. Reload before saving again.",
-  QUOTA:
-    "This agent has reached its research allowance. Try again after the rolling window clears.",
-  PLUGIN_NOT_CONFIGURED: "An enabled plugin needs operator credentials before it can run.",
-  PLUGIN_DISABLED: "A capability required for this action is disabled.",
-  UNAUTHORIZED: "Your session has expired. Sign in again.",
-  NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
-  UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
-  INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",
-};
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
   if (!supabase) {
@@ -77,7 +63,7 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
   }
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) {
-    throw new StudioError("UNAUTHORIZED", messages.UNAUTHORIZED!);
+    throw new StudioError("UNAUTHORIZED", messageFor("UNAUTHORIZED", undefined));
   }
   const response = await fetch(`/api/v1/studio${path}`, {
     ...init,
@@ -94,8 +80,9 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
     const serverMessage = typeof body?.message === "string" ? body.message : undefined;
     throw new StudioError(
       code,
-      messages[code] ?? `Request failed: ${serverMessage ?? code}`,
+      messageFor(code, serverMessage),
       serverMessage,
+      body && typeof body === "object" ? (body as Record<string, unknown>) : undefined,
     );
   }
   return body as T;
@@ -108,6 +95,21 @@ export const draftAgent = (line: string) =>
   studioApi<{ draft: AgentDraftDto; unsupported: string[] }>("/agents/draft", {
     method: "POST",
     body: JSON.stringify({ line }),
+  });
+
+/** `POST /preview-runs`: "Run it on paper". 400 INVALID_BRIEF names the section; 429 has `retryAt`. */
+export const startPreviewRun = (body: PreviewRunRequestDto) =>
+  studioApi<{ id: string }>("/preview-runs", { method: "POST", body: JSON.stringify(body) });
+
+/** `GET /preview-runs/:id`: the run and its trace, in a run's event shape. */
+export const readPreviewRun = (id: string, signal?: AbortSignal) =>
+  studioApi<PreviewRunDto>(`/preview-runs/${encodeURIComponent(id)}`, signal ? { signal } : {});
+
+/** `POST /drafts`: "Create {Name}", adopting the run. 409 RUN_STALE, HANDLE_TAKEN, PREVIEW_UNUSABLE. */
+export const createDraft = (body: DraftCreateDto) =>
+  studioApi<{ productId: string; agent: AgentRecord }>("/drafts", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 
 /**
@@ -164,16 +166,6 @@ export const paperOrder = (runId: string, key: string) =>
   });
 
 /**
- * `PUT /agents/:id/config`: a new version, which turns the schedule off and asks for another
- * manual run. It never writes `spend`; the interval has its own route below.
- */
-export const updateConfig = (agentId: string, expectedVersion: number, config: Config) =>
-  studioApi<AgentRecord>(`/agents/${agentId}/config`, {
-    method: "PUT",
-    body: JSON.stringify({ expectedVersion, config }),
-  });
-
-/**
  * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the
  * version, the schedule and readiness, so it can be tuned right before the schedule is turned on.
  */
@@ -195,7 +187,7 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
     body: JSON.stringify({ enabled }),
   });
 
-export interface DepositPrepared {
+interface DepositPrepared {
   url: string;
   body: string;
   timestampMs: string;
@@ -243,12 +235,12 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body?.success) {
     const code = body?.error ?? String(response.status);
-    throw new StudioError(code, messages[code] ?? body?.message ?? "Request failed");
+    throw new StudioError(code, knownMessage(code) ?? body?.message ?? "Request failed");
   }
   return body.data as T;
 }
 
-export interface UnsignedActivityDto {
+interface UnsignedActivityDto {
   url: string;
   body: string;
   timestampMs: string;
@@ -278,7 +270,7 @@ export const confirmDelegated = (signed: SignedActivityDto) =>
     body: JSON.stringify({ signed }),
   }).then((data) => ({ delegatedUserId: data.delegated_user_id }));
 
-export type PrepareWalletResult =
+type PrepareWalletResult =
   | { existing: { walletId: string; address: string; policiesApproved: boolean } }
   | UnsignedActivityDto;
 
@@ -320,7 +312,7 @@ export const confirmPolicies = (walletId: string, signed: SignedActivityDto) =>
     { method: "POST", body: JSON.stringify({ signed }) },
   ).then((data) => ({ policyIds: data.policy_ids }));
 
-export interface HandleAvailability {
+interface HandleAvailability {
   handle: string;
   available: boolean;
   reason?: "too_short" | "too_long" | "invalid_characters" | "reserved" | "taken";

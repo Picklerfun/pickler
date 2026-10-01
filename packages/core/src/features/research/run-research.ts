@@ -15,7 +15,7 @@ import {
 } from "./nfl.js";
 import { marketExclusion } from "./eligibility.js";
 import { publicSourceUrl } from "./source-url.js";
-import { evaluateDecision } from "./decision-policy.js";
+import { briefVerdict, evaluateDecision } from "./decision-policy.js";
 import {
   PilotError,
   PersistenceFailure,
@@ -393,6 +393,7 @@ export function createResearchRunner(deps: {
           }
         },
         selectionSteps: run.marketId ? 0 : 1,
+        ...(run.config.brief ? { brief: run.config.brief } : {}),
         evidence: () => ({
           sources: [...sources.values()],
           quotes,
@@ -416,6 +417,11 @@ export function createResearchRunner(deps: {
         await event("research_references", researchReferences(market, quotes, availability));
       }
       await event("model_assessment", decision);
+      if (run.config.brief) {
+        // A block that does not answer every rule, in order, fails the run here (INVALID_DECISION).
+        const verdict = briefVerdict(run.config.brief, decision.brief);
+        await event("brief_evaluation", { ...decision.brief, stoppedBy: verdict.stoppedBy });
+      }
       let observedPrice: string | null = null;
       if (
         decision.marketId !== market.id ||
@@ -483,6 +489,7 @@ export function createResearchRunner(deps: {
         observedPrice,
         run.config.uncertaintyPolicy,
         now(),
+        run.config.brief,
       );
       const report = protocol
         ? validateReport(

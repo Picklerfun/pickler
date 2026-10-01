@@ -87,6 +87,15 @@ export function signInPath(pathname: string): string {
   return `/signin?next=${encodeURIComponent(pathname)}`;
 }
 
+/** C0 controls and DEL. A URL parser strips tab, CR and LF; none of the rest belongs in a path. */
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/** A `.` or `..` segment, with either dot percent-encoded. */
+const DOTS = /^(?:\.|%2e){1,2}$/i;
+
+/** An origin nothing is served from, so a destination that keeps it went nowhere. */
+const PROBE_ORIGIN = "https://pickler.invalid";
+
 /**
  * The `next` from a sign-in URL, or null if it is not somewhere on this site.
  *
@@ -94,9 +103,34 @@ export function signInPath(pathname: string): string {
  * accepted: `//evil.example` is protocol-relative and `/\evil.example` is what a browser normalises
  * into one, and both would look like a path and leave the site. The result is used as an `href` and
  * a `router.push`, so an absolute URL of any scheme is refused rather than trusted.
+ *
+ * Two checks, because looking at the first two characters is a guess about what a browser will do
+ * with the rest. A browser strips tab, CR and LF before it resolves anything, so `/\t/evil.example`
+ * IS `//evil.example`; a control character or a backslash anywhere is refused outright. Then the
+ * parser a browser would use is asked directly: resolved against an origin of our own, the
+ * destination has to still be on it, and its path must not open with or contain `//` — which is
+ * one slash-normalisation away from protocol-relative. A `.` or `..` segment is how a path gets
+ * there while looking ordinary, and no link this site writes has one, so those are refused too.
  */
 export function returnTo(asked: string | null | undefined): string | null {
-  if (!asked || asked[0] !== "/" || asked[1] === "/" || asked[1] === "\\") {
+  if (!asked || asked[0] !== "/" || asked[1] === "/") {
+    return null;
+  }
+  if (CONTROL.test(asked) || asked.includes("\\")) {
+    return null;
+  }
+  // `.` and `..`, spelled either way: the parser folds them away, so they are read off what was
+  // asked. `/x/..//evil.example` is the case — it parses to `//evil.example` on this origin.
+  const path = asked.split(/[?#]/)[0]!;
+  if (path.split("/").some((segment) => DOTS.test(segment))) {
+    return null;
+  }
+  try {
+    const parsed = new URL(asked, PROBE_ORIGIN);
+    if (parsed.origin !== PROBE_ORIGIN || parsed.pathname.includes("//")) {
+      return null;
+    }
+  } catch {
     return null;
   }
   return asked;

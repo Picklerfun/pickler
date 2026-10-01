@@ -1,0 +1,44 @@
+diff --git a/scripts/design/probe.test.mjs b/scripts/design/probe.test.mjs
+new file mode 100644
+index 0000000..9f528a2
+--- /dev/null
++++ b/scripts/design/probe.test.mjs
+@@ -0,0 +1,38 @@
++// The one piece of the in-page probes that can be judged without a page: finding the colours in a
++// computed value. The values below are what Chromium hands back for the declarations named.
++import assert from "node:assert/strict";
++import test from "node:test";
++import { coloursIn } from "./lib/probe.mjs";
++
++test("a shadow list gives up every colour in it, in order", () => {
++  assert.deepEqual(
++    coloursIn(
++      "rgba(255, 255, 255, 0.3) 0px 2px 0px 0px inset, rgba(200, 240, 58, 0.32) 0px 0px 24px 0px",
++    ),
++    ["rgba(255, 255, 255, 0.3)", "rgba(200, 240, 58, 0.32)"],
++  );
++});
++
++test("a gradient gives up its stops, transparent ones included", () => {
++  assert.deepEqual(
++    coloursIn("radial-gradient(120% 80% at 50% 0%, rgb(27, 31, 107) 0%, rgba(0, 0, 0, 0) 100%)"),
++    ["rgb(27, 31, 107)", "rgba(0, 0, 0, 0)"],
++  );
++});
++
++test("a drop-shadow filter gives up its colour", () => {
++  assert.deepEqual(coloursIn("drop-shadow(rgba(90, 216, 255, 0.55) 0px 0px 12px)"), [
++    "rgba(90, 216, 255, 0.55)",
++  ]);
++});
++
++test("a colour mixed by the browser is still a colour", () => {
++  assert.deepEqual(coloursIn("color(srgb 0.78 0.94 0.23 / 0.6) 0px 0px 12px 0px"), [
++    "color(srgb 0.78 0.94 0.23 / 0.6)",
++  ]);
++});
++
++test("a value with no colour in it gives up nothing", () => {
++  assert.deepEqual(coloursIn("none"), []);
++  assert.deepEqual(coloursIn("blur(16px)"), []);
++});

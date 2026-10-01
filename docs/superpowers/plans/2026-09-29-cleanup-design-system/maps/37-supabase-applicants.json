@@ -1,0 +1,10 @@
+[
+  {
+    "find": "import {\n  CATEGORIES,\n  DataSourceUnavailableError,\n  PERSONALITIES,\n  type ApplicantRepository,\n} from \"@pickler/core\";\nimport { z } from \"zod\";\nimport type { SupabaseRestClient } from \"./supabase-rest-client.js\";\n",
+    "replace": "import { DataSourceUnavailableError, type ApplicantRepository } from \"@pickler/core\";\nimport type { z } from \"zod\";\nimport { applicantSchema, outcomeSchema } from \"../persistence/growth-store.js\";\nimport type { SupabaseRestClient } from \"./supabase-rest-client.js\";\n"
+  },
+  {
+    "find": "// Mirrors growth.applicant_by_token() in supabase/migrations.\nexport const applicantSchema = z\n  .object({\n    email: z.string(),\n    linePosition: z.coerce.number().int().positive(),\n    referralCode: z.string(),\n    referrals: z.coerce.number().int().nonnegative(),\n    application: z\n      .object({\n        agentName: z.string(),\n        ticker: z.string(),\n        xHandle: z.string(),\n        category: z.enum(CATEGORIES),\n        personality: z.enum(PERSONALITIES),\n        edge: z.string(),\n        whyYou: z.string(),\n        submittedAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),\n      })\n      .nullable(),\n  })\n  .nullable();\n\nexport const outcomeSchema = z.enum([\n  \"submitted\",\n  \"not_found\",\n  \"already_submitted\",\n  \"ticker_taken\",\n  \"handle_taken\",\n]);\n\n",
+    "replace": ""
+  }
+]
