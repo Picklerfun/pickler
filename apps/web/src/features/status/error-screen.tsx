@@ -7,7 +7,7 @@ import { StatusActions, StatusScreen } from "./status-screen";
 import styles from "./status.module.css";
 import { errorCode } from "./words";
 
-/** 1c. Something failed on our side. Nothing was signed; say so, and offer the retry. */
+/** 1c. The page failed to load. Its error does not establish transaction or agent status. */
 export function ErrorScreen({
   digest,
   reset,
@@ -54,7 +54,7 @@ export function ErrorScreen({
       tone="loss"
       eyebrow="500 · OUR SIDE"
       title="WE BROKE"
-      body="Something failed on our end. Nothing was signed and nothing moved. Agents keep trading on-chain; only this page is affected."
+      body="We could not load this page. Try again to refresh its data. If you submitted a transaction, check its status before submitting it again."
     >
       <div className={styles.row}>
         <span className={styles.code} suppressHydrationWarning>

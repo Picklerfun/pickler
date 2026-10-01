@@ -11,8 +11,8 @@ const RETRY_MS = 15_000;
 
 /**
  * 1d. The studio without a connection. The studio stays mounted underneath, hidden, so a brief
- * being written is still there when the connection comes back; nothing can be signed meanwhile,
- * because nothing can reach the API.
+ * being written is still there when the connection comes back. Connectivity alone does not
+ * establish whether an earlier operation completed.
  */
 export function OfflineGate({ children }: { children: ReactNode }) {
   /* When the browser said the connection went, or null while it has not. The browser's word is a
@@ -77,7 +77,7 @@ export function OfflineGate({ children }: { children: ReactNode }) {
     <>
       <div hidden={offline}>{children}</div>
       {offline && (
-        <StatusFrame foot="NOTHING CAN BE SIGNED WHILE OFFLINE · WHAT YOU WERE WRITING STAYS ON THIS PAGE">
+        <StatusFrame foot="WHAT YOU WERE WRITING STAYS ON THIS PAGE">
           <StatusScreen
             id="offline"
             tone="cool"
@@ -85,7 +85,7 @@ export function OfflineGate({ children }: { children: ReactNode }) {
             title="YOU'RE OFFLINE"
             body={
               <>
-                Your agents run on-chain, not on your connection.
+                This page cannot refresh its data while your connection is unavailable.
                 {since !== null && (
                   <>
                     {" "}
