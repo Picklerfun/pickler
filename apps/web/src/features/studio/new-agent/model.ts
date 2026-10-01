@@ -10,6 +10,8 @@
  * from CommonJS, where an "import"-only package cannot be loaded statically. The test pins each
  * copy through a dynamic import.
  */
+import type { DraftCreateDto } from "@pickler/api-schema";
+
 export type VoiceKey = "analyst" | "contrarian" | "trash_talker" | "deadpan" | "hype" | "professor";
 export type Accent = "lime" | "cyan" | "amber" | "orange" | "magenta" | "violet" | "blue";
 export type WebMode = "anywhere" | "prefer" | "only";
@@ -132,6 +134,8 @@ const slug = (text: string) =>
   text
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 15);
 
@@ -169,50 +173,63 @@ export const funded = (wallet: WalletView | null): boolean =>
   wallet.ausdMicro >= MIN_START.ausdMicro &&
   wallet.monWei >= MIN_START.monWei;
 
+/** Why "Create" is closed, or that it is open. One rule feeds both the label and the button. */
+export type CreateBlock = { ok: true } | { ok: false; label: string };
+
+export function createBlock(
+  form: NewAgentForm,
+  handle: HandleState,
+  wallet: WalletView | null,
+): CreateBlock {
+  const derived = deriveHandle(form.name, form.handle);
+  const blocked = (label: string): CreateBlock => ({ ok: false, label });
+  if (!form.name.trim()) {
+    return blocked("Name it to create");
+  }
+  if (handle === "taken") {
+    return blocked(`@${derived} is taken`);
+  }
+  if (handle === "invalid" || handle === "empty") {
+    return blocked(`@${derived || "handle"} can't be a handle`);
+  }
+  if (handle === "checking") {
+    return blocked(`Checking @${derived}…`);
+  }
+  if (handle === "failed") {
+    return blocked(`Couldn't check @${derived} · try again`);
+  }
+  if (!form.voice) {
+    return blocked("Pick a voice to create");
+  }
+  if (lines(form.enters).length === 0) {
+    return blocked("Write an entry rule to create");
+  }
+  if (form.webOn && form.webMode === "only" && form.sites.length === 0) {
+    return blocked("Name a site for “Only”");
+  }
+  if (!wallet) {
+    return blocked("Create its wallet first");
+  }
+  if (!funded(wallet)) {
+    return blocked("Deposit to create");
+  }
+  return { ok: true };
+}
+
 export function createLabel(
   form: NewAgentForm,
   handle: HandleState,
   wallet: WalletView | null,
 ): string {
-  const derived = deriveHandle(form.name, form.handle);
-  if (!form.name.trim()) {
-    return "Name it to create";
-  }
-  if (handle === "taken") {
-    return `@${derived} is taken`;
-  }
-  if (handle === "invalid" || handle === "empty") {
-    return `@${derived || "handle"} can't be a handle`;
-  }
-  if (handle === "checking") {
-    return `Checking @${derived}…`;
-  }
-  if (handle === "failed") {
-    return `Couldn't check @${derived} · try again`;
-  }
-  if (!form.voice) {
-    return "Pick a voice to create";
-  }
-  if (lines(form.enters).length === 0) {
-    return "Write an entry rule to create";
-  }
-  if (form.webOn && form.webMode === "only" && form.sites.length === 0) {
-    return "Name a site for “Only”";
-  }
-  if (!wallet) {
-    return "Create its wallet first";
-  }
-  if (!funded(wallet)) {
-    return "Deposit to create";
-  }
-  return `Create ${form.name.trim()}`;
+  const block = createBlock(form, handle, wallet);
+  return block.ok ? `Create ${form.name.trim()}` : block.label;
 }
 
 export const canCreate = (
   form: NewAgentForm,
   handle: HandleState,
   wallet: WalletView | null,
-): boolean => createLabel(form, handle, wallet) === `Create ${form.name.trim()}`;
+): boolean => createBlock(form, handle, wallet).ok;
 
 export function footNote(wallet: WalletView | null): string {
   if (!wallet) {
@@ -232,11 +249,14 @@ export function walletTag(wallet: WalletView | null): string {
 }
 
 /** What `POST /v1/studio/drafts` is sent. */
-export function toDraftRequest(form: NewAgentForm, walletId: string) {
+export function toDraftRequest(form: NewAgentForm, walletId: string): DraftCreateDto {
+  if (!form.voice) {
+    throw new Error("A draft needs a voice");
+  }
   return {
     name: form.name.trim(),
     handle: deriveHandle(form.name, form.handle),
-    voice: form.voice ?? "analyst",
+    voice: form.voice,
     avatar: { accent: form.accent, pattern: form.pattern },
     sources: { web: form.webOn ? { mode: form.webMode, sites: [...form.sites] } : null },
     brief: {
@@ -288,8 +308,8 @@ export function formatUnits(units: bigint | null, token: Token): string {
   const fraction = (units % scale)
     .toString()
     .padStart(DECIMALS[token], "0")
-    .replace(/0+$/, "")
-    .slice(0, 4);
+    .slice(0, 4)
+    .replace(/0+$/, "");
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
@@ -300,16 +320,20 @@ export function transferLabel(input: {
   held: bigint | null;
   agentName: string;
 }): string {
-  const units = parseAmount(input.amount, input.token);
+  const amount = input.amount.trim();
+  const units = parseAmount(amount, input.token);
   if (units === null) {
     return "Enter an amount";
   }
-  if (input.held === null || units > input.held) {
+  if (input.held === null) {
+    return "Reading the balance…";
+  }
+  if (units > input.held) {
     return `More ${input.token} than ${input.toAgent ? "the master wallet" : input.agentName} holds`;
   }
   return input.toAgent
-    ? `Send ${input.amount} ${input.token} to ${input.agentName}`
-    : `Pull ${input.amount} ${input.token} back`;
+    ? `Send ${amount} ${input.token} to ${input.agentName}`
+    : `Pull ${amount} ${input.token} back`;
 }
 
 export const patternCells = (index: number): boolean[] =>

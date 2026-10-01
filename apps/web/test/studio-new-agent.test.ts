@@ -5,12 +5,16 @@ import {
   AVATAR_PATTERNS,
   MIN_START,
   STARTER_CAPS,
+  ACCENT_OPTIONS,
+  DEFAULT_BRIEF,
   VOICES,
   canCreate,
   createLabel,
   deriveHandle,
   emptyForm,
   footNote,
+  formatUnits,
+  lines,
   funded,
   handleState,
   parseAmount,
@@ -143,9 +147,14 @@ test("a pattern is sixteen cells", () => {
 test("the copies match core's: six voices, six patterns, the starter caps, the minimums", async () => {
   const core = await import("@pickler/core");
   assert.deepEqual(
-    VOICES.map((voice) => voice.key),
-    core.VOICES.map((voice) => voice.key),
+    VOICES.map(({ key, name, sample }) => ({ key, name, sample })),
+    core.VOICES.map(({ key, name, sample }) => ({ key, name, sample })),
   );
+  assert.deepEqual([...ACCENT_OPTIONS].sort(), [...core.ACCENTS].sort());
+  assert.equal(DEFAULT_BRIEF.thesis, core.DEFAULT_BRIEF.thesis);
+  assert.deepEqual(lines(DEFAULT_BRIEF.enters), [...core.DEFAULT_BRIEF.entersWhen]);
+  assert.deepEqual(lines(DEFAULT_BRIEF.exits), [...core.DEFAULT_BRIEF.exitsWhen]);
+  assert.deepEqual(lines(DEFAULT_BRIEF.never), [...core.DEFAULT_BRIEF.never]);
   assert.deepEqual([...AVATAR_PATTERNS], [...core.AVATAR_PATTERNS]);
   assert.deepEqual(STARTER_CAPS, { ...core.STARTER_CAPS });
   assert.equal(MIN_START.ausdMicro, core.MIN_START_MICRO_AUSD);
@@ -183,4 +192,55 @@ test("every code creation and transfers can return has a message", async () => {
   for (const code of codes) {
     assert.ok(knownMessage(code), `${code} has no message`);
   }
+});
+
+test("a name that reads like a label does not open create without a wallet", () => {
+  assert.equal(canCreate(filled({ name: "its wallet first" }), "free", null), false);
+});
+
+test("units keep the digits they show: 1.00005 AUSD is 1", () => {
+  assert.equal(formatUnits(1_000_050n, "AUSD"), "1");
+});
+
+test("units below the shown precision read as 0", () => {
+  assert.equal(formatUnits(1n, "MON"), "0");
+});
+
+test("units keep their significant decimals", () => {
+  assert.equal(formatUnits(1_500_000n, "AUSD"), "1.5");
+});
+
+test("a draft needs a voice", () => {
+  assert.throws(() => toDraftRequest(filled({ voice: null }), "wal"));
+});
+
+test("a transfer label trims the amount", () => {
+  const label = transferLabel({
+    amount: " 0.5 ",
+    token: "MON",
+    toAgent: true,
+    held: 10n ** 18n,
+    agentName: "Halftime",
+  });
+  assert.equal(label, "Send 0.5 MON to Halftime");
+});
+
+test("an unread balance is 'Reading the balance…'", () => {
+  const label = transferLabel({
+    amount: "1",
+    token: "AUSD",
+    toAgent: false,
+    held: null,
+    agentName: "Halftime",
+  });
+  assert.equal(label, "Reading the balance…");
+});
+
+test("an accented name becomes a plain handle", () => {
+  assert.equal(deriveHandle("Édouard"), "edouard");
+});
+
+test("an amount without a whole or a fraction part is not an amount", () => {
+  assert.equal(parseAmount(".5", "AUSD"), null);
+  assert.equal(parseAmount("1.", "AUSD"), null);
 });

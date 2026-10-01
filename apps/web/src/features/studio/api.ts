@@ -242,10 +242,11 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body?.success) {
     const code = body?.error ?? String(response.status);
+    const serverMessage = typeof body?.message === "string" ? body.message : undefined;
     throw new StudioError(
       code,
-      knownMessage(code) ?? body?.message ?? "Request failed",
-      body?.message,
+      knownMessage(code) ?? serverMessage ?? "Request failed",
+      serverMessage,
       body ? (body as unknown as Record<string, unknown>) : undefined,
     );
   }
