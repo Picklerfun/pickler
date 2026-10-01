@@ -48,7 +48,7 @@ export async function abortable<T>(promise: Promise<T>, signal: AbortSignal): Pr
     signal.removeEventListener("abort", abort);
   }
 }
-async function pause(ms: number, signal: AbortSignal) {
+export async function pause(ms: number, signal: AbortSignal) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await abortable(
