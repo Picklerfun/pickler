@@ -37,9 +37,9 @@ const messages: Record<string, string> = {
   WALLETS_UNAVAILABLE: "We can't read the wallets right now. Try again in a moment.",
   balances_unavailable: "We can't read the wallets right now. Try again in a moment.",
   WALLET_NOT_FOUND: "That wallet isn't yours, or it no longer exists.",
-  FEE_TOO_HIGH: "Network fees jumped. Prepare it again.",
-  NONCE_GAP: "Another transaction is pending from that wallet. Try again in a moment.",
-  NOT_SENDABLE: "That transfer can't be sent as it is.",
+  FEE_TOO_HIGH: "The network fee changed. Prepare it again.",
+  NONCE_GAP: "This transfer is out of date. Prepare it again.",
+  NOT_SENDABLE: "This wallet can't send that transfer. Check its AUSD and MON.",
   DAILY_CAP_REACHED: "Today's paper trades reached its daily cap.",
 };
 /** The studio's words for a code, when it has any. */
