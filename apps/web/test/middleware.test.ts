@@ -353,3 +353,11 @@ test("only the callback crosses: another studio path on the marketplace is still
 test("the middleware's callback path is the one sign-in asks Supabase to return to", () => {
   assert.equal(AUTH_CALLBACK, AUTH_CALLBACK_PATH);
 });
+
+test("a local marketplace sends its callback to the local studio, over http", () => {
+  const local = { marketplace: "pickler.localhost:3001", studio: "app.pickler.localhost:3001" };
+  assert.deepEqual(decide("pickler.localhost:3001", "/auth/callback", local, OUT), {
+    kind: "toStudio",
+    to: "http://app.pickler.localhost:3001/auth/callback",
+  });
+});

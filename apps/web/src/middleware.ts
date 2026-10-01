@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authConfigured, hasSessionCookie, requiresSession, signInPath } from "./server/guard";
-import { PRODUCT_HOSTS, ownerOf, productFor, type ProductHosts } from "./server/hosts";
+import { PRODUCT_HOSTS, originFor, ownerOf, productFor, type ProductHosts } from "./server/hosts";
 
 export type Decision =
   | { kind: "serve" }
@@ -62,7 +62,7 @@ export function decide(
   // signed-out person and send them back to sign in. So the whole callback, code and all, goes to
   // the studio first, and is exchanged there. Before the ownership rule, which would 404 it.
   if (product === "marketplace" && pathname === AUTH_CALLBACK) {
-    return { kind: "toStudio", to: `https://${hosts.studio}${pathname}` };
+    return { kind: "toStudio", to: `${originFor(hosts.studio)}${pathname}` };
   }
 
   if (product === "studio" && pathname === "/studio") {

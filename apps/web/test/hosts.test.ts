@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { marketplaceUrl, ownerOf, productFor, studioHref, studioUrl } from "../src/server/hosts";
+import {
+  marketplaceUrl,
+  originFor,
+  ownerOf,
+  productFor,
+  studioHref,
+  studioUrl,
+} from "../src/server/hosts";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
 
@@ -142,4 +149,35 @@ test("every marketplace link the studio renders is one its own host would refuse
   for (const path of ["/agents", "/agents/half_time", "/leaderboard"]) {
     assert.equal(ownerOf(path), "marketplace", path);
   }
+});
+
+/* Two local hosts, port and all, so the split can be rehearsed before production. */
+const LOCAL = { marketplace: "pickler.localhost:3001", studio: "app.pickler.localhost:3001" };
+
+test("a configured host with a port still names its product", () => {
+  assert.equal(productFor("app.pickler.localhost:3001", LOCAL), "studio");
+});
+
+test("a local host is reached over http, with its port", () => {
+  assert.equal(originFor("app.pickler.localhost:3001"), "http://app.pickler.localhost:3001");
+});
+
+test("plain localhost is reached over http", () => {
+  assert.equal(originFor("localhost:3001"), "http://localhost:3001");
+});
+
+test("a real host is reached over https", () => {
+  assert.equal(originFor("app.pickler.fun"), "https://app.pickler.fun");
+});
+
+test("a host that only ends in the letters localhost is not local", () => {
+  assert.equal(originFor("evillocalhost.com"), "https://evillocalhost.com");
+});
+
+test("the studio's home, from the local marketplace, is the local studio", () => {
+  assert.equal(studioHref("marketplace", LOCAL), "http://app.pickler.localhost:3001/");
+});
+
+test("a marketplace path, from the local studio, is the local marketplace", () => {
+  assert.equal(marketplaceUrl("studio", LOCAL, "/agents"), "http://pickler.localhost:3001/agents");
 });
