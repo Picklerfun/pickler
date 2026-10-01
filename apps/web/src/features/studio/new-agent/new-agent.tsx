@@ -395,6 +395,7 @@ export function NewAgent({
         setFundOn(null);
         setModal("wallets");
       }}
+      onCredits={() => setModal("credits")}
       overlays={
         <>
           <PasskeySheet
@@ -431,7 +432,11 @@ export function NewAgent({
             }}
             onMoved={() => void reads.refresh()}
           />
-          <CreditsModal open={modal === "credits"} onClose={() => setModal(null)} />
+          <CreditsModal
+            open={modal === "credits"}
+            onClose={() => setModal(null)}
+            onWallets={() => setModal("wallets")}
+          />
           <AvatarPicker
             open={modal === "avatar"}
             form={form}

@@ -28,6 +28,7 @@ export function Chrome({
   sectionNote,
   master,
   onWallets,
+  onCredits,
   children,
   overlays,
 }: {
@@ -41,6 +42,7 @@ export function Chrome({
   /** The master wallet's balances in base units, once the wallets are read. */
   master: { ausdMicro: bigint | null; monWei: bigint | null } | null;
   onWallets(): void;
+  onCredits(): void;
   children: ReactNode;
   overlays: ReactNode;
 }) {
@@ -86,6 +88,11 @@ export function Chrome({
             </span>
           </button>
         )}
+        <button type="button" className={styles.topPill} title="AI credits" onClick={onCredits}>
+          <i className={styles.creditsDot} aria-hidden="true" />
+          <small>AI CREDITS</small>
+          <span>Soon</span>
+        </button>
         <span className={home.emptyMenu}>
           <HomeMenu
             agent={null}

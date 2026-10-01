@@ -1175,6 +1175,17 @@
   background: var(--pk-rule-strong);
 }
 
+/* The AI credits pill: a muted dot, because there is no balance to show yet. */
+.topPill .creditsDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-ink-faint);
+}
+.soon {
+  composes: soon from "../home/home.module.css";
+}
+
 /* ---------- Motion (restated from home.module.css: keyframes are module-scoped) ---------- */
 
 @keyframes pkBlink {
