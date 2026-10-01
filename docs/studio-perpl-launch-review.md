@@ -1,33 +1,47 @@
 # Studio, custody, Perpl and launchpad integration review
 
-Status: audited implementation map and proposed follow-up plan, not an execution runbook.
-Reviewed on 2026-09-29 against main `4b4bd2662d4d6597aaee6b0f5cdaf26c1c361704`.
-PR #61 was inspected separately at `faa3294ccf679fcacab5d6101b96f4f6f1203d21`.
-Three review agents covered custody, product/API and trading/indexing; the coordinating review
-covered contracts and cross-system flows. This was static inspection, not new runtime, security,
-remote-provider or deployment acceptance. No models, signatures, transfers or deployments ran.
+Status: current implementation map and proposed follow-up plan, not an execution runbook.
+Updated on 2026-10-01 against main `7e7ff5f6fa82e17dab53639a7b180eecde72b41b`.
+The original three-agent static audit was conducted on 2026-09-29 against
+`4b4bd2662d4d6597aaee6b0f5cdaf26c1c361704`, with PR #61 separately inspected at
+`faa3294ccf679fcacab5d6101b96f4f6f1203d21`. Those revisions remain historical provenance;
+they are no longer the operational baseline. This update reconciles the findings with merged
+PRs #61, #66, #67 and #68 and the open Perpl stack. No new runtime, security, remote-provider
+or deployment acceptance is claimed by this documentation update.
 
 Code dependency rules remain in [Trading architecture](trading-architecture.md). This document
 maps product transitions and remaining integration work; it does not replace those rules.
 
 ## 1. Repository handoff
 
-- Our evaluation checkout is clean at `4b78834`, already published in
-  [PR #60](https://github.com/Picklerfun/pickler/pull/60). Its checks were green at inspection;
-  it remains open. There were no additional uncommitted changes there to publish.
-- [PR #40](https://github.com/Picklerfun/pickler/pull/40) merged custody and Studio wallet work;
-  [PR #37](https://github.com/Picklerfun/pickler/pull/37) merged the launchpad foundation;
-  [PR #59](https://github.com/Picklerfun/pickler/pull/59) merged the trading extraction.
-- [PR #61](https://github.com/Picklerfun/pickler/pull/61) is open and conflicting. It introduces
-  private drafts and previews, not just the wallet functionality already on main.
-- The root checkout is clean on `codex/shared-jev-client`. All eleven branch commits have
-  patch-equivalent changes on main (`git cherry`), so no duplicate publication is needed. This
-  review leaves that checkout intact.
-- This review uses `codex/wallet-perpl-audit`, isolated from both active and historical checkouts.
-  Main was fetched and the branch created from its current remote head.
-- The other session owns `codex/perpl-data-reliability`: coherent public BTC/ETH acquisition,
-  skipped rounds, lease diagnosis and the unpaid thirty-minute stability check. This review does
-  not duplicate or change that work. Paid comparisons remain a later gate.
+| PR                                                                                                                                                               | State at this update                          | Integration meaning                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [#40](https://github.com/Picklerfun/pickler/pull/40), [#37](https://github.com/Picklerfun/pickler/pull/37), [#59](https://github.com/Picklerfun/pickler/pull/59) | Merged                                        | Custody/Studio wallets, launchpad foundation and shared trading extraction                 |
+| [#61](https://github.com/Picklerfun/pickler/pull/61)                                                                                                             | Merged                                        | Private drafts, preview runs, PostgreSQL product adapters and reconciled preview migration |
+| [#66](https://github.com/Picklerfun/pickler/pull/66)                                                                                                             | Merged                                        | Full block-batch continuity validation; not complete indexer recovery                      |
+| [#67](https://github.com/Picklerfun/pickler/pull/67), [#68](https://github.com/Picklerfun/pickler/pull/68)                                                       | Merged                                        | Degraded public reads and error/offline/wrong-network presentation                         |
+| [#60](https://github.com/Picklerfun/pickler/pull/60)                                                                                                             | Open, conflicts with main                     | Market-frame validation and shared campaign budgets; requires reconciliation               |
+| [#63](https://github.com/Picklerfun/pickler/pull/63)                                                                                                             | Draft, based on #60; integration check failed | Data-gap recovery and interrupted-writer fencing                                           |
+| [#69](https://github.com/Picklerfun/pickler/pull/69)                                                                                                             | Open, based on #63; published checks passed   | Measured REST/WebSocket acquisition and public diagnostics; not integrated into main       |
+| [#70](https://github.com/Picklerfun/pickler/pull/70)                                                                                                             | Open, owned by the other UI/auth session      | Studio-host authentication callback; not part of audited main                              |
+| [#65](https://github.com/Picklerfun/pickler/pull/65)                                                                                                             | Open; format check failed                     | Proposed product scope/specifications; not current implementation authority                |
+
+The Perpl integration order is #60 → #63 → #69. Checks on a stacked branch do not establish
+acceptance against current main; reconcile each base and validate the combined result. The
+other session owns acquisition, diagnostics and public stability testing. This audit does not
+change its branches, historical studies, paid budgets or processes.
+
+PR #69 reports a ten-minute comparison (REST 10/10, WebSocket 10/10) and thirty-minute public
+acceptance (30/30 joint cycles, zero lease failures), selecting REST because availability tied.
+Its measured revision is `01ee0c31e1a11207674f46dc5631bd8efde61ff6`; its recorded PR head is
+`0bcdfd418e834490f61a6bf99a24c0474236917f`, which includes later controlled fault coverage.
+These are the other session's reported measurements, not a new validation performed by this
+update, proof of every historical failure's cause, or a paid strategy comparison.
+
+Our historical evaluation checkout remains pinned at `4b78834`; previous attempts and results
+remain evidence, not current operational instructions. This review is maintained on
+`codex/wallet-perpl-audit`, separately from those studies. The old `codex/shared-jev-client`
+branch was previously verified patch-equivalent to main and needs no duplicate publication.
 
 ## 2. What exists, and what is missing
 
@@ -37,11 +51,11 @@ maps product transitions and remaining integration work; it does not replace tho
 | Agent wallets           | Separate wallets inside the creator's suborganization, approved policies and unique agent link | No Perpl account mapping or delegated Perpl signer                                                         |
 | Funding                 | Passkey-approved AUSD transfer from master to agent wallet                                     | Exchange collateral deposit and receipt/finality reconciliation                                            |
 | Agent execution         | Shared research runtime, Polymarket paths, Perpl virtual evaluation                            | Studio cannot yet create/run a Perpl agent                                                                 |
-| Creator spending limits | Persisted per-call/per-day values                                                              | Main explicitly reports `spendEnforced: false`                                                             |
+| Creator spending limits | Persisted per-call/per-day values                                                              | `spendEnforced: true` describes paper limits; no live Turnkey/Perpl enforcement                            |
 | Marketplace             | Agent directory reads PostgreSQL                                                               | Perpetual market board uses sample data; trade ticket cannot submit                                        |
 | Launch contracts        | Fixed-supply token, factory, curve, V4 graduation, locker, fee escrow                          | No Pickler deployment manifest/scripts or end-to-end launch ceremony                                       |
 | Launch API              | Public catalogue/detail/trades reads                                                           | No launch, quote, buy/sell or graduation preparation/submission                                            |
-| Indexer                 | Raw blocks/logs, cursor, transactional persistence and reorg marking                           | Child emitters, composed projector, automatic projection rollback, attribution and full market projections |
+| Indexer                 | Raw blocks/logs, full batch continuity, transactional cursor persistence and reorg marking     | Child emitters, composed projector, automatic projection rollback, attribution and full market projections |
 
 Turnkey owns key custody and policy-controlled signing. Perpl is an exchange account/position
 system, not the custodian of the creator's Turnkey wallets. A wallet funded with AUSD does not
@@ -108,8 +122,24 @@ No component may infer this binding from ticker, display name or unsigned metada
 
 ### Agent lifecycle
 
-Main creates an agent together with its approved wallet and public profile. PR #61 adds private
-walletless drafts; its “Go Public” transition is disabled. Neither path currently launches a token.
+Main contains two creation journeys, both persisted:
+
+| UI entry               | Current behavior                                                                                          | Wallet/token outcome                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `/studio` empty home   | Edit a brief, run a preview, then adopt it as a private draft                                             | No agent wallet or token                                            |
+| `/studio/new`          | Describe or configure step by step, approve Turnkey wallet/policies, create agent and start its first run | Linked agent wallet; no token or completed public-launch transition |
+| Draft home “Go public” | Visual panel whose steps are marked SOON and whose button is disabled                                     | No publication operation                                            |
+
+The first flow tests before saving the draft; the second provisions before its first run.
+Creating a wallet-backed agent does not prove public deployment, token creation or Perpl
+execution. Evidence: [brief creation](../apps/web/src/features/studio/home/empty.tsx),
+[wallet-backed ceremony](../apps/web/src/features/studio/create/ceremony.ts) and
+[disabled publication panel](../apps/web/src/features/studio/home/go-public.tsx).
+
+Proposed unification: use one persisted agent identity from draft through publication. Keep
+step-by-step configuration only as another editor for that same draft, then prepare/reconcile
+wallet and token provisioning during explicit publication. This remains a product proposal;
+the owner has requested clarification but has not yet fixed token timing or the final UI flow.
 
 Proposed lifecycle, pending the creator's choice about launch timing:
 
@@ -129,7 +159,7 @@ stateDiagram-v2
 
 Recommendation: token creation belongs to public deployment, while private drafts can be tested
 without an on-chain token. If every persisted agent must instead have a token, adjust admission
-and recovery explicitly; do not silently impose that rule on drafts introduced in PR #61.
+and recovery explicitly; do not silently impose that rule on existing private drafts.
 Venue trading permission remains a separate state: public token status does not authorize Perpl
 trading, and a stopped Perpl strategy must not erase its token's market or history.
 
@@ -171,8 +201,10 @@ Existence in source does not prove a route is mounted/configured in a deployed e
 | Public product          | `GET /v1/marketplace/*`                                                                                                                                    | Agent directory persisted; perpetual markets sampled        |
 | Token catalogue         | `GET /v1/launches`, `GET /v1/launches/:id`, `GET /v1/launches/:id/trades`                                                                                  | Reads only                                                  |
 
-PR #61 separately proposes `POST /v1/studio/preview-runs`,
-`GET /v1/studio/preview-runs/:id`, and `POST /v1/studio/drafts`.
+Main also implements `POST /v1/studio/preview-runs`, `GET /v1/studio/preview-runs/:id`,
+and `POST /v1/studio/drafts`. Preview runs use the real research runtime and require admission;
+“paper” does not mean free model calls. Draft adoption preserves the completed preview rather
+than launching a token or creating an agent wallet.
 
 Missing API use cases to specify before implementing routes: publish/launch preparation and
 status, token quotes and transaction preparation, graduation status/preparation, venue-account
@@ -223,44 +255,52 @@ Keep custody and venue execution distinct; do not expose a generic arbitrary-sig
 - Raw reorg marking does not reverse previously published tokens/pools/trades. The current
   [reorg projection test](../packages/infrastructure/test/launch-projector.test.ts) manually
   deletes trades before rebuilding; it does not validate automatic correction of public views.
-- [Block advance](../packages/core/src/features/launch/domain/indexing.ts) validates the boundary
-  against a cursor, but not every internal parent/number, and bootstrap trusts the whole range.
+- [Block advance](../packages/core/src/features/launch/domain/indexing.ts) now validates every internal height/parent as well as the cursor boundary, including bootstrap
+  and overlap. PR #66 rejects gaps without applying a prefix and fails duplicate heights or
+  mixed ancestry without requesting a rollback of persisted history. A coherent replacement
+  of the persisted anchor still uses the reorg path. Its regression tests cover unchanged
+  PostgreSQL cursor/events/outbox after invalid input, then a valid continuation. This does
+  not fix caught-up reorg detection, concurrency or derived projection rollback.
   [Persistence](../packages/infrastructure/src/persistence/product/launch-index-store.ts) needs
   concurrency fencing and consistent chain/stream rollback when adding multiple sources.
 - [Freshness](../packages/infrastructure/src/persistence/product/launch-read-model.ts) derives
   from a raw cursor and labels it confirmed; it must instead expose projection progress and the
   effective finality policy. A high cursor from one source is not completeness of all streams.
 
-### PR #61 reconciliation
+### Studio integration after PR #61
 
-- Its brief/preview path still configures sports research on Polymarket; it does not add Perpl
-  execution. Leverage vocabulary in a brief does not change the configured protocol.
-- Main mixes PostgreSQL Studio/custody with Supabase product-data adapters; PR #61 moves those
-  product repositories to the invocation PostgreSQL pool, retaining Supabase authentication.
-  Verify profile, workspace onboarding and public-agent identity consistency across that change.
-
-- Pending paper logic still imports retired core financial contracts; preserve trading ownership.
-- Its preview migration uses `0017`, already occupied on main, and its journal predates the merged
-  custody/launch history. Append/reconcile changes without rewriting applied SQL or dropping data.
-- Decide how private drafts acquire wallet, launch and publication; “Go Public” is currently disabled.
-- Scope its paper-spend enforcement flag so it cannot imply that live wallet/Perpl caps are enforced.
-- Preserve existing launch routes, runtime mappings, plugin permissions and the unified evaluation
-  entry point. Do not accept whole-file replacements from the older branch to resolve conflicts.
+- The brief/preview path is implemented for Polymarket sports research; Perpl execution is
+  still absent. Leverage vocabulary in a brief does not change the configured protocol.
+- Product repositories now use the invocation PostgreSQL pool; Supabase remains for auth.
+  The old mixed product-data ownership is historical, not an outstanding migration proposal.
+- Preview tables are integrated through `0022_studio_preview_runs.sql`, after the existing
+  custody/launch history. The old branch's `0017` collision is resolved. Preserve published SQL,
+  hashes, migration timestamps and historical results on subsequent changes.
+- Financial ownership remains in `@pickler/trading`; the old branch's retired core imports
+  must not be restored. `evaluate` remains the sole evaluation entry point.
+- Main exposes `SPEND_ENFORCED = true` for paper spending controls. That flag is not proof of
+  live wallet-policy caps or Perpl account/order limits; those still need explicit acceptance.
+- #67/#68 improve unavailable/error presentation. Their error messages preserve uncertainty
+  about earlier transactions and agent execution; a page error cannot prove nothing moved.
+- Decide how private drafts acquire wallet, token and publication. “Go public” remains disabled,
+  and neither creation journey currently launches the agent token.
+- The cross-host callback correction in #70 remains separate work; this review does not mark
+  its UI, session cookies or remote authentication journey as accepted.
 
 ## 6. Delivery plan and ownership
 
-The audit is complete at the pinned revisions. Implementation remains proposed. Use separate
-reviewable branches from current main, integrating one owner at a time for shared files.
+The audit findings are reconciled to the pinned main revision. The delivery stages below remain
+proposed. Use separate reviewable branches from current main, integrating one owner at a time for shared files.
 
-| Stage                         | Owner/scope                                         | Deliverable and acceptance gate                                                                                                                        |
-| ----------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A. Product contracts          | Coordinating session with product/custody reviewers | Agreed lifecycle, identity bindings, money map, endpoint and permission matrix; reconcile PR #61 without historical migration regression               |
-| B. Launch safety and identity | Contract/custody review                             | Canonical agentKey authorization, replay protection tests, network manifest and explicit creator-signing intents; no token squatting                   |
-| C. Indexing completeness      | Indexer review                                      | Multi-emitter ingestion, projector composition, fencing, full reorg recovery and attribution; replay yields identical API state without manual deletes |
-| D. Launch experience          | API/Studio/marketplace review                       | Prepare/sign/submit/reconcile for publish, quote, buy/sell, graduation and fees; one UX with explicit pending/reverted/finalized states                |
-| E. Perpl account integration  | Trading/custody review                              | Wallet-to-venue binding, root funding, restricted delegated execution and real limits; reuse the other session's validated acquisition module          |
-| F. Testnet acceptance         | Coordinated operator release                        | Verified manifests, deployed bytecode, indexer backfill and full user journeys with controlled amounts and recorded receipts                           |
-| G. Paid comparison/live pilot | Separate measured acceptance                        | New comparison window only after reliability; real Perpl activity separately authorized and reconciled                                                 |
+| Stage                         | Owner/scope                                         | Deliverable and acceptance gate                                                                                                                           |
+| ----------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A. Product contracts          | Coordinating session with product/custody reviewers | Agreed unified lifecycle, identity bindings, money map, endpoint and permission matrix; preserve the integrated #61 migration history                     |
+| B. Launch safety and identity | Contract/custody review                             | Canonical agentKey authorization, replay protection tests, network manifest and explicit creator-signing intents; no token squatting                      |
+| C. Indexing completeness      | Indexer review                                      | Multi-emitter ingestion, projector composition, fencing, full reorg recovery and attribution; replay yields identical API state without manual deletes    |
+| D. Launch experience          | API/Studio/marketplace review                       | Prepare/sign/submit/reconcile for publish, quote, buy/sell, graduation and fees; one UX with explicit pending/reverted/finalized states                   |
+| E. Perpl account integration  | Trading/custody review                              | Wallet-to-venue binding, root funding, restricted delegated execution and real limits; reconcile #60/#63/#69 and validate the combined acquisition module |
+| F. Testnet acceptance         | Coordinated operator release                        | Verified manifests, deployed bytecode, indexer backfill and full user journeys with controlled amounts and recorded receipts                              |
+| G. Paid comparison/live pilot | Separate measured acceptance                        | New comparison window only after reliability; real Perpl activity separately authorized and reconciled                                                    |
 
 B and C can be developed independently after A fixes the identifiers, ABI expectations and state
 contracts. D depends on B/C. E can proceed independently of token liquidity, but relies on shared
@@ -315,7 +355,7 @@ compiler/ABI compatibility, and record the choice. Official deployment addresses
 Perpl's exchange deployment and its collateral token require their own verified network manifest;
 never assume the Studio default testnet or its AUSD address matches the chosen exchange.
 
-Official references checked for this review:
+Official references consulted in the original 2026-09-29 static review (not revalidated by this update):
 
 - [Turnkey suborganizations](https://docs.turnkey.com/features/sub-organizations): user/org custody
   boundary and root authority; parent visibility alone is not signing permission.
