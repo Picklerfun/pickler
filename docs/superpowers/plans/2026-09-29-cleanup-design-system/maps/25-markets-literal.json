@@ -1,0 +1,6 @@
+[
+  {
+    "find": "rgba(255, 255, 255, 0.22)",
+    "replace": "var(--pk-lit-edge)"
+  }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "   #5ad8ff this reached for, so the edge and the wash shift with it; the ink is --cyan-ink, which\n   reads 5.34:1 on --cyan-tint where the old #c9f2ff was chosen against the page instead. */",
+    "replace": "   #5ad8ff this reached for, so the edge and the wash shift with it; the ink is the cool state's,\n   which reads 5.34:1 on its tint where the old #c9f2ff was chosen against the page instead. */"
+  }
+]

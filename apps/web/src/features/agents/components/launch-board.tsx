@@ -43,7 +43,7 @@ export function LaunchBoard({ read }: { read: ReadDto<LaunchSummaryDto[]> | null
   }
 
   return (
-    <section className={styles.panel}>
+    <section className={styles.panel} id="launch-board">
       <header className={styles.label}>
         <span>LAUNCHES</span>
         <Freshness read={read} />
@@ -96,7 +96,7 @@ function Freshness({ read }: { read: ReadDto<LaunchSummaryDto[]> }) {
 
 function Empty({ title, detail }: { title: string; detail: string }) {
   return (
-    <section className={styles.panel}>
+    <section className={styles.panel} id="launch-board-empty">
       <h2 className={styles.label}>{title}</h2>
       <p className={styles.toneMuted}>{detail}</p>
     </section>

@@ -13,7 +13,7 @@
 // methods so that the swallow cannot reach this screen. `coverage(null)` is the last link in
 // that chain.
 
-export type Coverage = "covered" | "one" | "unknown";
+type Coverage = "covered" | "one" | "unknown";
 
 /**
  * Email recovery is off for every account and is not a setting anybody can change: the custody
@@ -22,7 +22,7 @@ export type Coverage = "covered" | "one" | "unknown";
  */
 export const EMAIL_RECOVERY_ON = false;
 
-export interface CoverageCopy {
+interface CoverageCopy {
   eyebrow: string;
   headline: string;
   body: string;

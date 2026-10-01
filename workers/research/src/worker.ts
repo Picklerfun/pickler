@@ -3,7 +3,8 @@ import type { PostgresResearchStore } from "@pickler/infrastructure";
 import type { createRuntime } from "@pickler/agent-runtime";
 import type { Env } from "./index.js";
 
-type Runtime = Pick<ReturnType<typeof createRuntime>, "repository" | "execute">;
+type Runtime = Pick<ReturnType<typeof createRuntime>, "repository" | "execute"> &
+  Partial<Pick<ReturnType<typeof createRuntime>, "previews">>;
 
 /** Dependency injection is for host tests, never an environment-selected provider fallback. */
 export function createResearchWorker(deps: {
@@ -19,11 +20,17 @@ export function createResearchWorker(deps: {
         }
         try {
           const runtime = deps.runtime(env);
-          await consumeWakeup(runtime.repository, runtime.execute, {
-            send: async (body) => {
-              await env.RESEARCH_QUEUE.send(body);
+          await consumeWakeup(
+            runtime.repository,
+            runtime.execute,
+            {
+              send: async (body) => {
+                await env.RESEARCH_QUEUE.send(body);
+              },
             },
-          });
+            Date.now,
+            runtime.previews,
+          );
           try {
             await env.TRADING_QUEUE?.send({ kind: "trading-wakeup" });
           } catch {

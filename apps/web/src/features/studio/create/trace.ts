@@ -7,9 +7,9 @@
  */
 import type { RunEvent } from "../api";
 
-export type TraceTint = "lime" | "violet" | "amber" | "blue" | "magenta";
+type TraceTint = "lime" | "violet" | "amber" | "blue" | "magenta";
 
-export interface TraceLine {
+interface TraceLine {
   id: number;
   text: string;
   meta: string;
@@ -36,6 +36,10 @@ function words(event: RunEvent): { text: string; tint: TraceTint } {
     }
     case "selection":
       return { text: "Chose the market to call", tint: "violet" };
+    case "market":
+      return { text: "Read the market", tint: "violet" };
+    case "final_market":
+      return { text: "Read its price again", tint: "violet" };
     case "market_classification":
       return { text: "Read what kind of market it is", tint: "violet" };
     case "plugin_availability":
@@ -60,6 +64,22 @@ function words(event: RunEvent): { text: string; tint: TraceTint } {
       return {
         text: action === "TRADE" ? "Its rules let the call through" : "Its rules held it back",
         tint: "lime",
+      };
+    }
+    case "brief_evaluation": {
+      const entries = field(event.data, "entries");
+      if (!Array.isArray(entries)) {
+        return { text: "Checked its entry rules", tint: "blue" };
+      }
+      const fired = entries.flatMap((entry, i) => (field(entry, "fired") === true ? [i + 1] : []));
+      if (fired.length === 0) {
+        const noun = entries.length === 1 ? "entry" : "entries";
+        return { text: `Checked ${entries.length} ${noun} · none fired`, tint: "magenta" };
+      }
+      const held = entries.length - fired.length;
+      return {
+        text: `Entry ${fired.join(" and ")} fired${held ? ` · ${held} held` : ""}`,
+        tint: "blue",
       };
     }
     case "model_failure":

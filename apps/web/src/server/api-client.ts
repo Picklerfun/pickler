@@ -1,5 +1,6 @@
 import "server-only";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { type Degradable, readOrEmpty, readOrNull } from "./api-read";
 
 interface ApiBinding {
   fetch(request: Request): Promise<Response>;
@@ -47,4 +48,18 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Pickler API request failed (${response.status})`);
   }
   return response.json() as Promise<T>;
+}
+
+/** A public board: 404 or 5xx become `empty` with `degraded: true` (see api-read.ts). */
+export async function apiRead<T>(path: string, empty: T): Promise<Degradable<T>> {
+  return readOrEmpty(
+    await apiFetch(new Request(`https://pickler.internal/v1${path}`)),
+    path,
+    empty,
+  );
+}
+
+/** One public item: 404 or 5xx become null, so the page renders its not-found path. */
+export async function apiReadOne<T>(path: string): Promise<T | null> {
+  return readOrNull<T>(await apiFetch(new Request(`https://pickler.internal/v1${path}`)), path);
 }

@@ -1,0 +1,10 @@
+[
+  {
+    "find": "export {\n  ANALYTICS_ROW_LIMIT,\n  createSupabaseAgentEventLog,\n  createSupabaseAgentRegistry,\n} from \"./supabase/agent-registry/supabase-agent-registry.js\";",
+    "replace": "export {\n  createSupabaseAgentEventLog,\n  createSupabaseAgentRegistry,\n} from \"./supabase/agent-registry/supabase-agent-registry.js\";"
+  },
+  {
+    "find": "export {\n  PostgresAgentEventLog,",
+    "replace": "export {\n  ANALYTICS_ROW_LIMIT,\n  PostgresAgentEventLog,"
+  }
+]

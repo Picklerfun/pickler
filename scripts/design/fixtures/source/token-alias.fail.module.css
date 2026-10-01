@@ -1,0 +1,8 @@
+.page {
+  --ink: var(--pk-ink);
+  --label: var(--pk-font);
+}
+
+.mark[data-hue="lime"] {
+  --hue: var(--pk-lime);
+}

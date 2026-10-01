@@ -27,6 +27,8 @@ export const agentStatus = agentsSchema.enum("agent_status", [
   "suspended",
   "draining",
   "killed",
+  // A private draft from the brief (studio-brief-v1 §6): no wallet, off the marketplace.
+  "draft",
 ]);
 export const accent = agentsSchema.enum("accent", [
   "lime",

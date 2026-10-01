@@ -17,7 +17,7 @@ const IF_ALL_LOST = [
 ];
 
 /** Which half of the two-ceremony run is going. `idle` is before either. */
-export type UsePhonePhase = "idle" | "creating" | "verifying";
+type UsePhonePhase = "idle" | "creating" | "verifying";
 
 const PHONE_NOTE: Record<UsePhonePhase, string> = {
   idle: "SCAN A CODE · APPROVE WITH ITS PASSKEY",

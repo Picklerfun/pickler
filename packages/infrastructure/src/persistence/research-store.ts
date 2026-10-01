@@ -232,6 +232,19 @@ export class PostgresResearchStore implements ResearchRepository {
       }
       const stored = agent.config.spend;
       const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;
+      // The brief and its max leverage change only with a new brief (checked by `assertConfig`
+      // above). A save without one, such as the settings screen's, keeps what the agent has.
+      if (next.brief === undefined) {
+        delete next.maxLeverage;
+        if (agent.config.brief !== undefined) {
+          next.brief = agent.config.brief;
+        }
+        if (agent.config.maxLeverage !== undefined) {
+          next.maxLeverage = agent.config.maxLeverage;
+        }
+      } else if (next.maxLeverage === undefined && agent.config.maxLeverage !== undefined) {
+        next.maxLeverage = agent.config.maxLeverage;
+      }
       const [updated] = await tx
         .update(agents)
         .set({
@@ -468,10 +481,14 @@ export class PostgresResearchStore implements ResearchRepository {
       if (!policy) {
         throw new Error("Apply execution policy migration first");
       }
-      const active = await tx
-        .select({ tenantId: runs.tenantId })
-        .from(runs)
-        .where(eq(runs.status, "running"));
+      // Preview runs of briefs (pickler.preview_runs) share these limits; their claim locks this
+      // same policy row, so the two tables together never exceed them.
+      const running = await tx.execute<{ tenantId: string }>(sql`
+        select tenant_id as "tenantId" from pickler.runs where status = 'running'
+        union all
+        select tenant_id from pickler.preview_runs where status = 'running'
+      `);
+      const active = running.rows;
       if (active.length >= policy.globalLimit) {
         return null;
       }

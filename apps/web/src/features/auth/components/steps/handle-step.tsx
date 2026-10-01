@@ -38,8 +38,9 @@ function useHandleCheck(handle: string) {
 }
 
 /**
- * Claim a name before there is a wallet to attach it to. The handle is the account's, and the
- * agents made later share the same namespace, which is why the note says so.
+ * Claim a name, the last step of signup: it comes after the passkey step, so the master wallet
+ * already exists when the profile (and its workspace) is written. The handle is the account's, and
+ * the agents made later share the same namespace, which is why the note says so.
  */
 export function HandleStep({
   handle: initial,

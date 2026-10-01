@@ -1,0 +1,16 @@
+{
+  "--ink": "--pk-ink",
+  "--ink-soft": "--pk-ink-soft",
+  "--muted": "--pk-ink-muted",
+  "--faint": "--pk-ink-faint",
+  "--placeholder": "--pk-ink-placeholder",
+  "--cyan-ink": "--pk-cyan-ink",
+  "--rule": "--pk-rule",
+  "--lime": "--pk-lime",
+  "--lime-ink": "--pk-lime-ink",
+  "--cyan": "--pk-cyan",
+  "--magenta": "--pk-magenta",
+  "--display": "--pk-font-display",
+  "--body": "--pk-font",
+  "--label": "--pk-font"
+}

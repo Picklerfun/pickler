@@ -15,12 +15,12 @@ type Decision = NonNullable<Run["decision"]>;
 type Probability = { lower: number; estimate: number; upper: number };
 export type Tint = "lime" | "magenta" | "amber" | "violet" | "grey";
 
-export type ReasonCode = {
+type ReasonCode = {
   code: string;
   why: string;
   tint: Tint;
 };
-export type ReportSection = {
+type ReportSection = {
   key: string;
   status: "supported" | "conflicting" | "missing" | "not_applicable";
   explanation: string;

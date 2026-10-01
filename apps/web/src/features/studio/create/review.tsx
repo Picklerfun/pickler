@@ -24,7 +24,7 @@ const STEP_NAMES: Record<OrderStep, string> = {
 };
 
 /** Why "Create and run it once" is off, in the person's terms, or null when it is on. */
-export function blockedBy(draft: Draft): string | null {
+function blockedBy(draft: Draft): string | null {
   const soon = soonRows(draft);
   if (soon.length > 0) {
     return soon.map((row) => row.reason).join(" ") + " Change it to create the agent now.";

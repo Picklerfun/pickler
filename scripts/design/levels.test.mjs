@@ -44,8 +44,7 @@ const INKS = [
   "--pk-amber-ink",
   "--pk-violet-ink",
   "--pk-magenta-ink",
-  "--pk-cyan-ink",
-  "--pk-pink-ink",
+  "--pk-state-cool-ink",
 ];
 const GROUNDS = ["--pk-bg", "--pk-panel", "--pk-panel-2", "--pk-panel-3"];
 const BODY = 4.5; // WCAG AA for body text. Every one of these levels is used as text.

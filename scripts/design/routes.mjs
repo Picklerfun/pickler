@@ -3,12 +3,14 @@
 // `task` is the plan task that builds each screen. A route that answers 404 has not been built yet
 // rather than broken, and naming the task turns "this is missing" into "this is not your turn".
 //
-// `proves` is the floor, and it is the most important field here. /studio answered 200 and rendered
-// a sign-in stub wherever Supabase was unconfigured — which is every environment these checks run
-// in — so all four checks walked 33 elements of the stub and reported green. A check that matches
-// nothing reports what a check that passes reports. So every route names something the real screen
-// contains and a stub cannot, and a route that does not show it is reported like a route that never
-// loaded: named, not measured, not counted as passing.
+// `proves` is the floor, and it is the most important field here. /studio once answered 200 and
+// rendered a sign-in stub, so all four checks walked 33 elements of the stub and reported green.
+// A check that matches nothing reports what a check that passes reports. So every route names
+// something the real screen contains and a stub cannot, and a route that does not show it is
+// reported like a route that never loaded: named, not measured, not counted as passing.
+//
+// The checks run with authentication switched off (lib/servers.mjs), which is what lets the studio
+// and the account render from their preview fixtures. A server with it on sends both to /signin.
 //
 // A selector is preferred over `floor`, a minimum count of text-carrying elements, because a count
 // drifts into passing as a stub grows. `floor` is only for screens with no authored hook to point
@@ -18,6 +20,10 @@
 // after the route has proved it loaded. It must always carry its own `proves`, and that selector
 // must name something only the post-click screen has — the hook is otherwise a way to report green
 // for the screen before the click, which is this file's oldest failure wearing a new shape.
+//
+// `settles` is for a screen still busy when the network goes quiet, such as a debounced request:
+// `{ gone }` names the busy state, and the page is read only once nothing matches it
+// (lib/settle.mjs). A state that never clears is reported as blocked, not waited past.
 //
 // It is not an alternative to `?state=` and `?section=`. Those exist because a wallet connection
 // and a Supabase session are states no click produces, so a dev-guarded parameter in shipped code
@@ -31,7 +37,9 @@
 // on two. render.mjs refuses a route that has no `product` rather than falling back, for the same
 // reason it refuses a route with no floor: the fallback would be a number about the wrong server,
 // and a number about the wrong server is indistinguishable from a number about the right one.
-export const ROUTES = [
+import { only } from "./lib/only.mjs";
+
+const ALL = [
   {
     path: "/",
     name: "landing",
@@ -107,28 +115,11 @@ export const ROUTES = [
    * BTC-PERP a symbol in createSampleMarketBoard. An invented one answers 404, which this file
    * reports as "not built yet" — the one wrong answer available here.
    */
-  /* The three /agents screens declare `dark`, and they are the only marketplace routes that do
-   * besides /apply. That is not this file disagreeing with the product — it is this file recording
-   * a redraw the product already admits it owes.
-   *
-   * public-shell.tsx takes a `surface` prop and says what it is for: "It is light, which is what
-   * the marketplace is. `surface` exists for the routes whose *bodies* still compose against a
-   * dark ground — the agent pages — because one wrapper cannot hold two surfaces and those bodies
-   * are not this task's to redraw. The prop goes when the last body is redrawn." Only these three
-   * pass `surface="dark"`, and /agents/[handle]/ask carries the same admission in its own words.
-   *
-   * So the ground they paint today is night blue and the ground the marketplace is, is white.
-   * Declaring `light` here would put six standing failures in surfaces.mjs that say only what this
-   * comment says, on three screens nobody disputes; declaring `dark` measures the ground they
-   * actually ship on, which is what makes their inversions and their contrast numbers mean
-   * anything. When those bodies are redrawn and the prop goes, these three flip to `light` in one
-   * edit and surfaces.mjs is what catches a body that was missed.
-   */
   {
     path: "/agents",
     name: "agents",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
     // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
@@ -141,7 +132,7 @@ export const ROUTES = [
     path: "/agents/halftime",
     name: "agent-profile",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // The activity panel, on a page that also carries this agent's token link. The panel alone
     // would report green for any profile; the token link says it is Halftime's, which is the
@@ -153,7 +144,7 @@ export const ROUTES = [
     path: "/agents/halftime/ask",
     name: "agent-ask",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Marketplace",
     // COMPOSE, which is step one of three and the only one a GET reaches. The market chooser and
     // the sentence under the fixed question both belong to that step: REVIEW replaces them, so
@@ -168,13 +159,10 @@ export const ROUTES = [
     product: "marketplace",
     surface: "light",
     task: "Marketplace",
-    // Two screens, one of which must be present. #tokens-empty is the launch-day screen: no token
-    // has launched, so the board draws that instead of a stage filter over an empty grid. The other
-    // selector is the populated board — the graduation meter is drawn once per token card, so it
-    // is a row and not a heading, because the board's own title renders with nothing behind it. A
-    // page with neither is the stub this pairing refuses.
-    proves:
-      '#tokens-empty, main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
+    // The launch catalogue with rows in it: the harness's fixture API serves two launches, and
+    // the link proves the first of them is on the board. #launch-board-empty is the screen the
+    // product shows today, and a page showing it here means the fixture was not what answered.
+    proves: '#launch-board a[href="/tokens/HALF"]',
   },
   {
     path: "/tokens/half",
@@ -359,6 +347,52 @@ export const ROUTES = [
     task: "Task 12",
     proves: "#home-schedule",
   },
+  // The home before the first agent (`?stage=empty`), the "Pickler Studio Empty v4" canvas: the top
+  // bar, the disabled rail and the blank brief instead of a redirect to /studio/new. It proves the
+  // brief, which no staged run has.
+  {
+    path: "/studio?stage=empty",
+    name: "studio-home-empty",
+    product: "studio",
+    surface: "dark",
+    task: "Task 12",
+    proves: "#home-empty",
+  },
+  // The brief home with its paper run live, done and stale (`?stage=brief-*`), and the draft home
+  // after create (`?stage=draft`). Each proves the state it stages, so a stage that fell back to
+  // another is not reported green.
+  {
+    path: "/studio?stage=brief-running",
+    name: "studio-brief-running",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="LIVE"]',
+  },
+  {
+    path: "/studio?stage=brief-done",
+    name: "studio-brief-done",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="DONE"]',
+  },
+  {
+    path: "/studio?stage=brief-stale",
+    name: "studio-brief-stale",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: '#brief-run[data-state="STALE"]',
+  },
+  {
+    path: "/studio?stage=draft",
+    name: "studio-home-draft",
+    product: "studio",
+    surface: "dark",
+    task: "Brief",
+    proves: "#home-go-public",
+  },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
   {
@@ -369,21 +403,39 @@ export const ROUTES = [
     task: "Auth",
     proves: "#home-second-passkey",
   },
-  // The studio keeps its section in state, so /studio alone has only ever shown the overview —
-  // three screens' worth of composition behind a rail click that no check has ever read. The one
-  // most affected by a token change is always the one nothing measures. `?section=` opens each,
-  // outside production only. Picks carries the forecast, the policy codes and the report; activity
-  // carries the trace; skills carries the plugin rows; token is a section with no backend, which is
-  // where the copy saying so lives.
-  // The panel carries the section it is showing, so each of these proves the query param put the
-  // screen it named on the page rather than proving the shell loaded around the overview again.
+  // The studio keeps its section in state, so /studio alone shows the home and nothing behind the
+  // rail. `?section=` opens each of the thirteen, outside production only, in the rail's own order
+  // (apps/web/src/features/studio/sections/rail.ts). Seven are screens; five are the Soon panel
+  // and the board is the same panel with its two links. `limits` is also where the trading panel
+  // is measured, because trading has no section of its own.
+  // Each proves an id on the root of the section itself (`#studio-section-<key>`), or on the Soon
+  // panel drawn for that key (`#studio-soon-<key>`). Not the main container's
+  // `#studio-panel-<key>`: that id names the section asked for whatever the container holds, so it
+  // also matched while the studio read its agents ("Reading your agents…") or showed an error —
+  // the stub-proves-green failure this file exists to refuse.
+  {
+    path: "/studio?section=overview",
+    name: "studio-overview",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-section-overview",
+  },
+  {
+    path: "/studio?section=context",
+    name: "studio-context",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-section-context",
+  },
   {
     path: "/studio?section=picks",
     name: "studio-picks",
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-picks",
+    proves: "#studio-section-picks",
   },
   {
     path: "/studio?section=activity",
@@ -391,7 +443,15 @@ export const ROUTES = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-activity",
+    proves: "#studio-section-activity",
+  },
+  {
+    path: "/studio?section=brief",
+    name: "studio-brief",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-section-brief",
   },
   {
     path: "/studio?section=skills",
@@ -399,7 +459,47 @@ export const ROUTES = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-skills",
+    proves: "#studio-section-skills",
+  },
+  {
+    path: "/studio?section=sources",
+    name: "studio-sources",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-soon-sources",
+  },
+  {
+    path: "/studio?section=limits",
+    name: "studio-limits",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-section-limits",
+  },
+  {
+    path: "/studio?section=identity",
+    name: "studio-identity",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-soon-identity",
+  },
+  {
+    path: "/studio?section=profile",
+    name: "studio-profile",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-soon-profile",
+  },
+  {
+    path: "/studio?section=audience",
+    name: "studio-audience",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-soon-audience",
   },
   {
     path: "/studio?section=token",
@@ -407,7 +507,15 @@ export const ROUTES = [
     product: "studio",
     surface: "dark",
     task: "Task 11",
-    proves: "#studio-panel-token",
+    proves: "#studio-soon-token",
+  },
+  {
+    path: "/studio?section=board",
+    name: "studio-board",
+    product: "studio",
+    surface: "dark",
+    task: "Task 11",
+    proves: "#studio-soon-board",
   },
   // A person with no agents is sent from /studio to the creation flow, and each of its screens is
   // a URL of its own (`?step=`). Outside production a link past Describe opens on the canvas's
@@ -437,6 +545,8 @@ export const ROUTES = [
     surface: "dark",
     task: "Task 11",
     proves: "#create-name",
+    // The handle is checked 400ms after the step mounts, after `networkidle` has already fired.
+    settles: { gone: '#create-handle-hint:text-is("CHECKING")' },
   },
   {
     path: "/studio/new?step=trades",
@@ -526,9 +636,10 @@ export const ROUTES = [
     task: "Task 13",
     proves: "#account-panel-profile",
   },
-  // The signup's mandatory passkey step: its one prompt creates the sub-organization and the
-  // master wallet, and every signed-in screen sends a person without that wallet back to it. A
-  // real visit reaches it only with a session that has a profile and no wallet, which the harness
+  // The signup's mandatory passkey step, straight after the code and before the handle: its one
+  // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a
+  // person without that wallet back to it. A real visit reaches it only with a session that has
+  // no wallet, which the harness
   // cannot have — its cookie passes the middleware's presence check and is not a session
   // (render.mjs). `?state=passkey` opens the signup on that step with no session and no reads,
   // outside production only. The studio by hosts.ts's segments, and the (auth) layout is dark.
@@ -539,6 +650,17 @@ export const ROUTES = [
     surface: "dark",
     task: "Auth",
     proves: "#signup-passkey",
+  },
+  // /passkey adds a passkey to an account that has one, so a real visit needs a session, a
+  // master wallet and a profile. `?state=add` draws the screen from one fixture passkey instead,
+  // outside production only (apps/web/src/features/auth/lib/passkey-entry.ts).
+  {
+    path: "/passkey?state=add",
+    name: "passkey-add",
+    product: "studio",
+    surface: "dark",
+    task: "Auth",
+    proves: "#passkey-add",
   },
   // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
   // not one of them was /signin or /signup, so those two screens were never unconverted — nobody
@@ -571,6 +693,9 @@ export const ROUTES = [
     proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("JOIN THE BOARD")',
   },
 ];
+
+/** Every route, or the ones DESIGN_ROUTES names (lib/only.mjs). */
+export const ROUTES = only(ALL, process.env.DESIGN_ROUTES);
 
 export const GROUND = { light: "rgb(255, 255, 255)", dark: "rgb(11, 13, 26)" };
 

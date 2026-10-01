@@ -14,13 +14,14 @@ import type {
   PerpMarketDto,
   MarketDetailDto,
 } from "@pickler/api-schema";
-import { apiJson, apiFetch } from "./api-client";
+import { apiJson, apiFetch, apiRead, apiReadOne } from "./api-client";
+import { EMPTY_LEADERBOARD, emptyAnalytics } from "./api-read";
 
 // Presentation facade over the sole business API; no database or provider adapters.
 export const services = {
   clock: { now: () => new Date() },
   getLanding: () => apiJson<LandingResponse>("/landing"),
-  listAgents: () => apiJson<AgentSummaryDto[]>("/marketplace/agents"),
+  listAgents: () => apiRead<AgentSummaryDto[]>("/marketplace/agents", []),
   listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
     const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
 
@@ -34,26 +35,26 @@ export const services = {
 
     return response.json() as Promise<ReadDto<LaunchSummaryDto[]>>;
   },
-  listDirectory: () => apiJson<DirectoryAgentDto[]>("/marketplace/directory"),
-  listReads: () => apiJson<AgentReadDto[]>("/marketplace/reads"),
-  getRead: (id: string) =>
-    apiJson<AgentReadDto | null>(`/marketplace/reads/${encodeURIComponent(id)}`),
-  listMarkets: () => apiJson<PerpMarketDto[]>("/marketplace/markets"),
+  listDirectory: () => apiRead<DirectoryAgentDto[]>("/marketplace/directory", []),
+  listReads: () => apiRead<AgentReadDto[]>("/marketplace/reads", []),
+  getRead: (id: string) => apiReadOne<AgentReadDto>(`/marketplace/reads/${encodeURIComponent(id)}`),
+  listMarkets: () => apiRead<PerpMarketDto[]>("/marketplace/markets", []),
   getMarket: (symbol: string) =>
-    apiJson<MarketDetailDto | null>(`/marketplace/markets/${encodeURIComponent(symbol)}`),
+    apiReadOne<MarketDetailDto>(`/marketplace/markets/${encodeURIComponent(symbol)}`),
   getAgentProfile: (ticker: string) =>
-    apiJson<AgentProfileDto | null>(`/marketplace/profiles/${encodeURIComponent(ticker)}`),
+    apiReadOne<AgentProfileDto>(`/marketplace/profiles/${encodeURIComponent(ticker)}`),
   getPickDetail: (ticker: string, id: string) =>
-    apiJson<PickDetailDto | null>(
+    apiReadOne<PickDetailDto>(
       `/marketplace/profiles/${encodeURIComponent(ticker)}/picks/${encodeURIComponent(id)}`,
     ),
   getAgentPersona: (handle: string) =>
-    apiJson<AgentPersonaDto | null>(`/marketplace/personas/${encodeURIComponent(handle)}`),
+    apiReadOne<AgentPersonaDto>(`/marketplace/personas/${encodeURIComponent(handle)}`),
   getPlatformAnalytics: (range?: string) =>
-    apiJson<PlatformAnalyticsDto>(
+    apiRead<PlatformAnalyticsDto>(
       `/marketplace/analytics?range=${encodeURIComponent(range ?? "30d")}`,
+      emptyAnalytics(range),
     ),
-  getLeaderboard: () => apiJson<LeaderboardDto>("/marketplace/leaderboard"),
+  getLeaderboard: () => apiRead<LeaderboardDto>("/marketplace/leaderboard", EMPTY_LEADERBOARD),
   async getApplicant(token: string | null): Promise<ApplicantResponse | null> {
     if (!token) {
       return null;

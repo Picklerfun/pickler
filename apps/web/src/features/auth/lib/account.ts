@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError, createProfile, getProfile, type ProfileDto } from "./pickler-api";
 
-export type AccountResult =
+type AccountResult =
   | { kind: "ready"; profile: ProfileDto }
   | { kind: "needs_profile" }
   | { kind: "confirm_email"; email: string };
@@ -24,7 +24,7 @@ export type AuthCalls = Pick<
 export const AUTH_CALLBACK_PATH = "/auth/callback";
 
 /** Supabase's own name for the X provider is still `twitter`; the button says X. */
-export type OAuthProvider = "google" | "twitter";
+type OAuthProvider = "google" | "twitter";
 
 /** Plausible enough to be worth sending a code to. The server is the real judge. */
 export const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());

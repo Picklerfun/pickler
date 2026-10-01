@@ -42,13 +42,13 @@ export interface SignedActivity {
   stamp: { stampHeaderName: string; stampHeaderValue: string };
 }
 
-export interface AgentWallet {
+interface AgentWallet {
   walletId: string;
   address: string;
 }
 
 /** A wallet an earlier attempt left unlinked, and whether its rules were already approved. */
-export interface ExistingWallet extends AgentWallet {
+interface ExistingWallet extends AgentWallet {
   policiesApproved: boolean;
 }
 
@@ -86,7 +86,7 @@ export interface CeremonyDeps {
   onFirstAgent?(first: boolean): void;
 }
 
-export interface CeremonyResult {
+interface CeremonyResult {
   agentId: string;
   runId: string;
   address: string;

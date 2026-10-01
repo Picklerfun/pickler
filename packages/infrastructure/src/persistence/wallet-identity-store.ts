@@ -1,7 +1,11 @@
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import type { Pool } from "pg";
 import {
+  MAX_OPEN_NONCES_PER_ADDRESS,
   normalizeAddress,
   type Namespace,
+  type NonceHolder,
   type NonceStore,
   type NormalizedAddress,
   type WalletLink,
@@ -56,23 +60,109 @@ function toWalletLink(row: WalletLinkRow): WalletLink {
   };
 }
 
+/**
+ * How many expired nonces one issue deletes at most. Nothing else deletes them, so every issue
+ * does; the bound is what keeps a backlog from landing on whoever asks next.
+ */
+export const EXPIRED_NONCE_PURGE_BATCH = 100;
+
+const TAG_LENGTH = 16;
+
+/**
+ * `identity.siwe_nonces` has two columns, the nonce and its expiry, and no place for who the nonce
+ * was issued to. So the row's key is the holder's tag followed by the nonce: sixteen hex characters
+ * of sha256 over `namespace:address`, the digest the synthetic email uses. That makes "this
+ * address's open nonces" a range of the primary key, and it binds the nonce to the address — one
+ * issued for a wallet cannot be spent in a message naming another.
+ *
+ * The person is handed the nonce alone; the tag never leaves this file.
+ */
+function holderTag(holder: NonceHolder): string {
+  const digest = sha256(new TextEncoder().encode(`${holder.namespace}:${holder.address}`));
+  return bytesToHex(digest).slice(0, TAG_LENGTH);
+}
+
 export class PostgresWalletIdentityStore implements NonceStore, WalletLinkRepository {
   constructor(private readonly pool: Pool) {}
 
-  async issue(nonce: string, expiresAt: Date): Promise<void> {
-    await this.pool.query(`INSERT INTO identity.siwe_nonces (nonce, expires_at) VALUES ($1, $2)`, [
-      nonce,
-      expiresAt,
-    ]);
+  /**
+   * Always issues. The route is public and the address unverified, so anybody can ask for nonces
+   * in somebody else's name: a cap that refused would let them keep that wallet from signing in
+   * for as long as they kept asking. Instead the holder's oldest nonces are evicted, so that with
+   * the new one it holds `MAX_OPEN_NONCES_PER_ADDRESS` at most. That bounds the rows an address
+   * can have, and all a stranger can do with it is invalidate a nonce the holder has not used
+   * yet, which costs the holder one retry.
+   *
+   * The statement deletes a bounded batch of expired nonces through `siwe_nonces_expiry_idx`,
+   * evicts, and inserts. Both deletes go through `ctid` because DELETE has no LIMIT or OFFSET;
+   * both skip locked rows, so two issues at once share the backlog instead of waiting on each
+   * other, and an eviction never waits on another holder's purge of the same expired row — two
+   * of those waiting on each other would be a deadlock.
+   *
+   * The holder's rows are a range of the primary key — every key with this tag sorts between the
+   * tag and the tag followed by `g`, a character no hex digit reaches — with `starts_with` as the
+   * exact test, so a collation that orders otherwise can only make the range wider than the
+   * answer, never the answer wrong.
+   *
+   * A statement reads the snapshot it started with, so two issues for one address at once would
+   * each evict down to four and leave six. The advisory lock, held until the transaction ends,
+   * makes issues for one holder take turns; other holders are not kept waiting.
+   */
+  async issue(nonce: string, expiresAt: Date, holder: NonceHolder): Promise<void> {
+    const tag = holderTag(holder);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [
+        `identity.siwe_nonces:${tag}`,
+      ]);
+      await client.query(
+        `WITH purged AS (
+           DELETE FROM identity.siwe_nonces
+            WHERE ctid = ANY (ARRAY(
+                    SELECT ctid
+                      FROM identity.siwe_nonces
+                     WHERE expires_at < now()
+                     ORDER BY expires_at
+                     LIMIT $5
+                       FOR UPDATE SKIP LOCKED))
+         ), evicted AS (
+           DELETE FROM identity.siwe_nonces
+            WHERE ctid = ANY (ARRAY(
+                    SELECT ctid
+                      FROM identity.siwe_nonces
+                     WHERE nonce >= $3 AND nonce < $4
+                       AND starts_with(nonce, $3)
+                     ORDER BY expires_at DESC, nonce
+                    OFFSET $6
+                       FOR UPDATE SKIP LOCKED))
+         )
+         INSERT INTO identity.siwe_nonces (nonce, expires_at) VALUES ($1, $2)`,
+        [
+          `${tag}${nonce}`,
+          expiresAt,
+          tag,
+          `${tag}g`,
+          EXPIRED_NONCE_PURGE_BATCH,
+          MAX_OPEN_NONCES_PER_ADDRESS - 1,
+        ],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /** One statement, so two concurrent verifications cannot both receive the same nonce. */
-  async consume(nonce: string): Promise<{ expiresAt: Date } | null> {
+  async consume(nonce: string, holder: NonceHolder): Promise<{ expiresAt: Date } | null> {
     const { rows } = await this.pool.query<{ expiresAt: Date }>(
       `DELETE FROM identity.siwe_nonces
         WHERE nonce = $1
         RETURNING expires_at AS "expiresAt"`,
-      [nonce],
+      [`${holderTag(holder)}${nonce}`],
     );
     return rows[0] ? { expiresAt: rows[0].expiresAt } : null;
   }

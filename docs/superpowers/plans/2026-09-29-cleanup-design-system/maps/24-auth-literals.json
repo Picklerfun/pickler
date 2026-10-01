@@ -1,0 +1,54 @@
+[
+  {
+    "find": "  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));\n",
+    "replace": "  filter: drop-shadow(0 0 12px var(--pk-cyan-edge));\n"
+  },
+  {
+    "find": "  /* The rim of a lit fill, which is what this is; 0.45 folds into the token's 0.5 (styles.css). */\n",
+    "replace": "  /* The rim of a lit fill, which is what this is. */\n"
+  },
+  {
+    "find": "    inset 0 1px 0 rgba(255, 255, 255, 0.4),\n    0 0 26px rgba(200, 240, 58, 0.38);\n",
+    "replace": "    inset 0 1px 0 var(--pk-glow-rim),\n    0 0 26px var(--pk-glow-lime);\n"
+  },
+  {
+    "find": "  filter: drop-shadow(0 0 26px rgba(200, 240, 58, 0.35));\n",
+    "replace": "  filter: drop-shadow(0 0 26px var(--pk-glow-lime));\n"
+  },
+  {
+    "find": "  box-shadow: 0 0 10px rgba(200, 240, 58, 0.8);\n",
+    "replace": "  box-shadow: 0 0 10px var(--pk-lime);\n"
+  },
+  {
+    "find": "  text-shadow: 0 0 26px rgba(200, 240, 58, 0.45);\n",
+    "replace": "  text-shadow: 0 0 26px var(--pk-glow-lime-strong);\n"
+  },
+  {
+    "find": "    linear-gradient(rgba(243, 241, 236, 0.06) 1px, transparent 1px),\n    linear-gradient(90deg, rgba(243, 241, 236, 0.06) 1px, transparent 1px);\n",
+    "replace": "    linear-gradient(var(--pk-rule) 1px, transparent 1px),\n    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);\n"
+  },
+  {
+    "find": "  background: rgba(200, 240, 58, 0.2);\n",
+    "replace": "  background: var(--pk-glow-lime);\n"
+  },
+  {
+    "find": "  text-shadow: 0 0 20px rgba(200, 240, 58, 0.9);\n",
+    "replace": "  text-shadow: 0 0 20px var(--pk-lime);\n"
+  },
+  {
+    "find": "    inset 0 2px 0 rgba(255, 255, 255, 0.4),\n    0 0 13px rgba(var(--accent-rgb), 0.55);\n",
+    "replace": "    inset 0 2px 0 var(--pk-glow-rim),\n    0 0 13px var(--accent);\n"
+  },
+  {
+    "find": ".codeFilled {\n  border-color: rgba(200, 240, 58, 0.6);\n}\n\n.codeCaret {\n  border-color: rgba(243, 241, 236, 0.4);\n}\n\n.codeWrong {\n  border-color: rgba(255, 95, 162, 0.8);\n}\n",
+    "replace": ".codeFilled {\n  border-color: var(--pk-lime-edge);\n}\n\n.codeCaret {\n  border-color: var(--pk-border-strong);\n}\n\n.codeWrong {\n  border-color: var(--pk-magenta-edge);\n}\n"
+  },
+  {
+    "find": ".codeInput:focus-visible ~ .codeCell {\n  border-color: rgba(200, 240, 58, 0.45);\n}\n",
+    "replace": ".codeInput:focus-visible ~ .codeCell {\n  border-color: var(--pk-focus);\n}\n"
+  },
+  {
+    "find": ".sheet::backdrop {\n  background: rgba(6, 6, 9, 0.72);\n",
+    "replace": ".sheet::backdrop {\n  background: var(--pk-scrim);\n"
+  }
+]

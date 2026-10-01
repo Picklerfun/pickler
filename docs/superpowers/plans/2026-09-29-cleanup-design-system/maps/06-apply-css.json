@@ -1,0 +1,31 @@
+[
+  { "find": "/* ---------- Background ---------- */\n\n", "replace": "" },
+  {
+    "find": ".page .secondaryButton {\n  padding: 15px 18px;\n  background: var(--pk-space-veil);\n",
+    "replace": ".page .secondaryButton {\n  padding: 15px 18px;\n  background: var(--pk-bg);\n"
+  },
+  {
+    "find": "  background: var(--pk-space-veil-strong);\n  backdrop-filter: blur(16px);\n}\n\n.headerRow {",
+    "replace": "  background: var(--pk-nav-bg);\n}\n\n.headerRow {"
+  },
+  {
+    "find": "  padding: 10px 13px;\n  background: var(--pk-space-veil);\n",
+    "replace": "  padding: 10px 13px;\n  background: var(--pk-bg);\n"
+  },
+  {
+    "find": "    0 26px 60px var(--pk-space-veil-strong);\n",
+    "replace": "    var(--pk-popover-shadow);\n"
+  },
+  {
+    "find": "  background-color: var(--pk-space-veil);\n",
+    "replace": "  background-color: var(--pk-bg);\n"
+  },
+  {
+    "find": "  padding: 14px 16px;\n  background: var(--pk-space-veil);\n",
+    "replace": "  padding: 14px 16px;\n  background: var(--pk-bg);\n"
+  },
+  {
+    "find": "  padding: 16px 18px;\n  background: var(--pk-space-veil-strong);\n",
+    "replace": "  padding: 16px 18px;\n  background: var(--pk-bg);\n"
+  }
+]

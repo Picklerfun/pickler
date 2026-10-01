@@ -15,7 +15,7 @@ import { CEREMONY_STEPS, type CeremonyStep } from "./ceremony";
 import { shortAddress, traceLines } from "./trace";
 import styles from "./create.module.css";
 
-export type StepState = "pending" | "start" | "done" | "failed";
+type StepState = "pending" | "start" | "done" | "failed";
 
 export interface CeremonyView {
   started: boolean;

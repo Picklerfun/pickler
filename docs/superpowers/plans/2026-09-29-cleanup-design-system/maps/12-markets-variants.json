@@ -1,0 +1,34 @@
+[
+  {
+    "find": ".surface {\n  composes: pk-panel from global;\n  --accent-ink: var(--pk-lime-ink);\n  --accent-on: var(--pk-lime-edge);\n  --accent-soft: var(--pk-state-good-bg);\n\n  overflow: hidden;\n}\n\n.toneShort {\n  --accent-ink: var(--pk-pink-ink);\n  --accent-on: var(--pk-magenta-edge);\n  --accent-soft: var(--pk-state-loss-bg);\n}\n\n.toneAsk {\n  --accent-ink: var(--pk-violet-ink);\n  --accent-on: var(--pk-violet-edge);\n  --accent-soft: var(--pk-state-info-bg);\n}\n",
+    "replace": "/* The surface takes one of three tones: long (the default), short and ask. Each tone is an ink,\n   an edge and a tint, written per tone where it is read. The tone sits in :where() so a toned\n   rule weighs what its untoned twin weighs, and the rules after it win as they did. */\n.surface {\n  composes: pk-panel from global;\n  overflow: hidden;\n}\n"
+  },
+  {
+    "find": ".surfaceMode {\n  color: var(--accent-ink);\n}\n",
+    "replace": ".surfaceMode {\n  color: var(--pk-lime-ink);\n}\n\n:where(.toneShort) .surfaceMode {\n  color: var(--pk-pink-ink);\n}\n\n:where(.toneAsk) .surfaceMode {\n  color: var(--pk-violet-ink);\n}\n"
+  },
+  {
+    "find": ".rowLevelOn .rowPrice {\n  color: var(--accent-ink);\n}\n",
+    "replace": ".rowLevelOn .rowPrice {\n  color: var(--pk-lime-ink);\n}\n\n:where(.toneShort) .rowLevelOn .rowPrice {\n  color: var(--pk-pink-ink);\n}\n\n:where(.toneAsk) .rowLevelOn .rowPrice {\n  color: var(--pk-violet-ink);\n}\n"
+  },
+  {
+    "find": ".cell[data-lit] {\n  background: var(--accent-soft);\n}\n",
+    "replace": ".cell[data-lit] {\n  background: var(--pk-state-good-bg);\n}\n\n:where(.toneShort) .cell[data-lit] {\n  background: var(--pk-state-loss-bg);\n}\n\n:where(.toneAsk) .cell[data-lit] {\n  background: var(--pk-state-info-bg);\n}\n"
+  },
+  {
+    "find": ".cell[data-on] {\n  background: var(--accent-on);\n}\n",
+    "replace": ".cell[data-on] {\n  background: var(--pk-lime-edge);\n}\n\n:where(.toneShort) .cell[data-on] {\n  background: var(--pk-magenta-edge);\n}\n\n:where(.toneAsk) .cell[data-on] {\n  background: var(--pk-violet-edge);\n}\n"
+  },
+  {
+    "find": "  border: 1px solid var(--accent-on);\n",
+    "replace": "  border: 1px solid var(--pk-lime-edge);\n"
+  },
+  {
+    "find": "  letter-spacing: 0.1em;\n  color: var(--accent-ink);\n}\n",
+    "replace": "  letter-spacing: 0.1em;\n  color: var(--pk-lime-ink);\n}\n\n:where(.toneShort) .cellPill {\n  border-color: var(--pk-magenta-edge);\n  color: var(--pk-pink-ink);\n}\n\n:where(.toneAsk) .cellPill {\n  border-color: var(--pk-violet-edge);\n  color: var(--pk-violet-ink);\n}\n"
+  },
+  {
+    "find": ".column[data-on] .columnLabel {\n  color: var(--accent-ink);\n}\n",
+    "replace": ".column[data-on] .columnLabel {\n  color: var(--pk-lime-ink);\n}\n\n:where(.toneShort) .column[data-on] .columnLabel {\n  color: var(--pk-pink-ink);\n}\n\n:where(.toneAsk) .column[data-on] .columnLabel {\n  color: var(--pk-violet-ink);\n}\n"
+  }
+]
