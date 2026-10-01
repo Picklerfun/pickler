@@ -62,7 +62,7 @@ acceptance. New prospective runs require frozen configuration and the remaining 
 Run from the agent-service workspace using the unified CLI:
 
 ```sh
-node --import tsx src/evaluate.ts stability --config /absolute/path/study.json --env-file /absolute/path/study.env --output /absolute/path/new-stability-report
+node --import tsx src/evaluate.ts stability --config /absolute/path/study.json --env-file /absolute/path/study.env --acquisition-choice /absolute/path/new-diagnostic/choice.json --output /absolute/path/new-stability-report
 ```
 
 The configuration identifies an existing study whose three agents still have matching, enabled Perpl permissions. The command creates only a separate diagnostic record/lease, references the existing agents, and performs no account mutation, model request or purchase. Do not supply `--allow-paid`. Its provider operations share the same coherent reader used for new comparison studies. Keep the laptop open; the command prevents idle sleep, not lid-close sleep. Closing the lid may invalidate the lease; it must never resume paid work automatically.
@@ -85,3 +85,5 @@ public connectivity endpoint, without retaining its body. The control is separat
 reachability at that instant, not that Perpl or the local network caused a historical outage.
 The existing 29/30 acceptance threshold, timestamps, lease protocol and zero-paid-call scope stay
 unchanged. Report v2 preserves the original acquisition duration separately from control duration.
+
+Read [the transport diagnostic guide](PERPL-STREAM-ACQUISITION.md) before new public acceptance. The explicit data-diagnostic command freezes transport selection; stability requires that choice file. Historical reports remain readable and are not rerun.
