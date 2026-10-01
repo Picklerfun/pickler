@@ -866,6 +866,316 @@
   animation: pkBlink 1s steps(1, end) infinite;
 }
 
+/* ---------- The Wallets modal ---------- */
+
+/* A native dialog the size of the viewport, its card centred: a press on the dialog outside the
+   card is a press on the backdrop. */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 20px 16px;
+  overflow-y: auto;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+}
+.modal[open] {
+  display: grid;
+  place-items: center;
+}
+.modal::backdrop {
+  background: var(--pk-scrim);
+  backdrop-filter: blur(6px);
+}
+.modalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 620px;
+  padding: 24px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+  box-shadow: var(--pk-popover-shadow);
+  animation: pkIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.tab {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.tab:hover {
+  color: var(--pk-ink);
+}
+.tab[aria-current="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  cursor: default;
+}
+.modalClose {
+  composes: iconButton;
+  width: 32px;
+  height: 32px;
+}
+.modalTitle {
+  margin: 0;
+  font: 700 34px/0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+}
+.modalTitle span {
+  color: var(--pk-lime-ink);
+}
+.modalLead {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.listTitle {
+  padding-top: 4px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.walletBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-bg);
+}
+.walletBox[data-master="true"] {
+  border-color: var(--pk-lime-edge);
+}
+.walletBox .tile,
+.walletBox .row {
+  background: var(--pk-panel);
+}
+.walletBox .walletTag {
+  margin-left: 0;
+}
+.walletBox .chipButton {
+  background: var(--pk-panel);
+}
+.walletBoxHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.walletBoxName {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.walletBoxName b {
+  overflow: hidden;
+  font: 600 14.5px/1.1 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.walletBoxName b i {
+  font-style: normal;
+  color: var(--pk-ink-faint);
+}
+.walletBoxName small {
+  overflow: hidden;
+  font: 600 10px/1.2 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.masterMark {
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+}
+.walletMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  font: 700 12px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+.walletMark[data-accent="true"] {
+  background: var(--accent);
+}
+.walletTag[data-tone="quiet"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink-faint);
+}
+.moveButtons {
+  display: flex;
+  gap: 4px;
+}
+.direction {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12px/1 var(--pk-font);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+.direction:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.direction[aria-pressed="true"],
+.direction[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.direction:disabled {
+  color: var(--pk-ink-faint);
+  cursor: default;
+}
+.move {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+  animation: pkIn 180ms ease-out;
+}
+.moveRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.move .tokenSwitch {
+  background: var(--pk-bg);
+}
+.amountField {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.amountField:focus-within {
+  border-color: var(--pk-rule-strong);
+}
+.amountField[data-bad="true"] {
+  border-color: var(--pk-state-loss-ink);
+}
+.amountField input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 700 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.amountField input::placeholder {
+  color: var(--pk-ink-faint);
+}
+.amountField small {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.amountField .chipButton {
+  padding: 4px 7px;
+  background: var(--pk-panel);
+  font-size: 9px;
+}
+.amountField .chipButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.moveNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+}
+
+/* ---------- The top bar's master wallet ---------- */
+
+.topPill {
+  composes: pill from "../home/home.module.css";
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  border: none;
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.topPill:hover {
+  background: var(--pk-panel-2);
+}
+.topPill img {
+  border-radius: var(--pk-radius-mark);
+}
+.topPill small {
+  font: inherit;
+  color: var(--pk-ink-faint);
+}
+.topPill i {
+  width: 1px;
+  height: 12px;
+  background: var(--pk-rule-strong);
+}
+
 /* ---------- Motion (restated from home.module.css: keyframes are module-scoped) ---------- */
 
 @keyframes pkBlink {
@@ -907,7 +1217,9 @@
   .arrival,
   .iconButton[aria-busy="true"] svg,
   .sheet,
-  .sheetWait i {
+  .sheetWait i,
+  .modalCard,
+  .move {
     animation: none;
   }
   /* No spin: the refresh says it is reading by dimming instead. */

@@ -7,6 +7,7 @@ import {
   balanceNote,
   formatUnits,
   funded,
+  shortAddress,
   step0Copy,
   walletTag,
   type NewAgentForm,
@@ -43,7 +44,6 @@ export interface WalletPanelProps {
 }
 
 const COPIED_MS = 1400;
-const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
 /**
  * "Its wallet" (canvas: Studio · Agent wallet overview). Step 0 until the wallet and Pickler's
@@ -156,7 +156,7 @@ export function WalletPanel({
                 className={styles.monad}
               />
               <span className={styles.addressText}>
-                <b title={wallet.address}>{short(wallet.address)}</b>
+                <b title={wallet.address}>{shortAddress(wallet.address)}</b>
                 <small>AGENT WALLET · PICKLER MAY TRADE</small>
               </span>
               <button

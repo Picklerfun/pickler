@@ -35,6 +35,7 @@ import {
   handleState,
   sheetCopy,
   toDraftRequest,
+  unitsOf,
   validHandle,
   walletOutlined,
   walletSheetStep,
@@ -384,6 +385,16 @@ export function NewAgent({
       canManage={canManage}
       researchLock={researchLock}
       sectionNote={access.sectionNote}
+      master={
+        reads.wallets && {
+          ausdMicro: unitsOf(reads.wallets.master.ausdMicro),
+          monWei: unitsOf(reads.wallets.master.monWei),
+        }
+      }
+      onWallets={() => {
+        setFundOn(null);
+        setModal("wallets");
+      }}
       overlays={
         <>
           <PasskeySheet
@@ -401,10 +412,22 @@ export function NewAgent({
             open={modal === "wallets"}
             wallets={reads.wallets}
             openOn={fundOn}
+            draft={
+              reads.wallet && {
+                walletId: reads.wallet.walletId,
+                name,
+                accent: form.accent,
+                pattern: form.pattern,
+              }
+            }
             preview={preview}
             onClose={() => {
               setModal(null);
               setFundOn(null);
+            }}
+            onCredits={() => {
+              setFundOn(null);
+              setModal("credits");
             }}
             onMoved={() => void reads.refresh()}
           />

@@ -352,7 +352,9 @@ export function sectionTag(key: SectionKey, value: string): { text: string; edit
   return { text: `${count} ${count === 1 ? "LINE" : "LINES"} · ${state}`, edited };
 }
 
-const big = (value: string | null): bigint | null => (value === null ? null : BigInt(value));
+/** A base-unit balance from the API (a decimal string, or null when unread). */
+export const unitsOf = (value: string | null): bigint | null =>
+  value === null ? null : BigInt(value);
 
 /**
  * The agent wallet a reload finds mid-setup: one of the person's with no agent yet, its balances in
@@ -378,8 +380,8 @@ export function unlinkedWallet(
     wallet: {
       walletId: found.walletId,
       address: found.address,
-      ausdMicro: big(found.ausdMicro),
-      monWei: big(found.monWei),
+      ausdMicro: unitsOf(found.ausdMicro),
+      monWei: unitsOf(found.monWei),
     },
     policiesApproved: found.policiesApproved,
   };
@@ -450,27 +452,133 @@ export function formatUnits(units: bigint | null, token: Token): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-export function transferLabel(input: {
+/** Base units as every decimal they hold, for MAX: 1234567 AUSD-micro → "1.234567". "" when unread. */
+export function exactUnits(units: bigint | null, token: Token): string {
+  if (units === null) {
+    return "";
+  }
+  const scale = 10n ** BigInt(DECIMALS[token]);
+  const fraction = (units % scale).toString().padStart(DECIMALS[token], "0").replace(/0+$/, "");
+  return fraction ? `${units / scale}.${fraction}` : (units / scale).toString();
+}
+
+export interface TransferInput {
   amount: string;
   token: Token;
   toAgent: boolean;
+  /** What the source holds of the token, in base units; null when unread. */
   held: bigint | null;
   agentName: string;
-}): string {
+}
+
+/** Whether a move may be signed, and the button's words. One rule feeds both. */
+function transferBlock(input: TransferInput): { ok: boolean; label: string } {
   const amount = input.amount.trim();
   const units = parseAmount(amount, input.token);
   if (units === null) {
-    return "Enter an amount";
+    return { ok: false, label: "Enter an amount" };
   }
   if (input.held === null) {
-    return "Reading the balance…";
+    return { ok: false, label: "Reading the balance…" };
   }
   if (units > input.held) {
-    return `More ${input.token} than ${input.toAgent ? "the master wallet" : input.agentName} holds`;
+    return {
+      ok: false,
+      label: `More ${input.token} than ${input.toAgent ? "the master wallet" : input.agentName} holds`,
+    };
   }
+  return {
+    ok: true,
+    label: input.toAgent
+      ? `Send ${amount} ${input.token} to ${input.agentName}`
+      : `Pull ${amount} ${input.token} back`,
+  };
+}
+
+export const transferLabel = (input: TransferInput): string => transferBlock(input).label;
+
+/** A positive amount the source holds: the move's button opens. */
+export const canMove = (input: TransferInput): boolean => transferBlock(input).ok;
+
+/** One move in the Wallets modal: an agent wallet, toward it or back to master, one token. */
+export interface Move {
+  walletId: string;
+  toAgent: boolean;
+  token: Token;
+}
+
+/**
+ * What the move's source holds of its token: the master wallet toward the agent, the agent wallet
+ * on a pull. Null when it is unread or the wallet is not in the list.
+ */
+export function moveSource(wallets: WalletsDto, move: Move): bigint | null {
+  const source = move.toAgent
+    ? wallets.master
+    : wallets.agents.find((agent) => agent.walletId === move.walletId);
+  if (!source) {
+    return null;
+  }
+  return unitsOf(move.token === "AUSD" ? source.ausdMicro : source.monWei);
+}
+
+/** The transfer routes' body for a move: master on exactly one side, the amount trimmed. */
+export const moveBody = (move: Move, amount: string) =>
+  toTransferBody({
+    from: move.toAgent ? "master" : move.walletId,
+    to: move.toAgent ? move.walletId : "master",
+    token: move.token,
+    amount,
+  });
+
+/** Under the move form: what the source holds, and that a pull leaves open positions alone. */
+export const moveNote = (input: { toAgent: boolean; held: bigint | null; token: Token }): string =>
+  `${input.toAgent ? "MASTER HOLDS" : "IT HOLDS"} ${formatUnits(input.held, input.token)} ${input.token} · ONE TOKEN PER TRANSACTION${input.toAgent ? "" : " · OPEN POSITIONS STAY"}`;
+
+export const shortAddress = (address: string): string =>
+  `${address.slice(0, 6)}…${address.slice(-4)}`;
+
+/** The passkey sheet's words for a move (canvas "xfer"). */
+export function moveSheetCopy(input: {
+  amount: string;
+  token: Token;
+  toAgent: boolean;
+  agentName: string;
+  address: string;
+}): { title: string; body: string; done: string } {
+  const amount = `${input.amount.trim()} ${input.token}`;
+  const agent = shortAddress(input.address);
   return input.toAgent
-    ? `Send ${amount} ${input.token} to ${input.agentName}`
-    : `Pull ${amount} ${input.token} back`;
+    ? {
+        title: `Move ${amount} to ${input.agentName}?`,
+        body: `MASTER → ${agent} · ONE TRANSACTION`,
+        done: "Moved",
+      }
+    : {
+        title: `Move ${amount} back to master?`,
+        body: `${agent} → MASTER · ONE TRANSACTION`,
+        done: "Moved",
+      };
+}
+
+type AgentWallet = WalletsDto["agents"][number];
+
+/**
+ * An agent wallet's tag: CREATING while no agent has it, DRAFT once one does. The wallets list does
+ * not say whether an agent runs, so LIVE is not drawn yet.
+ */
+export const agentWalletTag = (agent: AgentWallet): "CREATING" | "DRAFT" =>
+  agent.agentId === null ? "CREATING" : "DRAFT";
+
+/** Its agent's name, else the name of the agent this screen is creating on it. */
+export function walletName(
+  agent: AgentWallet,
+  draft: { walletId: string; name: string } | null,
+): string {
+  if (agent.agentName) {
+    return agent.agentName;
+  }
+  const name = draft?.walletId === agent.walletId ? draft.name.trim() : "";
+  return name || "Your new agent";
 }
 
 export const patternCells = (index: number): boolean[] =>

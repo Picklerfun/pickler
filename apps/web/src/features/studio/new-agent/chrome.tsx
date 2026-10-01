@@ -9,12 +9,13 @@ import { RAIL } from "../sections/rail";
 import shell from "../studio.module.css";
 import home from "../home/home.module.css";
 import { AvatarGrid } from "./identity";
-import type { NewAgentForm } from "./model";
+import { formatUnits, type NewAgentForm } from "./model";
 import styles from "./new-agent.module.css";
 
 /**
  * The create screen's frame, as the empty home drew it: the top bar (the new agent's chip once it
- * has a name, TESTNET, the Menu below the rail's width, the account) and the studio rail with
+ * has a name, TESTNET, the master wallet's AUSD | MON, which opens "Your wallets", the Menu below
+ * the rail's width, the account) and the studio rail with
  * every section disabled until an agent exists. The screen itself is `children`; its sheets and
  * modals are `overlays`, outside the main area's flow.
  */
@@ -25,6 +26,8 @@ export function Chrome({
   canManage,
   researchLock,
   sectionNote,
+  master,
+  onWallets,
   children,
   overlays,
 }: {
@@ -35,6 +38,9 @@ export function Chrome({
   researchLock: string;
   /** Why the rail's sections are shut. */
   sectionNote: string;
+  /** The master wallet's balances in base units, once the wallets are read. */
+  master: { ausdMicro: bigint | null; monWei: bigint | null } | null;
+  onWallets(): void;
   children: ReactNode;
   overlays: ReactNode;
 }) {
@@ -66,6 +72,20 @@ export function Chrome({
         <span className={home.pill} data-tint="grey">
           TESTNET
         </span>
+        {master && (
+          <button type="button" className={styles.topPill} title="Your wallets" onClick={onWallets}>
+            <Image src="/brand/monad.png" alt="" width={16} height={16} />
+            <span>
+              {formatUnits(master.ausdMicro, "AUSD")}
+              <small> AUSD</small>
+            </span>
+            <i aria-hidden="true" />
+            <span>
+              {formatUnits(master.monWei, "MON")}
+              <small> MON</small>
+            </span>
+          </button>
+        )}
         <span className={home.emptyMenu}>
           <HomeMenu
             agent={null}
