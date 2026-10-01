@@ -22,6 +22,21 @@ import {
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
+function acquisitionPolicy(metadata: unknown): PerpsStudyRecord["dataPolicy"] {
+  const value =
+    metadata && typeof metadata === "object"
+      ? (metadata as { acquisition?: { policy?: unknown }; acquisitionPolicy?: unknown })
+      : {};
+  const policy = value.acquisition?.policy ?? value.acquisitionPolicy ?? "coherent-20s-v1";
+  if (
+    policy !== "coherent-20s-v1" &&
+    policy !== "rest-paced-20s-v1" &&
+    policy !== "stream-20s-v1"
+  ) {
+    throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
+  }
+  return policy;
+}
 function canonical(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonical).join(",")}]`;
@@ -220,7 +235,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         lastObservationAt: null,
         lastRoundSlot: -1,
         lastAttemptedSlot: -1,
-        dataPolicy: "coherent-20s-v1",
+        dataPolicy: acquisitionPolicy(metadata)!,
       };
       await c.query(
         "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -261,7 +276,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       lastRoundSlot: -1,
       lastAttemptedSlot: -1,
       lastObservationAt: null,
-      dataPolicy: "coherent-20s-v1",
+      dataPolicy: acquisitionPolicy(metadata)!,
     };
     await this.pool.query(
       "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
