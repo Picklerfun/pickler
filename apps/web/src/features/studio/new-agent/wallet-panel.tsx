@@ -27,6 +27,8 @@ export interface WalletPanelProps {
   outlined: boolean;
   form: NewAgentForm;
   checkedAt: string;
+  /** A wallet read is in flight: the refresh button spins. Only the reads, never a passkey wait. */
+  refreshing: boolean;
   arrivals: readonly { text: string; at: string }[];
   busy: boolean;
   preview: boolean;
@@ -50,6 +52,7 @@ export function WalletPanel({
   outlined,
   form,
   checkedAt,
+  refreshing,
   arrivals,
   busy,
   preview,
@@ -150,11 +153,11 @@ export function WalletPanel({
                 className={styles.iconButton}
                 aria-label="Refresh balance"
                 title="Refresh balance · if you sent AUSD from elsewhere"
-                aria-busy={busy}
+                aria-busy={refreshing}
                 disabled={busy || preview}
                 onClick={onRefresh}
               >
-                <Icon name="clock" size={14} />
+                <Icon name="refresh" size={14} />
               </button>
             </div>
             <div className={styles.tiles}>

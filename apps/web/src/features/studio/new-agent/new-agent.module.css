@@ -651,7 +651,7 @@
   cursor: default;
 }
 .iconButton[aria-busy="true"] svg {
-  animation: pkBlink 1s steps(1, end) infinite;
+  animation: pkSpin 0.8s linear infinite;
 }
 .tiles {
   display: grid;
@@ -886,6 +886,11 @@
     transform: translateY(0);
   }
 }
+@keyframes pkSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @keyframes pkFloat {
   0%,
   100% {
@@ -903,5 +908,9 @@
   .sheet,
   .sheetWait i {
     animation: none;
+  }
+  /* No spin: the refresh says it is reading by dimming instead. */
+  .iconButton[aria-busy="true"] svg {
+    opacity: 0.45;
   }
 }

@@ -493,6 +493,7 @@ export function NewAgent({
         outlined={walletOutlined(form, nameState, ready)}
         form={form}
         checkedAt={reads.checkedAt}
+        refreshing={reads.refreshing}
         arrivals={reads.arrivals}
         busy={busy || reads.refreshing}
         preview={preview}
