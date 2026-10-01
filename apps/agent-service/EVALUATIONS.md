@@ -87,3 +87,5 @@ The existing 29/30 acceptance threshold, timestamps, lease protocol and zero-pai
 unchanged. Report v2 preserves the original acquisition duration separately from control duration.
 
 Read [the transport diagnostic guide](PERPL-STREAM-ACQUISITION.md) before new public acceptance. The explicit data-diagnostic command freezes transport selection; stability requires that choice file. Historical reports remain readable and are not rerun.
+
+See [the 2026-10-01 public results](PERPL-STREAM-VALIDATION.md): both transports reached 10/10; the selected paced REST reader passed 30/30. This does not authorize a paid continuation.
