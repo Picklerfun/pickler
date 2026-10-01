@@ -77,6 +77,12 @@ those are read server-side, in the infrastructure adapter, from what `confirmPol
 `features/wallets` already recorded on the wallet's row, never from the caller). An agent is
 created with its wallet, or not at all.
 
+`features/studio/create.ts` owns one-screen creation: `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`,
+`MIN_START_MICRO_AUSD` and `MIN_START_MON_WEI`, `DEFAULT_BRIEF`, `prepareDraft` (the one path from
+the screen's input to the draft's config and profile), `fundingShortfall` and
+`WalletUnderfundedError`. `AgentConfig.voice` is a `VOICE_KEYS` key checked in `assertConfig`; it
+lives beside `brief`, not in it, because `normalizeBrief` rebuilds the brief from its five fields.
+
 `features/studio/draft.ts` owns the vocabulary of drafting an agent from one line: `VENUES_ON_MAP`
 and `BEATS` (each beat's accent and subcategory labels, with the runtime `SportId` a label maps to,
 or `null`), `SOON_VENUES`/`SOON_BEATS` for what is drawn but cannot run yet (Perpl; every beat but

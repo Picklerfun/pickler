@@ -63,6 +63,12 @@ export const STARTER_CAPS = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 } 
 export const MIN_START_MICRO_AUSD = 10_000_000n;
 export const MIN_START_MON_WEI = 500_000_000_000_000_000n;
 
+/**
+ * A draft's profile prose. The perps study writes "Dedicated perpetual simulation: <strategy>"
+ * (infrastructure `perps-study-store.ts`); core cannot import it, so the text is restated here.
+ */
+export const DRAFT_PROFILE = "Dedicated perpetual simulation: paper trades BTC and ETH on Perpl.";
+
 /** The working brief a new agent starts with: the canvas's Wire. */
 export const DEFAULT_BRIEF = {
   thesis:
@@ -143,6 +149,7 @@ export function prepareDraft(input: CreateDraftInput): {
   const web = input.sources.web;
   const config: AgentConfig = {
     ...structuredClone(DEFAULT_CONFIG),
+    profile: DRAFT_PROFILE,
     tools: [...PERP_TOOLS, ...(web ? (["searchWeb", "readPage"] as const) : [])],
     perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
     perpsPaper: { version: 1, policy: "conservative-1x-v1" },
@@ -194,9 +201,19 @@ export function fundingShortfall(balances: {
   };
 }
 
+/** A base-unit amount as a decimal string, trailing zeros dropped: (500000000000000000n, 18) is "0.5". */
+function formatUnits(value: bigint, decimals: number): string {
+  const base = 10n ** BigInt(decimals);
+  const fraction = (value % base).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction ? `${value / base}.${fraction}` : `${value / base}`;
+}
+
 /** 409: the agent's wallet does not hold the minimums to start. */
 export class WalletUnderfundedError extends PilotError {
   constructor(public readonly detail: FundingShortfall) {
-    super("WALLET_UNDERFUNDED", "Fund its wallet with at least 10 AUSD and 0.5 MON first");
+    super(
+      "WALLET_UNDERFUNDED",
+      `Fund its wallet with at least ${formatUnits(MIN_START_MICRO_AUSD, 6)} AUSD and ${formatUnits(MIN_START_MON_WEI, 18)} MON first`,
+    );
   }
 }

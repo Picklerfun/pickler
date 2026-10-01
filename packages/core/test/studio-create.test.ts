@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   AVATAR_PATTERNS,
   DEFAULT_BRIEF,
+  DRAFT_PROFILE,
   MIN_START_MICRO_AUSD,
   MIN_START_MON_WEI,
   STARTER_CAPS,
@@ -12,7 +13,12 @@ import {
   prepareDraft,
   type CreateDraftInput,
 } from "../src/features/studio/create.js";
-import { BriefError, PilotError, assertConfig } from "../src/features/research/types.js";
+import {
+  BriefError,
+  PilotError,
+  VOICE_KEYS,
+  assertConfig,
+} from "../src/features/research/types.js";
 
 const input = (patch: Partial<CreateDraftInput> = {}): CreateDraftInput => ({
   name: "Halftime",
@@ -30,6 +36,13 @@ test("there are six voices, keyed and named as the canvas names them", () => {
   assert.deepEqual(
     VOICES.map((voice) => voice.name),
     ["Analyst", "Contrarian", "Trash talker", "Deadpan", "Hype", "Professor"],
+  );
+});
+
+test("the voices carry the keys assertConfig accepts, in order", () => {
+  assert.deepEqual(
+    VOICES.map((voice) => voice.key),
+    [...VOICE_KEYS],
   );
 });
 
@@ -87,14 +100,23 @@ test("an unknown voice is refused", () => {
   );
 });
 
+const invalid = (error: unknown) =>
+  error instanceof PilotError && !(error instanceof BriefError) && error.code === "INVALID_INPUT";
+
 test("a pattern outside 0 to 5 is refused", () => {
-  assert.throws(() => prepareDraft(input({ avatar: { accent: "lime", pattern: 6 } })), PilotError);
+  assert.throws(() => prepareDraft(input({ avatar: { accent: "lime", pattern: 6 } })), invalid);
+});
+
+test("a pattern of 1.5 or -1 is refused", () => {
+  for (const pattern of [1.5, -1]) {
+    assert.throws(() => prepareDraft(input({ avatar: { accent: "lime", pattern } })), invalid);
+  }
 });
 
 test("an unknown accent is refused", () => {
   assert.throws(
     () => prepareDraft(input({ avatar: { accent: "teal" as never, pattern: 0 } })),
-    PilotError,
+    invalid,
   );
 });
 
@@ -108,22 +130,23 @@ test("a brief with no entry rule is refused naming the section", () => {
 test("a day's cap below a trade's is refused", () => {
   assert.throws(
     () => prepareDraft(input({ caps: { perTradeAusd: 10, perDayAusd: 5, maxLeverage: 1 } })),
-    PilotError,
+    invalid,
   );
 });
 
 test("leverage above 10 is refused", () => {
-  assert.throws(
-    () => prepareDraft(input({ caps: { ...STARTER_CAPS, maxLeverage: 11 } })),
-    PilotError,
-  );
+  assert.throws(() => prepareDraft(input({ caps: { ...STARTER_CAPS, maxLeverage: 11 } })), invalid);
 });
 
 test("'only' with no sites is refused", () => {
   assert.throws(
     () => prepareDraft(input({ sources: { web: { mode: "only", sites: [] } } })),
-    PilotError,
+    invalid,
   );
+});
+
+test("a draft's profile is the Perpl one, not the prediction-market default", () => {
+  assert.equal(prepareDraft(input()).config.profile, DRAFT_PROFILE);
 });
 
 test("enough of both is no shortfall", () => {
@@ -151,4 +174,5 @@ test("WalletUnderfundedError carries the shortfall and the code", () => {
   const error = new WalletUnderfundedError(shortfall);
   assert.equal(error.code, "WALLET_UNDERFUNDED");
   assert.deepEqual(error.detail, shortfall);
+  assert.equal(error.message, "Fund its wallet with at least 10 AUSD and 0.5 MON first");
 });
