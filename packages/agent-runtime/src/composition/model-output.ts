@@ -11,7 +11,7 @@ export function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 const fields = new Set(
-  "marketId reason action outcomeId thesis counterEvidence uncertainty sourceIds probability lower estimate upper uncertaintyLevel missingInformation observedPrice limitPrice expiresAt abstentionReason report protocol forecast inabilityReason sections section status explanation".split(
+  "marketId reason action outcomeId thesis counterEvidence uncertainty sourceIds probability lower estimate upper uncertaintyLevel missingInformation observedPrice limitPrice expiresAt abstentionReason report protocol forecast inabilityReason sections section status explanation brief entries rule fired why exitArmed neverChecked respected".split(
     " ",
   ),
 );

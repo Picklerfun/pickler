@@ -1,0 +1,16 @@
+{
+  "--pk-ink-placeholder": "--pk-ink-faint",
+  "--pk-surface": "--pk-panel",
+  "--pk-surface-strong": "--pk-panel-2",
+  "--pk-field": "--pk-panel",
+  "--pk-field-autofill": "--pk-panel",
+  "--pk-border": "--pk-rule-strong",
+  "--pk-cyan": "--pk-blue",
+  "--pk-cyan-ink": "--pk-state-cool-ink",
+  "--pk-pink-ink": "--pk-magenta-ink",
+  "--pk-lime-tint": "--pk-state-good-bg",
+  "--pk-magenta-tint": "--pk-state-loss-bg",
+  "--pk-amber-tint": "--pk-state-caution-bg",
+  "--pk-cyan-tint": "--pk-state-cool-bg",
+  "--pk-violet-tint": "--pk-state-info-bg"
+}

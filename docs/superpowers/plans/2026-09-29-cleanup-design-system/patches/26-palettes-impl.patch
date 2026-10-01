@@ -1,0 +1,408 @@
+diff --git a/apps/web/src/app/layout.tsx b/apps/web/src/app/layout.tsx
+index ca6a2da..fec0722 100644
+--- a/apps/web/src/app/layout.tsx
++++ b/apps/web/src/app/layout.tsx
+@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
+ import { Archivo, Instrument_Sans } from "next/font/google";
+ import { headers } from "next/headers";
+ import type { ReactNode } from "react";
++import { TOKEN_MIRROR } from "@pickler/ui/tokens";
+ import "@pickler/ui/styles.css";
+ import "./globals.css";
+ import { ProductProvider } from "@/features/site/studio-href";
+@@ -31,7 +32,7 @@ export const metadata: Metadata = {
+ };
+ 
+ export const viewport: Viewport = {
+-  themeColor: "#FFFFFF",
++  themeColor: TOKEN_MIRROR.light["--pk-bg"],
+   colorScheme: "light",
+ };
+ 
+diff --git a/apps/web/src/features/apply/components/application-form.tsx b/apps/web/src/features/apply/components/application-form.tsx
+index c5c691b..016e219 100644
+--- a/apps/web/src/features/apply/components/application-form.tsx
++++ b/apps/web/src/features/apply/components/application-form.tsx
+@@ -9,7 +9,7 @@ import {
+   type TickerAvailabilityResponse,
+ } from "@pickler/api-schema";
+ import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
+-import { colorVars } from "@/lib/accent";
++import { swatchVars, type Swatch } from "@/lib/accent";
+ import { Button, Input, Textarea } from "@pickler/ui";
+ import styles from "../apply.module.css";
+ import {
+@@ -22,7 +22,6 @@ import {
+   sanitizeTickerInput,
+   suggestTicker,
+   SWATCHES,
+-  type Swatch,
+ } from "../lib/options";
+ 
+ type TickerStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "unknown";
+@@ -164,11 +163,7 @@ export function ApplicationForm({
+       <div className={styles.columns}>
+         <form className={styles.formColumn} onSubmit={onSubmit} noValidate>
+           <div className={styles.inviteBar}>
+-            <span
+-              className={styles.pixel}
+-              style={colorVars(SWATCHES.cyan.color, SWATCHES.cyan.rgb)}
+-              aria-hidden="true"
+-            />
++            <span className={styles.pixel} style={swatchVars(SWATCHES.cyan)} aria-hidden="true" />
+             <span className={styles.monoLabel}>INVITE GOES TO</span>
+             <span className={styles.inviteEmail}>{email}</span>
+             <span className={styles.inviteSource}>FROM YOUR SIGN-UP</span>
+@@ -482,7 +477,7 @@ function Card({
+     >
+       <legend className={styles.srOnly}>{label}</legend>
+       <div id={labelId} className={styles.cardLabel} aria-hidden="true">
+-        <span className={styles.pixel} style={colorVars(swatch.color, swatch.rgb)} />
++        <span className={styles.pixel} style={swatchVars(swatch)} />
+         {label}
+       </div>
+       {children(labelId)}
+@@ -498,7 +493,7 @@ function ChoiceGroup({
+   onChange,
+ }: {
+   labelId: string;
+-  options: readonly ({ name: string } & Swatch)[];
++  options: readonly { name: string; swatch: Swatch }[];
+   value: string;
+   onChange: (name: string) => void;
+ }) {
+@@ -511,7 +506,7 @@ function ChoiceGroup({
+           role="radio"
+           aria-checked={option.name === value}
+           className={styles.chip}
+-          style={colorVars(option.color, option.rgb)}
++          style={swatchVars(option.swatch)}
+           onClick={() => onChange(option.name)}
+         >
+           <span className={styles.pixel} aria-hidden="true" />
+@@ -585,11 +580,7 @@ function YourPiece({
+       </div>
+       <ul className={styles.well}>
+         {all.map((block) => (
+-          <li
+-            key={block.id}
+-            className={styles.block}
+-            style={colorVars(block.swatch.color, block.swatch.rgb)}
+-          >
++          <li key={block.id} className={styles.block} style={swatchVars(block.swatch)}>
+             <span className={styles.blockCells} aria-hidden="true">
+               <span className={styles.pixel} />
+               <span className={styles.pixel} />
+diff --git a/apps/web/src/features/apply/components/submitted.tsx b/apps/web/src/features/apply/components/submitted.tsx
+index f7d6733..641cd52 100644
+--- a/apps/web/src/features/apply/components/submitted.tsx
++++ b/apps/web/src/features/apply/components/submitted.tsx
+@@ -3,7 +3,7 @@
+ import type { ApplicantResponse, ApplicationDto } from "@pickler/api-schema";
+ import { Button, ButtonLink } from "@pickler/ui";
+ import { useEffect, useState, useSyncExternalStore } from "react";
+-import { colorVars } from "@/lib/accent";
++import { swatchVars } from "@/lib/accent";
+ import styles from "../apply.module.css";
+ import { BATCH, categorySwatch, personalitySwatch, SWATCHES } from "../lib/options";
+ 
+@@ -117,11 +117,7 @@ export function Submitted({
+           <dl className={styles.heldList}>
+             {held.map((row) => (
+               <div key={row.label} className={styles.heldRow}>
+-                <span
+-                  className={styles.pixel}
+-                  style={colorVars(row.swatch.color, row.swatch.rgb)}
+-                  aria-hidden="true"
+-                />
++                <span className={styles.pixel} style={swatchVars(row.swatch)} aria-hidden="true" />
+                 <span className={styles.heldText}>
+                   <dt>{row.label}</dt>
+                   <dd>{row.value}</dd>
+diff --git a/apps/web/src/features/apply/lib/options.ts b/apps/web/src/features/apply/lib/options.ts
+index a02e873..adaf0b4 100644
+--- a/apps/web/src/features/apply/lib/options.ts
++++ b/apps/web/src/features/apply/lib/options.ts
+@@ -4,63 +4,71 @@ import {
+   type CategoryDto,
+   type PersonalityDto,
+ } from "@pickler/api-schema";
++import type { Swatch } from "@/lib/accent";
+ 
+-export interface Swatch {
+-  color: string;
+-  rgb: string;
+-}
+-
+-const lime = { color: "#C8F03A", rgb: "200,240,58" };
+-const cyan = { color: "#5AD8FF", rgb: "90,216,255" };
+-const amber = { color: "#FFC93F", rgb: "255,201,63" };
+-const orange = { color: "#FF7A3D", rgb: "255,122,61" };
+-const magenta = { color: "#FF5FA2", rgb: "255,95,162" };
+-const violet = { color: "#9B7BFF", rgb: "155,123,255" };
+-const blue = { color: "#5B8CFF", rgb: "91,140,255" };
+-const white = { color: "#F5F6FF", rgb: "245,246,255" };
+-const slate = { color: "#A9B0D0", rgb: "169,176,208" };
+-
+-export const SWATCHES = { lime, cyan, amber, orange, magenta, violet, blue, white, slate };
++/* What each answer is painted with. A name from the palette, never a colour: `swatchVars` in
++   lib/accent.ts turns the name into the token. `cyan` is the palette's indigo, as it is for an
++   agent's accent; `white` and `slate` are the two inks. */
++export const SWATCHES = {
++  lime: "lime",
++  cyan: "indigo",
++  amber: "amber",
++  orange: "orange",
++  magenta: "magenta",
++  violet: "violet",
++  blue: "blue",
++  white: "ink",
++  slate: "muted",
++} as const satisfies Record<string, Swatch>;
+ 
+ const categorySwatches: Record<CategoryDto, Swatch> = {
+-  Politics: violet,
+-  Sports: lime,
+-  Crypto: cyan,
+-  Economics: amber,
+-  Culture: orange,
+-  "Tech & Science": blue,
+-  World: magenta,
+-  Elections: violet,
++  Politics: SWATCHES.violet,
++  Sports: SWATCHES.lime,
++  Crypto: SWATCHES.cyan,
++  Economics: SWATCHES.amber,
++  Culture: SWATCHES.orange,
++  "Tech & Science": SWATCHES.blue,
++  World: SWATCHES.magenta,
++  Elections: SWATCHES.violet,
+ };
+ 
+-const personalities: Record<PersonalityDto, Swatch & { sample: string }> = {
++const personalities: Record<PersonalityDto, { swatch: Swatch; sample: string }> = {
+   Analyst: {
+-    ...cyan,
++    swatch: SWATCHES.cyan,
+     sample: "Analyst: “Took Lakers −4.5 at 0.58. Model says 0.64. Small edge, sized small.”",
+   },
+   Contrarian: {
+-    ...orange,
++    swatch: SWATCHES.orange,
+     sample: "Contrarian: “Everyone is on the favourite. That is the whole reason I am not.”",
+   },
+   "Trash talker": {
+-    ...magenta,
++    swatch: SWATCHES.magenta,
+     sample: "Trash talker: “Books have not seen the injury report. I have. Lakers −4.5, easy.”",
+   },
+-  Deadpan: { ...slate, sample: "Deadpan: “Lakers −4.5 at 0.58. 12 MON. That is the post.”" },
+-  Hype: { ...lime, sample: "Hype: “WE ARE ON. Lakers −4.5. Full cap. Let it ride.”" },
++  Deadpan: {
++    swatch: SWATCHES.slate,
++    sample: "Deadpan: “Lakers −4.5 at 0.58. 12 MON. That is the post.”",
++  },
++  Hype: {
++    swatch: SWATCHES.lime,
++    sample: "Hype: “WE ARE ON. Lakers −4.5. Full cap. Let it ride.”",
++  },
+   Professor: {
+-    ...amber,
++    swatch: SWATCHES.amber,
+     sample: "Professor: “Pace differential and rest days both favour LA. Taking −4.5 at 0.58.”",
+   },
+ };
+ 
+-export const CATEGORIES = CATEGORY_OPTIONS.map((name) => ({ name, ...categorySwatches[name] }));
++export const CATEGORIES = CATEGORY_OPTIONS.map((name) => ({
++  name,
++  swatch: categorySwatches[name],
++}));
+ export const PERSONALITIES = PERSONALITY_OPTIONS.map((name) => ({ name, ...personalities[name] }));
+ 
+ export const categorySwatch = (name: string): Swatch =>
+-  categorySwatches[name as CategoryDto] ?? violet;
++  categorySwatches[name as CategoryDto] ?? SWATCHES.violet;
+ export const personalitySwatch = (name: string): Swatch =>
+-  personalities[name as PersonalityDto] ?? orange;
++  personalities[name as PersonalityDto]?.swatch ?? SWATCHES.orange;
+ 
+ /** Invite cadence shown to applicants. Product copy, not computed. */
+ export const BATCH = { invitesPerBatch: 40, nextBatch: "FRI" } as const;
+diff --git a/apps/web/src/lib/accent.ts b/apps/web/src/lib/accent.ts
+index 88a707d..eb5761e 100644
+--- a/apps/web/src/lib/accent.ts
++++ b/apps/web/src/lib/accent.ts
+@@ -1,38 +1,14 @@
+ import type { AccentDto } from "@pickler/api-schema";
+ 
+ /**
+- * Each accent's fill, and the same fill as an `r,g,b` triple for the glows that need components
+- * rather than a colour.
++ * The one place a token is handed to CSS through an inline custom property.
+  *
+- * `color` is written down twice on purpose — here and as `--pk-agent-<hue>-fill` in
+- * packages/ui/src/styles.css — because `rgba()` cannot take a custom property as its first three
+- * arguments. `accentVars` therefore paints from the token and only the triple comes from here, so
+- * a value that drifts apart shows up as a glow that no longer matches its own fill.
+- *
+- * `cyan` is what drift looked like. It held #5AD8FF, which is in no token in the palette at all,
+- * while its ground and its ink already took `indigo` below — so a cyan agent painted a cyan
+- * tetromino with an indigo tint behind it, and the sign-up board was the screen that showed it.
+- * It now holds indigo's, which is the colour the palette says this accent is.
++ * Which agent a screen shows is data, so its colour cannot be a class written ahead of time: the
++ * element gets `--accent` (the fill), `--accent-bg` and `--accent-ink` (the tint and the ink
++ * legible on it), each pointing at a palette token in packages/ui/src/styles.css. No colour value
++ * lives here. The static design check (scripts/design/source.mjs) lets this module do that and no
++ * other.
+  */
+-export const ACCENT_COLORS: Record<AccentDto, { color: string; rgb: string }> = {
+-  lime: { color: "#C8F03A", rgb: "200,240,58" },
+-  cyan: { color: "#5B3CE0", rgb: "91,60,224" },
+-  amber: { color: "#FFC93F", rgb: "255,201,63" },
+-  orange: { color: "#FF7A3D", rgb: "255,122,61" },
+-  magenta: { color: "#FF5FA2", rgb: "255,95,162" },
+-  violet: { color: "#9B7BFF", rgb: "155,123,255" },
+-  blue: { color: "#5B8CFF", rgb: "91,140,255" },
+-};
+-
+-export const ACCENT_ORDER: AccentDto[] = [
+-  "lime",
+-  "cyan",
+-  "amber",
+-  "orange",
+-  "magenta",
+-  "blue",
+-  "violet",
+-];
+ 
+ /**
+  * Which palette pair each accent takes.
+@@ -57,21 +33,33 @@ const ACCENT_PALETTE: Record<AccentDto, string> = {
+ };
+ 
+ export function accentVars(accent: AccentDto): React.CSSProperties {
+-  const { rgb } = ACCENT_COLORS[accent];
+   const hue = ACCENT_PALETTE[accent];
+   return {
+-    // The token, not the hex beside it: the fill a screen paints has to be a colour the palette
+-    // holds, or the design checks read it off the page as a literal someone typed — which is how
+-    // `cyan` was found. The triple below is the same colour, and only exists because `rgba()`
+-    // cannot be handed a custom property.
+     "--accent": `var(--pk-agent-${hue}-fill)`,
+-    "--accent-rgb": rgb,
+     "--accent-bg": `var(--pk-agent-${hue}-bg)`,
+     "--accent-ink": `var(--pk-agent-${hue}-ink)`,
+   } as React.CSSProperties;
+ }
+ 
+-/** Same custom properties for colors outside the accent palette. */
+-export function colorVars(color: string, rgb: string): React.CSSProperties {
+-  return { "--accent": color, "--accent-rgb": rgb } as React.CSSProperties;
++/**
++ * A fill for something that is not an agent: the application form's pixels. The seven palette
++ * hues, and the two inks for an answer that has no hue of its own.
++ */
++export type Swatch =
++  "lime" | "indigo" | "amber" | "orange" | "magenta" | "violet" | "blue" | "ink" | "muted";
++
++const SWATCH_FILL: Record<Swatch, string> = {
++  lime: "--pk-agent-lime-fill",
++  indigo: "--pk-agent-indigo-fill",
++  amber: "--pk-agent-amber-fill",
++  orange: "--pk-agent-orange-fill",
++  magenta: "--pk-agent-magenta-fill",
++  violet: "--pk-agent-violet-fill",
++  blue: "--pk-agent-blue-fill",
++  ink: "--pk-ink",
++  muted: "--pk-ink-muted",
++};
++
++export function swatchVars(swatch: Swatch): React.CSSProperties {
++  return { "--accent": `var(${SWATCH_FILL[swatch]})` } as React.CSSProperties;
+ }
+diff --git a/packages/ui/package.json b/packages/ui/package.json
+index 0e410d0..2538580 100644
+--- a/packages/ui/package.json
++++ b/packages/ui/package.json
+@@ -5,7 +5,8 @@
+   "type": "module",
+   "exports": {
+     ".": "./src/index.ts",
+-    "./styles.css": "./src/styles.css"
++    "./styles.css": "./src/styles.css",
++    "./tokens": "./src/tokens.ts"
+   },
+   "scripts": {
+     "typecheck": "tsc --noEmit"
+diff --git a/packages/ui/src/chart.tsx b/packages/ui/src/chart.tsx
+index 67b9ded..f8436d2 100644
+--- a/packages/ui/src/chart.tsx
++++ b/packages/ui/src/chart.tsx
+@@ -11,6 +11,7 @@ import {
+   type UTCTimestamp,
+ } from "lightweight-charts";
+ import { useEffect, useRef } from "react";
++import { TOKEN_MIRROR } from "./tokens";
+ 
+ /**
+  * Market data drawn with lightweight-charts, wearing the product's palette. Features pass values;
+@@ -41,13 +42,16 @@ const seconds = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp;
+ 
+ const readTheme = (element: HTMLElement) => {
+   const style = getComputedStyle(element);
+-  const value = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
++  // The fallback is the light surface's own value, from the mirror: what a chart draws with if
++  // it mounts before the stylesheet has applied.
++  const colour = (name: keyof typeof TOKEN_MIRROR.light) =>
++    style.getPropertyValue(name).trim() || TOKEN_MIRROR.light[name];
+   return {
+-    ink: value("--pk-ink-faint", "#6b7186"),
+-    grid: value("--pk-rule-strong", "rgba(11, 13, 26, 0.12)"),
+-    up: value("--pk-win", "#2e7d32"),
+-    down: value("--pk-loss", "#c62c62"),
+-    font: value("--pk-font", "sans-serif"),
++    ink: colour("--pk-ink-faint"),
++    grid: colour("--pk-rule-strong"),
++    up: colour("--pk-win"),
++    down: colour("--pk-loss"),
++    font: style.getPropertyValue("--pk-font").trim() || "sans-serif",
+   };
+ };
+ 
+diff --git a/packages/ui/src/index.ts b/packages/ui/src/index.ts
+index 3dfff9b..e924a17 100644
+--- a/packages/ui/src/index.ts
++++ b/packages/ui/src/index.ts
+@@ -6,3 +6,4 @@ export { Field, Input, Textarea, type FieldTone } from "./field";
+ export { Icon, ICON_NAMES, type IconName } from "./icon";
+ export { Meter, type MeterTone } from "./meter";
+ export { Segmented, type SegmentedOption } from "./segmented";
++export { TOKEN_MIRROR } from "./tokens";
+diff --git a/packages/ui/src/tokens.ts b/packages/ui/src/tokens.ts
+new file mode 100644
+index 0000000..22fce52
+--- /dev/null
++++ b/packages/ui/src/tokens.ts
+@@ -0,0 +1,21 @@
++/**
++ * The few token values code has to hold as values, because it cannot read a stylesheet.
++ *
++ * Next's `viewport.themeColor` is written into the document head on the server, and a chart needs
++ * something to draw with if it mounts before the stylesheet has applied. Everything else reads
++ * `var(--pk-*)` and never comes here.
++ *
++ * Each value is written down twice on purpose: here and in `styles.css`.
++ * `scripts/design/mirror.test.mjs` reads both and fails when they differ, so a colour changed in
++ * the token file and forgotten here cannot ship. Keyed by the token's own name so that test needs
++ * no table of its own.
++ */
++export const TOKEN_MIRROR = {
++  light: {
++    "--pk-bg": "#ffffff",
++    "--pk-ink-faint": "#5a5f78",
++    "--pk-rule-strong": "rgba(11, 13, 26, 0.12)",
++    "--pk-win": "#2b732e",
++    "--pk-loss": "#bb2a5d",
++  },
++} as const;

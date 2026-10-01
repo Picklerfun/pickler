@@ -1,0 +1,25 @@
+diff --git a/scripts/design/routes.mjs b/scripts/design/routes.mjs
+index ec584dc..fd7a356 100644
+--- a/scripts/design/routes.mjs
++++ b/scripts/design/routes.mjs
+@@ -33,7 +33,9 @@
+ // on two. render.mjs refuses a route that has no `product` rather than falling back, for the same
+ // reason it refuses a route with no floor: the fallback would be a number about the wrong server,
+ // and a number about the wrong server is indistinguishable from a number about the right one.
+-export const ROUTES = [
++import { only } from "./lib/only.mjs";
++
++const ALL = [
+   {
+     path: "/",
+     name: "landing",
+@@ -612,6 +614,9 @@ export const ROUTES = [
+   },
+ ];
+ 
++/** Every route, or the ones DESIGN_ROUTES names (lib/only.mjs). */
++export const ROUTES = only(ALL, process.env.DESIGN_ROUTES);
++
+ export const GROUND = { light: "rgb(255, 255, 255)", dark: "rgb(11, 13, 26)" };
+ 
+ /* Which source a screen is built from, so a check can say when its failures may be someone's

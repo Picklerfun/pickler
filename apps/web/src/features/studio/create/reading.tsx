@@ -5,7 +5,7 @@ import { rowTint } from "./stack";
 import styles from "./create.module.css";
 
 /** The canvas's rhythm: one field every 620 ms, then a beat before the review. */
-export const REVEAL_MS = 620;
+const REVEAL_MS = 620;
 const SETTLE_MS = 700;
 
 /**

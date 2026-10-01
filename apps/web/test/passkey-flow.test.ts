@@ -6,6 +6,7 @@ import {
   enrolmentOutcome,
   readSubOrganization,
   redirectFor,
+  SIGNUP_HANDLE_STEP,
   SIGNUP_PASSKEY_STEP,
 } from "../src/features/auth/lib/custody";
 import { ApiError } from "../src/features/auth/lib/pickler-api";
@@ -61,24 +62,31 @@ test("readSubOrganization propagates any other failure rather than calling it mi
   );
 });
 
-/* The redirect every signed-in custody screen asks — the studio shell, the create screen and
-   /account — composed with the read it follows, so a 404 and an error are told apart end to end. */
 /* The redirect every signed-in screen asks — the studio shell, the create screen, /account and
    /passkey — composed with the read it follows, so a 404 and an error are told apart end to end. */
-test("redirectFor sends a person with no sub-organization to the signup's passkey step", async () => {
+test("redirectFor sends a person with no sub-organization to the passkey step, whatever the profile", async () => {
   const missing = await readSubOrganization(async () => {
     throw new ApiError(404, "No wallet", "NOT_FOUND", undefined);
   });
-  assert.equal(redirectFor(missing), "/signup?step=passkey");
-  assert.equal(redirectFor(missing), SIGNUP_PASSKEY_STEP);
-
-  const present = await readSubOrganization(async () => ({ address: "0xabc" }));
-  assert.equal(redirectFor(present), null);
+  for (const profile of [null, undefined, { handle: "nightowl" }]) {
+    assert.equal(redirectFor({ wallet: missing, profile }), "/signup?step=passkey");
+    assert.equal(redirectFor({ wallet: missing, profile }), SIGNUP_PASSKEY_STEP);
+  }
 });
 
-test("the redirect's target is the signup, which resumes any session it is opened with", () => {
-  const target = new URL(SIGNUP_PASSKEY_STEP, "https://pickler.test");
-  assert.equal(target.pathname, "/signup");
+test("redirectFor sends a wallet without a profile to the handle step, and a complete account nowhere", async () => {
+  const present = await readSubOrganization(async () => ({ address: "0xabc" }));
+  assert.equal(redirectFor({ wallet: present, profile: null }), "/signup?step=handle");
+  assert.equal(redirectFor({ wallet: present, profile: null }), SIGNUP_HANDLE_STEP);
+  assert.equal(redirectFor({ wallet: present, profile: { handle: "nightowl" } }), null);
+  // A profile read that failed some other way is undefined, not null: it decides nothing.
+  assert.equal(redirectFor({ wallet: present, profile: undefined }), null);
+});
+
+test("both redirect targets are the signup, which resumes any session it is opened with", () => {
+  for (const step of [SIGNUP_PASSKEY_STEP, SIGNUP_HANDLE_STEP]) {
+    assert.equal(new URL(step, "https://pickler.test").pathname, "/signup");
+  }
 });
 
 test("a failed create advances once the sub-organization exists, and otherwise offers a retry", () => {
@@ -109,4 +117,23 @@ test("the signup draws the passkey step; /passkey only adds a device", () => {
 
   const page = read("../src/app/(auth)/passkey/page.tsx");
   assert.ok(page.includes('mode="add"'), "/passkey must open PasskeyAddFlow");
+});
+
+test("the studio and the create screen gate on the wallet before the profile, and never on ?complete=1", () => {
+  for (const file of [
+    "../src/features/studio/studio.tsx",
+    "../src/features/studio/create/create.tsx",
+  ]) {
+    const source = read(file);
+    assert.ok(
+      !source.includes("complete=1"),
+      `${file} still sends a missing profile to ?complete=1`,
+    );
+    // `ensureProfile` can write a profile from sign-up metadata, so it must not run before the
+    // wallet exists: signup saves the handle only after the passkey.
+    const wallet = source.indexOf("readSubOrganization(");
+    const profile = source.indexOf("ensureProfile(supabase)");
+    assert.ok(wallet > 0 && profile > wallet, `${file} reads the profile before the wallet`);
+    assert.ok(source.includes("wallet === null ? null : await ensureProfile"), file);
+  }
 });

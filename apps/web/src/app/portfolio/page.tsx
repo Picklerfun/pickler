@@ -38,8 +38,8 @@ export default async function Portfolio({
   return (
     <PublicShell>
       <PortfolioPage
-        agents={agents}
-        reads={reads}
+        agents={agents.data}
+        reads={reads.data}
         openTab={openTab}
         preview={preview}
         needsHandle={preview}

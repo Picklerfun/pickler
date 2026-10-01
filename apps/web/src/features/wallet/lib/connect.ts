@@ -1,4 +1,4 @@
-/** Anything that can sign a string for an address — MetaMask, Mera, WalletConnect. */
+/** Anything that can sign a string for an address — MetaMask, WalletConnect. */
 export interface Signer {
   address: string;
   chainId: number;

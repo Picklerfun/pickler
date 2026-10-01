@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Do not wire a `createSupabase*` data adapter back in here; in a",
+    "replace": "No Supabase data adapter exists any more, and none is to be written for this Worker; in a"
+  }
+]

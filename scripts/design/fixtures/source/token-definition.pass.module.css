@@ -1,0 +1,6 @@
+.rail {
+  --width: 218px;
+  --delay: calc(var(--i) * 40ms);
+  width: var(--width);
+  transition-delay: var(--delay);
+}

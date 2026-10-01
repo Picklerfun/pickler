@@ -207,7 +207,7 @@ test("registering creates the sub-organization and returns the account", async (
   const options = await s.issueChallenge(USER, ANA);
 
   const account = await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID on This Mac",
     challenge: options.challenge,
     attestation,
@@ -223,7 +223,7 @@ test("a replay returns the existing account and never mints a second sub-organiz
   const s = service(f);
   const first = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: first.challenge,
     attestation,
@@ -231,7 +231,7 @@ test("a replay returns the existing account and never mints a second sub-organiz
 
   const second = await s.issueChallenge(USER, ANA);
   const account = await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: second.challenge,
     attestation,
@@ -246,7 +246,7 @@ test("a challenge cannot be spent twice", async () => {
   const s = service(f);
   const options = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -256,7 +256,7 @@ test("a challenge cannot be spent twice", async () => {
   await assert.rejects(
     () =>
       s.register(USER, {
-        identity: ANA,
+        ownerLabel: ANA.name,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -273,7 +273,7 @@ test("a challenge belonging to someone else is refused", async () => {
   await assert.rejects(
     () =>
       s.register("22222222-2222-4222-8222-222222222222", {
-        identity: OTRA,
+        ownerLabel: OTRA.name,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -298,7 +298,7 @@ test("a challenge that outlived its TTL is refused", async () => {
   await assert.rejects(
     () =>
       s.register(USER, {
-        identity: ANA,
+        ownerLabel: ANA.name,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -331,7 +331,7 @@ test("the loser of a concurrent submit gets the winner's account, not a 500", as
   };
 
   const account = await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -352,7 +352,7 @@ test("a conflict with no readable winner fails loudly rather than returning noth
   await assert.rejects(
     () =>
       s.register(USER, {
-        identity: ANA,
+        ownerLabel: ANA.name,
         label: "Touch ID",
         challenge: options.challenge,
         attestation,
@@ -373,7 +373,7 @@ async function lostRace(reportOrphan: CustodyServiceDeps["reportOrphan"], winner
     return lookups === 1 ? null : (winner as CustodyAccount | null);
   };
   return s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -426,7 +426,7 @@ test("a registration that does not conflict reports no orphan", async () => {
   const options = await s.issueChallenge(USER, ANA);
 
   await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: options.challenge,
     attestation,
@@ -449,7 +449,7 @@ async function registered(f: ReturnType<typeof fakes>) {
   const s = service(f);
   const first = await s.issueChallenge(USER, ANA);
   await s.register(USER, {
-    identity: ANA,
+    ownerLabel: ANA.name,
     label: "Touch ID",
     challenge: first.challenge,
     attestation,

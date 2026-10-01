@@ -1,0 +1,22 @@
+[
+  {
+    "find": ".point {\n  --accent: var(--pk-lime);\n\n  display: flex;",
+    "replace": ".point {\n  display: flex;"
+  },
+  {
+    "find": "  border-left: 2px solid var(--accent);\n",
+    "replace": "  border-left: 2px solid var(--pk-lime);\n"
+  },
+  {
+    "find": ".point[data-accent=\"violet\"] {\n  --accent: var(--pk-violet);\n}\n\n.point[data-accent=\"amber\"] {\n  --accent: var(--pk-amber);\n}\n",
+    "replace": ".point[data-accent=\"violet\"] {\n  border-left-color: var(--pk-violet);\n}\n\n.point[data-accent=\"amber\"] {\n  border-left-color: var(--pk-amber);\n}\n"
+  },
+  {
+    "find": ".pointTag {\n  flex: none;\n  font: 500 10px/1 var(--pk-font);\n  letter-spacing: 0.1em;\n  color: var(--accent);\n}\n",
+    "replace": ".pointTag {\n  flex: none;\n  font: 500 10px/1 var(--pk-font);\n  letter-spacing: 0.1em;\n  color: var(--pk-lime);\n}\n\n.point[data-accent=\"violet\"] .pointTag {\n  color: var(--pk-violet);\n}\n\n.point[data-accent=\"amber\"] .pointTag {\n  color: var(--pk-amber);\n}\n\n.point[data-accent=\"muted\"] .pointTag {\n  color: var(--pk-ink-muted);\n}\n"
+  },
+  {
+    "find": ".point[data-accent=\"muted\"] {\n  --accent: var(--pk-ink-muted);\n}\n",
+    "replace": ".point[data-accent=\"muted\"] {\n  border-left-color: var(--pk-ink-muted);\n}\n"
+  }
+]

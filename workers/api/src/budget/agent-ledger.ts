@@ -1,6 +1,7 @@
 // One Durable Object per agent: the authority for budget spend and reservations.
 // Replaces Relayer's Redis hash `relayer:budget:<agentId>` + budget-check.lua (commit bb6bb1226e92).
-// Hydrates once, read-only, from budget.budgets and agents.agents.status. It does not write back
+// Hydrates once, read-only, from budget.budgets and agents.agents.status over the API's database
+// (the same binding the request path uses; never the Supabase Data API). It does not write back
 // to Postgres yet: budget.budgets and budget.ledger_entries become its write-behind projection.
 
 import {
@@ -13,11 +14,12 @@ import {
   type ReserveResult,
 } from "@pickler/core";
 import {
-  createSupabaseAdmin,
-  createSupabaseAgentRegistry,
-  createSupabaseBudgetSource,
+  PostgresAgentRegistry,
+  PostgresBudgetSource,
+  PostgresResearchStore,
 } from "@pickler/infrastructure";
 import { DurableObject } from "cloudflare:workers";
+import { apiDatabase } from "../database";
 import type { Env } from "../env";
 import { createSqlLedgerStore, migrateLedger } from "./sql-ledger-store";
 
@@ -47,14 +49,13 @@ export class AgentLedger extends DurableObject<Env> {
       return;
     }
     this.hydrating ??= (async () => {
-      const db = createSupabaseAdmin({
-        url: this.env.SUPABASE_URL,
-        secretKey: this.env.SUPABASE_SECRET_KEY,
-      });
+      const database = apiDatabase(this.env);
+      // A pool for this one read, closed after it: hydration happens once per object.
+      const store = new PostgresResearchStore(database.url, undefined, database.options);
       const [rows, agent] = await Promise.all([
-        createSupabaseBudgetSource(db).loadBudgets(agentId),
-        createSupabaseAgentRegistry(db).findById(agentId),
-      ]);
+        new PostgresBudgetSource(store.pool).loadBudgets(agentId),
+        new PostgresAgentRegistry(store.pool).findById(agentId),
+      ]).finally(() => store.close());
       if (!agent) {
         throw new Error("Agent not found for ledger hydration");
       }

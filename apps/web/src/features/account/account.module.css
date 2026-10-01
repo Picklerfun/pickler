@@ -345,7 +345,7 @@
 }
 
 .balanceUse[data-tint="blue"] {
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .balanceUse[data-tint="violet"] {

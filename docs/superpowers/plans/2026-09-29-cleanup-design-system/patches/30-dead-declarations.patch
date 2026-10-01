@@ -1,0 +1,428 @@
+diff --git a/apps/web/src/features/agents/components/agent-parts.tsx b/apps/web/src/features/agents/components/agent-parts.tsx
+index ceb8c7d..733be95 100644
+--- a/apps/web/src/features/agents/components/agent-parts.tsx
++++ b/apps/web/src/features/agents/components/agent-parts.tsx
+@@ -1,4 +1,4 @@
+-import type { AccentDto, AgentSummaryDto, VenueDto } from "@pickler/api-schema";
++import type { AccentDto, AgentSummaryDto } from "@pickler/api-schema";
+ import Image from "next/image";
+ import type { ReactNode } from "react";
+ import { accentVars } from "@/lib/accent";
+@@ -68,22 +68,6 @@ const venueMarks = (token: NonNullable<AgentSummaryDto["token"]>) =>
+         { src: "/brand/monad.png", label: "Monad", title: "Monad" },
+       ];
+ 
+-/** Where the token trades: our curve on Monad before graduation, Pons on Robinhood Chain after it. */
+-export function VenueMarks({ token }: { token: AgentSummaryDto["token"] }) {
+-  if (!token) {
+-    return null;
+-  }
+-  return (
+-    <span className={styles.marks}>
+-      {venueMarks(token).map((mark) => (
+-        <span key={mark.src} className={styles.mark} title={mark.title}>
+-          <Image src={mark.src} alt={mark.title} width={64} height={64} unoptimized />
+-        </span>
+-      ))}
+-    </span>
+-  );
+-}
+-
+ /** The same information as chips, one per venue, for the token page. */
+ export function VenueChips({ token }: { token: AgentSummaryDto["token"] }) {
+   if (!token) {
+@@ -103,16 +87,6 @@ export function VenueChips({ token }: { token: AgentSummaryDto["token"] }) {
+   );
+ }
+ 
+-const venueLabel: Record<VenueDto, string> = {
+-  predictions: "PREDICTION MARKETS",
+-  perps: "PERPL",
+-  both: "PREDICTIONS + PERPL",
+-};
+-
+-export function VenueChip({ venue }: { venue: VenueDto }) {
+-  return <ChipText className={`${styles.chip} ${styles.venueChip}`}>{venueLabel[venue]}</ChipText>;
+-}
+-
+ export function CurveProgress({
+   token,
+   className,
+diff --git a/apps/web/src/features/agents/lib/empty.ts b/apps/web/src/features/agents/lib/empty.ts
+index 5d1f639..9d37bc6 100644
+--- a/apps/web/src/features/agents/lib/empty.ts
++++ b/apps/web/src/features/agents/lib/empty.ts
+@@ -1,20 +1,14 @@
+ import type { LeaderboardDto } from "@pickler/api-schema";
+-import { hasToken } from "./token-profile";
+ 
+ /*
+  * The launch-day questions. Each public board draws a designed empty screen instead of a filter
+  * with nothing under it, and these are the decisions those screens are made from. They live here,
+- * apart from the components, so the root suite can test them the way it tests `hasToken`.
++ * apart from the components, so the root suite can test them.
+  */
+ 
+ /** The directory has nobody in it: the first agents are still being built. */
+ export const noAgents = (agents: readonly unknown[]): boolean => agents.length === 0;
+ 
+-/** The token board is the board of tokens, so an agent without one is not a row on it. */
+-export const agentsWithToken = <T extends { ticker: string | null; slug: string | null }>(
+-  agents: readonly T[],
+-): T[] => agents.filter(hasToken);
+-
+ /** A rank is earned by settlement. With no entry settled there is nothing to rank. */
+ export const nothingRanked = (board: Pick<LeaderboardDto, "entries">): boolean =>
+   board.entries.length === 0;
+diff --git a/apps/web/src/features/auth/lib/shapes.ts b/apps/web/src/features/auth/lib/shapes.ts
+index 5a139a3..51bf8dc 100644
+--- a/apps/web/src/features/auth/lib/shapes.ts
++++ b/apps/web/src/features/auth/lib/shapes.ts
+@@ -30,16 +30,6 @@ export const SHAPES = {
+ 
+ export type ShapeKey = keyof typeof SHAPES;
+ 
+-export const SHAPE_ACCENT: Record<ShapeKey, AccentDto> = {
+-  I: "cyan",
+-  O: "amber",
+-  T: "violet",
+-  S: "lime",
+-  Z: "magenta",
+-  J: "blue",
+-  L: "orange",
+-};
+-
+ const ACCENT_SHAPE: Record<AccentDto, ShapeKey> = {
+   cyan: "I",
+   amber: "O",
+diff --git a/apps/web/src/features/studio/api.ts b/apps/web/src/features/studio/api.ts
+index cdd7ae2..196b661 100644
+--- a/apps/web/src/features/studio/api.ts
++++ b/apps/web/src/features/studio/api.ts
+@@ -28,11 +28,6 @@ export type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
+ export type Run = ReturnType<typeof runResponseSchema.parse>;
+ export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
+ export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
+-export type Plugin = {
+-  id: NonNullable<Config["plugins"]>["enabled"][number];
+-  version: string;
+-  tools: Config["tools"];
+-};
+ export type Options = ReturnType<typeof studioOptionsSchema.parse>;
+ export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
+ export type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
+@@ -170,16 +165,6 @@ export const paperOrder = (runId: string, key: string) =>
+     headers: { "Idempotency-Key": key },
+   });
+ 
+-/**
+- * `PUT /agents/:id/config`: a new version, which turns the schedule off and asks for another
+- * manual run. It never writes `spend`; the interval has its own route below.
+- */
+-export const updateConfig = (agentId: string, expectedVersion: number, config: Config) =>
+-  studioApi<AgentRecord>(`/agents/${agentId}/config`, {
+-    method: "PUT",
+-    body: JSON.stringify({ expectedVersion, config }),
+-  });
+-
+ /**
+  * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the
+  * version, the schedule and readiness, so it can be tuned right before the schedule is turned on.
+diff --git a/apps/web/src/features/wallet/lib/connect.ts b/apps/web/src/features/wallet/lib/connect.ts
+index f6fe90f..d1552c0 100644
+--- a/apps/web/src/features/wallet/lib/connect.ts
++++ b/apps/web/src/features/wallet/lib/connect.ts
+@@ -1,4 +1,4 @@
+-/** Anything that can sign a string for an address — MetaMask, Mera, WalletConnect. */
++/** Anything that can sign a string for an address — MetaMask, WalletConnect. */
+ export interface Signer {
+   address: string;
+   chainId: number;
+diff --git a/apps/web/src/features/wallet/lib/sign-in-words.ts b/apps/web/src/features/wallet/lib/sign-in-words.ts
+index 7d4c863..bd14bfa 100644
+--- a/apps/web/src/features/wallet/lib/sign-in-words.ts
++++ b/apps/web/src/features/wallet/lib/sign-in-words.ts
+@@ -19,12 +19,8 @@ export function signInWords(caught: unknown): string | null {
+   if ((caught as { code?: unknown } | null)?.code === 4001) {
+     return null;
+   }
+-  // Mera's PRF failure arrives as a MeraError carrying `code: "PRF_UNAVAILABLE"`, and this is the
+-  // conversion: `describeSignerFailure` turns it into a PasskeyUnusableError whose message names a
+-  // cause the person did not create and says what to do instead. That message then falls through
+-  // to the bottom of this function unchanged. There is deliberately no branch for it here — an
+-  // earlier draft had one, and deleting it broke no test, because the fallthrough already does the
+-  // work. A branch nothing can distinguish is a branch that is not there.
++  // Whatever else was thrown becomes an Error, and its own message falls through to the bottom
++  // of this function unchanged.
+   const described = describeSignerFailure(caught);
+   if (caught instanceof ConnectError) {
+     switch (caught.code) {
+diff --git a/apps/web/src/features/wallet/lib/signer-adapters.ts b/apps/web/src/features/wallet/lib/signer-adapters.ts
+index 9a9b5b2..e8318d0 100644
+--- a/apps/web/src/features/wallet/lib/signer-adapters.ts
++++ b/apps/web/src/features/wallet/lib/signer-adapters.ts
+@@ -2,83 +2,19 @@ import type { Signer } from "./connect";
+ import type { Eip1193Provider } from "./provider";
+ 
+ /**
+- * Producing a {@link Signer} from either wallet the marketplace offers.
++ * Producing a {@link Signer} from the wallet the person brought.
+  *
+- * The two arrive in different shapes and this is the only file that knows it. Mera has no EIP-1193
+- * provider — it is an SDK whose adapter, `toViemAccount(session)`, returns a viem account — while
+- * the wallet the person brought is raw EIP-1193 and has no viem account anywhere near it. Each gets
+- * the adapter it needs, and `connect.ts` goes on not knowing which wallet it was handed.
++ * The browser wallet is raw EIP-1193 and this is the only file that knows it, so `connect.ts` goes
++ * on not knowing which wallet it was handed. The person's own Pickler wallet is not a signer here:
++ * it is custodied, and the site reaches it through the signing API.
+  *
+- * Nothing here builds a message. The server builds it, and both adapters sign the string they are
++ * Nothing here builds a message. The server builds it, and the adapter signs the string it is
+  * given, unchanged.
+  */
+ 
+-/**
+- * A passkey that exists and works for everything else, but produces no PRF output — so Mera cannot
+- * derive a key from it.
+- *
+- * This is not an edge case to fold into a generic failure. Chrome creates a local-profile passkey
+- * silently when "Offer to save passwords and passkeys" is off or an extension intercepts WebAuthn,
+- * and local-profile passkeys, Bitwarden on desktop Chrome and Dashlane on desktop Chrome all had no
+- * PRF support as of 2026-06-01. The person did nothing wrong, their passkey is fine everywhere
+- * else, and "something went wrong" would send them to look for a problem that is not theirs.
+- * iCloud Keychain, Google Password Manager, Windows Password Manager and hardware keys all work.
+- */
+-export class PasskeyUnusableError extends Error {
+-  constructor() {
+-    super(
+-      "This passkey can't be used to hold a wallet. Your browser saved it somewhere that doesn't " +
+-        "support the feature Mera needs. Try again with iCloud Keychain, Google Password Manager, " +
+-        "Windows Hello or a security key — or connect an existing wallet instead.",
+-    );
+-    this.name = "PasskeyUnusableError";
+-  }
+-}
+-
+-/**
+- * Mera's errors carry a stable `code`; their message text does not promise to stay put. Its own
+- * reference is explicit about which half is the contract — "The codes are the contract; the message
+- * text is free to change between versions" — so this reads the code.
+- *
+- * It is read structurally rather than through the SDK's `isMeraError` guard so that this module
+- * needs no import from the SDK at all: the error can be recognised wherever it was thrown, and a
+- * second copy of the package in the bundle cannot make an `instanceof` check quietly answer false.
+- * Verified against the published `@category-labs/mera@0.2.0`, where a thrown error carries
+- * `name: "MeraError"` and `code` as own properties.
+- */
+-function isPrfUnavailable(error: Error): boolean {
+-  return error.name === "MeraError" && (error as { code?: unknown }).code === "PRF_UNAVAILABLE";
+-}
+-
+-/**
+- * Turns whatever a wallet threw into something a screen can say.
+- *
+- * Wrap every SDK call that creates or reads a passkey in this. Matching on message text instead
+- * would fail twice over: it goes silently generic the first time Mera rewords a string, and it
+- * blames the passkey for a cancellation, because the call that failed is still the PRF one.
+- */
++/** Turns whatever a wallet threw into an Error a screen can read a message from. */
+ export function describeSignerFailure(caught: unknown): Error {
+-  const error = caught instanceof Error ? caught : new Error(String(caught));
+-  return isPrfUnavailable(error) ? new PasskeyUnusableError() : error;
+-}
+-
+-/** Anything viem-shaped — in practice Mera's `toViemAccount(session)`. */
+-export interface ViemAccountLike {
+-  address: string;
+-  signMessage(input: { message: string }): Promise<string>;
+-}
+-
+-/**
+- * Mera's path. `signMessage` here is viem's own `hashMessage` followed by a secp256k1 signature
+- * over an ordinary EOA address, which is the plain EIP-191 signature the server already verifies —
+- * there is no ERC-1271 path to add.
+- */
+-export function fromViemAccount(account: ViemAccountLike, chainId: number): Signer {
+-  return {
+-    address: account.address,
+-    chainId,
+-    signMessage: (message) => account.signMessage({ message }),
+-  };
++  return caught instanceof Error ? caught : new Error(String(caught));
+ }
+ 
+ /**
+diff --git a/apps/web/test/marketplace-empty.test.ts b/apps/web/test/marketplace-empty.test.ts
+index 7d2b80a..3f3652b 100644
+--- a/apps/web/test/marketplace-empty.test.ts
++++ b/apps/web/test/marketplace-empty.test.ts
+@@ -1,7 +1,7 @@
+ import assert from "node:assert/strict";
+ import { test } from "node:test";
+ import type { AgentSummaryDto, LeaderboardDto } from "@pickler/api-schema";
+-import { agentsWithToken, noAgents, nothingRanked } from "../src/features/agents/lib/empty";
++import { noAgents, nothingRanked } from "../src/features/agents/lib/empty";
+ 
+ /* The launch-day decisions. No test here renders a component — none in this suite does — so what
+    is tested is the predicate each board asks before choosing its empty screen over its filters.
+@@ -22,18 +22,6 @@ const summary = (handle: string, token: AgentSummaryDto["token"]): AgentSummaryD
+   token,
+ });
+ 
+-const curve: NonNullable<AgentSummaryDto["token"]> = {
+-  stage: "pre-graduation",
+-  marketCap: 0,
+-  raised: 0,
+-  graduationTarget: 1000,
+-  volume24h: 0,
+-  price: 0,
+-  change24h: 0,
+-  address: null,
+-  chain: "monad-testnet",
+-};
+-
+ const board = (entries: LeaderboardDto["entries"]): LeaderboardDto => ({
+   entries,
+   weights: [{ label: "Calibration", weight: 0.4, note: "Said versus did." }],
+@@ -48,21 +36,6 @@ test("a directory with one agent is the populated directory, filters and all", (
+   assert.equal(noAgents([summary("halftime", null)]), false);
+ });
+ 
+-test("the token board keeps only the agents that have launched a token", () => {
+-  const rows = agentsWithToken([summary("halftime", curve), summary("tapereader", null)]);
+-
+-  assert.deepEqual(
+-    rows.map((agent) => agent.handle),
+-    ["halftime"],
+-  );
+-});
+-
+-test("agents with no token among them leave the token board with nothing, which is its empty screen", () => {
+-  const rows = agentsWithToken([summary("halftime", null), summary("tapereader", null)]);
+-
+-  assert.equal(noAgents(rows), true);
+-});
+-
+ test("a board with no entries has nothing to rank, whatever its weights say", () => {
+   assert.equal(nothingRanked(board([])), true);
+ });
+diff --git a/apps/web/test/sign-in-words.test.ts b/apps/web/test/sign-in-words.test.ts
+index d7d9ea2..4b8010a 100644
+--- a/apps/web/test/sign-in-words.test.ts
++++ b/apps/web/test/sign-in-words.test.ts
+@@ -1,7 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import { ConnectError } from "../src/features/wallet/lib/connect";
+-import { PasskeyUnusableError } from "../src/features/wallet/lib/signer-adapters";
+ import { signInWords } from "../src/features/wallet/lib/sign-in-words";
+ 
+ test("a stale nonce asks for another go, because nothing is actually wrong", () => {
+@@ -20,18 +19,6 @@ test("a refused signature does not say the same thing as a stale nonce", () => {
+   assert.notEqual(stale, bad);
+ });
+ 
+-test("a passkey that cannot hold a wallet keeps its own words, whole", () => {
+-  // The shape the adapters actually throw: Mera's own error, recognised by its stable `code`. An
+-  // earlier version of this test passed a PasskeyUnusableError in directly, which proved nothing —
+-  // that object's message comes back whether or not anything converts it. This one fails if the
+-  // conversion is skipped, because a raw MeraError carries Mera's wording, not ours.
+-  const fromMera = Object.assign(new Error("prf unsupported"), {
+-    name: "MeraError",
+-    code: "PRF_UNAVAILABLE",
+-  });
+-  assert.equal(signInWords(fromMera), new PasskeyUnusableError().message);
+-});
+-
+ test("closing the wallet prompt is an answer, not a failure", () => {
+   assert.equal(signInWords({ code: 4001, message: "User rejected" }), null);
+ });
+diff --git a/apps/web/test/signer-adapters.test.ts b/apps/web/test/signer-adapters.test.ts
+index 3200f1b..493e910 100644
+--- a/apps/web/test/signer-adapters.test.ts
++++ b/apps/web/test/signer-adapters.test.ts
+@@ -1,9 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import {
+-  fromViemAccount,
+   fromInjectedProvider,
+-  PasskeyUnusableError,
+   describeSignerFailure,
+ } from "../src/features/wallet/lib/signer-adapters";
+ 
+@@ -11,39 +9,6 @@ import {
+ // Every assertion below that claims a string was signed unchanged compares against this one.
+ const MESSAGE = "pickler.fun wants you to sign in…\nNonce: n1\n";
+ 
+-/**
+- * A MeraError as the library actually constructs one. Verified against the published
+- * @category-labs/mera@0.2.0 artifact: `name` is "MeraError" and `code` is an own property.
+- * Building it here rather than importing keeps this module free of the SDK; see
+- * signer-adapters.ts.
+- */
+-function meraError(code: string, message: string) {
+-  const error = new Error(message);
+-  error.name = "MeraError";
+-  Object.assign(error, { code });
+-  return error;
+-}
+-
+-test("a viem account becomes a Signer that signs the string it is given", async () => {
+-  const signed: string[] = [];
+-  const signer = fromViemAccount(
+-    {
+-      address: "0xAbC0000000000000000000000000000000000001",
+-      signMessage: async ({ message }: { message: string }) => {
+-        signed.push(message);
+-        return "0xsig";
+-      },
+-    },
+-    10143,
+-  );
+-
+-  assert.equal(await signer.signMessage(MESSAGE), "0xsig");
+-  // Signed unchanged: the server built this string and verifies that exact one.
+-  assert.deepEqual(signed, [MESSAGE]);
+-  assert.equal(signer.address, "0xAbC0000000000000000000000000000000000001");
+-  assert.equal(signer.chainId, 10143);
+-});
+-
+ test("an injected wallet signs the same string unchanged, hex-encoded for personal_sign", async () => {
+   const calls: Array<{ method: string; params?: unknown }> = [];
+   const signer = fromInjectedProvider(
+@@ -72,31 +37,10 @@ test("an injected wallet signs the same string unchanged, hex-encoded for person
+   assert.equal(address, "0xDeF0000000000000000000000000000000000002");
+ });
+ 
+-test("a passkey with no PRF output is its own failure, not a generic error", () => {
+-  const caught = describeSignerFailure(
+-    meraError("PRF_UNAVAILABLE", "Authenticator did not enable PRF"),
+-  );
+-  assert.ok(caught instanceof PasskeyUnusableError);
+-});
+-
+-test("a cancelled passkey prompt stays an ordinary refusal", () => {
+-  // The everyday case, and the one a message-matching rule gets wrong: the SDK call that failed is
+-  // still createPasskeyWithPrfOutput, so anything reading the text rather than the code blames a
+-  // passkey that is perfectly fine.
+-  const caught = describeSignerFailure(
+-    meraError(
+-      "PASSKEY_OPERATION_FAILED",
+-      "createPasskeyWithPrfOutput: the person dismissed the prompt",
+-    ),
+-  );
+-  assert.ok(!(caught instanceof PasskeyUnusableError));
+-  assert.equal(caught.message, "createPasskeyWithPrfOutput: the person dismissed the prompt");
+-});
++test("an ordinary refusal stays the error the wallet threw", () => {
++  const thrown = new Error("User rejected the request");
+ 
+-test("an ordinary refusal stays an ordinary refusal", () => {
+-  const caught = describeSignerFailure(new Error("User rejected the request"));
+-  assert.ok(!(caught instanceof PasskeyUnusableError));
+-  assert.equal(caught.message, "User rejected the request");
++  assert.equal(describeSignerFailure(thrown), thrown);
+ });
+ 
+ test("something thrown that is not an Error still becomes one", () => {

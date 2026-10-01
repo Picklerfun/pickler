@@ -88,16 +88,20 @@
   letter-spacing: 0.06em;
 }
 .pill[data-tint="violet"] {
-  background: var(--pk-violet-tint);
+  background: var(--pk-state-info-bg);
   color: var(--pk-violet-ink);
 }
 .pill[data-tint="lime"] {
-  background: var(--pk-lime-tint);
+  background: var(--pk-state-good-bg);
   color: var(--pk-lime-ink);
 }
 .pill[data-tint="grey"] {
   background: var(--pk-panel);
   color: var(--pk-ink-muted);
+}
+.pill[data-tint="amber"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-amber-ink);
 }
 .pillDot {
   width: 6px;
@@ -134,7 +138,7 @@
   gap: 8px;
   padding: 10px 14px;
   border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   background: transparent;
   color: var(--pk-ink);
   font: 600 12.5px/1 var(--pk-font);
@@ -169,7 +173,7 @@
   padding: 10px;
   border-radius: var(--pk-radius-xl);
   background: var(--pk-popover);
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   box-shadow: var(--pk-popover-shadow);
   animation: pkIn 180ms ease-out;
 }
@@ -192,7 +196,7 @@
   gap: 4px;
   padding: 11px 12px;
   border-radius: var(--pk-radius-sm);
-  border: 1px dashed var(--pk-border);
+  border: 1px dashed var(--pk-rule-strong);
   cursor: not-allowed;
 }
 .newAgentLabel {
@@ -233,12 +237,555 @@
 .menuItem:focus-visible {
   background: var(--pk-panel-2);
 }
+/* A section before the first agent: listed, so the Menu can be explored, and not reachable. */
+.menuItem:disabled {
+  color: var(--pk-ink-muted);
+  background: transparent;
+  cursor: not-allowed;
+}
+.menuHint {
+  margin: 0;
+  padding: 0 10px;
+  font: 500 11.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
 .menuNote {
   font: 600 9.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
   color: var(--pk-ink-muted);
 }
 
+/* ---------- No agent yet ---------- */
+
+/* The home before the first agent, from `Pickler Studio Empty v4.dc.html`: the top bar's dashed
+   "No agent yet" chip, the rail with every section disabled, and the first agent's brief with its
+   starting point and paper run beside it. The canvas's #5A5F78 labels map to `--pk-ink-faint`, its
+   #3A3F58 disabled rows to `--pk-ink-faint` too (the dark ramp's floor that still reads), its
+   #0B0D1A wells to `--pk-bg` and its lime tags to the lime tint. */
+.noAgent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px dashed var(--pk-border-strong);
+  min-width: 0;
+}
+.noAgent b {
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-muted);
+}
+.noAgentMark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-panel);
+  font: 600 15px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+/* The rail is the canvas's; below its width the Menu lists the same disabled sections instead. */
+.emptyMenu {
+  display: none;
+}
+.emptyBody {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+}
+.emptyRail {
+  flex: 0 0 218px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pk-rule);
+}
+.emptyRailItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-ink-faint);
+  font: 600 13.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: not-allowed;
+}
+.emptyRailItem svg {
+  flex: none;
+}
+.emptyMain {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 36px 28px 60px;
+}
+.brief {
+  flex: 1 1 460px;
+  max-width: 680px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.emptyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-amber-ink);
+}
+.briefKicker {
+  margin: 6px 0 0;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.starts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.startsLabel {
+  margin-right: 4px;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+}
+.start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition: background var(--pk-duration);
+}
+a.start:hover {
+  background: var(--pk-panel-2);
+}
+.start[data-on="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.start i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-panel-3);
+}
+.start i[data-tint="lime"] {
+  background: var(--pk-lime);
+}
+.briefHandle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.briefHandle span {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-ink-faint);
+}
+.briefHandle small {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+.briefCardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.briefLabel {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-lime-ink);
+}
+.briefSub {
+  font: 500 10.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.briefTag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.briefActions > * {
+  flex: 1 1 200px;
+  justify-content: center;
+}
+.briefFoot {
+  margin: -4px 0 0;
+  text-align: center;
+  font: 600 10.5px/1.5 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.briefSide {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.briefMascot {
+  position: absolute;
+  top: -30px;
+  right: -12px;
+  z-index: 2;
+  width: 96px;
+  height: auto;
+  pointer-events: none;
+  animation: pkFloat 6s ease-in-out infinite;
+}
+.sideCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sideTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.sideState {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sourceMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel-3);
+  font: 700 17px/1 var(--pk-font-display);
+  color: var(--pk-ink);
+}
+.sourceName {
+  display: block;
+  font: 700 22px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+}
+.sourceLine {
+  display: block;
+  margin-top: 5px;
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.sideText {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.sideLink {
+  align-self: flex-start;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  text-decoration: none;
+}
+.sideLink:hover {
+  color: var(--pk-ink);
+}
+.runIdle {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 34px 12px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+  font: 600 10.5px/1.6 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+  text-wrap: pretty;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.briefNameInput {
+  width: 100%;
+  min-width: 0;
+  margin: 6px 0 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: 700 clamp(46px, 5.4vw, 64px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+}
+.briefNameInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.briefNameInput:focus-visible,
+.briefInput:focus-visible {
+  outline: 2px solid var(--pk-lime-edge);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+.briefHandle span[data-tone="lime"] {
+  color: var(--pk-lime-ink);
+}
+.briefHandle span[data-tone="pink"] {
+  color: var(--pk-magenta-ink);
+}
+.handleRetry {
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-magenta-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.handleRetry:hover {
+  color: var(--pk-ink);
+}
+.briefCard[data-needed="true"] {
+  box-shadow: inset 0 0 0 1px var(--pk-amber-edge);
+}
+.briefTag[data-filled="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-lime-ink);
+}
+.briefInput {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  padding: 4px 0 0;
+  border: none;
+  background: transparent;
+  font: 500 15.5px/1.5 var(--pk-font);
+  letter-spacing: -0.015em;
+  color: var(--pk-ink);
+}
+.briefInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.briefNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 500 11.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+  overflow-wrap: anywhere;
+}
+.briefError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-magenta-ink);
+}
+.soon {
+  flex: none;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+}
+.caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+.cap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.capText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.capTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.capButton {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  cursor: pointer;
+}
+.capButton:hover:not(:disabled) {
+  background: var(--pk-panel-3);
+}
+.capButton:disabled {
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.capValue {
+  font: 700 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+.sideState[data-state="LIVE"] {
+  color: var(--pk-lime-ink);
+}
+.sideState[data-state="STALE"] {
+  color: var(--pk-amber-ink);
+}
+.runResult {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.runResult[data-trade="false"] {
+  background: var(--pk-state-loss-bg);
+}
+.runResultHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.runEyebrow {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.runResultTitle {
+  margin: 0;
+  font: 700 20px/1.1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+  overflow-wrap: anywhere;
+}
+.runResultMeta {
+  margin: 0;
+  font: 600 10.5px/1.5 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  overflow-wrap: anywhere;
+}
+.runResult[data-trade="false"] .runEyebrow,
+.runResult[data-trade="false"] .runResultTitle,
+.runResult[data-trade="false"] .runResultMeta {
+  color: var(--pk-state-loss-ink);
+}
+.briefActionNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+@media (max-width: 860px) {
+  .emptyRail {
+    display: none;
+  }
+  .emptyMenu {
+    display: contents;
+  }
+  .emptyMain {
+    padding: 24px 16px 48px;
+  }
+  .briefSide {
+    max-width: none;
+  }
+  .briefMascot {
+    right: 0;
+  }
+  .caps {
+    grid-template-columns: 1fr;
+  }
+}
 /* ---------- Live strip ---------- */
 
 .strip {
@@ -377,7 +924,7 @@
   align-items: baseline;
   gap: 10px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--pk-border);
+  border-bottom: 1px solid var(--pk-rule-strong);
 }
 .colHead {
   margin: 0;
@@ -387,7 +934,7 @@
 }
 .agent > .colHead {
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--pk-border);
+  border-bottom: 1px solid var(--pk-rule-strong);
 }
 .colCount {
   margin-left: auto;
@@ -399,7 +946,7 @@
   margin: 0;
   padding: 22px 18px;
   border-radius: var(--pk-radius-xl);
-  border: 1px dashed var(--pk-border);
+  border: 1px dashed var(--pk-rule-strong);
   font: 400 14px/1.5 var(--pk-font);
   color: var(--pk-ink-muted);
   text-wrap: pretty;
@@ -464,7 +1011,7 @@
   padding: 12px 14px;
   border-radius: var(--pk-radius-lg);
   background: var(--pk-panel);
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   color: var(--pk-ink-muted);
 }
 .bubble::before {
@@ -477,20 +1024,8 @@
   margin-top: -5.5px;
   transform: rotate(45deg);
   background: var(--pk-panel);
-  border-left: 1px solid var(--pk-border);
-  border-bottom: 1px solid var(--pk-border);
-}
-.bubble[data-tint="violet"] {
-  --mood: var(--pk-violet-ink);
-}
-.bubble[data-tint="lime"] {
-  --mood: var(--pk-lime-ink);
-}
-.bubble[data-tint="grey"] {
-  --mood: var(--pk-ink-muted);
-}
-.bubble[data-tint="magenta"] {
-  --mood: var(--pk-magenta-ink);
+  border-left: 1px solid var(--pk-rule-strong);
+  border-bottom: 1px solid var(--pk-rule-strong);
 }
 .moodLabel {
   display: flex;
@@ -499,13 +1034,35 @@
   margin: 0 0 6px;
   font: 700 11px/1 var(--pk-font);
   letter-spacing: 0.12em;
-  color: var(--mood);
+}
+.bubble[data-tint="violet"] .moodLabel {
+  color: var(--pk-violet-ink);
+}
+.bubble[data-tint="lime"] .moodLabel {
+  color: var(--pk-lime-ink);
+}
+.bubble[data-tint="grey"] .moodLabel {
+  color: var(--pk-ink-muted);
+}
+.bubble[data-tint="magenta"] .moodLabel {
+  color: var(--pk-magenta-ink);
 }
 .moodDot {
   width: 6px;
   height: 6px;
   border-radius: var(--pk-radius-mark);
-  background: var(--mood);
+}
+.bubble[data-tint="violet"] .moodDot {
+  background: var(--pk-violet-ink);
+}
+.bubble[data-tint="lime"] .moodDot {
+  background: var(--pk-lime-ink);
+}
+.bubble[data-tint="grey"] .moodDot {
+  background: var(--pk-ink-muted);
+}
+.bubble[data-tint="magenta"] .moodDot {
+  background: var(--pk-magenta-ink);
 }
 .moodSub {
   margin: 0;
@@ -640,7 +1197,7 @@
   gap: 12px;
   padding: 14px 16px;
   border-radius: var(--pk-radius-xl);
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
 }
 .schedule[data-on="true"] {
   border-color: var(--pk-lime-edge);
@@ -663,7 +1220,7 @@
   gap: 4px;
   padding: 4px 9px;
   border-radius: var(--pk-radius-pill);
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   background: transparent;
   color: inherit;
   font: 700 12.5px/1 var(--pk-font);
@@ -755,7 +1312,7 @@
   flex: none;
 }
 .actionTag[data-action="TRADE"] {
-  background: var(--pk-lime-tint);
+  background: var(--pk-state-good-bg);
   border-color: var(--pk-lime-edge);
   color: var(--pk-lime-ink);
 }
@@ -781,7 +1338,7 @@
   top: 8px;
   height: 14px;
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-violet-tint);
+  background: var(--pk-state-info-bg);
   border: 1px solid var(--pk-violet-edge);
   animation: pkIn 300ms ease-out;
 }
@@ -839,7 +1396,7 @@
   gap: 7px;
   padding: 6px 10px;
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-violet-tint);
+  background: var(--pk-state-info-bg);
   font: 600 10.5px/1 var(--pk-font);
   letter-spacing: 0.06em;
   color: var(--pk-violet-ink);
@@ -899,6 +1456,19 @@
   font: 400 12.5px/1.35 var(--pk-font);
   color: var(--pk-ink-muted);
 }
+.goSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* A step's number, not a tick: it reads in muted ink on the panel, where on-lime would vanish. */
+.goSteps .check {
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
 
 /* ---------- Motion ---------- */
 
@@ -921,6 +1491,15 @@
     transform: translateY(0);
   }
 }
+@keyframes pkFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
 @keyframes pkRing {
   0% {
     transform: scale(1);
@@ -932,6 +1511,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .briefMascot,
   .ring,
   .caret,
   .pillDot,

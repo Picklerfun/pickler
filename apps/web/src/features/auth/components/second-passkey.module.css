@@ -9,7 +9,7 @@
   padding: 12px 14px;
   border: 1px solid var(--pk-amber-edge);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-amber-tint);
+  background: var(--pk-state-caution-bg);
   color: var(--pk-ink);
   font: 500 13px/1.45 var(--pk-font);
 }

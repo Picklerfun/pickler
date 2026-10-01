@@ -19,12 +19,8 @@ export function signInWords(caught: unknown): string | null {
   if ((caught as { code?: unknown } | null)?.code === 4001) {
     return null;
   }
-  // Mera's PRF failure arrives as a MeraError carrying `code: "PRF_UNAVAILABLE"`, and this is the
-  // conversion: `describeSignerFailure` turns it into a PasskeyUnusableError whose message names a
-  // cause the person did not create and says what to do instead. That message then falls through
-  // to the bottom of this function unchanged. There is deliberately no branch for it here — an
-  // earlier draft had one, and deleting it broke no test, because the fallthrough already does the
-  // work. A branch nothing can distinguish is a branch that is not there.
+  // Whatever else was thrown becomes an Error, and its own message falls through to the bottom
+  // of this function unchanged.
   const described = describeSignerFailure(caught);
   if (caught instanceof ConnectError) {
     switch (caught.code) {

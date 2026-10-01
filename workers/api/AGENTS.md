@@ -10,7 +10,7 @@ Read [the root instructions](../../AGENTS.md), [core](../../packages/core/AGENTS
 src/
   index.ts                  # Worker entry; builds services lazily from bindings
   app.ts                    # createApp(services): routes, request id, error handler
-  container.ts              # Composition root: Supabase adapters + core use cases
+  container.ts              # Composition root: Postgres adapters + core use cases
   env.ts                    # Bindings and Hono context variables
   http/envelope.ts          # Relayer's response envelope (same JSON shape)
   http/error-handler.ts     # Relayer's global exception filter; maps core errors to statuses
@@ -32,19 +32,19 @@ test/                       # Route and middleware tests with injected services
 
 Routes:
 
-| Route                                                                                          | Auth                                                                    |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /health`                                                                                  | none (liveness only)                                                    |
-| `GET /v1/auth/me`                                                                              | signed-in user; API keys refused                                        |
-| `GET /v1/handles/:handle/availability`                                                         | none (sign-up form)                                                     |
-| `GET /v1/profile`, `POST /v1/profile`                                                          | signed-in user (JWT); API keys refused                                  |
-| `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                             | JWT or API key + `agent` module + `read Agent`                          |
-| `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget`       | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent` |
-| `GET /v1/marketplace/{agents,directory,reads,profiles,personas,markets,analytics,leaderboard}` | none (public marketplace)                                               |
-| `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                       | signed-in user; API keys refused                                        |
-| `GET /v1/signing/wallets/me`                                                                   | signed-in user; API keys refused                                        |
-| `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}` | signed-in user; API keys refused                                        |
-| `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                          | signed-in user; API keys refused                                        |
+| Route                                                                                          | Auth                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                                                                  | none (liveness only)                                                                                                                                                               |
+| `GET /v1/auth/me`                                                                              | signed-in user; API keys refused                                                                                                                                                   |
+| `GET /v1/handles/:handle/availability`                                                         | none (sign-up form)                                                                                                                                                                |
+| `GET /v1/profile`, `POST /v1/profile`                                                          | signed-in user (JWT); API keys refused; POST 409 `wallet_required` for a studio account without a custody account (tokens marked `app_metadata.pickler_account = "wallet"` exempt) |
+| `GET /v1/agents`, `GET /v1/agents/:id`, `GET /v1/agents/:id/audit`                             | JWT or API key + `agent` module + `read Agent`                                                                                                                                     |
+| `GET /v1/agents/:id/status`, `GET /v1/agents/:id/analytics`, `GET /v1/agents/:id/budget`       | agent HMAC (own id only) or JWT/API key + `agent` module + `read Agent`                                                                                                            |
+| `GET /v1/marketplace/{agents,directory,reads,profiles,personas,markets,analytics,leaderboard}` | none (public marketplace)                                                                                                                                                          |
+| `POST /v1/signing/passkeys/{challenge,register,add/prepare,add/confirm}`                       | signed-in user; API keys refused                                                                                                                                                   |
+| `GET /v1/signing/wallets/me`                                                                   | signed-in user; API keys refused                                                                                                                                                   |
+| `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}` | signed-in user; API keys refused                                                                                                                                                   |
+| `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                          | signed-in user; API keys refused                                                                                                                                                   |
 
 Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`, `x-request-timestamp`; payload `METHOD + /v1/path + timestamp + sha256(JSON.stringify(body) or "")`, ±60 s. Agent secrets (`agents.agent_credentials`) are decrypted with `ENCRYPTION_KEY`; the format is byte-compatible with Relayer's, so the key only has to equal Relayer's when importing Relayer data. Agent write endpoints are not ported yet.
 
@@ -53,10 +53,64 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 `/v1/signing` is mounted only when `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`,
 `TURNKEY_PARENT_ORG_ID`, `TURNKEY_RPID` and `TURNKEY_APP_NAME` are all bound; without them the
 rest of the API serves unchanged. The decisions are `createCustodyService` in `@pickler/core`;
-the routes validate and map. The email that names the Turnkey sub-organization and identifies
-the user to the authenticator comes from the verified token, never from the body, and an
+the routes validate and map. Nothing that names a passkey comes from the body, and an
 attestation is refused at the door unless it is three base64url strings and transports Turnkey
 has a name for (`SUPPORTED_TRANSPORTS`).
+
+Signup: email → code → passkey (mandatory; creates the master wallet) → handle (creates the profile
+and workspace) → welcome. The first passkey is therefore usually registered before any profile
+exists, and `identity()` in `routes/signing.ts` gives it two deliberately different names. The
+WebAuthn `user.name` / `user.displayName` from `challenge`, stored in the device keychain, are the
+profile's handle and display name where there is a profile, else the sign-in email from the
+verified token's `email` claim (never a wallet account's synthetic email, recognised by
+`WALLET_EMAIL_DOMAIN`), else `pickler-<id8>`. The Turnkey root user's `userName` and the
+sub-organization's name, from `register` (`ownerLabel`), are never the email — email is kept out of
+Turnkey — but the handle where there is a profile, else `pickler-<id8>`. Neither is stored with the
+challenge; each route derives its own from the same profile read.
+
+`POST /v1/profile` refuses a studio (email or Google) account that has no custody account with
+409 `wallet_required`, so its username is saved only once the master wallet exists. A wallet
+sign-in account is exempt — its own wallet is its wallet — and is recognised only by the token's
+server-only `app_metadata.pickler_account = "wallet"` (`UserPrincipal.walletAccount`, read by the
+Supabase JWT verifier). `createWalletAccounts` sets it at `admin.createUser`, and every wallet
+sign-in calls `markWalletAccount` before minting the session, which backfills it on an account made
+before the marker existed — only when the account's email is that address's own synthetic one, so
+an email account that linked the wallet stays a studio account. The synthetic email is computable
+from a public address, so an account found there (createUser's lost race, or a returning address)
+is accepted only if it is marked, or has no password and no identity but `email`
+(`walletAccountVerdict`, over `createAuthUserLookup`'s read of `auth.users` and `auth.identities`;
+the admin API cannot say whether a password is set). Anything else — a pre-registration with a
+password — is refused with 409 `wallet_account_conflict` before any link, backfill or session, and
+logged with the address digest only. On a local run, where the product database has no `auth`
+schema, the lookup falls back to the admin API by id and accepts only marked accounts. A wallet account that has not
+signed in since then gets 409 until its next sign-in; that is accepted, because a session comes
+only from that sign-in. The email domain is never an exemption: with email sign-up open and
+confirmations off, anyone can register an address in `WALLET_EMAIL_DOMAIN`. `isWalletAccountEmail`
+survives only to keep the synthetic email out of a passkey's keychain name, which is cosmetic.
+
+No wallet sign-in route answers 500 for bad input (`asHttp` in `routes/wallet-auth.ts`): an address
+that is not one is 400 `invalid_address`, a `chain_id` that is not a positive whole number 400
+`invalid_chain` (refused in the route, and again in core), and a `raw` that is not a sign-in
+message, or a field viem's builder refuses, 400 `invalid_message`. Core's `issueNonce` validates
+the address and the chain and builds the message before it stores the nonce, so a refused request
+leaves no row in `identity.siwe_nonces`.
+
+`POST /v1/auth/wallet/nonce` is public and has no rate limit of its own. What bounds it is in the
+store: every issue deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired nonces, and an address
+holds `MAX_OPEN_NONCES_PER_ADDRESS` (5, core) at most — a further issue evicts its oldest and is
+never refused, because the address is unverified and a refusal would let anybody lock a wallet out
+of signing in. An evicted nonce answers 400 `nonce_invalid`, which a retry fixes. A nonce is kept under the address it was issued to, so `verify` and
+`link` answer 400 `nonce_invalid` for one presented in a message naming another address. There is
+no cap per client yet: `CF-Connecting-IP` is available to the route, but keeping its hash needs a
+column `identity.siwe_nonces` does not have.
+
+A first wallet sign-in can lose its link: the address was linked to nobody when `verify` looked,
+and a signed-in account's `POST /v1/auth/wallet/link` of the same wallet wrote the link first
+(`link` answers `created: false`). `verify` then reads the link again and signs in its holder, after
+the same `markWalletAccount` check, never the account it just made. That account is deleted through
+`AccountProvisioner.discardAccount` only when this very call created it (`forAddress` answers
+`created`), and `createWalletAccounts` deletes nothing but the address's own marked wallet account.
+A delete that fails is logged and the sign-in still succeeds; the leftover holds no wallet.
 
 Responses deliberately withhold what the browser has no use for: register answers with
 `sub_organization_id`, `master_wallet_id` and `address` but not the root user id, and
@@ -99,7 +153,7 @@ with `... -- --append <absolute path to workers/api/.dev.vars>`. A changed `.dev
 
 ## Budget ledger
 
-`AgentLedger` (binding `AGENT_LEDGER`, SQLite-backed, one instance per agent id) replaces Relayer's Redis hash and `budget-check.lua`. Logic lives in `@pickler/core` (`createBudgetLedger`); the object wraps every operation in `ctx.storage.transactionSync`, schedules an alarm for the next reservation expiry and hydrates once, read-only, from `budget.budgets` and `agents.agents.status`.
+`AgentLedger` (binding `AGENT_LEDGER`, SQLite-backed, one instance per agent id) replaces Relayer's Redis hash and `budget-check.lua`. Logic lives in `@pickler/core` (`createBudgetLedger`); the object wraps every operation in `ctx.storage.transactionSync`, schedules an alarm for the next reservation expiry and hydrates once, read-only, from `budget.budgets` and `agents.agents.status` through `PostgresBudgetSource` and `PostgresAgentRegistry` on a pool it opens from the same database binding as the request path and closes after the read.
 
 - Spend goes through `reserve` → `commit` or `release`, idempotent by reservation id. Post-hoc telemetry uses `record`, deduplicated by event id.
 - Tables are created synchronously in the constructor. Do not move migrations into `blockConcurrencyWhile(async …)`: a spike showed methods could run before the tables existed.
@@ -156,24 +210,58 @@ answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure i
 the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
 other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
+`POST /v1/studio/preview-runs` (JWT, research rights; 409 `ADMISSIONS_PAUSED` when admissions are
+off) runs `preparePreview` on `previewRunRequestSchema` and queues a paper run of a brief with no
+agent row through `services.previews` (`PostgresPreviewStore`, studio-brief-v1 §4), answering 202
+`{ id }` and waking the research queue. An invalid brief is 400 `{ error: "INVALID_BRIEF", field,
+reason }`; caps and leverage out of bounds are 400 `INVALID_INPUT`; the sixth run in a rolling hour
+is 429 `{ error: "PREVIEW_RATE_LIMITED", retryAt }`. `GET /v1/studio/preview-runs/:id` answers
+`previewRunResponseSchema` to the owner only (404 for anyone else and after 24 h). Without
+`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`.
+
 `GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
 helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` ("lime" without a
 profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
-balances of every listed agent that has a wallet (agents created before wallets have none and are
-not counted). An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
+balances of every listed agent that has a wallet, plus the number of private drafts. Agents created
+before wallets have none and are not counted. A draft has no wallet either and does not count as
+unfunded (studio-brief-v1 §6); three drafts (`MAX_DRAFTS_PER_WORKSPACE`) close the lock with
+`draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
 turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
-wallet, and nothing has launched. A balance read that fails fails the request (500); it is never shown as zero.
+wallet, and nothing has launched. A balance read that fails fails the request (500); it is never
+shown as zero. `GET /agents/:id` reads this agent's balance that way and the other agents' only
+for the lock: another agent's balance that cannot be read is left out of `canCreateAnother` and
+does not fail the page. The list and both creates still require every read.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
 Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
-`canCreateAnother` is closed, but a retry of an earlier create is looked up first with
-`directory.createdWithKey` and replays the original agent without meeting the lock. The
+`canCreateAnother` is closed with `unfunded_agent`. The lock is the `admit` callback
+`directory.createAgent` runs inside its transaction, after it has looked for an earlier create with
+the same idempotency key, so a retry replays the original agent without meeting the lock. The
 directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, message }` (409 and
 404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
+
+A `CHAIN_ID` that is not a number or not a chain `@pickler/chain` lists never fails composition:
+`supportedChainId` in `container.ts` answers null and logs the variable's name, never its value.
+Balances and deposits are then off and every other route serves. The studio's balance reader
+throws `PilotError` `BALANCES_UNAVAILABLE`, so a studio read that needs a balance (an agent with a
+wallet) answers 503 `{ error: "BALANCES_UNAVAILABLE" }`. The custody service is composed without a
+deposit chain, so the deposit routes answer 503 `DEPOSITS_UNAVAILABLE`. `GET
+/v1/signing/wallets/me` answers 503 with `error: "balances_unavailable"` in its envelope. The
+passkey ceremonies read no chain and stay on.
+
+`POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
+rights) adopts a completed paper run as a private draft through `directory.createDraft`
+(studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
+`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`, `CONFLICT` (a retry under a different name) and `UNFUNDED_AGENT` (an agent with a wallet below
+the minimum). The fourth draft in a workspace is 409
+`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, the one studio refusal besides
+creation's `CONFLICT`/`NOT_FOUND` that carries a message. Both locks run in the admit callback,
+inside the create transaction, after the workspace row is locked. `POST /agents` meets the funding
+lock only, never the draft limit.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,
@@ -230,6 +318,18 @@ There is no hosted direct-secret fallback or plaintext staging exception. Keep p
 to each invocation, limited to two connections, and close them on every outcome. Local development
 uses explicit APP_ENV=local with a loopback DATABASE_URL. Migrations retain their separate
 operator connection. Admission controls remain independent of transport.
+
+## Supabase is auth only
+
+Every product-data port goes through the invocation's pool: profiles (`PostgresProfileRepository`),
+workspaces and API keys (`PostgresWorkspaceDirectory`, `PostgresApiKeyDirectory`), agents and their
+events (`PostgresAgentRegistry`, `PostgresAgentEventLog`), the waitlist and applications
+(`PostgresWaitlist`, `PostgresApplicants`), and the ledger's hydration (`PostgresBudgetSource`).
+Supabase is reached for auth alone: the JWKS verifier on `JWT_ISSUER`, and the admin client the
+wallet sign-in uses for `auth.admin` and `verifyOtp`. So a local run, whose `DATABASE_URL` is the
+Docker PostgreSQL, never reads or writes the hosted project's tables, and a profile created locally
+is the one `onboard` reads next. No Supabase data adapter exists any more, and none is to be written for this Worker; in a
+deployment the same tables are reached through `DATABASE` instead.
 
 ## Operator-enabled Studio access
 

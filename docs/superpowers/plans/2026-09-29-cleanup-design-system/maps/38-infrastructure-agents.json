@@ -1,0 +1,14 @@
+[
+  {
+    "find": "the Supabase JWT verifier (`jose`), Supabase admin adapters for workspaces, API keys, agents, budgets and profiles, the PostgREST client used by the growth functions, and Turnkey stamping and activity forwarding. The API does not use the Supabase data adapters: it reads the same tables through their PostgreSQL twins below, and keeps supabase-js for auth (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`).",
+    "replace": "the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`)."
+  },
+  {
+    "find": "The product-data ports the API composes are PostgreSQL classes over the caller's pool, mirroring\nthe Supabase adapters query for query: `PostgresProfileRepository`",
+    "replace": "The product-data ports the API composes are PostgreSQL classes over the caller's pool, written\nquery for query from the Supabase adapters they replaced: `PostgresProfileRepository`"
+  },
+  {
+    "find": "and `PostgresWaitlist` and `PostgresApplicants` (`growth-store.ts`, calling the growth functions\nand parsing their results with the Supabase adapters' own schemas).",
+    "replace": "and `PostgresWaitlist` and `PostgresApplicants` (`growth-store.ts`, calling the growth functions\nand parsing their results with the schemas that file defines)."
+  }
+]

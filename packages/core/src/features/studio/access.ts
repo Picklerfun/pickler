@@ -20,6 +20,13 @@ export interface AgentWalletLink {
   walletId: string;
 }
 
+/**
+ * The "+ New agent" lock (funding, and the draft limit for a draft), run by a create inside its transaction after the workspace row
+ * is locked, so two creates in one workspace serialize and the second sees the first. It throws to
+ * refuse; the create then writes nothing.
+ */
+export type CreateAdmission = () => Promise<void>;
+
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
@@ -34,18 +41,34 @@ export interface StudioDirectory {
       profile: AgentProfileInput;
       wallet: AgentWalletLink;
     },
+    admit?: CreateAdmission,
   ): Promise<Scope>;
-  agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   /**
-   * The agent an earlier create with this idempotency key made, or null for a new key. Read-only:
-   * a retry replays through `createAgent`, which still refuses different terms under the same key.
+   * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
+   * the agent with `status = 'draft'` and no wallet, its runtime row with the run's config snapshot,
+   * the preview copied in as its first run, and the preview marked adopted. Refuses with
+   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, in that order, then runs `admit`; a refusal writes
+   * nothing. A retry of a create that committed (same caller, brief and handle) answers the same
+   * draft again and never reaches `admit`; under a different name it is CONFLICT.
    */
-  createdWithKey(access: StudioAccess, key: string): Promise<Scope | null>;
+  createDraft(
+    access: StudioAccess,
+    userId: string,
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
+    now: number,
+    admit?: CreateAdmission,
+  ): Promise<{ productId: string; scope: Scope }>;
+  agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
-  /** The person's agents, oldest first, with the accent their profile was created with ("lime" without one). */
+  /**
+   * The person's agents, oldest first, with the accent their profile was created with ("lime"
+   * without one), and whether each is a private draft (no wallet yet, so the funding lock skips it).
+   */
   list(
     access: StudioAccess,
-  ): Promise<{ id: string; name: string; handle: string; accent: Accent; scope: Scope }[]>;
+  ): Promise<
+    { id: string; name: string; handle: string; accent: Accent; draft: boolean; scope: Scope }[]
+  >;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {
@@ -73,13 +96,14 @@ export function createStudioAccess(directory: StudioDirectory) {
         profile: AgentProfileInput;
         wallet: AgentWalletLink;
       },
+      admit?: CreateAdmission,
     ) {
       const access = await this.authorize(principal, true);
       assertConfig(input.config);
       if (!input.config.marketScope) {
         throw new AccessDeniedError("A category and subcategory selection is required");
       }
-      return directory.createAgent(access, principal.id, input);
+      return directory.createAgent(access, principal.id, input, admit);
     },
   };
 }

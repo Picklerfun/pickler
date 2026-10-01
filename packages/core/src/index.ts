@@ -1,6 +1,7 @@
 export * from "./features/research/market-scope.js";
 export * from "./features/research/plugins.js";
 export * from "./features/research/nfl.js";
+export * from "./features/research/soccer.js";
 export type { Clock } from "./ports/clock.js";
 export { createGetHealth } from "./application/get-health.js";
 export { DataSourceUnavailableError } from "./shared/errors.js";
@@ -156,11 +157,13 @@ export type { SignedActivityForwarder, TurnkeyReader } from "./features/signing/
 export * from "./features/profiles/domain/profile.js";
 export type {
   CreateProfileResult,
+  CustodyAccountLookup,
   ProfileRepository,
 } from "./features/profiles/ports/profile-repository.js";
 export {
   createProfileService,
   type HandleAvailability,
+  type ProfileAccount,
 } from "./features/profiles/application/profiles.js";
 
 export * from "./features/research/types.js";
@@ -168,12 +171,18 @@ export * from "./features/research/policy.js";
 export * from "./features/research/style.js";
 export * from "./features/research/brief.js";
 export * from "./features/research/books.js";
-export { evaluateDecision } from "./features/research/decision-policy.js";
+export {
+  evaluateDecision,
+  briefVerdict,
+  type BriefVerdict,
+} from "./features/research/decision-policy.js";
 export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
 export * from "./features/studio/access.js";
 export * from "./features/studio/draft.js";
+export * from "./features/studio/brief-config.js";
+export * from "./features/studio/preview.js";
 export * from "./features/studio/locks.js";
 
 export {
@@ -240,8 +249,10 @@ export {
 } from "./features/wallets/application/custody.js";
 
 export * from "./features/identity/domain/wallet-auth.js";
+export { MAX_OPEN_NONCES_PER_ADDRESS } from "./features/identity/ports/wallet-identity.js";
 export type {
   AccountProvisioner,
+  NonceHolder,
   NonceStore,
   SignatureVerifier,
   WalletLink,
@@ -254,6 +265,7 @@ export {
   ExpiredNonceError,
   NONCE_TTL_MS,
   UnknownNonceError,
+  WalletAccountConflictError,
   WrongDomainError,
   type Presented,
   type SignedMessage,

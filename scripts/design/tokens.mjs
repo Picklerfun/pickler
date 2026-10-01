@@ -1,30 +1,24 @@
 // The tokens are the source, or they are decoration. This collects every colour each route actually
-// paints — ink, ground, and edges with a width to show — and asserts each one is a value some --pk-*
-// token holds on that page. A colour on screen that is in no token is a literal someone typed,
-// wherever it lives: a module, an inline style, a component default.
+// paints — ink, ground, edges with a width to show, gradients, shadows, drop-shadows, outlines and
+// SVG paint — and asserts each one is a value some --pk-* token holds on the surface the element
+// sits in. A colour on screen that is in no token is a literal someone typed, wherever it lives: a
+// module, an inline style, a component default.
 //
 // Both sides are read the same way, by painting them and reading the browser's own answer, so
 // `#0b0d1a` in the token file and `rgb(11, 13, 26)` on screen are never called different colours.
-import { hex, parse } from "./lib/colour.mjs";
-import { paintedColours, resolveTokens } from "./lib/probe.mjs";
+import { hex } from "./lib/colour.mjs";
+import { COLOUR, paintedColours, resolveTokens } from "./lib/probe.mjs";
 import { eachRoute, finish } from "./lib/render.mjs";
+import { strays } from "./lib/strays.mjs";
 import { ROUTES } from "./routes.mjs";
-
-const key = (value) => {
-  const colour = parse(value);
-  return colour
-    ? `${Math.round(colour[0])},${Math.round(colour[1])},${Math.round(colour[2])},${Number(colour[3].toFixed(3))}`
-    : null;
-};
 
 const { results, blocked } = await eachRoute(ROUTES, async (page) => ({
   tokens: await page.evaluate(resolveTokens),
-  painted: await page.evaluate(paintedColours),
+  painted: await page.evaluate(paintedColours, COLOUR),
 }));
 
 const problems = [];
 for (const { route, value } of results) {
-  const held = new Set(value.tokens.values.map(key));
   if (!value.tokens.names.length) {
     // The stylesheet was unreadable or the tokens are not on this page. Without this, every colour
     // would be a stray and the report would be noise rather than a finding.
@@ -34,24 +28,11 @@ for (const { route, value } of results) {
     });
     continue;
   }
-  const strays = new Map();
-  for (const paint of value.painted) {
-    const colour = parse(paint.value);
-    if (!colour || colour[3] === 0 || held.has(key(paint.value))) {
-      continue;
-    }
-    const seen = strays.get(key(paint.value));
-    if (seen) {
-      seen.count += 1;
-      continue;
-    }
-    strays.set(key(paint.value), { count: 1, paint, colour });
-  }
-  for (const { count, paint, colour } of strays.values()) {
+  for (const { count, paint, colour } of strays(value.tokens, value.painted)) {
     const alpha = colour[3] === 1 ? "" : ` at ${colour[3]} alpha`;
     problems.push({
       route,
-      text: `${route.name} ${paint.selector}: ${hex(colour)}${alpha} as ${paint.role} is in no --pk-* token on this page ×${count}`,
+      text: `${route.name} ${paint.selector}: ${hex(colour)}${alpha} as ${paint.role} is in no --pk-* token of its surface ×${count}`,
     });
   }
 }

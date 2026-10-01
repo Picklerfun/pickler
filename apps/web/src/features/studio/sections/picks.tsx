@@ -257,7 +257,7 @@ export function Picks({
   const links = sourceLinks(traceOfSelected);
 
   return (
-    <div className={styles.section}>
+    <div className={styles.section} id="studio-section-picks">
       <div className={styles.sectionHead}>
         <h1>Picks</h1>
         <span className={styles.count}>{picks.length} DECISIONS</span>

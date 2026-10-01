@@ -6,7 +6,7 @@ Read [the root instructions](../../AGENTS.md) and [core instructions](../core/AG
 
 `@pickler/infrastructure` implements interfaces owned by core and trading. It exports `systemClock`, `ExaResearch` (`WebSearch`/`PageReader`), `PolymarketData` (`MarketData`) and `PostgresResearchStore` (scoped configuration, runs, evidence, decisions and job persistence). Constructors accept configuration; no credentials are embedded.
 
-It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), Supabase admin adapters for workspaces, API keys, agents, budgets and profiles, the PostgREST client used by the growth functions, and Turnkey stamping and activity forwarding. `createSampleMarketBoard`, `createSampleLandingReadModel` and `createInMemoryApplicantStore` serve sample content for the public pages until a venue and an indexer exist. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. `createSampleMarketBoard` (`src/markets/sample-market-board.ts`) holds the six perpetual markets, the squares agents have a public call on, and a deterministic 24-hour trail derived from each mark and its change; it polls no venue and reads no chain. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
+It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`). `createSampleMarketBoard`, `createSampleLandingReadModel` and `createInMemoryApplicantStore` serve sample content for the public pages until a venue and an indexer exist. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. `createSampleMarketBoard` (`src/markets/sample-market-board.ts`) holds the six perpetual markets, the squares agents have a public call on, and a deterministic 24-hour trail derived from each mark and its change; it polls no venue and reads no chain. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
 
 Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core and trading; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
 
@@ -39,6 +39,27 @@ Polymarket discovery round-robins a shared budget of five pages of twenty market
 `src/sports` implements BALLDONTLIE and The Odds API with validated structured evidence, bounded requests, permission-checked public caching and shared PostgreSQL quotas. Migration 0003 adds private cache/quota tables. Never put credentials in cache keys, source URLs or evidence. Preserve original retrieval/update timestamps. Atomic evidence and successful result writes also lock/check the current agent configuration.
 
 `PostgresPaperStore` uses the existing pool, per-attempt private reservations and atomic agent-locked finalization. Migration 0004 adds `paper_orders`, one attempt per run and one pending/filled position per agent/market. Public projections exclude owner tokens and internal snapshots. `recover` also interrupts expired paper reservations. A test-only clock must never be wired from API/environment. Polymarket paper conditions require explicit per-market fee and trading metadata; do not default missing fees to zero.
+
+`PostgresPreviewStore` (migration 0022, numbered 0017 before main was merged: `pickler.preview_runs`, `pickler.preview_events`) holds the
+paper runs of a brief that is not an agent yet (docs/specs/studio-brief-v1.md §4). It is the owner's
+`create`/`read` (5 per user per rolling hour under a per-user advisory lock, readable for 24 h) and
+the runner's repository for a run with no `pickler.agents` row: `agent()` answers the run's config
+snapshot at version 1, never paused. Claims, 60 s leases, renewal and recovery mirror the research
+store; a queued preview whose owner lost research access is cancelled at claim, and recovery deletes
+expired previews nobody adopted. An adopted preview loses its `preview_events` at adoption (they
+were copied to `pickler.events`) and keeps its row, which a retried create replays from; recovery
+deletes that row 30 days after adoption (`ADOPTED_PREVIEW_RETENTION_MS`). Its `config` and
+`decision` stay: `config` is NOT NULL and both are one small document each. Its claim locks the same `execution_policy` row as research
+claims, and both count running rows of `pickler.runs` and `pickler.preview_runs` against the global
+and per-tenant limits; the executors claim a preview queued over two minutes
+(`PREVIEW_PRIORITY_AFTER_MS`) ahead of research runs. Under that lock the claim walks the queue
+oldest first in pages of 50 (`CLAIM_PAGE`) with `FOR UPDATE OF p SKIP LOCKED`, reading only ids,
+tenant, expiry and the owner's research access (joined, not queried per row); the config is read
+once, by the `UPDATE ... RETURNING` of the row it claims. Migration 0022 also adds
+`agents.agent_status` `draft`. Never use the `draft` value inside a migration: `migrateDatabase`
+applies pending migrations in one transaction, and Postgres refuses an enum value added in the
+same transaction, so it would fail whenever it is applied in the same batch as 0022. Deploy order: apply 0022 before deploying the API, the research
+worker or the local runner, because every research claim reads `pickler.preview_runs`.
 
 `src/polymarket/classification.ts` maps reviewed actual provider tags and metadata to core sports classifications with versioned provenance. Never infer authorization from a query filter or ambiguous football labels. `listScope` shares the five-page budget across chosen sports; unknown classifications reach core exclusion diagnostics. Category configurations and decisions v4 use existing JSONB without DDL or historical rewrites.
 
@@ -74,6 +95,14 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's create-agent transaction only ever reads it.
 
+`PostgresStudioDirectory.createDraft` adopts a preview as a private draft in one transaction. It
+locks the workspace, then the preview row, and first looks for a replay: a preview already adopted
+by this caller in this workspace, with the submitted fingerprint, whose `pickler.product_agents`
+row (`request_key = 'preview:<previewRunId>'`) was created under the submitted handle, answers
+that draft again without calling `admit`; the same request under a different name is `CONFLICT`. Otherwise the checks run in the spec's order
+(`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`), then `admit` (the route's funding lock and draft
+limit), then the writes.
+
 ## Invocation database connections
 
 Infrastructure exports databasePoolConfig and DatabaseConnectionOptions. Deployed hosts pass
@@ -108,6 +137,19 @@ raw SQL, parameters, error messages or causes; ownership/configuration errors pa
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.
 
 ## Agent directory
+
+The product-data ports the API composes are PostgreSQL classes over the caller's pool, written
+query for query from the Supabase adapters they replaced: `PostgresProfileRepository` (`profile-repository.ts`, calling
+`identity.handle_available` and `identity.create_profile` exactly as the RPCs did, so their
+`handle_taken` / `user_has_profile` outcomes reach core's profile errors unchanged),
+`PostgresWorkspaceDirectory` and `PostgresApiKeyDirectory` (`access-directory.ts`),
+`PostgresAgentRegistry`, `PostgresAgentEventLog` and `PostgresBudgetSource` (`agent-registry.ts`),
+and `PostgresWaitlist` and `PostgresApplicants` (`growth-store.ts`, calling the growth functions
+and parsing their results with the schemas that file defines). A failed query raises
+`DataSourceUnavailableError` with a `postgres.<schema>.<table>.<operation>` source
+(`data-source.ts`), as the PostgREST errors did. Enum and `cidr[]` columns are cast to text in SQL
+because node-postgres returns unknown array types as a literal. `test/postgres-product-data.test.ts`
+covers them against the Docker PostgreSQL, including `onboard` right after `createProfile`.
 
 `src/persistence/agent-directory.ts` exports `PostgresAgentDirectory`, the `AgentDirectory` adapter
 behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
@@ -164,8 +206,8 @@ from `@pickler/chain`, defaulting to the network's first public endpoint and ref
 chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
 private query `schedule` uses. `PostgresStudioDirectory.list` left-joins `agents.agent_profiles` for each agent's `accent`, reading
 "lime" when there is no profile row or the stored value is outside `ACCENTS`.
-`PostgresStudioDirectory.createdWithKey` is a read-only lookup on
-the same workspace and request key `createAgent` replays from. `PostgresResearchStore.updateSpend`
+`PostgresStudioDirectory.createAgent` replays an earlier create by workspace and request key inside
+its transaction, before `admit`. `PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
 `PostgresResearchStore.updateInterval(scope, hours, now)` sets only the `intervalHours` key the same
@@ -206,6 +248,22 @@ including when the lookup fails, the original refusal propagates.
 `updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
 `updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
 at that same version would otherwise drop them.
+
+## Wallet sign-in nonces
+
+`PostgresWalletIdentityStore` (`src/persistence/wallet-identity-store.ts`) keeps
+`identity.siwe_nonces`, which has only `nonce` and `expires_at`. The row's key is the holder's tag
+— sixteen hex characters of sha256 over `namespace:address` — followed by the nonce, so an
+address's open nonces are a range of the primary key and a nonce can only be consumed for the
+address it was issued to. `issue(nonce, expiresAt, holder)` never refuses. In one transaction,
+under `pg_advisory_xact_lock` on the holder's tag so issues for one address take turns, one
+statement deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired rows through
+`siwe_nonces_expiry_idx`, evicts the holder's oldest nonces so that it holds core's
+`MAX_OPEN_NONCES_PER_ADDRESS` (5) with the new one, and inserts. Both deletes go by `ctid` with
+`FOR UPDATE SKIP LOCKED`. It evicts rather than refuses because the route is public and the address
+unverified: a refusing cap would let anybody lock a wallet out. Nothing else deletes expired
+nonces. A cap per client IP would need a column for the IP's hash and a
+migration.
 
 ## Agent wallet ceremony
 
@@ -309,7 +367,7 @@ migrator recognizes databases created on the earlier launch branch. Never rewrit
 SQL or reset a database to resolve branch numbering. The combined latest snapshot includes
 both launch and current trading tables. Migration tests cover both predecessor histories.
 
-Migration histories are reconciled without changing published SQL or original timestamps. Main retains 0010–0014, launch adds 0015–0016, and custody/profile migrations follow at 0017–0021. The Node-only migrator is available through `@pickler/infrastructure/migrations`, never the Worker runtime barrel. Launch reads share the request pool without owning its lifecycle.
+Migration histories are reconciled without changing published SQL or original timestamps. Main retains 0010–0014, launch adds 0015–0016, and custody/profile migrations follow at 0017–0021, and the Studio preview runs at 0022. The Node-only migrator is available through `@pickler/infrastructure/migrations`, never the Worker runtime barrel. Launch reads share the request pool without owning its lifecycle.
 
 Perpetual study admission shares the USD 5 ceiling across every session for the same tenant
 and network in the same database. A transaction-scoped advisory lock serializes reservations;

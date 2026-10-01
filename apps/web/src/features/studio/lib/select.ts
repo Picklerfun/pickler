@@ -23,3 +23,12 @@ export function selectAgent(
   const chosen = match ?? agents[0];
   return chosen ? idOf(chosen) : null;
 }
+
+/**
+ * The studio opened on one agent, from the studio's home as the page being rendered sees it
+ * (`useStudioHref`): `/` on the studio host, where `/studio` is a 404, and `/studio` on a host that
+ * serves both products. No agent is the home itself.
+ */
+export function studioAgentHref(home: string, agentId: string | null | undefined): string {
+  return agentId ? `${home}?agent=${encodeURIComponent(agentId)}` : home;
+}

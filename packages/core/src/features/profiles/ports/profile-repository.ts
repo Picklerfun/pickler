@@ -4,6 +4,14 @@ export type CreateProfileResult =
   | { created: true; profile: Profile }
   | { created: false; reason: "handle_taken" | "user_has_profile" };
 
+/**
+ * Whether the user has a custody account (a Turnkey sub-organization with its master wallet). A
+ * profile is refused without one: see `WalletRequiredError`.
+ */
+export interface CustodyAccountLookup {
+  hasCustodyAccount(userId: string): Promise<boolean>;
+}
+
 export interface ProfileRepository {
   findByUserId(userId: string): Promise<Profile | null>;
   isHandleTaken(handle: string): Promise<boolean>;

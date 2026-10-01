@@ -4,7 +4,7 @@ import { PROMPTS } from "./map";
 import styles from "./create.module.css";
 
 /** `draftRequestSchema` takes a line of 3 to 280 characters. */
-export const LINE_MAX = 280;
+const LINE_MAX = 280;
 
 /**
  * One line, written like you'd explain it to a friend. "Set it up from my line" (the nav below)

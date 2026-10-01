@@ -8,7 +8,7 @@ export type HandleCheck = "idle" | "checking" | "error";
 const HANDLE_RE = /^[a-z0-9_]{3,15}$/;
 
 /** The canvas's hint beside the handle, from the real availability answer. */
-export function handleHint(handle: string, available: boolean | null, check: HandleCheck): string {
+function handleHint(handle: string, available: boolean | null, check: HandleCheck): string {
   if (!HANDLE_RE.test(handle)) {
     return "3–15 LETTERS";
   }

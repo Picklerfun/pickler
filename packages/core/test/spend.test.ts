@@ -60,6 +60,6 @@ test("a day's cap below one call's is refused", () => {
   assert.doesNotThrow(() => assertConfig(withSpend({ perCallAusd: 50, perDayAusd: 50 })));
 });
 
-test("spend limits are not enforced yet, and say so", () => {
-  assert.equal(SPEND_ENFORCED, false);
+test("spend limits are enforced on paper, and say so", () => {
+  assert.equal(SPEND_ENFORCED, true);
 });

@@ -4,6 +4,8 @@ import { ACCENTS } from "./landing.js";
 import {
   agentConfigSchema,
   agentResponseSchema,
+  decisionSchema,
+  eventResponseSchema,
   skillSchema,
   spendLimitsSchema,
   uncertaintyPolicySchema,
@@ -90,7 +92,7 @@ export const studioAccessSchema = z.object({
 });
 
 // Mirrors `LockReason` in core's `features/studio/locks.ts`; a workers/api test pins it.
-export const LOCK_REASONS = ["first_run", "unfunded", "unfunded_agent"] as const;
+export const LOCK_REASONS = ["first_run", "unfunded", "unfunded_agent", "draft_limit"] as const;
 export type LockReasonDto = (typeof LOCK_REASONS)[number];
 
 /** A lock the API has already decided; the screen shows `reason` and never re-derives it. */
@@ -113,14 +115,20 @@ export const studioAgentSchema = agentResponseSchema.extend({
   handle: z.string().optional(),
   /** The profile's accent; "lime" for an agent without a profile row. */
   accent: z.enum(ACCENTS),
+  /** A private draft from the brief (studio-brief-v1 §6): no wallet until Go Public. */
+  draft: z.boolean(),
   wallet: studioAgentWalletSchema.nullable(),
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
   canSchedule: lockSchema,
-  /** "+ New agent": every agent the person owns holds at least 10 AUSD. */
+  /**
+   * "+ New agent": every agent with a wallet holds at least 10 AUSD (`unfunded_agent`), and the
+   * workspace holds fewer than three private drafts (`draft_limit`). A draft is not counted as
+   * unfunded.
+   */
   canCreateAnother: lockSchema,
   /** The config's spend limits, or null when the person has not set them. */
   spend: spendLimitsSchema.nullable(),
-  /** False until the trading work enforces `spend`: "Applies when it trades for real". */
+  /** Whether `spend` is enforced: true, on paper orders. */
   spendEnforced: z.boolean(),
 });
 export type StudioAgentDto = z.infer<typeof studioAgentSchema>;
@@ -248,3 +256,58 @@ export const draftResponseSchema = z.object({
   draft: agentDraftSchema,
   unsupported: z.array(z.string()),
 });
+
+/**
+ * What the brief screen sends. Lengths and line counts are core's to judge (`assertBrief`), so the
+ * answer can name the section: 400 INVALID_BRIEF with `field` and `reason`. These bounds only keep
+ * the body small.
+ */
+const briefInputSchema = z
+  .object({
+    thesis: z.string().max(4000),
+    reads: z.array(z.string().max(1000)).max(50),
+    entersWhen: z.array(z.string().max(1000)).max(50),
+    exitsWhen: z.array(z.string().max(1000)).max(50),
+    never: z.array(z.string().max(1000)).max(50),
+  })
+  .strict();
+
+/** `POST /v1/studio/preview-runs` (spec §4). Caps and leverage are core's to judge too. */
+export const previewRunRequestSchema = z
+  .object({
+    brief: briefInputSchema,
+    spend: z.object({ perCallAusd: z.number(), perDayAusd: z.number() }).strict(),
+    maxLeverage: z.number(),
+  })
+  .strict();
+export type PreviewRunRequestDto = z.infer<typeof previewRunRequestSchema>;
+
+/** `GET /v1/studio/preview-runs/:id`: the run and its trace, events in a run's own shape. */
+export const previewRunResponseSchema = z.object({
+  run: z.object({
+    id: z.string(),
+    status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
+    createdAt: z.number(),
+    startedAt: z.number().nullable(),
+    finishedAt: z.number().nullable(),
+    expiresAt: z.number(),
+    adopted: z.boolean(),
+    decision: decisionSchema.nullable(),
+    error: z.string().nullable(),
+  }),
+  events: z.array(eventResponseSchema),
+});
+export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
+
+/**
+ * `POST /v1/studio/drafts` (spec §6). The brief travels again so the server can check that the
+ * run was made from exactly this brief (409 RUN_STALE otherwise).
+ */
+export const draftCreateSchema = previewRunRequestSchema
+  .extend({
+    name: z.string().trim().min(1).max(40),
+    handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
+    previewRunId: z.string().uuid(),
+  })
+  .strict();
+export type DraftCreateDto = z.infer<typeof draftCreateSchema>;

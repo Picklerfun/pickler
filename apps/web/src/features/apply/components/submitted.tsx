@@ -3,7 +3,7 @@
 import type { ApplicantResponse, ApplicationDto } from "@pickler/api-schema";
 import { Button, ButtonLink } from "@pickler/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { colorVars } from "@/lib/accent";
+import { swatchVars } from "@/lib/accent";
 import styles from "../apply.module.css";
 import { BATCH, categorySwatch, personalitySwatch, SWATCHES } from "../lib/options";
 
@@ -117,11 +117,7 @@ export function Submitted({
           <dl className={styles.heldList}>
             {held.map((row) => (
               <div key={row.label} className={styles.heldRow}>
-                <span
-                  className={styles.pixel}
-                  style={colorVars(row.swatch.color, row.swatch.rgb)}
-                  aria-hidden="true"
-                />
+                <span className={styles.pixel} style={swatchVars(row.swatch)} aria-hidden="true" />
                 <span className={styles.heldText}>
                   <dt>{row.label}</dt>
                   <dd>{row.value}</dd>

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "  \"--pk-magenta-ink\",\n  \"--pk-cyan-ink\",\n  \"--pk-pink-ink\",\n];",
+    "replace": "  \"--pk-magenta-ink\",\n  \"--pk-state-cool-ink\",\n];"
+  }
+]

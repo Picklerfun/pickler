@@ -56,7 +56,7 @@ export function Brief({
   }
 
   return (
-    <div className={styles.section} data-narrow="true">
+    <div className={styles.section} id="studio-section-brief" data-narrow="true">
       <p className={styles.eyebrow} data-tint="lime">
         HOW IT THINKS
         <span className={styles.stubState}>BUILT</span>

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "    grid: value(\"--pk-border\", \"rgba(11, 13, 26, 0.12)\"),",
+    "replace": "    grid: value(\"--pk-rule-strong\", \"rgba(11, 13, 26, 0.12)\"),"
+  }
+]

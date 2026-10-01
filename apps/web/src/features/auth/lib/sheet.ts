@@ -34,7 +34,7 @@ const CEREMONIES: Record<Ceremony, { ask: string; done: string }> = {
 /** The one line a backup does not derive: it is what the operating system is about to offer. */
 const BACKUP_NOTE = "PHONE · SECURITY KEY · PASSWORD MANAGER";
 
-export interface SheetInput {
+interface SheetInput {
   ceremony: Ceremony;
   phase: SheetPhase;
   /**
@@ -55,7 +55,7 @@ export interface SheetInput {
   step?: 1 | 2 | undefined;
 }
 
-export interface SheetCopy {
+interface SheetCopy {
   title: string;
   /** The mono line under the title. Empty when there is nothing true to put on it. */
   note: string;

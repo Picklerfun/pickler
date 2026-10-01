@@ -1,0 +1,29 @@
+.hex {
+  color: #c8f03a;
+}
+
+.short {
+  color: #000;
+}
+
+.functional {
+  background: rgba(245, 246, 255, 0.06);
+}
+
+.triple {
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+}
+
+.hsl {
+  border-color: hsl(210 40% 50%);
+}
+
+.named {
+  color: white;
+}
+
+.continued {
+  box-shadow:
+    inset 0 1px 0 var(--pk-rule),
+    0 0 24px rgba(200, 240, 58, 0.32);
+}

@@ -643,3 +643,39 @@ test("every staged agent carries an accent from the palette", () => {
     assert.equal(homeFixture(stage).agent.accent, "lime");
   }
 });
+
+test("a draft's call does not ask for funding: its wallet comes with Go Public", () => {
+  const status = homeStatus({
+    run: decided(),
+    events: traced,
+    agent: agent({ draft: true, wallet: null }),
+    now: T0 + 140_000,
+    runCount: 1,
+  });
+
+  assert.equal(
+    status.say,
+    "That was my first call, on paper. I stay private and on paper until I go public.",
+  );
+});
+
+test("a draft refused at the limit is told so, not shown a raw request failure", async () => {
+  const { messageFor } = await import("../src/features/studio/lib/messages");
+  assert.equal(
+    messageFor("DRAFT_LIMIT", "At most 3 drafts at a time"),
+    "At most 3 drafts at a time.",
+  );
+  assert.equal(
+    messageFor("SOMETHING_NEW", "the server's words"),
+    "Request failed: the server's words",
+  );
+  assert.equal(messageFor("500", undefined), "Request failed: 500");
+});
+
+test("balances switched off are said in words", async () => {
+  const { messageFor } = await import("../src/features/studio/lib/messages");
+  assert.equal(
+    messageFor("BALANCES_UNAVAILABLE", "Balances are not available"),
+    "Balances and deposits are not available here yet.",
+  );
+});

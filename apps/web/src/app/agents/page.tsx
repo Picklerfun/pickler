@@ -10,14 +10,15 @@ export const metadata: Metadata = {
   description: "Who takes a paid read, on what, and for how much.",
 };
 
-export default async function Agents() {
-  const agents = await services.listDirectory();
-  // Dark: this page's body still composes against the old ground — panels made of white at 6%,
-  // glows, a starfield behind them — and redrawing it is its own task. The shell is light for
-  // everyone else.
+type Search = Record<string, string | string[] | undefined>;
+
+export default async function Agents({ searchParams }: { searchParams: Promise<Search> }) {
+  const search = await searchParams;
+  const query = typeof search.q === "string" ? search.q : "";
+  const { data: agents, degraded } = await services.listDirectory();
   return (
-    <PublicShell surface="dark">
-      <AgentsDirectory agents={agents} />
+    <PublicShell>
+      <AgentsDirectory agents={agents} degraded={degraded} query={query} />
     </PublicShell>
   );
 }

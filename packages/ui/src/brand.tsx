@@ -20,6 +20,8 @@ export function BrandMark({ name, size = 18 }: { name: BrandName; size?: number 
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
+      // The design checks skip what sits under this: a third party's colours are not tokens.
+      data-third-party-mark=""
     >
       {name === "google" ? (
         <>

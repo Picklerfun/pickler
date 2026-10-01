@@ -7,6 +7,7 @@ import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
 import type { AuthBoardData } from "../lib/board-data";
 import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
+import { PREVIEW_PASSKEYS, type PasskeyPreview } from "../lib/passkey-entry";
 import {
   CUSTODY_API,
   SessionExpired,
@@ -27,7 +28,7 @@ import {
 import { passkeys as readPasskeys, wallet as readWallet } from "../lib/custody-api";
 import type { ChallengeOptionsDto, PasskeyDto, WalletDto } from "../lib/custody-api";
 import { describeDevice } from "../lib/device";
-import { INITIAL, next, rail } from "../lib/flow";
+import { INITIAL, next, rail, welcomeTitle } from "../lib/flow";
 import { ApiError, getProfile } from "../lib/pickler-api";
 import { Button } from "@pickler/ui";
 import type { Ceremony, SheetPhase } from "../lib/sheet";
@@ -122,10 +123,12 @@ function absent<T>(error: unknown): T | null {
 /**
  * The form column and the board, on whichever of the two flows the route asked for.
  *
- * `up` and `in` — /signup and /signin — run `lib/flow.ts`'s machine, whose sign-up rail ends on
- * the mandatory passkey step and whose sign-in rail passes through it when the account has no
- * sub-organization (spec §4.1). Every signed-in screen sends a person without a master wallet to
- * the signup's passkey step (`?step=passkey`, which resumes their session), and nowhere else.
+ * `up` and `in` — /signup and /signin — run `lib/flow.ts`'s machine, whose sign-up rail puts the
+ * mandatory passkey step straight after the code and the handle after it, and whose sign-in rail
+ * passes through the passkey step when the account has no sub-organization (spec §4.1). Every
+ * signed-in screen sends a person without a master wallet to the signup's passkey step
+ * (`?step=passkey`), and one with a wallet and no profile to its handle step (`?step=handle`);
+ * both resume their session from what the account holds, whatever the query says.
  * `add` — /passkey — is `PasskeyAddFlow`, a smaller component with no rail, only for adding a
  * device to a sub-organization that exists.
  */
@@ -134,6 +137,7 @@ export function PasskeyFlow({
   mode,
   destination,
   preview,
+  passkeyPreview,
 }: {
   board: AuthBoardData;
   /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
@@ -147,9 +151,11 @@ export function PasskeyFlow({
   destination?: string | undefined;
   /** `up` only, outside production: open on this step without a session or any read. */
   preview?: SignupPreview | undefined;
+  /** `add` only, outside production: the add-a-passkey screen without a session or any read. */
+  passkeyPreview?: PasskeyPreview | undefined;
 }) {
   if (mode === "add") {
-    return <PasskeyAddFlow board={board} destination={destination} />;
+    return <PasskeyAddFlow board={board} destination={destination} preview={passkeyPreview} />;
   }
   return (
     <SignFlow
@@ -174,7 +180,7 @@ interface SheetState {
 }
 
 /**
- * The sign-up and sign-in rail: `auth/code/handle/passkey/welcome` and its sign-in cousin, plus
+ * The sign-up and sign-in rail: `auth/code/passkey/handle/welcome` and its sign-in cousin, plus
  * the new-device recovery rail entered from either. Two ceremonies open from here: `create`, the
  * mandatory passkey step's enrolment (challenge → WebAuthn → register), which creates the
  * sub-organization and its master wallet; and `here`, which lends a browser that has never seen
@@ -211,6 +217,7 @@ function SignFlow({
    */
   const [resuming, setResuming] = useState(preview === undefined);
   const [sheet, setSheet] = useState<SheetState | null>(null);
+  /** The profile's handle from the landing check or the handle step; empty while there is none. */
   const [profileHandle, setProfileHandle] = useState("");
   const [wallet, setWallet] = useState<WalletDto | null>(null);
   const [claiming, setClaiming] = useState(false);
@@ -283,7 +290,7 @@ function SignFlow({
             setWallet(now);
             setCreateFailed(false);
             setSheet(null);
-            dispatch({ type: "passkey_created" });
+            dispatch({ type: "passkey_created", profile: profileHandle !== "" });
             return;
           }
         }
@@ -339,7 +346,8 @@ function SignFlow({
       if (outcome === "enrolled") {
         await remember();
       }
-      dispatch({ type: "passkey_created" });
+      // On to the handle step, or to welcome for an account that already has a profile.
+      dispatch({ type: "passkey_created", profile: profileHandle !== "" });
       // The welcome screen's balance. A read that fails leaves it saying so; the wallet exists.
       try {
         setWallet(await readWallet((await session()).token));
@@ -366,11 +374,10 @@ function SignFlow({
   }
 
   /**
-   * A verified code, where the next screen depends on what the account holds: a name, a
-   * sub-organization, and whether this browser has ever made a passkey for it. Both rails read it:
-   * sign-in so that an account without a sub-organization goes through the passkey step, sign-up so
-   * that an account that is already complete is not asked to create a second passkey for a wallet
-   * it has.
+   * A verified code, where the next screen depends on what the account holds: a sub-organization,
+   * a name, and whether this browser has ever made a passkey for it. Both rails read it: sign-in so
+   * that an account without a sub-organization goes through the passkey step, sign-up so that an
+   * account that is already complete is not asked to create a second passkey for a wallet it has.
    *
    * A 404 is an answer (`verifiedEvent` turns it into the next step). Any other failure is not,
    * so the code screen says the account could not be read and offers to read it again.
@@ -555,7 +562,12 @@ function SignFlow({
             />
           )}
           {state.step === "welcome" && (
-            <WelcomeStep handle={profileHandle} wallet={wallet} destination={target} />
+            <WelcomeStep
+              title={welcomeTitle(state)}
+              handle={profileHandle}
+              wallet={wallet}
+              destination={target}
+            />
           )}
           {state.step === "welcome" && (
             <SecondPasskey passkeys={createdPasskeys} id="welcome-second-passkey" />
@@ -617,29 +629,44 @@ interface AddSheetState {
  *
  * A person without a sub-organization does not get in here, or anywhere: the first read
  * (GET /wallets/me, a 404 is none) sends them through `redirectFor` to the signup's own passkey
- * step, which is where the master wallet is created and where they stay until it is.
+ * step, which is where the master wallet is created and where they stay until it is. One with a
+ * wallet and no profile (GET /profile, a 404) is sent to the signup's handle step the same way.
  */
 function PasskeyAddFlow({
   board,
   destination,
+  preview,
 }: {
   board: AuthBoardData;
   destination?: string | undefined;
+  preview: PasskeyPreview | undefined;
 }) {
   const router = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
-  const [screen, setScreen] = useState<AddFlowScreen>("loading");
-  const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
+  // A preview opens on the screen with its fixture list and reads nothing.
+  const [screen, setScreen] = useState<AddFlowScreen>(preview === "add" ? "add" : "loading");
+  const [passkeysState, setPasskeysState] = useState<PasskeysRead>(
+    preview === "add" ? { kind: "ready", passkeys: PREVIEW_PASSKEYS } : { kind: "loading" },
+  );
   const [sheet, setSheet] = useState<AddSheetState | null>(null);
 
   useEffect(() => {
+    if (preview !== undefined) {
+      return;
+    }
     let live = true;
     void (async () => {
       try {
         const { token } = await session();
-        const [found, keys] = await Promise.all([
+        const [found, profile, keys] = await Promise.all([
           readSubOrganization(() => readWallet(token)),
+          // A 404 is no profile; any other failure decides nothing, so it is not null.
+          getProfile(token).then(
+            (value) => value,
+            (error: unknown) =>
+              error instanceof ApiError && error.status === 404 ? null : undefined,
+          ),
           readPasskeys(token).then(
             (value): PasskeysRead => ({ kind: "ready", passkeys: value }),
             (): PasskeysRead => ({ kind: "failed" }),
@@ -648,7 +675,7 @@ function PasskeyAddFlow({
         if (!live) {
           return;
         }
-        const away = redirectFor(found);
+        const away = redirectFor({ wallet: found, profile });
         if (away) {
           router.replace(away);
           return;
@@ -664,7 +691,7 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, preview]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {

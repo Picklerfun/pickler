@@ -8,10 +8,14 @@ import {
   DEFAULT_CONFIG,
   PLUGINS,
   PilotError,
+  BriefError,
+  PreviewRateLimited,
+  preparePreview,
   AccessDeniedError,
   AuthenticationRequiredError,
   unsupported,
   canCreateAnother,
+  MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
   isReadyToSchedule,
   SPEND_ENFORCED,
@@ -35,6 +39,7 @@ import {
   type Scope,
   type StudioAccess,
   type StudioDirectory,
+  type PreviewRepository,
   type ResearchRepository,
 } from "@pickler/core";
 import {
@@ -57,6 +62,9 @@ import {
   draftResponseSchema,
   studioAgentSchema,
   limitsUpdateSchema,
+  previewRunRequestSchema,
+  previewRunResponseSchema,
+  draftCreateSchema,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
@@ -75,6 +83,11 @@ export interface StudioServices {
   repository: ResearchRepository;
   admissionsEnabled?: boolean;
   notifyQueued(): Promise<void>;
+  /**
+   * Paper runs of a brief that is not an agent yet (studio-brief-v1 §4). Absent where it is not
+   * composed; the preview routes then answer 503 PREVIEW_UNAVAILABLE and nothing else changes.
+   */
+  previews?: PreviewRepository;
   /** Null when no model is configured; drafting then answers 503 rather than guessing. */
   drafter?: AgentDrafter | null;
   paper?: {
@@ -85,7 +98,10 @@ export interface StudioServices {
   };
   /** The wallet linked to an agent at creation, by product agent id. */
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
-  /** The AUSD display balance of an address. A read that fails throws; it is never zero. */
+  /**
+   * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
+   * chain is not composed it throws `PilotError` BALANCES_UNAVAILABLE (503).
+   */
   balances: { read(address: string): Promise<number> };
   /**
    * The passkey custody service, per request, for deposits. Absent where Turnkey is not
@@ -135,6 +151,12 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
     return 400;
   }
   if (code === "DRAFT_UNAVAILABLE") {
+    return 503;
+  }
+  if (code === "PREVIEW_UNAVAILABLE") {
+    return 503;
+  }
+  if (code === "BALANCES_UNAVAILABLE") {
     return 503;
   }
   return 409;
@@ -201,6 +223,12 @@ export function studioRoutes(services: StudioServices) {
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
     }
+    if (error instanceof BriefError) {
+      return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
+    }
+    if (error instanceof PreviewRateLimited) {
+      return c.json({ error: error.code, retryAt: error.retryAt }, 429);
+    }
     if (error instanceof PilotError) {
       return c.json({ error: error.code }, pilotStatus(error.code));
     }
@@ -238,6 +266,49 @@ export function studioRoutes(services: StudioServices) {
     return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
   });
   api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
+
+  function previewRepository(): PreviewRepository {
+    if (!services.previews) {
+      throw new PilotError("PREVIEW_UNAVAILABLE", "Paper runs are not composed here");
+    }
+    return services.previews;
+  }
+
+  // "Run it on paper" (studio-brief-v1 §4): the real runtime, once, on a config that is not an
+  // agent yet. Research rights, like any run; 5 per rolling hour; readable by its owner for 24 h.
+  api.post("/preview-runs", async (c) => {
+    if (services.admissionsEnabled === false) {
+      throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
+    }
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const previews = previewRepository();
+    const { config, fingerprint } = preparePreview(
+      previewRunRequestSchema.parse(await c.req.json()),
+    );
+    const { id } = await previews.create(
+      {
+        userId: principal.id,
+        workspaceId: current.workspaceId,
+        tenantId: current.tenantId,
+        config,
+        fingerprint,
+      },
+      Date.now(),
+    );
+    try {
+      await services.notifyQueued();
+    } catch {
+      console.error("Durable admission awaits queue reconciliation");
+    }
+    return c.json({ id }, 202);
+  });
+  api.get("/preview-runs/:id", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal);
+    const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
+    return c.json(previewRunResponseSchema.parse(read));
+  });
   /** The linked wallet and its balance. A failed balance read propagates as an error. */
   async function fundedWallet(productId: string): Promise<FundedWallet | null> {
     const wallet = await services.wallets.findAgentWallet(productId);
@@ -248,14 +319,61 @@ export function studioRoutes(services: StudioServices) {
   }
 
   /**
-   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. An agent
-   * without a linked wallet (created before wallets existed) cannot be funded and is not counted.
+   * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. The lock
+   * counts the balances of agents that have a wallet. A private draft has none and is not counted
+   * as unfunded (§6); drafts close the lock only at `MAX_DRAFTS_PER_WORKSPACE`. An agent without a
+   * wallet that is not a draft (created before wallets existed) cannot be funded and is not
+   * counted either.
    */
   async function fleet(current: StudioAccess) {
     const listed = await services.directory.list(current);
     const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
     const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
-    return { listed, wallets, another: canCreateAnother(balances) };
+    const drafts = listed.filter((agent) => agent.draft).length;
+    return { listed, wallets, another: canCreateAnother(balances, drafts) };
+  }
+
+  /**
+   * "+ New agent"'s lock as the create runs it: inside its transaction, after the workspace row is
+   * locked, so two concurrent creates serialize and the second counts the first. Creating an agent
+   * with its wallet meets the funding lock alone; a draft also meets the draft limit.
+   */
+  function fundingLock(current: StudioAccess, creating: "agent" | "draft") {
+    return async () => {
+      const { another } = await fleet(current);
+      if (another.reason === "unfunded_agent") {
+        throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
+      }
+      if (another.reason === "draft_limit" && creating === "draft") {
+        throw new PilotError("DRAFT_LIMIT", `At most ${MAX_DRAFTS_PER_WORKSPACE} drafts at a time`);
+      }
+    };
+  }
+
+  /**
+   * The same lock for one agent's page. Its own balance is already read; the other agents' are
+   * read here, and one that cannot be read is left out: an unknown balance is not an unfunded
+   * agent, and another agent's failed read does not fail this page. A create decides again with
+   * `fundingLock`, where every read must succeed.
+   */
+  async function lockSeenFrom(
+    listed: Awaited<ReturnType<StudioDirectory["list"]>>,
+    productId: string,
+    own: FundedWallet | null,
+  ) {
+    const others = listed.filter((agent) => agent.id !== productId);
+    const linked = await Promise.all(
+      others.map((agent) => services.wallets.findAgentWallet(agent.id)),
+    );
+    const read = await Promise.allSettled(
+      linked.flatMap((wallet) => (wallet ? [services.balances.read(wallet.address)] : [])),
+    );
+    const known = read.flatMap((balance) =>
+      balance.status === "fulfilled" ? [balance.value] : [],
+    );
+    const balances = own ? [own.balanceAusd, ...known] : known;
+    const drafts = listed.filter((agent) => agent.draft).length;
+    return canCreateAnother(balances, drafts);
   }
 
   /** The single place the agent DTO, its wallet and both locks are composed. */
@@ -263,7 +381,13 @@ export function studioRoutes(services: StudioServices) {
     scope: Scope,
     wallet: FundedWallet | null,
     another: Lock,
-    identity: { productId?: string; name?: string; handle?: string; accent: Accent },
+    identity: {
+      productId?: string;
+      name?: string;
+      handle?: string;
+      accent: Accent;
+      draft: boolean;
+    },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
     const ready = isReadyToSchedule(record, await repo.readiness(scope));
@@ -293,6 +417,7 @@ export function studioRoutes(services: StudioServices) {
             name: agent.name,
             handle: agent.handle,
             accent: agent.accent,
+            draft: agent.draft,
           }),
         ),
       ),
@@ -302,18 +427,15 @@ export function studioRoutes(services: StudioServices) {
     const input = createAgentSchema.parse(await c.req.json());
     const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
     const current = await access.authorize(c.get("principal"), true);
-    // A retry of a create that already happened replays through `create` (which still refuses
-    // different terms under the key); only a genuinely new agent meets the funding lock.
-    const replay = await services.directory.createdWithKey(current, key);
-    if (!replay) {
-      const { another } = await fleet(current);
-      if (!another.ok) {
-        throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
-      }
-    }
     let scope;
     try {
-      scope = await access.create(c.get("principal"), { ...input, key });
+      // A retry of a create that already happened replays inside `create` (which still refuses
+      // different terms under the key) before the funding lock; only a genuinely new agent meets it.
+      scope = await access.create(
+        c.get("principal"),
+        { ...input, key },
+        fundingLock(current, "agent"),
+      );
     } catch (error) {
       // Creation's refusals share one code for different fixes ("Approve the wallet's rules
       // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
@@ -353,22 +475,56 @@ export function studioRoutes(services: StudioServices) {
       throw caught;
     }
   });
+  // "Create {Name}" (studio-brief-v1 §6): adopt the paper run as a private draft. Not
+  // /agents/draft, which is the model drafter above. The brief travels again, is checked exactly as
+  // the run's was, and its fingerprint must match the run's (RUN_STALE otherwise).
+  api.post("/drafts", async (c) => {
+    const principal = c.get("principal");
+    const current = await access.authorize(principal, true);
+    const body = draftCreateSchema.parse(await c.req.json());
+    const { fingerprint } = preparePreview(body);
+    let created;
+    try {
+      created = await services.directory.createDraft(
+        current,
+        principal.id,
+        { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
+        Date.now(),
+        fundingLock(current, "draft"),
+      );
+    } catch (error) {
+      // The limit is a number the person has to read, so this refusal alone carries its message.
+      if (error instanceof PilotError && error.code === "DRAFT_LIMIT") {
+        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
+      }
+      throw error;
+    }
+    return c.json(
+      {
+        productId: created.productId,
+        agent: agentResponseSchema.parse(await repo.agent(created.scope)),
+      },
+      201,
+    );
+  });
   api.get("/agents/:id", async (c) => {
     const current = await access.authorize(c.get("principal"));
     const productId = c.req.param("id");
     const scope = await services.directory.agentScope(current, productId);
-    const { listed, wallets, another } = await fleet(current);
-    const index = listed.findIndex((agent) => agent.id === productId);
-    const listedAgent = listed[index];
-    const wallet = listedAgent ? (wallets[index] ?? null) : await fundedWallet(productId);
+    const listed = await services.directory.list(current);
+    const listedAgent = listed.find((agent) => agent.id === productId);
+    // This agent's own balance is what the page shows, so its failed read fails the request.
+    const wallet = await fundedWallet(productId);
+    const another = await lockSeenFrom(listed, productId, wallet);
     const identity = listedAgent
       ? {
           productId,
           name: listedAgent.name,
           handle: listedAgent.handle,
           accent: listedAgent.accent,
+          draft: listedAgent.draft,
         }
-      : { accent: "lime" as const };
+      : { accent: "lime" as const, draft: false };
     return c.json(await studioAgent(scope, wallet, another, identity));
   });
   api.put("/agents/:id/config", async (c) => {
@@ -395,8 +551,7 @@ export function studioRoutes(services: StudioServices) {
     );
   });
   // Spend limits write only `config.spend`: the version, the schedule and readiness stay, because
-  // the deposit sheet sets them right before the schedule is turned on. Stored and shown; not
-  // enforced until the trading work (`spendEnforced` says so).
+  // the deposit sheet sets them right before the schedule is turned on. Paper orders enforce them.
   api.put("/agents/:id/limits", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
     const scope = await services.directory.agentScope(current, c.req.param("id"));

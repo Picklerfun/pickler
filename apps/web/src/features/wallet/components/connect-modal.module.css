@@ -10,7 +10,7 @@
 }
 
 .dialog::backdrop {
-  background: rgba(11, 13, 26, 0.72);
+  background: var(--pk-scrim);
   backdrop-filter: blur(6px);
 }
 
@@ -20,7 +20,7 @@
   gap: 14px;
   width: min(420px, calc(100vw - 32px));
   padding: 20px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-popover);
   box-shadow: var(--pk-popover-shadow);
@@ -44,7 +44,7 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-pill);
   background: transparent;
   color: var(--pk-ink-dim);
@@ -64,7 +64,7 @@
   padding: 11px 13px;
   border: 1px solid var(--pk-cyan-edge);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-cyan-tint);
+  background: var(--pk-state-cool-bg);
 }
 
 .heldAction {
@@ -102,9 +102,9 @@
   gap: 12px;
   width: 100%;
   padding: 13px 14px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
-  background: var(--pk-surface);
+  background: var(--pk-panel);
   color: var(--pk-ink);
   text-align: left;
   cursor: pointer;
@@ -115,7 +115,7 @@
 
 .choice:hover:not(:disabled) {
   border-color: var(--pk-border-strong);
-  background: var(--pk-surface-strong);
+  background: var(--pk-panel-2);
 }
 
 .choice:disabled {
@@ -129,9 +129,9 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-sm);
-  color: var(--pk-cyan-ink);
+  color: var(--pk-state-cool-ink);
 }
 
 .choiceText {
@@ -150,7 +150,7 @@
   padding: 3px 7px;
   border: 1px solid var(--pk-lime-edge);
   border-radius: var(--pk-radius-pill);
-  background: var(--pk-lime-tint);
+  background: var(--pk-state-good-bg);
   font: 500 9px/1 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-lime-ink);
@@ -182,7 +182,7 @@
 .error {
   margin: 0;
   font: 500 12.5px/1.5 var(--pk-font);
-  color: var(--pk-pink-ink);
+  color: var(--pk-magenta-ink);
 }
 
 .foot {

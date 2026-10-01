@@ -1,0 +1,54 @@
+[
+  {
+    "find": "  border-radius: var(--pk-radius-mark);\n  background: var(--hue);\n}\n",
+    "replace": "  border-radius: var(--pk-radius-mark);\n}\n"
+  },
+  {
+    "find": ".mark[data-hue=\"lime\"] {\n  --hue: var(--pk-agent-lime-fill);\n}",
+    "replace": ".mark[data-hue=\"lime\"] {\n  background: var(--pk-agent-lime-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"indigo\"] {\n  --hue: var(--pk-agent-indigo-fill);\n}",
+    "replace": ".mark[data-hue=\"indigo\"] {\n  background: var(--pk-agent-indigo-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"amber\"] {\n  --hue: var(--pk-agent-amber-fill);\n}",
+    "replace": ".mark[data-hue=\"amber\"] {\n  background: var(--pk-agent-amber-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"orange\"] {\n  --hue: var(--pk-agent-orange-fill);\n}",
+    "replace": ".mark[data-hue=\"orange\"] {\n  background: var(--pk-agent-orange-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"magenta\"] {\n  --hue: var(--pk-agent-magenta-fill);\n}",
+    "replace": ".mark[data-hue=\"magenta\"] {\n  background: var(--pk-agent-magenta-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"blue\"] {\n  --hue: var(--pk-agent-blue-fill);\n}",
+    "replace": ".mark[data-hue=\"blue\"] {\n  background: var(--pk-agent-blue-fill);\n}"
+  },
+  {
+    "find": ".mark[data-hue=\"violet\"] {\n  --hue: var(--pk-agent-violet-fill);\n}",
+    "replace": ".mark[data-hue=\"violet\"] {\n  background: var(--pk-agent-violet-fill);\n}"
+  },
+  {
+    "find": "  letter-spacing: 0.06em;\n  color: var(--ink);\n}\n",
+    "replace": "  letter-spacing: 0.06em;\n}\n"
+  },
+  {
+    "find": ".move[data-hue=\"lime\"] .moveCost {\n  --ink: var(--pk-lime-ink);\n}",
+    "replace": ".move[data-hue=\"lime\"] .moveCost {\n  color: var(--pk-lime-ink);\n}"
+  },
+  {
+    "find": ".move[data-hue=\"violet\"] .moveCost {\n  --ink: var(--pk-violet-ink);\n}",
+    "replace": ".move[data-hue=\"violet\"] .moveCost {\n  color: var(--pk-violet-ink);\n}"
+  },
+  {
+    "find": ".move[data-hue=\"amber\"] .moveCost {\n  --ink: var(--pk-amber-ink);\n}",
+    "replace": ".move[data-hue=\"amber\"] .moveCost {\n  color: var(--pk-amber-ink);\n}"
+  },
+  {
+    "find": ".move[data-hue=\"magenta\"] .moveCost {\n  --ink: var(--pk-magenta-ink);\n}",
+    "replace": ".move[data-hue=\"magenta\"] .moveCost {\n  color: var(--pk-magenta-ink);\n}"
+  }
+]

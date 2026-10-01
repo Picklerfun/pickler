@@ -24,7 +24,7 @@ export function normalizeHandle(raw: string): string {
 export const isHandleLongEnough = (handle: string) => handle.length >= HANDLE_MIN;
 
 /** What the availability check has to say so far. `null` is "still asking". */
-export type HandleCheck = HandleAvailability | "error" | null;
+type HandleCheck = HandleAvailability | "error" | null;
 
 const REASONS: Record<Exclude<HandleAvailability, { available: true }>["reason"], string> = {
   too_short: `AT LEAST ${HANDLE_MIN}`,
@@ -34,7 +34,7 @@ const REASONS: Record<Exclude<HandleAvailability, { available: true }>["reason"]
   taken: "IS TAKEN",
 };
 
-export interface HandleNote {
+interface HandleNote {
   text: string;
   tone: FieldTone;
   /** Whether the flow may move on. Only ever true for a name the server said is free. */

@@ -29,6 +29,7 @@ import type {
 } from "./custody-api";
 import { challenge, confirmAdd, prepareAdd, register } from "./custody-api";
 import type { FlowEvent } from "./flow";
+import { SIGNUP_HANDLE_STEP, SIGNUP_PASSKEY_STEP } from "./callback";
 import { ApiError } from "./pickler-api";
 
 /** Thrown when there is no session to read a token from at all, rather than an expired one. */
@@ -40,7 +41,7 @@ export class SessionExpired extends Error {
 }
 
 /** The four signing routes a ceremony touches. A test hands the same shape with fakes. */
-export interface CustodyApi {
+interface CustodyApi {
   challenge(token: string): Promise<ChallengeOptionsDto>;
   register(
     token: string,
@@ -180,11 +181,12 @@ export const alreadyEnrolled = (error: unknown): boolean =>
   error instanceof Error && error.name === "InvalidStateError";
 
 /** Which screen a signed-in person belongs on. */
-export type Landing = "handle" | "passkey" | "recover" | "welcome";
+type Landing = "handle" | "passkey" | "recover" | "welcome";
 
 /**
  * Where to put somebody who has just proved an email address, from what the account actually
- * holds rather than from which link they arrived on.
+ * holds rather than from which link they arrived on. The master wallet comes first: no wallet is
+ * the passkey step whatever the profile, and only an account with a wallet is asked for a handle.
  *
  * `enrolledHere` is the one part that is not server truth. It is read only to choose between
  * `welcome` and `recover`, and `isEnrolledHere` says at length why it is a hint rather than a fact.
@@ -196,17 +198,17 @@ export function landing(account: {
   wallet: WalletDto | null;
   enrolledHere: boolean;
 }): Landing {
-  if (account.handle === null) {
-    return "handle";
-  }
   if (account.wallet === null) {
     return "passkey";
+  }
+  if (account.handle === null) {
+    return "handle";
   }
   return account.enrolledHere ? "welcome" : "recover";
 }
 
 /** `window.localStorage`, narrowed to what the mark needs and nullable where there is none. */
-export interface EnrolmentStore {
+interface EnrolmentStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
@@ -253,12 +255,9 @@ export function markEnrolled(store: EnrolmentStore | null, userId: string): void
   }
 }
 
-/**
- * Where a signed-in person without a master wallet is sent from every screen: the signup's own
- * passkey step, which `/signup` resumes for an existing session (landing on the handle step first
- * when there is no profile yet). Nobody gets in anywhere without the wallet.
- */
-export const SIGNUP_PASSKEY_STEP = "/signup?step=passkey";
+// The two signup steps every signed-in screen redirects to, defined once in `callback.ts` (a
+// module the server's auth callback can import) and re-exported here for the screens.
+export { SIGNUP_HANDLE_STEP, SIGNUP_PASSKEY_STEP };
 
 /**
  * The signed-in person's master wallet from GET /wallets/me, or null when there is no
@@ -278,13 +277,24 @@ export async function readSubOrganization<T>(read: () => Promise<T>): Promise<T 
 }
 
 /**
- * Where a signed-in screen sends a person, from `readSubOrganization`'s answer: the signup's
- * passkey step when there is no sub-organization (spec §4.1 — the master wallet comes before
- * anything else), and nowhere when there is one. The studio shell, the create screen, /account and
- * /passkey all ask this.
+ * Where a signed-in screen sends a person, from what the account holds: the signup's passkey step
+ * when there is no sub-organization (spec §4.1 — the master wallet comes before anything else),
+ * whatever the profile; its handle step when there is a wallet and no profile; and nowhere when
+ * there are both. The studio shell, the create screen, /account and /passkey all ask this, so
+ * nothing past signup renders without both.
+ *
+ * `null` means a 404 for either. Anything else — the record, or `undefined` for a read that failed
+ * some other way — is not a missing one, and decides nothing here: the screen reports its own
+ * failure rather than sending somebody who has a wallet to create another.
  */
-export function redirectFor(wallet: unknown): typeof SIGNUP_PASSKEY_STEP | null {
-  return wallet === null ? SIGNUP_PASSKEY_STEP : null;
+export function redirectFor(account: {
+  wallet: unknown;
+  profile: unknown;
+}): typeof SIGNUP_PASSKEY_STEP | typeof SIGNUP_HANDLE_STEP | null {
+  if (account.wallet === null) {
+    return SIGNUP_PASSKEY_STEP;
+  }
+  return account.profile === null ? SIGNUP_HANDLE_STEP : null;
 }
 
 /**
@@ -337,9 +347,9 @@ export function verifiedEvent(account: {
 }): FlowEvent {
   switch (landing(account)) {
     case "handle":
-      return { type: "profile_missing" };
+      return { type: "profile_missing", wallet: true };
     case "passkey":
-      return { type: "wallet_missing" };
+      return { type: "wallet_missing", profile: account.handle !== null };
     case "recover":
       return { type: "device_unknown" };
     case "welcome":

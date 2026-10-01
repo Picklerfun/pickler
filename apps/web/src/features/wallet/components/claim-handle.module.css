@@ -7,14 +7,14 @@
   max-width: 1180px;
   margin: 0 auto 22px;
   padding: 20px 22px;
-  border: 1px solid var(--pk-border);
+  border: 1px solid var(--pk-rule-strong);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-panel);
 }
 
 .eyebrow {
   margin: 0 0 6px;
-  font: 600 11px/1.2 var(--pk-font-mono, var(--pk-font));
+  font: 600 11px/1.2 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-ink-muted);
 }

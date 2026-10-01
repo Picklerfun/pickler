@@ -208,16 +208,51 @@ comparison would let duplicate JSON keys through. Its user id is stored on `wall
 that had it born with the first agent). The person's profile, top right of every studio screen,
 shows their master wallet from the first visit, with or without agents — so it has to exist then.
 
-- **Signup** is email → code → handle → **passkey**, and the passkey step is **mandatory**: its one
-  prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates the
-  sub-organization with the passkey as its only root and the `Master Wallet`. Nobody finishes
-  signup without one.
-- **Nobody without a master wallet gets in.** The Supabase session exists from the code step, so
-  a signup closed at the passkey step leaves a signed-in person with no wallet. Every signed-in
-  screen that finds `GET /v1/signing/wallets/me` answering 404 — the studio, creation, `/account`,
-  `/passkey` — sends them back to **the signup's passkey step**, which resumes with account and
-  handle already done, and they stay there until the wallet exists. Signin ends at the same step
-  for such an account. `/passkey` only adds devices to an account that has a wallet.
+- **Signup: email → code → passkey (mandatory; creates the master wallet) → handle (creates the
+  profile and workspace) → welcome** (order decided 2026-09-28; it was handle before passkey). The
+  passkey step's one prompt (`POST /v1/signing/passkeys/challenge` → WebAuthn → `register`) creates
+  the sub-organization with the passkey as its only root and the `Master Wallet`; nobody finishes
+  signup without one. The handle step comes after it and writes the profile with
+  `POST /v1/profile` (`createProfile`, then the workspace's `onboard`). The username is saved only
+  once the passkey and the master wallet exist, and that is a server rule for **studio accounts**
+  (email or Google): `POST /v1/profile` answers **409 `wallet_required`** (`WalletRequiredError`)
+  to one with no custody account. A wallet sign-in account is exempt: its own external wallet is its
+  wallet, it never has a custody account, and it claims a handle from the marketplace portfolio.
+  It is recognised **only** by the server-only claim `app_metadata.pickler_account = "wallet"` in
+  its access token, set when wallet sign-in creates the account and backfilled on every wallet
+  sign-in for accounts made before the claim existed — never by its email, whose synthetic domain
+  anyone can register while email sign-up is open. Consequence, accepted: a wallet account that has
+  not signed in since the claim was introduced has no marker yet, so claiming a handle answers 409
+  until it signs in again; claiming needs a session, and every new session comes from the wallet
+  sign-in that sets the marker. If a wallet account opens the studio it is sent to the passkey step
+  like anyone without a master wallet.
+- **Requirement (not changed by this code):** the hosted Supabase project must have email
+  confirmations on. With them off, anyone can register any address, including a wallet's synthetic
+  one, which is sha256 of its public address. The code refuses such pre-registered accounts
+  regardless: wallet sign-in accepts an existing account at the synthetic email only if it carries
+  the marker, or predates it with no password and no identity but the `email` one
+  `admin.createUser` makes (read from `auth.users` and `auth.identities`). Anything else is
+  refused with 409 `wallet_account_conflict` — never linked, marked or given a session — and logged
+  with the address's digest, never the email. Where `auth.users` cannot be read (a local run on
+  Docker PostgreSQL), only marked accounts are accepted.
+- **Naming the first passkey.** It is created before there is a handle, so WebAuthn's `user.name`
+  and `user.displayName` — stored in the device keychain — are the person's sign-in email from the
+  verified token (never a wallet account's synthetic email; with no usable email, `pickler-<id8>`).
+  Where a profile already exists they are its handle and display name. The Turnkey root user's
+  `userName` and the sub-organization's name are **never** the email: email is kept out of Turnkey,
+  so they are the handle where there is a profile, else `pickler-<id8>`.
+- **Nobody without a master wallet gets in, and nobody without a profile gets past signup.** The
+  Supabase session exists from the code step, so a signup closed at the passkey step leaves a
+  signed-in person with no wallet, and one closed at the handle step leaves a wallet with no
+  profile. Every signed-in screen — the studio, creation, `/account`, `/passkey` — sends a person
+  whose `GET /v1/signing/wallets/me` answers 404 to **the signup's passkey step**
+  (`/signup?step=passkey`), whatever the profile, and one with a wallet whose `GET /v1/profile`
+  answers 404 to **its handle step** (`/signup?step=handle`). `/signup` resumes from what the
+  account holds, whatever the URL says: no wallet → passkey; a wallet and no profile → handle;
+  both → welcome (or the new-device screen when this browser holds no passkey). An account made
+  before the order changed — a profile and no wallet — goes through the passkey step and on to
+  welcome, never asked for a second handle. Signin passes through the same steps for such accounts.
+  `/passkey` only adds devices to an account that has a wallet.
 - **One passkey is always a reason to add a second.** Wherever a screen already has the account's
   passkey list (`GET /v1/signing/passkeys`) and it holds exactly one — the signup's welcome right
   after the passkey is created, the studio home, `/account`'s passkeys — it suggests adding a second
@@ -244,8 +279,10 @@ no new credentials for the delegated user — plus, on the first agent only, the
 self-delete ALLOW; the venue ALLOW is absent while `VENUE_CONTRACTS` is empty.
 
 **Where the rule is enforced.** In the web: signup cannot complete without the passkey step, and
-every signed-in screen routes a person without a sub-organization back to it. The API does not
-refuse studio calls from a person without one; the agent ceremony simply cannot run without a
+every signed-in screen routes a person without a sub-organization back to it (and one with a
+wallet and no profile to the handle step). In the API: `POST /v1/profile` refuses a studio account
+with no custody account (409 `wallet_required`), so no studio profile — and no workspace — exists
+without the wallet; wallet sign-in accounts are exempt. The API does not refuse other studio calls from a person without one; the agent ceremony simply cannot run without a
 sub-organization (`prepareAgentWallet` needs it).
 
 **What this changes in the trust model, stated plainly.** Until now Pickler held no key that could
@@ -307,6 +344,26 @@ voice, X, publish) is §10.
 - **Next up:** one item today, "Fund its wallet".
 - **Menu:** "+ New agent" with its lock (§6.3); the groups link to the sections that exist.
 
+### 5.1 Before the first agent
+
+A person with no agents is not sent to `/studio/new`. `/studio` opens on the home as the "Pickler
+Studio Empty v4" canvas draws it: the top bar ("No agent yet" in a dashed chip where the agent chip
+would be, TESTNET, the profile), the studio rail with every section listed but disabled — "After you
+create your agent" — and, where the board would be, the first agent's brief (`#home-empty`): "YOUR
+FIRST AGENT · ITS BRIEF IS WHAT IT RUNS ON", "Start from" Blank or a ranked agent (a link to
+`/agents`), "Name it", the five sections (Thesis, It reads, Enters when, Exits when, Never) drawn
+blank with the canvas's prompts, and beside it a "Starting point: Blank" card and an idle paper run.
+The second-passkey suggestion sits above the brief when it applies. The canvas edits the brief and
+runs it on paper in place; neither has a backend in this specification, so the sections are prompts,
+not fields, the paper run stays idle ("its first run is on paper, right after you create it"), and
+"Create your first agent" goes to `/studio/new`, disabled with the reason when research is not
+enabled or the person cannot manage the workspace. The canvas's Risk card and its "Go public" phase
+are not drawn. At phone width the rail gives way to the Menu, whose "+ New agent" is open (with no
+agents the §6.3 lock has nothing to fund) and whose sections are disabled with the same hint. A
+`?section=` deep link lands on the same empty home. The account gates stay first: no master wallet →
+`/signup?step=passkey`, a wallet without a profile → the handle step. `?stage=empty` stages this
+home outside production.
+
 ---
 
 ## 6. Funding, limits and locks
@@ -364,6 +421,14 @@ delegated user's policies; that screen belongs to the account work, not here.
 
 ## 7. The runtime, locally
 
+Locally only auth touches Supabase. The API worker verifies the Supabase session against
+`JWT_ISSUER`'s JWKS and, for the wallet sign-in, calls the auth admin API; every product row —
+profile, handle, workspace, agent, events, waitlist — is read and written through `DATABASE_URL`, the
+Docker PostgreSQL on `127.0.0.1:55432` after `npm run db:up` and `npm run db:migrate`. Only the
+deployed environment's `DATABASE` binding reaches the hosted database. A user created locally
+therefore exists in hosted Supabase Auth and nowhere else: their profile and workspace are local
+rows, and `auth.users` does not exist in the Docker database, so nothing references it.
+
 The runner is `npm run dev:agent` (the agent service claims queued runs); it and
 `workers/research` read `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`, `EXA_API_KEY`,
 `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY` (names in the `.env`/`.dev.vars` examples; values never in
@@ -407,7 +472,7 @@ Without them the studio still builds and every screen still renders; the draft r
   `canCreateAnother` reasons.
 - **Exa adapter:** `only` mode refuses a host outside the list; `prefer` falls back.
 - **Web:** the pure pieces (`draft.ts` successors) as today; the design harness gets a route per
-  creation step (`/studio/new?step=…`) and per home stage (`?stage=live|researching|decided`),
+  creation step (`/studio/new?step=…`) and per home stage (`?stage=live|researching|decided|empty`),
   each proving its own selector, so every state the canvas reaches is measured.
 - **One real agent:** created through this flow on the local stack with the runner up, its first
   run's trace real, its paper order real, its balance read from the chain after a testnet deposit.
@@ -457,9 +522,10 @@ Four things close that gap, in order:
    `workers/api/.dev.vars`: `MODEL_BASE_URL`, `MODEL_ID`, `MODEL_API_KEY`; in the agent service also
    `EXA_API_KEY`, `BALLDONTLIE_API_KEY`, `THE_ODDS_API_KEY`. The delegated key pair is already in the
    local `.dev.vars`. Restart the API worker after editing it.
-2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, handle, then
-   the mandatory passkey — one prompt; the profile shows the master wallet with no agents. Then open
-   `/studio/new`, describe an agent and create it: three prompts on this first agent (two on any
+2. **A real passkey ceremony.** Sign up at `http://localhost:3001/signup`: email, code, the
+   mandatory passkey — one prompt — then the handle; the studio opens on its empty home and the
+   profile shows the master wallet with no agents. Then choose "Create your first agent" (or open
+   `/studio/new`), describe an agent and create it: three prompts on this first agent (two on any
    later one). Confirm in the Turnkey dashboard that the sub-organization has the passkey as its only
    root, a non-root "Pickler" user, a master wallet and the agent's wallet, and three DENY policies
    plus the self-delete ALLOW.
