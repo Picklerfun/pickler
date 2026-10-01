@@ -185,3 +185,5 @@ connectivity check after a failed acquisition with transport diagnostics. This c
 the unchanged twenty-second acquisition deadline, takes at most three seconds of network time,
 and requires current ownership. It never supplies market data or changes a cycle's validity.
 Historical reports remain unchanged; no connection cause is inferred from a generic timeout.
+
+Read [PERPL-STREAM-ACQUISITION.md](PERPL-STREAM-ACQUISITION.md) for evaluate data-diagnostic and stability --acquisition-choice. Ten fixed comparison opportunities freeze transport selection before one thirty-slot acceptance. Parse only loopback DATABASE_URL; no models/accounts/paid calls. Reports include bounded public captures and an offline cadence analyzer. New comparison preparation may explicitly freeze a choice; never upgrade historical sessions or automatically retry acceptance.
