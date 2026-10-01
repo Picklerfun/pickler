@@ -64,6 +64,7 @@ export class PerplStreamState {
   private states = new Map<number, { state: State; receivedAt: number }>();
   private lastHeartbeat: { sn: number; h: number } | undefined;
   private ready = false;
+  private lastSubscription: string | undefined;
   private lastBookMessages = new Map<number, string>();
   constructor(
     readonly markets: readonly PerpMarketInfo[],
@@ -77,6 +78,7 @@ export class PerplStreamState {
     this.states.clear();
     this.lastHeartbeat = undefined;
     this.ready = false;
+    this.lastSubscription = undefined;
   }
   streams() {
     return [
@@ -89,6 +91,10 @@ export class PerplStreamState {
     const mt = z.object({ mt: uint }).parse(raw).mt;
     if (mt === 6) {
       const msg = subscription.parse(raw);
+      const subscriptionHash = JSON.stringify(msg);
+      if (this.ready && subscriptionHash === this.lastSubscription) {
+        return;
+      }
       const expected = this.streams();
       if (
         msg.subs.length !== expected.length ||
@@ -108,6 +114,7 @@ export class PerplStreamState {
         this.subscriptions.set(sub.sid, sub.stream);
       }
       this.ready = true;
+      this.lastSubscription = subscriptionHash;
       return;
     }
     if (!this.ready) {
@@ -322,6 +329,20 @@ export class PerplPublicStream {
     }
   }
   private stopError(error: unknown) {
+    if (this.stopped) {
+      return;
+    }
+    if (error instanceof PilotError && error.code === "PERPL_STREAM_DISCONTINUITY") {
+      // A proven gap invalidates all state. Only guarded acquisition may resubscribe;
+      // there is no background reconnect and no reuse of the previous book.
+      this.options.event?.({ kind: "error", receivedAt: this.now(), code: error.code });
+      const socket = this.socket;
+      this.socket = undefined;
+      this.generation++;
+      this.state.reset();
+      socket?.close();
+      return;
+    }
     this.fatal =
       error instanceof PilotError && error.code !== "PERPL_INVALID_RESPONSE"
         ? error
