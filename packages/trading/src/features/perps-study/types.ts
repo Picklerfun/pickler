@@ -78,7 +78,7 @@ export interface PerpsStudyRecord {
   lastObservationAt: number | null;
   lastRoundSlot: number;
   lastAttemptedSlot?: number;
-  dataPolicy?: "coherent-20s-v1";
+  dataPolicy?: import("../perps-paper/acquisition.js").PerpsDataPolicy;
 }
 export interface PerpsStudyView {
   record: PerpsStudyRecord;
