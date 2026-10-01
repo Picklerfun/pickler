@@ -1,36 +1,14 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import { Button, Icon, Segmented } from "@pickler/ui";
-import { SessionExpired } from "@/features/auth/lib/custody";
-import { accentVars } from "@/lib/accent";
-import {
-  StudioError,
-  errorCode,
-  transferConfirm,
-  transferPrepare,
-  type StudioWallets,
-} from "../api";
-import { relyingParty, stampActivity } from "../lib/passkey";
+import { Icon } from "@pickler/ui";
+import type { StudioWallets } from "../api";
 import shell from "../studio.module.css";
-import { AvatarGrid } from "./identity";
-import {
-  agentWalletTag,
-  canMove,
-  formatUnits,
-  maxAmount,
-  moveBody,
-  moveNote,
-  moveSheetCopy,
-  moveSource,
-  transferLabel,
-  unitsOf,
-  walletName,
-  type Accent,
-  type Move,
-  type Token,
-} from "./model";
-import { PasskeySheet, type SheetPhase } from "./passkey-sheet";
+import { AgentWalletBox } from "./agent-wallet-box";
+import { formatUnits, unitsOf, type Accent, type Token } from "./model";
+import { PasskeySheet } from "./passkey-sheet";
+import { cleanAmount, maxAmount, moveSheetCopy, walletName } from "./transfer-model";
 import { useDialog } from "./use-dialog";
+import { useTransfer } from "./use-transfer";
 import styles from "./new-agent.module.css";
 
 /** The agent this screen is creating: names and draws its wallet before an agent has it. */
@@ -55,27 +33,13 @@ export interface WalletsModalProps {
   onMoved(): void;
 }
 
-/** The two names a WebAuthn prompt fails with when the person closed it or it timed out. */
-const CLOSED_PROMPT = new Set(["NotAllowedError", "AbortError"]);
-/** How long the sheet shows its "Moved" before it closes. */
-const DONE_MS = 650;
 const COPIED_MS = 1400;
-const TOKENS = [
-  { value: "AUSD", label: "AUSD" },
-  { value: "MON", label: "MON" },
-] as const;
-
-/** The move the sheet is signing, with its words fixed when Send was pressed. */
-interface Pending {
-  move: Move;
-  amount: string;
-  copy: { title: string; body: string; done: string };
-}
 
 /**
  * "Your wallets" (canvas: Wallets · AI credits modal, spec §3.3): the master wallet and each agent
- * wallet, with "Fund from master" and "Pull back to master" (D7, D12). A move is one token, one
- * amount and one passkey sheet: prepare, the person's stamp, confirm. The rules are `model.ts`'s.
+ * wallet (`agent-wallet-box.tsx`), with "Fund from master" and "Pull back to master" (D7, D12). A
+ * move is one token, one amount and one passkey sheet (`use-transfer.ts`). The rules are
+ * `transfer-model.ts`'s.
  *
  * A native `<dialog>` (`use-dialog.ts`). The passkey sheet opens above it as its own dialog, a
  * sibling, so its Escape is its own; while it is up the modal is inert behind it.
@@ -96,18 +60,32 @@ export function WalletsModal({
   const [amount, setAmountText] = useState("");
   /* The amount is MAX's for MON, which kept the gas reserve back: the note says so. */
   const [keptForGas, setKeptForGas] = useState(false);
-  const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [phase, setPhase] = useState<SheetPhase>("idle");
   /* A new object per request, so asking for the same wallet twice focuses it twice. */
   const [focusOn, setFocusOn] = useState<{ walletId: string } | null>(null);
-  const sheetBusy = pending !== null && phase === "busy";
-  const { ref: dialog, onKeyDown, onCancel } = useDialog({ open, busy: sheetBusy, onClose });
-  /* A transfer is in flight: a second press starts nothing. */
-  const running = useRef(false);
   /* The wallet whose move just went through: its "Fund from master" takes the focus back. */
   const refocus = useRef<string | null>(null);
+  const transfer = useTransfer({
+    preview,
+    onMoved,
+    onDone: (walletId) => {
+      refocus.current = walletId;
+      setMoving(null);
+      setAmount("");
+    },
+  });
+  const {
+    ref: dialog,
+    onKeyDown,
+    onCancel,
+  } = useDialog({
+    open,
+    busy: transfer.busy,
+    onClose,
+  });
+  /* The press that ends in a click on the backdrop started there too: a drag out of the amount
+     field that is released outside the card does not close the modal. */
+  const downOnBackdrop = useRef(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
@@ -132,7 +110,7 @@ export function WalletsModal({
       setMoving(openOn ? { walletId: openOn, toAgent: true } : null);
       setToken("AUSD");
       setAmount("");
-      setError("");
+      transfer.setError("");
       setFocusOn(openOn ? { walletId: openOn } : null);
     }
   }
@@ -148,13 +126,13 @@ export function WalletsModal({
 
   /* After "Moved" the form is gone; the focus goes to that wallet's first action, not the page. */
   useEffect(() => {
-    if (pending || !refocus.current) {
+    if (transfer.pending || !refocus.current) {
       return;
     }
     const walletId = refocus.current;
     refocus.current = null;
     dialog.current?.querySelector<HTMLButtonElement>(`[data-fund="${walletId}"]`)?.focus();
-  }, [pending, dialog]);
+  }, [transfer.pending, dialog]);
 
   function setAmount(value: string, max: { token: Token } | null = null) {
     setAmountText(value);
@@ -164,7 +142,7 @@ export function WalletsModal({
   function pick(walletId: string, toAgent: boolean) {
     setMoving({ walletId, toAgent });
     setAmount("");
-    setError("");
+    transfer.setError("");
     setFocusOn({ walletId });
   }
 
@@ -184,70 +162,6 @@ export function WalletsModal({
     );
   }
 
-  async function sign() {
-    if (!pending || running.current || preview) {
-      return;
-    }
-    running.current = true;
-    setPhase("busy");
-    setError("");
-    let stamped = false;
-    try {
-      // Every transfer body goes through toTransferBody (moveBody): the server does not trim.
-      const body = moveBody(pending.move, pending.amount);
-      const unsigned = await transferPrepare(body);
-      const signed = await stampActivity(await relyingParty(), unsigned);
-      stamped = true;
-      await transferConfirm(body, signed);
-    } catch (caught) {
-      if (!mounted.current) {
-        running.current = false;
-        return;
-      }
-      if (caught instanceof Error && CLOSED_PROMPT.has(caught.name)) {
-        running.current = false;
-        setPhase("err");
-        return;
-      }
-      if (errorCode(caught) !== "TRANSFER_ALREADY_RECORDED") {
-        running.current = false;
-        setPending(null);
-        setPhase("idle");
-        setError(failure(caught, stamped));
-        if (stamped) {
-          onMoved();
-        }
-        return;
-      }
-      // Already recorded: the first confirm went through. It is done.
-    }
-    if (!mounted.current) {
-      running.current = false;
-      return;
-    }
-    setPhase("ok");
-    setTimeout(() => {
-      running.current = false;
-      if (!mounted.current) {
-        return;
-      }
-      refocus.current = pending.move.walletId;
-      setPending(null);
-      setPhase("idle");
-      setMoving(null);
-      setAmount("");
-      onMoved();
-    }, DONE_MS);
-  }
-
-  function closeSheet() {
-    if (sheetBusy || phase === "ok") {
-      return;
-    }
-    setPending(null);
-    setPhase("idle");
-  }
-
   return (
     <>
       <dialog
@@ -258,9 +172,14 @@ export function WalletsModal({
         aria-labelledby={titleId}
         onKeyDown={onKeyDown}
         onCancel={onCancel}
+        onPointerDown={(event) => {
+          downOnBackdrop.current = event.target === event.currentTarget;
+        }}
         onClick={(event) => {
-          // The backdrop: the dialog itself, outside its card.
-          if (event.target === event.currentTarget && !sheetBusy) {
+          // The backdrop: the dialog itself, outside its card, pressed and released there.
+          const onBackdrop = downOnBackdrop.current && event.target === event.currentTarget;
+          downOnBackdrop.current = false;
+          if (onBackdrop && !transfer.busy) {
             onClose();
           }
         }}
@@ -268,9 +187,9 @@ export function WalletsModal({
         <div className={styles.modalCard}>
           <div className={styles.modalHead}>
             <span className={styles.tabs}>
-              <button type="button" className={styles.tab} aria-current="true">
+              <span className={styles.tab} aria-current="true">
                 Wallets
-              </button>
+              </span>
               <button type="button" className={styles.tab} onClick={onCredits}>
                 AI credits
               </button>
@@ -291,6 +210,9 @@ export function WalletsModal({
             One master wallet funds everything. Each agent gets its own, capped by its brief. All on
             Monad testnet, all behind your passkey.
           </p>
+          <span className={styles.srOnly} role="status">
+            {copied ? "Address copied" : ""}
+          </span>
           {!wallets ? (
             <p className={styles.modalLead} role="status">
               Reading your wallets…
@@ -356,168 +278,43 @@ export function WalletsModal({
               {wallets.agents.map((agent) => {
                 const name = walletName(agent, draft);
                 const isOpen = moving?.walletId === agent.walletId;
-                const toAgent = isOpen ? (moving?.toAgent ?? true) : true;
-                const move: Move = { walletId: agent.walletId, toAgent, token };
-                const held = moveSource(wallets, move);
-                const input = { amount, token, toAgent, held, agentName: name };
-                const label = transferLabel(input);
-                const ok = canMove(input);
-                const over = label.startsWith("More");
-                const mine = draft?.walletId === agent.walletId ? draft : null;
                 return (
-                  <div key={agent.walletId} className={styles.walletBox}>
-                    <div className={styles.walletBoxHead}>
-                      {mine ? (
-                        <span
-                          className={styles.walletMark}
-                          data-accent="true"
-                          style={accentVars(mine.accent)}
-                          aria-hidden="true"
-                        >
-                          <AvatarGrid pattern={mine.pattern} small />
-                        </span>
-                      ) : (
-                        <span className={styles.walletMark} aria-hidden="true">
-                          {name.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
-                      <span className={styles.walletBoxName}>
-                        <b>
-                          {name} <i>· agent wallet</i>
-                        </b>
-                        <small title={agent.address}>{agent.address}</small>
-                      </span>
-                      <span
-                        className={styles.walletTag}
-                        data-tone={agent.agentId ? undefined : "quiet"}
-                      >
-                        {agentWalletTag(agent)}
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.chipButton}
-                        aria-label={
-                          copied === agent.address
-                            ? `${name}'s address copied`
-                            : `Copy ${name}'s address`
-                        }
-                        onClick={() => copy(agent.address)}
-                      >
-                        {copied === agent.address ? "COPIED" : "COPY"}
-                      </button>
-                    </div>
-                    <div className={styles.tiles}>
-                      <span className={styles.tile}>
-                        <b>{formatUnits(unitsOf(agent.ausdMicro), "AUSD")}</b>
-                        <small>AUSD · TRADES</small>
-                      </span>
-                      <span className={styles.tile}>
-                        <b>{formatUnits(unitsOf(agent.monWei), "MON")}</b>
-                        <small>MON · GAS</small>
-                      </span>
-                    </div>
-                    {agent.caps && (
-                      <div className={styles.row}>
-                        <small>CAPS · TRADE / DAY / LEV</small>
-                        <b>{`${agent.caps.perTradeAusd} / ${agent.caps.perDayAusd} / ${agent.caps.maxLeverage}×`}</b>
-                      </div>
-                    )}
-                    <div className={styles.moveButtons}>
-                      <button
-                        type="button"
-                        className={styles.direction}
-                        data-fund={agent.walletId}
-                        aria-pressed={isOpen && toAgent}
-                        disabled={preview}
-                        onClick={() => pick(agent.walletId, true)}
-                      >
-                        <Icon name="arrowUp" size={12} />
-                        Fund from master
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.direction}
-                        aria-pressed={isOpen && !toAgent}
-                        disabled={preview}
-                        onClick={() => pick(agent.walletId, false)}
-                      >
-                        <Icon name="arrowDown" size={12} />
-                        Pull back to master
-                      </button>
-                    </div>
-                    {isOpen && (
-                      <div className={styles.move}>
-                        <div className={styles.moveRow}>
-                          <Segmented
-                            label="Token"
-                            className={styles.tokenSwitch}
-                            options={TOKENS}
-                            value={token}
-                            onChange={(next: Token) => {
-                              setToken(next);
-                              setAmount("");
-                            }}
-                          />
-                          <span className={styles.amountField} data-bad={over}>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              aria-label={`Amount in ${token}`}
-                              placeholder="0"
-                              data-amount={agent.walletId}
-                              value={amount}
-                              onChange={(event) =>
-                                setAmount(event.target.value.replace(/[^0-9.]/g, ""))
-                              }
-                            />
-                            <button
-                              type="button"
-                              className={styles.chipButton}
-                              aria-label={`Fill the most ${token} the source can send`}
-                              disabled={held === null}
-                              onClick={() => setAmount(maxAmount(held, token), { token })}
-                            >
-                              MAX
-                            </button>
-                            <small>{token}</small>
-                          </span>
-                        </div>
-                        <div className={styles.moveButtons}>
-                          <Button
-                            block
-                            disabled={!ok || preview}
-                            onClick={() =>
-                              setPending({
-                                move,
-                                amount,
-                                copy: moveSheetCopy({
-                                  amount,
-                                  token,
-                                  toAgent,
-                                  agentName: name,
-                                  address: agent.address,
-                                }),
-                              })
-                            }
-                          >
-                            {label}
-                          </Button>
-                          <Button variant="ghost" onClick={() => setMoving(null)}>
-                            Cancel
-                          </Button>
-                        </div>
-                        <span className={styles.moveNote}>
-                          {moveNote({ toAgent, held, token, keptForGas })}
-                        </span>
-                        {error && (
-                          <p className={styles.alert} role="alert">
-                            <Icon name="alert" size={13} />
-                            {error}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <AgentWalletBox
+                    key={agent.walletId}
+                    agent={agent}
+                    wallets={wallets}
+                    name={name}
+                    avatar={draft?.walletId === agent.walletId ? draft : null}
+                    moving={isOpen ? { toAgent: moving.toAgent } : null}
+                    token={token}
+                    amount={amount}
+                    keptForGas={keptForGas}
+                    error={isOpen ? transfer.error : ""}
+                    copied={copied === agent.address}
+                    preview={preview}
+                    onPick={(toAgent) => pick(agent.walletId, toAgent)}
+                    onToken={(next) => {
+                      setToken(next);
+                      setAmount("");
+                    }}
+                    onAmount={(text) => setAmount(cleanAmount(text))}
+                    onMax={(held) => setAmount(maxAmount(held, token), { token })}
+                    onSend={(move) =>
+                      transfer.start({
+                        move,
+                        amount,
+                        copy: moveSheetCopy({
+                          amount,
+                          token,
+                          toAgent: move.toAgent,
+                          agentName: name,
+                          address: agent.address,
+                        }),
+                      })
+                    }
+                    onCancel={() => setMoving(null)}
+                    onCopy={() => copy(agent.address)}
+                  />
                 );
               })}
             </>
@@ -525,29 +322,16 @@ export function WalletsModal({
         </div>
       </dialog>
       <PasskeySheet
-        open={pending !== null}
-        title={pending?.copy.title ?? ""}
-        body={pending?.copy.body ?? ""}
-        done={pending?.copy.done ?? ""}
-        phase={phase}
+        open={transfer.pending !== null}
+        title={transfer.pending?.copy.title ?? ""}
+        body={transfer.pending?.copy.body ?? ""}
+        done={transfer.pending?.copy.done ?? ""}
+        phase={transfer.phase}
         twoStep={false}
         step={1}
-        onContinue={() => void sign()}
-        onClose={closeSheet}
+        onContinue={() => void transfer.sign()}
+        onClose={transfer.closeSheet}
       />
     </>
   );
-}
-
-/* Only our own words reach the screen: the studio's message for a code, else what is known. */
-function failure(caught: unknown, stamped: boolean): string {
-  if (caught instanceof SessionExpired) {
-    return "Your sign-in expired. Sign in again; nothing moved.";
-  }
-  if (caught instanceof StudioError && caught.message) {
-    return caught.message;
-  }
-  return stamped
-    ? "It may not have gone through. Your wallets are being read again."
-    : "It did not go through. Nothing moved.";
 }

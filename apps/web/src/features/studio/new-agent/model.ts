@@ -2,8 +2,9 @@
 /**
  * The create screen's rules (docs/specs/studio-create-simplified-v1.md, the "Pickler Studio Empty
  * v5" canvas): the handle a name becomes, when "Create" opens and what it says, the wallet's
- * minimums and tag, the request, and the transfer form. Pure, no React and no transport, so each
- * rule is pinned in `apps/web/test/studio-new-agent.test.ts`.
+ * minimums and tag, the request, and token amounts in base units (the Wallets modal's rules are
+ * in `transfer-model.ts`). Pure, no React and no transport, so each rule is pinned in
+ * `apps/web/test/studio-new-agent.test.ts`.
  *
  * `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`, `MIN_START` and `DEFAULT_BRIEF` are literal copies
  * of core's (`packages/core/src/features/studio/create.ts`): this module is required by node:test
@@ -409,7 +410,8 @@ export function toDraftRequest(form: NewAgentForm, walletId: string): DraftCreat
   };
 }
 
-const DECIMALS: Record<Token, number> = { AUSD: 6, MON: 18 };
+/** Each token's decimals: AUSD in micro units, MON in wei. */
+export const DECIMALS: Record<Token, number> = { AUSD: 6, MON: 18 };
 
 /** A decimal amount in base units, or null when it is not a positive amount the token can hold. */
 export function parseAmount(text: string, token: Token): bigint | null {
@@ -452,163 +454,8 @@ export function formatUnits(units: bigint | null, token: Token): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-/** Base units as every decimal they hold, for MAX: 1234567 AUSD-micro → "1.234567". "" when unread. */
-export function exactUnits(units: bigint | null, token: Token): string {
-  if (units === null) {
-    return "";
-  }
-  const scale = 10n ** BigInt(DECIMALS[token]);
-  const fraction = (units % scale).toString().padStart(DECIMALS[token], "0").replace(/0+$/, "");
-  return fraction ? `${units / scale}.${fraction}` : (units / scale).toString();
-}
-
-/**
- * What MAX leaves in a wallet when it moves MON: an estimate that the fee of a native transfer
- * (21k–25k gas) stays under on Monad. Only MAX keeps it back; a typed amount is checked against the
- * whole balance, and the server's INSUFFICIENT_GAS stays the final word.
- */
-export const MON_GAS_RESERVE_WEI = 10_000_000_000_000_000n;
-
-/** What MAX fills: every AUSD the source holds; its MON less the gas reserve, never below 0. */
-export function maxAmount(held: bigint | null, token: Token): string {
-  if (held === null || token === "AUSD") {
-    return exactUnits(held, token);
-  }
-  return exactUnits(held > MON_GAS_RESERVE_WEI ? held - MON_GAS_RESERVE_WEI : 0n, token);
-}
-
-export interface TransferInput {
-  amount: string;
-  token: Token;
-  toAgent: boolean;
-  /** What the source holds of the token, in base units; null when unread. */
-  held: bigint | null;
-  agentName: string;
-}
-
-/** Whether a move may be signed, and the button's words. One rule feeds both. */
-function transferBlock(input: TransferInput): { ok: boolean; label: string } {
-  const amount = input.amount.trim();
-  const units = parseAmount(amount, input.token);
-  if (units === null) {
-    return { ok: false, label: "Enter an amount" };
-  }
-  if (input.held === null) {
-    return { ok: false, label: "Reading the balance…" };
-  }
-  if (units > input.held) {
-    return {
-      ok: false,
-      label: `More ${input.token} than ${input.toAgent ? "the master wallet" : input.agentName} holds`,
-    };
-  }
-  return {
-    ok: true,
-    label: input.toAgent
-      ? `Send ${amount} ${input.token} to ${input.agentName}`
-      : `Pull ${amount} ${input.token} back`,
-  };
-}
-
-export const transferLabel = (input: TransferInput): string => transferBlock(input).label;
-
-/** A positive amount the source holds: the move's button opens. */
-export const canMove = (input: TransferInput): boolean => transferBlock(input).ok;
-
-/** One move in the Wallets modal: an agent wallet, toward it or back to master, one token. */
-export interface Move {
-  walletId: string;
-  toAgent: boolean;
-  token: Token;
-}
-
-/**
- * What the move's source holds of its token: the master wallet toward the agent, the agent wallet
- * on a pull. Null when it is unread or the wallet is not in the list.
- */
-export function moveSource(wallets: WalletsDto, move: Move): bigint | null {
-  const source = move.toAgent
-    ? wallets.master
-    : wallets.agents.find((agent) => agent.walletId === move.walletId);
-  if (!source) {
-    return null;
-  }
-  return unitsOf(move.token === "AUSD" ? source.ausdMicro : source.monWei);
-}
-
-/** The transfer routes' body for a move: master on exactly one side, the amount trimmed. */
-export const moveBody = (move: Move, amount: string) =>
-  toTransferBody({
-    from: move.toAgent ? "master" : move.walletId,
-    to: move.toAgent ? move.walletId : "master",
-    token: move.token,
-    amount,
-  });
-
-/**
- * Under the move form: what the source holds, that a pull leaves open positions alone, and that
- * MAX kept MON back for the fee.
- */
-export function moveNote(input: {
-  toAgent: boolean;
-  held: bigint | null;
-  token: Token;
-  keptForGas?: boolean;
-}): string {
-  const holds = `${input.toAgent ? "MASTER HOLDS" : "IT HOLDS"} ${formatUnits(input.held, input.token)} ${input.token}`;
-  const positions = input.toAgent ? "" : " · OPEN POSITIONS STAY";
-  const gas = input.keptForGas
-    ? ` · KEEPS ${formatUnits(MON_GAS_RESERVE_WEI, "MON")} MON FOR GAS`
-    : "";
-  return `${holds} · ONE TOKEN PER TRANSACTION${positions}${gas}`;
-}
-
 export const shortAddress = (address: string): string =>
   `${address.slice(0, 6)}…${address.slice(-4)}`;
-
-/** The passkey sheet's words for a move (canvas "xfer"). */
-export function moveSheetCopy(input: {
-  amount: string;
-  token: Token;
-  toAgent: boolean;
-  agentName: string;
-  address: string;
-}): { title: string; body: string; done: string } {
-  const amount = `${input.amount.trim()} ${input.token}`;
-  const agent = shortAddress(input.address);
-  return input.toAgent
-    ? {
-        title: `Move ${amount} to ${input.agentName}?`,
-        body: `MASTER → ${agent} · ONE TRANSACTION`,
-        done: "Moved",
-      }
-    : {
-        title: `Move ${amount} back to master?`,
-        body: `${agent} → MASTER · ONE TRANSACTION`,
-        done: "Moved",
-      };
-}
-
-type AgentWallet = WalletsDto["agents"][number];
-
-/**
- * An agent wallet's tag: CREATING while no agent has it, DRAFT once one does. The wallets list does
- * not say whether an agent runs, so LIVE is not drawn yet.
- */
-export const agentWalletTag = (agent: AgentWallet): "CREATING" | "DRAFT" =>
-  agent.agentId === null ? "CREATING" : "DRAFT";
-
-/** Its agent's name, else the name of the agent this screen is creating on it. */
-export function walletName(
-  agent: AgentWallet,
-  draft: { walletId: string; name: string } | null,
-): string {
-  if (agent.agentName) {
-    return agent.agentName;
-  }
-  const name = draft?.walletId === agent.walletId ? draft.name.trim() : "";
-  return name || "Your new agent";
-}
 
 export const patternCells = (index: number): boolean[] =>
   (AVATAR_PATTERNS[index] ?? AVATAR_PATTERNS[0]).split("").map((cell) => cell === "1");

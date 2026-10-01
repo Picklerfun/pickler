@@ -873,7 +873,6 @@
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 20;
   width: 100%;
   max-width: none;
   height: 100%;
@@ -1067,8 +1066,8 @@
 .direction:hover:not(:disabled) {
   background: var(--pk-panel-2);
 }
-.direction[aria-pressed="true"],
-.direction[aria-pressed="true"]:hover:not(:disabled) {
+.direction[aria-expanded="true"],
+.direction[aria-expanded="true"]:hover:not(:disabled) {
   background: var(--pk-ink);
   color: var(--pk-bg);
 }
