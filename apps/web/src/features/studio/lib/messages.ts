@@ -33,6 +33,13 @@ const messages: Record<string, string> = {
   INSUFFICIENT_FUNDS: "The wallet doesn't hold that much.",
   TRANSFER_ALREADY_RECORDED: "That transfer already went through.",
   INVALID_TRANSFER: "That transfer can't be made.",
+  INSUFFICIENT_GAS: "Not enough MON to pay the network fee.",
+  WALLETS_UNAVAILABLE: "We can't read the wallets right now. Try again in a moment.",
+  balances_unavailable: "We can't read the wallets right now. Try again in a moment.",
+  WALLET_NOT_FOUND: "That wallet isn't yours, or it no longer exists.",
+  FEE_TOO_HIGH: "Network fees jumped. Prepare it again.",
+  NONCE_GAP: "Another transaction is pending from that wallet. Try again in a moment.",
+  NOT_SENDABLE: "That transfer can't be sent as it is.",
   DAILY_CAP_REACHED: "Today's paper trades reached its daily cap.",
 };
 /** The studio's words for a code, when it has any. */

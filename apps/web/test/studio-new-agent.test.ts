@@ -16,6 +16,7 @@ import {
   parseAmount,
   patternCells,
   toDraftRequest,
+  toTransferBody,
   transferLabel,
   walletTag,
   type NewAgentForm,
@@ -149,4 +150,37 @@ test("the copies match core's: six voices, six patterns, the starter caps, the m
   assert.deepEqual(STARTER_CAPS, { ...core.STARTER_CAPS });
   assert.equal(MIN_START.ausdMicro, core.MIN_START_MICRO_AUSD);
   assert.equal(MIN_START.monWei, core.MIN_START_MON_WEI);
+});
+
+test("a transfer's amount is trimmed before it is sent", () => {
+  const body = toTransferBody({ from: "master", to: "wal", token: "MON", amount: " 0.5 " });
+  assert.equal(body.amount, "0.5");
+});
+
+test("every code creation and transfers can return has a message", async () => {
+  const { knownMessage } = await import("../src/features/studio/lib/messages");
+  const codes = [
+    // POST /v1/studio/drafts
+    "WALLET_UNDERFUNDED",
+    "WALLET_NOT_FOUND",
+    "WALLET_ASSIGNED",
+    "POLICIES_MISSING",
+    "HANDLE_TAKEN",
+    "DRAFT_LIMIT",
+    "WALLETS_UNAVAILABLE",
+    // /v1/signing policies prepare
+    "wallet_underfunded",
+    "balances_unavailable",
+    // /v1/studio/wallets/transfers
+    "INVALID_TRANSFER",
+    "INSUFFICIENT_FUNDS",
+    "INSUFFICIENT_GAS",
+    "TRANSFER_ALREADY_RECORDED",
+    "FEE_TOO_HIGH",
+    "NONCE_GAP",
+    "NOT_SENDABLE",
+  ];
+  for (const code of codes) {
+    assert.ok(knownMessage(code), `${code} has no message`);
+  }
 });

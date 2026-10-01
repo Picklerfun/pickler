@@ -268,6 +268,16 @@ export function parseAmount(text: string, token: Token): bigint | null {
   return units > 0n ? units : null;
 }
 
+/** What the transfer routes are sent: the amount trimmed, because the server does not trim. */
+export function toTransferBody(input: { from: string; to: string; token: Token; amount: string }): {
+  from: string;
+  to: string;
+  token: Token;
+  amount: string;
+} {
+  return { from: input.from, to: input.to, token: input.token, amount: input.amount.trim() };
+}
+
 /** Base units as a short decimal: 1500000 AUSD-micro → "1.5". */
 export function formatUnits(units: bigint | null, token: Token): string {
   if (units === null) {
