@@ -12,6 +12,7 @@ import {
   type NewAgentForm,
   type WalletView,
 } from "./model";
+import type { Arrival } from "./wallet-reads";
 import styles from "./new-agent.module.css";
 
 export interface WalletPanelProps {
@@ -27,9 +28,13 @@ export interface WalletPanelProps {
   outlined: boolean;
   form: NewAgentForm;
   checkedAt: string;
-  /** A wallet read is in flight: the refresh button spins. Only the reads, never a passkey wait. */
+  /**
+   * A wallet read is in flight: the refresh button spins, and the buttons refuse a press through
+   * aria-disabled, so the one that has the focus keeps it. Only the reads, never a passkey wait.
+   */
   refreshing: boolean;
-  arrivals: readonly { text: string; at: string }[];
+  arrivals: readonly Arrival[];
+  /** A passkey is up: the panel's buttons are disabled. */
   busy: boolean;
   preview: boolean;
   onCreateWallet(): void;
@@ -62,20 +67,25 @@ export function WalletPanel({
 }: WalletPanelProps) {
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       if (copiedTimer.current) {
         clearTimeout(copiedTimer.current);
       }
-    },
-    [],
-  );
+    };
+  }, []);
   const isFunded = funded(wallet);
   const step0 = step0Copy({ firstTime, pendingDelegate });
 
   function copy(address: string) {
     navigator.clipboard?.writeText(address).then(
       () => {
+        if (!mounted.current) {
+          return;
+        }
         setCopied(true);
         if (copiedTimer.current) {
           clearTimeout(copiedTimer.current);
@@ -121,7 +131,16 @@ export function WalletPanel({
                 ))}
               </ol>
             )}
-            <Button block disabled={busy || preview} onClick={onCreateWallet}>
+            <Button
+              block
+              disabled={busy || preview}
+              aria-disabled={refreshing || undefined}
+              onClick={() => {
+                if (!refreshing) {
+                  onCreateWallet();
+                }
+              }}
+            >
               <Icon name="key" size={15} />
               {step0.cta}
             </Button>
@@ -154,21 +173,28 @@ export function WalletPanel({
                 aria-label="Refresh balance"
                 title="Refresh balance · if you sent AUSD from elsewhere"
                 aria-busy={refreshing}
+                aria-disabled={refreshing || undefined}
                 disabled={busy || preview}
-                onClick={onRefresh}
+                onClick={() => {
+                  if (!refreshing) {
+                    onRefresh();
+                  }
+                }}
               >
                 <Icon name="refresh" size={14} />
               </button>
             </div>
             <div className={styles.tiles}>
               <span className={styles.tile}>
-                <b data-good={(wallet.ausdMicro ?? 0n) > 0n}>
+                <b data-good={(wallet.ausdMicro ?? 0n) >= MIN_START.ausdMicro}>
                   {formatUnits(wallet.ausdMicro, "AUSD")}
                 </b>
                 <small>AUSD · TRADES</small>
               </span>
               <span className={styles.tile}>
-                <b data-good={(wallet.monWei ?? 0n) > 0n}>{formatUnits(wallet.monWei, "MON")}</b>
+                <b data-good={(wallet.monWei ?? 0n) >= MIN_START.monWei}>
+                  {formatUnits(wallet.monWei, "MON")}
+                </b>
                 <small>MON · GAS</small>
               </span>
             </div>
@@ -188,8 +214,8 @@ export function WalletPanel({
                 </b>
               </div>
             )}
-            {arrivals.map((arrival, index) => (
-              <div key={`${index}-${arrival.text}`} className={styles.arrival}>
+            {arrivals.map((arrival) => (
+              <div key={arrival.id} className={styles.arrival}>
                 <i aria-hidden="true" />
                 <span>{arrival.text}</span>
                 <small>{arrival.at}</small>

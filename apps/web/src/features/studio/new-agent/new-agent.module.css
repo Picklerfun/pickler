@@ -644,10 +644,11 @@
   padding: 0;
 }
 .chipButton:hover,
-.iconButton:hover:not(:disabled) {
+.iconButton:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--pk-ink);
 }
-.iconButton:disabled {
+.iconButton:disabled,
+.iconButton[aria-disabled="true"] {
   cursor: default;
 }
 .iconButton[aria-busy="true"] svg {
@@ -854,7 +855,7 @@
   letter-spacing: 0.08em;
   color: var(--pk-ink-muted);
 }
-.sheetWait:not(:empty) {
+.sheetWait[data-busy="true"] {
   padding: 14px;
 }
 .sheetWait i {

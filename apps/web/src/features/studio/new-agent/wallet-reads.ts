@@ -14,6 +14,14 @@
 import type { WalletsDto } from "@pickler/api-schema";
 import { arrived, unlinkedWallet, type WalletView } from "./model";
 
+/** "{delta} {token} arrived", with an id that stays the same while later arrivals are added. */
+export interface Arrival {
+  /** The read's number and the arrival's place in it: unique, and fixed once made. */
+  id: string;
+  text: string;
+  at: string;
+}
+
 export interface WalletReads {
   /** The newest read applied or failed; 0 before any. */
   seq: number;
@@ -24,7 +32,7 @@ export interface WalletReads {
   wallet: WalletView | null;
   /** Wallet ids whose policies are known to be approved. */
   approved: readonly string[];
-  arrivals: readonly { text: string; at: string }[];
+  arrivals: readonly Arrival[];
   /** When the chain was last read, as the screen shows it. */
   checkedAt: string;
   /** Why the last read failed, or "". Only a read that succeeds clears it. */
@@ -55,7 +63,10 @@ export function applyRead(
   const found = unlinkedWallet(read.wallets);
   const news =
     state.wallet && found && state.wallet.walletId === found.wallet.walletId
-      ? arrived(state.wallet, found.wallet, read.at)
+      ? arrived(state.wallet, found.wallet, read.at).map((news, index): Arrival => ({
+          id: `${read.seq}-${index}`,
+          ...news,
+        }))
       : [];
   const approved =
     found && found.policiesApproved && !state.approved.includes(found.wallet.walletId)

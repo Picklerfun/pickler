@@ -495,7 +495,7 @@ export function NewAgent({
         checkedAt={reads.checkedAt}
         refreshing={reads.refreshing}
         arrivals={reads.arrivals}
-        busy={busy || reads.refreshing}
+        busy={busy}
         preview={preview}
         onCreateWallet={startWallet}
         onRefresh={() => void reads.refresh()}

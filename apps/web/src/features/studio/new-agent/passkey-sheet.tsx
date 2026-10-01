@@ -57,12 +57,14 @@ export function PasskeySheet({
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       element.showModal();
     }
-    if (!open && element.open) {
-      element.close();
+    if (!open) {
       const back = opener.current;
       opener.current = null;
-      if (back?.isConnected) {
-        back.focus();
+      if (element.open) {
+        element.close();
+        if (back?.isConnected) {
+          back.focus();
+        }
       }
     }
   }, [open]);
@@ -123,8 +125,6 @@ export function PasskeySheet({
       className={styles.sheet}
       // A dialog sits under the body, outside the screen's surface; it names the dark one.
       data-surface="dark"
-      role="dialog"
-      aria-modal="true"
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       tabIndex={-1}
@@ -154,14 +154,18 @@ export function PasskeySheet({
           </Button>
         </div>
       )}
-      {/* Always in the tree, so the wait is announced when it starts. */}
-      <p className={styles.sheetWait} role="status" aria-live="polite">
+      {/* Always in the tree, so the wait and a cancellation are announced when they happen. The
+          cancellation is already the visible title; here it is only read out. */}
+      <p className={styles.sheetWait} role="status" data-busy={busy}>
         {busy && (
           <>
             <i aria-hidden="true" />
             <span className={styles.srOnly}>Waiting for </span>
             TOUCH ID
           </>
+        )}
+        {phase === "err" && (
+          <span className={styles.srOnly}>Passkey cancelled · nothing was signed</span>
         )}
       </p>
       {phase === "err" && (

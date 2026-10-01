@@ -106,7 +106,34 @@ test("a rise between two reads is an arrival", () => {
     at: "10:01",
   });
 
-  assert.deepEqual(second.arrivals, [{ text: "5 AUSD arrived", at: "10:01" }]);
+  assert.deepEqual(second.arrivals, [{ id: "2-0", text: "5 AUSD arrived", at: "10:01" }]);
+});
+
+test("an arrival keeps its id when later ones arrive, and two in one read differ", () => {
+  const first = applyRead(initialReads(), {
+    seq: 1,
+    wallets: list(),
+    delegated: true,
+    at: "10:00",
+  });
+  const second = applyRead(first, {
+    seq: 2,
+    wallets: list({ ausdMicro: "15000000" }),
+    delegated: true,
+    at: "10:01",
+  });
+
+  const third = applyRead(second, {
+    seq: 3,
+    wallets: list({ ausdMicro: "20000000", monWei: "1000000000000000000" }),
+    delegated: true,
+    at: "10:02",
+  });
+
+  assert.deepEqual(
+    third.arrivals.map((arrival) => arrival.id),
+    ["3-0", "3-1", "2-0"],
+  );
 });
 
 test("a failed read keeps what was known and says so; only a later success clears it", () => {
