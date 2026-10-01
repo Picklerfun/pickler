@@ -538,3 +538,21 @@ export function sheetCopy(input: {
     done: "Wallet ready",
   };
 }
+
+/** Where an arrow key moves a radio group's selection (wrapping), or null for any other key. */
+export function radioStep(key: string, index: number, count: number): number | null {
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return (index + 1) % count;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (index - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}

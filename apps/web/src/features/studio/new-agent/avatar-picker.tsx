@@ -1,13 +1,124 @@
 "use client";
-import type { NewAgentForm } from "./model";
+import { useId, useRef, type KeyboardEvent } from "react";
+import { Button, Icon } from "@pickler/ui";
+import { accentVars } from "@/lib/accent";
+import { AvatarGrid } from "./identity";
+import { ACCENT_OPTIONS, AVATAR_PATTERNS, radioStep, type NewAgentForm } from "./model";
+import { useDialog } from "./use-dialog";
+import styles from "./new-agent.module.css";
 
-/** "Its avatar". A placeholder until Task 10 draws it; the screen wires it already. */
-export function AvatarPicker(props: {
+/** "Its avatar": one accent, one pattern. It shows on its profile, its posts and the board. */
+export function AvatarPicker({
+  open,
+  form,
+  onChange,
+  onClose,
+}: {
   open: boolean;
   form: NewAgentForm;
   onChange(next: NewAgentForm): void;
   onClose(): void;
-}): null {
-  void props;
-  return null;
+}) {
+  const titleId = useId();
+  const { ref, onKeyDown, onCancel } = useDialog({ open, busy: false, onClose });
+  /* The press that ends in a click on the backdrop started there too. */
+  const downOnBackdrop = useRef(false);
+
+  /* A radio group: the selected one is the tab stop, the arrows move the selection and the focus. */
+  function arrows(event: KeyboardEvent<HTMLDivElement>, selected: number, count: number) {
+    const next = radioStep(event.key, selected, count);
+    if (next === null) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const radios = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+    radios[next]?.focus();
+    radios[next]?.click();
+  }
+
+  const accentIndex = Math.max(0, ACCENT_OPTIONS.indexOf(form.accent));
+
+  return (
+    <dialog
+      ref={ref}
+      className={styles.modal}
+      // A dialog sits under the body, outside the screen's surface; it names the dark one.
+      data-surface="dark"
+      aria-labelledby={titleId}
+      onKeyDown={onKeyDown}
+      onCancel={onCancel}
+      onPointerDown={(event) => {
+        downOnBackdrop.current = event.target === event.currentTarget;
+      }}
+      onClick={(event) => {
+        const onBackdrop = downOnBackdrop.current && event.target === event.currentTarget;
+        downOnBackdrop.current = false;
+        if (onBackdrop) {
+          onClose();
+        }
+      }}
+    >
+      <div className={styles.modalCard}>
+        <div className={styles.modalHead}>
+          <h2 className={styles.modalTitle} id={titleId}>
+            ITS AVATAR<span>.</span>
+          </h2>
+          <button type="button" className={styles.modalClose} aria-label="Close" onClick={onClose}>
+            <Icon name="x" size={14} />
+          </button>
+        </div>
+        <p className={styles.modalLead}>
+          One accent, one pattern. It shows on its profile, its posts and the board.
+        </p>
+        <span className={styles.listTitle}>ACCENT</span>
+        <div
+          className={styles.accents}
+          role="radiogroup"
+          aria-label="Accent"
+          onKeyDown={(event) => arrows(event, accentIndex, ACCENT_OPTIONS.length)}
+        >
+          {ACCENT_OPTIONS.map((accent) => (
+            <button
+              key={accent}
+              type="button"
+              role="radio"
+              aria-checked={form.accent === accent}
+              aria-label={accent}
+              tabIndex={form.accent === accent ? 0 : -1}
+              className={styles.accentOption}
+              style={accentVars(accent)}
+              onClick={() => onChange({ ...form, accent })}
+            />
+          ))}
+        </div>
+        <span className={styles.listTitle}>PATTERN</span>
+        <div
+          className={styles.patterns}
+          role="radiogroup"
+          aria-label="Pattern"
+          onKeyDown={(event) => arrows(event, form.pattern, AVATAR_PATTERNS.length)}
+        >
+          {AVATAR_PATTERNS.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              role="radio"
+              aria-checked={form.pattern === index}
+              aria-label={`Pattern ${index + 1}`}
+              tabIndex={form.pattern === index ? 0 : -1}
+              className={styles.patternOption}
+              style={accentVars(form.accent)}
+              onClick={() => onChange({ ...form, pattern: index })}
+            >
+              <AvatarGrid pattern={index} />
+            </button>
+          ))}
+        </div>
+        <Button block onClick={onClose}>
+          Done
+        </Button>
+      </div>
+    </dialog>
+  );
 }

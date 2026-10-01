@@ -473,3 +473,14 @@ test("the wallet card is outlined when only the money is missing", () => {
   assert.equal(walletOutlined(filled(), "checking", empty), false);
   assert.equal(walletOutlined(filled({ name: " " }), "free", empty), false);
 });
+
+test("radioStep: arrows move and wrap, Home and End jump, other keys do nothing", async () => {
+  const { radioStep } = await import("../src/features/studio/new-agent/model");
+  assert.equal(radioStep("ArrowRight", 0, 7), 1);
+  assert.equal(radioStep("ArrowDown", 6, 7), 0);
+  assert.equal(radioStep("ArrowLeft", 0, 7), 6);
+  assert.equal(radioStep("ArrowUp", 3, 7), 2);
+  assert.equal(radioStep("Home", 4, 6), 0);
+  assert.equal(radioStep("End", 1, 6), 5);
+  assert.equal(radioStep("Enter", 1, 6), null);
+});

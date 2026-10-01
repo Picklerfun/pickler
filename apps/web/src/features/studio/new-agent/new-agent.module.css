@@ -1237,3 +1237,39 @@
     opacity: 0.45;
   }
 }
+
+.accents,
+.patterns {
+  display: grid;
+  gap: 6px;
+}
+.accents {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.patterns {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.accentOption,
+.patternOption {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--accent);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--pk-duration);
+}
+.accentOption:hover,
+.patternOption:hover {
+  transform: scale(1.05);
+}
+.accentOption[aria-checked="true"],
+.patternOption[aria-checked="true"] {
+  border-color: var(--pk-ink);
+}
+.patternOption .avatarGrid {
+  inset: 8px;
+  gap: 2px;
+}
