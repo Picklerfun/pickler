@@ -63,11 +63,8 @@ export const STARTER_CAPS = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 } 
 export const MIN_START_MICRO_AUSD = 10_000_000n;
 export const MIN_START_MON_WEI = 500_000_000_000_000_000n;
 
-/**
- * A draft's profile prose. The perps study writes "Dedicated perpetual simulation: <strategy>"
- * (infrastructure `perps-study-store.ts`); core cannot import it, so the text is restated here.
- */
-export const DRAFT_PROFILE = "Dedicated perpetual simulation: paper trades BTC and ETH on Perpl.";
+/** A draft's profile prose; the perps study's own is per strategy, so a draft states what it does. */
+export const DRAFT_PROFILE = "Paper trades BTC and ETH perpetuals on Perpl.";
 
 /** The working brief a new agent starts with: the canvas's Wire. */
 export const DEFAULT_BRIEF = {

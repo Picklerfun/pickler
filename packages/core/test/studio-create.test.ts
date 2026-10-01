@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   AVATAR_PATTERNS,
   DEFAULT_BRIEF,
-  DRAFT_PROFILE,
   MIN_START_MICRO_AUSD,
   MIN_START_MON_WEI,
   STARTER_CAPS,
@@ -146,7 +145,10 @@ test("'only' with no sites is refused", () => {
 });
 
 test("a draft's profile is the Perpl one, not the prediction-market default", () => {
-  assert.equal(prepareDraft(input()).config.profile, DRAFT_PROFILE);
+  assert.equal(
+    prepareDraft(input()).config.profile,
+    "Paper trades BTC and ETH perpetuals on Perpl.",
+  );
 });
 
 test("enough of both is no shortfall", () => {
