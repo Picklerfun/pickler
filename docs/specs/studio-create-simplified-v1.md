@@ -139,7 +139,8 @@ token contract (AUSD) or native value (MON), recipient, exact amount, gas bound,
 nonce, the rebuilt activity compared byte for byte, the signed transaction's signer; then
 broadcast, forget the cached balances of both sides, and record the transfer. A repeated confirm
 answers `409 TRANSFER_ALREADY_RECORDED`. Errors also: `404 WALLET_NOT_FOUND`, `400
-INVALID_TRANSFER`, `409 INSUFFICIENT_FUNDS`, and the deposit's fee and nonce errors.
+INVALID_TRANSFER`, `409 INSUFFICIENT_FUNDS`, `409 INSUFFICIENT_GAS` (the source's MON does not cover
+the fee, plus the amount for MON), and the deposit's fee and nonce errors.
 
 The existing `POST /v1/studio/agents/:id/deposit/prepare|confirm` (used by the studio home's deposit
 sheet) stay as they are; they and the transfers share one extracted stamped-transfer check, and
