@@ -120,7 +120,7 @@ policies; re-reads both balances against the minimums; creates the draft (config
 and links the wallet in `wallets.agent_wallets` with the approved policy ids. Answers `201 { productId,
 agent }`.
 
-Errors: `400 INVALID_BRIEF` (`detail.field`), `404 WALLET_NOT_FOUND` (absent or another
+Errors: `400 INVALID_BRIEF` (`{ error, field, reason }`, the shape the brief UI already reads), `404 WALLET_NOT_FOUND` (absent or another
 person's), `409 WALLET_ASSIGNED`, `409 POLICIES_MISSING`, `409 WALLET_UNDERFUNDED`,
 `409 HANDLE_TAKEN`, `409 DRAFT_LIMIT` (as today), `503` when Turnkey or the RPC is not configured.
 
