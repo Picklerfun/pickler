@@ -1,3 +1,4 @@
+import { readPerplTransportChoice } from "./transport-report.js";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { parseArgs } from "node:util";
 import { readFile, mkdir, writeFile, appendFile } from "node:fs/promises";
@@ -30,6 +31,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     options: {
       config: { type: "string" },
       "env-file": { type: "string" },
+      "acquisition-choice": { type: "string" },
       output: { type: "string" },
       "allow-paid": { type: "boolean" },
       help: { type: "boolean" },
@@ -69,6 +71,12 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     deepseek: process.env.MODEL_API_KEY ?? "",
     jev: process.env.TYPESAFE_API_KEY ?? "",
   });
+  const metadata = values["acquisition-choice"]
+    ? {
+        models: models.metadata,
+        acquisition: await readPerplTransportChoice(resolve(values["acquisition-choice"])),
+      }
+    : models.metadata;
   const data = createStudyData(paper, research);
   const controller = new AbortController();
   const interrupt = () => controller.abort(new Error("Operator interrupted"));
@@ -79,7 +87,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   try {
     signal?.throwIfAborted();
     if (action === "init") {
-      const view = await study.initialize(config, models.metadata);
+      const view = await study.initialize(config, metadata);
       console.log(
         JSON.stringify(
           { status: view.record.status, agents: view.record.agentIds, budgetUsd: config.budgetUsd },
@@ -92,7 +100,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     let view = await study.view(config);
     // Initialization compares canonical pinned metadata; report/stop remain possible after a code upgrade.
     if (["run", "resume", "preflight"].includes(action!)) {
-      view = await study.initialize(config, models.metadata);
+      view = await study.initialize(config, metadata);
     }
     if (action === "stop") {
       await study.stop(config);
@@ -293,6 +301,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       primaryFailed = true;
       throw error;
     } finally {
+      await reliableData.close();
       releaseAwake();
       await diagnostics.catch((error) => {
         if (!primaryFailed) {
@@ -308,6 +317,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     signal?.removeEventListener("abort", interrupt);
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
+    await data.close();
     await research.close().catch((error) => {
       if (!primaryFailed) {
         throw error;

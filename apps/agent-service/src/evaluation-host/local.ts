@@ -18,6 +18,7 @@ export interface EvaluationHostRequest {
   allowPaid?: boolean;
   envFile?: string;
   output?: string;
+  acquisitionChoice?: string;
   signal?: AbortSignal;
   states?: string[];
 }
@@ -55,9 +56,12 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     "btc-policy-comparison-v1": historical,
     "perps-comparison-v1": {
       async execute(request) {
-        if (request.command === "stability") {
+        if (request.command === "stability" || request.command === "data-diagnostic") {
           const { runPerpsStability } = await import("../perps-study/stability.js");
-          return runPerpsStability(input, signal);
+          return runPerpsStability(
+            { ...input, diagnostic: request.command === "data-diagnostic" },
+            signal,
+          );
         }
         const { runPerpsStudy } = await import("../perps-study/host.js");
         const command =
@@ -67,6 +71,9 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
               ? "report"
               : request.command;
         const args = [command, "--config", path];
+        if (input.acquisitionChoice) {
+          args.push("--acquisition-choice", resolve(input.acquisitionChoice));
+        }
         if (input.envFile) {
           args.push("--env-file", resolve(input.envFile));
         }

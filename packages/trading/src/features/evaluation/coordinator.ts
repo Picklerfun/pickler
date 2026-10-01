@@ -9,6 +9,7 @@ export const EVALUATION_PROTOCOLS = {
     strategies: PERPS_STUDY_STRATEGIES,
     commands: [
       "stability",
+      "data-diagnostic",
       "prepare",
       "preflight",
       "run",
@@ -76,6 +77,7 @@ export const EVALUATION_PROTOCOLS = {
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
   | "stability"
+  | "data-diagnostic"
   | "prepare"
   | "preflight"
   | "validate"

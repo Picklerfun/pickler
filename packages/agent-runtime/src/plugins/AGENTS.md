@@ -14,3 +14,5 @@ register it, declare necessary DTOs/ports/adapters, and test exact registry cove
 disabled access and permission enforcement. Never duplicate the catalog in an application.
 
 Perps-paper exposes a coherent public reader separately from its account simulator. Use one reader/schedule across BTC and ETH; do not rebuild a second acquisition algorithm in a CLI or deployed host.
+
+The Perpl acquisition reader has explicit read/latest/close lifecycle and one frozen REST or public WebSocket policy. Hosts share it across observation and final refresh, recheck the owner around reads, and close it on every outcome. No implicit fallback or authenticated stream is allowed.

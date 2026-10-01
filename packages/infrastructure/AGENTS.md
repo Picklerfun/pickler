@@ -380,3 +380,5 @@ Perpl request diagnostics retain only allowlisted nested network codes, observed
 header latency and total duration. Generic deadlines do not establish a DNS/TLS cause. The fixed
 `checkPublicConnectivity` read is an explicit diagnostic helper, not a provider fallback: one
 three-second public request, no redirects, body storage or retry, guarded before and after.
+
+Perpl public stream reconstruction lives in `src/perpl/stream.ts`. REST and WebSocket share ticker/book normalization. Only public fixed hosts are permitted; snapshots precede deltas, o:0 removes levels, disconnects discard state, and heartbeats never refresh data. Enforce 2 MiB messages, 32 queued messages and 10,000 levels per side. Reconnect at most twice per minute within active guarded acquisition. Public captures are bounded by the local host.
