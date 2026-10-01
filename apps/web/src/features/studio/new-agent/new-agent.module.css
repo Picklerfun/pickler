@@ -424,6 +424,14 @@
 .capButton {
   composes: capButton from "../home/home.module.css";
 }
+/* The steppers shut with aria-disabled, so they keep focus at a bound; the home's :disabled look.
+   The class is doubled to outrank the home's `:hover:not(:disabled)`, whichever sheet loads last. */
+.capButton.capButton[aria-disabled="true"],
+.capButton.capButton[aria-disabled="true"]:hover {
+  background: var(--pk-panel);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
 
 /* ---------- Create ---------- */
 

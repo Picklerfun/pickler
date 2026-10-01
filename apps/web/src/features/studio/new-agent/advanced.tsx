@@ -128,16 +128,24 @@ export function Advanced({
             <div className={styles.caps}>
               {STEPPERS.map((stepper) => {
                 const value = form[stepper.key];
-                const set = (next: number) =>
+                const lowest = disabled || value <= stepper.min;
+                const highest = disabled || value >= stepper.max;
+                /* aria-disabled, not disabled: the button keeps focus at its bound, so pressing
+                   past it does not throw focus to the page. */
+                const set = (next: number, shut: boolean) => {
+                  if (shut) {
+                    return;
+                  }
                   onChange({
                     ...form,
                     [stepper.key]: Math.min(stepper.max, Math.max(stepper.min, next)),
                   });
+                };
                 return (
                   <div key={stepper.key} className={styles.cap}>
                     <span className={styles.capText}>
                       <span className={styles.capTitle}>{stepper.title}</span>
-                      <span className={styles.capValue}>
+                      <span className={styles.capValue} aria-live="polite">
                         {value}
                         {stepper.unit}
                       </span>
@@ -146,8 +154,8 @@ export function Advanced({
                       type="button"
                       className={styles.capButton}
                       aria-label={`Lower ${stepper.title.toLowerCase()}`}
-                      disabled={disabled || value <= stepper.min}
-                      onClick={() => set(value - stepper.step)}
+                      aria-disabled={lowest}
+                      onClick={() => set(value - stepper.step, lowest)}
                     >
                       −
                     </button>
@@ -155,8 +163,8 @@ export function Advanced({
                       type="button"
                       className={styles.capButton}
                       aria-label={`Raise ${stepper.title.toLowerCase()}`}
-                      disabled={disabled || value >= stepper.max}
-                      onClick={() => set(value + stepper.step)}
+                      aria-disabled={highest}
+                      onClick={() => set(value + stepper.step, highest)}
                     >
                       +
                     </button>

@@ -84,13 +84,12 @@ export function Identity({
               }
             />
           </span>
-          <span
-            className={styles.handleNote}
-            data-tone={tone(handle)}
-            role="status"
-            aria-live="polite"
-          >
+          <span className={styles.handleNote} data-tone={tone(handle)}>
             {note}
+          </span>
+          {/* Only the settled answers are announced, not every "checking" on the way. */}
+          <span className={styles.srOnly} role="status" aria-live="polite">
+            {handle === "free" || handle === "taken" || handle === "failed" ? note : ""}
           </span>
           {handle === "failed" && (
             <button type="button" className={styles.retry} onClick={onRecheck}>

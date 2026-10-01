@@ -8,6 +8,7 @@ import {
   ACCENT_OPTIONS,
   DEFAULT_BRIEF,
   VOICES,
+  arrived,
   canCreate,
   capsEdited,
   capsInverted,
@@ -22,6 +23,7 @@ import {
   parseAmount,
   patternCells,
   sectionTag,
+  sheetCopy,
   unlinkedWallet,
   validHandle,
   walletSheetStep,
@@ -336,4 +338,69 @@ test("a handle is 3–15 of a–z, 0–9 and _", () => {
   assert.equal(validHandle("ht_bot"), true);
   assert.equal(validHandle("ab"), false);
   assert.equal(validHandle("Halftime"), false);
+});
+
+test("with two unlinked wallets the newest is restored, as the API reuses it", () => {
+  const unlinked = (walletId: string) => ({
+    walletId,
+    address: walletId,
+    ausdMicro: null,
+    monWei: null,
+    agentId: null,
+    agentName: null,
+    caps: null,
+    policiesApproved: false,
+  });
+
+  const restored = unlinkedWallet({
+    master: { address: "0xm", ausdMicro: null, monWei: null },
+    agents: [unlinked("older"), unlinked("newer")],
+    readAt: 0,
+  });
+
+  assert.equal(restored?.wallet.walletId, "newer");
+});
+
+test("arrivals name each token that rose", () => {
+  const news = arrived(
+    wallet(),
+    wallet({ ausdMicro: 12_500_000n, monWei: 1_000_000_000_000_000_000n }),
+    "10:00",
+  );
+
+  assert.deepEqual(news, [
+    { text: "2.5 AUSD arrived", at: "10:00" },
+    { text: "0.5 MON arrived", at: "10:00" },
+  ]);
+});
+
+test("an unread balance on either side is no arrival", () => {
+  assert.deepEqual(arrived(wallet({ ausdMicro: null }), wallet(), "10:00"), []);
+  assert.deepEqual(arrived(wallet(), wallet({ monWei: null }), "10:00"), []);
+});
+
+test("a decrease is no arrival", () => {
+  assert.deepEqual(arrived(wallet(), wallet({ ausdMicro: 1n }), "10:00"), []);
+});
+
+test("the wallet sheet counts its steps only the first time", () => {
+  const first = sheetCopy({ kind: "wallet", step: 1, firstTime: true, form: filled() });
+  const second = sheetCopy({ kind: "wallet", step: 2, firstTime: true, form: filled() });
+  const later = sheetCopy({ kind: "wallet", step: 1, firstTime: false, form: filled() });
+
+  assert.equal(first.title, "Create Halftime's wallet?");
+  assert.equal(first.body, "UNDER YOUR PASSKEY · ONLY THIS AGENT USES IT · 1 OF 2");
+  assert.equal(second.body, "INSIDE THE CAPS ONLY · NEVER WITHDRAW · 2 OF 2");
+  assert.equal(later.body, "UNDER YOUR PASSKEY · ONLY THIS AGENT USES IT");
+});
+
+test("the create sheet says the caps and who holds the trades to them", () => {
+  const copy = sheetCopy({ kind: "create", step: 1, firstTime: false, form: filled() });
+
+  assert.equal(copy.title, "Create Halftime?");
+  assert.equal(
+    copy.body,
+    "SETS ITS CAPS · 5 / 20 AUSD · 1× · IT CAN ONLY TRADE ON PERPL AND CAN'T WITHDRAW · PICKLER HOLDS EVERY TRADE TO THESE CAPS",
+  );
+  assert.equal(copy.done, "Halftime is yours");
 });

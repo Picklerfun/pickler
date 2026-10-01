@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  NoSubOrganization,
   createAgent,
   createWallet,
   type CreateDeps,
@@ -176,4 +177,53 @@ test("a cancelled stamp stops before the draft", async () => {
   await assert.rejects(createAgent(deps, { walletId: "w", policiesApproved: false }), {
     name: "NotAllowedError",
   });
+});
+
+test("no sub-organization throws before any stamp", async () => {
+  const { deps, calls } = walletDeps({ delegated: false });
+  deps.state = async () => ({ hasSubOrganization: false, hasDelegatedUser: false });
+
+  await assert.rejects(createWallet(deps), NoSubOrganization);
+
+  assert.deepEqual(calls, []);
+});
+
+test("a cancelled policies stamp never confirms them", async () => {
+  const calls: string[] = [];
+  const deps: CreateDeps = {
+    stamp: async () => {
+      throw Object.assign(new Error("closed"), { name: "NotAllowedError" });
+    },
+    preparePolicies: async () => unsigned("policies"),
+    confirmPolicies: async () => {
+      calls.push("confirmed");
+      return { policyIds: [] };
+    },
+    createDraft: async () => ({ productId: "p" }),
+  };
+
+  await assert.rejects(createAgent(deps, { walletId: "w", policiesApproved: false }));
+
+  assert.deepEqual(calls, []);
+});
+
+test("a step 2 closed on the device after the wallet was made rejects, with the wallet confirmed", async () => {
+  const { deps, calls } = walletDeps({ delegated: false });
+  let confirmed = false;
+  deps.confirmWallet = async () => {
+    confirmed = true;
+    return { walletId: "w", address: "0x1" };
+  };
+  const stampOnce = deps.stamp;
+  deps.stamp = async (u) => {
+    if (u.url === "delegated") {
+      throw Object.assign(new Error("closed"), { name: "NotAllowedError" });
+    }
+    return stampOnce(u);
+  };
+
+  await assert.rejects(createWallet(deps), { name: "NotAllowedError" });
+
+  assert.equal(confirmed, true);
+  assert.equal(calls.includes("delegated"), false);
 });

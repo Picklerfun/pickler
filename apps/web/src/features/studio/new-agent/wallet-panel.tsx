@@ -12,7 +12,7 @@ export interface WalletPanelProps {
   pendingDelegate: boolean;
   form: NewAgentForm;
   checkedAt: string;
-  arrivals: { text: string; at: string }[];
+  arrivals: readonly { text: string; at: string }[];
   busy: boolean;
   preview: boolean;
   onCreateWallet(): void;

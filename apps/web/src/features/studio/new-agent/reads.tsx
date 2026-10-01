@@ -79,11 +79,8 @@ export function Reads({
               label="Where the web may look"
               options={MODES}
               value={form.webMode}
-              onChange={(webMode) => {
-                if (!disabled) {
-                  onChange({ ...form, webMode });
-                }
-              }}
+              disabled={disabled}
+              onChange={(webMode) => onChange({ ...form, webMode })}
             />
           </div>
           {form.webMode === "anywhere" ? (

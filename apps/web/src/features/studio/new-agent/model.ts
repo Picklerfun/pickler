@@ -294,11 +294,20 @@ const big = (value: string | null): bigint | null => (value === null ? null : Bi
 /**
  * The agent wallet a reload finds mid-setup: one of the person's with no agent yet, its balances in
  * base units and whether its policies were already approved. Null when there is none.
+ *
+ * With several unlinked wallets it is the newest, the one the API's `findUnlinkedWallet` reuses
+ * (`created_at DESC, wallet_id DESC`). `GET /wallets` lists them oldest first
+ * (`listAgentWallets`: `created_at, wallet_id`), so that is the last unlinked one in the list.
  */
 export function unlinkedWallet(
   wallets: WalletsDto,
 ): { wallet: WalletView; policiesApproved: boolean } | null {
-  const found = wallets.agents.find((agent) => agent.agentId === null);
+  let found: WalletsDto["agents"][number] | undefined;
+  for (const agent of wallets.agents) {
+    if (agent.agentId === null) {
+      found = agent;
+    }
+  }
   if (!found) {
     return null;
   }
@@ -431,4 +440,54 @@ export function siteNote(form: NewAgentForm, draft: string): { text: string; bad
     return { text: "“ONLY” NEEDS AT LEAST ONE SITE", bad: true };
   }
   return { text: `${form.sites.length} OF ${MAX_SITES} · ENTER TO ADD`, bad: false };
+}
+
+/** What a read found that the last one did not: "{delta} AUSD arrived". A decrease is not news. */
+export function arrived(
+  before: WalletView,
+  after: WalletView,
+  at: string,
+): { text: string; at: string }[] {
+  const found: { text: string; at: string }[] = [];
+  const check = (token: Token, was: bigint | null, now: bigint | null) => {
+    if (was !== null && now !== null && now > was) {
+      found.push({ text: `${formatUnits(now - was, token)} ${token} arrived`, at });
+    }
+  };
+  check("AUSD", before.ausdMicro, after.ausdMicro);
+  check("MON", before.monWei, after.monWei);
+  return found;
+}
+
+/**
+ * The passkey sheet's words (spec §3.1, D6): the wallet's two steps, " · 1 OF 2" / " · 2 OF 2"
+ * only the first time, and the create sheet, which says what is true about the caps.
+ */
+export function sheetCopy(input: {
+  kind: "wallet" | "create";
+  step: 1 | 2;
+  firstTime: boolean;
+  form: NewAgentForm;
+}): { title: string; body: string; done: string } {
+  const { form } = input;
+  const name = form.name.trim();
+  if (input.kind === "create") {
+    return {
+      title: `Create ${name}?`,
+      body: `SETS ITS CAPS · ${form.perTrade} / ${form.perDay} AUSD · ${form.leverage}× · IT CAN ONLY TRADE ON PERPL AND CAN'T WITHDRAW · PICKLER HOLDS EVERY TRADE TO THESE CAPS`,
+      done: `${name} is yours`,
+    };
+  }
+  if (input.step === 2) {
+    return {
+      title: "Let Pickler trade from it?",
+      body: `INSIDE THE CAPS ONLY · NEVER WITHDRAW${input.firstTime ? " · 2 OF 2" : ""}`,
+      done: "Wallet ready",
+    };
+  }
+  return {
+    title: name ? `Create ${name}'s wallet?` : "Create its wallet?",
+    body: `UNDER YOUR PASSKEY · ONLY THIS AGENT USES IT${input.firstTime ? " · 1 OF 2" : ""}`,
+    done: "Wallet ready",
+  };
 }
