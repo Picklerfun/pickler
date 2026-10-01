@@ -1,3 +1,4 @@
+import { PilotError } from "@pickler/core";
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -155,7 +156,7 @@ test("parallel known usage commits independently; budget exhaustion admits neith
     deepseek: holds,
     jev: holds,
   });
-  await x.study.finishExecution(x.scope, lease, round.key, true);
+  await x.study.finishExecution(x.scope, lease, round.key, "complete");
   assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.fallback.status, "skipped");
   const expensive = {
     ...x.scope,
@@ -395,7 +396,7 @@ test("expired grace preserves unresolved positions and permanently closes admiss
   const lease = await x.study.claim(x.scope);
   const data = {
     observe: async () => {
-      throw new Error("public outage");
+      throw new PilotError("PERPL_TIMEOUT", "public outage");
     },
     evidence: async () => studyEvidence(x.now()),
     execution: async () => [],
@@ -443,7 +444,7 @@ test("missing decision slots are not filled retrospectively; public failures cre
   };
   const data = {
     observe: async () => {
-      throw new Error("public outage");
+      throw new PilotError("PERPL_TIMEOUT", "public outage");
     },
     evidence: async () => studyEvidence(x.now()),
     execution: async () => [],
@@ -597,16 +598,205 @@ test("stale evidence is rejected before model spend and invalid execution frames
   assert.equal(calls, 0);
   assert.equal((await x.study.view(x.scope)).rounds.length, 0);
   stale = false;
-  await runner.cycle(x.scope, lease, new AbortController().signal);
+  x.advance(900000);
+  await x.study.release(x.scope, lease);
+  const next = await x.study.claim(x.scope);
+  await runner.cycle(x.scope, next, new AbortController().signal);
   const view = await x.study.view(x.scope);
   assert.equal(calls, 2);
-  assert.equal(view.record.decisionStopReason, "INCOMPLETE_EXECUTION");
+  assert.equal(view.record.decisionStopReason, null);
+  assert.equal(view.rounds[0]!.executionStatus, "skipped_data_unavailable");
   assert.ok(view.events.some((event) => event.kind === "execution-input"));
   assert.ok(
     view.events.some(
       (event) =>
-        event.kind === "execution-failed" &&
-        (event.data as { code: string }).code === "INCONSISTENT_MARKET_DATA",
+        event.kind === "data-unavailable" &&
+        (event.data as { cause: string }).cause === "INCONSISTENT_MARKET_DATA",
     ),
   );
+});
+
+test("unavailable execution skips one slot, preserves proposals and resumes next slot", async (t) => {
+  const x = await setup(t);
+  let calls = 0,
+    unavailable = true;
+  const lease = await x.study.claim(x.scope);
+  const models: PerpsModels = {
+    metadata: {},
+    direct: async (_context, _signal, hooks) => {
+      calls++;
+      await hooks.before({ sha256: "a".repeat(64), bytes: 1 });
+      await hooks.usage(1, 1);
+      return holds;
+    },
+    readiness: async (_context, _signal, hooks) => {
+      calls++;
+      await hooks.before({ sha256: "b".repeat(64), bytes: 1 });
+      await hooks.usage(1, 1);
+      return { skip: true, answers: {} };
+    },
+  };
+  const runner = createPerpsStudyRunner({
+    study: x.study,
+    paper: x.paper,
+    now: x.now,
+    models,
+    data: {
+      observe: async () => ({ frames: studyEvidence(x.now()).frames, funding: [] }),
+      evidence: async () => studyEvidence(x.now()),
+      execution: async () => {
+        if (unavailable) {
+          throw new PilotError("DATA_UNAVAILABLE", "controlled");
+        }
+        return studyEvidence(x.now()).frames;
+      },
+    },
+  });
+  await runner.cycle(x.scope, lease, new AbortController().signal);
+  let view = await x.study.view(x.scope);
+  assert.equal(view.record.decisionStopReason, null);
+  assert.equal(view.rounds[0]!.executionStatus, "skipped_data_unavailable");
+  assert.deepEqual(view.rounds[0]!.proposals.deepseek, holds);
+  await runner.cycle(x.scope, lease, new AbortController().signal);
+  assert.equal(calls, 2);
+  unavailable = false;
+  x.advance(900000);
+  await x.study.release(x.scope, lease);
+  const next = await x.study.claim(x.scope);
+  await runner.cycle(x.scope, next, new AbortController().signal);
+  view = await x.study.view(x.scope);
+  assert.equal(view.rounds[1]!.executionStatus, "complete");
+  assert.equal(calls, 4);
+});
+
+test("diagnostic lease creates no agents, accounts or paid rounds and expires atomically", async (t) => {
+  const x = await setup(t);
+  const before = await x.research.pool.query("SELECT count(*)::int AS count FROM pickler.agents");
+  const diagnostic = await x.study.initializeDiagnostic(x.scope, "stability-controlled", {
+    kind: "test",
+  });
+  const lease = await x.study.claim(diagnostic);
+  await assert.rejects(x.study.guard(diagnostic, lease, true));
+  assert.equal(
+    (await x.research.pool.query("SELECT count(*)::int AS count FROM pickler.agents")).rows[0]
+      .count,
+    before.rows[0].count,
+  );
+  x.advance(20000);
+  await x.study.renew(diagnostic, lease);
+  assert.equal(lease.expiresAt, x.now() + 90000);
+  x.advance(90001);
+  await assert.rejects(x.study.renew(diagnostic, lease), { code: "LEASE_LOST" });
+  await assert.rejects(x.study.event(diagnostic, lease, "late", "test", {}), {
+    code: "LEASE_LOST",
+  });
+  assert.equal((await x.study.view(diagnostic)).rounds.length, 0);
+});
+
+test("paper account writes are fenced by the study lease in their own transaction", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  const bound = new PostgresPerpsPaperStore(x.research.pool, x.now, {
+    ...x.scope,
+    owner: lease.owner,
+  });
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  await bound.observe(target, "owned", { frames: studyEvidence(x.now()).frames, funding: [] });
+  x.advance(90001);
+  await assert.rejects(
+    bound.observe(target, "expired", { frames: studyEvidence(x.now()).frames, funding: [] }),
+    { code: "LEASE_LOST" },
+  );
+  assert.equal(await x.paper.observed(target, "expired"), false);
+});
+
+test("study event rolls back if ownership expires during the transaction", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  let reads = 0;
+  const delayed = new PostgresPerpsStudyStore(x.research.pool, () => {
+    if (++reads === 2) {
+      x.advance(90001);
+    }
+    return x.now();
+  });
+  await assert.rejects(delayed.event(x.scope, lease, "late-commit", "test", {}), {
+    code: "LEASE_LOST",
+  });
+  assert.ok(!(await x.study.view(x.scope)).events.some((event) => event.key === "late-commit"));
+});
+
+test("a partial observation write failure stops instead of skipping or invoking models", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  let writes = 0;
+  const original = x.paper.observe.bind(x.paper);
+  x.paper.observe = async (...args) => {
+    if (++writes === 2) {
+      throw new PilotError("DATA_UNAVAILABLE", "failure after first write");
+    }
+    return original(...args);
+  };
+  const unexpected = async () => {
+    throw new Error("model must not run");
+  };
+  const runner = createPerpsStudyRunner({
+    study: x.study,
+    paper: x.paper,
+    now: x.now,
+    models: { metadata: {}, direct: unexpected, readiness: unexpected },
+    data: {
+      observe: async () => ({ frames: studyEvidence(x.now()).frames, funding: [] }),
+      evidence: async () => studyEvidence(x.now()),
+      execution: async () => studyEvidence(x.now()).frames,
+    },
+  });
+  await assert.rejects(runner.cycle(x.scope, lease, new AbortController().signal), {
+    code: "DATA_UNAVAILABLE",
+  });
+  const view = await x.study.view(x.scope);
+  assert.equal(view.rounds.length, 0);
+  assert.equal(view.events.filter((event) => event.kind === "data-unavailable").length, 0);
+});
+
+test("database lock delay cannot renew an expired lease or permit subsequent writes", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  const blocker = await x.research.pool.connect();
+  await blocker.query("BEGIN");
+  await blocker.query("SELECT id FROM pickler.perps_studies WHERE session_id=$1 FOR UPDATE", [
+    x.scope.sessionId,
+  ]);
+  const renewal = x.study.renew(x.scope, lease);
+  const rejected = assert.rejects(renewal, { code: "LEASE_LOST" });
+  x.advance(90001);
+  await blocker.query("COMMIT");
+  blocker.release();
+  await rejected;
+  await assert.rejects(x.study.event(x.scope, lease, "after-lock", "test", {}), {
+    code: "LEASE_LOST",
+  });
+});
+
+test("a process interruption fences writes even while PostgreSQL still sees a live lease", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  lease.assertActive = () => {
+    throw new PilotError("PROCESS_INTERRUPTED", "controlled wakeup gap");
+  };
+  await assert.rejects(x.study.event(x.scope, lease, "after-wake", "test", {}), {
+    code: "PROCESS_INTERRUPTED",
+  });
+  const bound = new PostgresPerpsPaperStore(x.research.pool, x.now, {
+    ...x.scope,
+    owner: lease.owner,
+    assertActive: lease.assertActive,
+  });
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  await assert.rejects(
+    bound.observe(target, "after-wake", { frames: studyEvidence(x.now()).frames, funding: [] }),
+    { code: "PROCESS_INTERRUPTED" },
+  );
+  assert.equal(await x.paper.observed(target, "after-wake"), false);
+  assert.ok(!(await x.study.view(x.scope)).events.some((event) => event.key === "after-wake"));
 });

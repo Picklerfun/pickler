@@ -194,3 +194,10 @@ export {
 } from "./persistence/product/launch-read-model.js";
 
 /** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */
+
+export { PerplRequestSchedule } from "./perpl/transport.js";
+export type { PerplRequestDiagnostic } from "./perpl/transport.js";
+
+export { abortable as abortablePerplRead } from "./perpl/transport.js";
+
+export { checkPublicConnectivity, type ConnectivityControl } from "./perpl/connectivity-control.js";

@@ -373,3 +373,10 @@ Perpetual study admission shares the USD 5 ceiling across every session for the 
 and network in the same database. A transaction-scoped advisory lock serializes reservations;
 historical reservations and unknown started usage cannot be bypassed with a new session ID.
 Do not change tenant/network/database to reset an existing authorization.
+
+Perpl public hosts share `PerplRequestSchedule` across sessions: serialized requests, at least one second between starts, shared Retry-After cooldown, and the existing twelve-request session limit. Transient retry support is opt-in for coherent acquisition; other consumers retain stop-on-error behavior. The perps study repository stores attempted slots and diagnostic-only records in existing JSONB. Diagnostic initialization references existing agents without creating accounts; paid admissions remain closed. Perps paper stores may be bound to a study owner, checked inside their transactions before and after mutation.
+
+Perpl request diagnostics retain only allowlisted nested network codes, observed response phase,
+header latency and total duration. Generic deadlines do not establish a DNS/TLS cause. The fixed
+`checkPublicConnectivity` read is an explicit diagnostic helper, not a provider fallback: one
+three-second public request, no redirects, body storage or retry, guarded before and after.

@@ -7,7 +7,17 @@ export const EVALUATION_PROTOCOLS = {
     instrument: "perpetual",
     strategySetVersion: 1,
     strategies: PERPS_STUDY_STRATEGIES,
-    commands: ["prepare", "preflight", "run", "resume", "status", "stop", "settle", "report"],
+    commands: [
+      "stability",
+      "prepare",
+      "preflight",
+      "run",
+      "resume",
+      "status",
+      "stop",
+      "settle",
+      "report",
+    ],
     paidCommands: ["run", "resume"],
     riskPolicy: "conservative-1x-v1",
     accounting: "release-known-reservation-v1",
@@ -65,6 +75,7 @@ export const EVALUATION_PROTOCOLS = {
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
+  | "stability"
   | "prepare"
   | "preflight"
   | "validate"

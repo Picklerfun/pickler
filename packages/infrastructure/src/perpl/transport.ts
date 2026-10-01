@@ -1,4 +1,5 @@
 import { PilotError, type PerpNetwork, type PerpReadContext } from "@pickler/core";
+import { networkFailure, type NetworkFailure } from "./network-diagnostics.js";
 export const PERPL_NETWORKS = {
   mainnet: { chainId: 143, base: "https://app.perpl.xyz/api" },
   testnet: { chainId: 10143, base: "https://testnet.perpl.xyz/api" },
@@ -8,7 +9,27 @@ export interface PerplPublicResponse {
   receivedAt: number;
   body: string;
 }
+export interface PerplRequestDiagnostic {
+  operation: string;
+  status: number | null;
+  durationMs: number;
+  code: string | null;
+  phase: "response_headers" | "response_body" | "validation" | "complete";
+  headersMs: number | null;
+  network: NetworkFailure | null;
+}
+/** Shared by all read sessions in one evaluation host, including retries. */
+export class PerplRequestSchedule {
+  tail: Promise<unknown> = Promise.resolve();
+  lastStart = -Infinity;
+  blockedUntil = 0;
+}
 export interface PerplDataOptions {
+  schedule?: PerplRequestSchedule;
+  retryTransient?: boolean;
+  guard?: () => Promise<void>;
+  onDiagnostic?: (event: PerplRequestDiagnostic) => void;
+
   transport?: typeof fetch;
   now?: () => number;
   /** Trusted host hook for private captures; no headers or credentials are supplied. */
@@ -42,17 +63,17 @@ async function pause(ms: number, signal: AbortSignal) {
 }
 /** One adapter is one bounded session. No background requests, redirects, or retries. */
 export class PerplTransport {
-  private tail: Promise<unknown> = Promise.resolve();
-  private lastStart = -Infinity;
+  private readonly schedule: PerplRequestSchedule;
   private requests = 0;
   private stopped = false;
   readonly now: () => number;
   constructor(private readonly options: PerplDataOptions = {}) {
     this.now = options.now ?? Date.now;
+    this.schedule = options.schedule ?? new PerplRequestSchedule();
   }
   get(network: PerpNetwork, path: string, ctx: PerpReadContext): Promise<PerplPublicResponse> {
-    const result = this.tail.then(() => this.request(network, path, ctx));
-    this.tail = result.catch(() => {});
+    const result = this.schedule.tail.then(() => this.request(network, path, ctx));
+    this.schedule.tail = result.catch(() => {});
     return result;
   }
   private async request(
@@ -61,6 +82,7 @@ export class PerplTransport {
     ctx: PerpReadContext,
   ): Promise<PerplPublicResponse> {
     await ctx.guard();
+    await this.options.guard?.();
     ctx.signal.throwIfAborted();
     if (this.stopped || this.requests >= 12) {
       throw new PilotError(
@@ -68,18 +90,49 @@ export class PerplTransport {
         "Perpl read session has stopped or reached its limit",
       );
     }
-    await pause(Math.max(0, 1000 - (Date.now() - this.lastStart)), ctx.signal);
+    await pause(
+      Math.max(
+        0,
+        Math.max(
+          1000 - (Date.now() - this.schedule.lastStart),
+          this.schedule.blockedUntil - Date.now(),
+        ),
+      ),
+      ctx.signal,
+    );
     await ctx.guard();
+    await this.options.guard?.();
     const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(10_000)]);
     signal.throwIfAborted();
-    this.lastStart = Date.now();
+    this.schedule.lastStart = Date.now();
     this.requests++;
     const url = PERPL_NETWORKS[network].base + path;
+    const started = Date.now();
+    let status: number | null = null;
+    let code: string | null = null;
+    let phase: PerplRequestDiagnostic["phase"] = "response_headers";
+    let headersMs: number | null = null;
+    let networkDiagnostic: NetworkFailure | null = null;
     try {
       const response = await abortable(
         (this.options.transport ?? fetch)(url, { method: "GET", redirect: "manual", signal }),
         signal,
       );
+      status = response.status;
+      headersMs = Date.now() - started;
+      phase = "response_body";
+      if (status === 429) {
+        const retry = response.headers.get("retry-after");
+        const seconds =
+          retry !== null && /^\d+(?:\.\d+)?$/.test(retry) ? Number(retry) * 1000 : NaN;
+        const date = retry ? Date.parse(retry) - Date.now() : NaN;
+        const delay = Number.isFinite(seconds)
+          ? seconds
+          : Number.isFinite(date)
+            ? Math.max(0, date)
+            : 60000;
+        this.schedule.blockedUntil = Math.max(this.schedule.blockedUntil, Date.now() + delay);
+      }
       if (!response.ok) {
         await response.body?.cancel();
         throw new PilotError(`PERPL_HTTP_${response.status}`, "Perpl public request failed");
@@ -112,24 +165,53 @@ export class PerplTransport {
         void reader.cancel().catch(() => {});
         reader.releaseLock();
       }
+      phase = "validation";
       signal.throwIfAborted();
       await ctx.guard();
+      await this.options.guard?.();
       const result = { url, receivedAt: this.now(), body };
       await this.options.onResponse?.(result);
+      phase = "complete";
       return result;
     } catch (error) {
-      this.stopped = true;
-      if (error instanceof PilotError) {
-        throw error;
-      }
-      throw new PilotError(
-        ctx.signal.aborted
-          ? "PERPL_CANCELLED"
-          : signal.aborted
-            ? "PERPL_TIMEOUT"
-            : "PERPL_TRANSPORT_FAILURE",
-        "Perpl public read did not complete",
+      networkDiagnostic = networkFailure(
+        error,
+        ctx.signal.aborted ? "cancelled" : signal.aborted ? "timeout" : undefined,
       );
+      const failure =
+        error instanceof PilotError
+          ? error
+          : new PilotError(
+              ctx.signal.aborted
+                ? "PERPL_CANCELLED"
+                : signal.aborted
+                  ? "PERPL_TIMEOUT"
+                  : "PERPL_TRANSPORT_FAILURE",
+              "Perpl public read did not complete",
+            );
+      code = failure.code;
+      this.stopped =
+        !this.options.retryTransient ||
+        !/^(PERPL_TIMEOUT|PERPL_TRANSPORT_FAILURE|PERPL_HTTP_(408|429|5\d\d))$/.test(code);
+      throw failure;
+    } finally {
+      this.options.onDiagnostic?.({
+        operation: path.endsWith("/ticker")
+          ? "ticker"
+          : path.includes("/book?")
+            ? "book"
+            : path.includes("/candles/")
+              ? "candles"
+              : path.includes("funding")
+                ? "funding"
+                : "metadata",
+        status,
+        phase,
+        headersMs,
+        network: networkDiagnostic,
+        durationMs: Date.now() - started,
+        code,
+      });
     }
   }
 }

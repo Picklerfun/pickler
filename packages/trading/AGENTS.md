@@ -82,3 +82,7 @@ providers or process arguments. Binary and perpetual accounting policies remain 
 Perpetual evaluation validates evidence freshness again after candle preparation, before model
 reservation. Common execution frames are persisted as `execution-input` before valuation, including
 rejected frames. Preserve the 30-second freshness and five-second component-skew limits.
+
+Perpl data policy `coherent-20s-v1` bounds joint acquisition to twenty seconds without changing freshness/skew thresholds. `claimSlot` persists attempts before evidence/model work; `skipped_data_unavailable` is neither a hold nor a completed execution. `startLeaseHeartbeat` injects safe renewal diagnostics; study leases remain 90 seconds with 20-second renewal. Do not retry model calls or recover skipped slots.
+
+The evaluation heartbeat exposes a synchronous liveness check. Hosts and runner admissions must call it before new work: a ninety-second local renewal gap aborts even before a delayed timer fires. This is a fail-closed process-interruption guard, not a replacement for PostgreSQL ownership or a lease extension.

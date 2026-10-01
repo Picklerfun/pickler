@@ -15,7 +15,7 @@ const { positionals, values } = parseArgs({
 });
 if (values.help) {
   console.log(
-    "evaluate prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
+    "evaluate stability|prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
   );
 } else {
   const controller = new AbortController();

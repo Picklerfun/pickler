@@ -10,8 +10,7 @@ import {
   type EvaluationProtocol,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
-import { runPerpsStudy } from "../perps-study/host.js";
-import { runBtcBenchmark, benchmarkConfigSchema } from "../paper-study/benchmark-host.js";
+
 const appRoot = fileURLToPath(new URL("../../", import.meta.url));
 export interface EvaluationHostRequest {
   command: EvaluationCommand;
@@ -56,6 +55,11 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     "btc-policy-comparison-v1": historical,
     "perps-comparison-v1": {
       async execute(request) {
+        if (request.command === "stability") {
+          const { runPerpsStability } = await import("../perps-study/stability.js");
+          return runPerpsStability(input, signal);
+        }
+        const { runPerpsStudy } = await import("../perps-study/host.js");
         const command =
           request.command === "prepare"
             ? "init"
@@ -77,6 +81,8 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     },
     "btc-decision-benchmark-v1": {
       async execute(request) {
+        const { runBtcBenchmark, benchmarkConfigSchema } =
+          await import("../paper-study/benchmark-host.js");
         const config = benchmarkConfigSchema.parse(raw);
         if (request.command === "compare") {
           if (!input.output || !input.states?.length) {
