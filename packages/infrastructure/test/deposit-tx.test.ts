@@ -6,8 +6,10 @@ import { AUSD } from "@pickler/chain";
 import { DepositNotSendableError, SignedTransactionMismatchError } from "@pickler/core";
 import {
   broadcastTransaction,
+  buildNativeTransferTx,
   buildTransferTx,
   createAusdDepositChain,
+  inspectNativeTransfer,
   inspectTransfer,
   JsonRpcError,
   pendingNonce,
@@ -295,6 +297,99 @@ test("inspection refuses anything but a bare unsigned EIP-1559 transfer", () => 
   }
 });
 
+const NATIVE = {
+  type: "eip1559" as const,
+  chainId: 10143,
+  nonce: 1,
+  to: TO as Hex,
+  value: 5n,
+  data: "0x" as Hex,
+  gas: 21_000n,
+  maxFeePerGas: 3n,
+  maxPriorityFeePerGas: 1n,
+};
+
+test("inspectNativeTransfer reads a plain transfer it serialized", () => {
+  assert.deepEqual(inspectNativeTransfer(serializeTransaction(NATIVE)), {
+    chainId: 10143,
+    nonce: 1,
+    to: TO,
+    value: 5n,
+    gas: 21_000n,
+    maxFeePerGas: 3n,
+    maxPriorityFeePerGas: 1n,
+  });
+});
+
+test("inspectNativeTransfer refuses calldata, a signature, an access list and anything not EIP-1559", () => {
+  const cases: [string, string][] = [
+    ["garbage", "0x02deadbeef"],
+    ["calldata", serializeTransaction({ ...NATIVE, value: 0n, data: "0xa9059cbb" })],
+    ["a token transfer", serializeTransaction(TRANSFER)],
+    ["signed", serializeTransaction(NATIVE, SIGNATURE)],
+    [
+      "access list",
+      serializeTransaction({ ...NATIVE, accessList: [{ address: TO as Hex, storageKeys: [] }] }),
+    ],
+    [
+      "legacy",
+      serializeTransaction({
+        type: "legacy",
+        chainId: 10143,
+        nonce: 1,
+        to: TO as Hex,
+        value: 5n,
+        gas: 21_000n,
+        gasPrice: 3n,
+      }),
+    ],
+  ];
+  for (const [name, raw] of cases) {
+    assert.equal(inspectNativeTransfer(raw), null, name);
+  }
+});
+
+test("a plain transfer is built from the pending nonce, the chain's fees and a padded estimate of the value move", async () => {
+  const { rpc, calls } = fakeRpc({ ...healthy, eth_estimateGas: "0x5208" }); // 21_000
+
+  const unsigned = await buildNativeTransferTx({
+    rpc,
+    chainId: 10143,
+    from: FROM,
+    to: TO,
+    amount: 5n * 10n ** 17n,
+  });
+
+  const params = Object.fromEntries(calls.map((call) => [call.method, call.params]));
+  assert.deepEqual(params["eth_getTransactionCount"], [FROM, "pending"]);
+  assert.deepEqual(params["eth_estimateGas"], [
+    { from: FROM, to: TO, value: `0x${(5n * 10n ** 17n).toString(16)}` },
+  ]);
+  assert.deepEqual(inspectNativeTransfer(unsigned), {
+    chainId: 10143,
+    nonce: 7,
+    to: TO,
+    value: 5n * 10n ** 17n,
+    gas: 25_200n,
+    maxFeePerGas: 50n * GWEI * 2n + 2n * GWEI,
+    maxPriorityFeePerGas: 2n * GWEI,
+  });
+});
+
+test("a failed estimate of a plain transfer propagates as one the wallet cannot send", async () => {
+  const { rpc } = fakeRpc({
+    ...healthy,
+    eth_estimateGas: () => {
+      throw new JsonRpcError("insufficient funds", -32000);
+    },
+  });
+
+  await assert.rejects(
+    buildNativeTransferTx({ rpc, chainId: 10143, from: FROM, to: TO, amount: 1n }),
+    DepositNotSendableError,
+  );
+});
+
 test("a broadcast sends the signed transaction with a 0x prefix and answers its own hash", async () => {
   const signed = serializeTransaction(TRANSFER, SIGNATURE);
   const hash = keccak256(signed);
@@ -344,6 +439,8 @@ test("the AUSD deposit chain is AUSD on the configured network and forgets throu
   const unsigned = await chain.prepareTransfer({ from: FROM, to: TO, amount: 10_000_000n });
   assert.equal(chain.inspectTransfer(unsigned)?.recipient, TO);
   assert.equal(requests.length, 4);
+  const native = await chain.prepareNativeTransfer({ from: FROM, to: TO, amount: 5n });
+  assert.equal(chain.inspectNativeTransfer(native)?.value, 5n);
   chain.forgetBalance(TO);
   assert.deepEqual(forgotten, [TO]);
   assert.throws(() => createAusdDepositChain({ chainId: 1, balances: { forget: () => {} } }));

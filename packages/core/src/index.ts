@@ -211,10 +211,13 @@ export {
   DepositNonceError,
   DepositNotSendableError,
   DepositsUnavailableError,
+  InsufficientFundsError,
   InvalidDepositAmountError,
+  InvalidTransferError,
   isDepositAmount,
   MAX_DEPOSIT_GAS,
   MAX_FEE_MULTIPLE,
+  MAX_NATIVE_TRANSFER_GAS,
   SignedTransactionMismatchError,
   TransferAlreadyRecordedError,
   type DepositAmountAusd,
@@ -238,6 +241,7 @@ export type {
   CustodyAccount,
   CustodyRepository,
   DepositChain,
+  NativeTransferInspection,
   OrphanAgentWallet,
   Passkey,
   RegistrationInput,
@@ -245,10 +249,12 @@ export type {
   SubOrganizationCreator,
   TransferInspection,
   UnsignedActivity,
+  WalletBalanceReader,
 } from "./features/wallets/ports/custody.js";
 export {
   createCustodyService,
   type CustodyServiceDeps,
+  type TransferRequest,
 } from "./features/wallets/application/custody.js";
 
 export * from "./features/identity/domain/wallet-auth.js";

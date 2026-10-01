@@ -165,8 +165,16 @@ approval for rules nobody confirmed. `confirmDelegatedUser` refuses (`DelegatedU
 before forwarding when a delegated user is already recorded.
 Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
 from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
-confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` (`ExistingAgentWallet`) for an unlinked
-wallet already named after the handle, so a retry never mints a second one; its
+confirming once another wallet is linked. `prepareAgentWallet(userId)` and
+`confirmAgentWallet(userId, signed)` take no handle: a new wallet is "Agent wallet N", N one more
+than `countAgentWallets`, derived at prepare and again at confirm. A wallet recorded in between
+moves N and the stale stamp is refused before forwarding, which is wanted (a fresh prepare resumes
+the unlinked wallet instead of minting another); two confirms racing together may share a label.
+`preparePolicies` refuses with studio's `WalletUnderfundedError` until the wallet's balances (the
+optional `balances: WalletBalanceReader` dep; absent is `DepositsUnavailableError`) meet
+`fundingShortfall`'s minimums; `confirmPolicies` does not check them again. `prepareAgentWallet`
+answers `{ existing }` (`ExistingAgentWallet`) for the person's newest unlinked agent wallet
+(`findUnlinkedWallet`), whatever its name, so a retry never mints a second one; its
 `policiesApproved` is true when the store's `approvedPolicyIds` (`OrphanAgentWallet`) hold at least
 `MIN_AGENT_WALLET_POLICIES` (3, the DENYs every wallet is written with, exported from
 `domain/agent-wallet-policies.ts` and also the link floor the studio directory requires), so a retry
@@ -224,6 +232,23 @@ a broadcast for any reason other than a duplicate, confirm calls the optional
 `reportUnrecordedDeposit` dep with the agent id, hash and amount, then rethrows. The API logs that
 with `console.error`. `DepositNotSendableError` (a failed gas estimate) and
 `DepositAlreadyRecordedError` (a hash recorded twice) also come from adapters.
+
+The stamped-transaction checks above live in one `checkStampedTransfer` inside the service, used by
+deposits and transfers alike. `prepareTransfer(userId, request)` and `confirmTransfer(userId,
+request, signed)` move AUSD or MON (`TransferRequest`: `from`/`to` are `"master"` or an agent
+wallet id, exactly one side the master; `amount` in base units, positive; else
+`InvalidTransferError`). The master is the account's `masterWalletId` and address; the other side
+must be the caller's own `kind='agent'` wallet through `findOwnedAgentWallet` (else
+`AgentWalletNotFoundError`), checked before anything is built or forwarded. The source must hold
+the amount by the `balances` reader, read again at confirm (else `InsufficientFundsError`, also for
+an unreadable balance). The source signs; for MON the port's `prepareNativeTransfer` /
+`inspectNativeTransfer` replace the token pair, the stamped transaction must be a plain transfer to
+the target of exactly the amount with gas at most `MAX_NATIVE_TRANSFER_GAS`, and the fee and
+nonce checks are the deposit's against the source's nonce. Confirm refuses a recorded hash
+(`TransferAlreadyRecordedError`), broadcasts, forgets both addresses' balances and calls
+`saveTransfer`; a failed save after a broadcast, other than a duplicate, calls the optional
+`reportUnrecordedTransfer`. `listWallets(userId)` answers the master and `listAgentWallets` with
+each wallet's balances and `readAt`.
 
 ## Markets
 

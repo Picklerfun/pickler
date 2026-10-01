@@ -155,10 +155,8 @@ export interface AgentWalletActivityBuilders {
   createDelegatedUser(
     input: { subOrganizationId: string; publicKey: string } & Rebuild,
   ): UnsignedActivity;
-  /** One wallet named after the agent's handle, with the single Monad account. */
-  createAgentWallet(
-    input: { subOrganizationId: string; handle: string } & Rebuild,
-  ): UnsignedActivity;
+  /** One wallet named `name` ("Agent wallet N"), with the single Monad account. */
+  createAgentWallet(input: { subOrganizationId: string; name: string } & Rebuild): UnsignedActivity;
   createPolicies(
     input: { subOrganizationId: string; policies: readonly TurnkeyPolicy[] } & Rebuild,
   ): UnsignedActivity;
@@ -280,6 +278,18 @@ export interface TransferInspection {
   amount: bigint;
 }
 
+/** What an unsigned plain MON transfer does: no calldata, `value` wei to `to`. */
+export interface NativeTransferInspection {
+  chainId: number;
+  nonce: number;
+  /** The recipient: a plain transfer calls nothing. */
+  to: string;
+  value: bigint;
+  gas: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+}
+
 /**
  * The chain side of a deposit: AUSD on the configured network. Core decides what may be sent and
  * to whom; this port builds, reads back and broadcasts the transaction and knows nothing of the
@@ -295,6 +305,11 @@ export interface DepositChain {
    * failed gas estimate is `DepositNotSendableError`, never a guessed limit.
    */
   prepareTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
+  /**
+   * The unsigned EIP-1559 plain transfer of `amount` wei from `from` to `to`, built with the same
+   * nonce, fee and estimate rules as `prepareTransfer`.
+   */
+  prepareNativeTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
   /** The address's pending nonce, read exactly as `prepareTransfer` reads it. */
   pendingNonce(address: string): Promise<number>;
   /** The chain's fees now, quoted exactly as `prepareTransfer` quotes them. */
@@ -304,6 +319,11 @@ export interface DepositChain {
    * `transfer`, and nothing more.
    */
   inspectTransfer(unsignedTransaction: string): TransferInspection | null;
+  /**
+   * Null unless the transaction is a canonically encoded, unsigned EIP-1559 transfer with empty
+   * calldata and no access list.
+   */
+  inspectNativeTransfer(unsignedTransaction: string): NativeTransferInspection | null;
   /**
    * Refuses (`SignedTransactionMismatchError`) unless the signed transaction carries exactly the
    * unsigned one's fields and its recovered signer is `signer`.
@@ -322,4 +342,9 @@ export interface DepositChain {
   broadcast(signedTransaction: string): Promise<string>;
   /** Drops a cached balance, so the next read sees the deposit. */
   forgetBalance(address: string): void;
+}
+
+/** Native and AUSD balances in base units; null where the chain could not be read. */
+export interface WalletBalanceReader {
+  read(address: string): Promise<{ monWei: bigint | null; ausdMicro: bigint | null }>;
 }

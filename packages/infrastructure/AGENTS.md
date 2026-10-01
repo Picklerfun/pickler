@@ -241,8 +241,13 @@ requires the node's hash to equal the locally computed one. A refusal is not bel
 looks the hash up with `eth_getTransactionByHash`. If the node holds this very transaction (a
 repeated confirm answered "already known" or "nonce too low"), it answers the hash. Otherwise,
 including when the lookup fails, the original refusal propagates.
-`createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these for AUSD from
-`@pickler/chain` and forgets through the studio's balance reader.
+`buildNativeTransferTx` builds a plain MON transfer (empty calldata, `value` wei) with the same
+nonce, fee and padded-estimate rules, the estimate taken over the value move; a failed estimate is
+`DepositNotSendableError`. `inspectNativeTransfer` answers null unless the input is an unsigned,
+canonically encoded EIP-1559 transaction with a recipient, empty calldata and no access list.
+`createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these for AUSD and MON
+from `@pickler/chain` and forgets through the studio's AUSD balance reader; the custody service's
+MON and AUSD reader caches nothing, so there is no MON reading to forget.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
 `DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
 `updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
@@ -269,7 +274,7 @@ migration.
 
 `src/turnkey/turnkey-activities.ts` exports `createActivityBuilders`: the unsigned
 `create_users` (one non-root user "Pickler" whose only credential is the delegated P-256 API key
-`pickler-delegated`), `create_wallet` (named after the handle, `MONAD_ACCOUNT`), `create_policies`
+`pickler-delegated`), `create_wallet` (`walletName` is the `name` core gives, "Agent wallet N"; `MONAD_ACCOUNT`), `create_policies`
 and `sign_transaction` bodies, each typed against @turnkey/http with its `type` taken from core's
 `AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Each builder takes an optional
 `timestampMs` so a confirm can rebuild the prepared body byte for byte. Nothing here is stamped by

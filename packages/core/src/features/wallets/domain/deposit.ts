@@ -101,3 +101,28 @@ export class TransferAlreadyRecordedError extends Error {
     this.name = "TransferAlreadyRecordedError";
   }
 }
+
+/**
+ * The transfer asked for is not one a person may make: not between the master wallet and one of
+ * their own agent wallets, not AUSD or MON, or not a positive amount (HTTP 400).
+ */
+export class InvalidTransferError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidTransferError";
+  }
+}
+
+/** The source wallet holds less than the amount, or its balance could not be read (HTTP 409). */
+export class InsufficientFundsError extends Error {
+  constructor() {
+    super("The wallet does not hold that much");
+    this.name = "InsufficientFundsError";
+  }
+}
+
+/**
+ * The most gas a plain MON transfer may reserve: 21 000, and room for a recipient that is a
+ * contract. Monad charges the limit, so anything above it is refused as `MAX_DEPOSIT_GAS` is.
+ */
+export const MAX_NATIVE_TRANSFER_GAS = 100_000n;

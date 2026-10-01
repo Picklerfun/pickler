@@ -126,8 +126,10 @@ export {
 } from "./chain/erc20.js";
 export {
   broadcastTransaction,
+  buildNativeTransferTx,
   buildTransferTx,
   createAusdDepositChain,
+  inspectNativeTransfer,
   inspectTransfer,
   pendingNonce,
   quoteFees,
