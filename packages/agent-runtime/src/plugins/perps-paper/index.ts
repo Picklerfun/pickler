@@ -181,6 +181,10 @@ export function createPerplAcquisitionReader(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
   options: PerplAcquisitionOptions,
 ) {
+  if (!["coherent-20s-v1", "rest-paced-20s-v1", "stream-20s-v1"].includes(options.policy)) {
+    throw new PilotError("INVALID_INPUT", "Unknown explicit Perpl acquisition policy");
+  }
+  options = { ...options, schedule: options.schedule ?? new PerplRequestSchedule() };
   let stream: PerplPublicStream | undefined;
   let frozen: AgentRecord | undefined;
   let owner: Scope | undefined;
@@ -226,7 +230,7 @@ export function createPerplAcquisitionReader(
       const timeout = new AbortController();
       const timer = setTimeout(
         () => timeout.abort(),
-        Math.max(1, (deadlineAt ?? now() + 20000) - now()),
+        Math.max(1, Math.min(20000, (deadlineAt ?? now() + 20000) - now())),
       );
       const signal = AbortSignal.any([parent, lifetime.signal, timeout.signal]);
       const interrupt = () => {
@@ -235,110 +239,122 @@ export function createPerplAcquisitionReader(
       };
       parent.addEventListener("abort", interrupt, { once: true });
       activeGuard = guard;
-      try {
-        const initial = await check(scope, guard);
-        if (symbols.some((symbol) => !initial.config.perpl!.markets.includes(symbol))) {
-          throw new PilotError("MARKET_NOT_ALLOWED", "Perpl market disabled");
-        }
-        if (options.policy !== "stream-20s-v1") {
-          return await createCoherentPerplReader(agents, {
-            ...options,
-            guard: async () => {
+      const operation = async () => {
+        try {
+          const initial = await check(scope, guard);
+          signal.throwIfAborted();
+          if (symbols.some((symbol) => !initial.config.perpl!.markets.includes(symbol))) {
+            throw new PilotError("MARKET_NOT_ALLOWED", "Perpl market disabled");
+          }
+          if (options.policy !== "stream-20s-v1") {
+            return await createCoherentPerplReader(agents, {
+              ...options,
+              guard: async () => {
+                await check(scope, guard);
+              },
+            })(scope, symbols, signal);
+          }
+          if (!stream) {
+            const { service } = await createPerplSession(agents, scope, signal, options);
+            const { markets } = await service.listPerpMarkets();
+            stream = new PerplPublicStream({
+              markets,
+              guard: async () => {
+                await check(scope, activeGuard);
+              },
+              signal: lifetime.signal,
+              ...(options.socket ? { socket: options.socket } : {}),
+              ...(options.onStream ? { event: options.onStream } : {}),
+              now,
+            });
+          }
+          let attempt = 0;
+          while (!signal.aborted) {
+            const frames = [];
+            for (const symbol of symbols) {
               await check(scope, guard);
-            },
-          })(scope, symbols, signal);
-        }
-        if (!stream) {
-          const { service } = await createPerplSession(agents, scope, signal, options);
-          const { markets } = await service.listPerpMarkets();
-          stream = new PerplPublicStream({
-            markets,
-            guard: async () => {
-              await check(scope, activeGuard);
-            },
-            signal: lifetime.signal,
-            ...(options.socket ? { socket: options.socket } : {}),
-            ...(options.onStream ? { event: options.onStream } : {}),
-            now,
-          });
-        }
-        let attempt = 0;
-        while (!signal.aborted) {
-          const frames = [];
-          for (const symbol of symbols) {
-            await check(scope, guard);
-            try {
-              const pair = await stream.frame(symbol, signal);
-              const frame = {
-                ...pair,
-                hash: createHash("sha256").update(JSON.stringify(pair)).digest("hex"),
-              };
-              const tickerAt = frame.snapshot.ticker.provenance.providerTimestamp,
-                bookAt = frame.book.provenance.providerTimestamp;
-              let code: string | null = null;
               try {
-                validatePaperFrame(frame, initial.config.perpl!.network, symbol, now());
+                const pair = await stream.frame(symbol, signal);
+                const frame = {
+                  ...pair,
+                  hash: createHash("sha256").update(JSON.stringify(pair)).digest("hex"),
+                };
+                const tickerAt = frame.snapshot.ticker.provenance.providerTimestamp,
+                  bookAt = frame.book.provenance.providerTimestamp;
+                let code: string | null = null;
+                try {
+                  validatePaperFrame(frame, initial.config.perpl!.network, symbol, now());
+                } catch (e) {
+                  if (
+                    !(e instanceof PilotError) ||
+                    !["STALE_MARKET_DATA", "INCONSISTENT_MARKET_DATA"].includes(e.code)
+                  ) {
+                    throw e;
+                  }
+                  code = e.code;
+                }
+                options.onAcquisition?.({
+                  symbol,
+                  attempt: ++attempt,
+                  at: now(),
+                  tickerAt,
+                  bookAt,
+                  skewMs: tickerAt === null || bookAt === null ? null : Math.abs(tickerAt - bookAt),
+                  code,
+                });
+                if (!code) {
+                  frames.push(frame);
+                }
               } catch (e) {
                 if (
                   !(e instanceof PilotError) ||
-                  !["STALE_MARKET_DATA", "INCONSISTENT_MARKET_DATA"].includes(e.code)
+                  !["DATA_UNAVAILABLE", "PERPL_TRANSPORT_FAILURE"].includes(e.code)
                 ) {
                   throw e;
                 }
-                code = e.code;
-              }
-              options.onAcquisition?.({
-                symbol,
-                attempt: ++attempt,
-                at: now(),
-                tickerAt,
-                bookAt,
-                skewMs: tickerAt === null || bookAt === null ? null : Math.abs(tickerAt - bookAt),
-                code,
-              });
-              if (!code) {
-                frames.push(frame);
-              }
-            } catch (e) {
-              if (
-                !(e instanceof PilotError) ||
-                !["DATA_UNAVAILABLE", "PERPL_TRANSPORT_FAILURE"].includes(e.code)
-              ) {
-                throw e;
               }
             }
+            await check(scope, guard);
+            signal.throwIfAborted();
+            if (frames.length === symbols.length) {
+              const reference = now();
+              for (const frame of frames) {
+                validatePaperFrame(
+                  frame,
+                  initial.config.perpl!.network,
+                  frame.snapshot.market.symbol,
+                  reference,
+                );
+              }
+              return frames;
+            }
+            await pausePerplRead(250, signal);
           }
-          await check(scope, guard);
           signal.throwIfAborted();
-          if (frames.length === symbols.length) {
-            const reference = now();
-            for (const frame of frames) {
-              validatePaperFrame(
-                frame,
-                initial.config.perpl!.network,
-                frame.snapshot.market.symbol,
-                reference,
-              );
-            }
-            return frames;
+          throw new PilotError("DATA_UNAVAILABLE", "Public acquisition expired");
+        } catch (e) {
+          parent.throwIfAborted();
+          if (timeout.signal.aborted) {
+            throw new PilotError("DATA_UNAVAILABLE", "Joint acquisition deadline exhausted");
           }
-          await pausePerplRead(250, signal);
+          if (
+            !(e instanceof PilotError) ||
+            !["DATA_UNAVAILABLE", "PERPL_TRANSPORT_FAILURE"].includes(e.code)
+          ) {
+            lifetime.abort(e);
+            await stream?.close();
+          }
+          throw e;
         }
-        signal.throwIfAborted();
-        throw new PilotError("DATA_UNAVAILABLE", "Public acquisition expired");
-      } catch (e) {
+      };
+      try {
+        return await abortablePerplRead(operation(), signal);
+      } catch (error) {
         parent.throwIfAborted();
         if (timeout.signal.aborted) {
           throw new PilotError("DATA_UNAVAILABLE", "Joint acquisition deadline exhausted");
         }
-        if (
-          !(e instanceof PilotError) ||
-          !["DATA_UNAVAILABLE", "PERPL_TRANSPORT_FAILURE"].includes(e.code)
-        ) {
-          lifetime.abort(e);
-          await stream?.close();
-        }
-        throw e;
+        throw error;
       } finally {
         clearTimeout(timer);
         parent.removeEventListener("abort", interrupt);
