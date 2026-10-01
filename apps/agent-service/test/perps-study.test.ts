@@ -6,6 +6,7 @@ import {
   perpsRules,
   perpsAccountedUsd,
   type PerpsStrategy,
+  type PerpsStudyLease,
   type PerpsProposal,
 } from "@pickler/trading/evaluation";
 import { type PerpsPaperAccount, type PerpsPaperView } from "@pickler/trading/perps";
@@ -503,4 +504,109 @@ test("shared Jev transport preserves request evidence and records usage before r
   );
   assert.equal(calls, 1);
   assert.deepEqual(events, ["persist", "transport", "usage"]);
+});
+
+test("concurrent sessions share the original campaign cap, including historical reservations", async (t) => {
+  const x = await setup(t);
+  const configs = ["campaign-a", "campaign-b"].map((sessionId) => ({
+    ...x.scope,
+    sessionId,
+    deepseek: { ...x.scope.deepseek, inputPerMillion: "20", outputPerMillion: "20" },
+  }));
+  const leases: PerpsStudyLease[] = [];
+  for (const config of configs) {
+    await x.study.initialize(config, { fixture: true });
+    leases.push(await x.study.claim(config));
+  }
+  const results = await Promise.all(
+    configs.map((config, i) =>
+      x.study.reserve(config, leases[i]!, 0, studyEvidence(x.now()), x.accounts, holds),
+    ),
+  );
+  assert.equal(results.filter(Boolean).length, 1);
+  const loser = results.findIndex((result) => !result);
+  assert.equal((await x.study.view(configs[loser]!)).record.decisionStopReason, "BUDGET_EXHAUSTED");
+});
+
+test("unknown historical usage blocks a new session without resetting its reservation", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  const round = (await x.study.reserve(
+    x.scope,
+    lease,
+    0,
+    studyEvidence(x.now()),
+    x.accounts,
+    holds,
+  ))!;
+  await x.study.startCall(x.scope, lease, round.key, "direct");
+  const config = { ...x.scope, sessionId: "continuation" };
+  await x.study.initialize(config, { fixture: true });
+  const next = await x.study.claim(config);
+  assert.equal(
+    await x.study.reserve(config, next, 0, studyEvidence(x.now()), x.accounts, holds),
+    null,
+  );
+  assert.equal((await x.study.view(config)).record.decisionStopReason, "CAMPAIGN_USAGE_UNVERIFIED");
+  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.direct.costUsd, null);
+});
+
+test("stale evidence is rejected before model spend and invalid execution frames remain inspectable", async (t) => {
+  const x = await setup(t);
+  const lease = await x.study.claim(x.scope);
+  let stale = true;
+  let calls = 0;
+  const models: PerpsModels = {
+    metadata: { fixture: true },
+    async direct(_context, _signal, hooks) {
+      calls++;
+      await hooks.before({ sha256: "a".repeat(64), bytes: 100 });
+      await hooks.usage(100, 1);
+      return holds;
+    },
+    async readiness(_context, _signal, hooks) {
+      calls++;
+      await hooks.before({ sha256: "b".repeat(64), bytes: 100 });
+      await hooks.usage(100, 1);
+      return { skip: true, answers: {} };
+    },
+  };
+  const runner = createPerpsStudyRunner({
+    study: x.study,
+    paper: x.paper,
+    models,
+    now: x.now,
+    data: {
+      async observe() {
+        return { frames: studyEvidence(x.now()).frames, funding: [], marksOnly: true };
+      },
+      async evidence() {
+        return studyEvidence(x.now() - (stale ? 31000 : 0));
+      },
+      async execution() {
+        const frames = studyEvidence(x.now()).frames;
+        frames[0]!.snapshot.ticker.provenance = {
+          ...frames[0]!.snapshot.ticker.provenance,
+          providerTimestamp: x.now() - 10000,
+        };
+        return frames;
+      },
+    },
+  });
+  await runner.cycle(x.scope, lease, new AbortController().signal);
+  assert.equal(calls, 0);
+  assert.equal((await x.study.view(x.scope)).rounds.length, 0);
+  stale = false;
+  await runner.cycle(x.scope, lease, new AbortController().signal);
+  const view = await x.study.view(x.scope);
+  assert.equal(calls, 2);
+  assert.equal(view.record.decisionStopReason, "INCOMPLETE_EXECUTION");
+  assert.ok(view.events.some((event) => event.kind === "execution-input"));
+  assert.ok(
+    view.events.some(
+      (event) =>
+        event.kind === "execution-failed" &&
+        (event.data as { code: string }).code === "INCONSISTENT_MARKET_DATA",
+    ),
+  );
 });

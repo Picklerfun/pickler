@@ -368,3 +368,8 @@ SQL or reset a database to resolve branch numbering. The combined latest snapsho
 both launch and current trading tables. Migration tests cover both predecessor histories.
 
 Migration histories are reconciled without changing published SQL or original timestamps. Main retains 0010–0014, launch adds 0015–0016, and custody/profile migrations follow at 0017–0021, and the Studio preview runs at 0022. The Node-only migrator is available through `@pickler/infrastructure/migrations`, never the Worker runtime barrel. Launch reads share the request pool without owning its lifecycle.
+
+Perpetual study admission shares the USD 5 ceiling across every session for the same tenant
+and network in the same database. A transaction-scoped advisory lock serializes reservations;
+historical reservations and unknown started usage cannot be bypassed with a new session ID.
+Do not change tenant/network/database to reset an existing authorization.

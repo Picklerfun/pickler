@@ -78,3 +78,7 @@ remains stop-study. Evaluation with isolated failures is completed_with_errors, 
 `features/evaluation/coordinator.ts` owns the frozen evaluation protocol registry and shared
 command/paid admission boundary. Hosts inject protocol adapters; the engine does not access files,
 providers or process arguments. Binary and perpetual accounting policies remain distinct.
+
+Perpetual evaluation validates evidence freshness again after candle preparation, before model
+reservation. Common execution frames are persisted as `execution-input` before valuation, including
+rejected frames. Preserve the 30-second freshness and five-second component-skew limits.

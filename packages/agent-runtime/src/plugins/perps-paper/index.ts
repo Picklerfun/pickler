@@ -19,8 +19,8 @@ export function createPerpsPaperRuntime(
       const view = await repository.view(scope);
       assertPerpsPaperAgent(await agents.agent(scope), scope, view.account.agentVersion);
       const { service } = await createPerplSession(agents, scope, signal, options);
-      const snapshot = await service.getPerpSnapshot({ symbol });
       const book = await service.getPerpOrderBook({ symbol });
+      const snapshot = await service.getPerpSnapshot({ symbol });
       return {
         snapshot,
         book,
@@ -35,8 +35,8 @@ export function createPerpsPaperRuntime(
       const frames = [];
       const funding = [];
       for (const symbol of agent.config.perpl!.markets) {
-        const snapshot = await service.getPerpSnapshot({ symbol });
         const book = await service.getPerpOrderBook({ symbol });
+        const snapshot = await service.getPerpSnapshot({ symbol });
         frames.push({
           snapshot,
           book,
