@@ -23,6 +23,8 @@ import {
   lines,
   funded,
   exactUnits,
+  MON_GAS_RESERVE_WEI,
+  maxAmount,
   moveBody,
   moveNote,
   moveSheetCopy,
@@ -632,4 +634,35 @@ test("an agent wallet is named for its agent, else for the agent being created o
   assert.equal(walletName(unlinked, { walletId: "wal", name: " Halftime " }), "Halftime");
   assert.equal(walletName(unlinked, { walletId: "wal", name: "" }), "Your new agent");
   assert.equal(walletName(unlinked, null), "Your new agent");
+});
+
+test("MAX on AUSD is the whole balance", () => {
+  assert.equal(maxAmount(1_234_567n, "AUSD"), "1.234567");
+});
+
+test("MAX on MON keeps 0.01 MON back for the network fee", () => {
+  assert.equal(MON_GAS_RESERVE_WEI, 10_000_000_000_000_000n);
+  assert.equal(maxAmount(2_000_000_000_000_000_000n, "MON"), "1.99");
+});
+
+test("MAX on MON at or below the reserve is 0", () => {
+  assert.equal(maxAmount(10_000_000_000_000_000n, "MON"), "0");
+  assert.equal(maxAmount(1n, "MON"), "0");
+});
+
+test("MAX on an unread balance fills nothing", () => {
+  assert.equal(maxAmount(null, "MON"), "");
+});
+
+test("a move still opens up to the whole MON balance: the reserve is only MAX's", () => {
+  const held = 2_000_000_000_000_000_000n;
+  const input = { token: "MON" as const, toAgent: true, held, agentName: "Halftime" };
+  assert.equal(canMove({ ...input, amount: "2" }), true);
+});
+
+test("the note says MAX kept MON for gas", () => {
+  assert.equal(
+    moveNote({ toAgent: true, held: 2_000_000_000_000_000_000n, token: "MON", keptForGas: true }),
+    "MASTER HOLDS 2 MON · ONE TOKEN PER TRANSACTION · KEEPS 0.01 MON FOR GAS",
+  );
 });

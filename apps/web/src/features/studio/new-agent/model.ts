@@ -462,6 +462,21 @@ export function exactUnits(units: bigint | null, token: Token): string {
   return fraction ? `${units / scale}.${fraction}` : (units / scale).toString();
 }
 
+/**
+ * What MAX leaves in a wallet when it moves MON: an estimate that the fee of a native transfer
+ * (21k–25k gas) stays under on Monad. Only MAX keeps it back; a typed amount is checked against the
+ * whole balance, and the server's INSUFFICIENT_GAS stays the final word.
+ */
+export const MON_GAS_RESERVE_WEI = 10_000_000_000_000_000n;
+
+/** What MAX fills: every AUSD the source holds; its MON less the gas reserve, never below 0. */
+export function maxAmount(held: bigint | null, token: Token): string {
+  if (held === null || token === "AUSD") {
+    return exactUnits(held, token);
+  }
+  return exactUnits(held > MON_GAS_RESERVE_WEI ? held - MON_GAS_RESERVE_WEI : 0n, token);
+}
+
 export interface TransferInput {
   amount: string;
   token: Token;
@@ -530,9 +545,23 @@ export const moveBody = (move: Move, amount: string) =>
     amount,
   });
 
-/** Under the move form: what the source holds, and that a pull leaves open positions alone. */
-export const moveNote = (input: { toAgent: boolean; held: bigint | null; token: Token }): string =>
-  `${input.toAgent ? "MASTER HOLDS" : "IT HOLDS"} ${formatUnits(input.held, input.token)} ${input.token} · ONE TOKEN PER TRANSACTION${input.toAgent ? "" : " · OPEN POSITIONS STAY"}`;
+/**
+ * Under the move form: what the source holds, that a pull leaves open positions alone, and that
+ * MAX kept MON back for the fee.
+ */
+export function moveNote(input: {
+  toAgent: boolean;
+  held: bigint | null;
+  token: Token;
+  keptForGas?: boolean;
+}): string {
+  const holds = `${input.toAgent ? "MASTER HOLDS" : "IT HOLDS"} ${formatUnits(input.held, input.token)} ${input.token}`;
+  const positions = input.toAgent ? "" : " · OPEN POSITIONS STAY";
+  const gas = input.keptForGas
+    ? ` · KEEPS ${formatUnits(MON_GAS_RESERVE_WEI, "MON")} MON FOR GAS`
+    : "";
+  return `${holds} · ONE TOKEN PER TRANSACTION${positions}${gas}`;
+}
 
 export const shortAddress = (address: string): string =>
   `${address.slice(0, 6)}…${address.slice(-4)}`;

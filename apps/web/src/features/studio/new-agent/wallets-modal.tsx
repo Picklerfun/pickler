@@ -16,8 +16,8 @@ import { AvatarGrid } from "./identity";
 import {
   agentWalletTag,
   canMove,
-  exactUnits,
   formatUnits,
+  maxAmount,
   moveBody,
   moveNote,
   moveSheetCopy,
@@ -93,7 +93,9 @@ export function WalletsModal({
   const titleId = useId();
   const [moving, setMoving] = useState<{ walletId: string; toAgent: boolean } | null>(null);
   const [token, setToken] = useState<Token>("AUSD");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmountText] = useState("");
+  /* The amount is MAX's for MON, which kept the gas reserve back: the note says so. */
+  const [keptForGas, setKeptForGas] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -153,6 +155,11 @@ export function WalletsModal({
     refocus.current = null;
     dialog.current?.querySelector<HTMLButtonElement>(`[data-fund="${walletId}"]`)?.focus();
   }, [pending, dialog]);
+
+  function setAmount(value: string, max: { token: Token } | null = null) {
+    setAmountText(value);
+    setKeptForGas(max?.token === "MON");
+  }
 
   function pick(walletId: string, toAgent: boolean) {
     setMoving({ walletId, toAgent });
@@ -466,9 +473,9 @@ export function WalletsModal({
                             <button
                               type="button"
                               className={styles.chipButton}
-                              aria-label={`Fill all the ${token} the source holds`}
+                              aria-label={`Fill the most ${token} the source can send`}
                               disabled={held === null}
-                              onClick={() => setAmount(exactUnits(held, token))}
+                              onClick={() => setAmount(maxAmount(held, token), { token })}
                             >
                               MAX
                             </button>
@@ -500,7 +507,7 @@ export function WalletsModal({
                           </Button>
                         </div>
                         <span className={styles.moveNote}>
-                          {moveNote({ toAgent, held, token })}
+                          {moveNote({ toAgent, held, token, keptForGas })}
                         </span>
                         {error && (
                           <p className={styles.alert} role="alert">
