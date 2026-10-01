@@ -10,6 +10,7 @@ import {
   STARTER_CAPS,
   AgentWalletNotFoundError,
   BalancesUnreadableError,
+  DepositsUnavailableError,
   buildUserPrincipal,
   type AgentConfig,
   type AgentRecord,
@@ -58,7 +59,7 @@ function app({
   ausd?: bigint | null;
   custody?: boolean;
   /** How the balance read goes: as given, a timeout, or not the caller's wallet. */
-  read?: "ok" | "timeout" | "not_mine";
+  read?: "ok" | "timeout" | "not_mine" | "no_chain";
   /** The directory answers a create that already committed, without running admit. */
   replay?: boolean;
 } = {}) {
@@ -129,6 +130,9 @@ function app({
                 balanceReads.push({ userId, walletId });
                 if (read === "timeout") {
                   throw new BalancesUnreadableError({ cause: new Error("timeout") });
+                }
+                if (read === "no_chain") {
+                  throw new DepositsUnavailableError();
                 }
                 if (read === "not_mine") {
                   throw new AgentWalletNotFoundError();
@@ -208,6 +212,14 @@ test("an AUSD balance the chain did not answer, with MON read, is underfunded", 
 
 test("a balance read that times out is 503 WALLETS_UNAVAILABLE, never underfunded", async () => {
   const f = app({ read: "timeout" });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "WALLETS_UNAVAILABLE");
+  assert.equal(f.drafts.length, 0);
+});
+
+test("custody without a chain is 503 WALLETS_UNAVAILABLE, not the deposit's code", async () => {
+  const f = app({ read: "no_chain" });
   const response = await f.root.request("/drafts", post(body));
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "WALLETS_UNAVAILABLE");

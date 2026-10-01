@@ -519,17 +519,19 @@ export function studioRoutes(services: StudioServices) {
     const requestId = c.get("requestId");
     const custody = await walletWork(requestId, async () => deposits(requestId));
     // A wallet that is not the caller's has no reading: the directory refuses it in its order.
-    const reading = await custody.walletBalance(principal.id, body.walletId).then(
-      (balances) => ({ balances }),
-      (error: unknown) => {
-        if (error instanceof AgentWalletNotFoundError) {
-          return null;
-        }
-        if (error instanceof BalancesUnreadableError) {
-          return { unreadable: error };
-        }
-        throw error;
-      },
+    const reading = await walletWork(requestId, () =>
+      custody.walletBalance(principal.id, body.walletId).then(
+        (balances) => ({ balances }),
+        (error: unknown) => {
+          if (error instanceof AgentWalletNotFoundError) {
+            return null;
+          }
+          if (error instanceof BalancesUnreadableError) {
+            return { unreadable: error };
+          }
+          throw error;
+        },
+      ),
     );
     const lock = fundingLock(current, "draft");
     let created;
