@@ -106,3 +106,20 @@ test("the marketplace is untouched by any of it", () => {
   assert.equal(sentTo(middleware(request("/leaderboard", { host: "pickler.fun" }))), null);
   assert.equal(sentTo(middleware(request("/", { host: "pickler.fun" }))), null);
 });
+
+test("the studio root keeps its query through the rewrite", () => {
+  // Neither Next nor the OpenNext adapter merges the original query into a rewrite's target, and
+  // the studio reads `?agent=` and `?section=` on the server: dropped here, every link to an agent
+  // on the studio host opens on the first one.
+  const home = middleware(request("/?agent=x&section=trading", { cookie: `${SESSION}=eyJhbGci` }));
+  assert.equal(
+    home.headers.get("x-middleware-rewrite"),
+    "https://app.pickler.fun/studio?agent=x&section=trading",
+  );
+});
+
+test("a refusal carries nothing of the request it refused", () => {
+  const refused = middleware(request("/leaderboard?agent=x", { cookie: `${SESSION}=eyJhbGci` }));
+  assert.equal(refused.status, 404);
+  assert.equal(refused.headers.get("x-middleware-rewrite"), "https://app.pickler.fun/not-found");
+});

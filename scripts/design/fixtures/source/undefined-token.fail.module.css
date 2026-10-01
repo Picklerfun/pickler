@@ -1,0 +1,4 @@
+.title {
+  font: 600 11px/1.2 var(--pk-font-mono, var(--pk-font));
+  color: var(--pk-ghost);
+}

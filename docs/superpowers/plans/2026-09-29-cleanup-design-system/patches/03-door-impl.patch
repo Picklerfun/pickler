@@ -1,0 +1,184 @@
+diff --git a/apps/web/src/app/(auth)/passkey/page.tsx b/apps/web/src/app/(auth)/passkey/page.tsx
+index 353f8dd..04f912a 100644
+--- a/apps/web/src/app/(auth)/passkey/page.tsx
++++ b/apps/web/src/app/(auth)/passkey/page.tsx
+@@ -1,5 +1,6 @@
+ import type { Metadata } from "next";
+ import { PasskeyFlow } from "@/features/auth/components/passkey-flow";
++import { passkeyPreviewFromSearch } from "@/features/auth/lib/passkey-entry";
+ import { services } from "@/server/container";
+ import { toAuthBoardData } from "@/server/http/auth-board";
+ 
+@@ -14,6 +15,18 @@ export const metadata: Metadata = { title: "Passkey — Pickler" };
+  * §4.1). A signed-in person without one who reaches this page is sent there, like from every other
+  * signed-in screen (`redirectFor` in `lib/custody.ts`).
+  */
+-export default async function PasskeyPage() {
+-  return <PasskeyFlow board={toAuthBoardData(await services.getLanding())} mode="add" />;
++export default async function PasskeyPage({
++  searchParams,
++}: {
++  searchParams: Promise<{ state?: string | string[] }>;
++}) {
++  const search = await searchParams;
++  // `?state=add` is the design preview of this screen (see `lib/passkey-entry.ts`).
++  return (
++    <PasskeyFlow
++      board={toAuthBoardData(await services.getLanding())}
++      mode="add"
++      passkeyPreview={passkeyPreviewFromSearch(process.env.NODE_ENV, search.state)}
++    />
++  );
+ }
+diff --git a/apps/web/src/features/agents/components/launch-board.tsx b/apps/web/src/features/agents/components/launch-board.tsx
+index 18916f3..ecebfbf 100644
+--- a/apps/web/src/features/agents/components/launch-board.tsx
++++ b/apps/web/src/features/agents/components/launch-board.tsx
+@@ -43,7 +43,7 @@ export function LaunchBoard({ read }: { read: ReadDto<LaunchSummaryDto[]> | null
+   }
+ 
+   return (
+-    <section className={styles.panel}>
++    <section className={styles.panel} id="launch-board">
+       <header className={styles.label}>
+         <span>LAUNCHES</span>
+         <Freshness read={read} />
+@@ -96,7 +96,7 @@ function Freshness({ read }: { read: ReadDto<LaunchSummaryDto[]> }) {
+ 
+ function Empty({ title, detail }: { title: string; detail: string }) {
+   return (
+-    <section className={styles.panel}>
++    <section className={styles.panel} id="launch-board-empty">
+       <h2 className={styles.label}>{title}</h2>
+       <p className={styles.toneMuted}>{detail}</p>
+     </section>
+diff --git a/apps/web/src/features/auth/components/passkey-flow.tsx b/apps/web/src/features/auth/components/passkey-flow.tsx
+index b6028d6..bcf30d0 100644
+--- a/apps/web/src/features/auth/components/passkey-flow.tsx
++++ b/apps/web/src/features/auth/components/passkey-flow.tsx
+@@ -7,6 +7,7 @@ import styles from "../auth.module.css";
+ import { ensureProfile } from "../lib/account";
+ import type { AuthBoardData } from "../lib/board-data";
+ import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
++import { PREVIEW_PASSKEYS, type PasskeyPreview } from "../lib/passkey-entry";
+ import {
+   CUSTODY_API,
+   SessionExpired,
+@@ -136,6 +137,7 @@ export function PasskeyFlow({
+   mode,
+   destination,
+   preview,
++  passkeyPreview,
+ }: {
+   board: AuthBoardData;
+   /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
+@@ -149,9 +151,11 @@ export function PasskeyFlow({
+   destination?: string | undefined;
+   /** `up` only, outside production: open on this step without a session or any read. */
+   preview?: SignupPreview | undefined;
++  /** `add` only, outside production: the add-a-passkey screen without a session or any read. */
++  passkeyPreview?: PasskeyPreview | undefined;
+ }) {
+   if (mode === "add") {
+-    return <PasskeyAddFlow board={board} destination={destination} />;
++    return <PasskeyAddFlow board={board} destination={destination} preview={passkeyPreview} />;
+   }
+   return (
+     <SignFlow
+@@ -631,18 +635,26 @@ interface AddSheetState {
+ function PasskeyAddFlow({
+   board,
+   destination,
++  preview,
+ }: {
+   board: AuthBoardData;
+   destination?: string | undefined;
++  preview: PasskeyPreview | undefined;
+ }) {
+   const router = useRouter();
+   const studio = useStudioHref();
+   const target = destination ?? studio;
+-  const [screen, setScreen] = useState<AddFlowScreen>("loading");
+-  const [passkeysState, setPasskeysState] = useState<PasskeysRead>({ kind: "loading" });
++  // A preview opens on the screen with its fixture list and reads nothing.
++  const [screen, setScreen] = useState<AddFlowScreen>(preview === "add" ? "add" : "loading");
++  const [passkeysState, setPasskeysState] = useState<PasskeysRead>(
++    preview === "add" ? { kind: "ready", passkeys: PREVIEW_PASSKEYS } : { kind: "loading" },
++  );
+   const [sheet, setSheet] = useState<AddSheetState | null>(null);
+ 
+   useEffect(() => {
++    if (preview !== undefined) {
++      return;
++    }
+     let live = true;
+     void (async () => {
+       try {
+@@ -679,7 +691,7 @@ function PasskeyAddFlow({
+     return () => {
+       live = false;
+     };
+-  }, [router]);
++  }, [router, preview]);
+ 
+   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
+   function refreshPasskeys() {
+diff --git a/apps/web/src/features/auth/components/steps/add-passkey-step.tsx b/apps/web/src/features/auth/components/steps/add-passkey-step.tsx
+index 9e1af98..1fb83e4 100644
+--- a/apps/web/src/features/auth/components/steps/add-passkey-step.tsx
++++ b/apps/web/src/features/auth/components/steps/add-passkey-step.tsx
+@@ -28,7 +28,7 @@ export function AddPasskeyStep({
+   destination: string;
+ }) {
+   return (
+-    <div className={styles.flowStep}>
++    <div className={styles.flowStep} id="passkey-add">
+       <h1 className={styles.flowTitle}>ADD A PASSKEY</h1>
+       <p className={styles.subhead}>
+         Every passkey on this account can move its funds. Add one from a phone, a security key or a
+diff --git a/apps/web/src/features/auth/lib/passkey-entry.ts b/apps/web/src/features/auth/lib/passkey-entry.ts
+new file mode 100644
+index 0000000..41f78ca
+--- /dev/null
++++ b/apps/web/src/features/auth/lib/passkey-entry.ts
+@@ -0,0 +1,40 @@
++import type { PasskeyDto } from "./custody-api";
++
++/**
++ * How `/passkey` is entered by a design check.
++ *
++ * The page reads a session, the master wallet, the profile and the passkeys before it draws
++ * anything, and the design harness has none of them: without this its only measurable screen is
++ * "your account could not be read". `?state=add` draws the add-a-passkey screen from one fixture
++ * passkey, with no session and no reads. Outside production only, gated on the build alone like
++ * the signup's `?state=passkey`. Pure, with `nodeEnv` an argument, so the gate is pinned in both
++ * positions. The button opens the sheet, whose challenge the API refuses without a session, so
++ * nothing on the screen can add anything.
++ */
++export const PASSKEY_PREVIEWS = ["add"] as const;
++
++export type PasskeyPreview = (typeof PASSKEY_PREVIEWS)[number];
++
++export function passkeyPreviewFromSearch(
++  nodeEnv: string | undefined,
++  asked: string | string[] | undefined,
++): PasskeyPreview | undefined {
++  if (nodeEnv === "production") {
++    return undefined;
++  }
++  const value = Array.isArray(asked) ? asked[0] : asked;
++  return PASSKEY_PREVIEWS.find((state): state is PasskeyPreview => state === value);
++}
++
++/** The preview's account: one passkey, made on a fixed day so the server and the browser agree. */
++export const PREVIEW_PASSKEYS: PasskeyDto[] = [
++  {
++    id: "preview-passkey",
++    credential_id: "preview-credential",
++    label: "This Mac",
++    transports: ["internal"],
++    device_type: "platform",
++    created_at: "2026-03-14T00:00:00.000Z",
++    last_used_at: null,
++  },
++];

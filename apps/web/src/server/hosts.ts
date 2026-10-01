@@ -124,3 +124,14 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
 export function studioUrl(product: Product, hosts: ProductHosts, path: string): string {
   return product === "marketplace" ? `https://${hosts.studio}${path}` : path;
 }
+
+/**
+ * A marketplace path, addressed from a page being rendered for `product`. The mirror of `studioUrl`.
+ *
+ * Only the studio host needs an origin on it: `decide` 404s there everything the marketplace owns,
+ * so the studio's links to the directory, the leaderboard and an agent's public page have to name
+ * the other origin. From the marketplace and from a shared host the path is where it says it is.
+ */
+export function marketplaceUrl(product: Product, hosts: ProductHosts, path: string): string {
+  return product === "studio" ? `https://${hosts.marketplace}${path}` : path;
+}

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "The historical `/console` URL redirects to `/studio` with its query preserved. `/tokens` renders",
+    "replace": "`/tokens` renders"
+  }
+]

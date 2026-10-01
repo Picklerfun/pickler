@@ -213,7 +213,7 @@
   outline: none;
 }
 .prose::placeholder {
-  color: var(--pk-ink-placeholder);
+  color: var(--pk-ink-faint);
 }
 .prompts {
   display: flex;
@@ -319,7 +319,7 @@
   width: 8px;
   height: 8px;
   border-radius: var(--pk-radius-mark);
-  background: var(--dot, var(--pk-ink-faint));
+  background: var(--pk-ink-faint);
 }
 .working {
   display: flex;
@@ -342,46 +342,46 @@
 /* The canvas's dot colours, by meaning. Anchored on local classes: a module refuses a selector that
    is only an attribute. */
 .dot[data-tint="lime"],
-.cells[data-tint="lime"],
+.cells[data-tint="lime"] i,
 .pieceMark[data-tint="lime"],
 .beatDot[data-tint="lime"] {
-  --dot: var(--pk-agent-lime-fill);
+  background: var(--pk-agent-lime-fill);
 }
 .dot[data-tint="violet"],
-.cells[data-tint="violet"],
+.cells[data-tint="violet"] i,
 .pieceMark[data-tint="violet"],
 .beatDot[data-tint="violet"] {
-  --dot: var(--pk-agent-violet-fill);
+  background: var(--pk-agent-violet-fill);
 }
 .dot[data-tint="amber"],
-.cells[data-tint="amber"],
+.cells[data-tint="amber"] i,
 .pieceMark[data-tint="amber"],
 .beatDot[data-tint="amber"] {
-  --dot: var(--pk-agent-amber-fill);
+  background: var(--pk-agent-amber-fill);
 }
 .dot[data-tint="blue"],
-.cells[data-tint="blue"],
+.cells[data-tint="blue"] i,
 .pieceMark[data-tint="blue"],
 .beatDot[data-tint="blue"] {
-  --dot: var(--pk-agent-blue-fill);
+  background: var(--pk-agent-blue-fill);
 }
 .dot[data-tint="orange"],
-.cells[data-tint="orange"],
+.cells[data-tint="orange"] i,
 .pieceMark[data-tint="orange"],
 .beatDot[data-tint="orange"] {
-  --dot: var(--pk-agent-orange-fill);
+  background: var(--pk-agent-orange-fill);
 }
 .dot[data-tint="magenta"],
-.cells[data-tint="magenta"],
+.cells[data-tint="magenta"] i,
 .pieceMark[data-tint="magenta"],
 .beatDot[data-tint="magenta"] {
-  --dot: var(--pk-agent-magenta-fill);
+  background: var(--pk-agent-magenta-fill);
 }
 .dot[data-tint="ink"],
-.cells[data-tint="ink"],
+.cells[data-tint="ink"] i,
 .pieceMark[data-tint="ink"],
 .beatDot[data-tint="ink"] {
-  --dot: var(--pk-ink);
+  background: var(--pk-ink);
 }
 
 /* ---------- Option cards: venues, sources, skills ---------- */
@@ -573,7 +573,6 @@ button.card:disabled .cardNote {
   width: 11px;
   height: 11px;
   border-radius: var(--pk-radius-mark);
-  background: var(--dot);
 }
 @media (max-width: 460px) {
   .beats {
@@ -807,7 +806,7 @@ button.card:disabled .cardNote {
   width: 52px;
   height: 52px;
   border-radius: var(--pk-radius-md);
-  background: var(--dot, var(--pk-panel-3));
+  background: var(--pk-panel-3);
   font: 700 19px/1 var(--pk-font-display);
   font-variation-settings: var(--pk-display-wdth);
   color: var(--pk-bg);
@@ -868,7 +867,6 @@ button.card:disabled .cardNote {
   width: 15px;
   height: 15px;
   border-radius: var(--pk-radius-mark);
-  background: var(--dot);
 }
 .blockValue {
   flex: 1;

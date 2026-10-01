@@ -147,14 +147,14 @@ export class PostgresAgentDirectory implements AgentDirectory {
 
   /**
    * Every agent that has not been killed, newest first. A killed agent is not deleted, but it is
-   * no longer on the board.
+   * no longer on the board. A private draft (studio-brief-v1 §6) is not on the board either.
    *
    * No catch anywhere in this class: a failed read is a failure, never an empty marketplace.
    */
   private async listRows(): Promise<AgentRow[]> {
     const { rows } = await this.pool.query<AgentRow>(
       `${AGENT_SELECT}
-       WHERE a.killed_at IS NULL
+       WHERE a.killed_at IS NULL AND a.status <> 'draft'
        ORDER BY a.created_at DESC`,
     );
     return rows;
@@ -170,11 +170,12 @@ export class PostgresAgentDirectory implements AgentDirectory {
    * or failed ticker has no profile page, and that is locked twice on purpose: the token join only
    * matches a launched status, and the stage check below refuses anything else independently of
    * the join, so a change to AGENT_SELECT alone cannot open a page for a token that never launched.
+   * A private draft has no profile page either: it is not public until Go Public.
    */
   async getProfile(ticker: string): Promise<AgentProfile | null> {
     const { rows } = await this.pool.query<AgentRow>(
       `${AGENT_SELECT}
-       WHERE t.ticker = $1`,
+       WHERE t.ticker = $1 AND a.status <> 'draft'`,
       [ticker],
     );
     const row = rows[0];
@@ -203,12 +204,13 @@ export class PostgresAgentDirectory implements AgentDirectory {
 
   /**
    * Not filtered by `killed_at`, on purpose: a killed agent is not deleted and its profile still
-   * serves, so a link to a record that existed keeps resolving.
+   * serves, so a link to a record that existed keeps resolving. A private draft has no persona: it
+   * is not public until Go Public.
    */
   async getPersona(handle: string): Promise<AgentPersona | null> {
     const { rows } = await this.pool.query<AgentRow>(
       `${AGENT_SELECT}
-       WHERE a.handle = $1`,
+       WHERE a.handle = $1 AND a.status <> 'draft'`,
       [handle],
     );
     const row = rows[0];

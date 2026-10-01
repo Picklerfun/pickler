@@ -5,12 +5,15 @@ import {
   AccessDeniedError,
   MIN_AGENT_WALLET_POLICIES,
   PilotError,
+  assertPreviewAdoptable,
+  type AdoptablePreview,
   type Accent,
   type StudioAccess,
   type StudioDirectory,
   type AgentConfig,
   type AgentProfileInput,
   type AgentWalletLink,
+  type CreateAdmission,
   type Scope,
 } from "@pickler/core";
 
@@ -19,6 +22,9 @@ const CONFLICTS: Record<string, string> = {
   agent_profiles_x_handle_key: "X handle already used",
   agent_wallets_wallet_key: "That wallet already belongs to an agent",
 };
+
+/** A retried draft create that names the draft differently from the one it made. */
+const DIFFERENT_TERMS = "This run already became a draft under another name";
 
 export class PostgresStudioDirectory implements StudioDirectory {
   constructor(private readonly pool: Pool) {}
@@ -93,6 +99,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       profile: AgentProfileInput;
       wallet: AgentWalletLink;
     },
+    admit?: CreateAdmission,
   ) {
     // The beat the profile shows is the category the runtime is scoped to. Core has already
     // required it; narrowing here keeps the profile from ever being written without one.
@@ -101,10 +108,14 @@ export class PostgresStudioDirectory implements StudioDirectory {
       throw new PilotError("INVALID_INPUT", "A category selection is required");
     }
     return this.transaction(async (client) => {
+      // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
+      // with revoking research access or deactivating the workspace (both non-key updates), but not
+      // with the KEY SHARE locks foreign-key inserts take, so paper runs and other rows for this
+      // workspace are not held up while the funding lock reads balances over the network.
       const allowed = await client.query(
         `SELECT w.id FROM identity.workspaces w
         JOIN pickler.research_access a ON a.user_id=w.owner_user_id
-        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR UPDATE OF w,a`,
+        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
         [access.workspaceId, userId],
       );
       if (!allowed.rows.length) {
@@ -128,6 +139,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
         }
         return { tenantId: access.tenantId, agentId: existing.rows[0].runtime_agent_id as string };
       }
+      // Only a genuinely new agent meets the funding lock; a replay above does not.
+      await admit?.();
       const available = await client.query("SELECT identity.handle_available($1) AS available", [
         input.handle,
       ]);
@@ -196,14 +209,186 @@ export class PostgresStudioDirectory implements StudioDirectory {
       return { tenantId: access.tenantId, agentId: id };
     });
   }
-  /** The same lookup `createAgent` replays from: workspace and key. */
-  async createdWithKey(access: StudioAccess, key: string): Promise<Scope | null> {
-    const result = await this.pool.query(
-      `SELECT tenant_id AS "tenantId", runtime_agent_id AS "agentId"
-      FROM pickler.product_agents WHERE workspace_id=$1 AND request_key=$2`,
-      [access.workspaceId, key],
+  /**
+   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace, lock the
+   * preview, and answer the draft it already became when this is the same create retried (same
+   * caller, brief and handle), without meeting the lock. Otherwise check the run
+   * (PREVIEW_UNUSABLE, then RUN_STALE, then HANDLE_TAKEN), run the create lock, then write the
+   * agent as a draft with no wallet, its profile and handle, its runtime row with the run's config
+   * snapshot, the preview as its first run with its trace, and the preview's adoption. Any failure
+   * rolls all of it back.
+   */
+  async createDraft(
+    access: StudioAccess,
+    userId: string,
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
+    now: number,
+    admit?: CreateAdmission,
+  ): Promise<{ productId: string; scope: Scope }> {
+    try {
+      return await this.transaction(async (client) => {
+        // NO KEY UPDATE, as in `createAgent`: creates serialize, foreign-key inserts do not wait.
+        const allowed = await client.query(
+          `SELECT w.id FROM identity.workspaces w
+          JOIN pickler.research_access a ON a.user_id=w.owner_user_id
+          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
+          [access.workspaceId, userId],
+        );
+        if (!allowed.rows.length) {
+          throw new AccessDeniedError("Research access revoked");
+        }
+        const found = await client.query<
+          AdoptablePreview & {
+            config: AgentConfig;
+            decision: unknown;
+            error: string | null;
+            createdAt: number;
+            startedAt: number | null;
+            finishedAt: number | null;
+          }
+        >(
+          `SELECT user_id AS "userId", workspace_id AS "workspaceId", status,
+            expires_at::double precision AS "expiresAt", adopted_at IS NOT NULL AS adopted,
+            fingerprint, config, decision, error, created_at::double precision AS "createdAt",
+            started_at::double precision AS "startedAt", finished_at::double precision AS "finishedAt"
+          FROM pickler.preview_runs WHERE id=$1 FOR UPDATE`,
+          [input.previewRunId],
+        );
+        const preview = found.rows[0] ?? null;
+        const caller = { userId, workspaceId: access.workspaceId };
+        const replayed = await this.adoptedDraft(client, access, preview, caller, input);
+        if (replayed) {
+          return replayed;
+        }
+        assertPreviewAdoptable(preview, caller, input.fingerprint, now);
+        const run = preview!;
+        const available = await client.query("SELECT identity.handle_available($1) AS available", [
+          input.handle,
+        ]);
+        if (!available.rows[0].available) {
+          throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
+        }
+        // Only a genuinely new draft meets the lock, and only once its run and handle are good.
+        await admit?.();
+        const id = randomUUID();
+        await client.query(
+          "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'draft',$5)",
+          [id, access.workspaceId, input.name, input.handle, userId],
+        );
+        // The public face comes in Go Public; the beat is the scope the brief runs on.
+        await client.query(
+          "INSERT INTO agents.agent_profiles (agent_id, beat, accent) VALUES ($1, 'sports', 'lime')",
+          [id],
+        );
+        await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
+          input.handle,
+          id,
+        ]);
+        await client.query(
+          "INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3::jsonb)",
+          [access.tenantId, id, JSON.stringify(run.config)],
+        );
+        const request = JSON.stringify({
+          name: input.name,
+          handle: input.handle,
+          previewRunId: input.previewRunId,
+        });
+        await client.query(
+          `INSERT INTO pickler.product_agents (product_agent_id,workspace_id,tenant_id,runtime_agent_id,request_key,request)
+          VALUES ($1::uuid,$2,$3,$1::text,$4,$5::jsonb)`,
+          [id, access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, request],
+        );
+        // The preview becomes its first run: a completed manual run at version 1, which is what
+        // readiness counts (§6: "its first run counts as done").
+        await client.query(
+          `INSERT INTO pickler.runs
+            (id, tenant_id, agent_id, request_key, market_id, trigger, status, created_at, started_at,
+             finished_at, config_version, config, decision, error)
+          VALUES ($1,$2,$3,$4,NULL,'manual','completed',$5,$6,$7,1,$8::jsonb,$9::jsonb,$10)`,
+          [
+            input.previewRunId,
+            access.tenantId,
+            id,
+            `preview:${input.previewRunId}`,
+            run.createdAt,
+            run.startedAt,
+            run.finishedAt,
+            JSON.stringify(run.config),
+            run.decision === null ? null : JSON.stringify(run.decision),
+            run.error,
+          ],
+        );
+        await client.query(
+          `INSERT INTO pickler.events (run_id, type, data, created_at)
+          SELECT $1, type, data, created_at FROM pickler.preview_events
+          WHERE preview_run_id=$1 ORDER BY id`,
+          [input.previewRunId],
+        );
+        // The trace was copied above and the run is now the agent's; the preview keeps only its
+        // row, which a retried create replays from until recovery deletes it.
+        await client.query("DELETE FROM pickler.preview_events WHERE preview_run_id=$1", [
+          input.previewRunId,
+        ]);
+        await client.query(
+          "UPDATE pickler.preview_runs SET adopted_at=$2, adopted_agent_id=$3 WHERE id=$1",
+          [input.previewRunId, now, id],
+        );
+        return { productId: id, scope: { tenantId: access.tenantId, agentId: id } };
+      });
+    } catch (error) {
+      // A handle claimed between the check and the insert hits the unique index instead. A
+      // replay under different terms is a conflict of its own and stays one.
+      if (
+        error instanceof PilotError &&
+        error.code === "CONFLICT" &&
+        error.message !== DIFFERENT_TERMS
+      ) {
+        throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
+      }
+      throw error;
+    }
+  }
+  /**
+   * The draft this preview already became, when the create is the same one retried: adopted by
+   * this caller in this workspace, from the same brief, under the same handle. Null otherwise, and
+   * the caller's checks then refuse an adopted preview as PREVIEW_UNUSABLE. A different name for
+   * that same draft is CONFLICT.
+   */
+  private async adoptedDraft(
+    client: PoolClient,
+    access: StudioAccess,
+    preview: AdoptablePreview | null,
+    caller: { userId: string; workspaceId: string },
+    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
+  ): Promise<{ productId: string; scope: Scope } | null> {
+    if (
+      !preview?.adopted ||
+      preview.userId !== caller.userId ||
+      preview.workspaceId !== caller.workspaceId ||
+      preview.fingerprint !== input.fingerprint
+    ) {
+      return null;
+    }
+    const created = await client.query<{ productId: string; agentId: string; name: string }>(
+      `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId",
+        request->>'name' AS name
+      FROM pickler.product_agents
+      WHERE workspace_id=$1 AND tenant_id=$2 AND request_key=$3 AND request->>'handle'=$4`,
+      [access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, input.handle],
     );
-    return (result.rows[0] as Scope | undefined) ?? null;
+    const draft = created.rows[0];
+    if (!draft) {
+      return null;
+    }
+    // The same run and handle under another name is the same create with different terms, as
+    // `createAgent` answers a reused key.
+    if (draft.name !== input.name) {
+      throw new PilotError("CONFLICT", DIFFERENT_TERMS);
+    }
+    return {
+      productId: draft.productId,
+      scope: { tenantId: access.tenantId, agentId: draft.agentId },
+    };
   }
   async agentScope(access: StudioAccess, productAgentId: string) {
     const result = await this.pool.query(
@@ -227,7 +412,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,pr.accent,p.tenant_id,p.runtime_agent_id FROM agents.agents a
+      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,pr.accent,p.tenant_id,p.runtime_agent_id
+      FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
       WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
@@ -241,6 +427,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       accent: (ACCENTS as readonly string[]).includes(row.accent)
         ? (row.accent as Accent)
         : ("lime" as const),
+      draft: row.draft === true,
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
   }

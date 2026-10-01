@@ -7,24 +7,26 @@ import {
   createProfileService,
   createWalletSignIn,
   parseEmailAllowlist,
+  PilotError,
 } from "@pickler/core";
 import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
 import {
   createSupabaseAdmin,
-  createSupabaseAgentEventLog,
-  createSupabaseAgentRegistry,
-  createSupabaseApiKeyDirectory,
   createSupabaseJwtVerifier,
-  createSupabaseProfileRepository,
-  createSupabaseWorkspaceDirectory,
   decryptAes256Gcm,
   PostgresResearchStore,
   PostgresLaunchReadModel,
   PostgresPaperStore,
+  PostgresPreviewStore,
   PolymarketData,
   PolymarketPaperResolution,
   PostgresStudioDirectory,
   PostgresBudgetLedger,
+  PostgresAgentEventLog,
+  PostgresAgentRegistry,
+  PostgresApiKeyDirectory,
+  PostgresProfileRepository,
+  PostgresWorkspaceDirectory,
   PostgresCustodyStore,
   createActivityBuilders,
   createAddPasskeyActivityBuilder,
@@ -34,6 +36,7 @@ import {
   createSubOrganizationCreator,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
+  createAuthUserLookup,
   createWalletAccounts,
   createSignatureVerifier,
   buildSiweMessage,
@@ -45,6 +48,7 @@ import {
 import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
 import type { Env } from "./env";
+import { HttpError } from "./http/http-error";
 import type { SigningRouteServices } from "./routes/signing";
 import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
@@ -82,6 +86,27 @@ function required<
 
 /** Monad testnet, the same default the web carries in NEXT_PUBLIC_SIWE_CHAIN_ID. */
 const DEFAULT_CHAIN_ID = 10143;
+
+/**
+ * The chain balances and deposits run on, or null when `CHAIN_ID` is not a chain Pickler supports.
+ * A bad value turns those two off (503) and leaves every other route alone, and says so by
+ * variable name, never by value.
+ */
+export function supportedChainId(
+  env: Pick<Env, "CHAIN_ID" | "MONAD_RPC_URL">,
+  log: (message: string) => void = console.error,
+): number | null {
+  const chainId = Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID);
+  try {
+    // The adapters refuse an unsupported chain when they are built; building the cached reader
+    // here is that check, made once.
+    ausdBalances(env, chainId);
+    return chainId;
+  } catch {
+    log("CHAIN_ID is not a chain Pickler supports; balances and deposits are off");
+    return null;
+  }
+}
 
 /** A compressed P-256 public key in hex, the format Turnkey API keys use. */
 const COMPRESSED_P256 = /^0[23][0-9a-f]{64}$/i;
@@ -133,6 +158,7 @@ function custodyServices(
   pool: PostgresResearchStore["pool"],
   authenticate: Services["authenticate"],
   profiles: SigningRouteServices["profiles"],
+  chainId: number | null,
 ): SigningRouteServices | undefined {
   const apiPublicKey = env.TURNKEY_API_PUBLIC_KEY;
   const apiPrivateKey = env.TURNKEY_API_PRIVATE_KEY;
@@ -152,19 +178,28 @@ function custodyServices(
   const forwarder = createTurnkeyActivityForwarder({ reader: createTurnkeyReader(parentKey) });
   // AUSD deposits from the master wallet, on the studio's chain and endpoint; a sent deposit
   // drops the studio reader's cached balance for the agent's address.
-  const deposits = createAusdDepositChain({
-    chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
-    ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
-    balances: ausdBalances(env),
-  });
+  // Without a supported chain there is no deposit chain, and core answers deposits with
+  // `DepositsUnavailableError` (503); the passkey ceremonies do not read the chain and stay on.
+  const endpoint = env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {};
+  const deposits =
+    chainId === null
+      ? undefined
+      : createAusdDepositChain({ chainId, ...endpoint, balances: ausdBalances(env, chainId) });
 
   return {
     authenticate,
     profiles,
-    balances: createBalanceReader({
-      chainId: Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID),
-      ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
-    }),
+    walletEmailDomain: env.WALLET_EMAIL_DOMAIN,
+    balances:
+      chainId === null
+        ? {
+            read: async () => {
+              throw new HttpError(503, "Balances are not available", {
+                error: "balances_unavailable",
+              });
+            },
+          }
+        : createBalanceReader({ chainId, ...endpoint }),
     // Only the service itself is per-request: it is a closure over the adapters above, and this
     // is what lets the orphan report name the request that produced it.
     custody: (requestId: string) =>
@@ -176,7 +211,7 @@ function custodyServices(
         forwarder,
         agentActivities,
         agentWallets: store,
-        deposits,
+        ...(deposits ? { deposits } : {}),
         delegatedPublicKey,
         venueContracts: VENUE_CONTRACTS,
         rpId,
@@ -228,15 +263,10 @@ function walletAuthServices(
       accounts: createWalletAccounts({
         admin: createSupabaseAdmin(supabase),
         emailDomain,
-        // The admin API has no lookup by email — `listUsers` is paged with no filter — so the
-        // recovery path reads the uniquely indexed column directly.
-        findUserIdByEmail: async (email) => {
-          const { rows } = await pool.query<{ id: string }>(
-            `SELECT id FROM auth.users WHERE email = $1 LIMIT 1`,
-            [email],
-          );
-          return rows[0]?.id ?? null;
-        },
+        // The admin API has no lookup by email and does not say whether a password is set, so
+        // this reads auth.users and auth.identities where they are reachable (a deployment's
+        // DATABASE), and falls back to the admin API where they are not (local Docker).
+        findAuthUser: createAuthUserLookup({ pool, admin: createSupabaseAdmin(supabase) }),
         // A throwaway per exchange: `verifyOtp` leaves the session on whichever client performs
         // it, and this isolate's admin client is shared across requests.
         sessionClient: () => createSupabaseAdmin(supabase),
@@ -288,8 +318,7 @@ const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>(
  * reader is kept per isolate (per chain and endpoint) or its cache would never be hit. A failed
  * read fails the request; it is never reported as a zero balance.
  */
-function ausdBalances(env: Env) {
-  const chainId = Number(env.CHAIN_ID ?? DEFAULT_CHAIN_ID);
+function ausdBalances(env: Pick<Env, "MONAD_RPC_URL">, chainId: number) {
   const key = `${chainId}|${env.MONAD_RPC_URL ?? ""}`;
   let reader = ausdReaders.get(key);
   if (!reader) {
@@ -302,6 +331,13 @@ function ausdBalances(env: Env) {
   return reader;
 }
 
+/** The studio's balances where `CHAIN_ID` is unusable: every read is 503 BALANCES_UNAVAILABLE. */
+const noBalances = {
+  read: async (): Promise<number> => {
+    throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
+  },
+};
+
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
 export function createServices(env: Env): Services & { close(): Promise<void> } {
   const database = apiDatabase(env);
@@ -311,13 +347,12 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   required(env, "JWT_ISSUER");
   const repository = new PostgresResearchStore(database.url, undefined, database.options);
   const directory = new PostgresStudioDirectory(repository.pool);
-  const db = createSupabaseAdmin({
-    url: required(env, "SUPABASE_URL"),
-    secretKey: required(env, "SUPABASE_SECRET_KEY"),
-  });
+  // Product data goes through this pool only. Supabase is reached for auth alone — the JWKS
+  // verifier below and the admin API in the wallet sign-in — so a local run, whose DATABASE_URL is
+  // the Docker Postgres, never reads or writes the hosted project's tables.
   const issuer = required(env, "JWT_ISSUER");
-  const workspaces = createSupabaseWorkspaceDirectory(db);
-  const agents = createSupabaseAgentRegistry(db);
+  const workspaces = new PostgresWorkspaceDirectory(repository.pool);
+  const agents = new PostgresAgentRegistry(repository.pool);
   const now = () => new Date();
 
   const authenticate = createAuthenticateRequest({
@@ -327,19 +362,25 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       ...(env.JWT_AUDIENCE ? { audience: env.JWT_AUDIENCE } : {}),
     }),
     workspaces,
-    apiKeys: createSupabaseApiKeyDirectory(db),
+    apiKeys: new PostgresApiKeyDirectory(repository.pool),
     sha256Hex,
     now,
     superAdminEmails: parseEmailAllowlist(env.SUPER_ADMIN_EMAILS),
   });
-  const profiles = createProfileService(createSupabaseProfileRepository(db));
-  const custody = custodyServices(env, repository.pool, authenticate, profiles);
+  // A profile is refused until its user has a custody account, read from the same table
+  // `register` writes; composed whether or not Turnkey is bound, so without it nobody can pass.
+  const custodyAccounts = new PostgresCustodyStore(repository.pool);
+  const profiles = createProfileService(new PostgresProfileRepository(repository.pool), {
+    hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
+  });
+  const chainId = supportedChainId(env);
+  const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(env, repository.pool),
+    growth: createGrowthServices(repository.pool),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
@@ -368,8 +409,9 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       drafter: drafter(env),
       directory,
       repository,
+      previews: new PostgresPreviewStore(repository.pool),
       wallets: new PostgresCustodyStore(repository.pool),
-      balances: ausdBalances(env),
+      balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
       paper: createPaperPlugin(
         new PostgresPaperStore(repository.pool),
@@ -392,7 +434,11 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       now,
     }),
     findWorkspace: (id) => workspaces.findById(id),
-    agentQueries: createAgentQueries({ agents, events: createSupabaseAgentEventLog(db), now }),
+    agentQueries: createAgentQueries({
+      agents,
+      events: new PostgresAgentEventLog(repository.pool),
+      now,
+    }),
     budgets: new PostgresBudgetLedger(repository.pool),
     profiles,
   };

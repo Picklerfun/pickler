@@ -42,18 +42,21 @@ export interface PasskeyAttestation {
 export type DeviceType = "platform" | "cross_device" | "security_key";
 
 /**
- * What a passkey is labelled with, in the operating system's credential picker and in Turnkey's
- * dashboard. Deliberately not an email.
+ * What a passkey is labelled with in the operating system's credential picker: WebAuthn's
+ * `user.name` and `user.displayName`, which are stored inside the authenticator and sync to iCloud
+ * Keychain and Google Password Manager, so whatever goes here outlives the account and cannot be
+ * edited afterwards by us or by the person.
  *
- * WebAuthn's `user.name` and `user.displayName` are stored inside the authenticator and sync to
- * iCloud Keychain and Google Password Manager, so whatever goes here outlives the account and
- * cannot be edited afterwards by us or by the person. An auth identifier must therefore never be
- * passed in: for a wallet account that identifier is synthetic and derived from the wallet, and
- * labelling a credential with it would put a wallet address in someone's password manager for
- * good. The profile is the right source — it is the name the person chose to be known by.
+ * The caller chooses it (workers/api `identity()`): the profile's handle and display name where
+ * there is a profile, otherwise the person's real sign-in email, which is what a keychain entry is
+ * recognised by — the passkey is created before the handle is chosen. A wallet account's synthetic
+ * auth email must never be passed in; it is an internal key, not something a person recognises.
+ *
+ * This is only ever the WebAuthn identity. The Turnkey root user is named separately
+ * (`register`'s `ownerLabel`), and never with an email.
  */
 export interface DisplayIdentity {
-  /** WebAuthn `user.name`: short and stable, the handle where there is one. */
+  /** WebAuthn `user.name`: the handle where there is one, else the sign-in email. */
   name: string;
   /** WebAuthn `user.displayName`: what a person recognises themselves as. */
   displayName: string;

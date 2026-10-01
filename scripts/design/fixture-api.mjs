@@ -12,13 +12,17 @@
  * It is a verification fixture, not product code. Nothing ships against it, and the only thing that
  * points at it is PICKLER_API_LOCAL_URL, which api-client.ts already refuses unless it is loopback.
  *
- *   node --import tsx scripts/design/fixture-api.mjs [port]
+ * `npm run design:check` starts this and the web app together (lib/servers.mjs). By hand:
+ *
+ *   node --import tsx scripts/design/fixture-api.mjs 8799
  *
  * Then start the web app against it. Note the command: `npm run dev` goes through Turborepo, whose
  * dev task declares no `env`, so it strips PICKLER_API_LOCAL_URL and every route answers 503 as if
- * this file were not running. Run Next directly instead.
+ * this file were not running. Run Next directly instead, with authentication switched off so the
+ * studio and the account render from their fixtures:
  *
- *   cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:8787 npx next dev
+ *   cd apps/web && NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= \
+ *     PICKLER_API_LOCAL_URL=http://127.0.0.1:8799 npx next dev -p 3001
  */
 import { createServer } from "node:http";
 import {
@@ -41,6 +45,7 @@ import {
   systemClock,
 } from "@pickler/infrastructure";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
+import { sampleLaunches } from "./fixtures/sample-launches.mts";
 import { toLandingResponse } from "../../workers/api/src/growth/landing-response.ts";
 import {
   toAgentPersonaDto,
@@ -81,6 +86,8 @@ const one = (value, map) => (value ? map(value) : null);
 /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
 const routes = [
   [/^\/v1\/landing$/, async () => toLandingResponse(await services.getLanding())],
+  // The worker reads launches from its index; the harness has none, so the board gets two rows.
+  [/^\/v1\/launches$/, async () => sampleLaunches()],
   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
   [
     /^\/v1\/marketplace\/directory$/,
@@ -146,12 +153,12 @@ const server = createServer(async (request, response) => {
   send(404, { error: `fixture-api has no route for ${url.pathname}` });
 });
 
-const port = Number(process.argv[2] ?? 8787);
+const port = Number(process.argv[2] ?? 8799);
 server.listen(port, "127.0.0.1", () => {
   console.log(`fixture-api listening on http://127.0.0.1:${port}`);
   // Not `npm run dev`: Turborepo's dev task declares no env and drops the variable, and the only
   // symptom is every route answering 503 exactly as it does with no fixture at all.
   console.log(
-    `point the web app at it:  cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:${port} npx next dev`,
+    `point the web app at it:  cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:${port} npx next dev -p 3001`,
   );
 });

@@ -20,32 +20,25 @@ import {
 import {
   createSampleLandingReadModel,
   createSampleMarketBoard,
-  createSupabaseApplicants,
-  createSupabaseRestClient,
-  createSupabaseWaitlist,
   PostgresAgentDirectory,
+  PostgresApplicants,
+  PostgresWaitlist,
   systemClock,
   type PostgresResearchStore,
 } from "@pickler/infrastructure";
-import type { Env } from "../env";
 
 // `pg` is not a direct dependency here; the pool is whatever the composition root already opened.
 type Pool = PostgresResearchStore["pool"];
 
-export function createGrowthServices(env: Env, pool: Pool) {
-  const growth = createSupabaseRestClient({
-    url: env.SUPABASE_URL,
-    secretKey: env.SUPABASE_SECRET_KEY,
-    schema: "growth",
-  });
+export function createGrowthServices(pool: Pool) {
   const adapters = {
     // Stays sample: the landing is marketing copy, not a read of the database.
     landing: createSampleLandingReadModel(systemClock),
     agents: new PostgresAgentDirectory(pool),
     // Stays sample: there is no venue table to read yet.
     markets: createSampleMarketBoard(),
-    waitlist: createSupabaseWaitlist(growth),
-    applicants: createSupabaseApplicants(growth),
+    waitlist: new PostgresWaitlist(pool),
+    applicants: new PostgresApplicants(pool),
   };
   return {
     clock: systemClock,

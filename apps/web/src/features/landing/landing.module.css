@@ -37,13 +37,6 @@
   border: 0;
 }
 
-/* Anything in the display face carries the width axis. The `font` shorthand resets
-   font-variation-settings, so the longhand always follows it, never precedes it. */
-.display {
-  font-family: var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-}
-
 /* The small wide-tracked label that replaced the monospace everywhere in the canvases. */
 .label {
   margin: 0;
@@ -68,29 +61,28 @@
   display: block;
   flex: none;
   border-radius: var(--pk-radius-mark);
-  background: var(--hue);
 }
 
 .mark[data-hue="lime"] {
-  --hue: var(--pk-agent-lime-fill);
+  background: var(--pk-agent-lime-fill);
 }
 .mark[data-hue="indigo"] {
-  --hue: var(--pk-agent-indigo-fill);
+  background: var(--pk-agent-indigo-fill);
 }
 .mark[data-hue="amber"] {
-  --hue: var(--pk-agent-amber-fill);
+  background: var(--pk-agent-amber-fill);
 }
 .mark[data-hue="orange"] {
-  --hue: var(--pk-agent-orange-fill);
+  background: var(--pk-agent-orange-fill);
 }
 .mark[data-hue="magenta"] {
-  --hue: var(--pk-agent-magenta-fill);
+  background: var(--pk-agent-magenta-fill);
 }
 .mark[data-hue="blue"] {
-  --hue: var(--pk-agent-blue-fill);
+  background: var(--pk-agent-blue-fill);
 }
 .mark[data-hue="violet"] {
-  --hue: var(--pk-agent-violet-fill);
+  background: var(--pk-agent-violet-fill);
 }
 
 /* ---------- Ticker tape ---------- */
@@ -740,20 +732,19 @@
   margin: auto 0 0;
   font: 600 11.5px/1.4 var(--pk-font);
   letter-spacing: 0.06em;
-  color: var(--ink);
 }
 
 .move[data-hue="lime"] .moveCost {
-  --ink: var(--pk-lime-ink);
+  color: var(--pk-lime-ink);
 }
 .move[data-hue="violet"] .moveCost {
-  --ink: var(--pk-violet-ink);
+  color: var(--pk-violet-ink);
 }
 .move[data-hue="amber"] .moveCost {
-  --ink: var(--pk-amber-ink);
+  color: var(--pk-amber-ink);
 }
 .move[data-hue="magenta"] .moveCost {
-  --ink: var(--pk-magenta-ink);
+  color: var(--pk-magenta-ink);
 }
 
 /* ---------- Waitlist ---------- */

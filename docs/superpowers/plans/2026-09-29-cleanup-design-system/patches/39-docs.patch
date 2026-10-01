@@ -1,0 +1,166 @@
+diff --git a/apps/web/AGENTS.md b/apps/web/AGENTS.md
+index 1576317..8240d5c 100644
+--- a/apps/web/AGENTS.md
++++ b/apps/web/AGENTS.md
+@@ -65,9 +65,9 @@ next dev. Check cookies, protected routes, session refresh, signout and tenant i
+ 
+ ## Design system
+ 
+-Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — landing, apply, the public pages — uses `data-surface="light"`, and the studio, account and auth screens use `data-surface="dark"`. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
++Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — the landing and every page inside `PublicShell`, the agent pages included — uses `data-surface="light"`, and the studio, account, auth and apply screens use `data-surface="dark"`. No screen paints a ground of its own: the night sky, the starfield and the neon floor were removed on 2026-09-29. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
+ 
+-Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is the lit marketing call to action — the hero, the waitlist, the application), `Chip` for filters and toggles (`ChipLink` when it navigates, `ChipText` when it only reads), `Segmented` for an exclusive choice that is always on screen, `Tag` for read-only status, `Meter` for a filled track, `Icon` for every icon. Feature stylesheets keep only what a control does differently and pass it through `className`; they do not re-declare shape, type or state. Colour is the same: each sheet aliases the system tokens (`--ink: var(--pk-ink)`) and holds no literal. Panels take the shared surface with `composes: pk-panel from global` instead of redeclaring a border and a radius.
++Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is the lit marketing call to action — the hero, the waitlist, the application), `Chip` for filters and toggles (`ChipLink` when it navigates, `ChipText` when it only reads), `Segmented` for an exclusive choice that is always on screen, `Tag` for read-only status, `Meter` for a filled track, `Icon` for every icon. Feature stylesheets keep only what a control does differently and pass it through `className`; they do not re-declare shape, type or state. Colour is the same: each sheet reads the system tokens by name (`var(--pk-ink)`) and holds no literal, no alias of a token (`--ink: var(--pk-ink)`) and no `--pk-*` definition. A custom property of a sheet's own is for a computed value that is not a colour. The one place a token reaches CSS from TypeScript is `src/lib/accent.ts` (`accentVars`, `swatchVars`), because which agent a screen shows is data. `npm run design:source` fails on any of these, and on a class no component names. Panels take the shared surface with `composes: pk-panel from global` instead of redeclaring a border and a radius.
+ 
+ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — the price panel on a token page and every series under the leaderboard. Features hand them timestamped buckets and nothing else; colours and type come from the surface. The library's own logo is off, so `PublicShell` carries the TradingView credit its licence asks for; any new surface that shows a chart needs that credit too.
+ 
+@@ -186,7 +186,11 @@ requiring those bindings are unavailable. A successful preview is not full-stack
+ ## Studio integration
+ 
+ The private studio uses the Studio shell and sections under `features/studio/sections`, reached
+-from the home's Menu.
++from the home's Menu. `sections/rail.ts` is the one list of sections: the shell's rail, the home's
++Menu and the empty home's rail all draw from it, and `apps/web/test/studio-rail.test.ts` pins it
++against `sections/keys.ts`. A section with no screen yet is `soon`: it is listed everywhere with a
++SOON mark and opens on `sections/soon.tsx`, the one panel for all of them. Nothing unsupported is
++hidden and nothing is drawn as if it worked.
+ Keep the existing backend permissions: research enablement is required to create or edit agents,
+ not just to run them. Agent creation selects the ID returned by the API, never an array position.
+ The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
+@@ -226,7 +230,7 @@ loader even from a CommonJS file, unlike this module's own static `import`.
+ 
+ `api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
+ funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
+-`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`), `updateConfig`,
++`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`),
+ `setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
+ `depositPrepare`/`depositConfirm`, and
+ the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
+@@ -482,3 +486,15 @@ needs a session with no wallet and the design harness has none;
+ The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
+ 
+ `/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.
++
++## Design checks
++
++`npm run design:check` runs the static source check and then the rendered checks (surfaces, tokens,
++contrast, type) over every route in `scripts/design/routes.mjs`. It starts the fixture API on 8799
++and this app on 3001 with authentication switched off, and stops both when it ends; a port that is
++already taken is refused, not reused. `npm run design:shots` writes screenshots to the folder
++`DESIGN_SHOTS_DIR` names, and `npm run design:compare -- <before> <after>` says which screens
++differ. A screen that needs a session to render gets a door that is shut in production
++(`?stage=`, `?step=`, `?section=`, `/signup?state=passkey`, `/passkey?state=add`,
++`/portfolio?state=connected`) and a route that proves it. A new screen gets a route in the same
++change.
+diff --git a/docs/specs/cleanup-and-design-system-v1.md b/docs/specs/cleanup-and-design-system-v1.md
+index c75322c..4c0d497 100644
+--- a/docs/specs/cleanup-and-design-system-v1.md
++++ b/docs/specs/cleanup-and-design-system-v1.md
+@@ -145,3 +145,50 @@ The inventory (`cleanup-inventory-2026-09-29.md`, commit 763ec44) contradicted p
+ | A9  | Three unused adapter files export schemas and a constant that live Postgres code imports.                                                                             | Those exports move to the module that uses them first; then the adapters go. `PasskeyUnusableError` goes with `fromViemAccount` if no production code imports it.                                                             |
+ | A10 | `?section=trading` is refused: trading renders inside `limits`.                                                                                                       | Unchanged here; listed as a follow-up.                                                                                                                                                                                        |
+ | A11 | `typecheck:design` is already wired through turbo and CI; the runtime checks and the harness unit tests are not. The fixture API is `scripts/design/fixture-api.mjs`. | Section 3.4 stands, with those paths.                                                                                                                                                                                         |
++
++## Appendix: the tokens after this work
++
++Decided in the implementation plan (`docs/superpowers/plans/2026-09-29-cleanup-design-system.md`),
++where each call has its reason.
++
++**Carried forward and kept (D5, A4).** They have no single v2 equivalent and are part of the
++system under their own names: `--pk-ink-dim` (the muted ink on light, the soft ink on dark),
++`--pk-border-strong`, `--pk-lime-edge`, `--pk-magenta-edge`, `--pk-amber-edge`, `--pk-cyan-edge`,
++`--pk-violet-edge`. A1 keeps `--pk-glow-rim`.
++
++**Carried forward and removed (D5).** Each reader now reads the v2 token on the right.
++
++| Removed                | Reads now               |
++| ---------------------- | ----------------------- |
++| `--pk-ink-placeholder` | `--pk-ink-faint`        |
++| `--pk-surface`         | `--pk-panel`            |
++| `--pk-surface-strong`  | `--pk-panel-2`          |
++| `--pk-field`           | `--pk-panel`            |
++| `--pk-field-autofill`  | `--pk-panel`            |
++| `--pk-border`          | `--pk-rule-strong`      |
++| `--pk-cyan`            | `--pk-blue`             |
++| `--pk-cyan-ink`        | `--pk-state-cool-ink`   |
++| `--pk-pink-ink`        | `--pk-magenta-ink`      |
++| `--pk-lime-tint`       | `--pk-state-good-bg`    |
++| `--pk-magenta-tint`    | `--pk-state-loss-bg`    |
++| `--pk-amber-tint`      | `--pk-state-caution-bg` |
++| `--pk-cyan-tint`       | `--pk-state-cool-bg`    |
++| `--pk-violet-tint`     | `--pk-state-info-bg`    |
++
++**Removed with the backdrop (D1, A2).** `--pk-space-core`, `--pk-space-mid`, `--pk-space-edge`,
++`--pk-space-edge-rgb`, `--pk-space-veil`, `--pk-space-veil-strong`.
++
++**Added (D6, A2).** Defined on `:root`, the same on both surfaces.
++
++| Token                   | Value                       | For                                         |
++| ----------------------- | --------------------------- | ------------------------------------------- |
++| `--pk-lit-edge`         | `rgba(255, 255, 255, 0.22)` | the inset highlight along a raised top edge |
++| `--pk-glow-lime`        | `rgba(200, 240, 58, 0.32)`  | a lime halo                                 |
++| `--pk-glow-lime-strong` | `rgba(200, 240, 58, 0.5)`   | the same halo under the cursor              |
++| `--pk-scrim`            | `rgba(11, 13, 26, 0.72)`    | what a dialog dims the page with            |
++
++**Renamed.** `--tint-fg`, `--tint-bg` and `--tint-bd` are `--pk-tint-fg`, `--pk-tint-bg` and
++`--pk-tint-bd`.
++
++**Runtime checks in CI (3.4).** They run, in the `rendered` job of `.github/workflows/design.yml`,
++with Playwright installed on the runner and not in `package.json`.
+diff --git a/docs/specs/design-system-v2.md b/docs/specs/design-system-v2.md
+index de5ae7b..1cf2ff8 100644
+--- a/docs/specs/design-system-v2.md
++++ b/docs/specs/design-system-v2.md
+@@ -263,6 +263,11 @@ comment saying why and that the attribute goes when a canvas exists. A page whos
+ dark belongs on the dark surface. The same test applies to any module not listed here: painting its
+ own opaque ground earns the pin, merely reading tokens does not.
+ 
++**Correction, 2026-09-29.** Neither pin stands any more. The opaque layers themselves were removed
++(`cleanup-and-design-system-v1.md`, D1–D3): the three `/agents` routes are on the light surface
++like the rest of the marketplace, and `/apply` is on the dark surface because it is a studio route,
++not because it paints a ground.
++
+ Any page that reads a token this document removes must be migrated in the same change. That is the
+ monospace family and any `--pk-*` name that does not survive into the new set.
+ 
+@@ -500,6 +505,11 @@ alpha as a border.
+ over **seventeen** routes, with no literal colour left in any declaration in the product — only in
+ comments explaining why the tokens exist.
+ 
++**Correction, 2026-09-29.** That last claim was false when it was written: the inventory of that
++date (`cleanup-inventory-2026-09-29.md`, 4.5) counted 102 colour literals in declarations, most of
++them in `box-shadow`, `filter` and `background-image`, which the token check did not read. It
++reads them now, and `scripts/design/source.mjs` reads the source itself.
++
+ Measuring those two screens for the first time found nine violation classes and two defects nothing
+ else could have reported.
+ 
+diff --git a/packages/ui/AGENTS.md b/packages/ui/AGENTS.md
+index 58a255d..e112123 100644
+--- a/packages/ui/AGENTS.md
++++ b/packages/ui/AGENTS.md
+@@ -2,7 +2,7 @@
+ 
+ Read [the root instructions](../../AGENTS.md) first. Read the web app's local instructions when changing consumption there. Update this file when components, styling exports, or client boundaries change.
+ 
+-`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/index.ts`, and `src/styles.css`. The package exports `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented` and the stylesheet `@pickler/ui/styles.css`. The web root layout imports that stylesheet.
++`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports that stylesheet.
+ 
+ ## The control system
+ 
+@@ -13,13 +13,13 @@ One set of shapes, two surfaces. The public site and the creator studio share ra
+ - **Type:** two faces. Archivo for titles and the lead figure of a view (a token price, a wallet balance), and it is only itself with its width axis set — anything in the display face carries `font-variation-settings: var(--pk-display-wdth)`, which `.pk-display`, `h1` and `h2` already do. Instrument Sans for everything else, including every control label; where a monospace used to carry a chip, a ticker or a small label, that is this face at 10–12px tracked 0.04em to 0.14em, and where it carried figures it is this face with `font-variant-numeric: tabular-nums`.
+ - **Buttons:** one `primary` per view, and never two filled buttons side by side — pair `primary` with `secondary`. `tile` is the rectangular action used in studio grids. Sizes are `sm`, `md` and `lg`; `mono` switches the label to uppercase mono for navigation and utility actions.
+ - **Icons:** `Icon` wraps a curated set from `lucide-react`, which matches what the canvases drew by hand: a 24×24 grid, round joins and one stroke weight (1.9 here). Colour comes from `currentColor`, and `label` is required whenever the icon is the only content of a control. Add a name to `src/icon.tsx` rather than importing from `lucide-react` inside a feature — that is how two screens end up with two different arrows.
+-- **Colour:** every colour, the ink ramp, the hairlines and the three faces are declared once in `src/styles.css`, per surface. Feature stylesheets alias them (`--ink: var(--pk-ink)`) and never hold a literal, which is what let the landing and the public pages fade text to two different greys before.
++- **Colour:** every colour, the ink ramp, the hairlines and the three faces are declared once in `src/styles.css`, per surface, and it is the only file that may hold a colour literal or define a `--pk-*` property. Its own rules read tokens too: a literal is allowed inside a token's definition and nowhere else. Feature stylesheets read the tokens by name (`var(--pk-ink)`); they define no alias of one and hold no literal. `src/tokens.ts` holds the five values code must hold as values (Next's `themeColor`, the chart's fallbacks), keyed by token name and pinned to `styles.css` by `scripts/design/mirror.test.mjs`. `src/brand.tsx` holds a third party's logo colours, which are not tokens and carry `data-third-party-mark` so the design checks skip them. `npm run design:source` enforces all of it.
+ - **Panel:** the surface content sits on — one border, one radius, one translucent ground — lives as `.pk-panel` in the stylesheet. A feature sheet takes it with `composes: pk-panel from global` and keeps only its own difference (a blur, a lit top edge, its padding), rather than declaring the border and the radius again.
+ - **Fields:** `Field` is the frame — a mono micro label, the control, and one line under it that carries a hint or an error through `tone`. `Input` and `Textarea` are the controls; `prefix` puts a fixed mark inside the frame, like the @ before a handle, so the two read as one. A field lights on focus in `--pk-focus`, which is cyan on the public surface and lime in the studio. `shape="pill"` is for a search box sitting in a row of filters.
+ - **Chips:** one object, three renderings. `Chip` presses (a filter, a copy action), `ChipLink` navigates (a contract, an X handle, an agent's page), `ChipText` only reads (a market cap, a venue). `Tag` is the louder cousin for a status the eye should catch first.
+ - **Segmented:** each option carries `data-value`, so a feature can tint one of them differently — Ask violet and Trade lime inside one track — without counting children in CSS. `Segmented` is the exclusive choice always on screen — buy or sell, grid or table. `tone="lime"` is for taking a side, `ink` for a view of the same data. A filter that can be off is a `Chip`; an action that does something is a `Button`.
+ - **Meter:** `Meter` is the filled track — graduation progress, a reputation score, a trait. Tone says what the figure beside it already says: `lime` for landed or graduated, `amber` for on its way, `magenta` for against, `cyan` for neutral. It is announced only with a `label`; without one it is decoration repeating a number that is already written.
+-- **Charts:** `CandleChart` and `BarChart` wrap [lightweight-charts](https://github.com/tradingview/lightweight-charts). Features pass data — candles or bars, each bucket timestamped in milliseconds — and the look is decided in `src/chart.tsx`, which reads `--pk-ink-faint`, `--pk-border`, `--pk-win`, `--pk-loss` and `--pk-font` from the surrounding surface, so a chart follows `data-surface` like everything else. Do not call `createChart` in a feature; add an option or a series type here instead. The library's in-panel logo is turned off (`layout.attributionLogo: false`), which its Apache-2.0 notice allows as long as the credit and a link to <https://www.tradingview.com/> live on the page — `PublicShell` carries them in its footer on the routes that pass `charts`, which is the two that mount one — so a page that adds a chart adds that prop, and a page that does not must not claim a credit it never earned.
++- **Charts:** `CandleChart` and `BarChart` wrap [lightweight-charts](https://github.com/tradingview/lightweight-charts). Features pass data — candles or bars, each bucket timestamped in milliseconds — and the look is decided in `src/chart.tsx`, which reads `--pk-ink-faint`, `--pk-rule-strong`, `--pk-win`, `--pk-loss` and `--pk-font` from the surrounding surface, so a chart follows `data-surface` like everything else. Do not call `createChart` in a feature; add an option or a series type here instead. The library's in-panel logo is turned off (`layout.attributionLogo: false`), which its Apache-2.0 notice allows as long as the credit and a link to <https://www.tradingview.com/> live on the page — `PublicShell` carries them in its footer on the routes that pass `charts`, which is the two that mount one — so a page that adds a chart adds that prop, and a page that does not must not claim a credit it never earned.
+ - **Deltas:** a feature that needs a control to differ passes `className` and keeps only the difference — padding, a glow, a colour the canvas asks for. A variant rule here is `.pk-button[data-variant=…]`, which outweighs a single class, so a delta that must win is scoped (`.page .walletButton`). A feature never re-declares shape, type or state.
+ - New controls use these components, and the app is expected to have no hand-rolled button, chip, track or bar left. What is deliberately not here: the carousel dots, which are a position indicator rather than a control; the nav scrim, which is an invisible click-away; and the underlined tabs, which have one consumer today — the agent profile. Tabs move here when a second surface needs them, and not before. Feature stylesheets may keep their own layout, but not their own shapes.
+ 

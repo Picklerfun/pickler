@@ -187,3 +187,21 @@ test("the odds plugin quotes only the books the person chose, and every book whe
   assert.equal(byLabel.status, "no_coverage", "keys are compared exactly, never labels");
   assert.equal((await absent.odds!.context(market, signal(), guard)).status, "no_coverage");
 });
+
+test("a run with a brief hands the model the brief between the edge and the rules", async () => {
+  const brief = {
+    thesis: "Injury news moves the books first.",
+    reads: ["espn.com"],
+    entersWhen: ["A starter is ruled out"],
+    exitsWhen: [],
+    never: [],
+  };
+  const recorded = recordingModel();
+  const run = runWith({ profile: "Reads injury reports.", brief });
+
+  const scoped = scopeRun(base(recorded.model), run);
+  await scoped.model.select([market], run.config.profile, signal(), limits, "now");
+
+  assert.deepEqual(recorded.profiles, [composeBrief("Reads injury reports.", [], brief)]);
+  assert.match(recorded.profiles[0]!, /It enters only when every one of these is true:/);
+});

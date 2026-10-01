@@ -11,6 +11,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useRef } from "react";
+import { TOKEN_MIRROR } from "./tokens";
 
 /**
  * Market data drawn with lightweight-charts, wearing the product's palette. Features pass values;
@@ -41,13 +42,16 @@ const seconds = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp;
 
 const readTheme = (element: HTMLElement) => {
   const style = getComputedStyle(element);
-  const value = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+  // The fallback is the light surface's own value, from the mirror: what a chart draws with if
+  // it mounts before the stylesheet has applied.
+  const colour = (name: keyof typeof TOKEN_MIRROR.light) =>
+    style.getPropertyValue(name).trim() || TOKEN_MIRROR.light[name];
   return {
-    ink: value("--pk-ink-faint", "#6b7186"),
-    grid: value("--pk-border", "rgba(11, 13, 26, 0.12)"),
-    up: value("--pk-win", "#2e7d32"),
-    down: value("--pk-loss", "#c62c62"),
-    font: value("--pk-font", "sans-serif"),
+    ink: colour("--pk-ink-faint"),
+    grid: colour("--pk-rule-strong"),
+    up: colour("--pk-win"),
+    down: colour("--pk-loss"),
+    font: style.getPropertyValue("--pk-font").trim() || "sans-serif",
   };
 };
 

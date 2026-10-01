@@ -25,7 +25,7 @@ export const BUDGET_CATEGORIES = ["infra", "tokens", "payments"] as const;
 export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
 
 export type LedgerAgentStatus =
-  "active" | "paused" | "suspended" | "draining" | "killed" | "pending_policies";
+  "active" | "paused" | "suspended" | "draining" | "killed" | "pending_policies" | "draft";
 
 export interface CategoryState {
   category: BudgetCategory;

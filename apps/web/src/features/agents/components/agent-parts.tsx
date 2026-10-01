@@ -1,4 +1,4 @@
-import type { AccentDto, AgentSummaryDto, VenueDto } from "@pickler/api-schema";
+import type { AccentDto, AgentSummaryDto } from "@pickler/api-schema";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { accentVars } from "@/lib/accent";
@@ -68,22 +68,6 @@ const venueMarks = (token: NonNullable<AgentSummaryDto["token"]>) =>
         { src: "/brand/monad.png", label: "Monad", title: "Monad" },
       ];
 
-/** Where the token trades: our curve on Monad before graduation, Pons on Robinhood Chain after it. */
-export function VenueMarks({ token }: { token: AgentSummaryDto["token"] }) {
-  if (!token) {
-    return null;
-  }
-  return (
-    <span className={styles.marks}>
-      {venueMarks(token).map((mark) => (
-        <span key={mark.src} className={styles.mark} title={mark.title}>
-          <Image src={mark.src} alt={mark.title} width={64} height={64} unoptimized />
-        </span>
-      ))}
-    </span>
-  );
-}
-
 /** The same information as chips, one per venue, for the token page. */
 export function VenueChips({ token }: { token: AgentSummaryDto["token"] }) {
   if (!token) {
@@ -101,16 +85,6 @@ export function VenueChips({ token }: { token: AgentSummaryDto["token"] }) {
       ))}
     </>
   );
-}
-
-const venueLabel: Record<VenueDto, string> = {
-  predictions: "PREDICTION MARKETS",
-  perps: "PERPL",
-  both: "PREDICTIONS + PERPL",
-};
-
-export function VenueChip({ venue }: { venue: VenueDto }) {
-  return <ChipText className={`${styles.chip} ${styles.venueChip}`}>{venueLabel[venue]}</ChipText>;
 }
 
 export function CurveProgress({
@@ -147,6 +121,15 @@ export function CurveProgress({
  * A board with nothing in it — no agents, no token, nothing settled. Each board renders this in
  * place of its filters, and `id` is the hook the design harness proves the launch-day screen by.
  */
+/** The API could not answer, so the board below is empty on purpose, not because nothing exists. */
+export function DegradedNote() {
+  return (
+    <p className={styles.degradedNote} data-degraded="true" role="status">
+      The board is catching up. Numbers will appear shortly.
+    </p>
+  );
+}
+
 export function EmptyScreen({
   id,
   label,

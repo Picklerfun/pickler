@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Icon, Input } from "@pickler/ui";
 import type { Agent, Run } from "../api";
 import { clock, runMark, runSummary } from "../decision";
-import type { SectionKey } from "./stub";
+import type { SectionKey } from "./keys";
 import styles from "../studio.module.css";
 
 /** How long until the next scheduled run, said the way a person would say it. */
@@ -78,7 +78,7 @@ export function Overview({
         : `NEXT DUE ${clock(agent.nextDueAt)} · LAST ${clock(runs[0]?.createdAt ?? null)}`;
 
   return (
-    <div className={styles.section}>
+    <div className={styles.section} id="studio-section-overview">
       <div className={styles.sectionHead}>
         <h1>Overview</h1>
         <p>what it is about to do, and what it just did</p>

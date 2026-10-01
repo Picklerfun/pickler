@@ -1,0 +1,179 @@
+diff --git a/scripts/design/fixture-api.mjs b/scripts/design/fixture-api.mjs
+index dbc5da7..db1d46f 100644
+--- a/scripts/design/fixture-api.mjs
++++ b/scripts/design/fixture-api.mjs
+@@ -12,13 +12,17 @@
+  * It is a verification fixture, not product code. Nothing ships against it, and the only thing that
+  * points at it is PICKLER_API_LOCAL_URL, which api-client.ts already refuses unless it is loopback.
+  *
+- *   node --import tsx scripts/design/fixture-api.mjs [port]
++ * `npm run design:check` starts this and the web app together (lib/servers.mjs). By hand:
++ *
++ *   node --import tsx scripts/design/fixture-api.mjs 8799
+  *
+  * Then start the web app against it. Note the command: `npm run dev` goes through Turborepo, whose
+  * dev task declares no `env`, so it strips PICKLER_API_LOCAL_URL and every route answers 503 as if
+- * this file were not running. Run Next directly instead.
++ * this file were not running. Run Next directly instead, with authentication switched off so the
++ * studio and the account render from their fixtures:
+  *
+- *   cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:8787 npx next dev
++ *   cd apps/web && NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= \
++ *     PICKLER_API_LOCAL_URL=http://127.0.0.1:8799 npx next dev -p 3001
+  */
+ import { createServer } from "node:http";
+ import {
+@@ -41,6 +45,7 @@ import {
+   systemClock,
+ } from "@pickler/infrastructure";
+ import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
++import { sampleLaunches } from "./fixtures/sample-launches.mts";
+ import { toLandingResponse } from "../../workers/api/src/growth/landing-response.ts";
+ import {
+   toAgentPersonaDto,
+@@ -81,6 +86,8 @@ const one = (value, map) => (value ? map(value) : null);
+ /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
+ const routes = [
+   [/^\/v1\/landing$/, async () => toLandingResponse(await services.getLanding())],
++  // The worker reads launches from its index; the harness has none, so the board gets two rows.
++  [/^\/v1\/launches$/, async () => sampleLaunches()],
+   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+   [
+     /^\/v1\/marketplace\/directory$/,
+@@ -146,12 +153,12 @@ const server = createServer(async (request, response) => {
+   send(404, { error: `fixture-api has no route for ${url.pathname}` });
+ });
+ 
+-const port = Number(process.argv[2] ?? 8787);
++const port = Number(process.argv[2] ?? 8799);
+ server.listen(port, "127.0.0.1", () => {
+   console.log(`fixture-api listening on http://127.0.0.1:${port}`);
+   // Not `npm run dev`: Turborepo's dev task declares no env and drops the variable, and the only
+   // symptom is every route answering 503 exactly as it does with no fixture at all.
+   console.log(
+-    `point the web app at it:  cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:${port} npx next dev`,
++    `point the web app at it:  cd apps/web && PICKLER_API_LOCAL_URL=http://127.0.0.1:${port} npx next dev -p 3001`,
+   );
+ });
+diff --git a/scripts/design/fixtures/sample-launches.mts b/scripts/design/fixtures/sample-launches.mts
+new file mode 100644
+index 0000000..5fb5f37
+--- /dev/null
++++ b/scripts/design/fixtures/sample-launches.mts
+@@ -0,0 +1,55 @@
++// Sample launches for the design checks' token board.
++// Not live data: no contract is deployed and nothing here was read from a chain.
++
++import type { LaunchSummaryDto, ReadDto } from "@pickler/api-schema";
++
++const AUSD = {
++  chainId: "eip155:10143",
++  address: "0x00000000000000000000000000000000000a05d0",
++  symbol: "AUSD",
++  decimals: 6,
++};
++
++const launches: LaunchSummaryDto[] = [
++  {
++    id: "eip155:10143:0x00000000000000000000000000000000000ha1f0",
++    chainId: "eip155:10143",
++    address: "0x00000000000000000000000000000000000ha1f0",
++    ticker: "$HALF",
++    name: "Halftime",
++    imageUri: null,
++    phase: "pre_graduation",
++    agentId: "halftime",
++    quote: AUSD,
++    totalSupply: "1000000000000000000000000000",
++    launchedAt: "2026-09-01T00:00:00.000Z",
++    graduatedAt: null,
++  },
++  {
++    id: "eip155:10143:0x0000000000000000000000000000000000007a9e",
++    chainId: "eip155:10143",
++    address: "0x0000000000000000000000000000000000007a9e",
++    ticker: "$TAPE",
++    name: "Tape Reader",
++    imageUri: null,
++    phase: "graduated",
++    // A launch nothing links to an agent yet, so the board's UNLINKED AGENT chip is measured too.
++    agentId: null,
++    quote: AUSD,
++    totalSupply: "1000000000000000000000000000",
++    launchedAt: "2026-08-12T00:00:00.000Z",
++    graduatedAt: "2026-09-20T00:00:00.000Z",
++  },
++];
++
++/** The launch catalogue as `GET /v1/launches` answers it: the rows, and how fresh they are. */
++export function sampleLaunches(): ReadDto<LaunchSummaryDto[]> {
++  return {
++    data: launches,
++    asOfBlock: "48211907",
++    asOfBlockHash: "0x5a3f0c1d9e8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a29",
++    indexedAt: "2026-09-29T00:00:00.000Z",
++    finality: "finalized",
++    stale: false,
++  };
++}
+diff --git a/scripts/design/routes.mjs b/scripts/design/routes.mjs
+index 464a574..869e3a0 100644
+--- a/scripts/design/routes.mjs
++++ b/scripts/design/routes.mjs
+@@ -3,12 +3,14 @@
+ // `task` is the plan task that builds each screen. A route that answers 404 has not been built yet
+ // rather than broken, and naming the task turns "this is missing" into "this is not your turn".
+ //
+-// `proves` is the floor, and it is the most important field here. /studio answered 200 and rendered
+-// a sign-in stub wherever Supabase was unconfigured — which is every environment these checks run
+-// in — so all four checks walked 33 elements of the stub and reported green. A check that matches
+-// nothing reports what a check that passes reports. So every route names something the real screen
+-// contains and a stub cannot, and a route that does not show it is reported like a route that never
+-// loaded: named, not measured, not counted as passing.
++// `proves` is the floor, and it is the most important field here. /studio once answered 200 and
++// rendered a sign-in stub, so all four checks walked 33 elements of the stub and reported green.
++// A check that matches nothing reports what a check that passes reports. So every route names
++// something the real screen contains and a stub cannot, and a route that does not show it is
++// reported like a route that never loaded: named, not measured, not counted as passing.
++//
++// The checks run with authentication switched off (lib/servers.mjs), which is what lets the studio
++// and the account render from their preview fixtures. A server with it on sends both to /signin.
+ //
+ // A selector is preferred over `floor`, a minimum count of text-carrying elements, because a count
+ // drifts into passing as a stub grows. `floor` is only for screens with no authored hook to point
+@@ -168,13 +170,10 @@ export const ROUTES = [
+     product: "marketplace",
+     surface: "light",
+     task: "Marketplace",
+-    // Two screens, one of which must be present. #tokens-empty is the launch-day screen: no token
+-    // has launched, so the board draws that instead of a stage filter over an empty grid. The other
+-    // selector is the populated board — the graduation meter is drawn once per token card, so it
+-    // is a row and not a heading, because the board's own title renders with nothing behind it. A
+-    // page with neither is the stub this pairing refuses.
+-    proves:
+-      '#tokens-empty, main:has(h1:text-is("EVERY AGENT TOKEN.")) [role="progressbar"][aria-label="Progress to graduation"]',
++    // The launch catalogue with rows in it: the harness's fixture API serves two launches, and
++    // the link proves the first of them is on the board. #launch-board-empty is the screen the
++    // product shows today, and a page showing it here means the fixture was not what answered.
++    proves: '#launch-board a[href="/tokens/HALF"]',
+   },
+   {
+     path: "/tokens/half",
+@@ -587,6 +586,17 @@ export const ROUTES = [
+     task: "Auth",
+     proves: "#signup-passkey",
+   },
++  // /passkey adds a passkey to an account that has one, so a real visit needs a session, a
++  // master wallet and a profile. `?state=add` draws the screen from one fixture passkey instead,
++  // outside production only (apps/web/src/features/auth/lib/passkey-entry.ts).
++  {
++    path: "/passkey?state=add",
++    name: "passkey-add",
++    product: "studio",
++    surface: "dark",
++    task: "Auth",
++    proves: "#passkey-add",
++  },
+   // The (auth) group. No route in it had ever been measured: this list carried fifteen routes and
+   // not one of them was /signin or /signup, so those two screens were never unconverted — nobody
+   // had looked. A claim that every colour any route can reach resolved to a token was withdrawn

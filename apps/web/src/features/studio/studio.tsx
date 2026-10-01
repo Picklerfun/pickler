@@ -20,11 +20,12 @@ import {
   type Run,
   type RunEvent,
 } from "./api";
+import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
-import { createGate, gateNote } from "./create/gate";
+import { newAgentLock as lockFor } from "./create/gate";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -35,45 +36,18 @@ import { Brief } from "./sections/brief";
 import { Trading } from "./sections/trading";
 import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
-import { Stub } from "./sections/stub";
-import type { SectionKey } from "./sections/stub";
+import type { SectionKey } from "./sections/keys";
+import { RAIL, isPanel, isSoon } from "./sections/rail";
+import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
-import { homeFixture } from "./home/fixture";
-import type { HomeStage } from "./home/stage";
+import { briefFixture } from "./brief/fixture";
+import { EmptyHome } from "./home/empty";
+import { draftFixture, homeFixture } from "./home/fixture";
+import { isBriefStage, isHomeStage, type StudioStage } from "./home/stage";
+import { studioLanding } from "./lib/landing";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
-
-const GROUPS: { title: string; items: { key: SectionKey; icon: IconName; label: string }[] }[] = [
-  {
-    title: "RUN",
-    items: [
-      { key: "overview", icon: "grid", label: "Overview" },
-      { key: "context", icon: "chat", label: "Context" },
-      { key: "picks", icon: "target", label: "Picks" },
-      { key: "activity", icon: "activity", label: "Activity" },
-    ],
-  },
-  {
-    title: "BUILD",
-    items: [
-      { key: "brief", icon: "file", label: "Brief" },
-      { key: "skills", icon: "sliders", label: "Skills" },
-      { key: "sources", icon: "link", label: "Sources" },
-      { key: "limits", icon: "wallet", label: "Limits & funding" },
-      { key: "identity", icon: "user", label: "Identity & voice" },
-    ],
-  },
-  {
-    title: "GROW",
-    items: [
-      { key: "profile", icon: "globe", label: "Public profile" },
-      { key: "audience", icon: "users", label: "Audience" },
-      { key: "token", icon: "coin", label: "Token" },
-    ],
-  },
-  { title: "PUBLIC", items: [{ key: "board", icon: "bars", label: "The board" }] },
-];
 
 /**
  * The states a person actually lands in. Each one is a code the API returns, so the banner says the
@@ -144,17 +118,28 @@ export function Studio({
   openSection?: SectionKey | undefined;
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
-  /** `?stage=`, outside production only: the home at one moment of the canvas's first run. */
-  stage?: HomeStage | undefined;
+  /** `?stage=`, outside production only: the home at one moment of the canvas's first run, or
+      `empty`, the home before any agent. */
+  stage?: StudioStage | undefined;
 }) {
   const router = useRouter();
+  const directory = useMarketplaceHref("/agents");
+  const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
-  const [staged] = useState(() => (stage ? homeFixture(stage) : null));
+  const [staged] = useState(() =>
+    isHomeStage(stage) ? homeFixture(stage) : stage === "draft" ? draftFixture() : null,
+  );
+  const [stagedBrief] = useState(() => (isBriefStage(stage) ? briefFixture(stage) : null));
+  const [stagedEmpty] = useState(stage === "empty" || isBriefStage(stage));
+  /* Either staged home stands alone: no session is read and nothing is fetched. */
+  const staging = staged !== null || stagedEmpty;
   const [section, setSection] = useState<View>(openSection ?? "home");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
-    staged ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
+    staging ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
   );
+  /* Whether the agents have been read, so an empty list means "none yet" rather than "not read". */
+  const [loaded, setLoaded] = useState(staging);
   const [agents, setAgents] = useState<Agent[]>(staged ? [staged.agent] : []);
   const [agentId, setAgentId] = useState<string | null>(staged ? staged.agent.id : null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -169,13 +154,13 @@ export function Studio({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
-  const [preview, setPreview] = useState(staged !== null);
+  const [preview, setPreview] = useState(staging);
   /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
      read is `failed`, which suggests nothing and never fails the studio. */
   const [passkeys, setPasskeys] = useState<PasskeysKnown>(
     /* The staged home is the canvas's account: one passkey, so the design harness measures the
        suggestion on a route it can reach. Nothing is read. */
-    staged ? { kind: "ready", passkeys: [{ id: "staged" }] } : { kind: "loading" },
+    staging ? { kind: "ready", passkeys: [{ id: "staged" }] } : { kind: "loading" },
   );
   const requestKeys = useRef(new Map<string, string>());
 
@@ -183,14 +168,7 @@ export function Studio({
   const canManage = Boolean(access?.canManage);
   /* The same lock the home's "+ New agent" honours, so neither entry reaches a passkey prompt the
      API would refuse after it. */
-  const newAgentGate = useMemo(() => createGate(agents), [agents]);
-  const newAgentLock = useMemo(() => {
-    if (newAgentGate.open) {
-      return "";
-    }
-    const { title, note } = gateNote(newAgentGate.agent);
-    return `${title} ${note}`;
-  }, [newAgentGate]);
+  const newAgentLock = useMemo(() => lockFor(agents), [agents]);
   const events = trace && trace.runId === runId ? trace.events : [];
   const now = useNow();
 
@@ -206,8 +184,7 @@ export function Studio({
   }, []);
 
   useEffect(() => {
-    if (staged) {
-      // The staged home stands alone: no session is read and nothing is fetched.
+    if (staging) {
       return;
     }
     let active = true;
@@ -226,14 +203,10 @@ export function Studio({
           if (!active) {
             return;
           }
-          /* No agents is not an empty studio: it is the creation flow, which has its own route. */
-          if (fixture.agents.length === 0) {
-            router.replace("/studio/new");
-            return;
-          }
           setPreview(true);
           setAccess({ enabled: true, canManage: true, workspaceId: "preview" });
           setAgents(fixture.agents);
+          setLoaded(true);
           setCatalog(fixture.catalog);
           setOptions(fixture.options);
           /* The empty studio's fixture has neither, and indexing into it threw where the catch
@@ -252,17 +225,20 @@ export function Studio({
           router.replace("/signin");
           return;
         }
-        const account = await ensureProfile(supabase);
-        if (account.kind !== "ready") {
-          router.replace("/signup?complete=1");
-          return;
-        }
         /* The master wallet exists before any agent (spec §4.1): the profile, top right, shows it
            from the first visit. A person without a sub-organization — a sign-up closed at the
            passkey step, an account from before it was mandatory — creates it before anything else
-           renders. A read that fails for another reason propagates like every other load error. */
+           renders, and the profile is not even read until there is one: signup saves the handle
+           only after the wallet, and `ensureProfile` could otherwise write one ahead of it. Then a
+           wallet without a profile finishes signup at the handle step. A read that fails for
+           another reason propagates like every other load error. */
         const token = data.session.access_token;
-        const away = redirectFor(await readSubOrganization(() => readWallet(token)));
+        const wallet = await readSubOrganization(() => readWallet(token));
+        const account = wallet === null ? null : await ensureProfile(supabase);
+        const away = redirectFor({
+          wallet,
+          profile: account?.kind === "ready" ? account.profile : null,
+        });
         if (away) {
           if (active) {
             router.replace(away);
@@ -283,10 +259,8 @@ export function Studio({
           return;
         }
         setPasskeys(keys);
-        if (list.length === 0) {
-          router.replace("/studio/new");
-          return;
-        }
+        /* No agents lands on the empty home, not on /studio/new: the person explores first. */
+        setLoaded(true);
         setCatalog(cat);
         setOptions(opts);
         setAgentId(selectAgent(list, openAgent));
@@ -300,7 +274,7 @@ export function Studio({
     return () => {
       active = false;
     };
-  }, [router, loadAgents, staged, openAgent]);
+  }, [router, loadAgents, staging, openAgent]);
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
@@ -435,10 +409,9 @@ export function Studio({
     activity: counts.running
       ? { text: `${counts.running} RUNNING`, tint: "lime" }
       : { text: "", tint: "grey" },
-    profile: { text: "SAMPLE", tint: "amber" },
-    audience: { text: "PLANNED", tint: "grey" },
-    token: { text: "PLANNED", tint: "grey" },
   };
+  const badgeFor = (key: SectionKey) =>
+    isSoon(key) ? { text: "SOON", tint: "grey" } : badges[key];
 
   function go(next: View) {
     if (next === "picks" && !runs.find((run) => run.id === runId)?.decision) {
@@ -448,7 +421,27 @@ export function Studio({
     setMenu(null);
   }
 
-  if (section === "home" && agent) {
+  /* With no agent every section would be empty, so any section asked for lands on the empty home;
+     its Menu lists them disabled. */
+  const landing = studioLanding(loaded, agents, section);
+  if (landing === "empty") {
+    return (
+      <EmptyHome
+        passkeys={passkeys}
+        canManage={canManage}
+        preview={preview}
+        locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
+        error={error}
+        staged={stagedBrief}
+        onCreated={async (productId) => {
+          await loadAgents();
+          setAgentId(productId);
+        }}
+      />
+    );
+  }
+
+  if (landing === "home" && agent) {
     return (
       <Home
         key={agentId}
@@ -550,7 +543,7 @@ export function Studio({
                 type="button"
                 role="menuitem"
                 className={styles.menuItem}
-                disabled={!canManage || !newAgentGate.open}
+                disabled={!canManage || newAgentLock !== ""}
                 title={newAgentLock || undefined}
                 onClick={() => {
                   setMenu(null);
@@ -601,7 +594,7 @@ export function Studio({
           </button>
           {menu === "account" && (
             <div className={styles.menu} data-align="right" role="menu">
-              <Link href="/agents" className={styles.menuItem} role="menuitem">
+              <Link href={directory} className={styles.menuItem} role="menuitem">
                 <Icon name="globe" size={15} />
                 Explore the board
               </Link>
@@ -638,12 +631,12 @@ export function Studio({
                 {wide && <span className={styles.railLabel}>Home</span>}
               </button>
             </div>
-            {GROUPS.map((group) => (
+            {RAIL.map((group) => (
               <div key={group.title}>
                 {wide && <p className={styles.railTitle}>{group.title}</p>}
                 <div className={styles.railItems}>
                   {group.items.map((item) => {
-                    const badge = badges[item.key];
+                    const badge = badgeFor(item.key);
                     return (
                       <button
                         key={item.key}
@@ -674,11 +667,11 @@ export function Studio({
           <div className={styles.railFoot}>
             {wide && (
               <>
-                <Link href="/agents" className={styles.railLink}>
+                <Link href={directory} className={styles.railLink}>
                   <Icon name="users" size={15} />
                   Every agent
                 </Link>
-                <Link href="/leaderboard" className={styles.railLink}>
+                <Link href={leaderboard} className={styles.railLink}>
                   <Icon name="bars" size={15} />
                   Leaderboard
                 </Link>
@@ -736,20 +729,9 @@ export function Studio({
           )}
 
           {!agent ? (
-            <div className={styles.section} data-narrow="true">
-              <div className={styles.sectionHead}>
-                <h1>No agent yet</h1>
-              </div>
-              <p className={styles.stubBody}>
-                An agent is a standing brief plus the plugins it may reach. Create one and the
-                studio fills in around it: its runs, its decisions and the trace behind each.
-              </p>
-              <div className={styles.row}>
-                <Button disabled={!canManage} onClick={() => router.push("/studio/new")}>
-                  Create an agent
-                </Button>
-              </div>
-            </div>
+            /* Only while the agents are read, or when that read failed: none at all is the empty
+               home, above. */
+            !error && <p className={styles.stubBody}>Reading your agents…</p>
           ) : section === "overview" ? (
             <Overview
               agent={agent}
@@ -835,9 +817,9 @@ export function Studio({
             </>
           ) : section === "context" ? (
             <Context agent={agent} go={go} />
-          ) : section === "home" ? null : (
-            <Stub section={section} agent={agent} />
-          )}
+          ) : section !== "home" && isPanel(section) ? (
+            <Soon section={section} agent={agent} />
+          ) : null}
 
           {error && (
             <p role="alert" className={styles.mainAlert}>

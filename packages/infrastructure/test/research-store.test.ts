@@ -308,6 +308,50 @@ test("a config save keeps the stored spend limits; only updateSpend writes them"
   assert.deepEqual((await store.agent(scope)).config.spend, limits);
 });
 
+test("a config save keeps the stored brief and max leverage unless it carries a new brief", async (t) => {
+  const store = await setup(t);
+  const brief = {
+    thesis: "Injury news moves the books first.",
+    reads: ["espn.com"],
+    entersWhen: ["A starter is ruled out"],
+    exitsWhen: [],
+    never: [],
+  };
+  const first = await store.agent(scope);
+  const briefed = await store.updateConfig(scope, first.version, {
+    ...first.config,
+    brief,
+    maxLeverage: 2,
+  });
+  const withoutBrief = { ...briefed.config };
+  delete withoutBrief.brief;
+  delete withoutBrief.maxLeverage;
+
+  const saved = await store.updateConfig(scope, briefed.version, withoutBrief);
+
+  assert.deepEqual(saved.config.brief, brief);
+  assert.equal(saved.config.maxLeverage, 2);
+  assert.deepEqual((await store.agent(scope)).config.brief, brief);
+
+  const rewritten = { ...brief, thesis: "Weather moves totals." };
+  const changed = await store.updateConfig(scope, saved.version, {
+    ...withoutBrief,
+    brief: rewritten,
+    maxLeverage: 3,
+  });
+
+  assert.deepEqual(changed.config.brief, rewritten);
+  assert.equal(changed.config.maxLeverage, 3);
+  await assert.rejects(
+    store.updateConfig(scope, changed.version, {
+      ...withoutBrief,
+      brief: { ...brief, entersWhen: [] },
+    }),
+    { code: "INVALID_BRIEF" },
+  );
+  assert.deepEqual((await store.agent(scope)).config.brief, rewritten);
+});
+
 test("a config save on an agent without spend limits does not add them", async (t) => {
   const store = await setup(t);
   const before = await store.agent(scope);

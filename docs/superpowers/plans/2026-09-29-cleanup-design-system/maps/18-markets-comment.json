@@ -1,0 +1,6 @@
+[
+  {
+    "find": " * available: on light `--pk-ink-faint`, `--pk-ink-muted`, `--pk-ink-dim` and `--pk-ink-placeholder`\n * all resolve to #5A5F78,",
+    "replace": " * available: on light `--pk-ink-faint`, `--pk-ink-muted` and `--pk-ink-dim` all resolve to\n * #5A5F78,"
+  }
+]

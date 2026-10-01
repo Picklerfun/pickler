@@ -1,21 +1,18 @@
 "use client";
 
-import { Button } from "@pickler/ui";
+import { ErrorScreen } from "@/features/status/error-screen";
+import { StatusFrame } from "@/features/status/status-screen";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   return (
-    <main className="fallback" data-surface="light">
-      <p className="fallback-eyebrow">PICKLER</p>
-      <h1>We could not load the board.</h1>
-      <p>The data source did not answer. Try again in a moment.</p>
-      <Button variant="primary" mono onClick={reset}>
-        TRY AGAIN
-      </Button>
-    </main>
+    <StatusFrame foot="IF IT KEEPS HAPPENING, SEND US THE CODE ABOVE">
+      <ErrorScreen digest={error.digest} reset={reset} />
+    </StatusFrame>
   );
 }

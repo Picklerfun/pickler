@@ -1,38 +1,14 @@
 import type { AccentDto } from "@pickler/api-schema";
 
 /**
- * Each accent's fill, and the same fill as an `r,g,b` triple for the glows that need components
- * rather than a colour.
+ * The one place a token is handed to CSS through an inline custom property.
  *
- * `color` is written down twice on purpose — here and as `--pk-agent-<hue>-fill` in
- * packages/ui/src/styles.css — because `rgba()` cannot take a custom property as its first three
- * arguments. `accentVars` therefore paints from the token and only the triple comes from here, so
- * a value that drifts apart shows up as a glow that no longer matches its own fill.
- *
- * `cyan` is what drift looked like. It held #5AD8FF, which is in no token in the palette at all,
- * while its ground and its ink already took `indigo` below — so a cyan agent painted a cyan
- * tetromino with an indigo tint behind it, and the sign-up board was the screen that showed it.
- * It now holds indigo's, which is the colour the palette says this accent is.
+ * Which agent a screen shows is data, so its colour cannot be a class written ahead of time: the
+ * element gets `--accent` (the fill), `--accent-bg` and `--accent-ink` (the tint and the ink
+ * legible on it), each pointing at a palette token in packages/ui/src/styles.css. No colour value
+ * lives here. The static design check (scripts/design/source.mjs) lets this module do that and no
+ * other.
  */
-export const ACCENT_COLORS: Record<AccentDto, { color: string; rgb: string }> = {
-  lime: { color: "#C8F03A", rgb: "200,240,58" },
-  cyan: { color: "#5B3CE0", rgb: "91,60,224" },
-  amber: { color: "#FFC93F", rgb: "255,201,63" },
-  orange: { color: "#FF7A3D", rgb: "255,122,61" },
-  magenta: { color: "#FF5FA2", rgb: "255,95,162" },
-  violet: { color: "#9B7BFF", rgb: "155,123,255" },
-  blue: { color: "#5B8CFF", rgb: "91,140,255" },
-};
-
-export const ACCENT_ORDER: AccentDto[] = [
-  "lime",
-  "cyan",
-  "amber",
-  "orange",
-  "magenta",
-  "blue",
-  "violet",
-];
 
 /**
  * Which palette pair each accent takes.
@@ -57,21 +33,33 @@ const ACCENT_PALETTE: Record<AccentDto, string> = {
 };
 
 export function accentVars(accent: AccentDto): React.CSSProperties {
-  const { rgb } = ACCENT_COLORS[accent];
   const hue = ACCENT_PALETTE[accent];
   return {
-    // The token, not the hex beside it: the fill a screen paints has to be a colour the palette
-    // holds, or the design checks read it off the page as a literal someone typed — which is how
-    // `cyan` was found. The triple below is the same colour, and only exists because `rgba()`
-    // cannot be handed a custom property.
     "--accent": `var(--pk-agent-${hue}-fill)`,
-    "--accent-rgb": rgb,
     "--accent-bg": `var(--pk-agent-${hue}-bg)`,
     "--accent-ink": `var(--pk-agent-${hue}-ink)`,
   } as React.CSSProperties;
 }
 
-/** Same custom properties for colors outside the accent palette. */
-export function colorVars(color: string, rgb: string): React.CSSProperties {
-  return { "--accent": color, "--accent-rgb": rgb } as React.CSSProperties;
+/**
+ * A fill for something that is not an agent: the application form's pixels. The seven palette
+ * hues, and the two inks for an answer that has no hue of its own.
+ */
+export type Swatch =
+  "lime" | "indigo" | "amber" | "orange" | "magenta" | "violet" | "blue" | "ink" | "muted";
+
+const SWATCH_FILL: Record<Swatch, string> = {
+  lime: "--pk-agent-lime-fill",
+  indigo: "--pk-agent-indigo-fill",
+  amber: "--pk-agent-amber-fill",
+  orange: "--pk-agent-orange-fill",
+  magenta: "--pk-agent-magenta-fill",
+  violet: "--pk-agent-violet-fill",
+  blue: "--pk-agent-blue-fill",
+  ink: "--pk-ink",
+  muted: "--pk-ink-muted",
+};
+
+export function swatchVars(swatch: Swatch): React.CSSProperties {
+  return { "--accent": `var(${SWATCH_FILL[swatch]})` } as React.CSSProperties;
 }

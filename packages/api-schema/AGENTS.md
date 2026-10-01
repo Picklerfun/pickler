@@ -84,6 +84,7 @@ resolves through node's ESM loader regardless of the importer's own module type.
 without a linked wallet) and two decided locks, `canSchedule` and `canCreateAnother`
 (`lockSchema`: `ok` and a `reason` from `LOCK_REASONS`, null when open). The screen shows the
 reason; it never re-derives the rule. `LOCK_REASONS` mirrors core's `features/studio/locks.ts`.
+`canCreateAnother` closes with `unfunded_agent` or, at three private drafts, `draft_limit`.
 The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (false today).
 `spendLimitsSchema` is `agentConfigSchema.spend`, bounded like core's `SPEND_BOUNDS`, and requires
 that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of

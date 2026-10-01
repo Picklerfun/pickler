@@ -7,6 +7,7 @@ import {
   type Market,
   type MarketData,
   type OrderBook,
+  type SpendLimits,
 } from "@pickler/core";
 import { pluginEnabled, requireTool } from "@pickler/core";
 import { nflMarketEligible } from "@pickler/core";
@@ -58,7 +59,7 @@ export interface PaperRepository {
     tenantId: string,
     runId: string,
     key: string,
-  ): Promise<{ order: PaperOrder; owned: boolean }>;
+  ): Promise<{ order: PaperOrder; owned: boolean; budgetAusd: number }>;
   get(tenantId: string, runId: string): Promise<PaperOrder>;
   guard(order: PaperOrder): Promise<{ run: RunRecord; agent: AgentRecord }>;
   finish(
@@ -67,6 +68,30 @@ export interface PaperRepository {
     fill: PaperFill | null,
     reason: string | null,
   ): Promise<PaperOrder>;
+}
+/** The virtual bankroll one paper order spends: every order is a full-budget buy (§3.3). */
+export const PAPER_BUDGET_AUSD = 10;
+const DAY_MS = 86_400_000;
+
+/** Midnight UTC of the day `now` falls in; the daily cap sums orders from here. */
+export function utcDayStart(now: number): number {
+  return now - (((now % DAY_MS) + DAY_MS) % DAY_MS);
+}
+
+/** One order's notional: the paper budget, capped at the agent's per-trade limit when it has one. */
+export function paperBudgetAusd(spend: SpendLimits | undefined): number {
+  return spend ? Math.min(PAPER_BUDGET_AUSD, spend.perCallAusd) : PAPER_BUDGET_AUSD;
+}
+
+/** Refuses an order that would take the UTC day's paper spend past the agent's daily limit. */
+export function assertPaperDailyCap(
+  spend: SpendLimits | undefined,
+  spentTodayAusd: number,
+  budgetAusd: number,
+): void {
+  if (spend && spentTodayAusd + budgetAusd > spend.perDayAusd + 1e-9) {
+    throw new PilotError("DAILY_CAP_REACHED", "Today's paper trades reached its daily cap");
+  }
 }
 export function assertPaperAllowed(
   run: Pick<RunRecord, "status" | "decision" | "configVersion">,
@@ -139,13 +164,14 @@ function fixed(value: string): bigint {
 function format(value: bigint): string {
   return `${value / SCALE}.${(value % SCALE).toString().padStart(8, "0")}`;
 }
-/** Deterministic full-budget fill. Integer arithmetic, rounded per-level fee estimates. */
+/** Deterministic full-budget fill at the given budget. Integer arithmetic, rounded per-level fee estimates. */
 export function simulatePaperBuy(
   market: Market,
   book: OrderBook,
   conditions: PaperConditions,
   limit: string,
   now: number,
+  budgetAusd: number = PAPER_BUDGET_AUSD,
 ): { fill: PaperFill | null; reason: string | null } {
   if (
     book.outcomeId !== conditions.outcomeId ||
@@ -169,7 +195,10 @@ export function simulatePaperBuy(
   const tick = fixed(conditions.tickSize);
   const rate = fixed(conditions.feeRate);
   const cap = fixed(limit);
-  const budget = 10n * SCALE;
+  if (!(budgetAusd > 0) || budgetAusd > PAPER_BUDGET_AUSD) {
+    throw new PilotError("PAPER_INVALID_CONDITIONS", "Paper budget outside 0–10 AUSD");
+  }
+  const budget = fixed(budgetAusd.toFixed(8));
   if (
     !tick ||
     tick >= SCALE ||
@@ -261,7 +290,9 @@ export function createPaperService(
   return {
     get: (tenantId: string, runId: string) => repository.get(tenantId, runId),
     async create(tenantId: string, runId: string, key: string): Promise<PaperOrder> {
-      const { order, owned } = await repository.begin(tenantId, runId, key);
+      // The fill spends exactly the budget `begin` admitted under the daily cap, never a limit
+      // raised after it.
+      const { order, owned, budgetAusd } = await repository.begin(tenantId, runId, key);
       if (!owned) {
         return order;
       }
@@ -292,7 +323,14 @@ export function createPaperService(
         if (configuredMarketExclusion(market, run.config, now())) {
           throw new PilotError("PAPER_MARKET_INELIGIBLE", "Event eligibility expired");
         }
-        const result = simulatePaperBuy(market, book, conditions, run.decision!.limitPrice!, now());
+        const result = simulatePaperBuy(
+          market,
+          book,
+          conditions,
+          run.decision!.limitPrice!,
+          now(),
+          budgetAusd,
+        );
         return await repository.finish(
           order,
           result.fill ? "filled" : "not_filled",

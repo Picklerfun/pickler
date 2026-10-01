@@ -96,19 +96,24 @@ export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
   /**
    * Claiming is the first thing on the marketplace that needs an account, so this is where the
    * signature is asked for — inside an action the person started, rather than sprung on them when
-   * they connected. If they close the prompt, `signInWithWallet` answers null with nothing to say,
+   * they connected. If they close the prompt, `signInWithWallet` answers with no error to show,
    * and the panel simply stays as it was.
    */
   async function claim() {
     setBusy(true);
     setFailed(null);
     try {
-      const token = await wallet.signInWithWallet();
-      if (!token) {
-        setFailed(wallet.sessionError);
+      const signedIn = await wallet.signInWithWallet();
+      if ("error" in signedIn) {
+        // From the result, not from `wallet.sessionError`: that is the value of the render this
+        // function was made in, from before the sign-in was even asked for.
+        setFailed(signedIn.error);
         return;
       }
-      await claimHandle({ handle: handle.trim().toLowerCase(), displayName: handle.trim() }, token);
+      await claimHandle(
+        { handle: handle.trim().toLowerCase(), displayName: handle.trim() },
+        signedIn.token,
+      );
       onClaimed?.();
     } catch (caught) {
       setFailed(caught instanceof Error ? caught.message : "That handle could not be claimed");

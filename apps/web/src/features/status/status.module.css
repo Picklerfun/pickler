@@ -1,0 +1,363 @@
+/* The secondary states (canvas "Pickler Error States", turn 1): not found, our failure, offline,
+ * wrong network, no results. One layout for all of them — an eyebrow, a display headline whose full
+ * stop carries the state's tone, one sentence, the ways out — so a person who has seen one knows
+ * how to read the next. Every colour is a token: the same screen reads on either surface. */
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--pk-rule);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--pk-ink);
+  font: 700 17px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--pk-panel);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+.frameFoot {
+  margin: 0;
+  padding: 0 24px 22px 88px;
+  font: 600 10.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* The state itself. */
+.screen {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 56px 88px;
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 680px;
+}
+
+.eyebrow {
+  margin: 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+/* The tone is the headline's full stop, and — except on the plain state (not found, no match) —
+ * the eyebrow above it too. Written out per tone: the design check wants tokens read directly. */
+.title[data-inside] {
+  font-size: clamp(44px, 7vw, 88px);
+}
+
+/* The fill, not the ink: the canvas draws this stop the same lime on white and on night blue.
+ * It is a mark, not text, so it carries no contrast duty. */
+.stop {
+  color: var(--pk-lime);
+}
+
+[data-tone="loss"] .stop,
+[data-tone="loss"] .eyebrow {
+  color: var(--pk-state-loss-ink);
+}
+
+[data-tone="cool"] .stop,
+[data-tone="cool"] .eyebrow {
+  color: var(--pk-state-cool-ink);
+}
+
+[data-tone="caution"] .stop,
+[data-tone="caution"] .eyebrow {
+  color: var(--pk-state-caution-ink);
+}
+
+.title {
+  margin: 0;
+  font: 700 clamp(52px, 9vw, 112px) / 0.88 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+
+.body {
+  margin: 0;
+  max-width: 520px;
+  font: 500 16.5px/1.45 var(--pk-font);
+  letter-spacing: -0.015em;
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+
+.body b {
+  font-weight: 500;
+  color: var(--pk-ink);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions {
+  padding-top: 6px;
+}
+
+/* The address that failed, struck through where it went wrong. */
+.address {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--pk-panel);
+  font: 600 12px/1.2 var(--pk-font);
+  color: var(--pk-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.struck {
+  color: var(--pk-state-loss-ink);
+  text-decoration: line-through;
+}
+
+/* Where the wallet is now, which it has to leave. */
+.was {
+  text-decoration: line-through;
+}
+
+/* Where the wallet has to go. */
+.target {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px 7px 8px;
+  border-radius: 999px;
+  background: var(--pk-state-good-bg);
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-state-good-ink);
+}
+
+.target img {
+  border-radius: 5px;
+}
+
+/* The error code a person can send us. */
+.code {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--pk-state-loss-bg);
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-state-loss-ink);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pk-panel);
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  color: var(--pk-ink);
+}
+
+/* A choice the screen offers instead: a near agent, a beat. */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 7px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.choice:hover {
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
+}
+
+.choicePlain {
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.choiceNote {
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-muted);
+}
+
+.choiceScore {
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-violet-ink);
+}
+
+/* The screen's own small print, under the ways out: what the rule is, what we never ask for. */
+.foot {
+  margin: 14px 0 0;
+  font: 600 10.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+.search {
+  display: flex;
+  gap: 8px;
+  max-width: 560px;
+  padding-top: 6px;
+}
+
+.searchField {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 8px 0 16px;
+  border-radius: 999px;
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+}
+
+.searchField input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+  border: none;
+  background: transparent;
+  font: 600 14px/1.2 var(--pk-font);
+  color: var(--pk-ink);
+  outline: none;
+}
+
+.searchField input::placeholder {
+  color: var(--pk-ink-faint);
+}
+
+.searchField:focus-within {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* A dot that blinks while something is being tried. */
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: pulse 1s steps(1, end) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.note {
+  font: 600 11px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+.mascot {
+  position: absolute;
+  top: 50%;
+  right: 120px;
+  width: 220px;
+  height: auto;
+  margin-top: -92px;
+  pointer-events: none;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .mascot {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .screen {
+    padding: 40px 16px;
+  }
+
+  .frameFoot {
+    padding: 0 16px 22px;
+  }
+
+  .search {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot,
+  .pulse {
+    animation: none;
+  }
+}

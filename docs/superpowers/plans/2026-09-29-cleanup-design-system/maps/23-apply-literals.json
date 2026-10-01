@@ -1,0 +1,115 @@
+[
+  {
+    "find": "/* Accent-driven pixel. Set --accent and --accent-rgb inline. */",
+    "replace": "/* Accent-driven pixel. `swatchVars` sets --accent inline. */"
+  },
+  {
+    "find": "  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);\n",
+    "replace": "  box-shadow: 0 0 12px var(--accent);\n",
+    "count": 2
+  },
+  {
+    "find": "  background: rgba(245, 246, 255, 0.06);\n  backdrop-filter: blur(16px);\n  border: 1px solid rgba(245, 246, 255, 0.22);\n  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);\n",
+    "replace": "  background: var(--pk-panel);\n  backdrop-filter: blur(16px);\n  border: 1px solid var(--pk-rule-strong);\n  box-shadow: inset 0 1px 0 var(--pk-lit-edge);\n"
+  },
+  {
+    "find": "/* Shape, type and glow come from the system button; the flow keeps the disabled state the canvas\n   draws, and the share action its own size. */",
+    "replace": "/* Shape, type, glow and the disabled state come from the system button; the share action keeps\n   its own size. */"
+  },
+  {
+    "find": ".primaryButton:disabled {\n  opacity: 1;\n  background: rgba(245, 246, 255, 0.08);\n  color: var(--pk-ink-faint);\n  border-color: rgba(245, 246, 255, 0.2);\n  box-shadow: none;\n  cursor: not-allowed;\n}\n\n",
+    "replace": ""
+  },
+  {
+    "find": "  background: var(--pk-bg);\n  border-color: rgba(245, 246, 255, 0.3);\n  font-size: 13px;\n",
+    "replace": "  background: var(--pk-bg);\n  font-size: 13px;\n"
+  },
+  {
+    "find": "  filter: drop-shadow(0 0 12px rgba(90, 216, 255, 0.55));\n",
+    "replace": "  filter: drop-shadow(0 0 12px var(--pk-cyan-edge));\n"
+  },
+  {
+    "find": "  background: rgba(90, 216, 255, 0.1);\n  border: 1px solid rgba(90, 216, 255, 0.4);\n",
+    "replace": "  background: var(--pk-state-cool-bg);\n  border: 1px solid var(--pk-cyan-edge);\n"
+  },
+  {
+    "find": "  background: rgba(245, 246, 255, 0.06);\n  backdrop-filter: blur(16px);\n  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);\n",
+    "replace": "  background: var(--pk-panel);\n  backdrop-filter: blur(16px);\n  box-shadow: inset 0 1px 0 var(--pk-lit-edge);\n"
+  },
+  {
+    "find": ".cardDone {\n  border-color: rgba(200, 240, 58, 0.45);\n",
+    "replace": ".cardDone {\n  border-color: var(--pk-lime-edge);\n"
+  },
+  {
+    "find": ".cardError {\n  border-color: rgba(255, 95, 162, 0.6);\n",
+    "replace": ".cardError {\n  border-color: var(--pk-magenta-edge);\n"
+  },
+  {
+    "find": "  width: auto;\n  border-color: rgba(200, 240, 58, 0.45);\n",
+    "replace": "  width: auto;\n  border-color: var(--pk-lime-edge);\n"
+  },
+  {
+    "find": "  border: 1px solid rgba(245, 246, 255, 0.24);\n  font: 600 14px/1 var(--pk-font);\n",
+    "replace": "  border: 1px solid var(--pk-rule-strong);\n  font: 600 14px/1 var(--pk-font);\n"
+  },
+  {
+    "find": ".chip:hover {\n  border-color: rgba(245, 246, 255, 0.6);\n",
+    "replace": ".chip:hover {\n  border-color: var(--pk-border-strong);\n"
+  },
+  {
+    "find": "  height: 12px;\n  border-color: rgba(255, 255, 255, 0.35);\n",
+    "replace": "  height: 12px;\n  border-color: var(--pk-lit-edge);\n"
+  },
+  {
+    "find": ".chip[aria-checked=\"true\"] {\n  background: rgba(245, 246, 255, 0.14);\n",
+    "replace": ".chip[aria-checked=\"true\"] {\n  background: var(--pk-panel-3);\n"
+  },
+  {
+    "find": "  background: rgba(245, 246, 255, 0.05);\n  backdrop-filter: blur(18px);\n  border: 1px solid rgba(245, 246, 255, 0.22);\n  box-shadow:\n    inset 0 1px 0 rgba(255, 255, 255, 0.26),\n",
+    "replace": "  background: var(--pk-panel);\n  backdrop-filter: blur(18px);\n  border: 1px solid var(--pk-rule-strong);\n  box-shadow:\n    inset 0 1px 0 var(--pk-lit-edge),\n"
+  },
+  {
+    "find": "  border-bottom: 1px solid rgba(245, 246, 255, 0.18);\n",
+    "replace": "  border-bottom: 1px solid var(--pk-rule-strong);\n"
+  },
+  {
+    "find": "  border: 1px solid rgba(245, 246, 255, 0.2);\n  background-color: var(--pk-bg);\n  background-image:\n    linear-gradient(rgba(245, 246, 255, 0.07) 1px, transparent 1px),\n    linear-gradient(90deg, rgba(245, 246, 255, 0.07) 1px, transparent 1px);\n",
+    "replace": "  border: 1px solid var(--pk-rule-strong);\n  background-color: var(--pk-bg);\n  background-image:\n    linear-gradient(var(--pk-rule) 1px, transparent 1px),\n    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);\n"
+  },
+  {
+    "find": "    inset 0 2px 0 rgba(255, 255, 255, 0.45),\n    0 0 12px rgba(var(--accent-rgb), 0.6);\n",
+    "replace": "    inset 0 2px 0 var(--pk-glow-rim),\n    0 0 12px var(--accent);\n"
+  },
+  {
+    "find": "  background: rgba(155, 123, 255, 0.14);\n  backdrop-filter: blur(20px);\n  border: 1px solid rgba(245, 246, 255, 0.3);\n  box-shadow:\n    inset 0 1px 0 rgba(255, 255, 255, 0.35),\n    0 0 80px rgba(155, 123, 255, 0.28);\n",
+    "replace": "  background: var(--pk-state-info-bg);\n  backdrop-filter: blur(20px);\n  border: 1px solid var(--pk-border-strong);\n  box-shadow:\n    inset 0 1px 0 var(--pk-lit-edge),\n    0 0 80px var(--pk-violet-edge);\n"
+  },
+  {
+    "find": "  box-shadow: 0 0 10px rgba(200, 240, 58, 0.9);\n",
+    "replace": "  box-shadow: 0 0 10px var(--pk-lime);\n"
+  },
+  {
+    "find": "  background: var(--pk-bg);\n  border: 1px solid rgba(245, 246, 255, 0.24);\n  border-radius: var(--pk-radius-sm);\n",
+    "replace": "  background: var(--pk-bg);\n  border: 1px solid var(--pk-rule-strong);\n  border-radius: var(--pk-radius-sm);\n"
+  },
+  {
+    "find": "  background: rgba(200, 240, 58, 0.12);\n  border-color: rgba(200, 240, 58, 0.4);\n",
+    "replace": "  background: var(--pk-state-good-bg);\n  border-color: var(--pk-lime-edge);\n"
+  },
+  {
+    "find": "  background: rgba(90, 216, 255, 0.12);\n  border-color: rgba(90, 216, 255, 0.4);\n",
+    "replace": "  background: var(--pk-state-cool-bg);\n  border-color: var(--pk-cyan-edge);\n"
+  },
+  {
+    "find": "  border-bottom: 1px solid rgba(245, 246, 255, 0.14);\n",
+    "replace": "  border-bottom: 1px solid var(--pk-rule-strong);\n"
+  },
+  {
+    "find": "    inset 0 2px 0 rgba(255, 255, 255, 0.4),\n    0 0 34px rgba(200, 240, 58, 0.45);\n",
+    "replace": "    inset 0 2px 0 var(--pk-glow-rim),\n    0 0 34px var(--pk-glow-lime-strong);\n"
+  },
+  {
+    "find": "  background: var(--pk-bg);\n  border: 1px solid rgba(245, 246, 255, 0.24);\n}\n",
+    "replace": "  background: var(--pk-bg);\n  border: 1px solid var(--pk-rule-strong);\n}\n"
+  }
+]

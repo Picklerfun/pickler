@@ -30,12 +30,12 @@ export const leverageChoices = (market: Pick<PerpMarketDto, "maxLeverage">) =>
   LEVERAGE_OPTIONS.filter((choice) => choice <= market.maxLeverage);
 
 /** The mark at which the position is liquidated, isolated margin and no additions. */
-export function liquidationPrice(mark: number, side: Side, leverage: number): number {
+function liquidationPrice(mark: number, side: Side, leverage: number): number {
   const distance = 1 / leverage - PERP_LIMITS_DTO.maintenanceMargin;
   return mark * (1 + (side === "long" ? -distance : distance));
 }
 
-export interface Quote {
+interface Quote {
   side: Side;
   /** Price the take profit sits at. */
   target: number;
