@@ -538,24 +538,23 @@ test("a wallet whose account is refused leaves no wallets row behind", async (t)
   assert.equal(rowCount, 0);
 });
 
-test("an orphan wallet is found before its link and not after; the link decides first agent and findAgentWallet", async (t) => {
+test("an unlinked wallet is found before its link and not after; the link decides first agent and findAgentWallet", async (t) => {
   const { store, custody } = await setup(t);
   const person = await registered(custody);
   const wallet = agentWallet(person.userId, person.subOrganizationId);
   await custody.saveWallet(wallet);
-  // Someone else's wallet under the same name must never be offered.
+  // Someone else's unlinked wallet must never be offered.
   const stranger = await registered(custody);
   await custody.saveWallet(agentWallet(stranger.userId, stranger.subOrganizationId));
 
-  assert.deepEqual(await custody.findOrphanWallet(person.userId, "halftime"), {
+  assert.deepEqual(await custody.findUnlinkedWallet(person.userId), {
     walletId: wallet.walletId,
     address: wallet.address,
     approvedPolicyIds: null,
   });
-  assert.equal(await custody.findOrphanWallet(person.userId, "another"), null);
-  // Rules approved before the attempt stopped travel with the orphan, so a retry can skip them.
+  // Rules approved before the attempt stopped travel with the wallet, so a retry can skip them.
   await custody.saveApprovedPolicies(person.userId, wallet.walletId, ["p1", "p2", "p3"]);
-  assert.deepEqual((await custody.findOrphanWallet(person.userId, "halftime"))?.approvedPolicyIds, [
+  assert.deepEqual((await custody.findUnlinkedWallet(person.userId))?.approvedPolicyIds, [
     "p1",
     "p2",
     "p3",
@@ -570,7 +569,7 @@ test("an orphan wallet is found before its link and not after; the link decides 
     [agentId, wallet.walletId, ["p1", "p2"]],
   );
 
-  assert.equal(await custody.findOrphanWallet(person.userId, "halftime"), null);
+  assert.equal(await custody.findUnlinkedWallet(person.userId), null);
   assert.equal(await custody.hasLinkedAgentWallet(person.userId), true);
   assert.equal(await custody.hasLinkedAgentWallet(stranger.userId), false);
   assert.deepEqual(await custody.findAgentWallet(agentId), {

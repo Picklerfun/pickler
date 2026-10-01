@@ -349,6 +349,71 @@ test("inspectNativeTransfer refuses calldata, a signature, an access list and an
   }
 });
 
+test("inspectNativeTransfer refuses a contract creation, value with data, and EIP-7702 or EIP-4844 types", () => {
+  const { to: _to, ...untargeted } = NATIVE;
+  void _to;
+  const cases: [string, string][] = [
+    ["contract creation", serializeTransaction({ ...untargeted, data: "0x6000" })],
+    ["value with data", serializeTransaction({ ...NATIVE, data: "0x00" })],
+    [
+      "eip7702",
+      serializeTransaction({
+        type: "eip7702",
+        chainId: 10143,
+        nonce: 1,
+        to: TO as Hex,
+        value: 5n,
+        gas: 21_000n,
+        maxFeePerGas: 3n,
+        maxPriorityFeePerGas: 1n,
+        authorizationList: [{ address: FROM as Hex, chainId: 10143, nonce: 0, ...SIGNATURE }],
+      }),
+    ],
+    [
+      "eip4844",
+      serializeTransaction({
+        type: "eip4844",
+        chainId: 10143,
+        nonce: 1,
+        to: TO as Hex,
+        value: 5n,
+        gas: 21_000n,
+        maxFeePerGas: 3n,
+        maxPriorityFeePerGas: 1n,
+        maxFeePerBlobGas: 1n,
+        blobVersionedHashes: [`0x01${"00".repeat(31)}` as Hex],
+      }),
+    ],
+  ];
+  for (const [name, raw] of cases) {
+    assert.match(raw, /^0x0[234]/, `${name} serialized`);
+    assert.equal(inspectNativeTransfer(raw), null, name);
+  }
+});
+
+test("a non-canonical encoding of the same plain transfer is refused", () => {
+  // The NATIVE fields by hand, with the nonce encoded as 0x0001 instead of 0x01.
+  const fields = (nonce: Hex) =>
+    `0x02${toRlp([
+      toHex(10143),
+      nonce,
+      toHex(1n),
+      toHex(3n),
+      toHex(21_000n),
+      TO as Hex,
+      toHex(5n),
+      "0x",
+      [],
+    ]).slice(2)}` as Hex;
+  const canonical = fields("0x01");
+  const padded = fields("0x0001");
+  assert.equal(canonical, serializeTransaction(NATIVE));
+  assert.equal(parseTransaction(padded).nonce, 1);
+
+  assert.notEqual(inspectNativeTransfer(canonical), null);
+  assert.equal(inspectNativeTransfer(padded), null);
+});
+
 test("a plain transfer is built from the pending nonce, the chain's fees and a padded estimate of the value move", async () => {
   const { rpc, calls } = fakeRpc({ ...healthy, eth_estimateGas: "0x5208" }); // 21_000
 

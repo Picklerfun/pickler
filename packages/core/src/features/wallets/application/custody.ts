@@ -25,6 +25,7 @@ import {
   DepositNonceError,
   DepositsUnavailableError,
   InsufficientFundsError,
+  InsufficientGasError,
   InvalidDepositAmountError,
   InvalidTransferError,
   isDepositAmount,
@@ -339,16 +340,18 @@ export function createCustodyService(deps: CustodyServiceDeps) {
   }
 
   /**
-   * What every transfer step needs, refused in the same order for prepare and confirm: a positive
-   * amount of AUSD or MON, exactly one side the master, a composed chain and balance reader, the
-   * person's master wallet (`turnkey_orgs.master_wallet_id`), and the other side one of this
+   * Who a transfer is between, refused in the same order for prepare and confirm: AUSD or MON,
+   * wallet ids as strings, a positive amount, exactly one side the master, a composed AUSD chain,
+   * the person's master wallet (`turnkey_orgs.master_wallet_id`), and the other side one of this
    * person's own `kind='agent'` wallets — never a wallet id taken on trust, and never the master's
-   * own id. Then the source must hold the amount. Confirm reads that balance again, so a balance
-   * that dropped since prepare is refused there too.
+   * own id. Balances are not read here: only prepare checks them (`assertCanSend`).
    */
-  async function transferContext(userId: string, request: TransferRequest) {
+  async function transferParties(userId: string, request: TransferRequest) {
     if (request.token !== "AUSD" && request.token !== "MON") {
       throw new InvalidTransferError("A transfer moves AUSD or MON");
+    }
+    if (typeof request.from !== "string" || typeof request.to !== "string") {
+      throw new InvalidTransferError("A transfer names its wallets");
     }
     if (typeof request.amount !== "bigint" || request.amount <= 0n) {
       throw new InvalidTransferError("The amount must be more than zero");
@@ -359,8 +362,8 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       );
     }
     const chain = deps.deposits;
-    const balances = deps.balances;
-    if (!chain || !balances) {
+    // AUSD amounts are micro-AUSD: a token of any other precision would move the wrong amount.
+    if (!chain || chain.decimals !== 6) {
       throw new DepositsUnavailableError();
     }
     const account = await deps.repository.findByUserId(userId);
@@ -375,12 +378,33 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     const master = { walletId: account.masterWalletId, address: account.address };
     const source = request.from === "master" ? master : agent;
     const target = request.from === "master" ? agent : master;
-    const held = await balances.read(source.address);
-    const available = request.token === "AUSD" ? held.ausdMicro : held.monWei;
-    if (available === null || available < request.amount) {
-      throw new InsufficientFundsError();
-    }
     return { chain, account, source, target };
+  }
+
+  /**
+   * Prepare only, so the person learns before stamping: the source holds the amount and, from the
+   * transaction just built, the MON its fee can reach (gas limit × max fee, plus the amount for a
+   * MON transfer). Confirm does not read balances again: the chain refuses an overdraft, and a
+   * repeated confirm must reach its recorded-hash check whatever the balance is by then.
+   */
+  function assertCanSend(
+    chain: DepositChain,
+    held: { monWei: bigint | null; ausdMicro: bigint | null },
+    request: TransferRequest,
+    unsignedTransaction: string,
+  ): void {
+    const built =
+      request.token === "AUSD"
+        ? chain.inspectTransfer(unsignedTransaction)
+        : chain.inspectNativeTransfer(unsignedTransaction);
+    if (!built) {
+      throw new Error("The chain built a transfer it cannot read back");
+    }
+    const fee = built.gas * built.maxFeePerGas;
+    const monNeeded = request.token === "MON" ? request.amount + fee : fee;
+    if (held.monWei === null || held.monWei < monNeeded) {
+      throw new InsufficientGasError();
+    }
   }
 
   /**
@@ -389,6 +413,9 @@ export function createCustodyService(deps: CustodyServiceDeps) {
    * signer's pending nonce is a gap: it would sit queued behind a transaction nobody sent. At or
    * below it flows on: a repeated confirm of a sent transfer is found by its hash afterwards
    * (409), or the node already holds it and it is recorded, or the node refuses it.
+   *
+   * An agent wallet's nonce is live: its agent may send from it between a pull-back's prepare and
+   * confirm, and the node then refuses the stamped nonce as too low; the person prepares again.
    */
   async function checkFeesAndNonce(
     chain: DepositChain,
@@ -974,12 +1001,21 @@ export function createCustodyService(deps: CustodyServiceDeps) {
      * passkey stamps with the source as `signWith`. Like a deposit, nothing is kept here.
      */
     async prepareTransfer(userId: string, request: TransferRequest): Promise<UnsignedActivity> {
-      const { chain, account, source, target } = await transferContext(userId, request);
+      const { chain, account, source, target } = await transferParties(userId, request);
+      if (!deps.balances) {
+        throw new DepositsUnavailableError();
+      }
+      const held = await deps.balances.read(source.address);
+      const available = request.token === "AUSD" ? held.ausdMicro : held.monWei;
+      if (available === null || available < request.amount) {
+        throw new InsufficientFundsError();
+      }
       const move = { from: source.address, to: target.address, amount: request.amount };
       const unsignedTransaction =
         request.token === "AUSD"
           ? await chain.prepareTransfer(move)
           : await chain.prepareNativeTransfer(move);
+      assertCanSend(chain, held, request, unsignedTransaction);
       return deps.agentActivities.signTransaction({
         subOrganizationId: account.subOrganizationId,
         signWith: source.address,
@@ -988,17 +1024,18 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     /**
-     * Step two: the same context again (ownership and the source's balance re-read), the stamped
+     * Step two: the same parties again (ownership re-checked, balances not re-read), the stamped
      * transfer through `checkStampedTransfer`, then the recorded-hash check, the broadcast, both
      * balances forgotten, and the receipt in `wallets.transfers`. A broadcast that fails records
-     * nothing; a record that fails after a broadcast is reported, as a deposit's is.
+     * nothing; a record that fails after a broadcast is reported, as a deposit's is, and a retry
+     * of the same stamp records it (the node already holds the transaction).
      */
     async confirmTransfer(
       userId: string,
       request: TransferRequest,
       signed: SignedActivityRequest,
     ): Promise<{ txHash: string }> {
-      const { chain, account, source, target } = await transferContext(userId, request);
+      const { chain, account, source, target } = await transferParties(userId, request);
       const { signedTransaction } = await checkStampedTransfer({
         chain,
         subOrganizationId: account.subOrganizationId,

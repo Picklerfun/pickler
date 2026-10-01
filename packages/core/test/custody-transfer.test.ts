@@ -10,6 +10,7 @@ import {
   DepositNonceError,
   DepositsUnavailableError,
   InsufficientFundsError,
+  InsufficientGasError,
   InvalidTransferError,
   SignedTransactionMismatchError,
   TransferAlreadyRecordedError,
@@ -79,6 +80,8 @@ const decodeNative = (raw: string): NativeTransferInspection | null => {
 
 function fakes(options: { walletOwner?: string } = {}) {
   const state = {
+    /** Whose `wal-agent` is: another person's from the moment this changes. */
+    walletOwner: options.walletOwner ?? USER,
     balances: {} as Record<string, Balances>,
     transfers: [] as Parameters<AgentWalletRepository["saveTransfer"]>[0][],
     forgotten: [] as string[],
@@ -108,16 +111,15 @@ function fakes(options: { walletOwner?: string } = {}) {
     },
   } as unknown as CustodyRepository;
 
-  const owner = options.walletOwner ?? USER;
   const agentWallets = {
     // Like the store: only a kind='agent' wallet of this person's, never the master.
     async findOwnedAgentWallet(userId: string, walletId: string) {
-      return userId === owner && walletId === "wal-agent"
+      return userId === state.walletOwner && walletId === "wal-agent"
         ? { walletId, address: AGENT_ADDRESS }
         : null;
     },
     async listAgentWallets(userId: string) {
-      return userId === owner ? state.summaries : [];
+      return userId === state.walletOwner ? state.summaries : [];
     },
     async saveTransfer(input: Parameters<AgentWalletRepository["saveTransfer"]>[0]) {
       if (state.saveFails) {
@@ -586,17 +588,109 @@ test("a stamped nonce above the source's pending nonce is refused before forward
   assert.equal(f.state.forwards.length, 0);
 });
 
-test("a balance that dropped below the amount since prepare is refused at confirm", async () => {
+test("a repeated confirm after the balance dropped is still TransferAlreadyRecordedError", async () => {
   const f = funded();
   const service = createCustodyService(deps(f));
   const unsigned = await service.prepareTransfer(USER, FUND_MON);
+  await service.confirmTransfer(USER, FUND_MON, stamped(unsigned));
+  // Sent: the master holds less now, as the chain would show.
   f.state.balances[MASTER] = { monWei: 1n, ausdMicro: 0n };
 
   await assert.rejects(
     service.confirmTransfer(USER, FUND_MON, stamped(unsigned)),
-    InsufficientFundsError,
+    TransferAlreadyRecordedError,
+  );
+  assert.equal(f.state.broadcasts.length, 1);
+  assert.equal(f.state.transfers.length, 1);
+});
+
+test("a retry after a failed save records the transfer the node already holds", async () => {
+  const f = funded();
+  const service = createCustodyService(deps(f));
+  const unsigned = await service.prepareTransfer(USER, FUND_MON);
+  f.state.saveFails = new Error("connection terminated");
+  await assert.rejects(service.confirmTransfer(USER, FUND_MON, stamped(unsigned)));
+  f.state.saveFails = null;
+  f.state.balances[MASTER] = { monWei: 1n, ausdMicro: 0n };
+
+  // The fake answers the hash again, as broadcastTransaction does for a transaction it holds.
+  const { txHash } = await service.confirmTransfer(USER, FUND_MON, stamped(unsigned));
+
+  assert.equal(txHash, HASH);
+  assert.equal(f.state.transfers.length, 1);
+  assert.equal(f.state.transfers[0]?.txHash, HASH);
+});
+
+test("ownership is checked again at confirm: a pull-back from a wallet no longer the caller's is refused", async () => {
+  const f = funded();
+  const service = createCustodyService(deps(f));
+  const unsigned = await service.prepareTransfer(USER, PULL_AUSD);
+  f.state.walletOwner = "someone-else";
+
+  await assert.rejects(
+    service.confirmTransfer(USER, PULL_AUSD, stamped(unsigned)),
+    AgentWalletNotFoundError,
   );
   assert.equal(f.state.forwards.length, 0);
+});
+
+/** The fake's fees: gas limit × max fee of what it builds. */
+const NATIVE_FEE = 21_000n * 102n;
+const TOKEN_FEE = 60_000n * 102n;
+
+test("the full MON balance is refused at prepare: the fee has nothing left to come from", async () => {
+  const f = funded();
+  f.state.balances[MASTER] = { monWei: FUND_MON.amount, ausdMicro: 0n };
+
+  await assert.rejects(
+    createCustodyService(deps(f)).prepareTransfer(USER, FUND_MON),
+    InsufficientGasError,
+  );
+});
+
+test("the amount plus exactly the fee is enough", async () => {
+  const f = funded();
+  f.state.balances[MASTER] = { monWei: FUND_MON.amount + NATIVE_FEE, ausdMicro: 0n };
+
+  await createCustodyService(deps(f)).prepareTransfer(USER, FUND_MON);
+});
+
+test("an AUSD transfer needs MON for its fee in the source wallet, agent or master", async () => {
+  const f = funded();
+  f.state.balances[AGENT_ADDRESS] = { monWei: TOKEN_FEE - 1n, ausdMicro: 5_000_000n };
+  f.state.balances[MASTER] = { monWei: null, ausdMicro: 50_000_000n };
+  const service = createCustodyService(deps(f));
+
+  await assert.rejects(service.prepareTransfer(USER, PULL_AUSD), InsufficientGasError);
+  await assert.rejects(
+    service.prepareTransfer(USER, { ...PULL_AUSD, from: "master", to: "wal-agent" }),
+    InsufficientGasError,
+  );
+  f.state.balances[AGENT_ADDRESS] = { monWei: TOKEN_FEE, ausdMicro: 5_000_000n };
+  await service.prepareTransfer(USER, PULL_AUSD);
+});
+
+test("wallet ids that are not strings are refused", async () => {
+  const service = createCustodyService(deps(funded()));
+
+  await assert.rejects(
+    service.prepareTransfer(USER, { ...FUND_MON, to: 7 as unknown as string }),
+    InvalidTransferError,
+  );
+  await assert.rejects(
+    service.prepareTransfer(USER, { ...PULL_AUSD, from: null as unknown as string }),
+    InvalidTransferError,
+  );
+});
+
+test("an AUSD chain whose token is not six decimals is unavailable", async () => {
+  const f = funded();
+  (f.chain as { decimals: number }).decimals = 18;
+
+  await assert.rejects(
+    createCustodyService(deps(f)).prepareTransfer(USER, PULL_AUSD),
+    DepositsUnavailableError,
+  );
 });
 
 test("a signed transaction that does not match is never broadcast or recorded", async () => {

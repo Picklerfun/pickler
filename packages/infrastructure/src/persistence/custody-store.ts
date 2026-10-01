@@ -19,7 +19,7 @@ import type {
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
-  OrphanAgentWallet,
+  UnlinkedAgentWallet,
   Passkey,
   RegistrationInput,
   StoredChallenge,
@@ -216,27 +216,11 @@ export class PostgresCustodyStore
   }
 
   /**
-   * The newest unlinked agent wallet of this person's under this name, if a creation failed, with
+   * The newest unlinked agent wallet of this person's, if a creation stopped before its link, with
    * the policy ids its owner approved (core decides from them whether the rules step is done).
    */
-  async findOrphanWallet(userId: string, name: string): Promise<OrphanAgentWallet | null> {
-    const { rows } = await this.pool.query<OrphanAgentWallet>(
-      `SELECT w.wallet_id AS "walletId", a.address, w.approved_policy_ids AS "approvedPolicyIds"
-         FROM wallets.wallets w
-         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
-        WHERE w.user_id = $1
-          AND w.kind = 'agent'
-          AND w.name = $2
-          AND NOT EXISTS (SELECT 1 FROM wallets.agent_wallets l WHERE l.wallet_id = w.wallet_id)
-        ORDER BY w.created_at DESC
-        LIMIT 1`,
-      [userId, name],
-    );
-    return rows[0] ?? null;
-  }
-
-  async findUnlinkedWallet(userId: string): Promise<OrphanAgentWallet | null> {
-    const { rows } = await this.pool.query<OrphanAgentWallet>(
+  async findUnlinkedWallet(userId: string): Promise<UnlinkedAgentWallet | null> {
+    const { rows } = await this.pool.query<UnlinkedAgentWallet>(
       `SELECT w.wallet_id AS "walletId", a.address, w.approved_policy_ids AS "approvedPolicyIds"
          FROM wallets.wallets w
          JOIN LATERAL (

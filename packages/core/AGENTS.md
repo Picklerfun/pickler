@@ -175,7 +175,7 @@ optional `balances: WalletBalanceReader` dep; absent is `DepositsUnavailableErro
 `fundingShortfall`'s minimums; `confirmPolicies` does not check them again. `prepareAgentWallet`
 answers `{ existing }` (`ExistingAgentWallet`) for the person's newest unlinked agent wallet
 (`findUnlinkedWallet`), whatever its name, so a retry never mints a second one; its
-`policiesApproved` is true when the store's `approvedPolicyIds` (`OrphanAgentWallet`) hold at least
+`policiesApproved` is true when the store's `approvedPolicyIds` (`UnlinkedAgentWallet`) hold at least
 `MIN_AGENT_WALLET_POLICIES` (3, the DENYs every wallet is written with, exported from
 `domain/agent-wallet-policies.ts` and also the link floor the studio directory requires), so a retry
 skips the rules prompt too. The link to an agent
@@ -239,9 +239,13 @@ request, signed)` move AUSD or MON (`TransferRequest`: `from`/`to` are `"master"
 wallet id, exactly one side the master; `amount` in base units, positive; else
 `InvalidTransferError`). The master is the account's `masterWalletId` and address; the other side
 must be the caller's own `kind='agent'` wallet through `findOwnedAgentWallet` (else
-`AgentWalletNotFoundError`), checked before anything is built or forwarded. The source must hold
-the amount by the `balances` reader, read again at confirm (else `InsufficientFundsError`, also for
-an unreadable balance). The source signs; for MON the port's `prepareNativeTransfer` /
+`AgentWalletNotFoundError`), checked before anything is built or forwarded, at prepare and again
+at confirm. A chain whose token is not six decimals is `DepositsUnavailableError`. Only prepare
+reads balances: the source must hold the amount (else `InsufficientFundsError`, also for an
+unreadable balance), and its MON must cover the built transaction's gas limit × max fee, plus the
+amount for MON (else `InsufficientGasError`). Confirm does not re-read them, so a repeat reaches its
+recorded-hash check and a retry after a failed save records the row; the chain refuses an
+overdraft. The source signs; for MON the port's `prepareNativeTransfer` /
 `inspectNativeTransfer` replace the token pair, the stamped transaction must be a plain transfer to
 the target of exactly the amount with gas at most `MAX_NATIVE_TRANSFER_GAS`, and the fee and
 nonce checks are the deposit's against the source's nonce. Confirm refuses a recorded hash

@@ -172,7 +172,7 @@ export interface AgentWallet {
 }
 
 /** An unlinked agent wallet as the store finds it, with the policy ids its owner approved. */
-export interface OrphanAgentWallet extends AgentWallet {
+export interface UnlinkedAgentWallet extends AgentWallet {
   /** `wallets.wallets.approved_policy_ids`: null until `confirmPolicies` records them. */
   approvedPolicyIds: string[] | null;
 }
@@ -219,13 +219,11 @@ export interface AgentWalletRepository {
     path: string;
   }): Promise<void>;
   /**
-   * An agent wallet of this person's with this name that no agent is linked to: a creation that
-   * failed between the wallet and the link. Retrying finds it instead of minting a second one,
-   * and reads whether its rules were approved before the attempt stopped.
+   * This person's newest agent wallet that no agent is linked to, whatever its name: a creation
+   * that stopped between the wallet and the link. Retrying finds it instead of minting a second
+   * one, and reads whether its rules were approved before the attempt stopped.
    */
-  findOrphanWallet(userId: string, name: string): Promise<OrphanAgentWallet | null>;
-  /** This person's newest agent wallet that no agent is linked to, whatever its name. */
-  findUnlinkedWallet(userId: string): Promise<OrphanAgentWallet | null>;
+  findUnlinkedWallet(userId: string): Promise<UnlinkedAgentWallet | null>;
   /** How many agent wallets this person has, linked or not: the next one is "Agent wallet N+1". */
   countAgentWallets(userId: string): Promise<number>;
   /** Every agent wallet of this person's, oldest first, with the agent it is linked to. */

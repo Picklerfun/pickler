@@ -119,9 +119,6 @@ function fakes(
     async saveWallet(input) {
       state.wallets.push(input);
     },
-    async findOrphanWallet() {
-      throw new Error("the ceremony no longer looks a wallet up by name");
-    },
     async findUnlinkedWallet(userId) {
       const found = [...state.wallets]
         .reverse()

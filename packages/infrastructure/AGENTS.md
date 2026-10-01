@@ -285,8 +285,8 @@ Pickler. The same test file pins core's `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` to
 `PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
 (wallets + wallet_accounts in one transaction; the same wallet again for its owner is a no-op,
-another person's wallet id is refused), `findOrphanWallet` (an agent wallet by name with
-no `agent_wallets` row, with its `approved_policy_ids` as `approvedPolicyIds`), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
+another person's wallet id is refused), `findUnlinkedWallet` (the newest agent wallet
+with no `agent_wallets` row, with its `approved_policy_ids` as `approvedPolicyIds`), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
 `agent_wallets`), `findAgentWallet`, `saveApprovedPolicies` (see "Unified studio persistence" above)
 and `saveDeposit` (lowercases the hash for the column check).
 
