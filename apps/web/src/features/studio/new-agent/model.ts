@@ -270,6 +270,69 @@ export function walletTag(wallet: WalletView | null): string {
   return funded(wallet) ? "FUNDED" : "CREATED · EMPTY";
 }
 
+/**
+ * The wallet panel's step 0 (canvas "noAgentWallet"): two Touch IDs listed the first time, one
+ * later, and step 2 only when an earlier step 1 made the wallet and its step 2 was cancelled.
+ */
+export function step0Copy(input: { firstTime: boolean; pendingDelegate: boolean }): {
+  tag: string;
+  note: string;
+  steps: { n: string; text: string; done: boolean }[];
+  cta: string;
+} {
+  const steps = (stepOneDone: boolean) => [
+    { n: "1", text: "Its wallet, under your passkey", done: stepOneDone },
+    { n: "2", text: "Pickler may trade from it · inside the caps · never withdraw", done: false },
+  ];
+  if (input.pendingDelegate) {
+    return {
+      tag: "STEP 0 · 1 OF 2 DONE",
+      note: "Its wallet is made, under your passkey. One more Touch ID lets Pickler trade from it.",
+      steps: steps(true),
+      cta: "Let Pickler trade from it · step 2",
+    };
+  }
+  if (input.firstTime) {
+    return {
+      tag: walletTag(null),
+      note: "A wallet that is only its own. Two Touch IDs, back to back, the first time only.",
+      steps: steps(false),
+      cta: "Create its wallet · 2 signatures",
+    };
+  }
+  return {
+    tag: walletTag(null),
+    note: "A wallet that is only its own. One Touch ID.",
+    steps: [],
+    cta: "Create its wallet",
+  };
+}
+
+/** Under the balances: when they were read, and which minimum is still short. */
+export function balanceNote(wallet: WalletView, checkedAt: string): string {
+  if (!checkedAt) {
+    return "NOT CHECKED YET";
+  }
+  const read = `LAST CHECKED ${checkedAt}`;
+  const ausdShort = (wallet.ausdMicro ?? 0n) < MIN_START.ausdMicro;
+  const monShort = (wallet.monWei ?? 0n) < MIN_START.monWei;
+  if (ausdShort && monShort) {
+    return `${read} · WAITING FOR AUSD AND MON`;
+  }
+  if (ausdShort) {
+    return `${read} · WAITING FOR AUSD`;
+  }
+  return monShort ? `${read} · WAITING FOR MON` : read;
+}
+
+/** The canvas outlines the wallet card when only the money is missing: named, a free handle, a voice. */
+export const walletOutlined = (
+  form: NewAgentForm,
+  handle: HandleState,
+  wallet: WalletView | null,
+): boolean =>
+  Boolean(form.name.trim()) && handle === "free" && form.voice !== null && !funded(wallet);
+
 export type SectionKey = "thesis" | "enters" | "exits" | "never";
 
 /**

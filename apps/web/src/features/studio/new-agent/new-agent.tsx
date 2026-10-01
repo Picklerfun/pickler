@@ -36,6 +36,7 @@ import {
   sheetCopy,
   toDraftRequest,
   validHandle,
+  walletOutlined,
   walletSheetStep,
   type NewAgentForm,
 } from "./model";
@@ -489,6 +490,7 @@ export function NewAgent({
         wallet={ready}
         firstTime={firstTime}
         pendingDelegate={resumeStep === 2}
+        outlined={walletOutlined(form, nameState, ready)}
         form={form}
         checkedAt={reads.checkedAt}
         arrivals={reads.arrivals}

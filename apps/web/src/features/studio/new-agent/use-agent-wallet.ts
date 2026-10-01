@@ -70,9 +70,11 @@ export function useAgentWallet(preview: boolean, staged: NewAgentStaged | null) 
       return;
     }
     readSeq.current += 1;
+    const seq = readSeq.current;
     setRefreshing(true);
-    await settle(readSeq.current, readWallets());
-    if (mounted.current) {
+    await settle(seq, readWallets());
+    // A newer refresh is still in flight: it clears the flag when it lands.
+    if (mounted.current && seq === readSeq.current) {
       setRefreshing(false);
     }
   }, [preview, settle]);

@@ -9,6 +9,7 @@ import {
   DEFAULT_BRIEF,
   VOICES,
   arrived,
+  balanceNote,
   canCreate,
   capsEdited,
   capsInverted,
@@ -24,12 +25,14 @@ import {
   patternCells,
   sectionTag,
   sheetCopy,
+  step0Copy,
   unlinkedWallet,
   validHandle,
   walletSheetStep,
   toDraftRequest,
   toTransferBody,
   transferLabel,
+  walletOutlined,
   walletTag,
   type NewAgentForm,
   type WalletView,
@@ -403,4 +406,70 @@ test("the create sheet says the caps and who holds the trades to them", () => {
     "SETS ITS CAPS · 5 / 20 AUSD · 1× · IT CAN ONLY TRADE ON PERPL AND CAN'T WITHDRAW · PICKLER HOLDS EVERY TRADE TO THESE CAPS",
   );
   assert.equal(copy.done, "Halftime is yours");
+});
+
+test("step 0 the first time is two Touch IDs, listed", () => {
+  const copy = step0Copy({ firstTime: true, pendingDelegate: false });
+
+  assert.equal(copy.tag, "STEP 0 · CREATE IT");
+  assert.equal(
+    copy.note,
+    "A wallet that is only its own. Two Touch IDs, back to back, the first time only.",
+  );
+  assert.deepEqual(copy.steps, [
+    { n: "1", text: "Its wallet, under your passkey", done: false },
+    { n: "2", text: "Pickler may trade from it · inside the caps · never withdraw", done: false },
+  ]);
+  assert.equal(copy.cta, "Create its wallet · 2 signatures");
+});
+
+test("step 0 later is one Touch ID, with no list", () => {
+  const copy = step0Copy({ firstTime: false, pendingDelegate: false });
+
+  assert.equal(copy.note, "A wallet that is only its own. One Touch ID.");
+  assert.deepEqual(copy.steps, []);
+  assert.equal(copy.cta, "Create its wallet");
+});
+
+test("step 0 after a cancelled step 2 offers step 2 only, step 1 done", () => {
+  const copy = step0Copy({ firstTime: true, pendingDelegate: true });
+
+  assert.equal(copy.tag, "STEP 0 · 1 OF 2 DONE");
+  assert.equal(
+    copy.note,
+    "Its wallet is made, under your passkey. One more Touch ID lets Pickler trade from it.",
+  );
+  assert.deepEqual(
+    copy.steps.map((step) => step.done),
+    [true, false],
+  );
+  assert.equal(copy.cta, "Let Pickler trade from it · step 2");
+});
+
+test("the balance note: not checked, waiting for what is short, nothing once funded", () => {
+  assert.equal(balanceNote(wallet({ ausdMicro: 0n, monWei: 0n }), ""), "NOT CHECKED YET");
+  assert.equal(
+    balanceNote(wallet({ ausdMicro: 0n, monWei: 0n }), "10:00"),
+    "LAST CHECKED 10:00 · WAITING FOR AUSD AND MON",
+  );
+  assert.equal(
+    balanceNote(wallet({ monWei: 0n }), "10:00"),
+    "LAST CHECKED 10:00 · WAITING FOR MON",
+  );
+  assert.equal(
+    balanceNote(wallet({ ausdMicro: 9_999_999n }), "10:00"),
+    "LAST CHECKED 10:00 · WAITING FOR AUSD",
+  );
+  assert.equal(balanceNote(wallet(), "10:00"), "LAST CHECKED 10:00");
+});
+
+test("the wallet card is outlined when only the money is missing", () => {
+  const empty = wallet({ ausdMicro: 0n });
+
+  assert.equal(walletOutlined(filled(), "free", null), true);
+  assert.equal(walletOutlined(filled(), "free", empty), true);
+  assert.equal(walletOutlined(filled(), "free", wallet()), false);
+  assert.equal(walletOutlined(filled({ voice: null }), "free", empty), false);
+  assert.equal(walletOutlined(filled(), "checking", empty), false);
+  assert.equal(walletOutlined(filled({ name: " " }), "free", empty), false);
 });

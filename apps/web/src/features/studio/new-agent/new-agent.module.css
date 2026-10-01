@@ -454,3 +454,454 @@
 .previewNote {
   composes: emptyNote from "../home/home.module.css";
 }
+
+/* ---------- Its wallet ---------- */
+
+.side {
+  position: relative;
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  min-width: 0;
+  margin-top: 62px;
+}
+.mascot {
+  position: absolute;
+  top: -92px;
+  right: -12px;
+  z-index: 2;
+  width: 96px;
+  height: auto;
+  pointer-events: none;
+  animation: pkFloat 6s ease-in-out infinite;
+}
+.walletCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+  transition: border-color var(--pk-duration);
+}
+/* Only the money is missing: the canvas points at the card. */
+.walletCard[data-outline="true"] {
+  border-color: var(--pk-lime-edge);
+}
+.walletHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.walletTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.walletTag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-amber-ink);
+}
+.walletTag[data-tone="good"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.walletBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: pkIn 240ms ease-out;
+}
+
+/* Step 0: no wallet yet. */
+.step0 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--pk-rule-strong);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.step0Head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step0Mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px dashed var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
+  font: 700 13px/1 var(--pk-font-display);
+  color: var(--pk-ink-faint);
+}
+.step0Text,
+.addressText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.step0Text b,
+.addressText b {
+  font: 600 14.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.step0Text small,
+.addressText small {
+  font: 600 10px/1.2 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.step0Note {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.step0Steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step0Steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+  font: 500 12px/1.3 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.step0Steps li > span[aria-hidden="true"] {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.step0Steps li[data-done="true"] {
+  color: var(--pk-ink-faint);
+}
+.step0Steps li[data-done="true"] > span[aria-hidden="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+/* The wallet, made. */
+.address {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.monad {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pk-radius-sm);
+}
+.chipButton,
+.iconButton {
+  flex: none;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.chipButton {
+  padding: 7px 10px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.chipButton:hover,
+.iconButton:hover:not(:disabled) {
+  color: var(--pk-ink);
+}
+.iconButton:disabled {
+  cursor: default;
+}
+.iconButton[aria-busy="true"] svg {
+  animation: pkBlink 1s steps(1, end) infinite;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.tile b {
+  font: 700 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+.tile b[data-good="true"] {
+  color: var(--pk-lime-ink);
+}
+.tile small,
+.row small {
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.row b {
+  margin-left: auto;
+  font: 700 12.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.row b i {
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--pk-ink-muted);
+}
+.row[data-tone="caution"] {
+  padding: 10px 12px;
+  border-color: var(--pk-amber-edge);
+}
+.row[data-tone="caution"] small {
+  color: var(--pk-amber-ink);
+}
+.balanceNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+  animation: pkIn 220ms ease-out;
+}
+.arrival i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-blue);
+}
+.arrival span {
+  flex: 1;
+  font: 500 12.5px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.arrival small {
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.fundNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+}
+
+/* ---------- The passkey sheet ---------- */
+
+/* auth.module.css's ceremony sheet with the canvas's centred card: a native dialog, a bottom
+   sheet on a phone and a centred card once there is room. */
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90dvh;
+  margin: 0 auto;
+  padding: 26px 24px 22px;
+  overflow-y: auto;
+  border: 1px solid var(--pk-rule);
+  border-bottom: none;
+  border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) 0 0;
+  background: var(--pk-popover);
+  box-shadow: var(--pk-popover-shadow);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+  text-align: center;
+  animation: pkIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sheet[open] {
+  display: flex;
+}
+.sheet:focus {
+  outline: none;
+}
+.sheet::backdrop {
+  background: var(--pk-scrim);
+  backdrop-filter: blur(6px);
+}
+@media (min-width: 640px) {
+  .sheet {
+    inset: 0;
+    width: min(340px, calc(100% - 40px));
+    height: fit-content;
+    margin: auto;
+    border-bottom: 1px solid var(--pk-rule);
+    border-radius: var(--pk-radius-2xl);
+  }
+}
+.sheetIcon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-lime-ink);
+}
+.sheetIcon[data-phase="ok"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.sheetIcon[data-phase="err"] {
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-state-loss-ink);
+}
+.sheetSteps {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.sheetSteps i {
+  width: 28px;
+  height: 4px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+}
+.sheetSteps i[data-on="true"] {
+  background: var(--pk-lime);
+}
+.sheetTitle {
+  margin: 0 0 6px;
+  font: 600 18px/1.25 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.sheetNote {
+  margin: 0 0 20px;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.sheetWait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.sheetWait:not(:empty) {
+  padding: 14px;
+}
+.sheetWait i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  animation: pkBlink 1s steps(1, end) infinite;
+}
+
+/* ---------- Motion (restated from home.module.css: keyframes are module-scoped) ---------- */
+
+@keyframes pkBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pkFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot,
+  .walletBody,
+  .arrival,
+  .iconButton[aria-busy="true"] svg,
+  .sheet,
+  .sheetWait i {
+    animation: none;
+  }
+}
