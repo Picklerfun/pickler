@@ -34,7 +34,7 @@ import {
   MAX_NATIVE_TRANSFER_GAS,
   TransferAlreadyRecordedError,
 } from "../domain/deposit.js";
-import { fundingShortfall, WalletUnderfundedError } from "../../studio/create.js";
+import { fundingShortfall, readFunding, WalletUnderfundedError } from "../../studio/create.js";
 import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
@@ -837,8 +837,8 @@ export function createCustodyService(deps: CustodyServiceDeps) {
      * Step three: the wallet's rules. For the person's first agent — no wallet of theirs linked
      * to any agent yet, decided here and never by the caller — the delegated user's self-delete
      * policy rides along; it belongs to the sub-organization and is written once. They are not
-     * prepared until the wallet holds the minimums to start (`WalletUnderfundedError`).
-     * `confirmPolicies` does not check again: the stamp is already made, and refusing it would
+     * prepared until the wallet holds the minimums to start (`WalletUnderfundedError`); a chain
+     * that cannot be read is `BalancesUnreadableError`, never underfunded. `confirmPolicies` does not check again: the stamp is already made, and refusing it would
      * strand an approved policy set. The drafts route checks again.
      */
     async preparePolicies(userId: string, walletId: string): Promise<UnsignedActivity> {
@@ -847,10 +847,11 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         throw new NoCustodyAccountError();
       }
       const { policies, wallet } = await policiesFor(userId, walletId);
-      if (!deps.balances) {
+      const balances = deps.balances;
+      if (!balances) {
         throw new DepositsUnavailableError();
       }
-      const shortfall = fundingShortfall(await deps.balances.read(wallet.address));
+      const shortfall = fundingShortfall(await readFunding(() => balances.read(wallet.address)));
       if (shortfall) {
         throw new WalletUnderfundedError(shortfall);
       }
@@ -998,16 +999,18 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     /**
      * One of the person's agent wallets' balances, read from the chain: the drafts route checks
      * them against the minimums again, since the money can have moved since the policies step.
+     * A read that fails or answers neither balance is `BalancesUnreadableError`.
      */
     async walletBalance(userId: string, walletId: string) {
       const wallet = await deps.agentWallets.findOwnedAgentWallet(userId, walletId);
       if (!wallet) {
         throw new AgentWalletNotFoundError();
       }
-      if (!deps.balances) {
+      const balances = deps.balances;
+      if (!balances) {
         throw new DepositsUnavailableError();
       }
-      return deps.balances.read(wallet.address);
+      return readFunding(() => balances.read(wallet.address));
     },
 
     /**

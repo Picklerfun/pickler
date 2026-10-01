@@ -98,7 +98,7 @@ column — the studio's create-agent transaction only ever reads it.
 `PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
 transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
 a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again
-without calling `admit` when its request (name, handle, wallet) matches, and is `WALLET_ASSIGNED`
+without calling `admit` when its request (name, handle, wallet, config, profile) matches, and is `WALLET_ASSIGNED`
 when it does not. Otherwise it refuses `HANDLE_TAKEN`, locks the wallet row and refuses
 `WALLET_NOT_FOUND` (not this person's `kind='agent'` wallet), `WALLET_ASSIGNED` (linked) and
 `POLICIES_MISSING` (fewer than `MIN_AGENT_WALLET_POLICIES` approved ids), then runs `admit` (the

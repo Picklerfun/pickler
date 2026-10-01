@@ -177,11 +177,43 @@ export interface FundingShortfall {
   minMonWei: string;
 }
 
-/** Null when both minimums are met. An unread balance (null) is never enough. */
-export function fundingShortfall(balances: {
+/** A wallet's balances in base units; null where the chain did not answer. */
+export interface FundingReading {
   ausdMicro: bigint | null;
   monWei: bigint | null;
-}): FundingShortfall | null {
+}
+
+/**
+ * The chain could not be read: the balance read threw, or it answered neither balance (HTTP 503).
+ * An outage, never an empty wallet, so it is never reported as WALLET_UNDERFUNDED.
+ */
+export class BalancesUnreadableError extends Error {
+  constructor(options?: { cause?: unknown }) {
+    super("The wallet's balances could not be read. Try again.", options);
+    this.name = "BalancesUnreadableError";
+  }
+}
+
+/**
+ * A reading the minimums can judge: `BalancesUnreadableError` when the read throws or answers
+ * neither balance. A partial reading is returned, and `fundingShortfall` holds its unread side to
+ * be short.
+ */
+export async function readFunding(read: () => Promise<FundingReading>): Promise<FundingReading> {
+  let reading: FundingReading;
+  try {
+    reading = await read();
+  } catch (cause) {
+    throw new BalancesUnreadableError({ cause });
+  }
+  if (reading.ausdMicro === null && reading.monWei === null) {
+    throw new BalancesUnreadableError();
+  }
+  return reading;
+}
+
+/** Null when both minimums are met. An unread balance (null) is never enough. */
+export function fundingShortfall(balances: FundingReading): FundingShortfall | null {
   const enough =
     balances.ausdMicro !== null &&
     balances.monWei !== null &&

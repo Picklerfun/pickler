@@ -47,11 +47,11 @@ export interface StudioDirectory {
   /**
    * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one
    * transaction: locks the workspace; answers the same draft again, without `admit`, when this is
-   * the same create retried (same wallet, handle and name; WALLET_ASSIGNED under other terms);
-   * refuses HANDLE_TAKEN; locks the wallet (WALLET_NOT_FOUND unless it is the caller's agent wallet,
-   * WALLET_ASSIGNED when linked, POLICIES_MISSING without approved policies); runs `admit`; then
-   * writes the agent (`draft`), its profile, handle, runtime row and product row, and links the
-   * wallet with its approved policy ids. A refusal writes nothing.
+   * the same create retried (same wallet, handle, name, config and profile; WALLET_ASSIGNED under
+   * other terms); refuses HANDLE_TAKEN; locks the wallet (WALLET_NOT_FOUND unless it is the
+   * caller's agent wallet, WALLET_ASSIGNED when linked, POLICIES_MISSING without approved
+   * policies); runs `admit`; then writes the agent (`draft`), its profile, handle, runtime row and
+   * product row, and links the wallet with its approved policy ids. A refusal writes nothing.
    */
   createDraft(
     access: StudioAccess,

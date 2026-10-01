@@ -255,13 +255,16 @@ function harness(
   };
 
   /** What the agent wallet holds on chain, as the custody service reads it; the minimums by default. */
-  const funds: { monWei: bigint | null; ausdMicro: bigint | null } = {
+  const funds: { monWei: bigint | null; ausdMicro: bigint | null; fail?: Error } = {
     monWei: MIN_START_MON_WEI,
     ausdMicro: MIN_START_MICRO_AUSD,
   };
   const walletBalances: WalletBalanceReader = {
     async read() {
-      return { ...funds };
+      if (funds.fail) {
+        throw funds.fail;
+      }
+      return { monWei: funds.monWei, ausdMicro: funds.ausdMicro };
     },
   };
 
@@ -1311,6 +1314,32 @@ const policyNames = (prepared: Prepared) =>
   (JSON.parse(prepared.body).parameters.policies as { policyName: string }[]).map(
     (p) => p.policyName,
   );
+
+test("a chain that answers neither balance on policies prepare is 503 balances_unavailable", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.funds.monWei = null;
+  h.funds.ausdMicro = null;
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 503);
+  assert.equal((await json(res))["error"], "balances_unavailable");
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("a balance read that throws on policies prepare is 503 balances_unavailable", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.funds.fail = new Error("timeout");
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 503);
+  assert.equal((await json(res))["error"], "balances_unavailable");
+});
 
 test("the first agent's policies carry the self-delete policy; a later agent's do not", async () => {
   const h = harness();

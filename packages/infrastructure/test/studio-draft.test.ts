@@ -47,12 +47,13 @@ async function setup(t: TestContext) {
   const wallet = async (
     userId: string,
     approvedPolicyIds: string[] | null = ["p1", "p2", "p3"],
+    kind: "agent" | "master" = "agent",
   ) => {
     const walletId = `wallet-${hex(12)}`;
     await store.pool.query(
       `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
-       VALUES ($1, $2, $3, 'agent', 'Agent wallet 1', $4)`,
-      [userId, walletId, `sub-${hex(12)}`, approvedPolicyIds],
+       VALUES ($1, $2, $3, $5, 'Agent wallet 1', $4)`,
+      [userId, walletId, `sub-${hex(12)}`, approvedPolicyIds, kind],
     );
     await store.pool.query(
       `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
@@ -149,6 +150,17 @@ test("another person's wallet, or none, is WALLET_NOT_FOUND", async (t) => {
   assert.equal(await agentCount(f, "halftime"), 0);
 });
 
+test("the person's master wallet is WALLET_NOT_FOUND: only kind='agent' wallets", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const master = await f.wallet(owner.userId, ["p1", "p2", "p3"], "master");
+
+  await assert.rejects(f.directory.createDraft(owner.access, owner.userId, f.terms(master)), {
+    code: "WALLET_NOT_FOUND",
+  });
+  assert.equal(await agentCount(f, "halftime"), 0);
+});
+
 test("a taken handle is HANDLE_TAKEN and leaves the wallet unlinked", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
@@ -214,6 +226,44 @@ test("a retry under another name is WALLET_ASSIGNED, and the draft keeps its nam
     created.productId,
   ]);
   assert.equal(agent.rows[0].name, "Halftime");
+});
+
+test("a retry with another voice, brief, caps or sites is WALLET_ASSIGNED, not the old draft", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const walletId = await f.wallet(owner.userId);
+  await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
+  const changed = (edit: Partial<Parameters<typeof prepareDraft>[0]>) =>
+    prepareDraft({
+      name: "Halftime",
+      handle: "halftime",
+      voice: "analyst",
+      avatar: { accent: "cyan", pattern: 3 },
+      sources: { web: null },
+      brief: DEFAULT_BRIEF,
+      caps: STARTER_CAPS,
+      walletId,
+      ...edit,
+    });
+
+  for (const edit of [
+    { voice: "hype" as const },
+    { brief: { ...DEFAULT_BRIEF, thesis: "Another thesis." } },
+    { caps: { ...STARTER_CAPS, perTradeAusd: 6 } },
+    { sources: { web: { mode: "prefer" as const, sites: ["coindesk.com"] } } },
+  ]) {
+    const draft = changed(edit);
+    await assert.rejects(
+      f.directory.createDraft(owner.access, owner.userId, {
+        ...f.terms(walletId),
+        config: draft.config,
+        profile: draft.profile,
+      }),
+      { code: "WALLET_ASSIGNED" },
+      JSON.stringify(edit),
+    );
+  }
+  assert.equal(await agentCount(f, "halftime"), 1);
 });
 
 test("an admit that refuses writes nothing and leaves the wallet unlinked", async (t) => {

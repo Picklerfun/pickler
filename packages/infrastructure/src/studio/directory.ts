@@ -209,12 +209,12 @@ export class PostgresStudioDirectory implements StudioDirectory {
   /**
    * The private draft with its wallet (studio-create-simplified-v1 §4.1). One transaction: lock
    * the person's workspace, and answer the draft this wallet already became when this is the same
-   * create retried (same wallet, handle and name), without meeting the lock; under another name or
-   * handle the wallet is WALLET_ASSIGNED. Otherwise check the
-   * handle, lock the wallet and check it (this person's agent wallet, unlinked, with its rules
-   * approved), run the create lock, then write the agent as a draft, its profile and handle, its
-   * runtime row, its product row, and the wallet's link with the policy ids `confirmPolicies`
-   * recorded — never ids from the caller. Any failure rolls all of it back.
+   * create retried (same wallet, handle, name, config and profile), without meeting the lock; under
+   * any other terms the wallet is WALLET_ASSIGNED. Otherwise check the handle, lock the wallet and
+   * check it (this person's agent wallet, unlinked, with its rules approved), run the create lock,
+   * then write the agent as a draft, its profile and handle, its runtime row, its product row, and
+   * the wallet's link with the policy ids `confirmPolicies` recorded — never ids from the caller.
+   * Any failure rolls all of it back.
    */
   async createDraft(
     access: StudioAccess,
@@ -240,12 +240,15 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!allowed.rows.length) {
           throw new AccessDeniedError("Research access revoked");
         }
-        // A wallet becomes one agent, so the wallet is the create's key.
+        // A wallet becomes one agent, so the wallet is the create's key. The terms are everything
+        // the draft is made of: a retry that changes the voice, brief, caps or sites is not a replay.
         const key = `draft:${input.walletId}`;
         const request = JSON.stringify({
           name: input.name,
           handle: input.handle,
           walletId: input.walletId,
+          config: input.config,
+          profile: input.profile,
         });
         const replay = await client.query<{ productId: string; agentId: string; matches: boolean }>(
           `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId",

@@ -134,7 +134,8 @@ wallet's policies (no body; core adds the delegated user's self-delete policy wh
 person's wallets is linked to an agent yet, and a `first_agent` field is refused). The policies
 prepare reads the wallet's balances first and answers 409 `wallet_underfunded` below either
 minimum to start (10 AUSD, 0.5 MON), with `detail: { ausdMicro, monWei, minAusdMicro, minMonWei }`
-as base-unit strings (a balance the chain did not answer is null). Each confirm is refused with 400
+as base-unit strings (a balance the chain did not answer is null). A read that fails, or answers
+neither balance, is 503 `balances_unavailable`: an outage is never reported as underfunded. Each confirm is refused with 400
 `invalid_signed_activity` before anything reaches Turnkey unless the stamped request is exactly
 what its prepare built, apart from the timestamp. Prepares answer the
 unsigned activity in add/prepare's shape; a wallet prepare while the person has an unlinked wallet
@@ -262,27 +263,37 @@ manage rights; studio-create-simplified-v1 §4.1) creates a private draft with t
 person made, funded and signed the policies of, and answers 201 `{ productId, agent }`. Sites in
 `sources.web` are reduced to bare hosts by core's `classifyRead` ("https://www.CoinDesk.com/x" is
 `coindesk.com`) before `prepareDraft` checks the request and builds the Perpl-shaped config and the
-profile. `directory.createDraft` then, in one transaction: replays the same create (same wallet,
-handle and name) without the lock; refuses `HANDLE_TAKEN`, then `WALLET_NOT_FOUND` (404: absent,
-another person's, or not `kind='agent'`), `WALLET_ASSIGNED` (already linked, or the same wallet
-under other terms) and `POLICIES_MISSING`; runs the admit callback, which holds the funding lock,
-the draft limit and the wallet's balances read again on chain (409 `WALLET_UNDERFUNDED` with the
-same `detail` as the signing family's); and writes the draft, its profile (accent, avatar pattern,
+profile. The wallet's balances are then read on chain (`custody.walletBalance`), just before the
+transaction and never inside it: a chain read must not hold row locks. A wallet that is not the
+caller's has no reading and is left for the directory to refuse. `directory.createDraft` then, in
+one transaction: replays the same create (same wallet, handle, name, config and profile) without
+the lock; refuses `HANDLE_TAKEN`, then `WALLET_NOT_FOUND` (404: absent, another person's, or not
+`kind='agent'`), `WALLET_ASSIGNED` (already linked, or the same wallet under other terms) and
+`POLICIES_MISSING`; runs the admit callback, which holds the funding lock, the draft limit and that
+reading to the minimums (409 `WALLET_UNDERFUNDED` with the same `detail` as the signing family's;
+a read that failed or answered neither balance is 503 `WALLETS_UNAVAILABLE`, never underfunded);
+and writes the draft, its profile (accent, avatar pattern,
 voice name, venue `perps`) and the wallet's link with the approved policy ids. Every refusal from
 the directory or the lock answers `{ error, message }`; the fourth draft in a workspace is 409
 `{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`. Without custody or a chain it is
 503 `WALLETS_UNAVAILABLE`. `POST /agents` meets the funding lock only, never the draft limit.
 
+The wallet routes live in `src/routes/studio-wallets.ts`, mounted at `/wallets` by
+`studioRoutes`, with their error mapping (`walletFailure`, used by the drafts route too).
 `GET /v1/studio/wallets` answers the master wallet and every agent wallet of the person's, balances
 as base-unit strings read on chain (null where a read failed), with each wallet's agent, caps and
 whether its policies were approved. `POST /v1/studio/wallets/transfers/prepare|confirm { from, to,
 token, amount }` moves AUSD or MON between the master (`"master"`) and one of the person's agent
-wallets, either way; `amount` is decimal and converted exactly to micro-AUSD or wei (more decimals
-than the token has is 400 `INVALID_TRANSFER`). Prepare answers the unsigned activity plus
+wallets, either way; `amount` is a decimal string, checked and converted exactly to micro-AUSD or
+wei by the route, so every malformed amount ("0", "0x10", "+1", too many decimals) is 400
+`INVALID_TRANSFER`. Prepare answers the unsigned activity plus
 `baseUnits`; confirm takes `signed` too and answers `{ txHash }`. These routes answer
 `{ error, message }` in their own words: `INVALID_TRANSFER` (400), `WALLET_NOT_FOUND` (404),
-`INSUFFICIENT_FUNDS`, `INSUFFICIENT_GAS`, `TRANSFER_ALREADY_RECORDED`, `NOT_SENDABLE` (409),
-`FEE_TOO_HIGH`, `NONCE_GAP` (400) and `WALLETS_UNAVAILABLE` (503), never the deposit's codes. The
+`INSUFFICIENT_FUNDS`, `INSUFFICIENT_GAS`, `TRANSFER_ALREADY_RECORDED`, `NOT_SENDABLE`,
+`NO_CUSTODY_ACCOUNT` (409), `FEE_TOO_HIGH`, `NONCE_GAP`, `INVALID_SIGNED_ACTIVITY`,
+`SIGNED_ACTIVITY_REJECTED` (400), `SIGNING_UNAVAILABLE` (502) and `WALLETS_UNAVAILABLE` (503),
+never the deposit's codes. A signed transaction that does not match is logged as "Signed
+transaction mismatch" and answers 500. The
 deposit routes keep theirs.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through

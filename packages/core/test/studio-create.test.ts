@@ -8,7 +8,9 @@ import {
   STARTER_CAPS,
   VOICES,
   WalletUnderfundedError,
+  BalancesUnreadableError,
   fundingShortfall,
+  readFunding,
   prepareDraft,
   type CreateDraftInput,
 } from "../src/features/studio/create.js";
@@ -177,4 +179,24 @@ test("WalletUnderfundedError carries the shortfall and the code", () => {
   assert.equal(error.code, "WALLET_UNDERFUNDED");
   assert.deepEqual(error.detail, shortfall);
   assert.equal(error.message, "Fund its wallet with at least 10 AUSD and 0.5 MON first");
+});
+
+test("a reading with both balances unread, or a read that throws, is unreadable, not underfunded", async () => {
+  await assert.rejects(
+    readFunding(async () => ({ ausdMicro: null, monWei: null })),
+    BalancesUnreadableError,
+  );
+  const outage = new Error("timeout");
+  await assert.rejects(
+    readFunding(async () => {
+      throw outage;
+    }),
+    (error: unknown) => error instanceof BalancesUnreadableError && error.cause === outage,
+  );
+});
+
+test("a partial or low reading is returned for the minimums to judge", async () => {
+  const partial = { ausdMicro: null, monWei: 1n };
+  assert.deepEqual(await readFunding(async () => partial), partial);
+  assert.notEqual(fundingShortfall(partial), null);
 });

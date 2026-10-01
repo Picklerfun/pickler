@@ -11,6 +11,11 @@ import {
   InsufficientGasError,
   InvalidTransferError,
   TransferAlreadyRecordedError,
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+  NoCustodyAccountError,
+  SignedTransactionMismatchError,
   buildUserPrincipal,
   type ResearchRepository,
   type StudioDirectory,
@@ -186,11 +191,22 @@ test("an amount with more decimals than the token has is 400", async () => {
   assert.deepEqual(f.calls, []);
 });
 
-test("an amount that is not a decimal, or a field too many, is 400 before custody", async () => {
+test("every malformed amount is 400 INVALID_TRANSFER before custody", async () => {
+  const f = app();
+  for (const amount of ["0", "0.000", "0x10", "+1", "-1", "1e6", "", " 1", "1."]) {
+    const response = await f.root.request(
+      "/wallets/transfers/prepare",
+      post({ ...transfer, amount }),
+    );
+    assert.equal(response.status, 400, amount);
+    assert.equal((await response.json()).error, "INVALID_TRANSFER", amount);
+  }
+  assert.deepEqual(f.calls, []);
+});
+
+test("an unknown token or a field too many is 400 before custody", async () => {
   const f = app();
   for (const payload of [
-    { ...transfer, amount: "1e6" },
-    { ...transfer, amount: "-1" },
     { ...transfer, token: "USDC" },
     { ...transfer, extra: true },
   ]) {
@@ -213,6 +229,25 @@ const refusals: [string, Error, number, string][] = [
     "TRANSFER_ALREADY_RECORDED",
   ],
   ["AgentWalletNotFoundError", new AgentWalletNotFoundError(), 404, "WALLET_NOT_FOUND"],
+  [
+    "InvalidSignedActivityError",
+    new InvalidSignedActivityError("The stamped transaction pays another wallet"),
+    400,
+    "INVALID_SIGNED_ACTIVITY",
+  ],
+  [
+    "SignedActivityRejectedError",
+    new SignedActivityRejectedError("policy denied"),
+    400,
+    "SIGNED_ACTIVITY_REJECTED",
+  ],
+  [
+    "SigningServiceUnavailableError",
+    new SigningServiceUnavailableError("upstream said 503"),
+    502,
+    "SIGNING_UNAVAILABLE",
+  ],
+  ["NoCustodyAccountError", new NoCustodyAccountError(), 409, "NO_CUSTODY_ACCOUNT"],
 ];
 for (const [name, error, status, code] of refusals) {
   test(`${name} is ${status} ${code}`, async () => {
@@ -245,6 +280,19 @@ for (const [name, error, status, code] of neutral) {
     assert.doesNotMatch(JSON.stringify(json), /deposit/i);
   });
 }
+
+test("a signed transaction mismatch is 500, logged without deposit wording", async (t) => {
+  const logged: unknown[][] = [];
+  t.mock.method(console, "error", (...args: unknown[]) => logged.push(args));
+  const f = app({ fail: new SignedTransactionMismatchError("signer") });
+  const response = await f.root.request(
+    "/wallets/transfers/confirm",
+    post({ ...transfer, signed: SIGNED }),
+  );
+  assert.equal(response.status, 500);
+  assert.equal(logged[0]![0], "Signed transaction mismatch");
+  assert.doesNotMatch(JSON.stringify([logged, await response.json()]), /deposit/i);
+});
 
 test("without custody the wallet routes are 503 WALLETS_UNAVAILABLE", async () => {
   const f = app({ custody: false });

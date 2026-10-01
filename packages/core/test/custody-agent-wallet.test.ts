@@ -19,6 +19,7 @@ import {
   MIN_START_MICRO_AUSD,
   MIN_START_MON_WEI,
   WalletUnderfundedError,
+  BalancesUnreadableError,
 } from "../src/features/studio/create.js";
 import { DepositsUnavailableError } from "../src/features/wallets/domain/deposit.js";
 import type {
@@ -203,7 +204,13 @@ function fakes(
 
 function service(
   f: ReturnType<typeof fakes>,
-  extra: { delegatedPublicKey?: string | null; venueContracts?: string[]; balances?: boolean } = {},
+  extra: {
+    delegatedPublicKey?: string | null;
+    venueContracts?: string[];
+    balances?: boolean;
+    /** Makes every balance read throw, as an RPC outage would. */
+    balancesFail?: Error;
+  } = {},
 ) {
   return createCustodyService({
     challenges: { put: async () => {}, consume: async () => null },
@@ -225,11 +232,17 @@ function service(
       ? {}
       : {
           balances: {
-            read: async (address: string) =>
-              f.state.balances[address] ?? {
-                monWei: MIN_START_MON_WEI,
-                ausdMicro: MIN_START_MICRO_AUSD,
-              },
+            read: async (address: string) => {
+              if (extra.balancesFail) {
+                throw extra.balancesFail;
+              }
+              return (
+                f.state.balances[address] ?? {
+                  monWei: MIN_START_MON_WEI,
+                  ausdMicro: MIN_START_MICRO_AUSD,
+                }
+              );
+            },
           },
         }),
     delegatedPublicKey: extra.delegatedPublicKey === undefined ? "02abc" : extra.delegatedPublicKey,
@@ -597,6 +610,20 @@ test("policies are prepared once both minimums are met", async () => {
   await service(f).preparePolicies(USER, "w-1");
 
   assert.equal(f.builds.length, 1);
+});
+
+test("policies over a chain that answers nothing are BalancesUnreadableError, never underfunded", async () => {
+  const silent = withWallet();
+  silent.state.balances[ADDRESS] = { monWei: null, ausdMicro: null };
+  await assert.rejects(service(silent).preparePolicies(USER, "w-1"), BalancesUnreadableError);
+  assert.deepEqual(silent.builds, []);
+
+  const down = withWallet();
+  await assert.rejects(
+    service(down, { balancesFail: new Error("timeout") }).preparePolicies(USER, "w-1"),
+    BalancesUnreadableError,
+  );
+  assert.deepEqual(down.builds, []);
 });
 
 test("without a balance reader, policies cannot be prepared", async () => {

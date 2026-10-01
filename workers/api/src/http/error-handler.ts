@@ -22,6 +22,7 @@ import {
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   WalletUnderfundedError,
+  BalancesUnreadableError,
 } from "@pickler/core";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -105,6 +106,10 @@ function classify(
       message: error.message,
       extras: { error: "wallet_underfunded", detail: { ...error.detail } },
     };
+  }
+  if (error instanceof BalancesUnreadableError) {
+    // The chain did not answer: an outage, never an underfunded wallet.
+    return { status: 503, message: error.message, extras: { error: "balances_unavailable" } };
   }
   if (error instanceof DelegatedKeyNotConfiguredError) {
     return {

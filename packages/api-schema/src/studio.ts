@@ -342,16 +342,31 @@ export const draftCreateSchema = z
   .strict();
 export type DraftCreateDto = z.infer<typeof draftCreateSchema>;
 
+/** A request the browser had the passkey stamp, in the shape Turnkey's own stamper produces. */
+export const signedActivitySchema = z
+  .object({
+    url: z.string().min(1).max(512),
+    body: z.string().min(1).max(8192),
+    stamp: z
+      .object({
+        stampHeaderName: z.string().min(1).max(64),
+        stampHeaderValue: z.string().min(1).max(8192),
+      })
+      .strict(),
+  })
+  .strict();
+export type SignedActivityDto = z.infer<typeof signedActivitySchema>;
+
 const transferFields = {
   /** "master", or one of the person's agent wallet ids. */
   from: z.string().min(1).max(128),
   to: z.string().min(1).max(128),
   token: z.enum(["AUSD", "MON"]),
-  /** A decimal amount of the token, as typed: "1.5". The route converts it to base units. */
-  amount: z
-    .string()
-    .max(40)
-    .regex(/^\d+(\.\d+)?$/),
+  /**
+   * A decimal amount of the token, as typed: "1.5". The route checks its form and converts it to
+   * base units, so every malformed amount is the same 400 INVALID_TRANSFER.
+   */
+  amount: z.string().max(80),
 };
 
 /** `POST /v1/studio/wallets/transfers/prepare` (§4.2): a decimal amount of one token. */
@@ -360,21 +375,7 @@ export type TransferRequestDto = z.infer<typeof transferRequestSchema>;
 
 /** `POST /v1/studio/wallets/transfers/confirm`: the same body plus the stamped activity. */
 export const transferConfirmSchema = z
-  .object({
-    ...transferFields,
-    signed: z
-      .object({
-        url: z.string().min(1).max(512),
-        body: z.string().min(1).max(8192),
-        stamp: z
-          .object({
-            stampHeaderName: z.string().min(1).max(64),
-            stampHeaderValue: z.string().min(1).max(8192),
-          })
-          .strict(),
-      })
-      .strict(),
-  })
+  .object({ ...transferFields, signed: signedActivitySchema })
   .strict();
 export type TransferConfirmDto = z.infer<typeof transferConfirmSchema>;
 

@@ -8,6 +8,8 @@ import {
   MIN_START_MON_WEI,
   PilotError,
   STARTER_CAPS,
+  AgentWalletNotFoundError,
+  BalancesUnreadableError,
   buildUserPrincipal,
   type AgentConfig,
   type AgentRecord,
@@ -46,6 +48,8 @@ function app({
   mon = MIN_START_MON_WEI,
   ausd = MIN_START_MICRO_AUSD,
   custody = true,
+  read = "ok",
+  replay = false,
 }: {
   listed?: { id: string; draft: boolean; wallet: boolean }[];
   refuse?: string;
@@ -53,9 +57,14 @@ function app({
   mon?: bigint | null;
   ausd?: bigint | null;
   custody?: boolean;
+  /** How the balance read goes: as given, a timeout, or not the caller's wallet. */
+  read?: "ok" | "timeout" | "not_mine";
+  /** The directory answers a create that already committed, without running admit. */
+  replay?: boolean;
 } = {}) {
   const drafts: Created[] = [];
   const balanceReads: { userId: string; walletId: string }[] = [];
+  const admitted: boolean[] = [];
   const config = { ...DEFAULT_CONFIG };
   const record = (id: string): AgentRecord => ({
     id,
@@ -85,9 +94,13 @@ function app({
       })),
     createDraft: async (_access, _user, input, admit) => {
       // The directory checks the handle and the wallet, then runs the lock, in its transaction.
+      if (replay) {
+        return { productId: DRAFT, scope: { tenantId: "trusted", agentId: DRAFT } };
+      }
       if (refuse) {
         throw new PilotError(refuse, `refused: ${refuse}`);
       }
+      admitted.push(true);
       await admit?.();
       drafts.push(input);
       return { productId: DRAFT, scope: { tenantId: "trusted", agentId: DRAFT } };
@@ -114,6 +127,15 @@ function app({
             ({
               walletBalance: async (userId: string, walletId: string) => {
                 balanceReads.push({ userId, walletId });
+                if (read === "timeout") {
+                  throw new BalancesUnreadableError({ cause: new Error("timeout") });
+                }
+                if (read === "not_mine") {
+                  throw new AgentWalletNotFoundError();
+                }
+                if (mon === null && ausd === null) {
+                  throw new BalancesUnreadableError();
+                }
                 return { monWei: mon, ausdMicro: ausd };
               },
             }) as never,
@@ -134,7 +156,7 @@ function app({
     await next();
   });
   root.route("/", studio);
-  return { root, drafts, balanceReads };
+  return { root, drafts, balanceReads, admitted };
 }
 
 const post = (payload: unknown) => ({
@@ -177,11 +199,41 @@ test("a draft below either minimum is 409 WALLET_UNDERFUNDED with the balances",
   assert.equal(f.drafts.length, 0);
 });
 
-test("an AUSD balance the chain did not answer is underfunded, never zero", async () => {
+test("an AUSD balance the chain did not answer, with MON read, is underfunded", async () => {
   const f = app({ ausd: null });
   const response = await f.root.request("/drafts", post(body));
   assert.equal(response.status, 409);
   assert.equal((await response.json()).detail.ausdMicro, null);
+});
+
+test("a balance read that times out is 503 WALLETS_UNAVAILABLE, never underfunded", async () => {
+  const f = app({ read: "timeout" });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "WALLETS_UNAVAILABLE");
+  assert.equal(f.drafts.length, 0);
+});
+
+test("a chain that answers neither balance is 503 WALLETS_UNAVAILABLE", async () => {
+  const f = app({ mon: null, ausd: null });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "WALLETS_UNAVAILABLE");
+});
+
+test("the balances are read before the transaction; a replay never runs admit, even underfunded", async () => {
+  const f = app({ replay: true, mon: 0n });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 201);
+  assert.deepEqual(f.admitted, []);
+});
+
+test("a wallet that is not the caller's has no reading and is WALLET_NOT_FOUND", async () => {
+  const f = app({ read: "not_mine" });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 404);
+  assert.equal((await response.json()).error, "WALLET_NOT_FOUND");
+  assert.equal(f.drafts.length, 0);
 });
 
 test("without custody the drafts route is 503 and creates nothing", async () => {
