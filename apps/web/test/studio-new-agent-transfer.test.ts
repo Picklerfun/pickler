@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { formatUnits, parseAmount, shortAddress } from "../src/features/studio/new-agent/model";
 import {
   MON_GAS_RESERVE_WEI,
+  POST_STAMP_SAFE,
   agentWalletTag,
   canMove,
   cleanAmount,
@@ -263,4 +264,44 @@ test("before the stamp, a network error moved nothing", () => {
 test("an expired sign-in moved nothing", () => {
   const message = transferFailure({ sessionExpired: true, studio: null, stamped: false });
   assert.equal(message, "Your sign-in expired. Sign in again; nothing moved.");
+});
+
+const MAY_HAVE = "It may have gone through. Check the balances above before sending again.";
+const afterStamp = (code: string) =>
+  transferFailure({
+    sessionExpired: false,
+    studio: { code, message: `words for ${code}` },
+    stamped: true,
+  });
+
+test("after the stamp, each code that guarantees no broadcast speaks for itself", () => {
+  const safe = [
+    "INVALID_TRANSFER",
+    "INSUFFICIENT_FUNDS",
+    "INSUFFICIENT_GAS",
+    "FEE_TOO_HIGH",
+    "NONCE_GAP",
+    "WALLET_NOT_FOUND",
+    "INVALID_SIGNED_ACTIVITY",
+    "SIGNED_ACTIVITY_REJECTED",
+  ];
+  assert.deepEqual([...POST_STAMP_SAFE].sort(), [...safe].sort());
+  for (const code of safe) {
+    assert.equal(afterStamp(code), `words for ${code}`);
+  }
+});
+
+test("after the stamp, a known code that may have broadcast is an unknown outcome", () => {
+  for (const code of ["WALLETS_UNAVAILABLE", "SIGNING_UNAVAILABLE", "NOT_SENDABLE"]) {
+    assert.equal(afterStamp(code), MAY_HAVE);
+  }
+});
+
+test("before the stamp, an unavailable backend's own message is shown", () => {
+  const message = transferFailure({
+    sessionExpired: false,
+    studio: { code: "WALLETS_UNAVAILABLE", message: "words" },
+    stamped: false,
+  });
+  assert.equal(message, "words");
 });

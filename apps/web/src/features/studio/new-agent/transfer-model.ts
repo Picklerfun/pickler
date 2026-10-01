@@ -6,7 +6,6 @@
  * `apps/web/test/studio-new-agent-transfer.test.ts`.
  */
 import type { WalletsDto } from "@pickler/api-schema";
-import { knownMessage } from "../lib/messages";
 import {
   DECIMALS,
   formatUnits,
@@ -193,9 +192,25 @@ export function failedTransfer(input: {
 }
 
 /**
+ * The codes a confirm answers only when nothing was broadcast: the checks before the broadcast
+ * refused it. After the stamp only these may speak for themselves; every other code (an
+ * unavailable backend, NOT_SENDABLE, one the studio does not know) may have gone through.
+ */
+export const POST_STAMP_SAFE: ReadonlySet<string> = new Set([
+  "INVALID_TRANSFER",
+  "INSUFFICIENT_FUNDS",
+  "INSUFFICIENT_GAS",
+  "FEE_TOO_HIGH",
+  "NONCE_GAP",
+  "WALLET_NOT_FOUND",
+  "INVALID_SIGNED_ACTIVITY",
+  "SIGNED_ACTIVITY_REJECTED",
+]);
+
+/**
  * What a failed transfer says. Before the stamp nothing can have moved, so the studio's message
- * for any code is shown. After it, only a code the studio knows speaks for itself; anything else
- * may have gone through, and the person is sent to the balances before sending again.
+ * for any code is shown. After it, only a code in `POST_STAMP_SAFE` speaks for itself; anything
+ * else may have gone through, and the person is sent to the balances before sending again.
  */
 export function transferFailure(input: {
   sessionExpired: boolean;
@@ -207,7 +222,7 @@ export function transferFailure(input: {
     return "Your sign-in expired. Sign in again; nothing moved.";
   }
   const { studio, stamped } = input;
-  if (studio && studio.message && (!stamped || knownMessage(studio.code))) {
+  if (studio && studio.message && (!stamped || POST_STAMP_SAFE.has(studio.code))) {
     return studio.message;
   }
   return stamped
