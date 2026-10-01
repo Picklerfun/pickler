@@ -604,9 +604,15 @@ test(
         }) as typeof fetch,
       },
     );
-    await assert.rejects(reader(scope, ["BTC", "ETH"], new AbortController().signal), {
-      code: "DATA_UNAVAILABLE",
-    });
+    // AbortSignal.timeout uses an unreferenced timer; the blocked fixture has no socket.
+    const keepAlive = setInterval(() => {}, 1000);
+    try {
+      await assert.rejects(reader(scope, ["BTC", "ETH"], new AbortController().signal), {
+        code: "DATA_UNAVAILABLE",
+      });
+    } finally {
+      clearInterval(keepAlive);
+    }
     assert.ok(Date.now() - started < 24000);
     assert.ok(signals.length >= 1 && signals.length <= 2);
     assert.ok(signals.every((signal) => signal.aborted));
