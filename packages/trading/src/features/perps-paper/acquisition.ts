@@ -7,6 +7,11 @@ import {
 } from "@pickler/core";
 import { validatePaperFrame, type PerpsPaperFrame } from "./simulation.js";
 
+export const PERPS_REST_PACED_POLICY = "rest-paced-20s-v1" as const;
+export const PERPS_STREAM_POLICY = "stream-20s-v1" as const;
+export type PerpsDataPolicy =
+  "coherent-20s-v1" | typeof PERPS_REST_PACED_POLICY | typeof PERPS_STREAM_POLICY;
+
 export const PERPS_DATA_POLICY = "coherent-20s-v1" as const;
 export function transientPerpsData(error: unknown): boolean {
   return (
@@ -40,10 +45,16 @@ export async function acquirePerpsFrames(input: {
   snapshot: (symbol: PerpSymbol) => Promise<PerpSnapshot>;
   book: (symbol: PerpSymbol) => Promise<PerpOrderBook>;
   hash: (value: unknown) => string;
+  repeatedTimestampWait?: (
+    symbol: PerpSymbol,
+    component: "book" | "ticker",
+    signal: AbortSignal,
+  ) => Promise<void>;
   diagnostic?: (event: AcquisitionDiagnostic) => void;
 }): Promise<PerpsPaperFrame[]> {
   const start = input.now();
   const pairs = new Map<PerpSymbol, { snapshot?: PerpSnapshot; book?: PerpOrderBook }>();
+  const repeat = new Set<string>();
   let attempt = 0;
   while (input.now() - start < 20000) {
     input.signal.throwIfAborted();
@@ -71,9 +82,32 @@ export async function acquirePerpsFrames(input: {
         const tickerAt = pair.snapshot?.ticker.provenance.providerTimestamp ?? -Infinity;
         const bookAt = pair.book?.provenance.providerTimestamp ?? -Infinity;
         if (!pair.book || (pair.snapshot && bookAt <= tickerAt)) {
-          pair.book = await input.book(symbol);
+          if (repeat.has(`${symbol}:book`)) {
+            await input.repeatedTimestampWait?.(symbol, "book", input.signal);
+            repeat.delete(`${symbol}:book`);
+          }
+          const next = await input.book(symbol);
+          if (
+            pair.book &&
+            next.provenance.providerTimestamp === pair.book.provenance.providerTimestamp
+          ) {
+            repeat.add(`${symbol}:book`);
+          }
+          pair.book = next;
         } else {
-          pair.snapshot = await input.snapshot(symbol);
+          if (repeat.has(`${symbol}:ticker`)) {
+            await input.repeatedTimestampWait?.(symbol, "ticker", input.signal);
+            repeat.delete(`${symbol}:ticker`);
+          }
+          const next = await input.snapshot(symbol);
+          if (
+            pair.snapshot &&
+            next.ticker.provenance.providerTimestamp ===
+              pair.snapshot.ticker.provenance.providerTimestamp
+          ) {
+            repeat.add(`${symbol}:ticker`);
+          }
+          pair.snapshot = next;
         }
         if (!pair.snapshot) {
           pair.snapshot = await input.snapshot(symbol);
