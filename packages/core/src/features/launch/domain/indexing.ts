@@ -45,8 +45,9 @@ export type AdvancePlan =
   | { kind: "gap"; expectedBlock: bigint; receivedBlock: bigint };
 
 /**
- * Decides what to do with `blocks`, which must be contiguous and ascending as the node
- * returned them.
+ * Validates the whole range before proposing any writes. Input order is normalized;
+ * duplicate heights and inconsistent ancestry are invalid responses, not evidence that
+ * already persisted history should be rolled back.
  *
  * @param cursor Where the stream got to, or null to bootstrap.
  */
@@ -60,28 +61,46 @@ export function planAdvance(
 
   const ordered = [...blocks].sort((left, right) => (left.number < right.number ? -1 : 1));
 
-  if (cursor === null) {
-    // Bootstrapping: there is nothing to disagree with, so the range is taken as given.
-    return { kind: "apply", blocks: ordered };
-  }
+  for (let index = 1; index < ordered.length; index++) {
+    const previous = ordered[index - 1]!;
+    const current = ordered[index]!;
 
-  // Everything at or below the cursor has been applied already. Re-reading it is normal —
-  // ranges overlap after a restart — so the seen part is dropped rather than reapplied.
-  const unseen = ordered.filter((block) => block.number > cursor.lastBlock);
+    if (current.number === previous.number) {
+      throw new Error("Invalid indexer range: duplicate block height");
+    }
 
-  if (unseen.length === 0) {
-    const reorged = ordered.find(
-      (block) => block.number === cursor.lastBlock && block.hash !== cursor.lastBlockHash,
-    );
-
-    if (reorged) {
+    if (current.number !== previous.number + 1n) {
       return {
-        kind: "reorg",
-        rollbackToBlock: cursor.lastBlock - 1n,
-        detectedAt: cursor.lastBlock,
+        kind: "gap",
+        expectedBlock: previous.number + 1n,
+        receivedBlock: current.number,
       };
     }
 
+    if (current.parentHash !== previous.hash) {
+      throw new Error("Invalid indexer range: inconsistent block ancestry");
+    }
+  }
+
+  if (cursor === null) {
+    // No persisted anchor exists, but every link inside the range was checked.
+    return { kind: "apply", blocks: ordered };
+  }
+
+  const anchor = ordered.find((block) => block.number === cursor.lastBlock);
+
+  if (anchor && anchor.hash !== cursor.lastBlockHash) {
+    return {
+      kind: "reorg",
+      rollbackToBlock: cursor.lastBlock - 1n,
+      detectedAt: cursor.lastBlock,
+    };
+  }
+
+  // Overlap is validated above, but already persisted blocks are never reapplied.
+  const unseen = ordered.filter((block) => block.number > cursor.lastBlock);
+
+  if (unseen.length === 0) {
     return { kind: "idle" };
   }
 

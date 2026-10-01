@@ -145,3 +145,52 @@ test("there is no range when the safe tip is behind the cursor", () => {
 
   assert.equal(range, null);
 });
+
+for (const anchor of [null, cursor]) {
+  const start = anchor === null ? 5n : 101n;
+  const parent = anchor === null ? "0x4" : cursor.lastBlockHash;
+  const label = anchor === null ? "bootstrap" : "continuation";
+
+  test(`${label} refuses an internal gap without applying its valid prefix`, () => {
+    assert.deepEqual(
+      planAdvance(anchor, [block(start, "first", parent), block(start + 2n, "third", "missing")]),
+      { kind: "gap", expectedBlock: start + 1n, receivedBlock: start + 2n },
+    );
+  });
+
+  test(`${label} refuses mixed ancestry without requesting a persisted rollback`, () => {
+    assert.throws(
+      () =>
+        planAdvance(anchor, [block(start, "first", parent), block(start + 1n, "second", "fork")]),
+      /inconsistent block ancestry/,
+    );
+  });
+
+  for (const duplicateHash of ["first", "conflicting"]) {
+    test(`${label} refuses duplicate heights (${duplicateHash})`, () => {
+      assert.throws(
+        () =>
+          planAdvance(anchor, [block(start, "first", parent), block(start, duplicateHash, parent)]),
+        /duplicate block height/,
+      );
+    });
+  }
+}
+
+test("a replaced overlapping anchor is detected even when new blocks follow", () => {
+  assert.deepEqual(
+    planAdvance(cursor, [block(100n, "replacement", "0x99"), block(101n, "child", "replacement")]),
+    { kind: "reorg", rollbackToBlock: 99n, detectedAt: 100n },
+  );
+});
+
+test("normalizing a valid range does not mutate the caller's snapshot", () => {
+  const blocks = Object.freeze([block(102n, "second", "first"), block(101n, "first", "0x100")]);
+  const plan = planAdvance(cursor, blocks);
+
+  assert.equal(plan.kind, "apply");
+  assert.deepEqual(
+    blocks.map((entry) => entry.number),
+    [102n, 101n],
+  );
+});
