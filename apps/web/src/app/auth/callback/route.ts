@@ -3,16 +3,14 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { callbackDestination, readOf, type Read } from "@/features/auth/lib/callback";
 import { apiFetch } from "@/server/api-client";
-import { PRODUCT_HOSTS, originFor, productFor, studioHref } from "@/server/hosts";
+import { PRODUCT_HOSTS, productFor, studioHref, studioOrigin } from "@/server/hosts";
 
 /** Authentication callback only; product provisioning belongs to the business API. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const product = productFor(request.headers.get("host"), PRODUCT_HOSTS);
-  // Every redirect from here lands on the studio, which is where the session cookie below is set.
-  // The middleware already sends a marketplace callback to the studio before it gets here, so this
-  // is the request's own origin in practice; it is spelled out so no redirect can leave the studio.
-  const origin = product === "marketplace" ? originFor(PRODUCT_HOSTS.studio) : url.origin;
+  const host = request.headers.get("host");
+  const product = productFor(host, PRODUCT_HOSTS);
+  const origin = studioOrigin(product, host ?? url.host, PRODUCT_HOSTS);
   const code = url.searchParams.get("code");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

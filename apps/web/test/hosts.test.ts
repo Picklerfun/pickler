@@ -6,6 +6,7 @@ import {
   ownerOf,
   productFor,
   studioHref,
+  studioOrigin,
   studioUrl,
 } from "../src/server/hosts";
 
@@ -180,4 +181,19 @@ test("the studio's home, from the local marketplace, is the local studio", () =>
 
 test("a marketplace path, from the local studio, is the local marketplace", () => {
   assert.equal(marketplaceUrl("studio", LOCAL, "/agents"), "http://pickler.localhost:3001/agents");
+});
+
+test("the studio's origin from the local marketplace is the local studio", () => {
+  assert.equal(
+    studioOrigin("marketplace", "pickler.localhost:3001", LOCAL),
+    "http://app.pickler.localhost:3001",
+  );
+});
+
+test("the studio's origin on the studio is its configured one, whatever the server calls itself", () => {
+  assert.equal(studioOrigin("studio", "localhost:3001", HOSTS), "https://app.pickler.fun");
+});
+
+test("the studio's origin on a shared host is that host", () => {
+  assert.equal(studioOrigin("either", "localhost:3001", HOSTS), "http://localhost:3001");
 });

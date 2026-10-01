@@ -52,6 +52,17 @@ export function originFor(host: string): string {
 }
 
 /**
+ * The studio's origin, for a server answer that must land there (the auth callback, which sets the
+ * session cookie). On a configured host it is the studio's configured origin, never `request.url`'s,
+ * which names whatever the server was started on: `next start` answers `localhost` for every host,
+ * and a proxy may answer its own. On a shared host (localhost, a preview) both products live there,
+ * so it is the host the request came in on.
+ */
+export function studioOrigin(product: Product, requestHost: string, hosts: ProductHosts): string {
+  return product === "either" ? originFor(requestHost) : originFor(hosts.studio);
+}
+
+/**
  * First path segments the studio owns. Everything else that is not shared is the marketplace.
  *
  * Three of these are also behind a session: `PROTECTED_SEGMENTS` in ./guard.ts is a subset of this
