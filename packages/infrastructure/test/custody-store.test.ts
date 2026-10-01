@@ -5,6 +5,7 @@ import type { Pool } from "pg";
 import {
   DelegatedUserExistsError,
   DepositAlreadyRecordedError,
+  TransferAlreadyRecordedError,
   type RegistrationInput,
 } from "@pickler/core";
 import { PostgresCustodyStore } from "../src/persistence/custody-store.js";
@@ -15,9 +16,10 @@ const hex = (length: number) =>
 
 /**
  * A minimal agent, the way the studio writes one: the agent and its handle reference each other
- * through deferrable foreign keys, so both inserts share one transaction. Returns the agent id.
+ * through deferrable foreign keys, so both inserts share one transaction. With `runtimeConfig` it
+ * also writes the runtime agent and the product link that carry the caps. Returns the agent id.
  */
-async function seedAgent(pool: Pool) {
+async function seedAgent(pool: Pool, runtimeConfig?: Record<string, unknown>) {
   const id = randomUUID();
   const userId = randomUUID();
   const workspaceId = randomUUID();
@@ -44,6 +46,21 @@ async function seedAgent(pool: Pool) {
       handle,
       id,
     ]);
+    if (runtimeConfig) {
+      await client.query(
+        `INSERT INTO pickler.workspace_tenants (workspace_id, tenant_id) VALUES ($1, $2)`,
+        [workspaceId, workspaceId],
+      );
+      await client.query(
+        `INSERT INTO pickler.agents (tenant_id, id, config) VALUES ($1, $2, $3::jsonb)`,
+        [workspaceId, id, JSON.stringify(runtimeConfig)],
+      );
+      await client.query(
+        `INSERT INTO pickler.product_agents (product_agent_id, workspace_id, tenant_id, runtime_agent_id, request_key, request)
+         VALUES ($1, $2, $3, $4, $5, '{}'::jsonb)`,
+        [id, workspaceId, workspaceId, id, hex(16)],
+      );
+    }
     await client.query("COMMIT");
   } catch (cause) {
     await client.query("ROLLBACK");
@@ -603,4 +620,93 @@ test("a recorded deposit is found by its hash in any case, and only that one", a
   assert.equal(await custody.depositRecorded(hash), true);
   assert.equal(await custody.depositRecorded(`0x${"EF".repeat(32)}`), true);
   assert.equal(await custody.depositRecorded(`0x${"ee".repeat(32)}`), false);
+});
+
+async function linkWallet(pool: Pool, agentId: string, walletId: string) {
+  await pool.query(
+    `INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1, $2, $3)`,
+    [agentId, walletId, ["p1", "p2"]],
+  );
+}
+
+test("agent wallets are listed oldest first with their agent and caps; unlinked ones have none", async (t) => {
+  const { store, custody } = await setup(t);
+  const u = await registered(custody);
+  const v = await registered(custody);
+
+  const linked = agentWallet(u.userId, u.subOrganizationId);
+  const noSpend = agentWallet(u.userId, u.subOrganizationId);
+  const noLeverage = agentWallet(u.userId, u.subOrganizationId);
+  for (const wallet of [linked, noSpend, noLeverage]) {
+    await custody.saveWallet(wallet);
+    await custody.saveApprovedPolicies(u.userId, wallet.walletId, ["p1", "p2", "p3"]);
+  }
+  await linkWallet(
+    store.pool,
+    await seedAgent(store.pool, { spend: { perCallAusd: 7, perDayAusd: 30 }, maxLeverage: 3 }),
+    linked.walletId,
+  );
+  await linkWallet(store.pool, await seedAgent(store.pool, { maxLeverage: 3 }), noSpend.walletId);
+  await linkWallet(
+    store.pool,
+    await seedAgent(store.pool, { spend: { perCallAusd: 2, perDayAusd: 9 } }),
+    noLeverage.walletId,
+  );
+  const unlinked = agentWallet(u.userId, u.subOrganizationId);
+  await custody.saveWallet(unlinked);
+  await custody.saveApprovedPolicies(u.userId, unlinked.walletId, ["p1", "p2"]);
+  // Someone else's linked wallet never shows up for U.
+  const stranger = agentWallet(v.userId, v.subOrganizationId);
+  await custody.saveWallet(stranger);
+  await linkWallet(store.pool, await seedAgent(store.pool, {}), stranger.walletId);
+
+  const list = await custody.listAgentWallets(u.userId);
+  assert.deepEqual(
+    list.map((wallet) => wallet.walletId),
+    [linked.walletId, noSpend.walletId, noLeverage.walletId, unlinked.walletId],
+  );
+  const [a, b, c, d] = list;
+  assert.ok(a && b && c && d);
+  assert.equal(a.address, linked.address);
+  assert.equal(a.agentName, "Halftime");
+  assert.ok(a.agentId);
+  assert.equal(a.policiesApproved, true);
+  assert.deepEqual(a.caps, { perTradeAusd: 7, perDayAusd: 30, maxLeverage: 3 });
+  assert.equal(b.caps, null);
+  assert.deepEqual(c.caps, { perTradeAusd: 2, perDayAusd: 9, maxLeverage: 1 });
+  assert.equal(d.agentId, null);
+  assert.equal(d.agentName, null);
+  assert.equal(d.policiesApproved, false);
+  assert.equal(d.caps, null);
+
+  assert.equal((await custody.findUnlinkedWallet(u.userId))?.walletId, unlinked.walletId);
+  assert.equal(await custody.countAgentWallets(u.userId), 4);
+  assert.equal(await custody.findUnlinkedWallet(v.userId), null);
+  assert.equal(await custody.countAgentWallets(v.userId), 1);
+});
+
+test("an unlinked agent wallet is found whatever its name", async (t) => {
+  const { custody } = await setup(t);
+  const person = await registered(custody);
+  const wallet = agentWallet(person.userId, person.subOrganizationId, "Agent wallet 1");
+  await custody.saveWallet(wallet);
+
+  assert.equal((await custody.findUnlinkedWallet(person.userId))?.walletId, wallet.walletId);
+});
+
+test("a transfer is recorded once; the same hash again is TransferAlreadyRecordedError", async (t) => {
+  const { custody } = await setup(t);
+  const hash = `0x${hex(64)}`;
+  const transfer = {
+    userId: randomUUID(),
+    fromWalletId: `wallet-${hex(12)}`,
+    toWalletId: `wallet-${hex(12)}`,
+    token: "mon" as const,
+    amount: 5n,
+    txHash: hash,
+  };
+  assert.equal(await custody.transferRecorded(hash), false);
+  await custody.saveTransfer(transfer);
+  assert.equal(await custody.transferRecorded(hash.toUpperCase().replace("0X", "0x")), true);
+  await assert.rejects(custody.saveTransfer(transfer), TransferAlreadyRecordedError);
 });

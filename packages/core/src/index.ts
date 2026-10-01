@@ -233,6 +233,7 @@ export type {
   AgentWalletActivityBuilders,
   ExistingAgentWallet,
   AgentWalletRepository,
+  AgentWalletSummary,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,

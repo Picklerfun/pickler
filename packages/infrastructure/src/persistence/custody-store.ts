@@ -8,12 +8,14 @@ import {
   AgentWalletNotFoundError,
   DelegatedUserExistsError,
   DepositAlreadyRecordedError,
+  LEVERAGE_BOUNDS,
   MIN_AGENT_WALLET_POLICIES,
   TransferAlreadyRecordedError,
 } from "@pickler/core";
 import type {
   AgentWallet,
   AgentWalletRepository,
+  AgentWalletSummary,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
@@ -237,10 +239,13 @@ export class PostgresCustodyStore
     const { rows } = await this.pool.query<OrphanAgentWallet>(
       `SELECT w.wallet_id AS "walletId", a.address, w.approved_policy_ids AS "approvedPolicyIds"
          FROM wallets.wallets w
-         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
+         JOIN LATERAL (
+           SELECT address FROM wallets.wallet_accounts
+            WHERE wallet_id = w.wallet_id ORDER BY created_at LIMIT 1
+         ) a ON true
         WHERE w.user_id = $1 AND w.kind = 'agent'
           AND NOT EXISTS (SELECT 1 FROM wallets.agent_wallets l WHERE l.wallet_id = w.wallet_id)
-        ORDER BY w.created_at DESC
+        ORDER BY w.created_at DESC, w.wallet_id DESC
         LIMIT 1`,
       [userId],
     );
@@ -255,25 +260,30 @@ export class PostgresCustodyStore
     return Number(rows[0]?.count ?? 0);
   }
 
-  async listAgentWallets(userId: string) {
+  async listAgentWallets(userId: string): Promise<AgentWalletSummary[]> {
     const { rows } = await this.pool.query<{
       walletId: string;
       address: string;
       agentId: string | null;
       agentName: string | null;
       approvedPolicyIds: string[] | null;
-      config: { spend?: { perCallAusd: number; perDayAusd: number }; maxLeverage?: number } | null;
+      spend: { perCallAusd: number; perDayAusd: number } | null;
+      maxLeverage: number | null;
     }>(
       `SELECT w.wallet_id AS "walletId", a.address, l.agent_id::text AS "agentId", ag.name AS "agentName",
-              w.approved_policy_ids AS "approvedPolicyIds", pa.config
+              w.approved_policy_ids AS "approvedPolicyIds", pa.config->'spend' AS spend,
+              (pa.config->>'maxLeverage')::int AS "maxLeverage"
          FROM wallets.wallets w
-         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
+         JOIN LATERAL (
+           SELECT address FROM wallets.wallet_accounts
+            WHERE wallet_id = w.wallet_id ORDER BY created_at LIMIT 1
+         ) a ON true
          LEFT JOIN wallets.agent_wallets l ON l.wallet_id = w.wallet_id
          LEFT JOIN agents.agents ag ON ag.id = l.agent_id
          LEFT JOIN pickler.product_agents p ON p.product_agent_id = l.agent_id
          LEFT JOIN pickler.agents pa ON pa.tenant_id = p.tenant_id AND pa.id = p.runtime_agent_id
         WHERE w.user_id = $1 AND w.kind = 'agent'
-        ORDER BY w.created_at`,
+        ORDER BY w.created_at, w.wallet_id`,
       [userId],
     );
     return rows.map((row) => ({
@@ -282,11 +292,11 @@ export class PostgresCustodyStore
       agentId: row.agentId,
       agentName: row.agentName,
       policiesApproved: (row.approvedPolicyIds?.length ?? 0) >= MIN_AGENT_WALLET_POLICIES,
-      caps: row.config?.spend
+      caps: row.spend
         ? {
-            perTradeAusd: row.config.spend.perCallAusd,
-            perDayAusd: row.config.spend.perDayAusd,
-            maxLeverage: row.config.maxLeverage ?? 1,
+            perTradeAusd: row.spend.perCallAusd,
+            perDayAusd: row.spend.perDayAusd,
+            maxLeverage: row.maxLeverage ?? LEVERAGE_BOUNDS.min,
           }
         : null,
     }));

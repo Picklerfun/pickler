@@ -187,6 +187,17 @@ export interface ExistingAgentWallet extends AgentWallet {
   policiesApproved: boolean;
 }
 
+/** One of a person's agent wallets, with the agent it is linked to and that agent's caps. */
+export interface AgentWalletSummary {
+  walletId: string;
+  address: string;
+  agentId: string | null;
+  agentName: string | null;
+  policiesApproved: boolean;
+  /** Null when the wallet is unlinked or its agent's config sets no spend limits. */
+  caps: { perTradeAusd: number; perDayAusd: number; maxLeverage: number } | null;
+}
+
 export interface AgentWalletRepository {
   /**
    * Records Pickler's user inside the person's sub-organization. Idempotent for the same id;
@@ -220,16 +231,7 @@ export interface AgentWalletRepository {
   /** How many agent wallets this person has, linked or not: the next one is "Agent wallet N+1". */
   countAgentWallets(userId: string): Promise<number>;
   /** Every agent wallet of this person's, oldest first, with the agent it is linked to. */
-  listAgentWallets(userId: string): Promise<
-    {
-      walletId: string;
-      address: string;
-      agentId: string | null;
-      agentName: string | null;
-      policiesApproved: boolean;
-      caps: { perTradeAusd: number; perDayAusd: number; maxLeverage: number } | null;
-    }[]
-  >;
+  listAgentWallets(userId: string): Promise<AgentWalletSummary[]>;
   saveTransfer(input: {
     userId: string;
     fromWalletId: string;
