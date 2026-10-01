@@ -7,7 +7,18 @@ export type Decision =
   | { kind: "notFound" }
   | { kind: "rewrite"; to: string }
   /** This request has no session. 307 — a 308 would cache "/account is /signin" past signing in. */
-  | { kind: "signIn"; to: string };
+  | { kind: "signIn"; to: string }
+  /** The same path and query, on the studio's own host. Absolute, and as temporary as sign-in. */
+  | { kind: "toStudio"; to: string };
+
+/**
+ * Where Supabase sends someone back after Google or a magic link. It is the one studio path that
+ * can arrive on the marketplace: the provider falls back to the project's Site URL when the
+ * `redirectTo` it was given is not on its allow list, and the Site URL is the apex. The same path
+ * as `AUTH_CALLBACK_PATH` in features/auth/lib/account.ts, which is a client module the edge
+ * middleware does not import; test/middleware.test.ts holds the two equal.
+ */
+export const AUTH_CALLBACK = "/auth/callback";
 
 /** What the request says about authentication. Arguments, not reads: see below. */
 export interface AuthState {
@@ -45,6 +56,14 @@ export function decide(
   auth: AuthState,
 ): Decision {
   const product = productFor(host, hosts);
+
+  // The callback is where the session cookie is set, and a cookie belongs to the host that sets it.
+  // Exchanged on the marketplace, the session would live on the wrong host: the studio would see a
+  // signed-out person and send them back to sign in. So the whole callback, code and all, goes to
+  // the studio first, and is exchanged there. Before the ownership rule, which would 404 it.
+  if (product === "marketplace" && pathname === AUTH_CALLBACK) {
+    return { kind: "toStudio", to: `https://${hosts.studio}${pathname}` };
+  }
 
   if (product === "studio" && pathname === "/studio") {
     return { kind: "notFound" };
@@ -95,6 +114,14 @@ export function middleware(request: NextRequest) {
       const target = request.nextUrl.clone();
       target.pathname = decision.to;
       return NextResponse.rewrite(target);
+    }
+    case "toStudio": {
+      // The query is the point: it carries the one-time `code` the studio exchanges.
+      const target = new URL(decision.to);
+      target.search = request.nextUrl.search;
+      const response = NextResponse.redirect(target, 307);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
     }
     case "signIn": {
       // Temporary and uncacheable: this answer is about one request's cookies, not about the URL.
