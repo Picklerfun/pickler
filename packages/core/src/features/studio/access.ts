@@ -2,6 +2,7 @@ import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
 import type { AgentProfileInput } from "../agents/domain/agents.js";
 import type { Accent } from "../landing/domain/landing.js";
+import type { DraftProfile } from "./create.js";
 import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
 
 export interface StudioAccess {
@@ -44,25 +45,31 @@ export interface StudioDirectory {
     admit?: CreateAdmission,
   ): Promise<Scope>;
   /**
-   * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
-   * the agent with `status = 'draft'` and no wallet, its runtime row with the run's config snapshot,
-   * the preview copied in as its first run, and the preview marked adopted. Refuses with
-   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, in that order, then runs `admit`; a refusal writes
-   * nothing. A retry of a create that committed (same caller, brief and handle) answers the same
-   * draft again and never reaches `admit`; under a different name it is CONFLICT.
+   * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one
+   * transaction: locks the workspace; answers the same draft again, without `admit`, when this is
+   * the same create retried (same wallet, handle and name; WALLET_ASSIGNED under other terms);
+   * refuses HANDLE_TAKEN; locks the wallet (WALLET_NOT_FOUND unless it is the caller's agent wallet,
+   * WALLET_ASSIGNED when linked, POLICIES_MISSING without approved policies); runs `admit`; then
+   * writes the agent (`draft`), its profile, handle, runtime row and product row, and links the
+   * wallet with its approved policy ids. A refusal writes nothing.
    */
   createDraft(
     access: StudioAccess,
     userId: string,
-    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
-    now: number,
+    input: {
+      name: string;
+      handle: string;
+      config: AgentConfig;
+      profile: DraftProfile;
+      walletId: string;
+    },
     admit?: CreateAdmission,
   ): Promise<{ productId: string; scope: Scope }>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
   /**
    * The person's agents, oldest first, with the accent their profile was created with ("lime"
-   * without one), and whether each is a private draft (no wallet yet, so the funding lock skips it).
+   * without one), and whether each is a private draft.
    */
   list(
     access: StudioAccess,

@@ -95,13 +95,16 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's create-agent transaction only ever reads it.
 
-`PostgresStudioDirectory.createDraft` adopts a preview as a private draft in one transaction. It
-locks the workspace, then the preview row, and first looks for a replay: a preview already adopted
-by this caller in this workspace, with the submitted fingerprint, whose `pickler.product_agents`
-row (`request_key = 'preview:<previewRunId>'`) was created under the submitted handle, answers
-that draft again without calling `admit`; the same request under a different name is `CONFLICT`. Otherwise the checks run in the spec's order
-(`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`), then `admit` (the route's funding lock and draft
-limit), then the writes.
+`PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
+transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
+a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again
+without calling `admit` when its request (name, handle, wallet) matches, and is `WALLET_ASSIGNED`
+when it does not. Otherwise it refuses `HANDLE_TAKEN`, locks the wallet row and refuses
+`WALLET_NOT_FOUND` (not this person's `kind='agent'` wallet), `WALLET_ASSIGNED` (linked) and
+`POLICIES_MISSING` (fewer than `MIN_AGENT_WALLET_POLICIES` approved ids), then runs `admit` (the
+route's funding lock, draft limit and balance check), then writes the agent, its profile (accent,
+avatar pattern, voice, venue `perps`), the wallet's link with its approved policy ids, the handle,
+the runtime row and the product row.
 
 ## Invocation database connections
 

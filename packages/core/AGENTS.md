@@ -117,7 +117,7 @@ checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig
 person picks it right before turning the schedule on. With the schedule on, the next run moves to
 `nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
 A retried create is recognised inside `StudioDirectory.createAgent` (by workspace and
-idempotency key) and `createDraft` (by the adopted preview), before `admit` runs; the port has no
+idempotency key) and `createDraft` (by the wallet it links), before `admit` runs; the port has no
 separate lookup.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,

@@ -13,7 +13,6 @@
 //   Relayer had no equivalent; each step is prepare → passkey stamp in the browser → confirm.
 
 import {
-  HANDLE_RULES,
   isWalletAccountEmail,
   SUPPORTED_TRANSPORTS,
   type createCustodyService,
@@ -176,22 +175,6 @@ function signedActivity(body: Body) {
       stampHeaderValue: text(stamp, "stampHeaderValue", MAX.stamp),
     },
   };
-}
-
-/** An agent handle, by the same rule as a profile handle; the wallet is named after it. */
-function handle(body: Body): string {
-  const value = body["handle"];
-  if (
-    typeof value !== "string" ||
-    value.length < HANDLE_RULES.min ||
-    value.length > HANDLE_RULES.max ||
-    !HANDLE_RULES.pattern.test(value)
-  ) {
-    throw badRequest(
-      `Field 'handle' must be ${HANDLE_RULES.min} to ${HANDLE_RULES.max} lowercase letters, digits or underscores`,
-    );
-  }
-  return value;
 }
 
 /** The unsigned activity as the Turnkey stamper consumes it, exactly as add/prepare answers. */
@@ -417,8 +400,9 @@ export function signingRoutes(services: SigningRouteServices) {
 
   // ─── The agent wallet ceremony ────────────────────────────────────────────────────────────
   // Three steps, each prepared here, stamped by the person's passkey and confirmed here: Pickler's
-  // delegated user (first agent only), the agent's wallet, and that wallet's policies. The link
-  // to an agent is written by the create-agent transaction, not by these routes.
+  // delegated user (first agent only), the agent's wallet ("Agent wallet N"), and that wallet's
+  // policies, which wait until the wallet holds the minimums to start. The link to an agent is
+  // written by the drafts route's transaction, not by these routes.
 
   /** Which steps the browser still has to run. */
   api.get("/agents/state", async (c) => {
@@ -455,15 +439,15 @@ export function signingRoutes(services: SigningRouteServices) {
     );
   });
 
-  // A wallet already minted under this handle and never linked is answered as `existing`, and
-  // the browser skips the stamp: a retry never leaves a second wallet behind. `policies_approved`
-  // says its rules were approved too, so the browser skips that prompt as well.
+  // A new wallet is named "Agent wallet N", never after a handle: the wallet exists before the
+  // agent does. The body must be empty or `{}`. A wallet already minted and never linked is
+  // answered as `existing`, and the browser skips the stamp: a retry never leaves a second wallet
+  // behind. `policies_approved` says its rules were approved too, so the browser skips that prompt
+  // as well.
   api.post("/agents/wallet/prepare", async (c) => {
     const user = person(c);
-    const body = await jsonBody(c);
-    const prepared = await services
-      .custody(c.get("requestId"))
-      .prepareAgentWallet(user.id, handle(body));
+    await emptyBody(c);
+    const prepared = await services.custody(c.get("requestId")).prepareAgentWallet(user.id);
     if ("existing" in prepared) {
       return c.json(
         successEnvelope(
@@ -484,10 +468,8 @@ export function signingRoutes(services: SigningRouteServices) {
 
   api.post("/agents/wallet/confirm", async (c) => {
     const user = person(c);
-    const body = await jsonBody(c);
-    const wallet = await services
-      .custody(c.get("requestId"))
-      .confirmAgentWallet(user.id, handle(body), signedActivity(body));
+    const signed = signedActivity(await jsonBody(c));
+    const wallet = await services.custody(c.get("requestId")).confirmAgentWallet(user.id, signed);
     return c.json(
       successEnvelope(
         { wallet_id: wallet.walletId, address: wallet.address },

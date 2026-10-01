@@ -128,17 +128,21 @@ for the cleanup that has not been written.
 
 Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
 prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
-agent only), the agent's wallet (`{ handle }`, profile handle rules), and that wallet's policies
-(no body; core adds the delegated user's self-delete policy when none of the person's wallets
-is linked to an agent yet, and a `first_agent` field is refused). Each confirm is refused with 400
+agent only), the agent's wallet (no body, `{}` at most: a `handle` is refused; the wallet is named
+"Agent wallet N", N the person's agent wallets plus one; confirm takes `{ signed }`), and that
+wallet's policies (no body; core adds the delegated user's self-delete policy when none of the
+person's wallets is linked to an agent yet, and a `first_agent` field is refused). The policies
+prepare reads the wallet's balances first and answers 409 `wallet_underfunded` below either
+minimum to start (10 AUSD, 0.5 MON), with `detail: { ausdMicro, monWei, minAusdMicro, minMonWei }`
+as base-unit strings (a balance the chain did not answer is null). Each confirm is refused with 400
 `invalid_signed_activity` before anything reaches Turnkey unless the stamped request is exactly
 what its prepare built, apart from the timestamp. Prepares answer the
-unsigned activity in add/prepare's shape; a wallet prepare for a handle with an unlinked wallet
+unsigned activity in add/prepare's shape; a wallet prepare while the person has an unlinked wallet
 answers `{ existing: { wallet_id, address, policies_approved } }` instead, and the browser skips
 that stamp, and the policies' too when `policies_approved` is true.
 Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.
 `GET /agents/state` answers `has_sub_organization` and `has_delegated_user`. The link to an agent
-is written by the create-agent transaction, not here.
+is written by the drafts route's transaction, not here.
 
 `TURNKEY_DELEGATED_API_PUBLIC_KEY` is the public half of Pickler's delegated key; without it the
 ceremony answers 503 `agent_wallets_unavailable` and nothing else changes. `delegatedPublicKeyFrom`
@@ -253,15 +257,33 @@ deposit chain, so the deposit routes answer 503 `DEPOSITS_UNAVAILABLE`. `GET
 /v1/signing/wallets/me` answers 503 with `error: "balances_unavailable"` in its envelope. The
 passkey ceremonies read no chain and stay on.
 
-`POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
-rights) adopts a completed paper run as a private draft through `directory.createDraft`
-(studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
-`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`, `CONFLICT` (a retry under a different name) and `UNFUNDED_AGENT` (an agent with a wallet below
-the minimum). The fourth draft in a workspace is 409
-`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, the one studio refusal besides
-creation's `CONFLICT`/`NOT_FOUND` that carries a message. Both locks run in the admit callback,
-inside the create transaction, after the workspace row is locked. `POST /agents` meets the funding
-lock only, never the draft limit.
+`POST /v1/studio/drafts { name, handle, voice, avatar, sources, brief, caps, walletId }` (JWT,
+manage rights; studio-create-simplified-v1 §4.1) creates a private draft with the agent wallet the
+person made, funded and signed the policies of, and answers 201 `{ productId, agent }`. Sites in
+`sources.web` are reduced to bare hosts by core's `classifyRead` ("https://www.CoinDesk.com/x" is
+`coindesk.com`) before `prepareDraft` checks the request and builds the Perpl-shaped config and the
+profile. `directory.createDraft` then, in one transaction: replays the same create (same wallet,
+handle and name) without the lock; refuses `HANDLE_TAKEN`, then `WALLET_NOT_FOUND` (404: absent,
+another person's, or not `kind='agent'`), `WALLET_ASSIGNED` (already linked, or the same wallet
+under other terms) and `POLICIES_MISSING`; runs the admit callback, which holds the funding lock,
+the draft limit and the wallet's balances read again on chain (409 `WALLET_UNDERFUNDED` with the
+same `detail` as the signing family's); and writes the draft, its profile (accent, avatar pattern,
+voice name, venue `perps`) and the wallet's link with the approved policy ids. Every refusal from
+the directory or the lock answers `{ error, message }`; the fourth draft in a workspace is 409
+`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`. Without custody or a chain it is
+503 `WALLETS_UNAVAILABLE`. `POST /agents` meets the funding lock only, never the draft limit.
+
+`GET /v1/studio/wallets` answers the master wallet and every agent wallet of the person's, balances
+as base-unit strings read on chain (null where a read failed), with each wallet's agent, caps and
+whether its policies were approved. `POST /v1/studio/wallets/transfers/prepare|confirm { from, to,
+token, amount }` moves AUSD or MON between the master (`"master"`) and one of the person's agent
+wallets, either way; `amount` is decimal and converted exactly to micro-AUSD or wei (more decimals
+than the token has is 400 `INVALID_TRANSFER`). Prepare answers the unsigned activity plus
+`baseUnits`; confirm takes `signed` too and answers `{ txHash }`. These routes answer
+`{ error, message }` in their own words: `INVALID_TRANSFER` (400), `WALLET_NOT_FOUND` (404),
+`INSUFFICIENT_FUNDS`, `INSUFFICIENT_GAS`, `TRANSFER_ALREADY_RECORDED`, `NOT_SENDABLE` (409),
+`FEE_TOO_HIGH`, `NONCE_GAP` (400) and `WALLETS_UNAVAILABLE` (503), never the deposit's codes. The
+deposit routes keep theirs.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,

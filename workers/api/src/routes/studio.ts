@@ -11,6 +11,14 @@ import {
   BriefError,
   PreviewRateLimited,
   preparePreview,
+  prepareDraft,
+  fundingShortfall,
+  classifyRead,
+  WalletUnderfundedError,
+  InvalidTransferError,
+  InsufficientFundsError,
+  InsufficientGasError,
+  TransferAlreadyRecordedError,
   AccessDeniedError,
   AuthenticationRequiredError,
   unsupported,
@@ -65,6 +73,10 @@ import {
   previewRunRequestSchema,
   previewRunResponseSchema,
   draftCreateSchema,
+  transferRequestSchema,
+  transferConfirmSchema,
+  walletsResponseSchema,
+  type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import { DraftUnavailableError } from "@pickler/infrastructure";
@@ -104,12 +116,21 @@ export interface StudioServices {
    */
   balances: { read(address: string): Promise<number> };
   /**
-   * The passkey custody service, per request, for deposits. Absent where Turnkey is not
-   * configured; the deposit routes then answer 503 and nothing else changes.
+   * The passkey custody service, per request, for deposits, the wallets and their transfers, and
+   * the drafts route's balance check. Absent where Turnkey is not configured; those routes then
+   * answer 503 and nothing else changes.
    */
   custody?: (
     requestId: string,
-  ) => Pick<ReturnType<typeof createCustodyService>, "prepareDeposit" | "confirmDeposit">;
+  ) => Pick<
+    ReturnType<typeof createCustodyService>,
+    | "prepareDeposit"
+    | "confirmDeposit"
+    | "listWallets"
+    | "prepareTransfer"
+    | "confirmTransfer"
+    | "walletBalance"
+  >;
 }
 
 /** The request the browser stamped, in the shape Turnkey's own stamper produces. */
@@ -141,7 +162,7 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
     return 404;
   }
   if (code === "QUOTA") {
@@ -202,6 +223,114 @@ function custodyFailure(
   return null;
 }
 
+/**
+ * A refusal the wallet routes (`/wallets`, transfers, the drafts route's funding check) answer as
+ * `{ error, message, detail? }`, in their own words.
+ */
+class WalletRefusal extends Error {
+  constructor(
+    readonly code: string,
+    readonly status: 400 | 404 | 409 | 503,
+    message: string,
+    readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = "WalletRefusal";
+  }
+}
+
+/**
+ * The wallet routes' failures. Transfers reuse the deposit's fee, nonce, sendability and
+ * availability errors; their callers never moved a deposit, so those answer here with codes and
+ * words of their own. The deposit routes keep theirs (`custodyFailure`). Anything else falls
+ * through to the family's mapping.
+ */
+function walletFailure(error: unknown): WalletRefusal | null {
+  if (error instanceof WalletUnderfundedError) {
+    return new WalletRefusal(error.code, 409, error.message, error.detail);
+  }
+  if (error instanceof InvalidTransferError) {
+    return new WalletRefusal("INVALID_TRANSFER", 400, error.message);
+  }
+  if (error instanceof InsufficientFundsError) {
+    return new WalletRefusal("INSUFFICIENT_FUNDS", 409, error.message);
+  }
+  if (error instanceof InsufficientGasError) {
+    return new WalletRefusal("INSUFFICIENT_GAS", 409, error.message);
+  }
+  if (error instanceof TransferAlreadyRecordedError) {
+    return new WalletRefusal("TRANSFER_ALREADY_RECORDED", 409, error.message);
+  }
+  if (error instanceof AgentWalletNotFoundError) {
+    return new WalletRefusal("WALLET_NOT_FOUND", 404, "Wallet not found");
+  }
+  if (error instanceof DepositFeeTooHighError) {
+    return new WalletRefusal(
+      "FEE_TOO_HIGH",
+      400,
+      "The stamped transaction pays more than twice the current fee",
+    );
+  }
+  if (error instanceof DepositNonceError) {
+    return new WalletRefusal("NONCE_GAP", 400, "This transfer is out of date. Prepare it again.");
+  }
+  if (error instanceof DepositNotSendableError) {
+    return new WalletRefusal(
+      "NOT_SENDABLE",
+      409,
+      "The wallet cannot send this transfer. Check its AUSD and MON.",
+    );
+  }
+  if (error instanceof DepositsUnavailableError) {
+    return new WalletRefusal(
+      "WALLETS_UNAVAILABLE",
+      503,
+      "Wallets are not available on this deployment",
+    );
+  }
+  return null;
+}
+
+/** Runs a wallet route's work, answering its failures in the wallet routes' words. */
+async function walletWork<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    throw walletFailure(error) ?? error;
+  }
+}
+
+/** Decimal → base units, exactly: micro-AUSD or wei. More decimals than the token has is 400. */
+function baseUnitsOf(token: "AUSD" | "MON", amount: string): bigint {
+  const decimals = token === "AUSD" ? 6 : 18;
+  const [whole = "0", fraction = ""] = amount.split(".");
+  if (fraction.length > decimals) {
+    throw new InvalidTransferError(`${token} has at most ${decimals} decimals`);
+  }
+  return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, "0"));
+}
+
+const baseUnitStrings = (balance: { monWei: bigint | null; ausdMicro: bigint | null }) => ({
+  ausdMicro: balance.ausdMicro === null ? null : balance.ausdMicro.toString(),
+  monWei: balance.monWei === null ? null : balance.monWei.toString(),
+});
+
+/**
+ * Sites as a person types them ("CoinDesk.com", "https://www.coindesk.com/markets") reduced to
+ * the bare hosts core accepts, by core's own read rule, once each. A line that names no site is
+ * passed on as typed, and core refuses it.
+ */
+function bareSites(sources: DraftCreateDto["sources"]): DraftCreateDto["sources"] {
+  if (!sources.web) {
+    return sources;
+  }
+  const sites = sources.web.sites.map((line) => {
+    const read = classifyRead(line);
+    return read.kind === "site" ? read.host : line.trim();
+  });
+  return { web: { mode: sources.web.mode, sites: [...new Set(sites)] } };
+}
+
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
 export function studioRoutes(services: StudioServices) {
   const api = new Hono<AppEnv>();
@@ -222,6 +351,16 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
+    }
+    if (error instanceof WalletRefusal) {
+      return c.json(
+        {
+          error: error.code,
+          message: error.message,
+          ...(error.detail === undefined ? {} : { detail: error.detail }),
+        },
+        error.status,
+      );
     }
     if (error instanceof BriefError) {
       return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
@@ -320,9 +459,10 @@ export function studioRoutes(services: StudioServices) {
 
   /**
    * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. The lock
-   * counts the balances of agents that have a wallet. A private draft has none and is not counted
-   * as unfunded (§6); drafts close the lock only at `MAX_DRAFTS_PER_WORKSPACE`. An agent without a
-   * wallet that is not a draft (created before wallets existed) cannot be funded and is not
+   * counts the balances of agents that have a wallet, drafts included: a draft is now created with
+   * its funded wallet (studio-create-simplified-v1). A draft from before that has none and is not
+   * counted as unfunded; drafts also close the lock at `MAX_DRAFTS_PER_WORKSPACE`. An agent without
+   * a wallet that is not a draft (created before wallets existed) cannot be funded and is not
    * counted either.
    */
   async function fleet(current: StudioAccess) {
@@ -475,26 +615,40 @@ export function studioRoutes(services: StudioServices) {
       throw caught;
     }
   });
-  // "Create {Name}" (studio-brief-v1 §6): adopt the paper run as a private draft. Not
-  // /agents/draft, which is the model drafter above. The brief travels again, is checked exactly as
-  // the run's was, and its fingerprint must match the run's (RUN_STALE otherwise).
+  // "Create {name}" (studio-create-simplified-v1 §4.1): the private draft, created with the agent
+  // wallet the person already made, funded and signed the policies of. Not /agents/draft, which is
+  // the model drafter above. The directory checks the handle and the wallet in its transaction,
+  // then runs the lock below, which also reads the wallet's balances again: the policies were
+  // prepared only past the minimums, and the money can have moved since.
   api.post("/drafts", async (c) => {
     const principal = c.get("principal");
     const current = await access.authorize(principal, true);
     const body = draftCreateSchema.parse(await c.req.json());
-    const { fingerprint } = preparePreview(body);
+    const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
+    const custody = await walletWork(async () => deposits(c.get("requestId")));
+    const lock = fundingLock(current, "draft");
     let created;
     try {
-      created = await services.directory.createDraft(
-        current,
-        principal.id,
-        { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
-        Date.now(),
-        fundingLock(current, "draft"),
+      created = await walletWork(() =>
+        services.directory.createDraft(
+          current,
+          principal.id,
+          { name: body.name, handle: body.handle, config, profile, walletId: body.walletId },
+          async () => {
+            await lock();
+            const shortfall = fundingShortfall(
+              await custody.walletBalance(principal.id, body.walletId),
+            );
+            if (shortfall) {
+              throw new WalletUnderfundedError(shortfall);
+            }
+          },
+        ),
       );
     } catch (error) {
-      // The limit is a number the person has to read, so this refusal alone carries its message.
-      if (error instanceof PilotError && error.code === "DRAFT_LIMIT") {
+      // Each refusal here has its own fix (a number to read, a handle to change, a wallet to sign
+      // or fund), so the drafts route sends the directory's message along for the studio to show.
+      if (error instanceof PilotError) {
         return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
       }
       throw error;
@@ -612,6 +766,70 @@ export function studioRoutes(services: StudioServices) {
       signed,
     );
     return c.json({ txHash });
+  });
+
+  // The wallets modal (studio-create-simplified-v1 §4.2): the master and every agent wallet with
+  // their balances read on chain, and transfers of AUSD or MON between the master and one of the
+  // person's agent wallets, either way: prepare → passkey stamp in the browser → confirm. Core
+  // checks the wallets are the caller's and rebuilds what was stamped before anything is sent.
+  api.get("/wallets", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal);
+    const listed = await walletWork(() => deposits(c.get("requestId")).listWallets(principal.id));
+    return c.json(
+      walletsResponseSchema.parse({
+        master: { address: listed.master.address, ...baseUnitStrings(listed.master) },
+        agents: listed.agents.map((wallet) => ({
+          walletId: wallet.walletId,
+          address: wallet.address,
+          ...baseUnitStrings(wallet),
+          agentId: wallet.agentId,
+          agentName: wallet.agentName,
+          caps: wallet.caps,
+          policiesApproved: wallet.policiesApproved,
+        })),
+        readAt: listed.readAt,
+      }),
+    );
+  });
+  api.post("/wallets/transfers/prepare", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal, true);
+    const body = transferRequestSchema.parse(await c.req.json());
+    return walletWork(async () => {
+      const amount = baseUnitsOf(body.token, body.amount);
+      const unsigned = await deposits(c.get("requestId")).prepareTransfer(principal.id, {
+        from: body.from,
+        to: body.to,
+        token: body.token,
+        amount,
+      });
+      return c.json({
+        url: unsigned.url,
+        body: unsigned.body,
+        timestampMs: unsigned.timestampMs,
+        organizationId: unsigned.organizationId,
+        baseUnits: amount.toString(),
+      });
+    });
+  });
+  api.post("/wallets/transfers/confirm", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal, true);
+    const body = transferConfirmSchema.parse(await c.req.json());
+    return walletWork(async () => {
+      const { txHash } = await deposits(c.get("requestId")).confirmTransfer(
+        principal.id,
+        {
+          from: body.from,
+          to: body.to,
+          token: body.token,
+          amount: baseUnitsOf(body.token, body.amount),
+        },
+        body.signed,
+      );
+      return c.json({ txHash });
+    });
   });
   api.get("/agents/:id/runs", async (c) => {
     const current = await access.authorize(c.get("principal"));

@@ -21,6 +21,7 @@ import {
   NoCustodyAccountError,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
+  WalletUnderfundedError,
 } from "@pickler/core";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -96,6 +97,14 @@ function classify(
   }
   if (error instanceof AgentWalletNotFoundError) {
     return { status: 404, message: error.message, extras: { error: "agent_wallet_not_found" } };
+  }
+  if (error instanceof WalletUnderfundedError) {
+    // Base units as strings: the balances read on chain (null where a read failed) and the minimums.
+    return {
+      status: 409,
+      message: error.message,
+      extras: { error: "wallet_underfunded", detail: { ...error.detail } },
+    };
   }
   if (error instanceof DelegatedKeyNotConfiguredError) {
     return {

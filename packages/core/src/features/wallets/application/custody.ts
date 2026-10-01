@@ -996,6 +996,21 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     /**
+     * One of the person's agent wallets' balances, read from the chain: the drafts route checks
+     * them against the minimums again, since the money can have moved since the policies step.
+     */
+    async walletBalance(userId: string, walletId: string) {
+      const wallet = await deps.agentWallets.findOwnedAgentWallet(userId, walletId);
+      if (!wallet) {
+        throw new AgentWalletNotFoundError();
+      }
+      if (!deps.balances) {
+        throw new DepositsUnavailableError();
+      }
+      return deps.balances.read(wallet.address);
+    },
+
+    /**
      * Moving AUSD or MON between the master wallet and one of the person's agent wallets, step
      * one: the unsigned transaction from the source, wrapped in the sign_transaction activity the
      * passkey stamps with the source as `signWith`. Like a deposit, nothing is kept here.

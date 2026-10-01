@@ -793,3 +793,24 @@ test("the wallet list needs an account and a balance reader", async () => {
     DepositsUnavailableError,
   );
 });
+
+test("an agent wallet's balance is read for its owner only, and needs the balance reader", async () => {
+  const f = funded();
+
+  assert.deepEqual(await createCustodyService(deps(f)).walletBalance(USER, "wal-agent"), {
+    monWei: 10n ** 18n,
+    ausdMicro: 5_000_000n,
+  });
+  await assert.rejects(
+    createCustodyService(deps(f)).walletBalance("someone-else", "wal-agent"),
+    AgentWalletNotFoundError,
+  );
+  await assert.rejects(
+    createCustodyService(deps(f)).walletBalance(USER, "wal-master"),
+    AgentWalletNotFoundError,
+  );
+  await assert.rejects(
+    createCustodyService(deps(f, { balances: false })).walletBalance(USER, "wal-agent"),
+    DepositsUnavailableError,
+  );
+});

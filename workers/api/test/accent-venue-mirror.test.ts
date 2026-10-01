@@ -15,6 +15,9 @@ import {
   LEVERAGE_BOUNDS as CORE_LEVERAGE_BOUNDS,
   normalizeBrief,
   briefToConfig,
+  VOICES as CORE_VOICES,
+  DEFAULT_BRIEF as CORE_DEFAULT_BRIEF,
+  STARTER_CAPS as CORE_STARTER_CAPS,
 } from "@pickler/core";
 import { PAPER_BUDGET_AUSD as TRADING_PAPER_BUDGET_AUSD } from "@pickler/trading/polymarket";
 import {
@@ -113,23 +116,34 @@ test("a brief's config is a valid wire config", () => {
   });
   assert.doesNotThrow(() => agentConfigSchema.parse(config));
 });
-test("the preview request leaves lengths to core, and the draft request adds the name", () => {
+test("the preview request leaves lengths to core", () => {
   const request = {
     brief: { thesis: "x".repeat(700), reads: [], entersWhen: [], exitsWhen: [], never: [] },
     spend: { perCallAusd: 5, perDayAusd: 20 },
     maxLeverage: 2,
   };
   assert.doesNotThrow(() => previewRunRequestSchema.parse(request));
-  assert.doesNotThrow(() =>
-    draftCreateSchema.parse({
-      ...request,
-      name: "Halftime",
-      handle: "halftime",
-      previewRunId: "0000000a-0000-4000-8000-000000000000",
-    }),
+});
+test("the draft request's voices are core's, and core's starting draft is a valid request", () => {
+  assert.deepEqual(
+    draftCreateSchema.shape.voice.options,
+    CORE_VOICES.map((voice) => voice.key),
   );
+  assert.deepEqual(draftCreateSchema.shape.avatar.shape.accent.options, CORE_ACCENTS);
+  const request = {
+    name: "Halftime",
+    handle: "halftime",
+    voice: "analyst",
+    avatar: { accent: "lime", pattern: 0 },
+    sources: { web: null },
+    brief: CORE_DEFAULT_BRIEF,
+    caps: CORE_STARTER_CAPS,
+    walletId: "wal-agent",
+  };
+  assert.doesNotThrow(() => draftCreateSchema.parse(request));
+  assert.throws(() => draftCreateSchema.parse({ ...request, handle: "Half Time" }));
   assert.throws(() =>
-    draftCreateSchema.parse({ ...request, name: "H", handle: "Half Time", previewRunId: "x" }),
+    draftCreateSchema.parse({ ...request, previewRunId: "0000000a-0000-4000-8000-000000000000" }),
   );
 });
 

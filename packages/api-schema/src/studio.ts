@@ -300,14 +300,106 @@ export const previewRunResponseSchema = z.object({
 export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
 
 /**
- * `POST /v1/studio/drafts` (spec §6). The brief travels again so the server can check that the
- * run was made from exactly this brief (409 RUN_STALE otherwise).
+ * `POST /v1/studio/drafts` (studio-create-simplified-v1 §4.1). Shapes only; the rules are core's
+ * (`prepareDraft`). Sites may arrive as typed ("CoinDesk.com", "https://coindesk.com/x"): the
+ * route reduces them to bare hosts before core checks them.
  */
-export const draftCreateSchema = previewRunRequestSchema
-  .extend({
+export const draftCreateSchema = z
+  .object({
     name: z.string().trim().min(1).max(40),
     handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
-    previewRunId: z.string().uuid(),
+    voice: z.enum(["analyst", "contrarian", "trash_talker", "deadpan", "hype", "professor"]),
+    avatar: z
+      .object({
+        accent: z.enum(["lime", "cyan", "amber", "orange", "magenta", "violet", "blue"]),
+        pattern: z.number().int(),
+      })
+      .strict(),
+    sources: z
+      .object({
+        web: z
+          .object({
+            mode: z.enum(["anywhere", "prefer", "only"]),
+            sites: z.array(z.string().max(253)).max(20),
+          })
+          .strict()
+          .nullable(),
+      })
+      .strict(),
+    brief: z
+      .object({
+        thesis: z.string().max(4000),
+        entersWhen: z.array(z.string().max(1000)).max(50),
+        exitsWhen: z.array(z.string().max(1000)).max(50),
+        never: z.array(z.string().max(1000)).max(50),
+      })
+      .strict(),
+    caps: z
+      .object({ perTradeAusd: z.number(), perDayAusd: z.number(), maxLeverage: z.number() })
+      .strict(),
+    walletId: z.string().min(1).max(128),
   })
   .strict();
 export type DraftCreateDto = z.infer<typeof draftCreateSchema>;
+
+const transferFields = {
+  /** "master", or one of the person's agent wallet ids. */
+  from: z.string().min(1).max(128),
+  to: z.string().min(1).max(128),
+  token: z.enum(["AUSD", "MON"]),
+  /** A decimal amount of the token, as typed: "1.5". The route converts it to base units. */
+  amount: z
+    .string()
+    .max(40)
+    .regex(/^\d+(\.\d+)?$/),
+};
+
+/** `POST /v1/studio/wallets/transfers/prepare` (§4.2): a decimal amount of one token. */
+export const transferRequestSchema = z.object(transferFields).strict();
+export type TransferRequestDto = z.infer<typeof transferRequestSchema>;
+
+/** `POST /v1/studio/wallets/transfers/confirm`: the same body plus the stamped activity. */
+export const transferConfirmSchema = z
+  .object({
+    ...transferFields,
+    signed: z
+      .object({
+        url: z.string().min(1).max(512),
+        body: z.string().min(1).max(8192),
+        stamp: z
+          .object({
+            stampHeaderName: z.string().min(1).max(64),
+            stampHeaderValue: z.string().min(1).max(8192),
+          })
+          .strict(),
+      })
+      .strict(),
+  })
+  .strict();
+export type TransferConfirmDto = z.infer<typeof transferConfirmSchema>;
+
+const baseUnitBalances = {
+  /** Base units as decimal strings; null where the chain did not answer. */
+  ausdMicro: z.string().nullable(),
+  monWei: z.string().nullable(),
+};
+
+/** `GET /v1/studio/wallets` (§4.2). */
+export const walletsResponseSchema = z.object({
+  master: z.object({ address: z.string(), ...baseUnitBalances }),
+  agents: z.array(
+    z.object({
+      walletId: z.string(),
+      address: z.string(),
+      ...baseUnitBalances,
+      agentId: z.string().nullable(),
+      agentName: z.string().nullable(),
+      caps: z
+        .object({ perTradeAusd: z.number(), perDayAusd: z.number(), maxLeverage: z.number() })
+        .nullable(),
+      policiesApproved: z.boolean(),
+    }),
+  ),
+  readAt: z.number(),
+});
+export type WalletsDto = z.infer<typeof walletsResponseSchema>;
