@@ -25,7 +25,7 @@ import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
-import { newAgentLock as lockFor } from "./create/gate";
+import { draftLimitLock, newAgentLock as lockFor } from "./home/gate";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -40,10 +40,10 @@ import type { SectionKey } from "./sections/keys";
 import { RAIL, isPanel, isSoon } from "./sections/rail";
 import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
-import { briefFixture } from "./brief/fixture";
-import { EmptyHome } from "./home/empty";
 import { draftFixture, homeFixture } from "./home/fixture";
-import { isBriefStage, isHomeStage, type StudioStage } from "./home/stage";
+import { isCreateStage, isHomeStage, type StudioStage } from "./home/stage";
+import { newAgentFixture } from "./new-agent/fixture";
+import { NewAgent } from "./new-agent/new-agent";
 import { studioLanding } from "./lib/landing";
 import styles from "./studio.module.css";
 
@@ -107,8 +107,8 @@ const BLOCKED: Record<
   },
 };
 
-/** The home, or one of the sections the rail and the home's Menu reach. */
-type View = SectionKey | "home";
+/** The home, one of the sections the rail and the home's Menu reach, or the create screen. */
+type View = SectionKey | "home" | "new";
 
 export function Studio({
   openSection,
@@ -118,8 +118,8 @@ export function Studio({
   openSection?: SectionKey | undefined;
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
-  /** `?stage=`, outside production only: the home at one moment of the canvas's first run, or
-      `empty`, the home before any agent. */
+  /** `?stage=`, outside production only: the home at one moment of the canvas's first run, the
+      create screen at one moment (`create-*`), or `empty`, the create screen with nothing staged. */
   stage?: StudioStage | undefined;
 }) {
   const router = useRouter();
@@ -129,8 +129,8 @@ export function Studio({
   const [staged] = useState(() =>
     isHomeStage(stage) ? homeFixture(stage) : stage === "draft" ? draftFixture() : null,
   );
-  const [stagedBrief] = useState(() => (isBriefStage(stage) ? briefFixture(stage) : null));
-  const [stagedEmpty] = useState(stage === "empty" || isBriefStage(stage));
+  const [stagedCreate] = useState(() => (isCreateStage(stage) ? newAgentFixture(stage) : null));
+  const [stagedEmpty] = useState(stage === "empty" || isCreateStage(stage));
   /* Either staged home stands alone: no session is read and nothing is fetched. */
   const staging = staged !== null || stagedEmpty;
   const [section, setSection] = useState<View>(openSection ?? "home");
@@ -259,7 +259,7 @@ export function Studio({
           return;
         }
         setPasskeys(keys);
-        /* No agents lands on the empty home, not on /studio/new: the person explores first. */
+        /* No agents lands on the create screen, inside the studio's frame. */
         setLoaded(true);
         setCatalog(cat);
         setOptions(opts);
@@ -279,7 +279,7 @@ export function Studio({
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
   useEffect(() => {
-    if (!agentId || preview || section === "home") {
+    if (!agentId || preview || section === "home" || section === "new") {
       return;
     }
     return startPolling(
@@ -421,21 +421,29 @@ export function Studio({
     setMenu(null);
   }
 
-  /* With no agent every section would be empty, so any section asked for lands on the empty home;
-     its Menu lists them disabled. */
+  /* With no agent every section would be empty, so any section asked for lands on the create
+     screen; its Menu lists them disabled. With agents, "+ New agent" opens the same screen. */
   const landing = studioLanding(loaded, agents, section);
-  if (landing === "empty") {
+  if (landing === "new") {
     return (
-      <EmptyHome
+      <NewAgent
         passkeys={passkeys}
         canManage={canManage}
         preview={preview}
         locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
         error={error}
-        staged={stagedBrief}
+        staged={stagedCreate}
+        hasAgents={agents.length > 0}
+        draftLock={draftLimitLock(agents)}
+        onBack={agent ? () => setSection("home") : undefined}
+        backTo={agent?.name ?? undefined}
         onCreated={async (productId) => {
           await loadAgents();
           setAgentId(productId);
+          setRunId(null);
+          setRuns([]);
+          setTrace(null);
+          setSection("home");
         }}
       />
     );
@@ -471,6 +479,10 @@ export function Studio({
           setRuns([]);
           setTrace(null);
           setError("");
+        }}
+        onNew={() => {
+          setError("");
+          setSection("new");
         }}
       />
     );
@@ -547,7 +559,8 @@ export function Studio({
                 title={newAgentLock || undefined}
                 onClick={() => {
                   setMenu(null);
-                  router.push("/studio/new");
+                  setError("");
+                  setSection("new");
                 }}
               >
                 <Icon name="bolt" size={15} />
@@ -817,7 +830,7 @@ export function Studio({
             </>
           ) : section === "context" ? (
             <Context agent={agent} go={go} />
-          ) : section !== "home" && isPanel(section) ? (
+          ) : section !== "home" && section !== "new" && isPanel(section) ? (
             <Soon section={section} agent={agent} />
           ) : null}
 

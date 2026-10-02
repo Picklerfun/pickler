@@ -1,5 +1,5 @@
-// The chain side of a deposit: an unsigned EIP-1559 ERC-20 `transfer` from the master wallet,
-// read back for core's checks, and the signed one broadcast. viem serializes and parses; the RPC
+// The chain side of a deposit or a transfer: an unsigned EIP-1559 ERC-20 `transfer` or plain MON
+// transfer, read back for core's checks, and the signed one broadcast. viem serializes and parses; the RPC
 // stays the plain JSON-RPC client in erc20.ts. Nothing here signs or holds a key.
 
 import {
@@ -14,6 +14,7 @@ import {
   DepositNotSendableError,
   SignedTransactionMismatchError,
   type DepositChain,
+  type NativeTransferInspection,
   type TransferInspection,
 } from "@pickler/core";
 import {
@@ -204,6 +205,92 @@ export function inspectTransfer(unsignedTransaction: string): TransferInspection
   };
 }
 
+/**
+ * A plain MON transfer: empty calldata, `amount` wei to `to`, with the nonce, fee and estimate
+ * rules of `buildTransferTx`. A failed estimate is `DepositNotSendableError`, never a guess.
+ */
+export async function buildNativeTransferTx(input: {
+  rpc: Rpc;
+  chainId: number;
+  from: string;
+  to: string;
+  /** Wei. */
+  amount: bigint;
+}): Promise<string> {
+  const { rpc } = input;
+  const [nonce, fees] = await Promise.all([pendingNonce(rpc, input.from), quoteFees(rpc)]);
+
+  let estimate: bigint;
+  try {
+    estimate = quantity(
+      await rpc.call("eth_estimateGas", [
+        { from: input.from, to: input.to, value: `0x${input.amount.toString(16)}` },
+      ]),
+      "eth_estimateGas",
+    );
+  } catch (cause) {
+    throw new DepositNotSendableError({ cause });
+  }
+
+  return serializeTransaction({
+    type: "eip1559",
+    chainId: input.chainId,
+    nonce,
+    to: input.to as Hex,
+    value: input.amount,
+    data: "0x",
+    gas: (estimate * 12n + 9n) / 10n,
+    maxFeePerGas: fees.maxFeePerGas,
+    maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+  });
+}
+
+/**
+ * What a plain transfer does, or null unless it is an unsigned, canonically encoded EIP-1559
+ * transaction with a recipient, empty calldata and no access list.
+ */
+export function inspectNativeTransfer(
+  unsignedTransaction: string,
+): NativeTransferInspection | null {
+  let parsed: ReturnType<typeof parseTransaction>;
+  try {
+    parsed = parseTransaction(unsignedTransaction as Hex);
+  } catch {
+    return null;
+  }
+  if (parsed.type !== "eip1559" || parsed.r !== undefined || !parsed.to) {
+    return null;
+  }
+  // One encoding per transaction, as for a token transfer.
+  if (serializeTransaction(parsed).toLowerCase() !== unsignedTransaction.toLowerCase()) {
+    return null;
+  }
+  if (parsed.accessList && parsed.accessList.length > 0) {
+    return null;
+  }
+  if (parsed.data && parsed.data !== "0x") {
+    return null;
+  }
+  if (
+    parsed.chainId === undefined ||
+    parsed.nonce === undefined ||
+    parsed.gas === undefined ||
+    parsed.maxFeePerGas === undefined ||
+    parsed.maxPriorityFeePerGas === undefined
+  ) {
+    return null;
+  }
+  return {
+    chainId: parsed.chainId,
+    nonce: parsed.nonce,
+    to: parsed.to,
+    value: parsed.value ?? 0n,
+    gas: parsed.gas,
+    maxFeePerGas: parsed.maxFeePerGas,
+    maxPriorityFeePerGas: parsed.maxPriorityFeePerGas,
+  };
+}
+
 /** Turnkey returns Ethereum signatures without a `0x` prefix today and has said it will add one. */
 function prefixed(signedTransaction: string): Hex {
   return (signedTransaction.startsWith("0x") ? signedTransaction : `0x${signedTransaction}`) as Hex;
@@ -302,7 +389,10 @@ export interface AusdDepositChainConfig {
   balances: Pick<TokenBalanceReader, "forget">;
 }
 
-/** AUSD deposits on a supported chain. An unsupported chain id throws at composition. */
+/**
+ * AUSD deposits, and AUSD or MON transfers, on a supported chain. An unsupported chain id throws
+ * at composition.
+ */
 export function createAusdDepositChain(config: AusdDepositChainConfig): DepositChain {
   const chainId = requireSupportedChain(config.chainId);
   // Non-null: requireSupportedChain established a known network, and each lists a public endpoint.
@@ -320,10 +410,15 @@ export function createAusdDepositChain(config: AusdDepositChainConfig): DepositC
     },
     quoteFees: () => quoteFees(rpc),
     pendingNonce: (address) => pendingNonce(rpc, address),
+    prepareNativeTransfer: ({ from, to, amount }) =>
+      buildNativeTransferTx({ rpc, chainId, from, to, amount }),
     inspectTransfer,
+    inspectNativeTransfer,
     verifySignedTransfer,
     transactionHash,
     broadcast: (signedTransaction) => broadcastTransaction(rpc, signedTransaction),
+    // Only the AUSD reader caches. The custody service's MON and AUSD balance reader caches
+    // nothing, so a MON transfer leaves no stale reading for this to drop.
     forgetBalance: (address) => config.balances.forget(address),
   };
 }

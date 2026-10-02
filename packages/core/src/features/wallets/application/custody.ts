@@ -6,6 +6,7 @@ import {
   ADD_PASSKEY_ACTIVITY_TYPE,
   AGENT_WALLET_ACTIVITY_TYPES,
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   ChallengeNotUsableError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
@@ -24,11 +25,17 @@ import {
   DepositFeeTooHighError,
   DepositNonceError,
   DepositsUnavailableError,
+  InsufficientFundsError,
+  InsufficientGasError,
   InvalidDepositAmountError,
+  InvalidTransferError,
   isDepositAmount,
   MAX_DEPOSIT_GAS,
   MAX_FEE_MULTIPLE,
+  MAX_NATIVE_TRANSFER_GAS,
+  TransferAlreadyRecordedError,
 } from "../domain/deposit.js";
+import { fundingShortfall, readFunding, WalletUnderfundedError } from "../../studio/create.js";
 import type { ChallengeOptions, DisplayIdentity, PasskeyAttestation } from "../domain/passkey.js";
 import type {
   AddPasskeyActivityBuilder,
@@ -42,6 +49,7 @@ import type {
   DepositChain,
   SubOrganizationCreator,
   UnsignedActivity,
+  WalletBalanceReader,
 } from "../ports/custody.js";
 import type { SignedActivityForwarder } from "../../signing/ports/signing.js";
 import {
@@ -152,6 +160,19 @@ function strings(value: unknown): string[] {
   return value as string[];
 }
 
+/** A move of AUSD or MON between the person's master wallet and one of their agent wallets. */
+export interface TransferRequest {
+  /** "master", or one of the person's agent wallet ids. Exactly one side is "master". */
+  from: string;
+  to: string;
+  token: "AUSD" | "MON";
+  /** Base units: micro-AUSD or wei. */
+  amount: bigint;
+}
+
+/** Saved by `saveTransfer`, and reported as it would have been saved when that fails. */
+type TransferRecord = Parameters<AgentWalletRepository["saveTransfer"]>[0];
+
 export interface CustodyServiceDeps {
   challenges: ChallengeStore;
   repository: CustodyRepository;
@@ -171,6 +192,11 @@ export interface CustodyServiceDeps {
    * the chain is not composed; deposits then answer `DepositsUnavailableError`.
    */
   deposits?: DepositChain;
+  /**
+   * MON and AUSD balances read from the chain, uncached. Absent where the chain is not composed;
+   * transfers, the wallet list and the policies step then answer `DepositsUnavailableError`.
+   */
+  balances?: WalletBalanceReader;
   /** Contracts the delegated user may sign to; core's VENUE_CONTRACTS, empty until trading. */
   venueContracts: readonly string[];
   rpId: string;
@@ -208,6 +234,8 @@ export interface CustodyServiceDeps {
     txHash: string;
     amountMicroUsd: bigint;
   }): void;
+  /** The same for a transfer between the master and an agent wallet. Same contract. */
+  reportUnrecordedTransfer?(transfer: TransferRecord): void;
 }
 
 export function createCustodyService(deps: CustodyServiceDeps) {
@@ -242,17 +270,23 @@ export function createCustodyService(deps: CustodyServiceDeps) {
   }
 
   /**
-   * The policies a wallet gets, decided the same way for prepare and for confirm. For the
-   * person's first agent — no wallet of theirs linked to any agent yet, decided here and never by
-   * the caller — the delegated user's self-delete policy rides along.
+   * The policies a wallet gets, decided the same way for prepare and for confirm, and only for an
+   * unlinked wallet (`AgentWalletLinkedError` otherwise). For the person's first agent — no wallet
+   * of theirs linked to any agent yet, decided here and never by the caller — the delegated user's
+   * self-delete policy rides along.
    */
   async function policiesFor(userId: string, walletId: string) {
     const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
     if (!delegatedUserId) {
       throw new DelegatedUserMissingError();
     }
-    if (!(await deps.agentWallets.findOwnedAgentWallet(userId, walletId))) {
+    const wallet = await deps.agentWallets.findOwnedAgentWallet(userId, walletId);
+    if (!wallet) {
       throw new AgentWalletNotFoundError();
+    }
+    // A linked wallet's rules were approved and linked at create; never a second set.
+    if (wallet.linked) {
+      throw new AgentWalletLinkedError();
     }
     const policies = agentWalletPolicies({
       delegatedUserId,
@@ -262,7 +296,20 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     if (!(await deps.agentWallets.hasLinkedAgentWallet(userId))) {
       policies.push(delegatedSelfDeletePolicy(delegatedUserId));
     }
-    return policies;
+    return { policies, wallet };
+  }
+
+  /**
+   * "Agent wallet N", from the wallets recorded: prepare and confirm each derive it, so a confirm
+   * rebuilds the body its prepare built. Another wallet recorded in between (a second tab's
+   * ceremony) moves N, and the stale stamp is then refused before anything reaches Turnkey —
+   * which is the wanted outcome: that person already has an unlinked wallet for a fresh prepare
+   * to resume, and a second one would be minted for nothing. Two confirms racing past the count
+   * together can both be "Agent wallet N"; the name is a label, so that costs nothing but a
+   * duplicate label.
+   */
+  async function nextWalletName(userId: string): Promise<string> {
+    return `Agent wallet ${(await deps.agentWallets.countAgentWallets(userId)) + 1}`;
   }
 
   /**
@@ -296,6 +343,191 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       baseUnits: BigInt(amountAusd) * 10n ** BigInt(chain.decimals),
       amountMicroUsd: BigInt(amountAusd) * 1_000_000n,
     };
+  }
+
+  /**
+   * Who a transfer is between, refused in the same order for prepare and confirm: AUSD or MON,
+   * wallet ids as strings, a positive amount, exactly one side the master, a composed AUSD chain,
+   * the person's master wallet (`turnkey_orgs.master_wallet_id`), and the other side one of this
+   * person's own `kind='agent'` wallets — never a wallet id taken on trust, and never the master's
+   * own id. Balances are not read here: only prepare checks them (`assertCanSend`).
+   */
+  async function transferParties(userId: string, request: TransferRequest) {
+    if (request.token !== "AUSD" && request.token !== "MON") {
+      throw new InvalidTransferError("A transfer moves AUSD or MON");
+    }
+    if (typeof request.from !== "string" || typeof request.to !== "string") {
+      throw new InvalidTransferError("A transfer names its wallets");
+    }
+    if (typeof request.amount !== "bigint" || request.amount <= 0n) {
+      throw new InvalidTransferError("The amount must be more than zero");
+    }
+    if ((request.from === "master") === (request.to === "master")) {
+      throw new InvalidTransferError(
+        "A transfer goes between the master wallet and one agent wallet",
+      );
+    }
+    const chain = deps.deposits;
+    // AUSD amounts are micro-AUSD: a token of any other precision would move the wrong amount.
+    if (!chain || chain.decimals !== 6) {
+      throw new DepositsUnavailableError();
+    }
+    const account = await deps.repository.findByUserId(userId);
+    if (!account) {
+      throw new NoCustodyAccountError();
+    }
+    const agentWalletId = request.from === "master" ? request.to : request.from;
+    const agent = await deps.agentWallets.findOwnedAgentWallet(userId, agentWalletId);
+    if (!agent) {
+      throw new AgentWalletNotFoundError();
+    }
+    const master = { walletId: account.masterWalletId, address: account.address };
+    const source = request.from === "master" ? master : agent;
+    const target = request.from === "master" ? agent : master;
+    return { chain, account, source, target };
+  }
+
+  /**
+   * Prepare only, so the person learns before stamping: the source holds the amount and, from the
+   * transaction just built, the MON its fee can reach (gas limit × max fee, plus the amount for a
+   * MON transfer). Confirm does not read balances again: the chain refuses an overdraft, and a
+   * repeated confirm must reach its recorded-hash check whatever the balance is by then.
+   */
+  function assertCanSend(
+    chain: DepositChain,
+    held: { monWei: bigint | null; ausdMicro: bigint | null },
+    request: TransferRequest,
+    unsignedTransaction: string,
+  ): void {
+    const built =
+      request.token === "AUSD"
+        ? chain.inspectTransfer(unsignedTransaction)
+        : chain.inspectNativeTransfer(unsignedTransaction);
+    if (!built) {
+      throw new Error("The chain built a transfer it cannot read back");
+    }
+    const fee = built.gas * built.maxFeePerGas;
+    const monNeeded = request.token === "MON" ? request.amount + fee : fee;
+    if (held.monWei === null || held.monWei < monNeeded) {
+      throw new InsufficientGasError();
+    }
+  }
+
+  /**
+   * Fees move between prepare and confirm, so they are checked against a fresh quote rather than
+   * rebuilt: a stamped fee far above it is one nobody prepared, and it burns MON. Above the
+   * signer's pending nonce is a gap: it would sit queued behind a transaction nobody sent. At or
+   * below it flows on: a repeated confirm of a sent transfer is found by its hash afterwards
+   * (409), or the node already holds it and it is recorded, or the node refuses it.
+   *
+   * An agent wallet's nonce is live: its agent may send from it between a pull-back's prepare and
+   * confirm, and the node then refuses the stamped nonce as too low; the person prepares again.
+   */
+  async function checkFeesAndNonce(
+    chain: DepositChain,
+    transfer: { nonce: number; maxFeePerGas: bigint; maxPriorityFeePerGas: bigint },
+    signer: string,
+  ): Promise<void> {
+    const quote = await chain.quoteFees();
+    if (
+      transfer.maxFeePerGas > quote.maxFeePerGas * MAX_FEE_MULTIPLE ||
+      transfer.maxPriorityFeePerGas > quote.maxPriorityFeePerGas * MAX_FEE_MULTIPLE
+    ) {
+      throw new DepositFeeTooHighError();
+    }
+    if (transfer.nonce > (await chain.pendingNonce(signer))) {
+      throw new DepositNonceError();
+    }
+  }
+
+  /**
+   * The checks every stamped transfer passes before anything is sent, shared by deposits and
+   * transfers. The stamped transaction cannot be rebuilt (the nonce and fees have moved since
+   * prepare), so what it does is read back and checked instead — this chain, a bounded gas limit,
+   * exactly this amount to exactly this recipient, and for AUSD this token and no native value —
+   * and then the whole activity is rebuilt around it and compared byte for byte, so nothing else
+   * in the body (the signer above all) differs from what prepare built. Only then is it
+   * forwarded, and what Turnkey signed is checked against what the passkey approved.
+   */
+  async function checkStampedTransfer(input: {
+    chain: DepositChain;
+    subOrganizationId: string;
+    signer: string;
+    recipient: string;
+    token: "AUSD" | "MON";
+    amount: bigint;
+    signed: SignedActivityRequest;
+  }): Promise<{ signedTransaction: string }> {
+    const { chain } = input;
+    const unsignedTransaction = stampedUnsignedTransaction(input.signed);
+    if (input.token === "AUSD") {
+      const transfer = chain.inspectTransfer(unsignedTransaction);
+      if (!transfer) {
+        throw new InvalidSignedActivityError("The stamped transaction is not a token transfer");
+      }
+      if (transfer.chainId !== chain.chainId) {
+        throw new InvalidSignedActivityError("The stamped transaction is for another chain");
+      }
+      if (!sameAddress(transfer.to, chain.token)) {
+        throw new InvalidSignedActivityError("The stamped transaction moves another token");
+      }
+      if (transfer.value !== 0n) {
+        throw new InvalidSignedActivityError("The stamped transaction sends native value");
+      }
+      if (transfer.gas > MAX_DEPOSIT_GAS) {
+        throw new InvalidSignedActivityError("The stamped transaction reserves too much gas");
+      }
+      if (!sameAddress(transfer.recipient, input.recipient)) {
+        throw new InvalidSignedActivityError("The stamped transaction pays another wallet");
+      }
+      if (transfer.amount !== input.amount) {
+        throw new InvalidSignedActivityError("The stamped transaction moves another amount");
+      }
+      await checkFeesAndNonce(chain, transfer, input.signer);
+    } else {
+      const transfer = chain.inspectNativeTransfer(unsignedTransaction);
+      if (!transfer) {
+        throw new InvalidSignedActivityError("The stamped transaction is not a plain transfer");
+      }
+      if (transfer.chainId !== chain.chainId) {
+        throw new InvalidSignedActivityError("The stamped transaction is for another chain");
+      }
+      if (transfer.gas > MAX_NATIVE_TRANSFER_GAS) {
+        throw new InvalidSignedActivityError("The stamped transaction reserves too much gas");
+      }
+      if (!sameAddress(transfer.to, input.recipient)) {
+        throw new InvalidSignedActivityError("The stamped transaction pays another wallet");
+      }
+      if (transfer.value !== input.amount) {
+        throw new InvalidSignedActivityError("The stamped transaction moves another amount");
+      }
+      await checkFeesAndNonce(chain, transfer, input.signer);
+    }
+    assertStampedAsPrepared(input.signed, (timestampMs) =>
+      deps.agentActivities.signTransaction({
+        subOrganizationId: input.subOrganizationId,
+        signWith: input.signer,
+        unsignedTransaction,
+        timestampMs,
+      }),
+    );
+    const activity = await deps.forwarder.forward(input.signed, {
+      organizationId: input.subOrganizationId,
+      allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
+    });
+    const signedTransaction = completedResult(activity, "signTransactionResult")[
+      "signedTransaction"
+    ];
+    if (typeof signedTransaction !== "string" || !signedTransaction) {
+      throw new SigningServiceUnavailableError("Completed activity carried no signed transaction");
+    }
+    // What Turnkey signed must be what the passkey approved, signed by the source wallet.
+    await chain.verifySignedTransfer({
+      signedTransaction,
+      unsignedTransaction,
+      signer: input.signer,
+    });
+    return { signedTransaction };
   }
 
   return {
@@ -540,21 +772,21 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     /**
-     * Step two. A wallet already minted under this handle and never linked is the retry of a
-     * creation that failed before its link: it is returned as it is, so a second attempt never
-     * leaves a second wallet in the person's sub-organization. It says whether that wallet's
-     * rules were approved too — at least `MIN_AGENT_WALLET_POLICIES` recorded ids, the same floor
-     * the link requires — so a retry after a reload does not ask the passkey to write them again.
+     * Step two. An agent wallet of the person's that no agent is linked to is the retry of a
+     * creation that stopped before its link: the newest one is returned as it is, so a second
+     * attempt never leaves a second wallet in the person's sub-organization. It says whether that
+     * wallet's rules were approved too — at least `MIN_AGENT_WALLET_POLICIES` recorded ids, the
+     * same floor the link requires — so a retry after a reload does not ask the passkey to write
+     * them again. A new wallet is "Agent wallet N" (`nextWalletName`).
      */
     async prepareAgentWallet(
       userId: string,
-      handle: string,
     ): Promise<{ existing: ExistingAgentWallet } | { unsigned: UnsignedActivity }> {
       const account = await deps.repository.findByUserId(userId);
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      const orphan = await deps.agentWallets.findOrphanWallet(userId, handle);
+      const orphan = await deps.agentWallets.findUnlinkedWallet(userId);
       if (orphan) {
         return {
           existing: {
@@ -567,24 +799,21 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       return {
         unsigned: deps.agentActivities.createAgentWallet({
           subOrganizationId: account.subOrganizationId,
-          handle,
+          name: await nextWalletName(userId),
         }),
       };
     },
 
-    async confirmAgentWallet(
-      userId: string,
-      handle: string,
-      signed: SignedActivityRequest,
-    ): Promise<AgentWallet> {
+    async confirmAgentWallet(userId: string, signed: SignedActivityRequest): Promise<AgentWallet> {
       const account = await deps.repository.findByUserId(userId);
       if (!account) {
         throw new NoCustodyAccountError();
       }
+      const name = await nextWalletName(userId);
       assertStampedAsPrepared(signed, (timestampMs) =>
         deps.agentActivities.createAgentWallet({
           subOrganizationId: account.subOrganizationId,
-          handle,
+          name,
           timestampMs,
         }),
       );
@@ -603,7 +832,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         walletId,
         subOrganizationId: account.subOrganizationId,
         kind: "agent",
-        name: handle,
+        name,
         address,
         path: MONAD_ACCOUNT_PATH,
       });
@@ -613,16 +842,28 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     /**
      * Step three: the wallet's rules. For the person's first agent — no wallet of theirs linked
      * to any agent yet, decided here and never by the caller — the delegated user's self-delete
-     * policy rides along; it belongs to the sub-organization and is written once.
+     * policy rides along; it belongs to the sub-organization and is written once. They are not
+     * prepared until the wallet holds the minimums to start (`WalletUnderfundedError`); a chain
+     * that cannot be read is `BalancesUnreadableError`, never underfunded. `confirmPolicies` does not check again: the stamp is already made, and refusing it would
+     * strand an approved policy set. The drafts route checks again.
      */
     async preparePolicies(userId: string, walletId: string): Promise<UnsignedActivity> {
       const account = await deps.repository.findByUserId(userId);
       if (!account) {
         throw new NoCustodyAccountError();
       }
+      const { policies, wallet } = await policiesFor(userId, walletId);
+      const balances = deps.balances;
+      if (!balances) {
+        throw new DepositsUnavailableError();
+      }
+      const shortfall = fundingShortfall(await readFunding(() => balances.read(wallet.address)));
+      if (shortfall) {
+        throw new WalletUnderfundedError(shortfall);
+      }
       return deps.agentActivities.createPolicies({
         subOrganizationId: account.subOrganizationId,
-        policies: await policiesFor(userId, walletId),
+        policies,
       });
     },
 
@@ -640,7 +881,7 @@ export function createCustodyService(deps: CustodyServiceDeps) {
       if (!account) {
         throw new NoCustodyAccountError();
       }
-      const policies = await policiesFor(userId, walletId);
+      const { policies } = await policiesFor(userId, walletId);
       assertStampedAsPrepared(signed, (timestampMs) =>
         deps.agentActivities.createPolicies({
           subOrganizationId: account.subOrganizationId,
@@ -691,12 +932,9 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     },
 
     /**
-     * Step two. The stamped transaction cannot be rebuilt (the nonce and fees have moved since
-     * prepare), so what it does is read back and checked instead — this chain, this token, no
-     * native value, a bounded gas limit, and exactly this amount to this agent's wallet — and
-     * then the whole activity is rebuilt around it and compared byte for byte, so nothing else in
-     * the body (the signer above all) differs from what prepare built. Only then is it forwarded,
-     * broadcast and recorded. A broadcast that fails records nothing.
+     * Step two. The stamped transfer passes `checkStampedTransfer` — the master as signer, this
+     * agent's wallet as recipient, exactly this amount of AUSD — and is forwarded there. Only then
+     * is it broadcast and recorded. A broadcast that fails records nothing.
      */
     async confirmDeposit(
       userId: string,
@@ -706,69 +944,14 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     ): Promise<{ txHash: string }> {
       const context = await depositContext(userId, agentId, amountAusd);
       const { chain, account, wallet } = context;
-      const unsignedTransaction = stampedUnsignedTransaction(signed);
-      const transfer = chain.inspectTransfer(unsignedTransaction);
-      if (!transfer) {
-        throw new InvalidSignedActivityError("The stamped transaction is not a token transfer");
-      }
-      if (transfer.chainId !== chain.chainId) {
-        throw new InvalidSignedActivityError("The stamped transaction is for another chain");
-      }
-      if (!sameAddress(transfer.to, chain.token)) {
-        throw new InvalidSignedActivityError("The stamped transaction moves another token");
-      }
-      if (transfer.value !== 0n) {
-        throw new InvalidSignedActivityError("The stamped transaction sends native value");
-      }
-      if (transfer.gas > MAX_DEPOSIT_GAS) {
-        throw new InvalidSignedActivityError("The stamped transaction reserves too much gas");
-      }
-      if (!sameAddress(transfer.recipient, wallet.address)) {
-        throw new InvalidSignedActivityError("The stamped transaction pays another wallet");
-      }
-      if (transfer.amount !== context.baseUnits) {
-        throw new InvalidSignedActivityError("The stamped transaction moves another amount");
-      }
-      // Fees move between prepare and confirm, so they are checked against a fresh quote rather
-      // than rebuilt: a stamped fee far above it is one nobody prepared, and it burns MON.
-      const quote = await chain.quoteFees();
-      if (
-        transfer.maxFeePerGas > quote.maxFeePerGas * MAX_FEE_MULTIPLE ||
-        transfer.maxPriorityFeePerGas > quote.maxPriorityFeePerGas * MAX_FEE_MULTIPLE
-      ) {
-        throw new DepositFeeTooHighError();
-      }
-      // Above the pending nonce is a gap: it would sit queued behind a transaction nobody sent.
-      // At or below it flows on: a repeated confirm of a sent deposit is found by its hash below
-      // (409), or the node already holds it and it is recorded, or the node refuses it.
-      if (transfer.nonce > (await chain.pendingNonce(account.address))) {
-        throw new DepositNonceError();
-      }
-      assertStampedAsPrepared(signed, (timestampMs) =>
-        deps.agentActivities.signTransaction({
-          subOrganizationId: account.subOrganizationId,
-          signWith: account.address,
-          unsignedTransaction,
-          timestampMs,
-        }),
-      );
-      const activity = await deps.forwarder.forward(signed, {
-        organizationId: account.subOrganizationId,
-        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
-      });
-      const signedTransaction = completedResult(activity, "signTransactionResult")[
-        "signedTransaction"
-      ];
-      if (typeof signedTransaction !== "string" || !signedTransaction) {
-        throw new SigningServiceUnavailableError(
-          "Completed activity carried no signed transaction",
-        );
-      }
-      // What Turnkey signed must be what the passkey approved, signed by the master wallet.
-      await chain.verifySignedTransfer({
-        signedTransaction,
-        unsignedTransaction,
+      const { signedTransaction } = await checkStampedTransfer({
+        chain,
+        subOrganizationId: account.subOrganizationId,
         signer: account.address,
+        recipient: wallet.address,
+        token: "AUSD",
+        amount: context.baseUnits,
+        signed,
       });
       // A repeated confirm of the same stamp: already sent and recorded, so nothing is sent again.
       if (await deps.agentWallets.depositRecorded(chain.transactionHash(signedTransaction))) {
@@ -785,6 +968,135 @@ export function createCustodyService(deps: CustodyServiceDeps) {
         if (!(error instanceof DepositAlreadyRecordedError)) {
           try {
             deps.reportUnrecordedDeposit?.(deposit);
+          } catch {
+            // A broken log sink changes nothing about the failure.
+          }
+        }
+        throw error;
+      }
+      return { txHash };
+    },
+
+    /**
+     * The master wallet and every agent wallet of the person's, each with its balances read now.
+     * A balance the chain did not answer is null, never zero.
+     */
+    async listWallets(userId: string) {
+      const account = await deps.repository.findByUserId(userId);
+      if (!account) {
+        throw new NoCustodyAccountError();
+      }
+      const balances = deps.balances;
+      if (!balances) {
+        throw new DepositsUnavailableError();
+      }
+      const agents = await deps.agentWallets.listAgentWallets(userId);
+      const [master, ...each] = await Promise.all([
+        balances.read(account.address),
+        ...agents.map((wallet) => balances.read(wallet.address)),
+      ]);
+      return {
+        master: { address: account.address, ...master! },
+        agents: agents.map((wallet, index) => ({ ...wallet, ...each[index]! })),
+        readAt: deps.now().getTime(),
+      };
+    },
+
+    /**
+     * One of the person's agent wallets' balances, read from the chain: the drafts route checks
+     * them against the minimums again, since the money can have moved since the policies step.
+     * A read that fails or answers neither balance is `BalancesUnreadableError`.
+     */
+    async walletBalance(userId: string, walletId: string) {
+      const wallet = await deps.agentWallets.findOwnedAgentWallet(userId, walletId);
+      if (!wallet) {
+        throw new AgentWalletNotFoundError();
+      }
+      const balances = deps.balances;
+      if (!balances) {
+        throw new DepositsUnavailableError();
+      }
+      return readFunding(() => balances.read(wallet.address));
+    },
+
+    /**
+     * Moving AUSD or MON between the master wallet and one of the person's agent wallets, step
+     * one: the unsigned transaction from the source, wrapped in the sign_transaction activity the
+     * passkey stamps with the source as `signWith`. Like a deposit, nothing is kept here.
+     */
+    async prepareTransfer(userId: string, request: TransferRequest): Promise<UnsignedActivity> {
+      const { chain, account, source, target } = await transferParties(userId, request);
+      if (!deps.balances) {
+        throw new DepositsUnavailableError();
+      }
+      const held = await deps.balances.read(source.address);
+      const available = request.token === "AUSD" ? held.ausdMicro : held.monWei;
+      if (available === null || available < request.amount) {
+        throw new InsufficientFundsError();
+      }
+      const move = { from: source.address, to: target.address, amount: request.amount };
+      const unsignedTransaction =
+        request.token === "AUSD"
+          ? await chain.prepareTransfer(move)
+          : await chain.prepareNativeTransfer(move);
+      assertCanSend(chain, held, request, unsignedTransaction);
+      return deps.agentActivities.signTransaction({
+        subOrganizationId: account.subOrganizationId,
+        signWith: source.address,
+        unsignedTransaction,
+      });
+    },
+
+    /**
+     * Step two: the same parties again (ownership re-checked, balances not re-read), the stamped
+     * transfer through `checkStampedTransfer`, then the recorded-hash check, the broadcast, both
+     * balances forgotten, and the receipt in `wallets.transfers`. A broadcast that fails records
+     * nothing; a record that fails after a broadcast is reported, as a deposit's is, and a retry
+     * of the same stamp records it (the node already holds the transaction).
+     *
+     * The recorded-hash check runs after the stamp is forwarded, because the hash exists only once
+     * Turnkey has signed. So a repeated confirm creates another SIGN_TRANSACTION activity in
+     * Turnkey before it is refused (TRANSFER_ALREADY_RECORDED). Harmless: it signs the same
+     * transaction, with the same nonce, and nothing is broadcast twice.
+     */
+    async confirmTransfer(
+      userId: string,
+      request: TransferRequest,
+      signed: SignedActivityRequest,
+    ): Promise<{ txHash: string }> {
+      const { chain, account, source, target } = await transferParties(userId, request);
+      const { signedTransaction } = await checkStampedTransfer({
+        chain,
+        subOrganizationId: account.subOrganizationId,
+        signer: source.address,
+        recipient: target.address,
+        token: request.token,
+        amount: request.amount,
+        signed,
+      });
+      // A repeated confirm of the same stamp: already sent and recorded, so nothing is sent again.
+      if (await deps.agentWallets.transferRecorded(chain.transactionHash(signedTransaction))) {
+        throw new TransferAlreadyRecordedError();
+      }
+      const txHash = await chain.broadcast(signedTransaction);
+      // Sent: whatever happens to the record, the next balance reads must see the chain.
+      chain.forgetBalance(source.address);
+      chain.forgetBalance(target.address);
+      const transfer: TransferRecord = {
+        userId,
+        fromWalletId: source.walletId,
+        toWalletId: target.walletId,
+        token: request.token === "AUSD" ? "ausd" : "mon",
+        amount: request.amount,
+        txHash,
+      };
+      try {
+        await deps.agentWallets.saveTransfer(transfer);
+      } catch (error) {
+        // The funds moved and no row says so. A duplicate is not that: its row exists.
+        if (!(error instanceof TransferAlreadyRecordedError)) {
+          try {
+            deps.reportUnrecordedTransfer?.(transfer);
           } catch {
             // A broken log sink changes nothing about the failure.
           }

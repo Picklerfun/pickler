@@ -1,88 +1,14 @@
 import { z } from "zod";
-import { VENUES } from "./agents.js";
 import { ACCENTS } from "./landing.js";
 import {
   agentConfigSchema,
   agentResponseSchema,
   decisionSchema,
   eventResponseSchema,
-  skillSchema,
   spendLimitsSchema,
-  uncertaintyPolicySchema,
+  VOICE_KEYS,
 } from "./research.js";
 
-// Mirrors `STYLES` in core, which this package may not import; a drift test in workers/api pins it.
-export const STYLES = ["careful", "balanced", "bold"] as const;
-export type StyleDto = (typeof STYLES)[number];
-
-/**
- * Mirrors `NUMBERS` behind core's `policyForStyle` in `features/research/style.ts`, which this
- * package may not import. The web sends one of these, keyed by the style the creation form's
- * decide step chose, as the created agent's `uncertaintyPolicy`. A drift test in workers/api pins
- * each entry against `policyForStyle`.
- */
-export const STYLE_POLICIES: Record<StyleDto, z.infer<typeof uncertaintyPolicySchema>> = {
-  careful: {
-    blockHighUncertainty: true,
-    requireCompleteInformation: true,
-    minProbabilityMargin: 0.08,
-    maxProbabilityRangeWidth: 0.15,
-  },
-  balanced: {
-    blockHighUncertainty: true,
-    requireCompleteInformation: true,
-    minProbabilityMargin: 0.04,
-    maxProbabilityRangeWidth: 0.2,
-  },
-  bold: {
-    blockHighUncertainty: true,
-    requireCompleteInformation: true,
-    minProbabilityMargin: 0.02,
-    maxProbabilityRangeWidth: 0.3,
-  },
-};
-
-/** The public profile the studio authors at creation. Every field travels; nothing is filled in. */
-export const agentProfileInputSchema = z
-  .object({
-    accent: z.enum(ACCENTS),
-    blurb: z.string().trim().max(280),
-    venue: z.enum(VENUES),
-    vibe: z.string().trim().max(120),
-    voice: z.string().trim().max(120),
-    decides: z.string().trim().max(280),
-    wrong: z.string().trim().max(280),
-    xHandle: z
-      .string()
-      .regex(/^@[A-Za-z0-9_]{1,15}$/)
-      .nullable(),
-  })
-  .strict();
-
-/**
- * The wallet linked to the agent in the same transaction that creates it: "an agent is created
- * with its wallet, or not at all." Only `walletId` travels — the policy ids it links are read
- * server-side from what `confirmPolicies` already recorded, never from the client, so a request
- * cannot claim approval for rules nobody's passkey confirmed. `.strict()` rejects a `policyIds`
- * sent alongside it rather than silently ignoring it.
- */
-export const agentWalletLinkSchema = z
-  .object({
-    walletId: z.string().regex(/^[A-Za-z0-9-]{1,128}$/),
-  })
-  .strict();
-
-export const createAgentSchema = z
-  .object({
-    name: z.string().trim().min(1).max(40),
-    handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
-    config: agentConfigSchema.refine((config) => Boolean(config.marketScope), {
-      message: "Choose a category and subcategory",
-    }),
-    profile: agentProfileInputSchema,
-    wallet: agentWalletLinkSchema,
-  })
-  .strict();
 export const idempotencyKeySchema = z.string().min(1).max(200);
 
 export const studioAccessSchema = z.object({
@@ -115,7 +41,10 @@ export const studioAgentSchema = agentResponseSchema.extend({
   handle: z.string().optional(),
   /** The profile's accent; "lime" for an agent without a profile row. */
   accent: z.enum(ACCENTS),
-  /** A private draft from the brief (studio-brief-v1 §6): no wallet until Go Public. */
+  /**
+   * A private draft (studio-brief-v1 §6). The create screen makes every draft with its own wallet
+   * (studio-create-simplified-v1); a draft from before has none.
+   */
   draft: z.boolean(),
   wallet: studioAgentWalletSchema.nullable(),
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
@@ -161,102 +90,6 @@ export const studioOptionsSchema = z.object({
   ),
 });
 
-// The draft vocabulary mirrors `features/studio/draft.ts` in core; workers/api pins each list.
-export const VENUES_ON_MAP = ["polymarket", "perpl"] as const;
-export const SOON_VENUES = ["perpl"] as const;
-export const BEAT_NAMES = ["Sports", "Crypto", "Politics", "Economics", "Culture", "Tech"] as const;
-export type BeatName = (typeof BEAT_NAMES)[number];
-export const SOON_BEATS = ["Crypto", "Politics", "Economics", "Culture", "Tech"] as const;
-/** The subcategory labels each beat offers, in core's order. */
-export const BEAT_SUBS: Record<BeatName, readonly string[]> = {
-  Sports: ["NFL", "NBA", "Soccer", "Tennis"],
-  Crypto: ["Bitcoin", "Ethereum", "New listings"],
-  Politics: ["US elections", "Congress", "World"],
-  Economics: ["Fed", "CPI", "Jobs"],
-  Culture: ["Awards", "Box office", "Music"],
-  Tech: ["AI", "Launches", "Space"],
-};
-
-/**
- * The runtime's sport id behind each Sports subcategory label, mirroring the `id` on core's
- * `BEATS[0].subs` (`features/studio/draft.ts`). Only Sports has ids: it is the one beat with a
- * market catalog behind it, and `agentConfigSchema`'s `marketScope.subcategories` takes these ids,
- * never the labels a beat is drawn with. A drift test in workers/api pins this against core.
- */
-export const SPORT_SUB_IDS: Record<
-  string,
-  "american-football" | "basketball" | "soccer" | "tennis"
-> = {
-  NFL: "american-football",
-  NBA: "basketball",
-  Soccer: "soccer",
-  Tennis: "tennis",
-};
-
-/**
- * Mirrors core's `SUGGESTED_SKILLS` in `features/studio/draft.ts`, which this package may not
- * import: the skills a draft or the creation form's skills step may offer by beat, `other` serving
- * every beat without its own list. A drift test in workers/api pins it.
- */
-export const SUGGESTED_SKILLS: Record<string, z.infer<typeof skillSchema>[]> = {
-  Sports: [
-    { name: "Injury double-check", prompt: "Only count an injury if two sources confirm it." },
-    {
-      name: "Weather at kickoff",
-      prompt:
-        "Check the stadium forecast. Wind over 15 mph lowers the chance of a high-scoring game.",
-    },
-    {
-      name: "Late line moves",
-      prompt: "If the line moved more than 2 points in 24 hours, find out why before calling.",
-    },
-  ],
-  other: [
-    { name: "Two sources rule", prompt: "Never call on a single source. Find a second one first." },
-  ],
-};
-
-/** What the model proposes from one line. Parts the runtime cannot run travel as `unsupported`. */
-export const agentDraftSchema = z
-  .object({
-    name: z.string().trim().min(1).max(40),
-    handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
-    venues: z.array(z.enum(VENUES_ON_MAP)).min(1),
-    beat: z.enum(BEAT_NAMES),
-    subcategories: z.array(z.string().max(40)).max(6),
-    // A draft proposes a handful of sites; the config itself still allows 20.
-    sites: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/)).max(6),
-    skills: z.array(z.string().max(40)).max(8),
-    edge: z.string().trim().min(1).max(400),
-    style: z.enum(STYLES),
-    accent: z.enum(ACCENTS),
-  })
-  .strict()
-  .superRefine((draft, context) => {
-    const offered = BEAT_SUBS[draft.beat];
-    draft.subcategories.forEach((label, index) => {
-      if (!offered.includes(label)) {
-        context.addIssue({
-          code: "custom",
-          path: ["subcategories", index],
-          message: `${label} is not a ${draft.beat} subcategory`,
-        });
-      }
-    });
-  });
-export type AgentDraftDto = z.infer<typeof agentDraftSchema>;
-
-export const draftRequestSchema = z
-  .object({
-    line: z.string().trim().min(3).max(280),
-  })
-  .strict();
-
-export const draftResponseSchema = z.object({
-  draft: agentDraftSchema,
-  unsupported: z.array(z.string()),
-});
-
 /**
  * What the brief screen sends. Lengths and line counts are core's to judge (`assertBrief`), so the
  * answer can name the section: 400 INVALID_BRIEF with `field` and `reason`. These bounds only keep
@@ -300,14 +133,107 @@ export const previewRunResponseSchema = z.object({
 export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
 
 /**
- * `POST /v1/studio/drafts` (spec §6). The brief travels again so the server can check that the
- * run was made from exactly this brief (409 RUN_STALE otherwise).
+ * `POST /v1/studio/drafts` (studio-create-simplified-v1 §4.1). Shapes only; the rules are core's
+ * (`prepareDraft`). Sites may arrive as typed ("CoinDesk.com", "https://coindesk.com/x"): the
+ * route reduces them to bare hosts before core checks them.
  */
-export const draftCreateSchema = previewRunRequestSchema
-  .extend({
+export const draftCreateSchema = z
+  .object({
     name: z.string().trim().min(1).max(40),
     handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
-    previewRunId: z.string().uuid(),
+    voice: z.enum(VOICE_KEYS),
+    avatar: z
+      .object({
+        accent: z.enum(["lime", "cyan", "amber", "orange", "magenta", "violet", "blue"]),
+        pattern: z.number().int(),
+      })
+      .strict(),
+    sources: z
+      .object({
+        web: z
+          .object({
+            mode: z.enum(["anywhere", "prefer", "only"]),
+            sites: z.array(z.string().max(253)).max(20),
+          })
+          .strict()
+          .nullable(),
+      })
+      .strict(),
+    brief: z
+      .object({
+        thesis: z.string().max(4000),
+        entersWhen: z.array(z.string().max(1000)).max(50),
+        exitsWhen: z.array(z.string().max(1000)).max(50),
+        never: z.array(z.string().max(1000)).max(50),
+      })
+      .strict(),
+    caps: z
+      .object({ perTradeAusd: z.number(), perDayAusd: z.number(), maxLeverage: z.number() })
+      .strict(),
+    walletId: z.string().min(1).max(128),
   })
   .strict();
 export type DraftCreateDto = z.infer<typeof draftCreateSchema>;
+
+/** A request the browser had the passkey stamp, in the shape Turnkey's own stamper produces. */
+export const signedActivitySchema = z
+  .object({
+    url: z.string().min(1).max(512),
+    body: z.string().min(1).max(8192),
+    stamp: z
+      .object({
+        stampHeaderName: z.string().min(1).max(64),
+        stampHeaderValue: z.string().min(1).max(8192),
+      })
+      .strict(),
+  })
+  .strict();
+export type SignedActivityDto = z.infer<typeof signedActivitySchema>;
+
+const transferFields = {
+  /** "master", or one of the person's agent wallet ids. */
+  from: z.string().min(1).max(128),
+  to: z.string().min(1).max(128),
+  token: z.enum(["AUSD", "MON"]),
+  /**
+   * A decimal amount of the token, as typed: "1.5". The route checks its form and converts it to
+   * base units, so every malformed amount is the same 400 INVALID_TRANSFER.
+   */
+  amount: z.string().max(80),
+};
+
+/** `POST /v1/studio/wallets/transfers/prepare` (§4.2): a decimal amount of one token. */
+export const transferRequestSchema = z.object(transferFields).strict();
+export type TransferRequestDto = z.infer<typeof transferRequestSchema>;
+
+/** `POST /v1/studio/wallets/transfers/confirm`: the same body plus the stamped activity. */
+export const transferConfirmSchema = z
+  .object({ ...transferFields, signed: signedActivitySchema })
+  .strict();
+export type TransferConfirmDto = z.infer<typeof transferConfirmSchema>;
+
+const baseUnitBalances = {
+  /** Base units as decimal strings; null where the chain did not answer. */
+  ausdMicro: z.string().nullable(),
+  monWei: z.string().nullable(),
+};
+
+/** `GET /v1/studio/wallets` (§4.2). */
+export const walletsResponseSchema = z.object({
+  master: z.object({ address: z.string(), ...baseUnitBalances }),
+  agents: z.array(
+    z.object({
+      walletId: z.string(),
+      address: z.string(),
+      ...baseUnitBalances,
+      agentId: z.string().nullable(),
+      agentName: z.string().nullable(),
+      caps: z
+        .object({ perTradeAusd: z.number(), perDayAusd: z.number(), maxLeverage: z.number() })
+        .nullable(),
+      policiesApproved: z.boolean(),
+    }),
+  ),
+  readAt: z.number(),
+});
+export type WalletsDto = z.infer<typeof walletsResponseSchema>;

@@ -1,0 +1,1448 @@
+/* The create screen ("Pickler Studio Empty v5"): the brief column and the wallet column. Tokens
+   only; the brief's cards, labels and steppers compose the home's so the two read as one product.
+   The top bar, the rail and the main area are the home's own classes, read from home.module.css.
+   The canvas's #5A5F78 notes map to `--pk-ink-faint`, its #FF9EC6 pink to `--pk-magenta-ink`, its
+   #0B0D1A wells and avatar pixels to `--pk-bg`. */
+
+.column {
+  display: flex;
+  flex: 1 1 460px;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 680px;
+  min-width: 0;
+}
+.kicker {
+  margin: 6px 0 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Top bar: the new agent's chip ---------- */
+
+.chipAvatar {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--accent);
+  overflow: hidden;
+}
+
+/* ---------- Identity ---------- */
+
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 6px;
+}
+.identityText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.avatarButton {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pk-radius-xl);
+  background: var(--accent);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--pk-duration);
+}
+.avatarButton:hover:not(:disabled) {
+  transform: scale(1.03);
+}
+.avatarGrid {
+  position: absolute;
+  inset: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.avatarGridSmall {
+  inset: 4px;
+  gap: 1px;
+}
+.avatarCell {
+  border-radius: 3px;
+}
+.avatarCell[data-on="true"] {
+  background: var(--pk-bg);
+}
+.avatarEdit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+.nameInput {
+  width: 100%;
+  min-width: 0;
+  margin: 6px 0 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: 700 clamp(46px, 5.4vw, 64px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+}
+.nameInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.nameInput:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--pk-lime-edge);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+.handleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.handleField {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 12.5px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.handleField input {
+  width: 150px;
+  padding: 9px 0;
+  border: none;
+  background: transparent;
+  font: 600 12.5px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: inherit;
+  outline: none;
+}
+.handleField input::placeholder {
+  color: var(--pk-ink-faint);
+}
+.handleField:focus-within {
+  box-shadow: inset 0 0 0 1px var(--pk-lime-edge);
+}
+.handleField[data-tone="lime"] {
+  color: var(--pk-lime-ink);
+}
+.handleField[data-tone="pink"] {
+  color: var(--pk-magenta-ink);
+}
+.handleNote {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.handleNote[data-tone="lime"] {
+  color: var(--pk-lime-ink);
+}
+.handleNote[data-tone="pink"] {
+  color: var(--pk-magenta-ink);
+}
+.retry {
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-magenta-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.retry:hover {
+  color: var(--pk-ink);
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+.card[data-needed="true"] {
+  box-shadow: inset 0 0 0 1px var(--pk-amber-edge);
+}
+.cardRoomy {
+  gap: 10px;
+  padding-bottom: 14px;
+}
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.label {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-lime-ink);
+}
+.sub {
+  font: 500 10.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.tag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.tag[data-filled="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-lime-ink);
+}
+.tag[data-caution="true"] {
+  color: var(--pk-amber-ink);
+}
+.input {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  padding: 4px 0 0;
+  border: none;
+  background: transparent;
+  font: 500 15.5px/1.5 var(--pk-font);
+  letter-spacing: -0.015em;
+  color: var(--pk-ink);
+  /* Grows with its lines, so a phone's narrower column wraps the defaults without hiding the last.
+     Never shorter than two lines, which `rows` no longer sets once the field sizes to its content. */
+  field-sizing: content;
+  min-height: 3em;
+}
+/* Where the field cannot size itself, `rows` holds it and four lines keep the defaults readable. */
+@supports not (field-sizing: content) {
+  .input {
+    min-height: 6em;
+  }
+}
+.input::placeholder {
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Voice ---------- */
+
+.voices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-soft);
+  font: 600 13.5px/1 var(--pk-font);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.voice[aria-pressed="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.sample {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+  font: 400 15px/1.45 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink-soft);
+  text-wrap: pretty;
+}
+
+/* ---------- It reads ---------- */
+
+.plugins {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px;
+}
+.plugin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.plugin[data-on="true"] {
+  border-color: transparent;
+  background: var(--pk-bg);
+}
+.plugin[data-fixed="true"] {
+  border-color: var(--pk-lime-edge);
+  cursor: default;
+}
+.pluginText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.pluginName {
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.pluginNote {
+  font: 500 11px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.fixed {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-good-bg);
+  color: var(--pk-lime-ink);
+}
+.toggle {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  transition: background var(--pk-duration);
+}
+.toggle i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink-faint);
+  transition: left var(--pk-duration);
+}
+.toggle[data-on="true"] {
+  background: var(--pk-lime);
+}
+.toggle[data-on="true"] i {
+  left: 17px;
+  background: var(--pk-on-lime);
+}
+.web {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.webHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* One line per option: a narrow card moves the whole track under the title instead. */
+.webMode {
+  white-space: nowrap;
+}
+.webTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.sites {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.site {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 6px 7px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 12px/1 var(--pk-font);
+}
+.siteRemove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-muted);
+  font: 600 12px/1 var(--pk-font);
+  cursor: pointer;
+}
+.siteRemove:hover:not(:disabled) {
+  color: var(--pk-magenta-ink);
+}
+.siteInput {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+  font: 600 12.5px/1 var(--pk-font);
+  color: var(--pk-ink);
+  outline: none;
+}
+.siteInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.note {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.note[data-bad="true"] {
+  color: var(--pk-magenta-ink);
+}
+
+/* ---------- Advanced settings ---------- */
+
+.advancedToggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px dashed var(--pk-rule-strong);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 600 11px/1.3 var(--pk-font);
+  letter-spacing: 0.1em;
+  text-align: left;
+  cursor: pointer;
+}
+.advancedToggle:hover {
+  color: var(--pk-ink);
+}
+.advancedToggle svg {
+  transition: transform var(--pk-duration);
+}
+.advancedToggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.advancedSummary {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-faint);
+}
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+@media (max-width: 860px) {
+  .caps {
+    grid-template-columns: 1fr;
+  }
+}
+.cap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.capText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.capTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.capValue {
+  font: 700 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+.capButton {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  cursor: pointer;
+}
+.capButton:hover:not(:disabled) {
+  background: var(--pk-panel-3);
+}
+.capButton:disabled {
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+/* The steppers shut with aria-disabled, so they keep focus at a bound; the :disabled look above.
+   The class is doubled to outrank `:hover:not(:disabled)`. */
+.capButton.capButton[aria-disabled="true"],
+.capButton.capButton[aria-disabled="true"]:hover {
+  background: var(--pk-panel);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+
+/* ---------- Create ---------- */
+
+.create {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.foot {
+  margin: -4px 0 0;
+  text-align: center;
+  font: 600 10.5px/1.5 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.alert {
+  composes: alert from "../home/home.module.css";
+}
+.previewNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-amber-ink);
+}
+
+/* ---------- Its wallet ---------- */
+
+.side {
+  position: relative;
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  min-width: 0;
+  margin-top: 62px;
+}
+.mascot {
+  position: absolute;
+  top: -92px;
+  right: -12px;
+  z-index: 2;
+  width: 96px;
+  height: auto;
+  pointer-events: none;
+  animation: pkFloat 6s ease-in-out infinite;
+}
+.walletCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+  transition: border-color var(--pk-duration);
+}
+/* Only the money is missing: the canvas points at the card. */
+.walletCard[data-outline="true"] {
+  border-color: var(--pk-lime-edge);
+}
+.walletHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.walletTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.walletTag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-amber-ink);
+}
+.walletTag[data-tone="good"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.walletBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: pkIn 240ms ease-out;
+}
+
+/* Step 0: no wallet yet. */
+.step0 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--pk-rule-strong);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.step0Head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step0Mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px dashed var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
+  font: 700 13px/1 var(--pk-font-display);
+  color: var(--pk-ink-faint);
+}
+.step0Text,
+.addressText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.step0Text b,
+.addressText b {
+  font: 600 14.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.step0Text small,
+.addressText small {
+  font: 600 10px/1.2 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.step0Note {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.step0Steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step0Steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+  font: 500 12px/1.3 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.step0Steps li > span[aria-hidden="true"] {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.step0Steps li[data-done="true"] {
+  color: var(--pk-ink-faint);
+}
+.step0Steps li[data-done="true"] > span[aria-hidden="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+/* The wallet, made. */
+.address {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.monad {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pk-radius-sm);
+}
+.chipButton,
+.iconButton {
+  flex: none;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.chipButton {
+  padding: 7px 10px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.chipButton:hover,
+.iconButton:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--pk-ink);
+}
+.iconButton:disabled,
+.iconButton[aria-disabled="true"] {
+  cursor: default;
+}
+.iconButton[aria-busy="true"] svg {
+  animation: pkSpin 0.8s linear infinite;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.tile b {
+  font: 700 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+.tile b[data-good="true"] {
+  color: var(--pk-lime-ink);
+}
+.tile small,
+.row small {
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.row b {
+  margin-left: auto;
+  font: 700 12.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.row b i {
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--pk-ink-muted);
+}
+.row[data-tone="caution"] {
+  padding: 10px 12px;
+  border-color: var(--pk-amber-edge);
+}
+.row[data-tone="caution"] small {
+  color: var(--pk-amber-ink);
+}
+.balanceNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+  animation: pkIn 220ms ease-out;
+}
+.arrival i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-blue);
+}
+.arrival span {
+  flex: 1;
+  font: 500 12.5px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.arrival small {
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.fundNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+}
+
+/* ---------- The passkey sheet ---------- */
+
+/* auth.module.css's ceremony sheet with the canvas's centred card: a native dialog, a bottom
+   sheet on a phone and a centred card once there is room. */
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90dvh;
+  margin: 0 auto;
+  padding: 26px 24px 22px;
+  overflow-y: auto;
+  border: 1px solid var(--pk-rule);
+  border-bottom: none;
+  border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) 0 0;
+  background: var(--pk-popover);
+  box-shadow: var(--pk-popover-shadow);
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+  text-align: center;
+  animation: pkIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sheet[open] {
+  display: flex;
+}
+.sheet:focus {
+  outline: none;
+}
+.sheet::backdrop {
+  background: var(--pk-scrim);
+  backdrop-filter: blur(6px);
+}
+@media (min-width: 640px) {
+  .sheet {
+    inset: 0;
+    width: min(340px, calc(100% - 40px));
+    height: fit-content;
+    margin: auto;
+    border-bottom: 1px solid var(--pk-rule);
+    border-radius: var(--pk-radius-2xl);
+  }
+}
+.sheetIcon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-lime-ink);
+}
+.sheetIcon[data-phase="ok"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.sheetIcon[data-phase="err"] {
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-state-loss-ink);
+}
+.sheetSteps {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.sheetSteps i {
+  width: 28px;
+  height: 4px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+}
+.sheetSteps i[data-on="true"] {
+  background: var(--pk-lime);
+}
+.sheetTitle {
+  margin: 0 0 6px;
+  font: 600 18px/1.25 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.sheetNote {
+  margin: 0 0 20px;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.sheetWait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.sheetWait[data-busy="true"] {
+  padding: 14px;
+}
+.sheetWait i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  animation: pkBlink 1s steps(1, end) infinite;
+}
+
+/* ---------- The Wallets modal ---------- */
+
+/* A native dialog the size of the viewport, its card centred: a press on the dialog outside the
+   card is a press on the backdrop. */
+.modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 20px 16px;
+  overflow-y: auto;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+}
+.modal[open] {
+  display: grid;
+  /* One column no wider than the screen: an auto column grew to the card's widest line (a full
+     address, the move form) and pushed the Wallets modal past a phone's edge. */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+}
+.modal::backdrop {
+  background: var(--pk-scrim);
+  backdrop-filter: blur(6px);
+}
+.modalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 620px;
+  padding: 24px;
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+  box-shadow: var(--pk-popover-shadow);
+  animation: pkIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.tab {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.tab:hover {
+  color: var(--pk-ink);
+}
+.tab[aria-current="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  cursor: default;
+}
+.modalClose {
+  composes: iconButton;
+  width: 32px;
+  height: 32px;
+}
+.modalTitle {
+  margin: 0;
+  font: 700 34px/0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+}
+.modalTitle span {
+  color: var(--pk-lime-ink);
+}
+.modalLead {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.listTitle {
+  padding-top: 4px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.walletBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-bg);
+}
+.walletBox[data-master="true"] {
+  border-color: var(--pk-lime-edge);
+}
+.walletBox .tile,
+.walletBox .row {
+  background: var(--pk-panel);
+}
+.walletBox .walletTag {
+  margin-left: 0;
+}
+.walletBox .chipButton {
+  background: var(--pk-panel);
+}
+.walletBoxHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.walletBoxName {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.walletBoxName b {
+  overflow: hidden;
+  font: 600 14.5px/1.1 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.walletBoxName b i {
+  font-style: normal;
+  color: var(--pk-ink-faint);
+}
+.walletBoxName small {
+  overflow: hidden;
+  font: 600 10px/1.2 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.masterMark {
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+}
+.walletMark {
+  /* Holds the agent's avatar grid, which is absolutely placed: without this it covered the modal. */
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  font: 700 12px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+.walletMark[data-accent="true"] {
+  background: var(--accent);
+}
+.walletTag[data-tone="quiet"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink-faint);
+}
+.moveButtons {
+  display: flex;
+  gap: 4px;
+}
+.direction {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12px/1 var(--pk-font);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+.direction:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.direction[aria-expanded="true"],
+.direction[aria-expanded="true"]:hover:not(:disabled) {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.direction:disabled {
+  color: var(--pk-ink-faint);
+  cursor: default;
+}
+/* The open direction stays legible on its light fill while a preview disables it. */
+.direction[aria-expanded="true"]:disabled {
+  color: var(--pk-bg);
+}
+.move {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+  animation: pkIn 180ms ease-out;
+}
+.moveRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.move .tokenSwitch {
+  background: var(--pk-bg);
+}
+.amountField {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.amountField:focus-within {
+  border-color: var(--pk-rule-strong);
+}
+.amountField[data-bad="true"] {
+  border-color: var(--pk-state-loss-ink);
+}
+.amountField input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 700 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.amountField input::placeholder {
+  color: var(--pk-ink-faint);
+}
+.amountField small {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.amountField .chipButton {
+  padding: 4px 7px;
+  background: var(--pk-panel);
+  font-size: 9px;
+}
+.amountField .chipButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.moveNote {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+}
+
+/* ---------- The top bar's master wallet ---------- */
+
+.topPill {
+  composes: pill from "../home/home.module.css";
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  border: none;
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 12.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.topPill:hover {
+  background: var(--pk-panel-2);
+}
+.topPill img {
+  border-radius: var(--pk-radius-mark);
+}
+.topPill small {
+  font: inherit;
+  color: var(--pk-ink-faint);
+}
+.topPill i {
+  width: 1px;
+  height: 12px;
+  background: var(--pk-rule-strong);
+}
+
+/* The AI credits pill: a muted dot, because there is no balance to show yet. */
+.topPill .creditsDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-mark);
+  background: var(--pk-ink-faint);
+}
+/* A phone's top bar keeps the dot and "Soon": the label alone would push it onto a third row. */
+@media (max-width: 640px) {
+  .creditsLabel {
+    display: none;
+  }
+}
+.soon {
+  composes: soon from "../home/home.module.css";
+}
+
+/* ---------- Motion (restated from home.module.css: keyframes are module-scoped) ---------- */
+
+@keyframes pkBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pkSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pkFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot,
+  .walletBody,
+  .arrival,
+  .iconButton[aria-busy="true"] svg,
+  .sheet,
+  .sheetWait i,
+  .modalCard,
+  .move {
+    animation: none;
+  }
+  /* No spin: the refresh says it is reading by dimming instead. */
+  .iconButton[aria-busy="true"] svg {
+    opacity: 0.45;
+  }
+}
+
+.accents,
+.patterns {
+  display: grid;
+  gap: 6px;
+}
+.accents {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.patterns {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.accentOption,
+.patternOption {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--pk-radius-md);
+  background: var(--accent);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--pk-duration);
+}
+.accentOption:hover,
+.patternOption:hover {
+  transform: scale(1.05);
+}
+.accentOption[aria-checked="true"],
+.patternOption[aria-checked="true"] {
+  border-color: var(--pk-ink);
+}
+.patternOption .avatarGrid {
+  inset: 8px;
+  gap: 2px;
+}
+
+.accentOption:focus-visible,
+.patternOption:focus-visible,
+.tab:focus-visible,
+.modalClose:focus-visible,
+.iconButton:focus-visible,
+.chipButton:focus-visible,
+.direction:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.avatarCard {
+  max-width: 520px;
+  gap: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accentOption,
+  .patternOption {
+    transition: none;
+  }
+  .accentOption:hover,
+  .patternOption:hover {
+    transform: none;
+  }
+}

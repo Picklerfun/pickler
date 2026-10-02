@@ -1,0 +1,56 @@
+#64 MERGED codex/cleanup-design-system — Cleanup: one design system, no pre-v2 backdrop, no dead code
+#63 OPEN codex/perpl-data-reliability — fix(perpl): recover transient data gaps and fence interrupted writers
+#62 OPEN codex/wallet-perpl-audit — docs: review Studio wallets, Perpl, launchpad and indexing integration
+#61 MERGED codex/user-profiles-and-products — Studio brief, passkey-first signup, and product data through Postgres
+#60 OPEN codex/perpl-data-validation — fix(perps): validate market frames and preserve campaign budgets
+#59 MERGED codex/evaluation-unification — Extract trading engine, normalize plugins and consolidate evaluations
+#58 CLOSED codex/perps-agent-comparison — feat: compare rules, DeepSeek and Jev in perpetual paper sessions
+#57 MERGED codex/perps-paper-simulator — Add Perpl paper execution and funding reconciliation
+#56 CLOSED codex/btc-decision-benchmark — Compare BTC paper decisions and Jev reviewer utility
+#55 MERGED codex/perps-paper-accounts — Add isolated perpetual paper accounts and risk policy
+#54 MERGED codex/perpl-data-plugin — Add scoped Perpl public-data plugin for BTC and ETH
+#53 MERGED codex/btc-paper-policy-comparison — Compare BTC central and conservative paper policies with bounded Jev review
+#52 CLOSED codex/btc-quant-jev-paper — Add quantitative BTC forecasts with Jev review and paper study
+#51 MERGED codex/jev-answer-diagnostics — Diagnose rejected Jev study answers without recording raw output
+#50 MERGED codex/jev-usage-contract — fix(agent-runtime): accept and preserve Jev output usage
+#49 MERGED codex/jev-active-routing — feat(agent-service): activate Jev-first routing in integrated paper studies
+#48 MERGED codex/jev-shadow-observation — feat(agent-service): add isolated Jev decision observation
+#47 CLOSED codex/paper-study — Add continuous BTC and sports paper-study laboratory
+#46 MERGED codex/paper-settlement — feat(paper): settle virtual sports positions and report realized P&L
+#45 MERGED codex/jev-deepseek-evaluation — feat(agent-service): add Jev and DeepSeek evaluation laboratory
+#43 MERGED codex/polymarket-worker-pilot — Add private Cloudflare Polymarket pilot and console trading
+#42 MERGED codex/user-profiles-and-products — User profiles, and the line between the two products
+#41 MERGED codex/design-system-v2 — Design system v2: two surfaces, five screens, and checks that measure the page
+#40 MERGED codex/custody-passkeys-v1 — Integrate custody, design system and user profiles
+#39 MERGED codex/polymarket-trading-integration — Restore local Polymarket pilot on current runtime and migration history
+#38 MERGED codex/public-data-audit-main — Separate public data audit from frontend stack and align priorities
+#37 MERGED codex/launchpad-development-spec — Launchpad on Monad: contracts, indexer and catalogue
+#36 MERGED codex/input-focus — Fix duplicate input focus borders and clipped signup prefix
+#35 MERGED codex/studio-manual-access — Preserve operator-approved Studio manual access in staging
+#34 CLOSED codex/public-data-audit — Audit: what the public product invents, and what it would take to stop
+#33 MERGED codex/wallet-signers — The wallet becomes a chooser: a browser wallet, or the app's passkey account
+#32 MERGED codex/markets-perps — Markets: pick a level and a time, and either ask or take it
+#31 MERGED fix/web-aasa-passkeys — fix(web): serve the Apple App Site Association so iOS passkeys work on pickler.fun
+#30 MERGED codex/landing-page — Pickler Studio: the research console, over the engine that already exists
+#29 MERGED codex/api-hyperdrive — Migrate staging API to verified Hyperdrive
+#28 MERGED codex/staging-deployment — Deploy Pickler staging and fix research persistence with Hyperdrive
+#27 CLOSED codex/single-env — Use one root environment file with scoped Worker configuration
+#26 MERGED codex/cloudflare-staging — Prepare Cloudflare staging with direct Supabase PostgreSQL
+#25 MERGED codex/unified-runtime-console — Share the research runtime and connect the private console
+#24 MERGED codex/unified-api-data — Unify private research identity, API and PostgreSQL budgets
+#23 MERGED codex/frontend-integration — Reconcile public frontend with current research runtime and fix review findings
+#22 CLOSED codex/polymarket-live-trading — Add an opt-in local Polymarket trading pilot
+#21 MERGED codex/landing-page — Public front end: pages, paid reads, and the shared design system
+#20 MERGED codex/market-categories — Add sports category scopes and automatic research protocols
+#19 MERGED codex/nfl-live-validation — Fix NFL evidence attribution and validate real agent research
+#18 MERGED codex/manual-paper-orders — Add manual paper trading with tenant-scoped reservations
+#17 MERGED codex/nfl-research-quality — Add configurable NFL research plugins and independent forecasts
+#10 MERGED codex/agent-research-reliability — Improve model reliability and pre-event research eligibility
+#9 MERGED codex/agent-concurrency — Enable concurrent agent research with fenced execution leases
+#8 MERGED codex/cloudflare-background-research — Validate background research with Cloudflare Queues and local Supabase
+#7 MERGED codex/agent-runtime-spec — Add multi-tenant research pilot and Cloudflare runtime validation
+#6 MERGED codex/cloudflare-runtime-probe — Verify Mastra research on Cloudflare Workers
+#4 MERGED codex/decision-uncertainty-policy — Add decision v2 with configurable uncertainty policy
+#3 MERGED codex/agent-pilot-live-validation — Improve local agent validation and model reliability
+#2 MERGED codex/agent-research-pilot — Add Mastra research pilot with Supabase PostgreSQL and Drizzle
+#1 MERGED codex/revert-agent-spec — Revert direct specification push and require PR workflow

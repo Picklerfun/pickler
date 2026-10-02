@@ -180,10 +180,10 @@ export { createResearchRunner } from "./features/research/run-research.js";
 export { marketExclusion } from "./features/research/eligibility.js";
 export { publicSourceUrl } from "./features/research/source-url.js";
 export * from "./features/studio/access.js";
-export * from "./features/studio/draft.js";
 export * from "./features/studio/brief-config.js";
 export * from "./features/studio/preview.js";
 export * from "./features/studio/locks.js";
+export * from "./features/studio/create.js";
 
 export {
   ADD_PASSKEY_ACTIVITY_TYPE,
@@ -198,6 +198,7 @@ export {
   type PasskeyAttestation,
   AGENT_WALLET_ACTIVITY_TYPES,
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
   DelegatedUserMissingError,
@@ -215,11 +216,16 @@ export {
   DepositNonceError,
   DepositNotSendableError,
   DepositsUnavailableError,
+  InsufficientFundsError,
+  InsufficientGasError,
   InvalidDepositAmountError,
+  InvalidTransferError,
   isDepositAmount,
   MAX_DEPOSIT_GAS,
   MAX_FEE_MULTIPLE,
+  MAX_NATIVE_TRANSFER_GAS,
   SignedTransactionMismatchError,
+  TransferAlreadyRecordedError,
   type DepositAmountAusd,
 } from "./features/wallets/domain/deposit.js";
 export {
@@ -236,21 +242,25 @@ export type {
   AgentWalletActivityBuilders,
   ExistingAgentWallet,
   AgentWalletRepository,
+  AgentWalletSummary,
   ChallengeStore,
   CustodyAccount,
   CustodyRepository,
   DepositChain,
-  OrphanAgentWallet,
+  NativeTransferInspection,
+  UnlinkedAgentWallet,
   Passkey,
   RegistrationInput,
   StoredChallenge,
   SubOrganizationCreator,
   TransferInspection,
   UnsignedActivity,
+  WalletBalanceReader,
 } from "./features/wallets/ports/custody.js";
 export {
   createCustodyService,
   type CustodyServiceDeps,
+  type TransferRequest,
 } from "./features/wallets/application/custody.js";
 
 export * from "./features/identity/domain/wallet-auth.js";

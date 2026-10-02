@@ -1,5 +1,8 @@
 # Studio brief v1: write it, run it on paper, then create it
 
+> Superseded by [studio-create-simplified-v1.md](studio-create-simplified-v1.md): the brief home,
+> its paper run and `previewRunId` are gone; kept for history.
+
 Status: approved design, 2026-09-28. Sub-project 1 of the "Pickler Studio Empty v4" canvas
 (Claude Design project `c03aadb4-7bb2-429e-aa49-98ae4218bc1f`, file `Pickler Studio Empty v4.dc.html`).
 Builds on `studio-create-and-fund-v1.md`. The canvas's visual base is already in the tree (commit

@@ -281,6 +281,7 @@ test("waitlist and applications go through the growth functions", async (t) => {
   const waitlist = new PostgresWaitlist(pool);
   const applicants = new PostgresApplicants(pool);
 
+  assert.equal(await waitlist.count(), 0);
   const seat = await waitlist.join("ana@example.com", null);
   assert.equal(seat.position, 1);
   assert.equal(seat.alreadyJoined, false);
@@ -290,6 +291,8 @@ test("waitlist and applications go through the growth functions", async (t) => {
     alreadyJoined: true,
     applyToken: null,
   });
+  // A second join of the same address is not a second person in line.
+  assert.equal(await waitlist.count(), 1);
 
   assert.equal(await applicants.findByToken("nope"), null);
   assert.equal(await applicants.findByToken(randomUUID()), null);

@@ -1,8 +1,13 @@
-// The parts of the six-digit code screen that are decisions rather than markup, kept out of the
-// component so node:test can drive them: what counts as a code, what the six cells show, how many
+// The parts of the eight-digit code screen that are decisions rather than markup, kept out of the
+// component so node:test can drive them: what counts as a code, what the eight cells show, how many
 // tries are left, and what the resend button says while it is counting down.
 
-export const CODE_LENGTH = 6;
+/**
+ * The email code's length. It is the Supabase project's "Email OTP Length" (Auth → Providers →
+ * Email), 8 on the hosted project, and `otp_length` under `[auth.email]` in supabase/config.toml
+ * for local development: all three change together, or every code is cut short or never complete.
+ */
+export const CODE_LENGTH = 8;
 
 /** Three shots at a code before the honest advice is to ask for a new one. */
 export const MAX_ATTEMPTS = 3;
@@ -16,7 +21,7 @@ export const MAX_ATTEMPTS = 3;
 export const RESEND_SECONDS = 60;
 
 /**
- * Digits only, six at most. Paste, autofill and a phone keyboard all arrive here, and all three
+ * Digits only, eight at most. Paste, autofill and a phone keyboard all arrive here, and all three
  * can carry spaces, a copied "Your code is 482913" or more characters than there are cells.
  */
 export function normalizeCode(raw: string): string {

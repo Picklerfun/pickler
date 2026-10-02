@@ -11,9 +11,13 @@ import {
   BriefError,
   PreviewRateLimited,
   preparePreview,
+  prepareDraft,
+  fundingShortfall,
+  classifyRead,
+  WalletUnderfundedError,
+  BalancesUnreadableError,
   AccessDeniedError,
   AuthenticationRequiredError,
-  unsupported,
   canCreateAnother,
   MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
@@ -32,7 +36,6 @@ import {
   SigningServiceUnavailableError,
   SignedTransactionMismatchError,
   type createCustodyService,
-  type AgentDrafter,
   type Accent,
   type AgentWallet,
   type Lock,
@@ -43,7 +46,6 @@ import {
   type ResearchRepository,
 } from "@pickler/core";
 import {
-  createAgentSchema,
   studioOptionsSchema,
   idempotencyKeySchema,
   agentResponseSchema,
@@ -58,18 +60,18 @@ import {
   liveBuySchema,
   liveOrderSchema,
   tradingAccountSchema,
-  draftRequestSchema,
-  draftResponseSchema,
   studioAgentSchema,
   limitsUpdateSchema,
   previewRunRequestSchema,
   previewRunResponseSchema,
   draftCreateSchema,
+  signedActivitySchema,
+  type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
-import { DraftUnavailableError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
+import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets";
 
 export interface StudioServices {
   trading?: {
@@ -88,8 +90,6 @@ export interface StudioServices {
    * composed; the preview routes then answer 503 PREVIEW_UNAVAILABLE and nothing else changes.
    */
   previews?: PreviewRepository;
-  /** Null when no model is configured; drafting then answers 503 rather than guessing. */
-  drafter?: AgentDrafter | null;
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
@@ -104,27 +104,22 @@ export interface StudioServices {
    */
   balances: { read(address: string): Promise<number> };
   /**
-   * The passkey custody service, per request, for deposits. Absent where Turnkey is not
-   * configured; the deposit routes then answer 503 and nothing else changes.
+   * The passkey custody service, per request, for deposits, the wallets and their transfers, and
+   * the drafts route's balance check. Absent where Turnkey is not configured; those routes then
+   * answer 503 and nothing else changes.
    */
   custody?: (
     requestId: string,
-  ) => Pick<ReturnType<typeof createCustodyService>, "prepareDeposit" | "confirmDeposit">;
+  ) => Pick<
+    ReturnType<typeof createCustodyService>,
+    | "prepareDeposit"
+    | "confirmDeposit"
+    | "listWallets"
+    | "prepareTransfer"
+    | "confirmTransfer"
+    | "walletBalance"
+  >;
 }
-
-/** The request the browser stamped, in the shape Turnkey's own stamper produces. */
-const signedActivitySchema = z
-  .object({
-    url: z.string().min(1).max(512),
-    body: z.string().min(1).max(8192),
-    stamp: z
-      .object({
-        stampHeaderName: z.string().min(1).max(64),
-        stampHeaderValue: z.string().min(1).max(8192),
-      })
-      .strict(),
-  })
-  .strict();
 
 /** Whole AUSD; core decides which amounts are offered. */
 const depositAmountSchema = z.number().int().positive();
@@ -141,7 +136,7 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
     return 404;
   }
   if (code === "QUOTA") {
@@ -149,9 +144,6 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   }
   if (code === "INVALID_INPUT") {
     return 400;
-  }
-  if (code === "DRAFT_UNAVAILABLE") {
-    return 503;
   }
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
@@ -202,6 +194,22 @@ function custodyFailure(
   return null;
 }
 
+/**
+ * Sites as a person types them ("CoinDesk.com", "https://www.coindesk.com/markets") reduced to
+ * the bare hosts core accepts, by core's own read rule, once each. A line that names no site is
+ * passed on as typed, and core refuses it.
+ */
+function bareSites(sources: DraftCreateDto["sources"]): DraftCreateDto["sources"] {
+  if (!sources.web) {
+    return sources;
+  }
+  const sites = sources.web.sites.map((line) => {
+    const read = classifyRead(line);
+    return read.kind === "site" ? read.host : line.trim();
+  });
+  return { web: { mode: sources.web.mode, sites: [...new Set(sites)] } };
+}
+
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
 export function studioRoutes(services: StudioServices) {
   const api = new Hono<AppEnv>();
@@ -222,6 +230,16 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
+    }
+    if (error instanceof WalletRefusal) {
+      return c.json(
+        {
+          error: error.code,
+          message: error.message,
+          ...(error.detail === undefined ? {} : { detail: error.detail }),
+        },
+        error.status,
+      );
     }
     if (error instanceof BriefError) {
       return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
@@ -309,25 +327,33 @@ export function studioRoutes(services: StudioServices) {
     const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
     return c.json(previewRunResponseSchema.parse(read));
   });
-  /** The linked wallet and its balance. A failed balance read propagates as an error. */
-  async function fundedWallet(productId: string): Promise<FundedWallet | null> {
+  /**
+   * The linked wallet and its balance. `creating`: the read is for a create's lock, where a chain that did not answer is never
+   * reported as anything but unreadable, 503 WALLETS_UNAVAILABLE, as for the wallet's own reading
+   * (studio-create-simplified-v1 §4.1). Elsewhere a failed read fails the request as it is.
+   */
+  async function fundedWallet(productId: string, creating = false): Promise<FundedWallet | null> {
     const wallet = await services.wallets.findAgentWallet(productId);
     if (!wallet) {
       return null;
     }
-    return { ...wallet, balanceAusd: await services.balances.read(wallet.address) };
+    const balanceAusd = await services.balances.read(wallet.address).catch((error: unknown) => {
+      throw creating ? new BalancesUnreadableError({ cause: error }) : error;
+    });
+    return { ...wallet, balanceAusd };
   }
 
   /**
    * Every agent the person owns, with its wallet, and the "+ New agent" lock over them. The lock
-   * counts the balances of agents that have a wallet. A private draft has none and is not counted
-   * as unfunded (§6); drafts close the lock only at `MAX_DRAFTS_PER_WORKSPACE`. An agent without a
-   * wallet that is not a draft (created before wallets existed) cannot be funded and is not
+   * counts the balances of agents that have a wallet, drafts included: a draft is now created with
+   * its funded wallet (studio-create-simplified-v1). A draft from before that has none and is not
+   * counted as unfunded; drafts also close the lock at `MAX_DRAFTS_PER_WORKSPACE`. An agent without
+   * a wallet that is not a draft (created before wallets existed) cannot be funded and is not
    * counted either.
    */
-  async function fleet(current: StudioAccess) {
+  async function fleet(current: StudioAccess, creating = false) {
     const listed = await services.directory.list(current);
-    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
+    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id, creating)));
     const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
     const drafts = listed.filter((agent) => agent.draft).length;
     return { listed, wallets, another: canCreateAnother(balances, drafts) };
@@ -335,16 +361,16 @@ export function studioRoutes(services: StudioServices) {
 
   /**
    * "+ New agent"'s lock as the create runs it: inside its transaction, after the workspace row is
-   * locked, so two concurrent creates serialize and the second counts the first. Creating an agent
-   * with its wallet meets the funding lock alone; a draft also meets the draft limit.
+   * locked, so two concurrent creates serialize and the second counts the first. A draft meets the
+   * funding lock and the draft limit.
    */
-  function fundingLock(current: StudioAccess, creating: "agent" | "draft") {
+  function fundingLock(current: StudioAccess) {
     return async () => {
-      const { another } = await fleet(current);
+      const { another } = await fleet(current, true);
       if (another.reason === "unfunded_agent") {
         throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
       }
-      if (another.reason === "draft_limit" && creating === "draft") {
+      if (another.reason === "draft_limit") {
         throw new PilotError("DRAFT_LIMIT", `At most ${MAX_DRAFTS_PER_WORKSPACE} drafts at a time`);
       }
     };
@@ -423,78 +449,61 @@ export function studioRoutes(services: StudioServices) {
       ),
     });
   });
-  api.post("/agents", async (c) => {
-    const input = createAgentSchema.parse(await c.req.json());
-    const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
-    const current = await access.authorize(c.get("principal"), true);
-    let scope;
-    try {
-      // A retry of a create that already happened replays inside `create` (which still refuses
-      // different terms under the key) before the funding lock; only a genuinely new agent meets it.
-      scope = await access.create(
-        c.get("principal"),
-        { ...input, key },
-        fundingLock(current, "agent"),
-      );
-    } catch (error) {
-      // Creation's refusals share one code for different fixes ("Approve the wallet's rules
-      // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
-      // this route alone sends the directory's message along for the studio to show.
-      if (
-        error instanceof PilotError &&
-        (error.code === "CONFLICT" || error.code === "NOT_FOUND")
-      ) {
-        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
-      }
-      throw error;
-    }
-    return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
-  });
-  // Before the /agents/:id routes, so "draft" is never read as an agent id.
-  // Drafting spends a model call and exists only to create, so it needs the same rights as creating.
-  api.post("/agents/draft", async (c) => {
-    await access.authorize(c.get("principal"), true);
-    if (!services.drafter) {
-      throw new PilotError("DRAFT_UNAVAILABLE", "No model is configured for drafting");
-    }
-    const { line } = draftRequestSchema.parse(await c.req.json());
-    try {
-      const draft = await services.drafter.draft(line);
-      return c.json(draftResponseSchema.parse({ draft, unsupported: unsupported(draft) }));
-    } catch (caught) {
-      if (caught instanceof DraftUnavailableError) {
-        // The cause stays server-side; it never carries the key or the request.
-        const cause = caught.cause instanceof Error ? caught.cause.message : String(caught.cause);
-        console.error("Draft unavailable", {
-          requestId: c.get("requestId"),
-          message: caught.message,
-          cause,
-        });
-        throw new PilotError("DRAFT_UNAVAILABLE", caught.message);
-      }
-      throw caught;
-    }
-  });
-  // "Create {Name}" (studio-brief-v1 §6): adopt the paper run as a private draft. Not
-  // /agents/draft, which is the model drafter above. The brief travels again, is checked exactly as
-  // the run's was, and its fingerprint must match the run's (RUN_STALE otherwise).
+  // "Create {name}" (studio-create-simplified-v1 §4.1): the private draft, created with the agent
+  // wallet the person already made, funded and signed the policies of. The wallet's balances are
+  // read just before the transaction, never inside it: a chain read holds no row lock. The
+  // directory then checks the handle and the wallet in its transaction, in that order, and runs
+  // the admit callback below, which holds the lock and that reading to the minimums. A replay of
+  // a create that committed never reaches it.
   api.post("/drafts", async (c) => {
     const principal = c.get("principal");
     const current = await access.authorize(principal, true);
     const body = draftCreateSchema.parse(await c.req.json());
-    const { fingerprint } = preparePreview(body);
+    const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
+    const requestId = c.get("requestId");
+    const custody = await walletWork(requestId, async () => deposits(requestId));
+    // A wallet that is not the caller's has no reading: the directory refuses it in its order.
+    const reading = await walletWork(requestId, () =>
+      custody.walletBalance(principal.id, body.walletId).then(
+        (balances) => ({ balances }),
+        (error: unknown) => {
+          if (error instanceof AgentWalletNotFoundError) {
+            return null;
+          }
+          if (error instanceof BalancesUnreadableError) {
+            return { unreadable: error };
+          }
+          throw error;
+        },
+      ),
+    );
+    const lock = fundingLock(current);
     let created;
     try {
-      created = await services.directory.createDraft(
-        current,
-        principal.id,
-        { name: body.name, handle: body.handle, previewRunId: body.previewRunId, fingerprint },
-        Date.now(),
-        fundingLock(current, "draft"),
+      created = await walletWork(requestId, () =>
+        services.directory.createDraft(
+          current,
+          principal.id,
+          { name: body.name, handle: body.handle, config, profile, walletId: body.walletId },
+          async () => {
+            await lock();
+            if (!reading) {
+              throw new AgentWalletNotFoundError();
+            }
+            if ("unreadable" in reading) {
+              throw reading.unreadable;
+            }
+            const shortfall = fundingShortfall(reading.balances);
+            if (shortfall) {
+              throw new WalletUnderfundedError(shortfall);
+            }
+          },
+        ),
       );
     } catch (error) {
-      // The limit is a number the person has to read, so this refusal alone carries its message.
-      if (error instanceof PilotError && error.code === "DRAFT_LIMIT") {
+      // Each refusal here has its own fix (a number to read, a handle to change, a wallet to sign
+      // or fund), so the drafts route sends the directory's message along for the studio to show.
+      if (error instanceof PilotError) {
         return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
       }
       throw error;
@@ -613,6 +622,8 @@ export function studioRoutes(services: StudioServices) {
     );
     return c.json({ txHash });
   });
+
+  api.route("/wallets", studioWalletRoutes({ access, custody: deposits }));
   api.get("/agents/:id/runs", async (c) => {
     const current = await access.authorize(c.get("principal"));
     const scope = await services.directory.agentScope(current, c.req.param("id"));

@@ -14,14 +14,17 @@ export interface ApiEnvelope<T> {
   error?: string;
   code?: string;
   reason?: string;
-  detail?: string;
+  detail?: ErrorDetail;
 }
+
+/** A string, or named values when the caller needs more than one (`wallet_underfunded`). */
+export type ErrorDetail = string | Readonly<Record<string, string | null>>;
 
 export interface ErrorExtras {
   error?: string;
   code?: string;
   reason?: string;
-  detail?: string;
+  detail?: ErrorDetail;
 }
 
 export function successEnvelope<T>(
