@@ -98,6 +98,13 @@ message, or a field viem's builder refuses, 400 `invalid_message`. Core's `issue
 the address and the chain and builds the message before it stores the nonce, so a refused request
 leaves no row in `identity.siwe_nonces`.
 
+`POST /v1/auth/wallet/verify` and `/link` accept an optional `kind`, `"mera"` or `"eoa"`: which of
+the marketplace's two wallets signed (`docs/specs/mera-web-v1.md`, M7). The route's `presented()`
+passes it to core, which stores `mera` or `external` in `identity.wallet_links.kind`; a body
+without one is `eoa`, and any other value is 400 `invalid_wallet_kind` before anything is read. It
+is the caller's statement and nothing proves it, so no route may authorise by it. It has nothing to
+do with custody: a Mera wallet is never a Turnkey wallet, and the custody routes never read it.
+
 `POST /v1/auth/wallet/nonce` is public and has no rate limit of its own. What bounds it is in the
 store: every issue deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired nonces, and an address
 holds `MAX_OPEN_NONCES_PER_ADDRESS` (5, core) at most — a further issue evicts its oldest and is

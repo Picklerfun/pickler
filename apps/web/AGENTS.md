@@ -73,17 +73,37 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## The wallet
 
-`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and one adapter implements it. `injected-signer.ts` is the EIP-1193 conversation with the browser wallet, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`.
+`features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it, the marketplace's two wallets and no others (`docs/specs/mera-web-v1.md`):
 
-`connect` is for a wallet the person already had, and that is all it is for. The person's own Pickler wallet is not a signer here: it is custodied in Turnkey, the key stays in the enclave under their passkey, and the site reaches it through the signing API. Nothing in this app derives or holds a private key, and no new signer may. The PRF path that used to do so (`mera-signer.ts`, over `@category-labs/mera`) is retired: it asked for whichever passkey the person had for `pickler.fun`, which once Turnkey passkeys exist on that host means taking a credential that authorises activities and turning it into key material. Since 2026-10-01 the two cannot meet: Turnkey's relying party is `app.pickler.fun`, Mera's is `pickler.fun` on every surface, and the API turns custody off if `TURNKEY_RPID` is ever the apex (`docs/specs/mobile-monorepo-v1.md`). The rule above — no signer here derives or holds a key — stands until a specification for Mera on the web marketplace replaces it. That signer, if it is built, derives the account with `@pickler/mera-account` and nothing else, or the same passkey opens a different address than it does in the app.
+- `injected-signer.ts` is the EIP-1193 conversation with the browser wallet the person brought, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`.
+- `mera-signer.ts` is the Mera passkey wallet, the same account as in the mobile app: a passkey for `pickler.fun` gives the same PRF output here as on the phone, and `@pickler/mera-account` turns it into the same address. It has two ways in (`ConnectMode`): `create` makes a passkey, `existing` opens one the person already has, the app's included.
 
-The account menu names which wallet you are looking at, so a portfolio is never shown without saying whose it is. A signer without a chain of its own is never "on the wrong network", so `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
+**The studio's Turnkey wallet is not a signer here and never will be.** Mera and Turnkey are kept apart five ways, and a change that weakens one needs the owner's decision:
 
-`connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick, the way the app's own sign-in screen does. There is no "unsupported" state: a browser with nothing to connect still opens the chooser, which names what is missing on each choice rather than presenting a dead button.
+1. Relying party. Mera asks WebAuthn for `pickler.fun` (`NEXT_PUBLIC_MERA_RP_ID`, which exists for a staging host and defaults to it); Turnkey's passkeys are enrolled against `app.pickler.fun`. A browser never offers a credential for a relying party that was not asked for, and the API turns custody off if `TURNKEY_RPID` is ever the apex.
+2. Host. `meraAvailability` (`lib/mera-availability.ts`, pure, pinned in `mera-availability.test.ts`) offers the passkey wallet only where the page's hostname is the relying party, and refuses the studio host by name even though WebAuthn would allow the parent domain there. On `localhost` outside production it is offered with a note, because there both relying parties are `localhost` and the account is not the app's; `127.0.0.1` is refused, because an address cannot be a relying party.
+3. Code. ESLint (`eslint.config.mjs`, proved by `test/import-guard.test.ts`): nothing under `features/wallet` loads `@turnkey/*` or anything of `features/auth`, `features/studio` or `features/account` but the Supabase client and its configuration; only `features/wallet/lib/mera-*.ts` loads `@category-labs/mera` or `@pickler/mera-account`; and nothing outside `features/wallet` imports those `mera-*` modules. Static imports and `import()` alike.
+4. Account. A wallet sign-in account is marked `pickler_account = "wallet"` and has no custody account. The `kind` sent with a sign-in (`mera` or `eoa`) describes the link and grants nothing.
+5. Switch. `NEXT_PUBLIC_MERA_WEB=off` takes the passkey wallet out of the chooser.
 
-It never signs or sends anything — connecting is a read that tells the site which address to show a portfolio and a read history for.
+**The Mera key exists for one ceremony.** `lib/mera-ceremony.ts` (`runMeraCeremony`, pure, its parts injected; `mera-ceremony.test.ts` runs it against the frozen vectors of `@pickler/mera-account` with the real libraries) takes the PRF output of one passkey prompt, derives the key, signs the server's sign-in message with it, and in a `finally` ends Mera's signing session and zero-fills the key and the PRF output. Nothing derived from the passkey is stored: the browser remembers the kind, the address and the credential id (`pk.wallet.kind`, `pk.wallet.mera`), so a reload shows the address without a prompt, and every later signature is another prompt. `lib/mera-kit.ts` loads the Mera SDK, its viem adapter and the derivation with `import()` when a ceremony starts, never with the page. Do not hold the key, a session over it, or the PRF output in module scope, React state or storage, and do not derive the account any other way: the PRF output used directly as the key, which the signer retired on 2026-09-22 did, opens a different address than the app. A key in the page is exposed to every script on the page for those seconds; a strict content-security policy and a signer in its own origin are required before mainnet funds (spec §5).
 
-**Connecting is not signing in.** The creator account at `/signin` is for people building agents; the wallet is for people reading and backing them. Do not fold one into the other.
+**Connecting signs in, and then asks for a username.** `connect(holding?)` opens the chooser rather than prompting a wallet directly, and `holding` is what the person was about to do — the modal keeps it in front of them while they pick. The chooser's steps are a pure reducer, `connectFlow` in `lib/connect-flow.ts` (pinned in `connect-flow.test.ts`): `choose` → `signin` → `username`, with `prf` beside them.
+
+- The passkey wallet connects and signs in with one prompt, so it skips `signin`. A browser wallet answers its account prompt and lands on `signin`, whose button asks for one `personal_sign` over the same message. Closing the chooser there leaves the wallet connected and not signed in, and whatever first needs the session asks for it then (`signInWithWallet`).
+- With the session, the context reads `GET /api/v1/profile` (`hasProfile` in `lib/handles.ts`: true, false, or null when it could not be read). No profile opens `username`, whichever wallet signed in; the form is `useHandleClaim` (`lib/use-handle-claim.ts`), shared with the portfolio's panel (`components/claim-handle.tsx`), and the claim uses the session without signing again. A profile, or a read that failed, closes the chooser. Closing on `username` is allowed; `/portfolio` shows the panel for a signed-in account with no profile until one is claimed.
+- A passkey that returns no PRF output is the step `prf`, not an error line: it says which password managers work and offers the other way.
+- A closed prompt returns to the step it came from with no error. A choice this browser cannot offer stays in the list with the reason on it; there is no "unsupported" state.
+
+`signInWithWallet` signs in through the connected adapter: an injected wallet signs the string on request, and the passkey wallet runs a ceremony restricted to the remembered credential and refuses a passkey that derives another address (`WrongPasskeyError`).
+
+The account menu names which wallet you are looking at (`PASSKEY WALLET` or `BROWSER WALLET`), so a portfolio is never shown without saying whose it is. The passkey wallet has no chain of its own to be pointed at, so it is never "on the wrong network": `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
+
+Signing in is the only thing either wallet signs here. Nothing sends a transaction: paying for a read, trading and enabling Perpl from the web are a later specification, and the buttons that would do it stay disabled with the reason on them.
+
+**A wallet account is not a creator account.** The account at `/signin` is for people building agents, with a Turnkey wallet under a passkey for `app.pickler.fun`; the wallet account is for people reading and backing them. Do not fold one into the other.
+
+`?wallet=choose|signin|username|prf` opens the chooser on that step outside production, with a fixed sample address and nothing connected, so the design checks can measure steps that otherwise need a wallet's prompt or a session; `scripts/design/routes.mjs` proves `#connect-step-<step>` for each.
 
 A wallet session belongs to one address. `lib/wallet-session.ts` keeps the token with the address and chain family it was issued for (`WalletSession`), and `decideSession(cached, connected, now)` is the only thing that hands it back: the same address with a token more than `EXPIRY_MARGIN_MS` from its `exp` reuses it, a different address or an expired or unreadable token signs again, and nothing connected has no session. `wallet-context.tsx` lets go of the session when the account changes or the wallet disconnects (a change of chain keeps it), and `dropWalletSession` signs the shared Supabase client out locally only when its session is that same user's and a wallet account's (`madeByWalletSignIn`: `app_metadata.pickler_account === "wallet"`). A studio account that linked the wallet is opened by signing in with it, but its session also came from a passkey, an email or Google, so a wallet switch never ends it. After a reload the page holds nothing while the browser is still signed in, so on mount a wallet account's session found on the client is adopted (`adoptSession`). The session does not record its address — the token carries a digest — so an `AdoptedSession` has none: it is never reused as a token (the next action signs again), and `releases(held, previous, next)` lets go of it on any change of address, on disconnect, and on connecting when nothing was connected. `session` on the context is derived from whose session is held, never stored. `signInWithWallet` answers `{ token }` or `{ error }` (`lib/wallet-sign-in.ts`, `signInAs`; `error: null` is a closed prompt), and a caller shows the error from that result — `sessionError` read after the await is the value of the render the call started in.
 
@@ -121,8 +141,9 @@ DTO (`readQuestion`, written by core) with the level filled in — a page never 
 
 The ticket is built in full and then stops. Connecting a wallet is live, switching to Monad testnet
 is live, Review costs nothing and is ours — and **Sign and send** is disabled with the reason on
-it, because this site's wallet connection never signs. Perpl's contracts are deployed, and the
-mobile app trades on them; sending from here waits for a signer. What a sent
+it, because the web sends no transaction yet: its wallets sign in and nothing else. Perpl's
+contracts are deployed, and the mobile app trades on them; sending from here waits for its own
+specification. What a sent
 order would look like afterwards (no Perpl account, sent, filled, not filled) lives behind an
 explicit **design preview**, and every one of those panels carries `DESIGN PREVIEW · NO ORDER
 EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
@@ -408,10 +429,13 @@ per stage.
 
 ## Custody boundary
 
-No private key is ever derived or held in this app. Custody of the person's Pickler wallet belongs
-to Turnkey, and a passkey registered against `TURNKEY_RPID` exists to authorise activities — never
-to be read as key material by anything else on the same host. A connected browser wallet is not
-authenticated server identity either: connecting is a read that says which address to show.
+No private key is ever derived or held by the studio, the account or the auth screens. Custody of
+the person's Pickler wallet there belongs to Turnkey, and a passkey registered against
+`TURNKEY_RPID` (`app.pickler.fun`) exists to authorise activities — never to be read as key
+material by anything else. The one place this app derives a key is the marketplace's Mera passkey
+wallet, from a passkey of another relying party (`pickler.fun`), for the length of one ceremony
+(see "The wallet"); ESLint keeps that code out of these screens and Turnkey out of that code. A
+connected wallet is authenticated server identity only once it has signed in.
 
 A sub-organization is born at signup, before any agent (spec §4.1): the studio's profile shows the
 master wallet from the first visit, and a signed-in person without one does not get in anywhere.
@@ -512,7 +536,7 @@ already taken is refused, not reused. `npm run design:source` is the static chec
 `npm run design:shots` writes screenshots to the folder `DESIGN_SHOTS_DIR` names, and
 `npm run design:compare -- <before> <after>` says which screens differ. A screen that needs a
 session to render gets a door that is shut in production (`?stage=`, `?step=`, `?section=`,
-`/signup?state=passkey`, `/passkey?state=add`, `/portfolio?state=connected`) and a route that
+`/signup?state=passkey`, `/passkey?state=add`, `/portfolio?state=connected`, `?wallet=`) and a route that
 proves it. A route proves an id the screen itself renders, never a container that is there
 whatever it holds: each studio section's root carries `studio-section-<key>` and the Soon panel
 `studio-soon-<key>`. A new screen gets a route in the same change.

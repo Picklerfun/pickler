@@ -148,6 +148,15 @@ appEnv)`, the pure rule the API asks before composing custody: Turnkey is never 
 Mera's relying party, and never on `localhost` outside `local` and `development`. Tests:
 `test/relying-party.test.ts`. The decision is `docs/specs/mobile-monorepo-v1.md`, W1, W2 and W8.
 
+Wallet sign-in (`features/identity/application/wallet-sign-in.ts`) records which of the
+marketplace's two wallets signed: `Presented.kind` is `PresentedWalletKind` (`"mera" | "eoa"`,
+listed in `PRESENTED_WALLET_KINDS`; absent means `eoa`), and `verify` and `link` store it in the
+link as `mera` or `external`. It describes the link and decides nothing: no rule here may grant or
+refuse anything by it, because the caller states it and nothing proves it. The first writer stands
+— a later sign-in of the same address with another kind leaves the link as it was. The Turnkey
+kinds of `wallets.wallets` are another table and another product. Decision M7 of
+`docs/specs/mera-web-v1.md`; tests in `test/wallet-sign-in.test.ts`.
+
 `createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version

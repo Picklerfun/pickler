@@ -56,7 +56,7 @@ choose ──► connect ──► sign in ──► username? ──► done
    - _Browser wallet:_ `eth_requestAccounts`, then the step "Sign in as 0xAB…CD" whose button asks
      for `personal_sign` and presents it with `kind: "eoa"`.
 3. **Username.** With the session, `GET /v1/profile`. A 404 opens "Pick your username": the field,
-   the availability check and the claim that `claim-handle.tsx` already has, now a shared form.
+   the availability check and the claim that `claim-handle.tsx` already has, now a shared hook.
    The claim uses the session; nothing is signed again.
 4. **Done.** The chooser closes and the action that was held continues.
 
@@ -102,8 +102,8 @@ funds**; today the venue is a testnet. M11 is the switch if the owner decides ot
 - **`features/wallet/lib/connect-flow.ts`** — the chooser's steps as a pure reducer.
 - **`wallet-context.tsx`** — signing in goes through the connected adapter instead of assuming the
   injected provider; connecting runs the flow of §3.
-- **`connect-modal.tsx`** — the steps; `handle-form.tsx` is the username form, shared with the
-  portfolio's panel. The account menu names the wallet kind. The portfolio asks for a username from
+- **`connect-modal.tsx`** — the steps; `lib/use-handle-claim.ts` is the username form's logic,
+  shared with the portfolio's panel. The account menu names the wallet kind. The portfolio asks for a username from
   the real condition (a session and no profile), not only in the preview.
 - **`eslint.config.mjs`** — the code guard of §4.
 - **Documents.** `apps/web/AGENTS.md` (the wallet section is rewritten: the rule "no signer derives

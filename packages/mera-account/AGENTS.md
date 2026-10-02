@@ -7,9 +7,11 @@ Read [the root instructions](../../AGENTS.md) first, and
 every surface: 32 bytes of WebAuthn PRF output → a 24-word BIP-39 mnemonic (English list) → the
 BIP-39 seed with an empty passphrase → the BIP-32 key at `m/44'/60'/0'/0/<index>`, index 0 for the
 account. It exports `prfOutputToMnemonic`, `mnemonicToSeed` and `deriveEvmPrivateKey` from
-`src/index.ts`, and the vectors as `@pickler/mera-account/vectors.json`. The mobile app
-(`apps/mobile/src/wallet/wallet.ts`) is its only consumer today; a Mera signer on the web must use
-it too, or the same passkey opens a different address there.
+`src/index.ts`, and the vectors as `@pickler/mera-account/vectors.json`. It has two consumers: the
+mobile app (`apps/mobile/src/wallet/wallet.ts`) and the web marketplace's passkey wallet
+(`apps/web/src/features/wallet/lib/mera-kit.ts`, the only web module allowed to import it; its
+ceremony is tested against the same vectors in `apps/web/test/mera-ceremony.test.ts`). Any other
+Mera signer must use it too, or the same passkey opens a different address there.
 
 - **The rule does not change.** A different word list, passphrase, path, or the PRF output used as
   the key directly, each gives every person a new address and strands what the old one holds.
