@@ -219,7 +219,9 @@ function WalletCard({
             <li key={`${entry.at}-${entry.text}-${index}`} className={styles.arrival}>
               <span className={styles.arrivalDot} aria-hidden="true" />
               <span className={styles.arrivalText}>{entry.text}</span>
-              <span className={styles.arrivalAt}>{entry.at}</span>
+              <span className={styles.arrivalAt} suppressHydrationWarning>
+                {entry.at}
+              </span>
             </li>
           ))}
         </ol>

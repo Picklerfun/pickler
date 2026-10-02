@@ -33,10 +33,14 @@ export interface DraftStaged {
   x: XState;
   ledger: LedgerEntry[];
   goPublic: DraftGoPublicStage;
+  /** The signed-in account's handle, which the YOU sections' header line names. */
+  accountHandle: string;
 }
 
 const NOW = Date.UTC(2026, 9, 2, 14, 30, 0);
 const MINUTE = 60_000;
+/** A challenge lives a day (spec §4, `POST /agents/:id/x/challenge`). */
+const CHALLENGE_TTL = 24 * 60 * MINUTE;
 const at = (minutesAgo: number) => new Date(NOW - minutesAgo * MINUTE).toISOString();
 
 const AGENT_ID = "preview-draft";
@@ -122,6 +126,7 @@ function agent(xHandle: string | null): Agent {
     name: "Halftime",
     handle: "halftime",
     accent: "lime",
+    avatarPattern: 0,
     draft: true,
     version: 1,
     config,
@@ -198,7 +203,7 @@ export function draftStudioFixture(stage: DraftStage): DraftStaged {
   const verified = stage === "draft-x-ok";
   const miss = stage === "draft-x-miss";
   const challenge = miss
-    ? { handle: X_HANDLE, text: CHALLENGE, expiresAt: new Date(NOW + 30 * MINUTE).toISOString() }
+    ? { handle: X_HANDLE, text: CHALLENGE, expiresAt: new Date(NOW + CHALLENGE_TTL).toISOString() }
     : null;
   return {
     now: NOW,
@@ -218,5 +223,6 @@ export function draftStudioFixture(stage: DraftStage): DraftStaged {
       handle: miss ? X_HANDLE : "",
       card: { ...idleCard, challenge: challenge && { handle: X_HANDLE, text: CHALLENGE } },
     },
+    accountHandle: "nightowl",
   };
 }

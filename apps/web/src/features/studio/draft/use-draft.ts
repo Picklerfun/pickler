@@ -54,17 +54,24 @@ export interface DraftData {
 
 /** The reads again, and the draft's writes (studio-draft-dashboard-v1 §4), each one call. */
 export interface UseDraft extends DraftData {
-  /** Wallets, activity and X again (after a transfer, or the "Refresh" on Limits). */
+  /**
+   * Wallets, activity and X again (after a transfer, or the "Refresh" on Limits), and the ledger
+   * once Master wallet has read it.
+   */
   refresh(): Promise<void>;
   /** The wallets alone; answers them, or null when the read failed. */
   readWallets(): Promise<StudioWallets | null>;
   /** The ledger, for Master wallet. */
   readLedger(): Promise<void>;
-  /** The agent again in the shell: after a save refused as stale (409 CONFLICT). */
+  /** The agent again in the shell: after a save refused as stale (409 STALE_CONFIG). Rejects. */
   refreshAgent(): Promise<void>;
   /**
    * `PUT /setup` at the agent's current version: brief, sources, caps and/or voice. Answers the
-   * agent and reloads it in the shell. A 409 CONFLICT throws: the caller reloads and says so.
+   * agent and reloads it in the shell. A 409 STALE_CONFIG throws before any reload: the caller
+   * reloads (`refreshAgent`) and says so.
+   *
+   * Every write below resolves once the write itself landed: a reload that fails after it does
+   * not reject the write, it says so in `error` ("Saved. Could not reload the agent.").
    */
   saveSetup(patch: Omit<SetupUpdateDto, "expectedVersion">): Promise<Agent>;
   /** `PUT /identity`: name and/or avatar; reloads the agent. */
@@ -99,11 +106,14 @@ export function useDraft({
   staged,
   preview,
   onRefreshAgent,
+  onPublished,
 }: {
   agent: Agent;
   staged: DraftStaged | null;
   preview: boolean;
   onRefreshAgent(): Promise<void>;
+  /** Go Public landed: the shell opens the live studio on its home once the reload swaps it. */
+  onPublished?(): void;
 }): UseDraft {
   const offline = preview || staged !== null;
   const agentId = agent.productId ?? agent.id;
@@ -117,16 +127,26 @@ export function useDraft({
      it, and the callbacks below stay stable across renders. */
   const version = useRef(agent.version);
   const refreshAgent = useRef(onRefreshAgent);
+  const published = useRef(onPublished);
   useEffect(() => {
     version.current = agent.version;
     refreshAgent.current = onRefreshAgent;
-  }, [agent.version, onRefreshAgent]);
-  /* Answers that land after the studio moved to another agent, or closed, are dropped. */
+    published.current = onPublished;
+  }, [agent.version, onRefreshAgent, onPublished]);
+  /* Answers that land after the studio moved to another agent, or closed, are dropped; Go
+     Public's pending reload is cancelled with them. */
   const alive = useRef(true);
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* Whether Master wallet has read the ledger, so `refresh` keeps it current from then on. */
+  const ledgerRead = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      if (liveTimer.current !== null) {
+        clearTimeout(liveTimer.current);
+        liveTimer.current = null;
+      }
     };
   }, [agentId]);
 
@@ -190,6 +210,7 @@ export function useDraft({
     if (offline) {
       return;
     }
+    ledgerRead.current = true;
     try {
       const read = await walletLedger();
       if (alive.current) {
@@ -202,72 +223,69 @@ export function useDraft({
     }
   }, [offline]);
 
+  /* The bare reload, for a caller that handles its failure (a stale save says "Reloaded."). */
   const reloadAgent = useCallback(() => refreshAgent.current(), []);
+
+  /* The reload after a write that landed: a failure says so, and does not fail the write. */
+  const reloadAfterWrite = useCallback(
+    () =>
+      refreshAgent.current().catch((caught: unknown) => {
+        if (alive.current) {
+          setError(message(caught, "Saved. Could not reload the agent."));
+        }
+      }),
+    [],
+  );
 
   const refresh = useCallback(async () => {
     setError("");
-    await Promise.all([readWallets(), readActivity(), readX()]);
-  }, [readWallets, readActivity, readX]);
+    await Promise.all([
+      readWallets(),
+      readActivity(),
+      readX(),
+      ledgerRead.current ? readLedger() : undefined,
+    ]);
+  }, [readWallets, readActivity, readX, readLedger]);
 
-  /* Once per agent: the reads run side by side, and each failure only says so. */
+  /* Once per agent (the shell keys the studio by agent): the reads run side by side, and each
+     failure only says so. */
   useEffect(() => {
     if (offline) {
       return;
     }
-    let active = true;
-    const fail = (fallback: string) => (caught: unknown) => {
-      if (active) {
-        setError(message(caught, fallback));
-      }
-    };
-    studioWallets().then((read) => {
-      if (active) {
-        setWallets(read);
-      }
-    }, fail("Could not read your wallets."));
-    agentActivity(agentId).then((read) => {
-      if (active) {
-        setActivity(read.events);
-      }
-    }, fail("Could not read its activity."));
-    xState(agentId).then((read) => {
-      if (active) {
-        setX(read);
-      }
-    }, fail("Could not read its X account."));
-    return () => {
-      active = false;
-    };
-  }, [offline, agentId]);
+    /* The readers set state only once their answers land; starting them from a callback says so
+       to the effect rule, which cannot see past their `await`. */
+    void Promise.resolve().then(() => Promise.all([readWallets(), readActivity(), readX()]));
+  }, [offline, readWallets, readActivity, readX]);
 
   const saveSetup = useCallback(
     async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {
       guard();
       const saved = await saveDraftSetup(agentId, { ...patch, expectedVersion: version.current });
       version.current = saved.version;
-      await refreshAgent.current();
+      await reloadAfterWrite();
       return saved;
     },
-    [guard, agentId],
+    [guard, agentId, reloadAfterWrite],
   );
 
   const saveIdentity = useCallback(
     async (body: IdentityUpdateDto) => {
       guard();
       const saved = await putIdentity(agentId, body);
-      await refreshAgent.current();
+      await reloadAfterWrite();
       return saved;
     },
-    [guard, agentId],
+    [guard, agentId, reloadAfterWrite],
   );
 
   const saveInterval = useCallback(
     async (hours: IntervalHours) => {
       guard();
       await setIntervalHours(agentId, hours);
-      await refreshAgent.current();
+      await reloadAfterWrite();
     },
-    [guard, agentId],
+    [guard, agentId, reloadAfterWrite],
   );
 
   const challengeX = useCallback(
@@ -286,21 +304,29 @@ export function useDraft({
     guard();
     const result = await xVerify(agentId);
     if (result.verified) {
-      await Promise.all([readX(), refreshAgent.current()]);
+      await Promise.all([readX(), reloadAfterWrite()]);
     }
     return result;
-  }, [guard, agentId, readX]);
+  }, [guard, agentId, readX, reloadAfterWrite]);
 
   const disconnectX = useCallback(async () => {
     guard();
     await xDisconnect(agentId);
-    await Promise.all([readX(), refreshAgent.current()]);
-  }, [guard, agentId, readX]);
+    await Promise.all([readX(), reloadAfterWrite()]);
+  }, [guard, agentId, readX, reloadAfterWrite]);
 
   const publish = useCallback(async () => {
     guard();
     const result = await publishAgent(agentId);
-    setTimeout(() => {
+    if (!alive.current) {
+      return result;
+    }
+    published.current?.();
+    if (liveTimer.current !== null) {
+      clearTimeout(liveTimer.current);
+    }
+    liveTimer.current = setTimeout(() => {
+      liveTimer.current = null;
       if (alive.current) {
         void refreshAgent.current().catch((caught: unknown) => {
           if (alive.current) {

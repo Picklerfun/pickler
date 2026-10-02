@@ -389,7 +389,8 @@ export function briefTags(
 
 /**
  * Adding a typed site (the canvas's `addSite`): the bare host is added; anything else stays in the
- * box, as the host it would be, with the reason. An empty box does nothing.
+ * box, as the host it would be, with the reason. An empty box does nothing. Unlike the canvas,
+ * text that is no host at all stays as typed (there is no host to put back), so it can be fixed.
  */
 export function addSite(
   sites: readonly string[],
@@ -430,7 +431,9 @@ const dayNumber = (date: Date): number =>
 
 /**
  * The next three runs, an interval apart from `now`, in local time: "TMRW" the next calendar day,
- * "+nD" beyond it (the canvas says TMRW for any other day).
+ * "+nD" beyond it (the canvas says TMRW for any other day). Like every clock in the draft studio,
+ * the server (UTC) and the browser may disagree, so the view marks both the label and the time
+ * `suppressHydrationWarning`.
  */
 export function nextRuns(intervalHours: number, now: Date): { label: string; at: string }[] {
   return [1, 2, 3].map((n) => {

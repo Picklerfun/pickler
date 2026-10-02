@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { useNow } from "@/lib/now";
@@ -35,17 +35,14 @@ import home from "../home/home.module.css";
 import topBar from "../new-agent/new-agent.module.css";
 import styles from "./draft.module.css";
 
-/**
- * The agent's avatar: its accent and one of the six patterns. The studio agent DTO carries the
- * accent but not the pattern yet, so a caller without one draws the first pattern.
- */
+/** The agent's avatar: its accent and one of the six patterns, as its profile holds them. */
 export function DraftAvatar({
   accent,
-  pattern = 0,
+  pattern,
   size,
 }: {
   accent: Agent["accent"];
-  pattern?: number;
+  pattern: number;
   size: "chip" | "head" | "large";
 }) {
   return (
@@ -59,6 +56,17 @@ export function DraftAvatar({
   );
 }
 
+/**
+ * The header line's first part (canvas `headerSub`): the agent's handle, or on the YOU sections the
+ * account's ("YOU · @nightowl"), just "YOU" until the account is read.
+ */
+const headerWho = (you: boolean, handle: string | undefined, account: string | null): string => {
+  if (you) {
+    return account ? `YOU · @${account}` : "YOU";
+  }
+  return handle ? `@${handle}` : "NO HANDLE";
+};
+
 type Modal = null | { kind: "wallets"; toAgent: boolean | null } | { kind: "credits" };
 
 /**
@@ -70,7 +78,7 @@ type Modal = null | { kind: "wallets"; toAgent: boolean | null } | { kind: "cred
  * The data and writes are `use-draft.ts`'s; each section is its own file and takes
  * `DraftSectionProps`. With `staged` (`?stage=draft*`) the studio is the fixture's and touches no
  * API. Once Go Public lands the shell reloads the agent, which is no longer a draft, and the studio
- * opens the live one in its place.
+ * opens the live one in its place, on its home (`onPublished`).
  */
 export function DraftStudio({
   agent,
@@ -80,7 +88,9 @@ export function DraftStudio({
   staged,
   preview,
   initialSection,
+  accountHandle,
   onRefreshAgent,
+  onPublished,
   onSwitch,
   onNew,
 }: {
@@ -94,7 +104,11 @@ export function DraftStudio({
   /** A preview studio (no authentication here): nothing is read or written. */
   preview: boolean;
   initialSection?: DraftSectionKey | undefined;
+  /** The signed-in account's handle, which the YOU sections' header line names; null unread. */
+  accountHandle: string | null;
   onRefreshAgent(): Promise<void>;
+  /** Go Public landed: the live studio that replaces this one opens on its home (D1). */
+  onPublished(): void;
   onSwitch(agentId: string): void;
   /** "+ New agent": open the create screen. */
   onNew(): void;
@@ -106,7 +120,9 @@ export function DraftStudio({
   const [menuOpen, setMenuOpen] = useState(false);
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
-  const draft = useDraft({ agent, staged, preview, onRefreshAgent });
+  const draft = useDraft({ agent, staged, preview, onRefreshAgent, onPublished });
+  /* "Back to Overview" unmounts the button it was on, so focus moves to the rail's Overview. */
+  const focusRail = useRef(false);
 
   const name = agent.name ?? "Your agent";
   const agentId = agent.productId ?? agent.id;
@@ -139,6 +155,17 @@ export function DraftStudio({
     };
   }, [menuOpen]);
 
+  /* The current rail item stays in view on the phone's scrolling row (a deep link to Master wallet
+     starts past the edge), and takes focus when the locked panel's way back unmounted it. */
+  useEffect(() => {
+    const item = document.getElementById(`draft-rail-${section}`);
+    item?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
+    if (focusRail.current) {
+      focusRail.current = false;
+      item?.focus();
+    }
+  }, [section]);
+
   /** Open "Your wallets", reading them again; with a direction, on this agent's move form. */
   function openWallets(toAgent: boolean | null) {
     setModal({ kind: "wallets", toAgent });
@@ -157,7 +184,15 @@ export function DraftStudio({
 
   function body() {
     if (isLockedSection(section)) {
-      return <Locked section={section} onBack={() => setSection("overview")} />;
+      return (
+        <Locked
+          section={section}
+          onBack={() => {
+            focusRail.current = true;
+            setSection("overview");
+          }}
+        />
+      );
     }
     switch (section) {
       case "overview":
@@ -190,7 +225,7 @@ export function DraftStudio({
           <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
           <span>PICKLER</span>
         </Link>
-        <div className={home.menuWrap} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.chipWrap} onClick={(event) => event.stopPropagation()}>
           <button
             type="button"
             className={styles.chipButton}
@@ -200,7 +235,7 @@ export function DraftStudio({
             aria-label={`${name}, switch agent`}
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            <DraftAvatar accent={agent.accent} size="chip" />
+            <DraftAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
             <b>{name}</b>
             {agent.handle && <small>@{agent.handle}</small>}
             <Icon name="chevronDown" size={13} />
@@ -242,7 +277,11 @@ export function DraftStudio({
                         }
                       }}
                     >
-                      <DraftAvatar accent={other.accent} size="chip" />
+                      <DraftAvatar
+                        accent={other.accent}
+                        pattern={other.avatarPattern}
+                        size="chip"
+                      />
                       <span className={home.grow}>{other.name ?? id.slice(0, 8)}</span>
                       {other.draft && <span className={home.menuNote}>DRAFT</span>}
                     </button>
@@ -312,12 +351,19 @@ export function DraftStudio({
                     id={`draft-rail-${item.key}`}
                     aria-current={item.on ? "page" : undefined}
                     aria-disabled={item.locked || undefined}
-                    title={item.title}
+                    title={item.locked ? undefined : item.title}
                     onClick={() => setSection(item.key)}
                   >
                     <Icon name={item.icon} size={17} />
                     <span className={styles.railLabel}>{item.label}</span>
-                    {item.locked && <span className={styles.srOnly}> · {item.title}</span>}
+                    {item.locked && (
+                      <>
+                        <span className={styles.railLock} aria-hidden="true">
+                          <Icon name="lock" size={12} />
+                        </span>
+                        <span className={styles.srOnly}> · {item.title}</span>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>
@@ -334,11 +380,11 @@ export function DraftStudio({
               </p>
             )}
             <div className={styles.header}>
-              <DraftAvatar accent={agent.accent} size="head" />
+              <DraftAvatar accent={agent.accent} pattern={agent.avatarPattern} size="head" />
               <div className={styles.headText}>
                 <h1 className={styles.name}>{name}</h1>
                 <p className={styles.sub}>
-                  <span>{you ? "YOU" : agent.handle ? `@${agent.handle}` : "NO HANDLE"}</span>
+                  <span>{headerWho(you, agent.handle, accountHandle)}</span>
                   <span className={styles.subDot} aria-hidden="true">
                     ·
                   </span>

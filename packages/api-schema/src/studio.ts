@@ -41,6 +41,8 @@ export const studioAgentSchema = agentResponseSchema.extend({
   handle: z.string().optional(),
   /** The profile's accent; "lime" for an agent without a profile row. */
   accent: z.enum(ACCENTS),
+  /** The profile's avatar pattern, one of six (0–5); 0 for an agent without a profile row. */
+  avatarPattern: z.number().int().min(0).max(5),
   /**
    * A private draft (studio-brief-v1 §6). The create screen makes every draft with its own wallet
    * (studio-create-simplified-v1); a draft from before has none.

@@ -139,6 +139,7 @@ test("the studio lists visibility, when it was published, and the verified X han
   const f = await setup(t);
 
   const [draft] = await f.studio.list(f.access);
+  assert.equal(draft?.avatarPattern, 3);
   assert.equal(draft?.visibility, "private");
   assert.equal(draft?.publishedAt, null);
   assert.equal(draft?.xHandle, null);

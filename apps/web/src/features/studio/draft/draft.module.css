@@ -4,7 +4,8 @@
  * #0B0D1A ground and wells are `--pk-bg`, its #15182A cards and chips `--pk-panel`, the #1C2036
  * hover `--pk-panel-2`; its #9AA0B8 labels are `--pk-ink-muted`, its #5A5F78 and #3A3F58 the
  * faint ink (the dark ramp's floor that still reads), its lime `--pk-lime`, its amber status
- * `--pk-amber-ink`; its 8% hairlines `--pk-rule` and its 16% dashed edges `--pk-rule-strong`.
+ * `--pk-amber-ink`; its 8% hairlines `--pk-rule` and its 16% dashed edges `--pk-rule-strong` (12%, the ramp's
+ * strong rule).
  * The top bar's brand, chip, pills and account are the home's (`home.module.css`) and the create
  * screen's (`new-agent.module.css`), composed here so the two bars stay one drawing.
  */
@@ -90,7 +91,17 @@
 .chipButton[aria-expanded="true"] {
   background: var(--pk-panel-2);
 }
+.chipWrap {
+  composes: menuWrap from "../home/home.module.css";
+  /* A long name ellipsises inside the bar instead of pushing the chip past the viewport. */
+  min-width: 0;
+  max-width: 100%;
+}
+.chipButton {
+  max-width: 100%;
+}
 .chipButton b {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -185,10 +196,21 @@
   background: var(--pk-panel);
   color: var(--pk-ink);
 }
-/* Locked while private: still a button, which opens the locked panel saying when it opens. */
+/* Locked while private: still a button, which opens the locked panel saying when it opens. The
+   faint ink is too near the open items' muted ink to read as shut (the token file keeps the
+   canvas's #3A3F58 off text), so the row also dims as a disabled control and draws a lock. */
 .railItem[aria-disabled="true"] {
   color: var(--pk-ink-faint);
   cursor: not-allowed;
+}
+.railItem[aria-disabled="true"] > svg,
+.railItem[aria-disabled="true"] > .railLabel {
+  opacity: 0.5;
+}
+.railLock {
+  flex: none;
+  display: inline-flex;
+  color: var(--pk-ink-faint);
 }
 .railItem[aria-disabled="true"][aria-current="page"] {
   background: var(--pk-panel);
@@ -938,6 +960,20 @@
   }
   .main {
     padding: 24px 16px 48px;
+  }
+}
+
+/* On a phone the switcher hangs from the whole bar (the header is its positioned parent), inside
+   the gutters, wherever the chip wrapped to: anchored to the chip it would run past the edge. */
+@media (max-width: 640px) {
+  .chipWrap {
+    position: static;
+  }
+  .chipMenu {
+    top: calc(100% + 4px);
+    left: 16px;
+    right: 16px;
+    width: auto;
   }
 }
 

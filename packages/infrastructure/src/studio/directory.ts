@@ -60,6 +60,12 @@ async function publishState(
 /** "0x91be…4a07": the first four and last four hex digits, as the studio shows a wallet. */
 const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
+/** A profile's avatar pattern (0–5); an agent without a profile row draws the first. */
+const avatarPatternOf = (value: unknown): number => {
+  const pattern = Number(value ?? 0);
+  return Number.isInteger(pattern) && pattern >= 0 && pattern <= 5 ? pattern : 0;
+};
+
 const notFound = () => new PilotError("NOT_FOUND", "Agent not found");
 
 export class PostgresStudioDirectory implements StudioDirectory {
@@ -281,7 +287,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
   async list(access: StudioAccess) {
     const result = await this.pool.query(
       `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,a.visibility::text AS visibility,
-        a.published_at,xa.handle AS x_handle,pr.accent,p.tenant_id,p.runtime_agent_id
+        a.published_at,xa.handle AS x_handle,pr.accent,pr.avatar_pattern,p.tenant_id,p.runtime_agent_id
       FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
@@ -297,6 +303,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       accent: (ACCENTS as readonly string[]).includes(row.accent)
         ? (row.accent as Accent)
         : ("lime" as const),
+      avatarPattern: avatarPatternOf(row.avatar_pattern),
       draft: row.draft === true,
       visibility: row.visibility === "public" ? ("public" as const) : ("private" as const),
       publishedAt: (row.published_at as Date | null) ?? null,

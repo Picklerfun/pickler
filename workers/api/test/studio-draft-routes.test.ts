@@ -125,6 +125,7 @@ function app({
         name: agent.name,
         handle: agent.name.toLowerCase(),
         accent: "lime" as const,
+        avatarPattern: 0,
         draft: agent.draft,
         visibility: agent.visibility,
         publishedAt: agent.publishedAt,

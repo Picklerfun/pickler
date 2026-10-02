@@ -73,8 +73,8 @@ export interface StudioDirectory {
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
   /**
-   * The person's agents, oldest first, with the accent their profile was created with ("lime"
-   * without one), whether each is a private draft, whether the marketplace shows it and since
+   * The person's agents, oldest first, with the accent and avatar pattern (0–5) their profile
+   * holds ("lime" and 0 without one), whether each is a private draft, whether the marketplace shows it and since
    * when (studio-draft-dashboard-v1 D7), and its verified X handle (D6), null until verified.
    */
   list(access: StudioAccess): Promise<
@@ -83,6 +83,7 @@ export interface StudioDirectory {
       name: string;
       handle: string;
       accent: Accent;
+      avatarPattern: number;
       draft: boolean;
       visibility: "private" | "public";
       publishedAt: Date | null;

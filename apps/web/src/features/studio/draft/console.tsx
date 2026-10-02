@@ -119,8 +119,10 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
               {runs.map((run, index) => (
                 <li key={index} className={styles.run}>
                   <span className={styles.runDot} aria-hidden="true" />
-                  <span className={styles.runLabel}>{run.label}</span>
-                  {/* Local time: the server renders in its own zone. */}
+                  {/* Local time: the server renders in its own zone, so the day may differ too. */}
+                  <span className={styles.runLabel} suppressHydrationWarning>
+                    {run.label}
+                  </span>
                   <span className={styles.runAt} suppressHydrationWarning>
                     {run.at}
                   </span>

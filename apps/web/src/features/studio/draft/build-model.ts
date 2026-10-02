@@ -15,6 +15,7 @@ import {
 } from "../new-agent/model";
 import { briefTags, type BriefText, type Caps } from "./model";
 
+/* "hh:mm" in local time; the view marks it `suppressHydrationWarning`, as every draft clock. */
 const clock = (date: Date): string =>
   `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 

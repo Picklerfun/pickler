@@ -158,6 +158,8 @@ export function Studio({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
+  /* The signed-in account's handle, for the draft studio's YOU sections. */
+  const [accountHandle, setAccountHandle] = useState<string | null>(null);
   const [preview, setPreview] = useState(staging);
   /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
      read is `failed`, which suggests nothing and never fails the studio. */
@@ -239,6 +241,9 @@ export function Studio({
         const token = data.session.access_token;
         const wallet = await readSubOrganization(() => readWallet(token));
         const account = wallet === null ? null : await ensureProfile(supabase);
+        if (active && account?.kind === "ready") {
+          setAccountHandle(account.profile.handle);
+        }
         const away = redirectFor({
           wallet,
           profile: account?.kind === "ready" ? account.profile : null,
@@ -468,7 +473,9 @@ export function Studio({
         staged={stagedDraft}
         preview={preview}
         initialSection={draftSection(openSection)}
+        accountHandle={stagedDraft?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
+        onPublished={() => setSection("home")}
         onSwitch={(id) => {
           setAgentId(id);
           setRunId(null);

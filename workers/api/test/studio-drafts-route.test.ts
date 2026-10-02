@@ -93,6 +93,7 @@ function app({
         name: "Agent",
         handle: "agent",
         accent: "lime" as const,
+        avatarPattern: 0,
         draft: agent.draft,
         visibility: agent.draft ? ("private" as const) : ("public" as const),
         publishedAt: agent.draft ? null : new Date("2026-09-01T00:00:00Z"),

@@ -362,7 +362,7 @@ const ALL = [
   // wallet, a wallet not funded, funded, advanced open, the web on with sites, the create sheet in
   // each phase, the wallet sheet at each of its two steps, the Wallets modal with a transfer open,
   // AI credits and the avatar picker. Each proves the state it stages, so a stage that fell back to
-  // another is not reported green. The draft home after create is `?stage=draft`.
+  // another is not reported green. The draft studio after create is `?stage=draft`, its Overview.
   {
     path: "/studio?stage=create-empty",
     name: "studio-create-empty",
@@ -477,11 +477,11 @@ const ALL = [
   },
   {
     path: "/studio?stage=draft",
-    name: "studio-home-draft",
+    name: "studio-draft-overview",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: "#home-go-public",
+    task: "Studio Draft",
+    proves: "#draft-section-overview",
   },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.

@@ -494,6 +494,7 @@ export function studioRoutes(services: StudioServices) {
       name?: string;
       handle?: string;
       accent: Accent;
+      avatarPattern: number;
       draft: boolean;
       visibility: "private" | "public";
       publishedAt: Date | null;
@@ -529,6 +530,7 @@ export function studioRoutes(services: StudioServices) {
             name: agent.name,
             handle: agent.handle,
             accent: agent.accent,
+            avatarPattern: agent.avatarPattern,
             draft: agent.draft,
             visibility: agent.visibility,
             publishedAt: agent.publishedAt,
@@ -621,6 +623,7 @@ export function studioRoutes(services: StudioServices) {
           name: listedAgent.name,
           handle: listedAgent.handle,
           accent: listedAgent.accent,
+          avatarPattern: listedAgent.avatarPattern,
           draft: listedAgent.draft,
           visibility: listedAgent.visibility,
           publishedAt: listedAgent.publishedAt,
@@ -628,6 +631,7 @@ export function studioRoutes(services: StudioServices) {
         }
       : {
           accent: "lime" as const,
+          avatarPattern: 0,
           draft: false,
           visibility: "private" as const,
           publishedAt: null,

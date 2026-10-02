@@ -91,6 +91,7 @@ function fixture({
         name: `Agent ${id.slice(0, 1)}`,
         handle: `h${id.slice(0, 4)}`,
         accent: id === FIRST ? ("magenta" as const) : ("lime" as const),
+        avatarPattern: id === FIRST ? 3 : 0,
         draft: drafts.includes(id),
         visibility: drafts.includes(id) ? ("private" as const) : ("public" as const),
         publishedAt: drafts.includes(id) ? null : new Date("2026-09-01T00:00:00Z"),
@@ -515,7 +516,7 @@ test("the interval of someone else's agent, or without a session, is refused", a
   assert.deepEqual(intervals, []);
 });
 
-test("the agent DTO carries its profile's accent, in the list and on its own", async () => {
+test("the agent DTO carries its profile's accent and avatar pattern, in the list and on its own", async () => {
   const { app } = fixture({ agents: [FIRST, SECOND], balances: { [FIRST]: 10, [SECOND]: 10 } });
 
   const list = await (await app.request("/agents")).json();
@@ -525,5 +526,10 @@ test("the agent DTO carries its profile's accent, in the list and on its own", a
     list.agents.map((agent: { accent: string }) => agent.accent),
     ["magenta", "lime"],
   );
+  assert.deepEqual(
+    list.agents.map((agent: { avatarPattern: number }) => agent.avatarPattern),
+    [3, 0],
+  );
   assert.equal(one.accent, "magenta");
+  assert.equal(one.avatarPattern, 3);
 });

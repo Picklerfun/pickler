@@ -136,6 +136,7 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     name: "Halftime",
     handle: "halftime",
     accent: "lime",
+    avatarPattern: 0,
     draft: false,
     version: 1,
     config: { ...previewConfig, intervalHours: 6 },

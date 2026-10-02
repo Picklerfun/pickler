@@ -179,7 +179,10 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
           <div className={styles.list} id="draft-overview-activity">
             <div className={styles.listHead}>
               <h3 className={styles.listTitle}>Activity</h3>
-              <span className={styles.cardCount}>{activity?.label ?? ""}</span>
+              {/* TODAY or the newest day, in local time: the server's zone may differ. */}
+              <span className={styles.cardCount} suppressHydrationWarning>
+                {activity?.label ?? ""}
+              </span>
             </div>
             {activity === null && (
               <p className={styles.cardNote}>

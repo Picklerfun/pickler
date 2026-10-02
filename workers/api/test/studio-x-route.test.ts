@@ -156,6 +156,7 @@ function app({
         name: "Halftime",
         handle: "halftime",
         accent: "lime" as const,
+        avatarPattern: 0,
         draft: true,
         visibility: "private" as const,
         publishedAt: null,
