@@ -88,6 +88,13 @@ export interface AgentConfig {
   maxLeverage?: number | undefined;
   /** The voice its posts are written in (docs/specs/studio-create-simplified-v1.md D8). */
   voice?: (typeof VOICE_KEYS)[number] | undefined;
+  /**
+   * OPEN AT ONCE and DAY-LOSS STOP (docs/specs/studio-live-v1.md L11). Saved for the Perpl runtime
+   * to read; nothing enforces them yet. Absent means `RISK_DEFAULTS`: read it with `effectiveRisk`.
+   */
+  risk?: RiskLimits | undefined;
+  /** How it enters (L12). Absent means `ENTRY_DEFAULTS`: read it with `effectiveEntry`. */
+  entry?: EntrySetting | undefined;
 }
 
 export interface SpendLimits {
@@ -126,6 +133,102 @@ export function assertSpendLimits(spend: SpendLimits): void {
   if (spend.perDayAusd < spend.perCallAusd) {
     throw new PilotError("INVALID_INPUT", "A day's spend cannot be below one call's");
   }
+}
+
+export interface RiskLimits {
+  /** How many positions it may hold at once. */
+  maxOpenPositions: number;
+  /** The loss in a UTC day, in AUSD, after which it stops entering. */
+  dayLossStopAusd: number;
+}
+
+/** Bounds of `RiskLimits`. The day-loss stop moves in steps, as the studio's control does. */
+export const RISK_BOUNDS = {
+  maxOpenPositions: { min: 1, max: 6 },
+  dayLossStopAusd: { min: 5, max: 200, step: 5 },
+} as const;
+
+/** What a config without `risk` means: one position, and a small stop, for a first agent. */
+export const RISK_DEFAULTS = { maxOpenPositions: 1, dayLossStopAusd: 10 } as const;
+
+export function assertRiskLimits(risk: RiskLimits): void {
+  const open = RISK_BOUNDS.maxOpenPositions;
+  const stop = RISK_BOUNDS.dayLossStopAusd;
+  if (
+    !Number.isInteger(risk.maxOpenPositions) ||
+    risk.maxOpenPositions < open.min ||
+    risk.maxOpenPositions > open.max
+  ) {
+    throw new PilotError("INVALID_INPUT", "Open positions must be a whole number from 1 to 6");
+  }
+  if (
+    !Number.isInteger(risk.dayLossStopAusd) ||
+    risk.dayLossStopAusd < stop.min ||
+    risk.dayLossStopAusd > stop.max ||
+    risk.dayLossStopAusd % stop.step !== 0
+  ) {
+    throw new PilotError("INVALID_INPUT", "The day-loss stop must be 5–200 AUSD in steps of 5");
+  }
+}
+
+/** The stored risk, or the defaults; always the caller's own copy. */
+export function effectiveRisk(config: Pick<AgentConfig, "risk">): RiskLimits {
+  return { ...(config.risk ?? RISK_DEFAULTS) };
+}
+
+/**
+ * How it enters: `approve` asks the owner first, `auto` enters on its own inside the caps. While
+ * it waits for an answer it either stays out (`wait`) or goes in at `smallAusd` (`small`).
+ * `meanwhile` and `smallAusd` are kept under `auto` too, so switching back finds them as left.
+ */
+export interface EntrySetting {
+  mode: "approve" | "auto";
+  meanwhile: "wait" | "small";
+  smallAusd: number;
+}
+
+export const ENTRY_MODES = ["approve", "auto"] as const;
+export const ENTRY_MEANWHILE = ["wait", "small"] as const;
+
+/** What a config without `entry` means: it asks, and stays out until answered. */
+export const ENTRY_DEFAULTS = { mode: "approve", meanwhile: "wait", smallAusd: 5 } as const;
+
+/**
+ * The shape, and `smallAusd` within one call's bounds. `perTradeAusd` is the cap it must also stay
+ * under where that is being decided (`reviseSetup`). `assertConfig` does not pass it: `updateSpend`
+ * lowers the cap without touching `entry`, and a stored config must stay readable after that, so
+ * readers take the amount from `effectiveEntry`, which clamps it.
+ */
+export function assertEntrySetting(entry: EntrySetting, perTradeAusd?: number): void {
+  if (
+    !(ENTRY_MODES as readonly unknown[]).includes(entry.mode) ||
+    !(ENTRY_MEANWHILE as readonly unknown[]).includes(entry.meanwhile)
+  ) {
+    throw new PilotError("INVALID_INPUT", "Unknown entry mode");
+  }
+  const max = Math.min(perTradeAusd ?? Infinity, SPEND_BOUNDS.perCallAusd.max);
+  if (
+    typeof entry.smallAusd !== "number" ||
+    !Number.isFinite(entry.smallAusd) ||
+    entry.smallAusd < SPEND_BOUNDS.perCallAusd.min ||
+    entry.smallAusd > max
+  ) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "The small entry must be at least 1 AUSD and no more than the per-trade cap",
+    );
+  }
+}
+
+/**
+ * The stored entry, or the defaults; always the caller's own copy. `smallAusd` never exceeds the
+ * per-trade cap: the default 5 under a smaller cap, or a stored amount the cap has since dropped
+ * under, comes back as the cap.
+ */
+export function effectiveEntry(config: Pick<AgentConfig, "entry" | "spend">): EntrySetting {
+  const entry = config.entry ?? ENTRY_DEFAULTS;
+  const cap = config.spend?.perCallAusd ?? Infinity;
+  return { ...entry, smallAusd: Math.min(entry.smallAusd, cap) };
 }
 
 /** How often a scheduled agent runs: whole hours, 1–168, the same bounds `assertConfig` applies. */
@@ -727,6 +830,12 @@ export function assertConfig(config: AgentConfig): void {
   }
   if (config.voice !== undefined && !VOICE_KEYS.includes(config.voice)) {
     throw new PilotError("INVALID_INPUT", "Unknown voice");
+  }
+  if (config.risk !== undefined) {
+    assertRiskLimits(config.risk);
+  }
+  if (config.entry !== undefined) {
+    assertEntrySetting(config.entry);
   }
   if (config.skills) {
     if (config.skills.length > MAX_SKILLS) {

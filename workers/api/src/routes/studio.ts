@@ -45,7 +45,7 @@ import {
   findVerificationPost,
   parseXHandle,
   publishBlockers,
-  reviseDraft,
+  reviseSetup,
   verificationText,
   type createCustodyService,
   type Accent,
@@ -56,7 +56,7 @@ import {
   type StudioDirectory,
   type PreviewRepository,
   type ResearchRepository,
-  type DraftPatch,
+  type SetupPatch,
   type TransferLedgerEntry,
   type XStore,
 } from "@pickler/core";
@@ -656,7 +656,7 @@ export function studioRoutes(services: StudioServices) {
     return c.json(await oneAgent(current, c.req.param("id")));
   });
   // A draft's brief, sources, caps and voice (studio-draft-dashboard-v1 D10), versioned like
-  // `PUT /config`, whose stale-version refusal (409 CONFLICT) it shares. Core's `reviseDraft`
+  // `PUT /config`, whose stale-version refusal (409 CONFLICT) it shares. Core's `reviseSetup`
   // applies create's rules and never touches `marketScope`. A voice also renames the profile's
   // voice: a second write after the config's, as the two live in different stores; a failure
   // between them leaves the config saved and the old voice name, which the next save repairs.
@@ -668,16 +668,17 @@ export function studioRoutes(services: StudioServices) {
     if (!agent.draft) {
       throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
     }
-    const patch: DraftPatch = {
+    const patch: SetupPatch = {
       ...(body.brief ? { brief: body.brief } : {}),
       ...(body.sources ? { sources: bareSites(body.sources) } : {}),
       ...(body.caps ? { caps: body.caps } : {}),
       ...(body.voice ? { voice: body.voice } : {}),
+      ...(body.entry ? { entry: body.entry } : {}),
     };
     const record = await repo.agent(agent.scope);
     // The draft check above answers early; the write checks again under its own lock, as a
     // publish may land in between. New caps write `spend` in that same transaction.
-    await repo.updateConfig(agent.scope, body.expectedVersion, reviseDraft(record.config, patch), {
+    await repo.updateConfig(agent.scope, body.expectedVersion, reviseSetup(record.config, patch), {
       requireDraft: true,
       ...(body.caps ? { writeSpend: true } : {}),
     });

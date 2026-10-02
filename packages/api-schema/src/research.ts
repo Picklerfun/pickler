@@ -133,6 +133,43 @@ export const BRIEF_LIMITS = {
 } as const;
 /** Mirror of core's `LEVERAGE_BOUNDS`. */
 export const LEVERAGE_BOUNDS = { min: 1, max: 10 } as const;
+/** Mirror of core's `RISK_BOUNDS`; `workers/api/test/accent-venue-mirror.test.ts` pins it. */
+export const RISK_BOUNDS = {
+  maxOpenPositions: { min: 1, max: 6 },
+  dayLossStopAusd: { min: 5, max: 200, step: 5 },
+} as const;
+
+/** A stored `config.risk` (studio-live-v1 L11): open at once, and the day-loss stop in AUSD. */
+export const riskLimitsSchema = z
+  .object({
+    maxOpenPositions: z
+      .number()
+      .int()
+      .min(RISK_BOUNDS.maxOpenPositions.min)
+      .max(RISK_BOUNDS.maxOpenPositions.max),
+    dayLossStopAusd: z
+      .number()
+      .int()
+      .min(RISK_BOUNDS.dayLossStopAusd.min)
+      .max(RISK_BOUNDS.dayLossStopAusd.max)
+      .multipleOf(RISK_BOUNDS.dayLossStopAusd.step),
+  })
+  .strict();
+export type RiskLimitsDto = z.infer<typeof riskLimitsSchema>;
+
+/**
+ * A stored `config.entry` (L12). `smallAusd` is held to one call's bounds only: the per-trade cap
+ * can drop under it later (`PUT /limits`), and a stored config must still parse; core's
+ * `effectiveEntry` clamps it for whoever reads it.
+ */
+export const entrySettingSchema = z
+  .object({
+    mode: z.enum(["approve", "auto"]),
+    meanwhile: z.enum(["wait", "small"]),
+    smallAusd: z.number().min(1).max(1_000),
+  })
+  .strict();
+export type EntrySettingDto = z.infer<typeof entrySettingSchema>;
 
 const briefLine = z.string().min(1).max(BRIEF_LIMITS.line);
 /** A stored brief, which core has already normalized and checked (spec §2). */
@@ -225,6 +262,9 @@ export const agentConfigSchema = z
     maxLeverage: z.number().int().min(LEVERAGE_BOUNDS.min).max(LEVERAGE_BOUNDS.max).optional(),
     /** How every post reads (studio-create-simplified-v1 D8); core's `VOICE_KEYS`. */
     voice: z.enum(VOICE_KEYS).optional(),
+    /** Absent means core's `RISK_DEFAULTS` and `ENTRY_DEFAULTS`. */
+    risk: riskLimitsSchema.optional(),
+    entry: entrySettingSchema.optional(),
   })
   .strict()
   .refine(

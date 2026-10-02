@@ -246,16 +246,32 @@ export const walletsResponseSchema = z.object({
 export type WalletsDto = z.infer<typeof walletsResponseSchema>;
 
 /**
- * `PUT /v1/studio/agents/:id/setup` (studio-draft-dashboard-v1 D10): a draft's brief, sources,
- * caps and voice, each optional. Shapes only; core's `reviseDraft` judges them, as at creation.
+ * `PUT /v1/studio/agents/:id/setup` (studio-draft-dashboard-v1 D10, studio-live-v1 §4): the
+ * brief, sources, caps, voice and how it enters, each optional. The two risk caps are optional
+ * inside `caps`, as the draft studio sends three. Shapes only; core's `reviseSetup` judges them,
+ * as at creation.
  */
 export const setupUpdateSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
     brief: draftCreateSchema.shape.brief.optional(),
     sources: draftCreateSchema.shape.sources.optional(),
-    caps: draftCreateSchema.shape.caps.optional(),
+    caps: draftCreateSchema.shape.caps
+      .extend({
+        maxOpenPositions: z.number().optional(),
+        dayLossStopAusd: z.number().optional(),
+      })
+      .strict()
+      .optional(),
     voice: z.enum(VOICE_KEYS).optional(),
+    entry: z
+      .object({
+        mode: z.enum(["approve", "auto"]),
+        meanwhile: z.enum(["wait", "small"]),
+        smallAusd: z.number(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type SetupUpdateDto = z.infer<typeof setupUpdateSchema>;

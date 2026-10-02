@@ -12,7 +12,7 @@ import {
   STARTER_CAPS,
   XHandleTakenError,
   prepareDraft,
-  reviseDraft,
+  reviseSetup,
   type AgentDirectory,
   type PublishCheck,
 } from "@pickler/core";
@@ -582,7 +582,7 @@ test("a draft's setup saves new caps with writeSpend, and keeps the stored spend
   const saved = await f.store.updateConfig(
     scope,
     first.version,
-    reviseDraft(first.config, { caps }),
+    reviseSetup(first.config, { caps }),
     { requireDraft: true, writeSpend: true },
   );
   assert.equal(saved.version, first.version + 1);
@@ -594,7 +594,7 @@ test("a draft's setup saves new caps with writeSpend, and keeps the stored spend
   await f.store.updateConfig(
     scope,
     read.version,
-    reviseDraft(read.config, { caps: { perTradeAusd: 9, perDayAusd: 50, maxLeverage: 3 } }),
+    reviseSetup(read.config, { caps: { perTradeAusd: 9, perDayAusd: 50, maxLeverage: 3 } }),
     { requireDraft: true },
   );
   assert.deepEqual((await f.store.agent(scope)).config.spend, { perCallAusd: 7, perDayAusd: 30 });

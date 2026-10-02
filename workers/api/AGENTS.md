@@ -296,8 +296,9 @@ The draft's studio (docs/specs/studio-draft-dashboard-v1.md §4), all in `src/ro
 except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO or null) and
 `xHandle` (the verified handle without "@", or null), from `directory.list`.
 
-- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice? }` (manage rights):
-  drafts only (409 `NOT_A_DRAFT`), core's `reviseDraft`, then `repository.updateConfig`, whose
+- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice?, entry? }` (manage
+  rights; `caps` may carry `maxOpenPositions` and `dayLossStopAusd`, stored as `config.risk`):
+  drafts only (409 `NOT_A_DRAFT`), core's `reviseSetup`, then `repository.updateConfig`, whose
   stale version is 409 `CONFLICT` (the same code `PUT /config` answers). With `caps` it passes
   `writeSpend`, so the new per-trade and per-day caps land in `spend` in the same transaction;
   another owner's agent is 404 `NOT_FOUND`. A voice also renames the profile's voice through
