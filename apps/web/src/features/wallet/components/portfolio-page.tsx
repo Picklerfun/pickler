@@ -7,7 +7,6 @@ import { ButtonLink, Icon } from "@pickler/ui";
 import { WrongNetwork } from "@/features/status/wrong-network";
 import styles from "./portfolio-page.module.css";
 import { ConnectGate } from "./connect-gate";
-import { ClaimHandle } from "./claim-handle";
 import { useWallet } from "../lib/wallet-context";
 import { formatBalance, shortAddress, TARGET_CHAIN } from "../lib/provider";
 import { formatAmount } from "@/features/markets/lib/format";
@@ -60,7 +59,6 @@ export function PortfolioPage({
   reads,
   openTab,
   preview = false,
-  needsHandle = false,
 }: {
   agents: AgentSummaryDto[];
   reads: AgentReadDto[];
@@ -72,12 +70,6 @@ export function PortfolioPage({
    * headless browser can pass, which is why it went unverified for as long as it did.
    */
   preview?: boolean;
-  /**
-   * Show the handle panel whatever the wallet says: the design checks reach this screen through
-   * `preview`, with no wallet. Otherwise the panel shows for a signed-in account known to have no
-   * profile — somebody who closed the chooser at its username step.
-   */
-  needsHandle?: boolean;
 }) {
   const wallet = useWallet();
 
@@ -108,9 +100,6 @@ export function PortfolioPage({
 
   const body = (
     <>
-      {/* Known to have no username: the chooser asked and was closed, or a reload found the
-          account's session and read it. Not known is not asked. */}
-      {(needsHandle || wallet.hasProfile === false) && <ClaimHandle />}
       <div className={styles.top}>
         {/* The dark block in a light page. It is not a dark-coloured panel: it is the studio's own
             surface appearing inline, so every token inside it resolves to the dark ramp.

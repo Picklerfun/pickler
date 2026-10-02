@@ -5,7 +5,8 @@
  *                            └──► join ──► joined ──► closed
  *
  * The passkey wallet signs in while it connects, so it skips the sign-in step; a browser wallet
- * passes through it. An account that already has a username skips the rest.
+ * passes through it. An account that already has a username skips the rest. One that has none
+ * does not leave without one: see `mustFinish`.
  *
  * The username step has a second way out. Somebody who connected a wallet Pickler had not seen is
  * asked for a username, because that wallet has no account — but the person may have one already,
@@ -51,6 +52,28 @@ export type ConnectFlowEvent =
   | { type: "claimed" }
   | { type: "close" };
 
+/**
+ * Whether the step has to be finished. A wallet that connected arrives all the way — signed in,
+ * and with a username — or it is disconnected: there is no connected wallet without an account
+ * and no account without a username (docs/specs/mera-web-v1.md, M6). So from these steps the only
+ * way out that is not forward is to disconnect, and the chooser draws that, not a close.
+ */
+export function mustFinish(state: ConnectFlowState): boolean {
+  switch (state.step) {
+    case "signin":
+    case "username":
+    case "join":
+      return true;
+    case "prf":
+      // The passkey that could not open a wallet was the other one: this wallet is still here.
+      return state.joining;
+    case "choose":
+    case "joined":
+    case "closed":
+      return false;
+  }
+}
+
 export const CLOSED: ConnectFlowState = {
   step: "closed",
   busy: false,
@@ -73,9 +96,16 @@ const afterSignIn = (hasProfile: boolean | null) =>
   at(hasProfile === false ? "username" : "closed");
 
 export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): ConnectFlowState {
-  // A closed chooser only opens. A prompt that was still up when the person closed it answers
-  // into nothing: the wallet may well be connected by then, but the dialog does not come back.
-  if (state.step === "closed" && event.type !== "open" && event.type !== "open_join") {
+  // A closed chooser opens, and nothing else moves it — with one exception. A wallet whose prompt
+  // was still up when the person closed the chooser, and who then approved it, is connected: it
+  // finishes arriving like any other, so the step that follows comes up. Everything else that
+  // answers into a closed chooser — a failure, a closed prompt — answers into nothing.
+  const opens =
+    event.type === "open" ||
+    event.type === "open_join" ||
+    event.type === "connected" ||
+    event.type === "signed_in";
+  if (state.step === "closed" && !opens) {
     return state;
   }
   switch (event.type) {

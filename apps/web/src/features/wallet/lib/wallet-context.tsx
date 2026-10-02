@@ -12,6 +12,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { ownerOf } from "@/server/hosts";
 import { ConnectModal } from "../components/connect-modal";
 import { CLOSED, connectFlow, type ConnectFlowState, type ConnectStep } from "./connect-flow";
 import { readProfile } from "./handles";
@@ -185,11 +187,6 @@ interface WalletState {
   hasProfile: boolean | null;
   /** The account just claimed its username. */
   profileClaimed: () => void;
-  /**
-   * Opens the chooser where somebody whose account is under their other wallet links this one to
-   * it, instead of picking a username. Only means something while `hasProfile` is false.
-   */
-  joinAccount: () => void;
   /**
    * Sign in with the connected wallet: one signature over a string the server built. Answers with
    * the access token, or with the error — null when the person simply closed the prompt, which is
@@ -743,6 +740,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     remember(null);
   }, [adapter, release]);
 
+  /**
+   * The way out of a step that has to be finished: the wallet is disconnected. There is no
+   * connected wallet without an account, and no account without a username.
+   */
+  const leave = useCallback(async () => {
+    dispatch({ type: "close" });
+    await disconnect();
+  }, [disconnect]);
+
   const switchChain = useCallback(async () => {
     const switched = await adapter?.switchChain?.();
     if (switched) {
@@ -790,16 +796,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [choices, kind],
   );
 
+  // An account is not left without a username (M6). The chooser asks as its last step; this is
+  // for the account found without one when no chooser is open — after a reload, the page adopts
+  // the browser's session and reads its profile. Derived, not an effect: the step shows while the
+  // fact holds, and stops when a name is claimed, the wallet joins an account, or it disconnects.
+  // Not on the studio's pages, which have their own way of asking a studio account.
+  const pathname = usePathname();
+  const owed =
+    flow.step === "closed" &&
+    account !== null &&
+    profile === false &&
+    ownerOf(pathname ?? "/") !== "studio";
+
   // The design harness's door: a step shown without the prompts that lead to it.
-  const preview = mounted && !previewClosed && flow.step === "closed" ? previewStep() : null;
-  const shownFlow: ConnectFlowState = preview
-    ? {
-        step: preview,
-        busy: false,
-        error: null,
-        joining: preview === "join" || preview === "joined",
-      }
-    : flow;
+  const preview =
+    mounted && !previewClosed && flow.step === "closed" && !owed ? previewStep() : null;
+  const shownFlow: ConnectFlowState = owed
+    ? { step: "username", busy: false, error: null, joining: false }
+    : preview
+      ? {
+          step: preview,
+          busy: false,
+          error: null,
+          joining: preview === "join" || preview === "joined",
+        }
+      : flow;
 
   const value = useMemo<WalletState>(() => {
     const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
@@ -825,7 +846,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       sessionError,
       hasProfile: profile,
       profileClaimed,
-      joinAccount,
       signInWithWallet,
       connect,
       disconnect,
@@ -839,7 +859,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     disconnect,
     error,
     held,
-    joinAccount,
     kind,
     profile,
     profileClaimed,
@@ -863,7 +882,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         picking={picking}
         onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
         onSignIn={() => void signInFromChooser()}
-        onJoin={() => dispatch({ type: "join" })}
+        // The username step drawn for an account found without one is not a step the reducer is
+        // on, so "I already have an account" opens the chooser there instead.
+        onJoin={() => (owed ? joinAccount() : dispatch({ type: "join" }))}
+        onLeave={() => void leave()}
         onJoinWith={(picked) => void joinWith(picked)}
         onBack={() => dispatch({ type: "back" })}
         onClose={closeChooser}

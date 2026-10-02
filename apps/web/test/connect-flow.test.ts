@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CLOSED,
   connectFlow,
+  mustFinish,
   type ConnectFlowEvent,
   type ConnectFlowState,
 } from "../src/features/wallet/lib/connect-flow";
@@ -125,12 +126,9 @@ test("an account has a profile, has none, or nobody could tell", async () => {
   );
 });
 
-test("a closed chooser only opens: a prompt answered after closing does not bring it back", () => {
+test("a closed chooser opens, and a wallet approved after closing still finishes arriving", () => {
   const late: ConnectFlowEvent[] = [
     { type: "working" },
-    { type: "connected", signedIn: false, hasProfile: null },
-    { type: "connected", signedIn: true, hasProfile: false },
-    { type: "signed_in", hasProfile: false },
     { type: "prompt_closed" },
     { type: "failed", error: "The network dropped." },
     { type: "prf_unavailable" },
@@ -145,6 +143,22 @@ test("a closed chooser only opens: a prompt answered after closing does not brin
   }
 
   assert.equal(connectFlow(CLOSED, { type: "open" }).step, "choose");
+  // The prompt was approved after the chooser was closed: the wallet is connected, and a
+  // connected wallet signs in and has a username.
+  assert.equal(
+    connectFlow(CLOSED, { type: "connected", signedIn: false, hasProfile: null }).step,
+    "signin",
+  );
+  assert.equal(
+    connectFlow(CLOSED, { type: "connected", signedIn: true, hasProfile: false }).step,
+    "username",
+  );
+  assert.equal(connectFlow(CLOSED, { type: "signed_in", hasProfile: false }).step, "username");
+  // With a username already, there is nothing to bring up.
+  assert.deepEqual(
+    connectFlow(CLOSED, { type: "connected", signedIn: true, hasProfile: true }),
+    CLOSED,
+  );
 });
 
 /* Joining: the wallet that was connected has no account, and the person already has one. */
@@ -253,4 +267,26 @@ test("a profile is read with its username, and one that is missing or unread is 
     }) as typeof fetch),
     null,
   );
+});
+
+test("a connected wallet finishes arriving or disconnects: the steps that cannot simply be closed", () => {
+  const at = (step: ConnectFlowState["step"], joining = false): ConnectFlowState => ({
+    step,
+    busy: false,
+    error: null,
+    joining,
+  });
+
+  // Nothing is connected yet, or everything is done.
+  assert.equal(mustFinish(at("choose")), false);
+  assert.equal(mustFinish(at("joined", true)), false);
+  assert.equal(mustFinish(CLOSED), false);
+  // The first passkey could not open a wallet: nothing connected.
+  assert.equal(mustFinish(at("prf")), false);
+
+  assert.equal(mustFinish(at("signin")), true);
+  assert.equal(mustFinish(at("username")), true);
+  assert.equal(mustFinish(at("join", true)), true);
+  // The other wallet's passkey could not open one: this wallet is still connected.
+  assert.equal(mustFinish(at("prf", true)), true);
 });

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Button, Icon, Input } from "@pickler/ui";
 import type { IconName } from "@pickler/ui";
-import type { ConnectFlowState, ConnectStep } from "../lib/connect-flow";
+import { mustFinish, type ConnectFlowState, type ConnectStep } from "../lib/connect-flow";
 import { shortAddress } from "../lib/provider";
 import type { ConnectMode, SignerKind } from "../lib/signer";
 import { useHandleClaim, type HandleState } from "../lib/use-handle-claim";
@@ -114,12 +114,17 @@ interface ConnectModalProps {
   onJoinWith: (kind: SignerKind) => void;
   onBack: () => void;
   onClose: () => void;
+  /** Disconnects the wallet: the only way out of a step that has to be finished. */
+  onLeave: () => void;
 }
 
 export function ConnectModal(props: ConnectModalProps) {
-  const { flow, holding, picking, kind, onClose } = props;
+  const { flow, holding, picking, kind, onClose, onLeave } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const open = flow.step !== "closed";
+  // A wallet that connected finishes arriving or disconnects. On those steps nothing closes the
+  // chooser by accident — not Escape, not a click outside — and the one way out says what it does.
+  const held = mustFinish(flow);
 
   // `showModal` is what makes it a modal: the page behind goes inert, focus is trapped, and
   // Escape closes it without a keydown listener of our own.
@@ -160,11 +165,13 @@ export function ConnectModal(props: ConnectModalProps) {
       aria-labelledby="connect-title"
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (!held) {
+          onClose();
+        }
       }}
       // A click that lands on the dialog itself landed on the backdrop: the card is a child.
       onClick={(event) => {
-        if (event.target === dialog.current) {
+        if (event.target === dialog.current && !held) {
           onClose();
         }
       }}
@@ -177,9 +184,25 @@ export function ConnectModal(props: ConnectModalProps) {
         </p>
         <header className={styles.head}>
           <p className={styles.label}>{flow.step === "closed" ? "" : EYEBROW[flow.step]}</p>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
-            <Icon name="x" size={14} />
-          </button>
+          {held ? (
+            <button
+              type="button"
+              className={styles.leave}
+              aria-disabled={flow.busy || undefined}
+              onClick={() => {
+                if (!flow.busy) {
+                  onLeave();
+                }
+              }}
+            >
+              Disconnect
+              <Icon name="x" size={12} />
+            </button>
+          ) : (
+            <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
+              <Icon name="x" size={14} />
+            </button>
+          )}
         </header>
 
         {holding && (
@@ -361,7 +384,7 @@ function SignIn({ flow, address, kind, onSignIn }: ConnectModalProps) {
       <p className={styles.fine}>
         {flow.joining
           ? "It is a line of text: it costs nothing and moves nothing."
-          : "Your wallet will show the message before you sign it. Close this to stay connected without an account."}
+          : "Your wallet will show the message before you sign it. A connected wallet signs in; to leave without signing, disconnect."}
       </p>
       <Connected address={address} kind={kind} />
     </>
