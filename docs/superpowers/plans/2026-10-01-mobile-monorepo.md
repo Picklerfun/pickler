@@ -8,6 +8,18 @@
 
 **Tech Stack:** npm 10.9.3 workspaces, Turborepo, Expo 57 / React Native 0.86, `node:test` with `tsx`, Jest (`jest-expo`), `@scure/bip32` and `@scure/bip39` 2.3.0, Hono on Workers.
 
+**What changed while executing (2026-10-01).** The plan below is kept as written; these four points
+are where the work departed from it, and `docs/specs/mobile-monorepo-v1.md` §5 has the reasons.
+
+- Task 3: the app's `viem` stays at 2.55.13, and the root lockfile was seeded with the app's own
+  locked tree instead of being resolved afresh, which had moved a hundred transitive packages.
+- Task 3: the root architecture check validates Markdown links, so the old repository README and
+  one imported plan had their root-relative links corrected in Task 5.
+- Task 4: the app drops its direct `@scure/bip32` and `@scure/bip39` dependencies (the package
+  carries them), `jest.config.js` gains `modulePaths`, and the package typechecks `src` only.
+- Task 8: `expo run:ios` wanted a signing certificate, so the simulator build is `xcodebuild` in
+  Release with signing off, which also bundles the JavaScript through Metro.
+
 **Conventions for every task:**
 
 - Worktree: `/Users/Juvenal/Development/Pickler/pickler-mobile`, branch `codex/mobile-monorepo`. Never touch `../pickler` or `../pickler-turnkey`.
