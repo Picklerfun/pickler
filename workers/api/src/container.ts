@@ -418,7 +418,9 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     authenticate,
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(repository.pool),
+    growth: createGrowthServices(repository.pool, {
+      ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
+    }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),

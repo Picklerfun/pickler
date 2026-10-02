@@ -37,5 +37,7 @@
     "TURNKEY_RPID": "localhost",
     "TURNKEY_APP_NAME": "Pickler",
     "CHAIN_ID": "10143",
+    // The Perpl network /v1/marketplace/markets reads. Remove it to serve the sample board.
+    "PERPL_BOARD_NETWORK": "testnet",
   },
 }

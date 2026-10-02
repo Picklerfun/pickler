@@ -31,6 +31,10 @@ TURNKEY_DELEGATED_API_PRIVATE_KEY=
 # Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
 CHAIN_ID=10143
 MONAD_RPC_URL=
+# The Perpl network the public market board reads: testnet or mainnet. Absent serves the sample
+# board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
+# public API from this machine.
+PERPL_BOARD_NETWORK=testnet
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.

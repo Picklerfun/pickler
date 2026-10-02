@@ -14,7 +14,7 @@ import type {
   PerpMarketDto,
   MarketDetailDto,
 } from "@pickler/api-schema";
-import { apiJson, apiFetch, apiRead, apiReadOne } from "./api-client";
+import { apiJson, apiFetch, apiRead, apiReadOne, apiReadVenueItem } from "./api-client";
 import { EMPTY_LEADERBOARD, emptyAnalytics } from "./api-read";
 
 // Presentation facade over the sole business API; no database or provider adapters.
@@ -40,7 +40,7 @@ export const services = {
   getRead: (id: string) => apiReadOne<AgentReadDto>(`/marketplace/reads/${encodeURIComponent(id)}`),
   listMarkets: () => apiRead<PerpMarketDto[]>("/marketplace/markets", []),
   getMarket: (symbol: string) =>
-    apiReadOne<MarketDetailDto>(`/marketplace/markets/${encodeURIComponent(symbol)}`),
+    apiReadVenueItem<MarketDetailDto>(`/marketplace/markets/${encodeURIComponent(symbol)}`),
   getAgentProfile: (ticker: string) =>
     apiReadOne<AgentProfileDto>(`/marketplace/profiles/${encodeURIComponent(ticker)}`),
   getPickDetail: (ticker: string, id: string) =>

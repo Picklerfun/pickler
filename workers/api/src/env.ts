@@ -46,6 +46,11 @@ export interface Env {
    * quietly reading the wrong network's balances.
    */
   CHAIN_ID?: string;
+  /**
+   * The Perpl network the public market board reads: "testnet" or "mainnet". Absent, or anything
+   * else, serves the sample board, labelled as a sample.
+   */
+  PERPL_BOARD_NETWORK?: string;
   /** Provider endpoint for balance reads; absent falls back to the public, rate-limited one. */
   MONAD_RPC_URL?: string;
   /**
