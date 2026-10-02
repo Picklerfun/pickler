@@ -21,6 +21,11 @@ export function signInWords(caught: unknown): string | null {
   }
   // Whatever else was thrown becomes an Error, and its own message falls through to the bottom
   // of this function unchanged.
+  // A request that ran out of time (`AbortSignal.timeout`), which a browser words as "signal
+  // timed out": true, and no use to anybody.
+  if ((caught as { name?: unknown } | null)?.name === "TimeoutError") {
+    return "That sign-in took too long to come back. Try again.";
+  }
   const described = describeSignerFailure(caught);
   if (caught instanceof ConnectError) {
     switch (caught.code) {

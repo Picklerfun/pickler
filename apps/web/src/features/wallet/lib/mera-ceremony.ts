@@ -13,8 +13,9 @@ import type { ConnectResult } from "./connect";
  *   in a `finally`, so also when the ceremony is refused or throws half-way.
  *
  * What this cannot wipe, because JavaScript gives no way to: the mnemonic, which is a string, the
- * big integers the curve library computes with, and the browser's own copy of the PRF output
- * inside the credential it returned. They are unreachable once this returns and are left to the
+ * big integers the curve library computes with, the temporaries of the derivation library (the
+ * HMAC output each child key is cut from), and the browser's own copy of the PRF output inside
+ * the credential it returned. They are unreachable once this returns and are left to the
  * garbage collector. "No key kept" means nothing reachable holds one, not that memory was scrubbed.
  *
  * Its parts are handed in — the prompt, the key libraries, the two requests — so all of that is
@@ -112,7 +113,6 @@ export async function runMeraCeremony(ceremony: MeraCeremony): Promise<MeraOpene
   if (!passkey) {
     return null;
   }
-  ceremony.onPasskey?.(passkey.credentialId);
 
   let privateKey: Uint8Array | undefined;
   let opened: OpenedKey | undefined;
@@ -130,6 +130,7 @@ export async function runMeraCeremony(ceremony: MeraCeremony): Promise<MeraOpene
   let message: string;
   let signature: string;
   try {
+    ceremony.onPasskey?.(passkey.credentialId);
     try {
       privateKey = ceremony.kit.privateKeyFromPrf(passkey.prfOutput);
     } finally {

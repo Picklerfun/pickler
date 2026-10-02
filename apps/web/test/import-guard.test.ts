@@ -171,6 +171,9 @@ test("a path spelled another way, or a file of another kind, does not get round 
     `import { landing } from "../../../features/auth/lib/custody";`,
     `import { landing } from "@/features/../features/auth/lib/custody";`,
     `import { landing } from "@/features/auth/lib/supabase-browser/../custody";`,
+    `import { landing } from "@/features/./auth/lib/custody";`,
+    `import { landing } from "../.././auth/lib/custody";`,
+    `import { landing } from "@/features//auth/lib/custody";`,
     // The exemption is the auth feature's client, not a file of that name anywhere.
     `import { getSupabase } from "@/features/studio/lib/supabase-browser";`,
     `import { config } from "@/features/account/lib/config";`,
@@ -221,6 +224,19 @@ test("a path spelled another way, or a file of another kind, does not get round 
     1,
   );
 
+  assert.equal(
+    (await refused("apps/web/src/features/studio/lib/late.mts", `import "@category-labs/mera";`))
+      .length,
+    1,
+  );
+
+  // The packages the page bundles.
+  for (const file of ["packages/chain/src/index.ts", "packages/api-schema/src/index.ts"]) {
+    assert.equal((await refused(file, `import "@category-labs/mera";`)).length, 1, file);
+    assert.equal((await refused(file, `void import("@pickler/mera-account");`)).length, 1, file);
+    assert.equal((await refused(file, `import { x } from "@pickler/infrastructure";`)).length, 1);
+  }
+
   // The shared components run in the same page.
   const component = "packages/ui/src/button.tsx";
   assert.equal((await refused(component, `import "@category-labs/mera";`)).length, 1);
@@ -235,15 +251,25 @@ test("no file in the page switches the guard off in a comment", () => {
       if (entry.isDirectory()) {
         return sources(full);
       }
-      return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name) ? [full] : [];
+      return /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(entry.name) ? [full] : [];
     });
 
-  const offenders = [path.join(ROOT, "apps/web/src"), path.join(ROOT, "packages/ui/src")]
+  const offenders = [
+    "apps/web/src",
+    "packages/ui/src",
+    "packages/chain/src",
+    "packages/api-schema/src",
+  ]
+    .map((directory) => path.join(ROOT, directory))
     .flatMap(sources)
     .filter((file) =>
       readFileSync(file, "utf8")
         .split("\n")
         .some((line) => {
+          // A rule's options rewritten in a comment switch it off as well as a disable does.
+          if (/\/\*\s*eslint\s[^*]*(no-restricted-imports|no-restricted-syntax)/.test(line)) {
+            return true;
+          }
           const directive = /eslint-(disable|enable)(-next-line|-line)?\b(.*)/.exec(line);
           if (!directive) {
             return false;

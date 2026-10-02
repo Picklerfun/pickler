@@ -88,6 +88,8 @@ export async function hasProfile(
   try {
     const response = await fetchImpl("/api/v1/profile", {
       headers: { Authorization: `Bearer ${token}` },
+      // The chooser waits on this before it moves on; "not known" is an answer it has a step for.
+      signal: AbortSignal.timeout(10_000),
     });
     if (response.ok) {
       return true;

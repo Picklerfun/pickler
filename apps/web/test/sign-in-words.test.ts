@@ -28,3 +28,9 @@ test("an unrecognised failure still says something a person can read", () => {
   assert.ok(words);
   assert.ok(words.length > 0);
 });
+
+test("a request that ran out of time is said in words, not as the browser words it", () => {
+  const timedOut = Object.assign(new Error("signal timed out"), { name: "TimeoutError" });
+
+  assert.equal(signInWords(timedOut), "That sign-in took too long to come back. Try again.");
+});

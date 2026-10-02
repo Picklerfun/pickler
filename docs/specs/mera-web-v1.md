@@ -84,7 +84,8 @@ zeroed before the signature is presented, in a `finally`. The derivation wipes e
 went through. The Mera SDK and the derivation are fetched when the chooser opens, not with the
 page, so that the passkey prompt follows the click without a download in between.
 
-What zeroing cannot reach: the mnemonic is a string, the curve library computes with big integers,
+What zeroing cannot reach: the mnemonic is a string, the curve and derivation libraries compute
+with big integers and temporaries of their own,
 and the browser keeps its own copy of the PRF output in the credential it returned. They are
 unreachable after the ceremony and are the garbage collector's. "No key is kept" means nothing
 reachable holds one.

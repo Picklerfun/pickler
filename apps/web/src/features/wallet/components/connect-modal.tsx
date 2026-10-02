@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button, Field, Icon, Input } from "@pickler/ui";
 import type { IconName } from "@pickler/ui";
 import type { ConnectFlowState } from "../lib/connect-flow";
@@ -52,6 +52,8 @@ interface ConnectModalProps {
   /** The connected address, once there is one. */
   address: string | null;
   kind: SignerKind | null;
+  /** The wallet the chooser is waiting on: the one just picked, not the one connected. */
+  picking: SignerKind | null;
   onPick: (kind: SignerKind, mode: ConnectMode | null) => void;
   onSignIn: () => void;
   onBack: () => void;
@@ -122,9 +124,7 @@ export function ConnectModal(props: ConnectModalProps) {
   );
 }
 
-function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
-  // Which wallet the person is waiting on is the one they just picked, not the one connected.
-  const [picked, setPicked] = useState<SignerKind | null>(null);
+function Choose({ flow, choices, kind, picking, onPick }: ConnectModalProps) {
   return (
     <>
       <h2 id="connect-title" className={styles.title}>
@@ -144,10 +144,7 @@ function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
                 type="button"
                 className={styles.choice}
                 disabled={choice.unavailable !== null || flow.busy}
-                onClick={() => {
-                  setPicked(choice.kind);
-                  onPick(choice.kind, choice.mode);
-                }}
+                onClick={() => onPick(choice.kind, choice.mode)}
               >
                 <span className={styles.choiceIcon} aria-hidden="true">
                   <Icon name={copy.icon} size={18} />
@@ -169,7 +166,7 @@ function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
         })}
       </ul>
 
-      {flow.busy && <p className={styles.waiting}>{WAITING[picked ?? kind ?? "injected"]}</p>}
+      {flow.busy && <p className={styles.waiting}>{WAITING[picking ?? kind ?? "injected"]}</p>}
       <Failure flow={flow} />
 
       <p className={styles.foot}>

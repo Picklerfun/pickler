@@ -31,9 +31,10 @@ const MERA_PACKAGES = "(^|/)(@category-labs/mera|@pickler/mera-account)(/|$)";
 const MERA_MODULES = "(^|/)wallet/lib/mera-";
 const TURNKEY_PACKAGES = "(^|/)@turnkey/";
 // Everything of the three, reached as `features/<name>` or as `../<name>`, except the Supabase
-// client and its configuration in `features/auth/lib`.
+// client and its configuration in `features/auth/lib`. `./` and an empty segment between the two
+// are stepped over, so `features/./auth` is `features/auth`.
 const STUDIO_SIDE =
-  "(^|/)(features|\\.\\.)/(?!auth/lib/(supabase-browser|config)$)(auth|studio|account)(/|$)";
+  "(^|/)(features|\\.\\.)/(\\.?/)*(?!auth/lib/(supabase-browser|config)$)(auth|studio|account)(/|$)";
 
 const NO_MERA_PACKAGES = `Only features/wallet/lib/mera-*.ts loads the Mera SDK or derives its account (${MERA_SPEC}).`;
 const NO_MERA_MODULES = `The passkey wallet's modules are used inside features/wallet only; everything else goes through its wallet context (${MERA_SPEC}).`;
@@ -86,26 +87,34 @@ export default defineConfig([
       "packages/chain/**/*.{ts,tsx}",
     ],
     rules: {
+      // The web bundles api-schema and chain into the page, so the Mera packages are closed to
+      // these three as they are to the web itself.
       "no-restricted-imports": [
         "error",
         {
           patterns: [
-            "next",
-            "next/*",
-            "react",
-            "@pickler/trading",
-            "@pickler/trading/*",
-            "@pickler/infrastructure",
-            "@pickler/ui",
-            "@pickler/web",
-            "@pickler/core",
-            "@pickler/api-schema",
-            "@pickler/chain",
-            "@mastra/*",
-            "@ai-sdk/*",
+            {
+              group: [
+                "next",
+                "next/*",
+                "react",
+                "@pickler/trading",
+                "@pickler/trading/*",
+                "@pickler/infrastructure",
+                "@pickler/ui",
+                "@pickler/web",
+                "@pickler/core",
+                "@pickler/api-schema",
+                "@pickler/chain",
+                "@mastra/*",
+                "@ai-sdk/*",
+              ],
+            },
+            { regex: MERA_PACKAGES, message: NO_MERA_PACKAGES },
           ],
         },
       ],
+      "no-restricted-syntax": dynamic([MERA_PACKAGES, NO_MERA_PACKAGES]),
     },
   },
   {
@@ -142,7 +151,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["packages/ui/**/*.{ts,tsx}"],
+    files: ["packages/ui/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
     rules: {
       // The components run in the same page as the wallet, so the Mera packages are closed to
       // them as they are to the rest of the web.
@@ -161,7 +170,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["apps/web/src/**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+    files: ["apps/web/src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
     rules: {
       "no-restricted-imports": restricted(
         { regex: MERA_PACKAGES, message: NO_MERA_PACKAGES },
@@ -174,7 +183,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["apps/web/src/features/wallet/**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+    files: ["apps/web/src/features/wallet/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
     rules: {
       "no-restricted-imports": restricted(
         { regex: MERA_PACKAGES, message: NO_MERA_PACKAGES },

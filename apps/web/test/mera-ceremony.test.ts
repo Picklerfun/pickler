@@ -270,3 +270,20 @@ test("a prompt that threw is named: closed, no PRF output, or a real failure", (
   assert.equal(promptFailure(dom("NotAllowedError"), isMeraError), "failed");
   assert.equal(promptFailure(null, isMeraError), "failed");
 });
+
+test("the PRF output is zeroed even when whoever was told about the passkey throws", async () => {
+  const { prf, prfOutput } = passkey(second!.prfOutput);
+  const { calls, fetchImpl } = api();
+
+  await assert.rejects(
+    ceremony(prf, fetchImpl, undefined, {
+      onPasskey: () => {
+        throw new Error("could not note it down");
+      },
+    }),
+    /could not note it down/,
+  );
+
+  assert.ok(prfOutput.every((byte) => byte === 0));
+  assert.deepEqual(calls, []);
+});

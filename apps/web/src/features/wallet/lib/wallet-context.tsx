@@ -98,6 +98,15 @@ const subscribeToBrowser = () => () => {};
 const inBrowser = () => true;
 const onServer = () => false;
 
+/** What signing in answered, and whether that account has a username (null: not known). */
+interface Kept {
+  result: SignInResult;
+  profile: boolean | null;
+}
+
+/** How long a new session waits for the last one's sign-out before going ahead anyway. */
+const RELEASE_WAIT_MS = 3_000;
+
 /** An address for the chooser's steps when the design harness opens them without a wallet. */
 const PREVIEW_ADDRESS = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
@@ -181,6 +190,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [flow, dispatch] = useReducer(connectFlow, CLOSED);
   const [previewClosed, setPreviewClosed] = useState(false);
   const [profile, setProfile] = useState<boolean | null>(null);
+  // The same value, for the callbacks that answer with it outside a render.
+  const profileRef = useRef<boolean | null>(null);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -190,8 +201,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // The account as of the last render, for telling a change of chain from a change of
   // address when the held session has no address of its own.
   const accountRef = useRef<SignerAccount | null>(null);
-  // A connect is waiting on a wallet's or a passkey's prompt.
-  const flight = useRef(false);
+  // Which connect is the current one: a later pick takes over from one still waiting on a wallet.
+  const generation = useRef(0);
+  // A passkey ceremony is running. Unlike a browser wallet's prompt it always ends.
+  const meraFlight = useRef(false);
+  // The wallet the chooser is waiting on, for its waiting line.
+  const [picking, setPicking] = useState<SignerKind | null>(null);
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
@@ -229,6 +244,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setHeld(next);
   }, []);
 
+  /** What is known about the held session's account having a username. */
+  const know = useCallback((next: boolean | null) => {
+    profileRef.current = next;
+    setProfile(next);
+  }, []);
+
   useEffect(() => {
     accountRef.current = account;
   }, [account]);
@@ -255,7 +276,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         // Whether that account has a username yet, so the portfolio can still ask after a reload.
         void readHasProfile(data.session.access_token).then((known) => {
           if (live && heldRef.current === adopted) {
-            setProfile(known);
+            know(known);
           }
         });
       },
@@ -264,7 +285,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return () => {
       live = false;
     };
-  }, [hold]);
+  }, [hold, know]);
 
   /**
    * Lets go of the session unless it belongs to `next`: the token is forgotten and the browser is
@@ -286,13 +307,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       hold(null);
       // What is known about a username is known about that session's account.
-      setProfile(null);
+      know(null);
       // Best effort: the token is already forgotten here, which is what keeps it from being sent.
       // The promise is for a caller about to put another session in the same client: the sign-out
       // reads which session is there before it ends it, so it has to finish first.
       return dropWalletSession(getSupabase(), cached).catch(() => {});
     },
-    [hold],
+    [hold, know],
   );
 
   // Follow the active signer when it changes underneath the page.
@@ -311,14 +332,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   /**
    * Takes the session a sign-in issued: the browser's Supabase client holds it, and the page
-   * holds it with the address it was issued for. Answers with the access token, or null when the
-   * session could not be kept.
+   * holds it with the address it was issued for. `profile` is whether that account has a username.
+   * It is read again whenever a session is issued, so it always describes the account that just
+   * signed in — after a reload the page may be holding what it knew about another one.
    */
   const keep = useCallback(
     async (
       signer: Signer | null,
       issue: (signer: Signer) => Promise<ConnectResult>,
-    ): Promise<SignInResult> => {
+    ): Promise<Kept> => {
       const { result, session } = await signInAs({
         cached: heldRef.current,
         signer,
@@ -326,20 +348,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         signIn: issue,
         now: new Date(),
       });
-      if (session) {
-        hold(session);
-      }
       setSessionError("error" in result ? result.error : null);
-      return result;
+      if (!session) {
+        // Refused, or the token already held was handed back: nothing new is known.
+        return { result, profile: profileRef.current };
+      }
+      hold(session);
+      know(null);
+      const known = await readHasProfile(session.token);
+      if (heldRef.current === session) {
+        know(known);
+      }
+      return { result, profile: known };
     },
-    [hold],
+    [hold, know],
   );
 
   const connectWith = useCallback(
     async (picked: SignerKind, mode?: ConnectMode) => {
       const signer = SIGNERS.find((candidate) => candidate.kind === picked);
-      // One prompt at a time: a second pick while a wallet is still answering the first is dropped.
-      if (!signer || flight.current) {
+      // A passkey ceremony always ends — its prompt is modal and its requests time out — so a
+      // second pick waits for it rather than starting another beside it.
+      if (!signer || meraFlight.current) {
         return;
       }
       if (picked === "mera" && !getSupabase()) {
@@ -348,12 +378,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "failed", error: "Signing in is not configured in this build." });
         return;
       }
-      flight.current = true;
+      // A browser wallet may never answer: its window was closed, or ignored. So a later pick
+      // takes over rather than waiting, and whatever the earlier one says afterwards is dropped.
+      const mine = ++generation.current;
+      const current = () => mine === generation.current;
+      meraFlight.current = picked === "mera";
+      setPicking(picked);
       setConnecting(true);
       setError(null);
       dispatch({ type: "working" });
       try {
         const connected = await signer.connect(mode);
+        if (!current()) {
+          return;
+        }
         if (!connected) {
           dispatch({ type: "prompt_closed" });
           return;
@@ -369,9 +407,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
         // The passkey wallet signed in inside the ceremony that connected it. The last session is
-        // signed out of first, or its sign-out would end this one.
-        await released;
-        const result = await keep(
+        // signed out of first, or its sign-out would end this one; a sign-out that hangs is not
+        // waited for, since it was best effort to begin with.
+        await Promise.race([released, new Promise((done) => setTimeout(done, RELEASE_WAIT_MS))]);
+        const { result, profile: known } = await keep(
           {
             address: shown.address,
             chainId: TARGET_CHAIN.chainId,
@@ -388,13 +427,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        const known = await readHasProfile(result.token);
-        setProfile(known);
         dispatch({ type: "connected", signedIn: true, hasProfile: known });
         if (known !== false) {
           setHolding(null);
         }
       } catch (caught) {
+        if (!current()) {
+          return;
+        }
         if (caught instanceof PrfUnavailableError) {
           dispatch({ type: "prf_unavailable" });
           return;
@@ -411,14 +451,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setError(words);
         dispatch({ type: "failed", error: words });
       } finally {
-        flight.current = false;
-        setConnecting(false);
+        if (picked === "mera") {
+          meraFlight.current = false;
+        }
+        if (current()) {
+          setConnecting(false);
+        }
       }
     },
     [keep, release],
   );
 
-  const signInWithWallet = useCallback(async (): Promise<SignInResult> => {
+  /** Signs in with the connected wallet, and says whether the account has a username. */
+  const signInKeeping = useCallback(async (): Promise<Kept> => {
     setSigning(true);
     setSessionError(null);
     try {
@@ -452,41 +497,50 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [account, adapter, keep]);
 
+  const signInWithWallet = useCallback(
+    async (): Promise<SignInResult> => (await signInKeeping()).result,
+    [signInKeeping],
+  );
+
   /** The chooser's sign-in step: one signature, then on to the username or out. */
   const signInFromChooser = useCallback(async () => {
     dispatch({ type: "working" });
-    const result = await signInWithWallet();
+    const { result, profile: known } = await signInKeeping();
     if ("error" in result) {
       dispatch(
         result.error === null ? { type: "prompt_closed" } : { type: "failed", error: result.error },
       );
       return;
     }
-    const known = await readHasProfile(result.token);
-    setProfile(known);
     dispatch({ type: "signed_in", hasProfile: known });
     if (known !== false) {
       setHolding(null);
     }
-  }, [signInWithWallet]);
+  }, [signInKeeping]);
 
   const profileClaimed = useCallback(() => {
-    setProfile(true);
+    know(true);
     setHolding(null);
     dispatch({ type: "claimed" });
-  }, []);
+  }, [know]);
 
   const closeChooser = useCallback(() => {
     setPreviewClosed(true);
     dispatch({ type: "close" });
+    if (!meraFlight.current) {
+      // A browser wallet that has not answered may never answer. The site stops saying it is
+      // waiting, so the person can ask again; if the wallet does answer, it still connects.
+      setConnecting(false);
+    }
   }, []);
 
   const connect = useCallback((held?: string) => {
     setHolding(held ?? null);
     setError(null);
     dispatch({ type: "open" });
-    if (flight.current) {
-      // Closed and opened again while a prompt is still up: the chooser is still waiting on it.
+    if (meraFlight.current) {
+      // Closed and opened again while a passkey ceremony is finishing: the chooser waits for it.
+      // A browser wallet that has not answered is not waited for; picking again takes over.
       dispatch({ type: "working" });
     }
     for (const signer of SIGNERS) {
@@ -590,6 +644,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         holding={holding}
         address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
         kind={kind}
+        picking={picking}
         onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
         onSignIn={() => void signInFromChooser()}
         onBack={() => dispatch({ type: "back" })}
