@@ -1,17 +1,24 @@
+import type { ConnectResult } from "./connect";
+
 /**
  * What the site needs from whatever holds the person's keys.
  *
- * One thing sits behind this shape: the wallet the person brought, injected by their browser. It
- * can be pointed at the wrong chain and it changes under the page when they switch account, so the
- * verbs for following it and for moving it stay optional on the contract — a page that wants to
- * offer "switch network" asks whether the verb exists rather than asking which wallet this is.
+ * Two things sit behind this shape, and only two (docs/specs/mera-web-v1.md). A browser wallet the
+ * person brought: it can be pointed at the wrong chain and it changes under the page when they
+ * switch account, so the verbs for following it and for moving it stay optional on the contract —
+ * a page that wants to offer "switch network" asks whether the verb exists rather than asking
+ * which wallet this is. And the Mera passkey wallet: the same account as in the mobile app, whose
+ * key exists only for the length of one passkey ceremony and is never kept.
  *
- * The person's own Pickler wallet is not one of these and is never derived in the page. It is
- * custodied in Turnkey — the key lives in the enclave, the passkey is the only root user of their
- * sub-organization — and the site reaches it through the signing API, never by holding a key here.
+ * The studio's Turnkey wallet is not one of these and never will be. It is custodied — the key
+ * lives in an enclave, and a passkey authorises activities there — and it belongs to another
+ * product on another host.
  */
 
-export type SignerKind = "injected";
+export type SignerKind = "injected" | "mera";
+
+/** How a signer with more than one way in is asked to connect. Only the passkey wallet has two. */
+export type ConnectMode = "create" | "existing";
 
 export interface SignerAccount {
   address: string;
@@ -19,6 +26,11 @@ export interface SignerAccount {
   chainId: number | null;
   /** Native balance in wei. Null when unknown or the chain is unreachable. */
   balance: bigint | null;
+  /**
+   * The session, when connecting already signed in. The passkey wallet does both in one ceremony,
+   * so that a person is asked for their passkey once; a browser wallet signs in as its own step.
+   */
+  session?: ConnectResult;
 }
 
 export interface SignerAdapter {
@@ -34,12 +46,34 @@ export interface SignerAdapter {
    */
   note?: () => string | null;
   /**
+   * The chooser just opened: fetch whatever a later `connect` would otherwise have to wait for.
+   * Never prompts.
+   */
+  prepare?: () => void;
+  /**
    * Pick up a connection that already exists, without prompting. Null when there is nothing to
    * pick up, which includes a signer that cannot resume silently at all.
    */
   resume: () => Promise<SignerAccount | null>;
   /** The one call allowed to prompt. Null when the person closed the prompt. */
-  connect: () => Promise<SignerAccount | null>;
+  connect: (mode?: ConnectMode) => Promise<SignerAccount | null>;
+  /**
+   * Signs in again as the connected account, for a signer that needs its own ceremony to sign.
+   * Absent on a signer whose provider signs a string on request. Throws `{ code: 4001 }` when the
+   * person closes the prompt, as a browser wallet does.
+   */
+  signIn?: (expectedAddress: string) => Promise<ConnectResult>;
+  /**
+   * The person already has an account under a wallet of this kind. That wallet signs a message
+   * naming `joining`, the connected wallet, and the account `token` is the session of — the bare
+   * one the connected wallet was just given — is folded into it. Answers with the wallet that signed and the kept account's session; the
+   * connection does not change. Null when the person closed the prompt; throws what the wallet or
+   * the API threw.
+   */
+  join: (
+    token: string,
+    joining: string,
+  ) => Promise<{ address: string; session: ConnectResult } | null>;
   disconnect: () => Promise<void>;
   /** Follow changes made outside the page. Only an injected wallet has them. */
   subscribe?: (onChange: (account: SignerAccount | null) => void) => () => void;

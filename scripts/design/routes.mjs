@@ -293,6 +293,60 @@ const ALL = [
     task: "Gated",
     proves: "[data-connect-gate]",
   },
+  // The wallet chooser's steps. Every step after the first is behind a wallet's prompt or a
+  // session, which no headless browser has, so `?wallet=<step>` opens the chooser on that step
+  // outside production only (apps/web/src/features/wallet/lib/wallet-context.tsx). Each proves the
+  // card of its own step, so a parameter that fell back to the first step is not reported green.
+  {
+    path: "/markets?wallet=choose",
+    name: "wallet-choose",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-choose",
+  },
+  {
+    path: "/markets?wallet=signin",
+    name: "wallet-signin",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-signin",
+  },
+  {
+    path: "/markets?wallet=username",
+    name: "wallet-username",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-username",
+  },
+  {
+    path: "/markets?wallet=prf",
+    name: "wallet-no-prf",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-prf",
+  },
+  // The username step's other way out: "I already have an account", and the step that says the
+  // wallet now opens it. Both sit behind a second wallet's signature.
+  {
+    path: "/markets?wallet=join",
+    name: "wallet-join",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-join",
+  },
+  {
+    path: "/markets?wallet=joined",
+    name: "wallet-joined",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-joined",
+  },
   // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
   // for a request carrying the apply cookie, and without one the route answers with NoSeat — a
   // whole authored screen, so this measures a screen rather than a stub. The form behind it is
@@ -362,7 +416,7 @@ const ALL = [
   // wallet, a wallet not funded, funded, advanced open, the web on with sites, the create sheet in
   // each phase, the wallet sheet at each of its two steps, the Wallets modal with a transfer open,
   // AI credits and the avatar picker. Each proves the state it stages, so a stage that fell back to
-  // another is not reported green. The draft home after create is `?stage=draft`.
+  // another is not reported green. The draft studio after create is `?stage=draft`, its Overview.
   {
     path: "/studio?stage=create-empty",
     name: "studio-create-empty",
@@ -475,13 +529,124 @@ const ALL = [
     task: "Create v5",
     proves: "#new-agent-avatar[open]",
   },
+  /* The draft studio (studio-draft-dashboard-v1 §7), one route per `?stage=draft*` in DRAFT_STAGES
+   * (apps/web/src/features/studio/home/stage.ts). `draft` is the Overview right after create; the
+   * four X stages are Go Public's card on the Overview with the X row open, the post not found
+   * after "Check again", the account verified and X skipped, so each proves that card's state
+   * rather than the Overview, which all four share. The rest prove their section, and
+   * `draft-locked` proves the panel Activity shows while the agent is private. */
   {
     path: "/studio?stage=draft",
-    name: "studio-home-draft",
+    name: "studio-draft-overview",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: "#home-go-public",
+    task: "Draft dashboard",
+    proves: "#draft-section-overview",
+  },
+  {
+    path: "/studio?stage=draft-x-open",
+    name: "studio-draft-x-open",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-go-public-x:not(:has(#draft-go-public-x-miss)) #draft-go-public-x-handle",
+  },
+  {
+    path: "/studio?stage=draft-x-miss",
+    name: "studio-draft-x-miss",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-go-public-x-miss",
+  },
+  {
+    path: "/studio?stage=draft-x-ok",
+    name: "studio-draft-x-ok",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: '#draft-go-public [role="progressbar"][aria-valuenow="1"]',
+  },
+  {
+    path: "/studio?stage=draft-x-skipped",
+    name: "studio-draft-x-skipped",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves:
+      '#draft-go-public:has(button[aria-pressed="true"]) #draft-go-public-button[data-state="ready"]',
+  },
+  {
+    path: "/studio?stage=draft-console",
+    name: "studio-draft-console",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-console",
+  },
+  {
+    path: "/studio?stage=draft-trades",
+    name: "studio-draft-trades",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-picks",
+  },
+  {
+    path: "/studio?stage=draft-brief",
+    name: "studio-draft-brief",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-brief",
+  },
+  {
+    path: "/studio?stage=draft-sources",
+    name: "studio-draft-sources",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-skills",
+  },
+  {
+    path: "/studio?stage=draft-limits",
+    name: "studio-draft-limits",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-limits",
+  },
+  {
+    path: "/studio?stage=draft-identity",
+    name: "studio-draft-identity",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-identity",
+  },
+  {
+    path: "/studio?stage=draft-trade",
+    name: "studio-draft-trade",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-trade",
+  },
+  {
+    path: "/studio?stage=draft-master",
+    name: "studio-draft-master",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-master",
+  },
+  {
+    path: "/studio?stage=draft-locked",
+    name: "studio-draft-locked",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-locked",
   },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
@@ -715,6 +880,7 @@ export const HOLDS = {
   "Task 10": ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
   "Task 11": ["apps/web/src/features/studio"],
   "Task 12": ["apps/web/src/features/studio"],
+  "Draft dashboard": ["apps/web/src/features/studio"],
   "Task 13": ["apps/web/src/features/account"],
   // No task builds it; what it is made of is still someone's to edit.
   Inherited: ["apps/web/src/features/agents"],
@@ -729,6 +895,8 @@ export const HOLDS = {
   Marketplace: ["apps/web/src/features/agents"],
   Markets: ["apps/web/src/features/markets"],
   Gated: ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
+  // The chooser is drawn over the market board, so an edit in flight in either can explain it.
+  Wallet: ["apps/web/src/features/wallet", "apps/web/src/features/markets"],
   Apply: ["apps/web/src/features/apply"],
   // Neither does any task build the auth screens — they predate this design work, which is how
   // they went fifteen routes without being measured. Their own key rather than `Inherited`

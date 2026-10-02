@@ -46,6 +46,11 @@ export interface Env {
    * quietly reading the wrong network's balances.
    */
   CHAIN_ID?: string;
+  /**
+   * The Perpl network the public market board reads: "testnet" or "mainnet". Absent, or anything
+   * else, serves the sample board, labelled as a sample.
+   */
+  PERPL_BOARD_NETWORK?: string;
   /** Provider endpoint for balance reads; absent falls back to the public, rate-limited one. */
   MONAD_RPC_URL?: string;
   /**
@@ -55,6 +60,12 @@ export interface Env {
   SIWE_DOMAIN?: string;
   /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
   WALLET_EMAIL_DOMAIN?: string;
+  /**
+   * Pickler's X app bearer token (app-only, read access), for Connect X's verification reads. A
+   * secret: it never leaves the API. Absent or empty, Connect X says it is not open yet and its
+   * challenge and verify routes answer 503 X_UNAVAILABLE.
+   */
+  X_BEARER_TOKEN?: string;
 }
 
 export interface Variables {

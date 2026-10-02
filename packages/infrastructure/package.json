@@ -54,7 +54,8 @@
     "viem": "2.56.8",
     "zod": "4.6.5",
     "@pickler/trading": "*",
-    "@pickler/api-schema": "*"
+    "@pickler/api-schema": "*",
+    "@pickler/perpl-context": "*"
   },
   "files": [
     "dist",

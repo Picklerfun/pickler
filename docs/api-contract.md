@@ -29,6 +29,11 @@ proxy without duplicating `/v1`. `/health` is a direct Worker liveness route and
 server override; the web's catch-all does not proxy it. `/v1/console` and `/v1/demo` are documented
 compatibility aliases with distinct operation ids, pointing to Studio and marketplace respectively.
 
+The contract includes the current account join, Studio draft setup and identity editing, activity,
+X verification and publication routes, wallet transfer ledger, and Perpl market provenance and
+limits. Nullable venue counts and hourly reach remain unknown rather than becoming zero. When
+these routes change, update their wire schemas and descriptions together.
+
 ## Add an endpoint
 
 1. Define or reuse its request and response wire schemas in `@pickler/api-schema`. Do not expose

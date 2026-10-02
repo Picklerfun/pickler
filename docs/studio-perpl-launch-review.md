@@ -134,7 +134,8 @@ made and funded first, then the draft is created with it. Creating a wallet-back
 prove public deployment, token creation or Perpl execution. Evidence:
 [create screen](../apps/web/src/features/studio/new-agent/new-agent.tsx),
 [wallet-first ceremony](../apps/web/src/features/studio/new-agent/ceremony.ts) and
-[disabled publication panel](../apps/web/src/features/studio/home/go-public.tsx).
+[Go Public panel](../apps/web/src/features/studio/draft/go-public.tsx)
+(disabled at the time of this review; studio-draft-dashboard-v1 makes it publish the draft).
 
 Proposed unification: use one persisted agent identity from draft through publication. Keep
 step-by-step configuration only as another editor for that same draft, then prepare/reconcile

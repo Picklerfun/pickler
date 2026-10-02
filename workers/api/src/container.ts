@@ -45,6 +45,9 @@ import {
   parseSiweMessage,
   PostgresWalletIdentityStore,
   PostgresTradingStore,
+  PostgresXStore,
+  createXClient,
+  listTransfers,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
@@ -300,6 +303,8 @@ function walletAuthServices(
   }
 
   const store = new PostgresWalletIdentityStore(pool);
+  const profiles = new PostgresProfileRepository(pool);
+  const custodyAccounts = new PostgresCustodyStore(pool);
   const supabase = {
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -324,6 +329,11 @@ function walletAuthServices(
         // it, and this isolate's admin client is shared across requests.
         sessionClient: () => createSupabaseAdmin(supabase),
       }),
+      // A username is what makes an account worth keeping: `join` gives up only one without.
+      hasProfile: async (userId) => (await profiles.findByUserId(userId)) !== null,
+      // A sub-organization and its master wallet have no row tied to the auth user, so an account
+      // that has them is never removed: read from the table `register` writes.
+      hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
       // The hyphens must go. viem's builder enforces /^[a-zA-Z0-9]{8,}$/ on the nonce, but its
       // parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)` — so a hyphenated nonce does not fail on the
       // way back, it silently truncates at the first hyphen and stops matching what was issued.
@@ -334,7 +344,8 @@ function walletAuthServices(
         buildSiweMessage({
           domain: fields.domain,
           address: fields.address as `0x${string}`,
-          statement: "Sign in to Pickler",
+          // Core writes the sentence: it is what the signature is for, and core checks it.
+          statement: fields.statement,
           uri: `https://${fields.domain}`,
           chainId: fields.chainReference,
           nonce: fields.nonce,
@@ -370,6 +381,7 @@ const noBalances = {
   read: async (): Promise<number> => {
     throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
   },
+  forget: (): void => {},
 };
 
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
@@ -414,7 +426,9 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     authenticate,
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(repository.pool),
+    growth: createGrowthServices(repository.pool, {
+      ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
+    }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
@@ -446,6 +460,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       wallets: new PostgresCustodyStore(repository.pool),
       balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
+      // Without X_BEARER_TOKEN the client is unavailable: Connect X says it is not open yet and
+      // its challenge and verify answer 503 X_UNAVAILABLE (studio-draft-dashboard-v1 D5).
+      x: {
+        store: new PostgresXStore(repository.pool),
+        client: createXClient({ bearerToken: env.X_BEARER_TOKEN || undefined }),
+      },
+      transfers: { list: (userId) => listTransfers(repository.pool, userId) },
       paper: createPaperPlugin(
         new PostgresPaperStore(repository.pool),
         new PolymarketData(),

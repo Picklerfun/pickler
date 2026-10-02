@@ -39,7 +39,7 @@ function MovementRow({ m }: { m: Movement }) {
   );
 }
 
-export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, signedOut }: AppCtx) {
+export function WalletScreen({ nav, account, treasury, perpl, identity, lock, signOut, signedOut }: AppCtx) {
   const address = accountAddress(account) ?? "";
   const available = treasury.balances ? formatAusd(treasury.balances.ausd) : "—";
   const confirming = treasury.pending.filter((m) => m.status === "Confirming").length;
@@ -126,6 +126,12 @@ export function WalletScreen({ nav, account, treasury, perpl, lock, signOut, sig
       ) : null}
       {treasury.error ? <T w={400} s={12} lh={1.4} color={C.down}>{treasury.error}</T> : null}
 
+      {identity.identity.status === "has" ? (
+        <>
+          <Tag s={10} style={{ marginTop: 6 }}>ACCOUNT</Tag>
+          <KV k="USERNAME" v={`@${identity.identity.handle}`} />
+        </>
+      ) : null}
       <Tag s={10} style={{ marginTop: 6 }}>SESSION</Tag>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <T w={400} s={12} color={C.faint} style={{ flex: 1 }}>{unlocked ? "Unlocked" : "Locked"}</T>

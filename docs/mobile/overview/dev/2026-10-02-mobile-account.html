@@ -1,0 +1,276 @@
+<!doctype html>
+<!--
+  Plantilla one-pager para fixes / features / refactors de un solo PR.
+
+  F2 update: usa _styles.css externo + campos contenteditable + botón
+  "Export final HTML" que descarga el archivo con los valores resueltos
+  a texto fijo.
+
+  Flujo:
+  1. Abre este archivo en el browser (file:// directo).
+  2. Click sobre cualquier campo punteado para editar inline.
+  3. Cuando quede listo, presiona "Descargar HTML final".
+  4. Renombra el archivo descargado a YYYY-MM-DD-<slug>.html y mueve a
+     docs/mobile/overview/dev/.
+  5. Agrega entry al manifest con types: ['fix'] | ['feature'] | ['refactor'].
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>La misma cuenta que en la web: entrar con la wallet y username obligatorio · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<style>
+  /* Overrides locales del dev one-pager */
+  .wrap { max-width: 820px; }
+  header.hero {
+    padding: 16px 0 32px;
+    background: linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%);
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1; margin: 14px 0 10px;
+    letter-spacing: -0.02em; font-weight: 800;
+  }
+  .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--ink-2); max-width: 680px; margin: 0;
+  }
+  main { padding: 32px 0 56px; }
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 18px; font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  section ul, section ol { margin: 0 0 12px; padding-left: 22px; }
+  section li { margin-bottom: 4px; font-size: 14px; color: var(--ink-2); }
+  section p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+
+  /* Editor toolbar (solo visible en modo plantilla; se quita en el export) */
+  .editor-toolbar {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 100;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 14px 16px;
+    display: flex; gap: 8px; align-items: center;
+    max-width: 340px;
+  }
+  .editor-toolbar .editor-hint {
+    font-size: 11px; color: var(--ink-3); line-height: 1.4;
+    margin-right: 6px;
+  }
+  .editor-toolbar .editor-hint b { color: var(--ink); font-weight: 700; }
+  .editor-toolbar button {
+    padding: 8px 14px; border-radius: var(--radius-s);
+    background: var(--brand); color: var(--on-brand); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+    white-space: nowrap;
+  }
+  .editor-toolbar button:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body data-slug="2026-10-02-mobile-account">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">dev/<span>2026-10-02-mobile-account</span></span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="dev-eyebrow feature" id="dev-kind" data-export-no-edit-attrs>
+      <span contenteditable="true" data-placeholder="Feature" data-export-as-text>Feature</span>
+    </span>
+    <h1>
+      <span>La misma cuenta que en la web</span>
+      <span class="accent">username obligatorio</span>
+    </h1>
+    <p class="lede">
+      Con la wallet desbloqueada, la app entra sola a la API del producto y, si la cuenta no tiene username, lo pide sin dejar saltarlo. Apagado mientras no se configure <code>PICKLER_API_URL</code>.
+    </p>
+
+    <div class="dev-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="dev-sb-pill in_progress"><span>In progress · PR abierto, sin merge</span></span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div><a href="https://github.com/Picklerfun/pickler/pull/78" style="color:var(--brand);">#78</a></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
+        <div style="font-family:var(--mono);font-size:12.5px">ef9d1909</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-10-02</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2>Qué cambió</h2>
+      <ul>
+        <li>La app entra a la API del producto con la wallet: pide el mensaje, lo firma con la llave ya abierta (sin Face ID extra) y lo presenta con <code>kind: "mera"</code>. Es la misma cuenta que en la web.</li>
+        <li>Si el servidor dice que la cuenta no tiene username, una pantalla tapa la app: se elige uno o se cierra sesión. Mismas palabras que el paso de la web.</li>
+        <li>Quien ya tiene cuenta bajo su wallet de navegador vincula este passkey en pickler.fun; la pantalla lo explica, abre la web y vuelve a comprobar.</li>
+        <li>El <code>@username</code> aparece en la pestaña Wallet. Al cerrar sesión se borra el guardado.</li>
+        <li>Sólo la respuesta del servidor retiene a alguien: API sin configurar, caída o con error no bloquea a nadie.</li>
+        <li>Sin dependencias nuevas; el token vive en memoria y sólo se guarda <code>{ address, handle }</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Por qué</h2>
+      <p>
+        La web ya entra con la wallet y exige username (PR #74), y la app deriva la misma dirección del mismo passkey, pero no hablaba con la API: no tenía sesión ni username. Juvenal pidió el 2026-10-02 que la app use la misma cuenta y que el username sea obligatorio, con el mismo flujo que la web. Spec: <code>docs/mobile/superpowers/specs/2026-10-02-mobile-account-design.md</code>.
+      </p>
+    </section>
+
+    <section>
+      <h2>Archivos tocados</h2>
+      <div class="files-box">
+        <ul>
+          <li>apps/mobile/App.tsx</li>
+          <li>apps/mobile/app.config.ts</li>
+          <li>apps/mobile/AGENTS.md</li>
+          <li>apps/mobile/src/config/api.ts</li>
+          <li>apps/mobile/src/ctx.ts</li>
+          <li>apps/mobile/src/hooks/useAccount.ts</li>
+          <li>apps/mobile/src/hooks/useIdentity.ts</li>
+          <li>apps/mobile/src/identity/api.ts</li>
+          <li>apps/mobile/src/identity/handle.ts</li>
+          <li>apps/mobile/src/identity/session.ts</li>
+          <li>apps/mobile/src/identity/state.ts</li>
+          <li>apps/mobile/src/screens/signin.tsx</li>
+          <li>apps/mobile/src/screens/username.tsx</li>
+          <li>apps/mobile/src/screens/wallet.tsx</li>
+          <li>apps/mobile/src/storage/identity.ts</li>
+          <li>apps/mobile/__tests__/identity-*.test.ts (6)</li>
+          <li>apps/mobile/__tests__/app-hooks.test.ts</li>
+          <li>docs/mobile/superpowers/specs/ 2026-10-02-mobile-account-design.md</li>
+          <li>docs/specs/mera-web-v1.md</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Validación</h2>
+      <p>
+        Jest: 51 suites, 350 tests en verde, 7 suites nuevas: reglas del handle atadas a <code>@pickler/api-schema</code>, cliente con <code>fetch</code> de mentira, entrada firmando con una llave real, el hook contra API y SecureStore de mentira (incluida la respuesta perdida y el fallo de servidor que suelta la pantalla), el camino apagado sin <code>PICKLER_API_URL</code>, la pantalla montada con <code>react-test-renderer</code>, y <code>app-hooks</code>, que impide un hook después de un <code>return</code> temprano (corrida local del 2026-10-02). Typecheck del monorepo, <code>app:tree</code> (795 paquetes, 1924 dependencias, sin cambio), <code>agents:check</code>, <code>docs:check</code> y <code>expo export</code> pasan. Build Release para simulador (<code>xcodebuild</code>, commit <code>a87c86a2</code>, sin <code>PICKLER_API_URL</code>): la app arranca y muestra Sign in. Revisión independiente: sin críticos en el diseño; encontró un fallo de arranque introducido al corregir (hook tras un return en <code>App.tsx</code>), corregido y con test.
+      </p>
+      <p>
+        <strong>No verificado:</strong> la pantalla del username en dispositivo o simulador (hace falta una wallet y la API encendida), ni nada contra la API real. No se hizo build ni subida a TestFlight. En producción la función no puede usarse todavía: <code>POST https://pickler.fun/api/v1/auth/wallet/nonce</code> responde 404 (comprobado el 2026-10-02), porque la API no tiene <code>SIWE_DOMAIN</code> configurado.
+      </p>
+    </section>
+
+    <section>
+      <details class="followups">
+        <summary>Follow-ups conocidos</summary>
+        <ul>
+          <li>Configurar <code>SIWE_DOMAIN</code> y <code>WALLET_EMAIL_DOMAIN</code> en la API y <code>PICKLER_API_URL</code> en el build para encenderlo.</li>
+          <li>Probar la pantalla en un dispositivo real antes de un build de TestFlight (requiere autorización).</li>
+          <li>Mover reads detrás de <code>workers/api</code> para que usen esta misma sesión.</li>
+        </ul>
+      </details>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>One-pager dev · <a href="https://github.com/Picklerfun/pickler/pull/78">PR #78</a> · commit <code>ef9d1909</code></p>
+    <p>Reglas de doc en <code>docs/mobile/AGENTS.md</code>.</p>
+  </div>
+</footer>
+
+<!-- Editor toolbar (no se exporta) ======================================== -->
+<div class="editor-toolbar" id="editor-toolbar">
+  <div class="editor-hint">
+    Click sobre los campos punteados para editar. Cuando termines, <b>Exporta</b> el HTML final.
+  </div>
+  <button type="button" id="btn-export">⬇ Descargar HTML</button>
+</div>
+
+<script>
+  // ===========================================================================
+  // Dev template editor (F2)
+  // - Marca todos los campos editables con [contenteditable="true"].
+  // - El botón "Descargar HTML" clona el documento, congela los contenteditable
+  //   a texto fijo, quita la toolbar y los placeholders/markers, y descarga el
+  //   archivo final (sin estado de editor).
+  // ===========================================================================
+
+  const $btnExport = document.getElementById('btn-export');
+
+  function exportFinalHtml() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // 1. Quitar la toolbar del editor.
+    const toolbar = clone.querySelector('#editor-toolbar');
+    if (toolbar) toolbar.remove();
+
+    // 2. Limpiar los nodos contenteditable: quitar atributo + placeholder + marker.
+    clone.querySelectorAll('[contenteditable]').forEach(node => {
+      node.removeAttribute('contenteditable');
+      node.removeAttribute('data-placeholder');
+      node.removeAttribute('data-export-as-text');
+    });
+    clone.querySelectorAll('[data-export-no-edit-attrs]').forEach(node => {
+      node.removeAttribute('data-export-no-edit-attrs');
+    });
+
+    // 3. Quitar el script del editor (esta misma lógica) — el HTML final no la necesita.
+    clone.querySelectorAll('script').forEach(s => {
+      if (s.textContent.includes('Dev template editor')) s.remove();
+    });
+
+    // 4. Slug propuesto: leer el span del breadcrumb mono.
+    const slugNode = clone.querySelector('nav.crumb .mono span') || clone.querySelector('nav.crumb .mono');
+    const slug = (slugNode?.textContent.trim() || 'dev-new').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const filename = `${slug}.html`;
+
+    // 5. Construir el HTML final.
+    const finalHtml = '<!doctype html>\n' + clone.outerHTML;
+
+    // 6. Descargar como Blob.
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $btnExport.addEventListener('click', exportFinalHtml);
+
+  // Atajo: Ctrl/Cmd + S para exportar
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      exportFinalHtml();
+    }
+  });
+</script>
+
+</body>
+</html>

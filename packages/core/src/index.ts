@@ -184,6 +184,9 @@ export * from "./features/studio/brief-config.js";
 export * from "./features/studio/preview.js";
 export * from "./features/studio/locks.js";
 export * from "./features/studio/create.js";
+export * from "./features/studio/revise.js";
+export * from "./features/studio/x-verify.js";
+export * from "./features/studio/publish.js";
 
 export {
   ADD_PASSKEY_ACTIVITY_TYPE,
@@ -274,15 +277,23 @@ export type {
   WalletLinkRepository,
 } from "./features/identity/ports/wallet-identity.js";
 export {
+  AccountNotJoinableError,
   AddressTakenError,
   BadSignatureError,
   createWalletSignIn,
   ExpiredNonceError,
+  joinStatement,
+  NoAccountToJoinError,
   NONCE_TTL_MS,
+  PRESENTED_WALLET_KINDS,
+  SameAccountError,
+  SIGN_IN_STATEMENT,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
+  WrongPurposeError,
   type Presented,
+  type PresentedWalletKind,
   type SignedMessage,
 } from "./features/identity/application/wallet-sign-in.js";
 

@@ -23,6 +23,11 @@ test("full document validates, covers mounted routes and retains unique alias op
     ["/api"],
   );
   assert.ok(document.paths["/v1/studio/wallets/transfers/confirm"]?.post);
+  assert.ok(document.paths["/v1/auth/wallet/join"]?.post);
+  assert.ok(document.paths["/v1/studio/wallets/ledger"]?.get);
+  assert.ok(document.paths["/v1/studio/agents/{id}/setup"]?.put);
+  assert.ok(document.paths["/v1/studio/agents/{id}/publish"]?.post);
+  assert.ok(document.paths["/v1/studio/agents/{id}/x/verify"]?.post);
   assert.match(
     document.paths["/v1/console/agents/{id}"]?.get?.description ?? "",
     /alias of \/v1\/studio\/agents/,
@@ -194,4 +199,34 @@ test("the real web catch-all forwards the public JSON to the mounted Worker with
   assert.equal(response.status, 200);
   assert.deepEqual(forwarded, ["/v1/openapi.json"]);
   assert.equal((await response.json()).openapi, "3.1.0");
+});
+
+test("Perpl contract preserves unknown counts and reach, source freshness and venue limits", () => {
+  const market: dto.PerpMarketDto = {
+    symbol: "BTC",
+    base: "BTC",
+    accent: "lime",
+    mark: 60000,
+    change24h: 0.01,
+    funding1h: 0.0001,
+    openInterest: 1000,
+    maxLeverage: 10,
+    agentsReading: null,
+    openCalls: null,
+    lastCall: null,
+    note: "Public venue data",
+    hourlyReach: null,
+    limits: {
+      takerFee: 0.0005,
+      maintenanceMargin: 0.05,
+      slippageCap: 0.005,
+      minimumAccountOpen: 10,
+    },
+    source: { venue: "perpl", network: "mainnet", observedAt: "2026-10-02T00:00:00Z", stale: true },
+  };
+  assert.deepEqual(dto.perpMarketDtoSchema.parse(market), market);
+  assert.equal(
+    dto.nonceRequestSchema.parse({ address: "0xabc", chain_id: 143, joining: "0xdef" }).joining,
+    "0xdef",
+  );
 });

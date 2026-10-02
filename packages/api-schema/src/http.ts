@@ -74,9 +74,14 @@ export const authMeSchema = z.object({
 export const nonceRequestSchema = z.object({
   address: z.string(),
   chain_id: z.number().int().positive(),
+  joining: z.string().optional(),
 });
 export const nonceResponseSchema = z.object({ message: z.string(), nonce: z.string() });
-export const signatureRequestSchema = z.object({ raw: z.string(), signature: z.string() });
+export const signatureRequestSchema = z.object({
+  raw: z.string(),
+  signature: z.string(),
+  kind: z.enum(["external", "mera"]).optional(),
+});
 export const sessionSchema = z.object({ accessToken: z.string(), refreshToken: z.string() });
 export const walletSignInSchema = z.object({ userId: z.string(), session: sessionSchema });
 export const walletLinkSchema = z.object({

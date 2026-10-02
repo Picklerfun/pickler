@@ -1,8 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  AccountNotJoinableError,
   AddressTakenError,
   AuthenticationRequiredError,
+  NoAccountToJoinError,
+  SameAccountError,
+  WrongPurposeError,
   BadSignatureError,
   buildApiKeyPrincipal,
   buildUserPrincipal,
@@ -60,6 +64,10 @@ function harness(
     listLinks: async () => {
       calls.push("listLinks");
       return [];
+    },
+    join: async () => {
+      calls.push("join");
+      return { userId: ANA, session: { accessToken: "at-kept", refreshToken: "rt-kept" } };
     },
     ...over,
   };
@@ -132,6 +140,7 @@ function realSignIn() {
       findByAddress: async () => null,
       link: async () => ({ created: true }),
       listForUser: async () => [],
+      reassignSole: async () => false,
     },
     verifier: { verify: async () => true },
     accounts: {
@@ -139,13 +148,16 @@ function realSignIn() {
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
       markWalletAccount: async () => {},
       discardAccount: async () => {},
+      isOwnWalletAccount: async () => true,
     },
+    hasProfile: async () => false,
+    hasCustodyAccount: async () => false,
     randomNonce: () => "b1c93a5f4e2d47a8b0c6e9f1a2d3b4c5",
     buildMessage: (fields) =>
       buildSiweMessage({
         domain: fields.domain,
         address: fields.address as `0x${string}`,
-        statement: "Sign in to Pickler",
+        statement: fields.statement,
         uri: `https://${fields.domain}`,
         chainId: fields.chainReference,
         nonce: fields.nonce,
@@ -371,4 +383,186 @@ test("mounting the wallet routes under /v1/auth leaves /v1/auth/me reachable", a
     headers: { Authorization: `Bearer ${TOKEN}` },
   });
   assert.notEqual(response.status, 404, "the wallet mount must not shadow the existing route");
+});
+
+test("the kind of wallet travels to the service on verify and on link, and is optional", async () => {
+  const seen: unknown[] = [];
+  const { app } = harness({
+    verify: async (presented) => {
+      seen.push(presented);
+      return { userId: ANA, session: { accessToken: "at", refreshToken: "rt" } };
+    },
+    link: async (_userId, presented) => {
+      seen.push(presented);
+      return { linked: true as const };
+    },
+  });
+
+  await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig", kind: "mera" });
+  await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig" });
+  await post(
+    app,
+    "/v1/auth/wallet/link",
+    { raw: RAW, signature: "0xsig", kind: "eoa" },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.deepEqual(seen, [
+    { raw: RAW, signature: "0xsig", kind: "mera" },
+    { raw: RAW, signature: "0xsig" },
+    { raw: RAW, signature: "0xsig", kind: "eoa" },
+  ]);
+});
+
+test("a kind of wallet nobody offers answers 400 invalid_wallet_kind and reaches no service", async () => {
+  const { app, calls } = harness();
+
+  for (const kind of ["turnkey", "smart", 7, null]) {
+    const response = await post(app, "/v1/auth/wallet/verify", {
+      raw: RAW,
+      signature: "0xsig",
+      kind,
+    });
+    const body = (await response.json()) as { error?: string };
+
+    assert.equal(response.status, 400, String(kind));
+    assert.equal(body.error, "invalid_wallet_kind", String(kind));
+  }
+  assert.deepEqual(calls, []);
+});
+
+/* Joining: the caller's bare account is folded into the account of the wallet that signed. */
+
+test("joining needs the session of the account that is given up", async () => {
+  const { app, calls, authOptions } = harness({}, null);
+
+  const response = await post(app, "/v1/auth/wallet/join", { raw: RAW, signature: "0xsig" });
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(authOptions, [{ userOnly: true }]);
+});
+
+test("joining answers with the kept account's session, as the caller, with the other wallet's proof", async () => {
+  const seen: unknown[] = [];
+  const { app } = harness({
+    join: async (userId, presented) => {
+      seen.push(userId, presented);
+      return { userId: "kept", session: { accessToken: "at-kept", refreshToken: "rt-kept" } };
+    },
+  });
+
+  const response = await post(
+    app,
+    "/v1/auth/wallet/join",
+    { raw: RAW, signature: "0xsig" },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.equal(response.status, 200);
+  const { data } = (await response.json()) as { data: unknown };
+  assert.deepEqual(data, {
+    userId: "kept",
+    session: { accessToken: "at-kept", refreshToken: "rt-kept" },
+  });
+  assert.deepEqual(seen, [ANA, { raw: RAW, signature: "0xsig" }]);
+  assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+});
+
+test("each way a join is refused has a status and a code the browser can branch on", async () => {
+  const refusals: [Error, number, string | undefined][] = [
+    [new NoAccountToJoinError(), 404, "no_account"],
+    [new SameAccountError(), 409, "same_account"],
+    [new AccountNotJoinableError("has_profile"), 409, "join_has_profile"],
+    [new AccountNotJoinableError("not_wallet_account"), 409, "join_not_wallet_account"],
+    [new AccountNotJoinableError("has_custody"), 409, "join_has_custody"],
+    [new AccountNotJoinableError("changed"), 409, "join_changed"],
+    [new BadSignatureError(), 401, undefined],
+    [new UnknownNonceError(), 400, "nonce_invalid"],
+    [new WrongPurposeError(), 400, "wrong_purpose"],
+  ];
+  for (const [thrown, status, code] of refusals) {
+    const { app } = harness({ join: () => Promise.reject(thrown) });
+
+    const response = await post(
+      app,
+      "/v1/auth/wallet/join",
+      { raw: RAW, signature: "0xsig" },
+      { Authorization: `Bearer ${TOKEN}` },
+    );
+
+    assert.equal(response.status, status, thrown.name);
+    const body = (await response.json()) as { error?: string };
+    assert.equal(body.error, code, thrown.name);
+  }
+});
+
+test("a join with no signed message does not reach the service", async () => {
+  const { app, calls } = harness();
+
+  const response = await post(
+    app,
+    "/v1/auth/wallet/join",
+    { raw: RAW },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(calls, []);
+});
+
+/* What a signature is for is in the message the nonce route hands out. */
+
+const OTHER = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc";
+
+test("the nonce route writes a sign-in message, or one that names the wallet being let in", async () => {
+  const { signIn } = realSignIn();
+  const { app } = harness(signIn);
+
+  const plain = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
+  const joining = await post(app, "/v1/auth/wallet/nonce", {
+    address: ADDRESS,
+    chain_id: 10143,
+    joining: OTHER,
+  });
+
+  const message = async (response: Response) =>
+    ((await response.json()) as { data: { message: string } }).data.message;
+  assert.equal(parseSiweMessage(await message(plain)).statement, "Sign in to Pickler");
+  assert.equal(
+    parseSiweMessage(await message(joining)).statement,
+    // In the one spelling the store keeps, whatever the wallet sent: the sentence `join` compares.
+    `Link wallet ${OTHER.toLowerCase()} to this wallet's Pickler account`,
+  );
+});
+
+test("a wallet to let in that is not an address answers 400 and stores no nonce", async () => {
+  for (const joining of ["nope", 7, ""]) {
+    const { signIn, stored } = realSignIn();
+    const { app } = harness(signIn);
+
+    const response = await post(app, "/v1/auth/wallet/nonce", {
+      address: ADDRESS,
+      chain_id: 10143,
+      joining,
+    });
+
+    assert.deepEqual(await refusal(response), { status: 400, error: "invalid_address" });
+    assert.deepEqual(stored, [], String(joining));
+  }
+});
+
+test("a message signed for something else answers 400 wrong_purpose on every route that takes one", async () => {
+  for (const path of ["verify", "link", "join"] as const) {
+    const { app } = harness({ [path]: () => Promise.reject(new WrongPurposeError()) });
+
+    const response = await post(
+      app,
+      `/v1/auth/wallet/${path}`,
+      { raw: RAW, signature: "0xsig" },
+      { Authorization: `Bearer ${TOKEN}` },
+    );
+
+    assert.deepEqual(await refusal(response), { status: 400, error: "wrong_purpose" });
+  }
 });

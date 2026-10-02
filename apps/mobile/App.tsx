@@ -10,6 +10,7 @@ import type { AppCtx } from "./src/ctx";
 import { DevControls } from "./src/DevControls";
 import { useAccount } from "./src/hooks/useAccount";
 import { useCurrentScreen } from "./src/hooks/useCurrentScreen";
+import { useIdentity } from "./src/hooks/useIdentity";
 import { useMarketData } from "./src/hooks/useMarketData";
 import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
@@ -20,6 +21,9 @@ import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
 import type { PushTarget } from "./src/reads/push";
 import { pushTarget } from "./src/reads/push";
+import { UsernameGate } from "./src/screens/username";
+import { accountAddress } from "./src/account";
+import { gateOpen } from "./src/identity/state";
 import { perplActiveFor, readsActiveFor, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
@@ -63,6 +67,8 @@ export default function App() {
   }, [accountLoaded, requireAccount]);
   const notifications = useNotifications(onPushTarget);
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
+  // La cuenta en la API del producto: la misma que en la web. Sin PICKLER_API_URL no hace nada.
+  const identity = useIdentity(account ?? NONE, onWallet);
   const ready = fontsLoaded && account !== null;
   useEffect(() => {
     if (ready) { void SplashScreen.hideAsync(); return; }
@@ -84,13 +90,22 @@ export default function App() {
     errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null },
     hasData: (s) => screenHasData(s, { balances: treasury.balances, context: perpl.context }),
   });
+  // La pantalla del username ya se mostró: se queda aunque empiece una operación debajo. Declarado aquí, antes del
+  // `return null` de carga: un hook después de un return temprano cambia la cuenta de hooks entre renders y React
+  // revienta al arrancar (__tests__/app-hooks.test.ts lo vigila).
+  const gateShown = useRef(false);
   // La ruta inicial se decide una sola vez, cuando la cuenta ya se conoce (D5): con cuenta Tabs, sin cuenta signin.
   const initial = useRef<"Tabs" | "signin" | null>(null);
   if (ready && initial.current === null) initial.current = hasAccount ? "Tabs" : "signin";
 
   if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, notifications, onWallet, lock, signOut, seal, setControls };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, notifications, onWallet, lock, signOut, seal, setControls };
+  // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar o pedir una read ve
+  // primero cómo termina. Una vez abierta se queda, pase lo que pase debajo.
+  const quiet = !treasury.busy && reads.request.step !== "pending";
+  gateShown.current = gateOpen(identity.identity) && (gateShown.current || quiet);
+  const gateAddress = gateShown.current ? accountAddress(account) : null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -98,6 +113,9 @@ export default function App() {
         <StatusBar barStyle="dark-content" />
         <AppCtxProvider value={ctx}>
           <Navigator initial={initial.current} />
+          {/* El username es obligatorio: mientras la cuenta no tenga uno, esto tapa la app. Fuera del árbol de navegación
+              a propósito: no es una pantalla a la que se llega ni de la que se vuelve. */}
+          {gateAddress ? <UsernameGate identity={identity} address={gateAddress} onSignOut={() => { void signOut().then(store.signedOut); }} /> : null}
           {__DEV__ ? <DevControls visible={controls} onClose={() => setControls(false)} ctx={ctx} /> : null}
         </AppCtxProvider>
       </SafeAreaProvider>

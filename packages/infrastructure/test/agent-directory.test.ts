@@ -45,10 +45,14 @@ async function seedAgent(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // The marketplace shows what is public (migration 0024), not what is not a draft: these rows
+    // stand for agents that existed before 0024, which it published when they were created.
     await client.query(
       `INSERT INTO agents.agents
-         (id, workspace_id, name, handle, status, created_by, killed_at, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, now()))`,
+         (id, workspace_id, name, handle, status, created_by, killed_at, created_at,
+          visibility, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, now()), $9,
+               CASE WHEN $10 THEN COALESCE($8, now()) END)`,
       [
         id,
         workspaceId,
@@ -58,6 +62,8 @@ async function seedAgent(
         userId,
         over.killed ? new Date() : null,
         over.createdAt ?? null,
+        over.status === "draft" ? "private" : "public",
+        over.status !== "draft",
       ],
     );
     await client.query(`INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)`, [

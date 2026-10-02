@@ -48,6 +48,16 @@ export interface WalletLinkRepository {
   link(link: Omit<WalletLink, "verifiedAt">): Promise<{ created: boolean }>;
   /** Errors propagate: "no wallets" and "could not read" are different facts. */
   listForUser(userId: string): Promise<WalletLink[]>;
+  /**
+   * The one wallet of `fromUserId` becomes a wallet of `toUserId`; answers whether it moved. The
+   * only way an address changes account, and core calls it only from `join`.
+   *
+   * The adapter checks again, in the statement that moves it, what `join` checked a moment
+   * before: `fromUserId` holds exactly one wallet and has no profile, and `toUserId` still holds
+   * a wallet. Two joins of one account at once move it once. A change made in the very instant
+   * of the statement by another request of the same person may still slip past it.
+   */
+  reassignSole(fromUserId: string, toUserId: string): Promise<boolean>;
 }
 
 export interface SignatureVerifier {
@@ -95,4 +105,14 @@ export interface AccountProvisioner {
    * refuses anything that is not this address's own marked wallet account.
    */
   discardAccount(userId: string, namespace: Namespace, address: NormalizedAddress): Promise<void>;
+  /**
+   * Whether this account is the one wallet sign-in made for this address and marked: not an email
+   * or Google account that linked the wallet, and not one registered by hand at its synthetic
+   * email. The same test `discardAccount` applies before it deletes.
+   */
+  isOwnWalletAccount(
+    userId: string,
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<boolean>;
 }

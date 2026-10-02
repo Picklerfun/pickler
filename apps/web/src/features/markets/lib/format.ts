@@ -1,4 +1,23 @@
+import type { MarketSourceDto } from "@pickler/api-schema";
+
 const MINUS = "−";
+
+/**
+ * Below one, a price keeps four significant figures: the venue lists markets at fractions of a
+ * cent, and three fixed decimals would print two of them as the same number.
+ */
+function priceDecimals(value: number): number {
+  if (value >= 1000) {
+    return 1;
+  }
+  if (value >= 10) {
+    return 2;
+  }
+  if (value >= 1 || !(value > 0)) {
+    return 3;
+  }
+  return Math.min(8, 3 - Math.floor(Math.log10(value)));
+}
 
 /**
  * A price carries the decimals its size needs: a mark in the tens of thousands does not want three
@@ -6,7 +25,7 @@ const MINUS = "−";
  * the ticket never disagree about the same number.
  */
 export function formatPrice(value: number): string {
-  const decimals = value >= 1000 ? 1 : value >= 10 ? 2 : 3;
+  const decimals = priceDecimals(value);
   return value.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -42,6 +61,47 @@ export const formatLevel = (level: number) =>
 /** "1 AGENT", "3 AGENTS" — a board that says "1 AGENTS READING" reads like a placeholder. */
 export const plural = (count: number, one: string, many = `${one}S`) =>
   `${count} ${count === 1 ? one : many}`;
+
+/** A count nobody has measured reads as a dash. A zero would be a claim that somebody counted. */
+export const pluralOrDash = (count: number | null, one: string, many = `${one}S`) =>
+  count === null ? `— ${many}` : plural(count, one, many);
+
+/**
+ * A fraction as a percentage with the decimals it has and no others: 0.05 → "5", 0.000345 →
+ * "0.0345". The venue's fees are small enough that two fixed decimals would round them away.
+ */
+export const formatShare = (fraction: number) => String(Number((fraction * 100).toFixed(4)));
+
+/**
+ * The line over a board's title: whose figures these are, on which network, and when they were
+ * read. A sample says it is one; an answer the venue has not renewed says it is stale. Built from
+ * the timestamp's own text so the server and the browser write the same string.
+ */
+export function sourceEyebrow(prefix: string, source: MarketSourceDto | undefined): string {
+  if (!source) {
+    return prefix;
+  }
+  if (source.venue === "sample") {
+    return `${prefix} · SAMPLE DATA`;
+  }
+  const network = source.network === "mainnet" ? "MONAD" : "MONAD TESTNET";
+  const read = `${source.observedAt.slice(11, 19)} UTC`;
+  return `${prefix} · PERPL · ${network} · ${read}${source.stale ? " · STALE" : ""}`;
+}
+
+/** The same statement in a sentence, under the board. */
+export function sourceFootnote(source: MarketSourceDto | undefined): string {
+  if (!source) {
+    return "Marks and funding come from Perpl.";
+  }
+  if (source.venue === "sample") {
+    return "Sample data: these markets are not read from a venue.";
+  }
+  const base = "Marks, funding, leverage and fees are Perpl's.";
+  return source.stale
+    ? `${base} Perpl has not answered since the time above, so these are its last figures.`
+    : base;
+}
 
 const clock = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",

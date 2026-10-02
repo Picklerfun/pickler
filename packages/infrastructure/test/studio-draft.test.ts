@@ -104,8 +104,8 @@ test("a draft links the wallet, with its approved policy ids, its profile and it
   assert.deepEqual((await f.store.agent(created.scope)).config, config);
   const listed = await f.directory.list(owner.access);
   assert.deepEqual(
-    listed.map((item) => [item.handle, item.draft, item.accent]),
-    [["halftime", true, "cyan"]],
+    listed.map((item) => [item.handle, item.draft, item.accent, item.avatarPattern]),
+    [["halftime", true, "cyan", 3]],
   );
 });
 

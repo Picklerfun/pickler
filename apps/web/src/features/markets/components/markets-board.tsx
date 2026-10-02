@@ -6,19 +6,28 @@ import { useMemo, useState } from "react";
 import { ButtonLink, Chip, Input } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import styles from "../markets.module.css";
-import { formatChange, formatCompactAusd, formatFunding, formatPrice, plural } from "../lib/format";
+import {
+  formatChange,
+  formatCompactAusd,
+  formatFunding,
+  formatPrice,
+  pluralOrDash,
+  sourceEyebrow,
+  sourceFootnote,
+} from "../lib/format";
 
 const FILTERS = [
   { key: "all", label: "ALL MARKETS", match: () => true },
-  { key: "agents", label: "WITH AGENTS", match: (m: PerpMarketDto) => m.agentsReading > 0 },
-  { key: "calls", label: "OPEN CALLS", match: (m: PerpMarketDto) => m.openCalls > 0 },
+  { key: "agents", label: "WITH AGENTS", match: (m: PerpMarketDto) => (m.agentsReading ?? 0) > 0 },
+  { key: "calls", label: "OPEN CALLS", match: (m: PerpMarketDto) => (m.openCalls ?? 0) > 0 },
 ] as const;
 
 const SORTS = [
   {
     key: "agents",
     label: "AGENTS",
-    by: (a: PerpMarketDto, b: PerpMarketDto) => b.agentsReading - a.agentsReading,
+    // A count nobody has measured ranks as none, which leaves the order the API sent.
+    by: (a: PerpMarketDto, b: PerpMarketDto) => (b.agentsReading ?? 0) - (a.agentsReading ?? 0),
   },
   {
     key: "oi",
@@ -48,6 +57,8 @@ export function MarketsBoard({
   const [sort, setSort] = useState<(typeof SORTS)[number]["key"]>("agents");
   const [query, setQuery] = useState("");
 
+  // One venue answers for the whole board, so any market names the source of all of them.
+  const source = markets[0]?.source;
   const active = FILTERS.find((option) => option.key === filter) ?? FILTERS[0];
   const order = SORTS.find((option) => option.key === sort) ?? SORTS[0];
 
@@ -61,7 +72,9 @@ export function MarketsBoard({
 
   return (
     <main className={styles.main}>
-      <p className={styles.eyebrow}>MARKETS · PERPL ON MONAD</p>
+      <p className={styles.eyebrow} data-source={source?.venue}>
+        {sourceEyebrow("MARKETS", source)}
+      </p>
       <h1 className={styles.title}>EVERY MARKET.</h1>
       <p className={styles.lead}>
         Pick a level and a time. Ask an agent what it thinks, or take the position yourself. Both
@@ -126,9 +139,7 @@ export function MarketsBoard({
         </ul>
       )}
 
-      <p className={styles.footnote}>
-        Marks and funding come from Perpl. Fees are charged on open only; closing is free.
-      </p>
+      <p className={styles.footnote}>{sourceFootnote(source)}</p>
     </main>
   );
 }
@@ -150,8 +161,8 @@ function MarketRow({ market }: { market: PerpMarketDto }) {
             <span className={styles.marketLev}>MAX {market.maxLeverage}×</span>
           </span>
           <span className={styles.marketCoverage}>
-            {plural(market.agentsReading, "AGENT")} READING ·{" "}
-            {plural(market.openCalls, "OPEN CALL")}
+            {pluralOrDash(market.agentsReading, "AGENT")} READING ·{" "}
+            {pluralOrDash(market.openCalls, "OPEN CALL")}
           </span>
         </span>
         <span className={styles.marketPrice}>

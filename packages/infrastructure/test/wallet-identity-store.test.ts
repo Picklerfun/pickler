@@ -12,6 +12,7 @@ import {
   EXPIRED_NONCE_PURGE_BATCH,
   PostgresWalletIdentityStore,
 } from "../src/persistence/wallet-identity-store.js";
+import { PostgresProfileRepository } from "../src/persistence/profile-repository.js";
 import { createTestStore } from "./database.js";
 
 /**
@@ -352,4 +353,90 @@ test("a row that is not an address at all raises rather than becoming one", asyn
   await insertRaw(store.pool, userA, "0xNOTANADDRESS");
 
   await assert.rejects(wallets.listForUser(userA), InvalidAddressError);
+});
+
+test("the sole wallet of one account moves to another, and nothing else does", async (t) => {
+  const { wallets } = await setup(t);
+  const given = randomUUID();
+  const kept = randomUUID();
+  const bystander = randomUUID();
+  await wallets.link(external(given));
+  await wallets.link({ ...external(kept, OTHER_ADDR), kind: "mera" });
+  await wallets.link({
+    userId: bystander,
+    namespace: "solana",
+    address: SOL_ADDR,
+    verifiedChain: SOLANA_CHAIN,
+    kind: "external",
+  });
+
+  assert.equal(await wallets.reassignSole(given, kept), true);
+
+  assert.deepEqual(await wallets.listForUser(given), []);
+  // The kind each wallet was linked with is the wallet's, and moves with it.
+  assert.deepEqual(
+    (await wallets.listForUser(kept)).map((link) => [link.address, link.kind]).sort(),
+    [
+      [ADDR, "external"],
+      [OTHER_ADDR, "mera"],
+    ].sort(),
+  );
+  assert.equal((await wallets.findByAddress("eip155", ADDR))!.userId, kept);
+  assert.equal((await wallets.listForUser(bystander)).length, 1);
+});
+
+test("nothing moves from an account with no wallet, with two, or into one with none", async (t) => {
+  const { wallets } = await setup(t);
+  const two = randomUUID();
+  const kept = randomUUID();
+  await wallets.link(external(two));
+  await wallets.link({
+    userId: two,
+    namespace: "solana",
+    address: SOL_ADDR,
+    verifiedChain: SOLANA_CHAIN,
+    kind: "external",
+  });
+  await wallets.link(external(kept, OTHER_ADDR));
+
+  assert.equal(await wallets.reassignSole(randomUUID(), kept), false);
+  assert.equal(await wallets.reassignSole(two, kept), false);
+  // The account to keep is gone by the time the wallet would move: it stays where it is.
+  assert.equal(await wallets.reassignSole(kept, randomUUID()), false);
+
+  assert.equal((await wallets.listForUser(two)).length, 2);
+  assert.equal((await wallets.listForUser(kept)).length, 1);
+});
+
+test("a wallet does not move from an account that has a profile", async (t) => {
+  const { store, wallets } = await setup(t);
+  const given = randomUUID();
+  const kept = randomUUID();
+  await wallets.link(external(given));
+  await wallets.link(external(kept, OTHER_ADDR));
+  const claimed = await new PostgresProfileRepository(store.pool).create({
+    userId: given,
+    displayName: "Night Owl",
+    handle: `owl${given.slice(0, 8)}`,
+  });
+  assert.equal(claimed.created, true);
+
+  assert.equal(await wallets.reassignSole(given, kept), false);
+
+  assert.equal((await wallets.findByAddress("eip155", ADDR))!.userId, given);
+});
+
+test("two joins of one account at once move its wallet once", async (t) => {
+  const { wallets } = await setup(t);
+  const given = randomUUID();
+  const kept = randomUUID();
+  await wallets.link(external(given));
+  await wallets.link(external(kept, OTHER_ADDR));
+
+  const results = await Promise.all(
+    Array.from({ length: 4 }, () => wallets.reassignSole(given, kept)),
+  );
+
+  assert.equal(results.filter(Boolean).length, 1);
+  assert.equal((await wallets.listForUser(kept)).length, 2);
 });

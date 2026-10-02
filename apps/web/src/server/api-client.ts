@@ -1,6 +1,6 @@
 import "server-only";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { type Degradable, readOrEmpty, readOrNull } from "./api-read";
+import { type Degradable, readOrEmpty, readOrNull, readVenueItemOrNull } from "./api-read";
 
 interface ApiBinding {
   fetch(request: Request): Promise<Response>;
@@ -62,4 +62,12 @@ export async function apiRead<T>(path: string, empty: T): Promise<Degradable<T>>
 /** One public item: 404 or 5xx become null, so the page renders its not-found path. */
 export async function apiReadOne<T>(path: string): Promise<T | null> {
   return readOrNull<T>(await apiFetch(new Request(`https://pickler.internal/v1${path}`)), path);
+}
+
+/** One public item read from a venue: as `apiReadOne`, except that a venue that is down throws. */
+export async function apiReadVenueItem<T>(path: string): Promise<T | null> {
+  return readVenueItemOrNull<T>(
+    await apiFetch(new Request(`https://pickler.internal/v1${path}`)),
+    path,
+  );
 }

@@ -11,7 +11,7 @@ import vm from 'node:vm';
 import YAML from 'yaml';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCOPE =
-  /^(?:apps\/mobile|docs\/mobile|services\/reads|infra|scripts\/mobile|packages\/mera-account)\//;
+  /^(?:apps\/mobile|docs\/mobile|services\/reads|infra|scripts\/mobile|packages\/mera-account|packages\/perpl-context)\//;
 export function skillMetadata(source) {
   const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) throw new Error('Missing YAML frontmatter');

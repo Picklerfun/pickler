@@ -48,6 +48,19 @@ export async function readOrNull<T>(response: Response, path: string): Promise<T
   throw new Error(`Pickler API request failed (${response.status})`);
 }
 
+/**
+ * One item that is read from a venue: 503 means the venue could not be read, which is not "not
+ * found". It throws, so the page shows the error screen instead of telling someone that a market
+ * that exists does not. Everything else is `readOrNull`.
+ */
+export async function readVenueItemOrNull<T>(response: Response, path: string): Promise<T | null> {
+  if (response.status === 503) {
+    logDegraded(path, response.status);
+    throw new Error("Market data is temporarily unavailable (503)");
+  }
+  return readOrNull<T>(response, path);
+}
+
 export const EMPTY_LEADERBOARD: LeaderboardDto = { entries: [], weights: [], calibration: [] };
 
 const RANGES: readonly AnalyticsRangeDto[] = ["7d", "30d", "90d"];

@@ -5,7 +5,10 @@ import {
   AccessDeniedError,
   MIN_AGENT_WALLET_POLICIES,
   PilotError,
+  PublishBlockedError,
   type Accent,
+  type AgentActivityEvent,
+  type PublishCheck,
   type StudioAccess,
   type StudioDirectory,
   type AgentConfig,
@@ -13,6 +16,7 @@ import {
   type DraftProfile,
   type Scope,
 } from "@pickler/core";
+import { tokenAmount } from "./ledger.js";
 
 /** Which unique index a duplicate hit, so the refusal names the field a person can change. */
 const WALLET_ASSIGNED = "That wallet already belongs to an agent";
@@ -20,6 +24,49 @@ const CONFLICTS: Record<string, string> = {
   agent_profiles_x_handle_key: "X handle already used",
   agent_wallets_wallet_key: WALLET_ASSIGNED,
 };
+
+/** What publish re-reads under the lock to know its check still holds. */
+interface PublishState {
+  visibility: "private" | "public";
+  publishedAt: Date | null;
+  killed: boolean;
+  walletAddress: string | null;
+}
+
+/** The agent's state for publish, `FOR UPDATE` of the agent row when `lock`; null outside the workspace. */
+async function publishState(
+  db: Pool | PoolClient,
+  access: StudioAccess,
+  productAgentId: string,
+  lock: boolean,
+): Promise<PublishState | null> {
+  const { rows } = await db.query<PublishState>(
+    `SELECT a.visibility::text AS visibility, a.published_at AS "publishedAt",
+       a.killed_at IS NOT NULL AS killed, acct.address AS "walletAddress"
+     FROM agents.agents a
+     JOIN pickler.product_agents p ON p.product_agent_id = a.id
+     LEFT JOIN wallets.agent_wallets l ON l.agent_id = a.id
+     LEFT JOIN LATERAL (
+       SELECT address FROM wallets.wallet_accounts
+        WHERE wallet_id = l.wallet_id ORDER BY created_at LIMIT 1
+     ) acct ON true
+     WHERE a.id::text = $3 AND p.workspace_id = $1 AND p.tenant_id = $2
+     ${lock ? "FOR UPDATE OF a" : ""}`,
+    [access.workspaceId, access.tenantId, productAgentId],
+  );
+  return rows[0] ?? null;
+}
+
+/** "0x91be…4a07": the first four and last four hex digits, as the studio shows a wallet. */
+const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+
+/** A profile's avatar pattern (0–5); an agent without a profile row draws the first. */
+const avatarPatternOf = (value: unknown): number => {
+  const pattern = Number(value ?? 0);
+  return Number.isInteger(pattern) && pattern >= 0 && pattern <= 5 ? pattern : 0;
+};
+
+const notFound = () => new PilotError("NOT_FOUND", "Agent not found");
 
 export class PostgresStudioDirectory implements StudioDirectory {
   constructor(private readonly pool: Pool) {}
@@ -239,10 +286,12 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,pr.accent,p.tenant_id,p.runtime_agent_id
+      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,a.visibility::text AS visibility,
+        a.published_at,xa.handle AS x_handle,pr.accent,pr.avatar_pattern,p.tenant_id,p.runtime_agent_id
       FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
+      LEFT JOIN agents.x_accounts xa ON xa.agent_id=a.id
       WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
       [access.workspaceId, access.tenantId],
     );
@@ -254,8 +303,203 @@ export class PostgresStudioDirectory implements StudioDirectory {
       accent: (ACCENTS as readonly string[]).includes(row.accent)
         ? (row.accent as Accent)
         : ("lime" as const),
+      avatarPattern: avatarPatternOf(row.avatar_pattern),
       draft: row.draft === true,
+      visibility: row.visibility === "public" ? ("public" as const) : ("private" as const),
+      publishedAt: (row.published_at as Date | null) ?? null,
+      xHandle: (row.x_handle as string | null) ?? null,
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
+  }
+  /**
+   * Go Public (studio-draft-dashboard-v1 D8). The check may read the chain, so no lock or
+   * transaction is held across it: read killed and the wallet, run the check, then lock the agent
+   * row in a short transaction and publish only if killed and the wallet are what the check saw.
+   * Changed in between (killed, unlinked, relinked): check again once, then PUBLISH_CONFLICT. The
+   * balance itself can still move after the read; that is the same window the drafts route accepts
+   * for its funding read just before its transaction, and the chain is the truth afterwards.
+   *
+   * The transaction holds the wallet link `FOR SHARE` before it locks and re-reads the agent, so
+   * the link cannot change unseen before COMMIT. A killed agent is refused here too, whatever the
+   * check answered: D8 does not rest on the callback alone.
+   */
+  async publish(access: StudioAccess, productAgentId: string, check: PublishCheck) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const seen = await publishState(this.pool, access, productAgentId, false);
+      if (!seen) {
+        throw notFound();
+      }
+      if (seen.visibility === "public" && seen.publishedAt) {
+        return { visibility: "public" as const, publishedAt: seen.publishedAt };
+      }
+      const blockers = await check({ killed: seen.killed, walletAddress: seen.walletAddress });
+      if (blockers.length) {
+        throw new PublishBlockedError(blockers);
+      }
+      const published = await this.transaction(async (client) => {
+        // A separate statement: Postgres refuses FOR SHARE on the nullable side of an outer join.
+        await client.query(
+          "SELECT 1 FROM wallets.agent_wallets WHERE agent_id::text = $1 FOR SHARE",
+          [productAgentId],
+        );
+        const now = await publishState(client, access, productAgentId, true);
+        if (!now) {
+          throw notFound();
+        }
+        // Published by a concurrent request meanwhile: the same answer as an already public agent.
+        if (now.visibility === "public" && now.publishedAt) {
+          return now.publishedAt;
+        }
+        if (now.killed !== seen.killed || now.walletAddress !== seen.walletAddress) {
+          return null;
+        }
+        if (now.killed) {
+          throw new PublishBlockedError(["KILLED"]);
+        }
+        const { rows } = await client.query<{ publishedAt: Date }>(
+          `UPDATE agents.agents SET visibility = 'public', published_at = now(),
+             status = CASE WHEN status = 'draft' THEN 'active' ELSE status END
+           WHERE id = $1 RETURNING published_at AS "publishedAt"`,
+          [productAgentId],
+        );
+        return rows[0]!.publishedAt;
+      });
+      if (published) {
+        return { visibility: "public" as const, publishedAt: published };
+      }
+    }
+    throw new PilotError("PUBLISH_CONFLICT", "The agent changed while publishing; try again");
+  }
+  /**
+   * Name, accent, avatar pattern and voice name (D14), each only when given. The bounds are the
+   * database's checks and enum; a violation is INVALID_INPUT, as the person's input was out of range.
+   */
+  async updateIdentity(
+    access: StudioAccess,
+    productAgentId: string,
+    identity: { name?: string; accent?: Accent; avatarPattern?: number; voice?: string },
+  ): Promise<void> {
+    try {
+      await this.transaction(async (client) => {
+        const agent = await client.query(
+          `UPDATE agents.agents a SET name = coalesce($4, a.name)
+           FROM pickler.product_agents p
+           WHERE p.product_agent_id = a.id AND p.workspace_id = $1 AND p.tenant_id = $2
+             AND a.id::text = $3
+           RETURNING a.id`,
+          [access.workspaceId, access.tenantId, productAgentId, identity.name ?? null],
+        );
+        if (!agent.rows.length) {
+          throw notFound();
+        }
+        if (
+          identity.accent === undefined &&
+          identity.avatarPattern === undefined &&
+          identity.voice === undefined
+        ) {
+          return;
+        }
+        // Studio drafts are created with a profile; an older agent may have none (readers join
+        // it with LEFT JOIN). Every profile column has a default, so give it one and then edit it.
+        await client.query(
+          `INSERT INTO agents.agent_profiles (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING`,
+          [agent.rows[0].id],
+        );
+        const profile = await client.query(
+          `UPDATE agents.agent_profiles SET accent = coalesce($2::agents.accent, accent),
+             avatar_pattern = coalesce($3, avatar_pattern), voice = coalesce($4, voice)
+           WHERE agent_id = $1`,
+          [
+            agent.rows[0].id,
+            identity.accent ?? null,
+            identity.avatarPattern ?? null,
+            identity.voice ?? null,
+          ],
+        );
+        if (profile.rowCount !== 1) {
+          throw new PilotError("NOT_FOUND", "Agent profile not found");
+        }
+      });
+    } catch (error) {
+      // 23514: a check (name length, avatar pattern, voice length); 22P02: not an accent;
+      // 22003: a number past the column's range (an avatar pattern of 70000).
+      const { code } = error as { code?: string };
+      if (code === "23514" || code === "22P02" || code === "22003") {
+        throw new PilotError("INVALID_INPUT", "Name or avatar out of range");
+      }
+      throw error;
+    }
+  }
+  /**
+   * The Overview's activity (D18): the agent created, its linked wallet created, and each transfer
+   * into or out of that wallet, newest first, at most 50. Only what the database recorded; nothing
+   * is invented. On equal times the later step of the story comes first. Transfers are the wallet
+   * owner's own rows only. History follows the wallet: a transfer is shown on the agent that holds
+   * the wallet now, which is the agent it was made for while wallets are never relinked.
+   */
+  async activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]> {
+    const agent = await this.pool.query<{
+      name: string;
+      createdAt: Date;
+      walletId: string | null;
+      walletOwner: string | null;
+      walletCreatedAt: Date | null;
+      address: string | null;
+    }>(
+      `SELECT a.name, a.created_at AS "createdAt", w.wallet_id AS "walletId",
+         w.user_id AS "walletOwner", w.created_at AS "walletCreatedAt", acct.address
+       FROM agents.agents a
+       JOIN pickler.product_agents p ON p.product_agent_id = a.id
+       LEFT JOIN wallets.agent_wallets l ON l.agent_id = a.id
+       LEFT JOIN wallets.wallets w ON w.wallet_id = l.wallet_id
+       LEFT JOIN LATERAL (
+         SELECT address FROM wallets.wallet_accounts
+          WHERE wallet_id = l.wallet_id ORDER BY created_at LIMIT 1
+       ) acct ON true
+       WHERE a.id::text = $3 AND p.workspace_id = $1 AND p.tenant_id = $2`,
+      [access.workspaceId, access.tenantId, productAgentId],
+    );
+    const row = agent.rows[0];
+    if (!row) {
+      throw notFound();
+    }
+    const events: (AgentActivityEvent & { rank: number })[] = [
+      { kind: "created", text: `${row.name} created`, at: row.createdAt, rank: 0 },
+    ];
+    if (row.walletId && row.walletCreatedAt) {
+      events.push({
+        kind: "wallet",
+        text: row.address
+          ? `Agent wallet created · ${shortAddress(row.address)}`
+          : "Agent wallet created",
+        at: row.walletCreatedAt,
+        rank: 1,
+      });
+      const transfers = await this.pool.query<{
+        inbound: boolean;
+        token: "ausd" | "mon";
+        amount: string;
+        at: Date;
+      }>(
+        `SELECT to_wallet_id = $1 AS inbound, token, amount::text AS amount, created_at AS at
+         FROM wallets.transfers
+         WHERE (to_wallet_id = $1 OR from_wallet_id = $1) AND user_id = $2
+         ORDER BY created_at DESC, id DESC LIMIT 50`,
+        [row.walletId, row.walletOwner],
+      );
+      for (const move of transfers.rows) {
+        const amount = `${tokenAmount(move.token, move.amount)} ${move.token === "mon" ? "MON" : "AUSD"}`;
+        events.push({
+          kind: "transfer",
+          text: move.inbound ? `To ${row.name}'s wallet · ${amount}` : `Back to master · ${amount}`,
+          at: move.at,
+          rank: 2,
+        });
+      }
+    }
+    return events
+      .sort((a, b) => b.at.getTime() - a.at.getTime() || b.rank - a.rank)
+      .slice(0, 50)
+      .map(({ kind, text, at }) => ({ kind, text, at }));
   }
 }

@@ -660,18 +660,6 @@
 
 /* ---------- Its wallet ---------- */
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .wallet {
   display: flex;
   flex-direction: column;
@@ -1027,19 +1015,6 @@
   display: block;
   margin-top: 3px;
   font: 400 12.5px/1.35 var(--pk-font);
-  color: var(--pk-ink-muted);
-}
-.goSteps {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-/* A step's number, not a tick: it reads in muted ink on the panel, where on-lime would vanish. */
-.goSteps .check {
-  font: 600 11px/1 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 

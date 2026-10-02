@@ -27,6 +27,15 @@
 
 window.DOCS = [
   {
+    date: '2026-10-02',
+    title: 'La misma cuenta que en la web · username obligatorio',
+    summary: 'Con la wallet desbloqueada la app entra sola a la API del producto y, si la cuenta no tiene username, lo pide sin dejar saltarlo. Apagado mientras no se configure PICKLER_API_URL.',
+    file: 'dev/2026-10-02-mobile-account.html',
+    types: ['feature'],
+    status: 'in_progress',
+    tags: ['mobile', 'account', 'username', 'siwe'],
+  },
+  {
     date: '2026-09-29',
     title: 'TestFlight build 11 · rediseño light',
     summary: 'Build 0.1.0 (11) con el rediseño claro del Handoff (mobile-light F1+F2): 4 pestañas, Portfolio, Read, board nivel × tiempo, barras fijas, perfil de agente y onboarding.',

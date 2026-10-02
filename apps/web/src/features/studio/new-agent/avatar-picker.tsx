@@ -7,16 +7,23 @@ import { ACCENT_OPTIONS, AVATAR_PATTERNS, radioStep, type NewAgentForm } from ".
 import { useDialog } from "./use-dialog";
 import styles from "./new-agent.module.css";
 
-/** "Its avatar": one accent, one pattern. It shows on its profile, its posts and the board. */
-export function AvatarPicker({
+/** What the picker edits: the create form, or any value that carries an accent and a pattern. */
+export type AvatarChoice = Pick<NewAgentForm, "accent" | "pattern">;
+
+/**
+ * "Its avatar": one accent, one pattern. It shows on its profile, its posts and the board. Each
+ * pick calls `onChange` with the value and the pick; the create form passes itself, the draft
+ * studio's Identity & voice an `AvatarChoice` it saves once the picker closes.
+ */
+export function AvatarPicker<F extends AvatarChoice>({
   open,
   form,
   onChange,
   onClose,
 }: {
   open: boolean;
-  form: NewAgentForm;
-  onChange(next: NewAgentForm): void;
+  form: F;
+  onChange(next: F): void;
   onClose(): void;
 }) {
   const titleId = useId();

@@ -136,6 +136,7 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     name: "Halftime",
     handle: "halftime",
     accent: "lime",
+    avatarPattern: 0,
     draft: false,
     version: 1,
     config: { ...previewConfig, intervalHours: 6 },
@@ -151,6 +152,9 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     canCreateAnother: { ok: false, reason: "unfunded_agent" },
     spend: null,
     spendEnforced: true,
+    visibility: "public",
+    publishedAt: new Date(START).toISOString(),
+    xHandle: null,
   };
   const order = decided
     ? ({
@@ -173,26 +177,4 @@ export function homeFixture(stage: HomeStage): HomeFixture {
       } as unknown as PaperOrder)
     : null;
   return { now: START + (decided ? 140_000 : 60_000), agent, runs: [run], events, order };
-}
-
-/**
- * `?stage=draft`: the home right after "Create Halftime" (studio-create-simplified-v1). The decided
- * run is its first run. It is a private draft made the new way: a voice, its own wallet with the
- * brief's caps, and the 10 AUSD it was funded with, so Go Public has only Connect X left.
- */
-export function draftFixture(): HomeFixture {
-  const decided = homeFixture("decided");
-  return {
-    ...decided,
-    agent: {
-      ...decided.agent,
-      draft: true,
-      config: { ...decided.agent.config, voice: "analyst" },
-      wallet: { ...decided.agent.wallet!, balanceAusd: 10 },
-      canSchedule: { ok: false, reason: "first_run" },
-      // A lone funded draft: nothing is unfunded, and the drafts are below their limit.
-      canCreateAnother: { ok: true, reason: null },
-    },
-    order: null,
-  };
 }

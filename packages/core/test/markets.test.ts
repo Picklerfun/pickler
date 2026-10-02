@@ -6,6 +6,7 @@ import {
   createListMarkets,
   levelPrice,
   levelSide,
+  MarketDataUnavailableError,
   normalizeSymbol,
   squareProblem,
   type MarketBoard,
@@ -27,6 +28,8 @@ const market = (overrides: Partial<PerpMarket> = {}): PerpMarket => ({
   lastCall: null,
   note: "",
   hourlyReach: 1.5,
+  limits: { takerFee: 0.0005, maintenanceMargin: 0.05, slippageCap: 0.005, minimumAccountOpen: 10 },
+  source: { venue: "sample" },
   ...overrides,
 });
 
@@ -105,4 +108,30 @@ test("a call on a square the surface cannot take is dropped", async () => {
   const found = await getMarket("BTC-PERP");
 
   assert.deepEqual(found?.calls, [{ level: 1, horizon: "4H", agents: 2 }]);
+});
+
+test("a count nobody has measured sorts as none, and never above a market agents do read", () => {
+  const listed = [
+    market({ symbol: "UNKNOWN-PERP", agentsReading: null, openCalls: null, openInterest: 50 }),
+    market({ symbol: "READ-PERP", agentsReading: 1, openCalls: 0, openInterest: 1 }),
+    market({ symbol: "DEEP-PERP", agentsReading: null, openCalls: null, openInterest: 900 }),
+  ].sort(byCoverage);
+
+  assert.deepEqual(
+    listed.map((item) => item.symbol),
+    ["READ-PERP", "DEEP-PERP", "UNKNOWN-PERP"],
+  );
+});
+
+test("a square is refused only on evidence: an unknown reach refuses nothing", () => {
+  assert.equal(squareProblem({ hourlyReach: null }, 2.5, "1H"), null);
+  assert.equal(squareProblem({ hourlyReach: 1.5 }, 2.5, "1H"), "out-of-reach");
+});
+
+test("a venue that cannot be read is an error with a code, never an empty board", () => {
+  const error = new MarketDataUnavailableError("perpl testnet", { cause: new Error("timeout") });
+
+  assert.equal(error.code, "MARKET_DATA_UNAVAILABLE");
+  assert.equal(error.name, "MarketDataUnavailableError");
+  assert.match(error.message, /perpl testnet/);
 });

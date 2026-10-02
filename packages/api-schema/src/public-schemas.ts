@@ -283,11 +283,26 @@ export const perpMarketDtoSchema = z.object({
   funding1h: number,
   openInterest: number,
   maxLeverage: number,
-  agentsReading: number,
-  openCalls: number,
+  agentsReading: nullableNumber,
+  openCalls: nullableNumber,
   lastCall: z.object({ agent: text, when: text }).nullable(),
   note: text,
-  hourlyReach: number,
+  hourlyReach: nullableNumber,
+  limits: z.object({
+    takerFee: number,
+    maintenanceMargin: number,
+    slippageCap: number,
+    minimumAccountOpen: number,
+  }),
+  source: z.discriminatedUnion("venue", [
+    z.object({ venue: z.literal("sample") }),
+    z.object({
+      venue: z.literal("perpl"),
+      network: z.enum(["mainnet", "testnet"]),
+      observedAt: text,
+      stale: z.boolean(),
+    }),
+  ]),
 }) satisfies z.ZodType<PerpMarketDto>;
 export const marketDetailDtoSchema = z.object({
   market: perpMarketDtoSchema,

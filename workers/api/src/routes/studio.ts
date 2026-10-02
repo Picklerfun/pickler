@@ -1,6 +1,7 @@
 import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
+import { XUnavailableError, type XClient } from "@pickler/infrastructure";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -37,6 +38,17 @@ import {
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   SignedTransactionMismatchError,
+  PublishBlockedError,
+  XHandleTakenError,
+  VOICES,
+  X_CHALLENGE_TTL_MS,
+  X_CHECK_INTERVAL_MS,
+  challengeCode,
+  findVerificationPost,
+  parseXHandle,
+  publishBlockers,
+  reviseDraft,
+  verificationText,
   type createCustodyService,
   type Accent,
   type AgentWallet,
@@ -46,6 +58,9 @@ import {
   type StudioDirectory,
   type PreviewRepository,
   type ResearchRepository,
+  type DraftPatch,
+  type TransferLedgerEntry,
+  type XStore,
 } from "@pickler/core";
 import {
   studioOptionsSchema,
@@ -68,6 +83,14 @@ import {
   previewRunResponseSchema,
   draftCreateSchema,
   signedActivitySchema,
+  setupUpdateSchema,
+  identityUpdateSchema,
+  activityResponseSchema,
+  xChallengeRequestSchema,
+  xChallengeSchema,
+  xStateResponseSchema,
+  xVerifyResponseSchema,
+  publishResponseSchema,
   type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
@@ -104,7 +127,11 @@ export interface StudioServices {
    * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
    * chain is not composed it throws `PilotError` BALANCES_UNAVAILABLE (503).
    */
-  balances: { read(address: string): Promise<number> };
+  balances: {
+    read(address: string): Promise<number>;
+    /** Drops the cached balance, so the next read asks the chain. */
+    forget(address: string): void;
+  };
   /**
    * The passkey custody service, per request, for deposits, the wallets and their transfers, and
    * the drafts route's balance check. Absent where Turnkey is not configured; those routes then
@@ -121,6 +148,15 @@ export interface StudioServices {
     | "confirmTransfer"
     | "walletBalance"
   >;
+  /**
+   * Connect X (studio-draft-dashboard-v1 D4–D6): the challenges and verified accounts, and X's API.
+   * The store takes the product agent id and checks no ownership; every X route proves the agent
+   * is the caller's (`agentScope`) first. Absent, `GET /x` answers `available: false` and every
+   * other X route 503 X_UNAVAILABLE.
+   */
+  x?: { store: XStore; client: XClient };
+  /** The Master wallet's ledger (D17). Absent, `GET /wallets/ledger` answers 503. */
+  transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
 }
 
 /** Whole AUSD; core decides which amounts are offered. */
@@ -138,14 +174,17 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND" || code === "CHALLENGE_NOT_FOUND") {
     return 404;
   }
-  if (code === "QUOTA") {
+  if (code === "QUOTA" || code === "TOO_MANY_CHECKS") {
     return 429;
   }
-  if (code === "INVALID_INPUT") {
+  if (code === "INVALID_INPUT" || code === "INVALID_X_HANDLE") {
     return 400;
+  }
+  if (code === "X_UNAVAILABLE") {
+    return 503;
   }
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
@@ -159,39 +198,49 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
 /** The deposit ceremony's failures, as this route family's bare codes. */
 function custodyFailure(
   error: unknown,
-): { code: string; status: 400 | 404 | 409 | 502 | 503 } | null {
+): { code: string; message: string; status: 400 | 404 | 409 | 502 | 503 } | null {
+  // The deposit and wallet errors carry fixed, server-authored messages. The signing ones may
+  // carry Turnkey's words, so they answer fixed text instead.
   if (error instanceof InvalidDepositAmountError) {
-    return { code: "INVALID_INPUT", status: 400 };
+    return { code: "INVALID_INPUT", message: error.message, status: 400 };
   }
   if (error instanceof InvalidSignedActivityError) {
-    return { code: "INVALID_SIGNED_ACTIVITY", status: 400 };
+    return {
+      code: "INVALID_SIGNED_ACTIVITY",
+      message: "The passkey approval is not valid",
+      status: 400,
+    };
   }
   if (error instanceof DepositNonceError) {
-    return { code: "DEPOSIT_NONCE_MISMATCH", status: 400 };
+    return { code: "DEPOSIT_NONCE_MISMATCH", message: error.message, status: 400 };
   }
   if (error instanceof DepositFeeTooHighError) {
-    return { code: "DEPOSIT_FEE_TOO_HIGH", status: 400 };
+    return { code: "DEPOSIT_FEE_TOO_HIGH", message: error.message, status: 400 };
   }
   if (error instanceof SignedActivityRejectedError) {
-    return { code: "SIGNED_ACTIVITY_REJECTED", status: 400 };
+    return {
+      code: "SIGNED_ACTIVITY_REJECTED",
+      message: "The passkey approval was refused",
+      status: 400,
+    };
   }
   if (error instanceof AgentWalletNotFoundError) {
-    return { code: "AGENT_WALLET_NOT_FOUND", status: 404 };
+    return { code: "AGENT_WALLET_NOT_FOUND", message: error.message, status: 404 };
   }
   if (error instanceof NoCustodyAccountError) {
-    return { code: "NO_CUSTODY_ACCOUNT", status: 409 };
+    return { code: "NO_CUSTODY_ACCOUNT", message: error.message, status: 409 };
   }
   if (error instanceof DepositNotSendableError) {
-    return { code: "DEPOSIT_NOT_SENDABLE", status: 409 };
+    return { code: "DEPOSIT_NOT_SENDABLE", message: error.message, status: 409 };
   }
   if (error instanceof DepositAlreadyRecordedError) {
-    return { code: "DEPOSIT_ALREADY_RECORDED", status: 409 };
+    return { code: "DEPOSIT_ALREADY_RECORDED", message: error.message, status: 409 };
   }
   if (error instanceof SigningServiceUnavailableError) {
-    return { code: "SIGNING_UNAVAILABLE", status: 502 };
+    return { code: "SIGNING_UNAVAILABLE", message: "Signing is not available", status: 502 };
   }
   if (error instanceof DepositsUnavailableError) {
-    return { code: "DEPOSITS_UNAVAILABLE", status: 503 };
+    return { code: "DEPOSITS_UNAVAILABLE", message: error.message, status: 503 };
   }
   return null;
 }
@@ -212,6 +261,18 @@ function bareSites(sources: DraftCreateDto["sources"]): DraftCreateDto["sources"
   return { web: { mode: sources.web.mode, sites: [...new Set(sites)] } };
 }
 
+/** A body that is empty or `{}`; anything else is 400 INVALID_INPUT. */
+function emptyBody(raw: string): void {
+  if (raw) {
+    z.object({}).strict().parse(JSON.parse(raw));
+  }
+}
+
+const internalFailure = {
+  error: "INTERNAL_OR_PROVIDER_FAILURE",
+  message: "Something went wrong; try again",
+};
+
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
 export function studioRoutes(services: StudioServices) {
   const api = new Hono<AppEnv>();
@@ -225,13 +286,13 @@ export function studioRoutes(services: StudioServices) {
   api.use("*", authenticated(services.authenticate, { userOnly: true }));
   api.onError((error, c) => {
     if (error instanceof z.ZodError || error instanceof SyntaxError) {
-      return c.json({ error: "INVALID_INPUT" }, 400);
+      return c.json({ error: "INVALID_INPUT", message: "The request is not valid" }, 400);
     }
     if (error instanceof AuthenticationRequiredError) {
-      return c.json({ error: "UNAUTHORIZED" }, 401);
+      return c.json({ error: "UNAUTHORIZED", message: "Sign in again" }, 401);
     }
     if (error instanceof AccessDeniedError) {
-      return c.json({ error: "RESEARCH_ACCESS_DENIED" }, 403);
+      return c.json({ error: "RESEARCH_ACCESS_DENIED", message: error.message }, 403);
     }
     if (error instanceof WalletRefusal) {
       return c.json(
@@ -244,13 +305,34 @@ export function studioRoutes(services: StudioServices) {
       );
     }
     if (error instanceof BriefError) {
-      return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
+      return c.json(
+        { error: error.code, message: error.message, field: error.field, reason: error.reason },
+        400,
+      );
+    }
+    if (error instanceof PublishBlockedError) {
+      return c.json(
+        {
+          error: "PUBLISH_BLOCKED",
+          message: error.message,
+          detail: { blockers: error.blockers },
+        },
+        409,
+      );
+    }
+    if (error instanceof XHandleTakenError) {
+      return c.json({ error: "X_HANDLE_TAKEN", message: error.message }, 409);
+    }
+    if (error instanceof XUnavailableError) {
+      // Never X's words: its body can echo the request, and the owner can do nothing with it.
+      return c.json({ error: "X_UNAVAILABLE", message: "X is not available right now" }, 503);
     }
     if (error instanceof PreviewRateLimited) {
-      return c.json({ error: error.code, retryAt: error.retryAt }, 429);
+      return c.json({ error: error.code, message: error.message, retryAt: error.retryAt }, 429);
     }
     if (error instanceof PilotError) {
-      return c.json({ error: error.code }, pilotStatus(error.code));
+      // Every PilotError message is server-authored, so it is safe to show (spec §4).
+      return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
     }
     if (error instanceof SignedTransactionMismatchError) {
       // Turnkey answered a transaction other than the approved one; nothing was broadcast. The
@@ -259,13 +341,13 @@ export function studioRoutes(services: StudioServices) {
         requestId: c.get("requestId"),
         message: error.message,
       });
-      return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
+      return c.json(internalFailure, 500);
     }
     const custody = custodyFailure(error);
     if (custody) {
-      return c.json({ error: custody.code }, custody.status);
+      return c.json({ error: custody.code, message: custody.message }, custody.status);
     }
-    return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
+    return c.json(internalFailure, 500);
   });
   api.post(
     "/onboard",
@@ -482,7 +564,11 @@ export function studioRoutes(services: StudioServices) {
       name?: string;
       handle?: string;
       accent: Accent;
+      avatarPattern: number;
       draft: boolean;
+      visibility: "private" | "public";
+      publishedAt: Date | null;
+      xHandle: string | null;
     },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
@@ -490,6 +576,7 @@ export function studioRoutes(services: StudioServices) {
     return studioAgentSchema.parse({
       ...agentResponseSchema.parse(record),
       ...identity,
+      publishedAt: identity.publishedAt?.toISOString() ?? null,
       wallet: wallet && {
         walletId: wallet.walletId,
         address: wallet.address,
@@ -523,7 +610,11 @@ export function studioRoutes(services: StudioServices) {
               name: agent.name,
               handle: agent.handle,
               accent: agent.accent,
+              avatarPattern: agent.avatarPattern,
               draft: agent.draft,
+              visibility: agent.visibility,
+              publishedAt: agent.publishedAt,
+              xHandle: agent.xHandle,
             }),
           ),
         ),
@@ -610,6 +701,50 @@ export function studioRoutes(services: StudioServices) {
       );
     },
   );
+  /**
+   * One agent's DTO, as its page reads it. This agent's own balance is what the page shows, so its
+   * failed read fails the request.
+   */
+  async function oneAgent(current: StudioAccess, productId: string): Promise<StudioAgentDto> {
+    const scope = await services.directory.agentScope(current, productId);
+    const listed = await services.directory.list(current);
+    const listedAgent = listed.find((agent) => agent.id === productId);
+    const wallet = await fundedWallet(productId);
+    const another = await lockSeenFrom(listed, productId, wallet);
+    const identity = listedAgent
+      ? {
+          productId,
+          name: listedAgent.name,
+          handle: listedAgent.handle,
+          accent: listedAgent.accent,
+          avatarPattern: listedAgent.avatarPattern,
+          draft: listedAgent.draft,
+          visibility: listedAgent.visibility,
+          publishedAt: listedAgent.publishedAt,
+          xHandle: listedAgent.xHandle,
+        }
+      : {
+          accent: "lime" as const,
+          avatarPattern: 0,
+          draft: false,
+          visibility: "private" as const,
+          publishedAt: null,
+          xHandle: null,
+        };
+    return studioAgent(scope, wallet, another, identity);
+  }
+
+  /** The caller's agent as `directory.list` has it; NOT_FOUND for anyone else's. */
+  async function ownAgent(current: StudioAccess, productId: string) {
+    const scope = await services.directory.agentScope(current, productId);
+    const listed = await services.directory.list(current);
+    const agent = listed.find((candidate) => candidate.id === productId);
+    if (!agent) {
+      throw new PilotError("NOT_FOUND", "Agent not found");
+    }
+    return { ...agent, scope };
+  }
+
   api.get(
     "/agents/:id",
     describeOperation("studioAgent", {
@@ -622,23 +757,312 @@ export function studioRoutes(services: StudioServices) {
     }),
     async (c) => {
       const current = await access.authorize(c.get("principal"));
+      return c.json(await oneAgent(current, c.req.param("id")));
+    },
+  );
+  // A draft's brief, sources, caps and voice (studio-draft-dashboard-v1 D10), versioned like
+  // `PUT /config`, whose stale-version refusal (409 CONFLICT) it shares. Core's `reviseDraft`
+  // applies create's rules and never touches `marketScope`. A voice also renames the profile's
+  // voice: a second write after the config's, as the two live in different stores; a failure
+  // between them leaves the config saved and the old voice name, which the next save repairs.
+  api.put(
+    "/agents/:id/setup",
+    describeOperation("studioSetup", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.studioAgentSchema,
+      body: dto.setupUpdateSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
       const productId = c.req.param("id");
-      const scope = await services.directory.agentScope(current, productId);
-      const listed = await services.directory.list(current);
-      const listedAgent = listed.find((agent) => agent.id === productId);
-      // This agent's own balance is what the page shows, so its failed read fails the request.
-      const wallet = await fundedWallet(productId);
-      const another = await lockSeenFrom(listed, productId, wallet);
-      const identity = listedAgent
-        ? {
-            productId,
-            name: listedAgent.name,
-            handle: listedAgent.handle,
-            accent: listedAgent.accent,
-            draft: listedAgent.draft,
+      const agent = await ownAgent(current, productId);
+      const body = setupUpdateSchema.parse(await c.req.json());
+      if (!agent.draft) {
+        throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
+      }
+      const patch: DraftPatch = {
+        ...(body.brief ? { brief: body.brief } : {}),
+        ...(body.sources ? { sources: bareSites(body.sources) } : {}),
+        ...(body.caps ? { caps: body.caps } : {}),
+        ...(body.voice ? { voice: body.voice } : {}),
+      };
+      const record = await repo.agent(agent.scope);
+      // The draft check above answers early; the write checks again under its own lock, as a
+      // publish may land in between. New caps write `spend` in that same transaction.
+      await repo.updateConfig(
+        agent.scope,
+        body.expectedVersion,
+        reviseDraft(record.config, patch),
+        {
+          requireDraft: true,
+          ...(body.caps ? { writeSpend: true } : {}),
+        },
+      );
+      const voice = VOICES.find((candidate) => candidate.key === body.voice);
+      if (voice) {
+        await services.directory.updateIdentity(current, productId, { voice: voice.name });
+      }
+      return c.json(await oneAgent(current, productId));
+    },
+  );
+  // Name and avatar (D14); the handle is fixed. The database bounds them too.
+  api.put(
+    "/agents/:id/identity",
+    describeOperation("studioIdentity", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.studioAgentSchema,
+      body: dto.identityUpdateSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      const body = identityUpdateSchema.parse(await c.req.json());
+      await services.directory.updateIdentity(current, productId, {
+        ...(body.name === undefined ? {} : { name: body.name }),
+        ...(body.avatar ? { accent: body.avatar.accent, avatarPattern: body.avatar.pattern } : {}),
+      });
+      return c.json(await oneAgent(current, productId));
+    },
+  );
+  // The Overview's activity (D18): only what the database recorded.
+  api.get(
+    "/agents/:id/activity",
+    describeOperation("studioActivity", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.activityResponseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const events = await services.directory.activity(current, c.req.param("id"));
+      return c.json(
+        activityResponseSchema.parse({
+          events: events.map((event) => ({ ...event, at: event.at.toISOString() })),
+        }),
+      );
+    },
+  );
+
+  /** Connect X's store and client, or 503 X_UNAVAILABLE where they are not composed. */
+  function connectX() {
+    if (!services.x) {
+      throw new PilotError("X_UNAVAILABLE", "X verification is not composed here");
+    }
+    return services.x;
+  }
+
+  function challengeDto(
+    name: string,
+    challenge: { handle: string; code: string; expiresAt: Date },
+  ) {
+    return xChallengeSchema.parse({
+      handle: challenge.handle,
+      text: verificationText(name, challenge.code),
+      expiresAt: challenge.expiresAt.toISOString(),
+    });
+  }
+
+  // Connect X by verification post (D4). `available` is false until Pickler's X app has a token
+  // (D5), or where X is not composed at all (no state either, then); a lapsed challenge is not
+  // shown, so the card starts over. Owner-only: it answers the live challenge code.
+  api.get(
+    "/agents/:id/x",
+    describeOperation("studioX", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.xStateResponseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      const agent = await ownAgent(current, productId);
+      if (!services.x) {
+        return c.json(
+          xStateResponseSchema.parse({ account: null, challenge: null, available: false }),
+        );
+      }
+      const { store, client } = services.x;
+      const [account, challenge] = await Promise.all([
+        store.account(productId),
+        store.challenge(productId),
+      ]);
+      const live = challenge && challenge.expiresAt.getTime() > Date.now() ? challenge : null;
+      return c.json(
+        xStateResponseSchema.parse({
+          account: account && {
+            handle: account.handle,
+            verifiedAt: account.verifiedAt.toISOString(),
+          },
+          challenge: live && challengeDto(agent.name, live),
+          available: client.available,
+        }),
+      );
+    },
+  );
+  // A new challenge replaces the old. X's availability is checked before anything is saved, so
+  // no challenge is issued that could never be checked.
+  api.post(
+    "/agents/:id/x/challenge",
+    describeOperation("studioXChallenge", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.xChallengeSchema,
+      body: dto.xChallengeRequestSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      const agent = await ownAgent(current, productId);
+      const { store, client } = connectX();
+      const body = xChallengeRequestSchema.parse(await c.req.json());
+      const handle = parseXHandle(body.handle);
+      if (!handle) {
+        throw new PilotError("INVALID_X_HANDLE", "1 to 15 letters, digits or _");
+      }
+      if (await store.account(productId)) {
+        throw new PilotError("X_ALREADY_CONNECTED", "This agent already has an X account");
+      }
+      if (await store.handleTaken(handle, productId)) {
+        throw new XHandleTakenError();
+      }
+      if (!client.available) {
+        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
+      }
+      // At most one new challenge per 10 s, and the check clock carries over, so alternating
+      // challenge and verify cannot spend more X reads than verify alone (spec §8).
+      const saved = await store.saveChallenge(
+        productId,
+        {
+          handle,
+          code: challengeCode(crypto.getRandomValues(new Uint8Array(5))),
+          expiresAt: new Date(Date.now() + X_CHALLENGE_TTL_MS),
+        },
+        X_CHECK_INTERVAL_MS,
+      );
+      if (!saved) {
+        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before starting again");
+      }
+      return c.json(challengeDto(agent.name, saved));
+    },
+  );
+  // "Check again": one read of X per challenge per 10 s, claimed atomically before X is called,
+  // so concurrent checks cannot spend the app's X quota twice. Only a post by the looked-up user,
+  // made at or after the challenge, carrying the code, verifies (spec §8).
+  api.post(
+    "/agents/:id/x/verify",
+    describeOperation("studioXVerify", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.xVerifyResponseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      await ownAgent(current, productId);
+      const { store, client } = connectX();
+      emptyBody(await c.req.text());
+      const challenge = await store.challenge(productId);
+      if (!challenge) {
+        throw new PilotError("CHALLENGE_NOT_FOUND", "Start with your handle");
+      }
+      const now = new Date();
+      if (challenge.expiresAt.getTime() <= now.getTime()) {
+        throw new PilotError("CHALLENGE_EXPIRED", "This line has lapsed; start again");
+      }
+      if (!client.available) {
+        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
+      }
+      if (!(await store.claimCheck(productId, now, X_CHECK_INTERVAL_MS))) {
+        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before checking again");
+      }
+
+      const notFound = xVerifyResponseSchema.parse({ verified: false, reason: "NOT_FOUND" });
+      const user = await client.userByHandle(challenge.handle);
+      if (!user) {
+        return c.json(notFound);
+      }
+      const posts = await client.recentPosts(user.id, challenge.createdAt);
+      const post = findVerificationPost(posts, {
+        userId: user.id,
+        code: challenge.code,
+        since: challenge.createdAt,
+      });
+      if (!post) {
+        return c.json(notFound);
+      }
+
+      await store.connect(productId, {
+        xUserId: user.id,
+        handle: user.handle,
+        postId: post.id,
+        at: new Date(),
+      });
+      return c.json(xVerifyResponseSchema.parse({ verified: true, handle: user.handle }));
+    },
+  );
+  // Allowed while private; a public agent keeps its handle (D6), refused by the store under the
+  // agent row's lock.
+  api.delete(
+    "/agents/:id/x",
+    describeOperation("studioXDisconnect", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: z.object({ disconnected: z.literal(true) }),
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      await ownAgent(current, productId);
+      await connectX().store.disconnect(productId);
+      return c.json({ disconnected: true });
+    },
+  );
+  // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
+  // this check with no transaction open (it reads the chain), then publishes under the agent row's
+  // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.
+  api.post(
+    "/agents/:id/publish",
+    describeOperation("studioPublish", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      response: dto.publishResponseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      emptyBody(await c.req.text());
+      const published = await services.directory.publish(
+        current,
+        c.req.param("id"),
+        async ({ killed, walletAddress }) => {
+          let ausdMicro: bigint | null = null;
+          if (walletAddress) {
+            // Never the 15 s cache: a pull-back just before Go Public must not slip through (D8).
+            services.balances.forget(walletAddress);
+            const balance = await services.balances.read(walletAddress).catch(() => {
+              throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
+            });
+            // The reader answers display AUSD, floored to the micro; back to micro-AUSD.
+            ausdMicro = BigInt(Math.round(balance * 1_000_000));
           }
-        : { accent: "lime" as const, draft: false };
-      return c.json(await studioAgent(scope, wallet, another, identity));
+          return publishBlockers({ killed, walletLinked: walletAddress !== null, ausdMicro });
+        },
+      );
+      return c.json(
+        publishResponseSchema.parse({
+          visibility: published.visibility,
+          publishedAt: published.publishedAt.toISOString(),
+        }),
+      );
     },
   );
   api.put(
@@ -790,7 +1214,14 @@ export function studioRoutes(services: StudioServices) {
     },
   );
 
-  api.route("/wallets", studioWalletRoutes({ access, custody: deposits }));
+  api.route(
+    "/wallets",
+    studioWalletRoutes({
+      access,
+      custody: deposits,
+      ...(services.transfers ? { transfers: services.transfers } : {}),
+    }),
+  );
   api.get(
     "/agents/:id/runs",
     describeOperation("studioAgentRuns", {

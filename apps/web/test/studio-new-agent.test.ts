@@ -6,6 +6,8 @@ import {
   MIN_START,
   STARTER_CAPS,
   ACCENT_OPTIONS,
+  LEVERAGE_BOUNDS,
+  SPEND_BOUNDS,
   DEFAULT_BRIEF,
   VOICES,
   arrived,
@@ -205,6 +207,12 @@ test("the copies match core's: six voices, six patterns, the starter caps, the m
   assert.deepEqual(STARTER_CAPS, { ...core.STARTER_CAPS });
   assert.equal(MIN_START.ausdMicro, core.MIN_START_MICRO_AUSD);
   assert.equal(MIN_START.monWei, core.MIN_START_MON_WEI);
+});
+
+test("the caps' bounds match core's", async () => {
+  const core = await import("@pickler/core");
+  assert.deepEqual(SPEND_BOUNDS, core.SPEND_BOUNDS);
+  assert.deepEqual(LEVERAGE_BOUNDS, core.LEVERAGE_BOUNDS);
 });
 
 test("a transfer's amount is trimmed before it is sent", () => {

@@ -31,6 +31,10 @@ TURNKEY_DELEGATED_API_PRIVATE_KEY=
 # Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
 CHAIN_ID=10143
 MONAD_RPC_URL=
+# The Perpl network the public market board reads: testnet or mainnet. Absent serves the sample
+# board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
+# public API from this machine.
+PERPL_BOARD_NETWORK=testnet
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.
@@ -42,6 +46,11 @@ SIWE_DOMAIN=
 # The domain of the synthetic, non-deliverable address a wallet account is created under. It is an
 # internal key and never a contact, so this domain must never be made to accept mail.
 WALLET_EMAIL_DOMAIN=
+
+# Connect X (verification by post): Pickler's X app bearer token, read-only and a secret. Empty
+# means Connect X says it isn't open yet, its challenge and verify answer 503 X_UNAVAILABLE, and
+# Go Public still works without X.
+X_BEARER_TOKEN=
 
 # Comma-separated. Empty means nobody; this is not a fallback that opens up when unset.
 SUPER_ADMIN_EMAILS=
