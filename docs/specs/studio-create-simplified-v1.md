@@ -243,3 +243,11 @@ Depends on: Turnkey and the RPC configured where it runs (as the deposit already
 ## 12. Open questions for the owner
 
 None blocking. The minimums (10 AUSD, 0.5 MON) are a guess to revisit once staging measures gas.
+
+Known leftovers after the build:
+
+- `preview-runs` (API routes, `PostgresPreviewStore`, the research worker's preview claim,
+  `pickler.preview_runs` and `preview_events`) is unused by the web after this change. Remove it
+  in a separate cleanup.
+- Perpl-shaped drafts depend on `perpl-agent-runtime-v1` to run.
+- The deposit routes were not rewrapped as transfers (they share `checkStampedTransfer`).
