@@ -45,6 +45,37 @@ export class AddressTakenError extends Error {
   }
 }
 
+/** The wallet that signed opens no Pickler account, so there is none to join. */
+export class NoAccountToJoinError extends Error {
+  constructor() {
+    super("That wallet has no Pickler account yet");
+    this.name = "NoAccountToJoinError";
+  }
+}
+
+/** The wallet that signed already opens the account that asked. */
+export class SameAccountError extends Error {
+  constructor() {
+    super("That wallet already opens this account");
+    this.name = "SameAccountError";
+  }
+}
+
+/**
+ * The account that asked to join another cannot be given up: it has a username, or it is not the
+ * bare account a wallet's first sign-in makes.
+ */
+export class AccountNotJoinableError extends Error {
+  constructor(readonly reason: "has_profile" | "not_wallet_account") {
+    super(
+      reason === "has_profile"
+        ? "This account already has a username, so it cannot be folded into another"
+        : "Only an account made by connecting a wallet can be folded into another",
+    );
+    this.name = "AccountNotJoinableError";
+  }
+}
+
 /**
  * The auth account at this address's synthetic email was not made by wallet sign-in: it has a
  * password, or an identity wallet sign-in never creates, and no wallet-account marker. Since the
@@ -102,6 +133,8 @@ export interface WalletSignInDependencies {
   links: WalletLinkRepository;
   verifier: SignatureVerifier;
   accounts: AccountProvisioner;
+  /** Whether the account has a profile, and so a username. `join` gives up only one without. */
+  hasProfile: (userId: string) => Promise<boolean>;
   randomNonce: () => string;
   /** Builds the string to sign. Lives in infrastructure because it is viem's format. */
   buildMessage: (fields: MessageFields) => string;
@@ -263,6 +296,57 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         throw new AddressTakenError();
       }
       return { linked: true as const };
+    },
+
+    /**
+     * The signed-in account joins the account of the wallet that signed, and is given up.
+     *
+     * This is for somebody who connected a wallet Pickler had not seen — which made it an account,
+     * as every first sign-in does — and who already has an account under another wallet. They are
+     * asked for a username, say "I already have one", and sign with the other wallet. The first
+     * wallet then opens the account they already had, and the one made a moment ago is removed.
+     *
+     * It is the only place an address changes account, so both sides have to agree and the side
+     * given up has to be worth nothing:
+     *
+     * - the account that is kept agrees with a signature of its wallet over a fresh nonce, the
+     *   same proof a sign-in takes;
+     * - the account given up agrees with its session, which is the caller's;
+     * - it has no username, and it is the bare account wallet sign-in made for its one wallet —
+     *   never an email or Google account that linked a wallet, never one with more than the
+     *   wallet it was made for.
+     *
+     * `link` still refuses an address owned elsewhere: adding a wallet to an account never takes
+     * it from another.
+     */
+    async join(userId: string, presented: Presented) {
+      const { address, namespace } = await proven(presented);
+      const kept = await deps.links.findByAddress(namespace, address);
+      if (!kept) {
+        throw new NoAccountToJoinError();
+      }
+      if (kept.userId === userId) {
+        throw new SameAccountError();
+      }
+
+      const [own, ...others] = await deps.links.listForUser(userId);
+      const bare =
+        own !== undefined &&
+        others.length === 0 &&
+        (await deps.accounts.isOwnWalletAccount(userId, own.namespace, own.address));
+      if (!bare) {
+        throw new AccountNotJoinableError("not_wallet_account");
+      }
+      if (await deps.hasProfile(userId)) {
+        throw new AccountNotJoinableError("has_profile");
+      }
+
+      // The check every sign-in into the kept account gets, before anything moves.
+      await deps.accounts.markWalletAccount(kept.userId, namespace, address);
+      await deps.links.reassign(userId, kept.userId);
+      // Tidying, as after a lost link: a leftover holds no wallet and nobody can open it.
+      await deps.accounts.discardAccount(userId, own.namespace, own.address).catch(() => {});
+      return { userId: kept.userId, session: await deps.accounts.session(kept.userId) };
     },
 
     /** No catch: a failed read must not render as an account with no wallets. */

@@ -22,24 +22,26 @@ Three things are also missing whichever wallet is used:
 
 ## 2. Decisions
 
-| #   | Decision                                                                                                                                                                                                                                                                                           | Reversible?                 |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| M1  | **The chooser offers two wallets, and only two:** the passkey wallet (Mera), first, with "Create one" and "I already have one"; and the browser wallet, as today. Turnkey is never offered here.                                                                                                   | yes                         |
-| M2  | **Mera's relying party on the web is `pickler.fun`**, the same as the app's (`mobile-monorepo-v1.md` W1). The same passkey, synced by its keychain, is the same account on both.                                                                                                                   | no, once anyone holds funds |
-| M3  | **The account is derived by `@pickler/mera-account`** and by nothing else: PRF output → BIP-39 → `m/44'/60'/0'/0/0`. The retired signer's rule (the PRF output as the key) is not brought back.                                                                                                    | no, same reason             |
-| M4  | **No key is kept.** A passkey prompt yields the PRF output; the key is derived, used to sign once, and its bytes zeroed before the signature is presented. Nothing derived from it is stored. Every later signature is another prompt.                                                             | yes                         |
-| M5  | **Connecting signs in, for both wallets.** After the wallet connects, the chooser goes on to one signature over the server's sign-in message. For Mera that is the same ceremony as connecting: one prompt. For a browser wallet it is its own step with its own button, then the wallet's prompt. | yes                         |
-| M6  | **Then a username, if the account has none.** Whatever wallet signed in, an account with no profile is asked for its username in the chooser's last step. Closing the chooser is always possible; the portfolio then asks again.                                                                   | yes                         |
-| M7  | **The server records the kind.** `POST /v1/auth/wallet/verify` and `/link` accept `kind: "mera" \| "eoa"` (default `eoa`), stored in `identity.wallet_links.kind` as `mera` or `external`. It describes; it grants nothing. The first writer stands. No migration: the column already allows both. | yes                         |
-| M8  | **What the browser remembers** is the kind, the address and the passkey's credential id. A reload shows the address without a prompt.                                                                                                                                                              | yes                         |
-| M9  | **Mera and Turnkey are kept apart five ways** (§4).                                                                                                                                                                                                                                                | —                           |
-| M10 | **A passkey that returns no PRF output is a named state**, not an error box: the chooser says which password managers work and offers the browser wallet.                                                                                                                                          | yes                         |
-| M11 | `NEXT_PUBLIC_MERA_WEB=off` removes the passkey wallet from the chooser. It is the switch to pull if the key-in-page exposure of §5 is ever judged too high.                                                                                                                                        | yes                         |
+| #   | Decision                                                                                                                                                                                                                                                                                                          | Reversible?                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| M1  | **The chooser offers two wallets, and only two:** the passkey wallet (Mera), first, with "Create one" and "I already have one"; and the browser wallet, as today. Turnkey is never offered here.                                                                                                                  | yes                            |
+| M2  | **Mera's relying party on the web is `pickler.fun`**, the same as the app's (`mobile-monorepo-v1.md` W1). The same passkey, synced by its keychain, is the same account on both.                                                                                                                                  | no, once anyone holds funds    |
+| M3  | **The account is derived by `@pickler/mera-account`** and by nothing else: PRF output → BIP-39 → `m/44'/60'/0'/0/0`. The retired signer's rule (the PRF output as the key) is not brought back.                                                                                                                   | no, same reason                |
+| M4  | **No key is kept.** A passkey prompt yields the PRF output; the key is derived, used to sign once, and its bytes zeroed before the signature is presented. Nothing derived from it is stored. Every later signature is another prompt.                                                                            | yes                            |
+| M5  | **Connecting signs in, for both wallets.** After the wallet connects, the chooser goes on to one signature over the server's sign-in message. For Mera that is the same ceremony as connecting: one prompt. For a browser wallet it is its own step with its own button, then the wallet's prompt.                | yes                            |
+| M6  | **Then a username, if the account has none.** Whatever wallet signed in, an account with no profile is asked for its username in the chooser's last step. Closing the chooser is always possible; the portfolio then asks again.                                                                                  | yes                            |
+| M7  | **The server records the kind.** `POST /v1/auth/wallet/verify` and `/link` accept `kind: "mera" \| "eoa"` (default `eoa`), stored in `identity.wallet_links.kind` as `mera` or `external`. It describes; it grants nothing. The first writer stands. No migration: the column already allows both.                | yes                            |
+| M8  | **What the browser remembers** is the kind, the address and the passkey's credential id. A reload shows the address without a prompt.                                                                                                                                                                             | yes                            |
+| M9  | **Mera and Turnkey are kept apart five ways** (§4).                                                                                                                                                                                                                                                               | —                              |
+| M10 | **A passkey that returns no PRF output is a named state**, not an error box: the chooser says which password managers work and offers the browser wallet.                                                                                                                                                         | yes                            |
+| M11 | `NEXT_PUBLIC_MERA_WEB=off` removes the passkey wallet from the chooser. It is the switch to pull if the key-in-page exposure of §5 is ever judged too high.                                                                                                                                                       | yes                            |
+| M12 | **A new wallet can join the account the person already has** (§9). The username step offers it; the other wallet signs once; the bare account the new wallet was given is folded into the existing one. It is the only way an address changes account, and only a bare account with no username is ever given up. | no, for an account once joined |
 
 ## 3. The flow
 
 ```
 choose ──► connect ──► sign in ──► username? ──► done
+                                      └─ or join the account you already have (§9)
            Mera:  one passkey prompt covers connect and sign in
            EOA:   the wallet's account prompt, then "Sign in" and its signature prompt
 ```
@@ -148,6 +150,64 @@ funds**; today the venue is a testnet. M11 is the switch if the owner decides ot
 ## 8. Out of scope
 
 Sending a transaction from the web (paying for a read, trading, enabling Perpl); the
-content-security policy and the isolated signer (§5); linking a second wallet, switching and
-unlinking (`marketplace-wallets-v1.md` D10–D12); WalletConnect; a Mera export screen; SIWE from the
-mobile app.
+content-security policy and the isolated signer (§5); adding a wallet from inside an account that
+already has a username, switching between an account's wallets, unlinking, and merging two accounts
+that both have usernames (`marketplace-wallets-v1.md` D10–D12); joining with a second account of
+the same browser wallet; WalletConnect; a Mera export screen; SIWE from the mobile app.
+
+## 9. Joining the account you already have
+
+Added on 2026-10-02, at the owner's request: the wallet is the way in, and somebody who is already
+in under one wallet must be able to come in under the other.
+
+**The problem.** Connecting signs in, and a first sign-in makes an account (M5). So a person with
+an account under their passkey wallet who connects their browser wallet gets a second, empty
+account, and is asked for a username as if they were new.
+
+**The flow.** The username step has a second way out: "Already have a Pickler account? Link this
+wallet to it".
+
+```
+username ──► join ──► joined ──► closed
+   ▲           │
+   └── Back ───┘
+```
+
+1. **Join.** The person picks the wallet their account is under: the passkey wallet ("I already
+   have one" — there is nothing to create) or the browser wallet. That wallet signs the server's
+   sign-in message, as it would to sign in: one prompt.
+2. The signature goes to `POST /v1/auth/wallet/join` with the session of the account the connected
+   wallet was just given. The API moves the connected wallet to the account of the wallet that
+   signed, removes the empty account, and answers with a session for the account that is kept.
+3. **Joined.** "0xAB…CD now opens @username." The connected wallet stays connected; the page holds
+   the kept account's session. If that account has no username either, the username step is shown
+   for it instead.
+
+**What the server requires**, because this is the one place an address changes account:
+
+| Side                 | Proof                                                                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The account kept     | A signature of its wallet over a fresh nonce: the proof a sign-in takes. Without it anybody could attach their wallet to somebody else's account.                                                                                  |
+| The account given up | Its session, which is the caller's. It must have **no username**, hold **exactly one wallet**, and be the bare account wallet sign-in made for that wallet — never an email or Google account that linked one. Anything else: 409. |
+
+`POST /v1/auth/wallet/link`, which adds a wallet to the signed-in account, still refuses an address
+that belongs to another account. Joining gives an account up; linking never takes one.
+
+**Refusals, each with words on the join step:** the wallet that signed has no account
+(`no_account`: pick a username instead); it is the connected wallet itself (`same_account`); the
+connected wallet's account has a username (`join_has_profile`); it is not a bare wallet account
+(`join_not_wallet_account`). A closed prompt is not a refusal.
+
+**Limits.** A second account of the same browser wallet cannot sign from the join step: selecting
+it in the extension is the wallet changing under the page, which the page follows as a new
+connection. Two accounts that both have usernames are not merged. What the given-up account did
+before it was joined — it had no username, so nothing public — is not carried over. The token of
+the given-up account stays valid until it expires, as any deleted account's does; the page stops
+using it at once.
+
+**Acceptance.** Core: a bare account joins; a bad signature, a wallet with no account, the same
+account, an account with a username, a studio account and an account with two wallets each move
+nothing; `link` still refuses a taken address. Store: `reassign` moves one account's wallets and no
+others. Route: 401 without a session, the kept account's session on success, a code per refusal.
+Web: the reducer's `join`, `joined` and `back`; the words for each refusal. In a browser, both
+directions (new passkey wallet joins a browser wallet's account, and the reverse) and two refusals.

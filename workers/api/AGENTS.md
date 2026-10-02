@@ -114,6 +114,19 @@ of signing in. An evicted nonce answers 400 `nonce_invalid`, which a retry fixes
 no cap per client yet: `CF-Connecting-IP` is available to the route, but keeping its hash needs a
 column `identity.siwe_nonces` does not have.
 
+`POST /v1/auth/wallet/join` is the one route through which an address changes account
+(`docs/specs/mera-web-v1.md` §9). It is for a person who connected a wallet with no account — which
+made it one — and already has an account under another wallet. The caller's session is the account
+given up; the body is the other wallet's signed sign-in message, the account kept. Core's `join`
+moves the caller's wallet with `links.reassign`, removes the emptied account through
+`discardAccount` (a failure is tolerated, as after a lost link), and the route answers with a
+session for the kept account. It refuses with 404 `no_account` (the wallet that signed opens no
+account), 409 `same_account`, 409 `join_has_profile` and 409 `join_not_wallet_account`: only the
+bare account wallet sign-in made for its one wallet, with no username, is ever given up — never an
+email or Google account that linked a wallet. `hasProfile` in `walletAuthServices` is that username
+check. Do not widen these conditions without the owner: a join cannot be undone, and `/link` still
+answers 409 for an address owned elsewhere.
+
 A first wallet sign-in can lose its link: the address was linked to nobody when `verify` looked,
 and a signed-in account's `POST /v1/auth/wallet/link` of the same wallet wrote the link first
 (`link` answers `created: false`). `verify` then reads the link again and signs in its holder, after

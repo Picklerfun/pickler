@@ -14,13 +14,13 @@ import {
 import type { ReactNode } from "react";
 import { ConnectModal } from "../components/connect-modal";
 import { CLOSED, connectFlow, type ConnectFlowState, type ConnectStep } from "./connect-flow";
-import { hasProfile as readHasProfile } from "./handles";
+import { readProfile } from "./handles";
 import { injectedSigner } from "./injected-signer";
 import { PrfUnavailableError } from "./mera-ceremony";
 import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
 import { signIn, type ConnectResult, type Signer } from "./connect";
-import { signInWords } from "./sign-in-words";
+import { joinWords, signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
 import {
   adoptSession,
@@ -102,6 +102,8 @@ const onServer = () => false;
 interface Kept {
   result: SignInResult;
   profile: boolean | null;
+  /** The account's username, when a session was just issued and its profile was read. */
+  handle: string | null;
 }
 
 /** How long a new session waits for the last one's sign-out before going ahead anyway. */
@@ -110,7 +112,21 @@ const RELEASE_WAIT_MS = 3_000;
 /** An address for the chooser's steps when the design harness opens them without a wallet. */
 const PREVIEW_ADDRESS = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
-const PREVIEW_STEPS: readonly ConnectStep[] = ["choose", "signin", "username", "prf"];
+const PREVIEW_STEPS: readonly ConnectStep[] = [
+  "choose",
+  "signin",
+  "username",
+  "prf",
+  "join",
+  "joined",
+];
+
+/** The username the `joined` step shows when the design harness opens it without an account. */
+const PREVIEW_HANDLE = "nightowl";
+
+/** Whether an account has a username, from what reading its profile answered. */
+const hasUsername = (profile: Awaited<ReturnType<typeof readProfile>>) =>
+  profile === null ? null : profile !== false;
 
 /**
  * `?wallet=<step>` opens the chooser on a step, outside production only. Every step after the
@@ -192,6 +208,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<boolean | null>(null);
   // The same value, for the callbacks that answer with it outside a render.
   const profileRef = useRef<boolean | null>(null);
+  // The username of the account that was just joined, for the step that says so.
+  const [joinedHandle, setJoinedHandle] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -274,9 +292,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
         // Whether that account has a username yet, so the portfolio can still ask after a reload.
-        void readHasProfile(data.session.access_token).then((known) => {
+        void readProfile(data.session.access_token).then((profile) => {
           if (live && heldRef.current === adopted) {
-            know(known);
+            know(hasUsername(profile));
           }
         });
       },
@@ -351,15 +369,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSessionError("error" in result ? result.error : null);
       if (!session) {
         // Refused, or the token already held was handed back: nothing new is known.
-        return { result, profile: profileRef.current };
+        return { result, profile: profileRef.current, handle: null };
       }
       hold(session);
       know(null);
-      const known = await readHasProfile(session.token);
+      const profile = await readProfile(session.token);
+      const known = hasUsername(profile);
       if (heldRef.current === session) {
         know(known);
       }
-      return { result, profile: known };
+      return { result, profile: known, handle: profile ? profile.handle : null };
     },
     [hold, know],
   );
@@ -518,6 +537,94 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [signInKeeping]);
 
+  /**
+   * The join step: the person already has an account under another wallet. That wallet signs, the
+   * bare account this wallet was given is folded into it, and the page takes the session of the
+   * account that is kept. The connected wallet stays the connected wallet.
+   */
+  const joinWith = useCallback(
+    async (picked: SignerKind) => {
+      const signer = SIGNERS.find((candidate) => candidate.kind === picked);
+      const connected = accountRef.current;
+      if (!signer || !connected || meraFlight.current) {
+        return;
+      }
+      const mine = ++generation.current;
+      const current = () => mine === generation.current;
+      setPicking(picked);
+      dispatch({ type: "working" });
+      try {
+        // The session of the account being given up. The chooser signed in a moment ago, so this
+        // hands back the token it holds and asks nobody for anything.
+        const own = await signInKeeping();
+        if (!current()) {
+          return;
+        }
+        if ("error" in own.result) {
+          dispatch(
+            own.result.error === null
+              ? { type: "prompt_closed" }
+              : { type: "failed", error: own.result.error },
+          );
+          return;
+        }
+        meraFlight.current = picked === "mera";
+        const joined = await signer.join(own.result.token);
+        if (!current()) {
+          return;
+        }
+        if (!joined) {
+          dispatch({ type: "prompt_closed" });
+          return;
+        }
+        // The session held is the account that no longer exists. Let go of it without signing
+        // the browser out, and keep the one the API answered with, for this same address.
+        hold(null);
+        const {
+          result,
+          profile: known,
+          handle,
+        } = await keep(
+          {
+            address: connected.address,
+            chainId: TARGET_CHAIN.chainId,
+            signMessage: async () => {
+              throw new Error("The other wallet already signed");
+            },
+          },
+          async () => joined.session,
+        );
+        if ("error" in result) {
+          dispatch({
+            type: "failed",
+            error: result.error ?? "The account was joined. Connect again to open it.",
+          });
+          return;
+        }
+        setJoinedHandle(handle);
+        dispatch({ type: "joined", hasProfile: known });
+        if (known !== false) {
+          setHolding(null);
+        }
+      } catch (caught) {
+        if (!current()) {
+          return;
+        }
+        if (caught instanceof PrfUnavailableError) {
+          dispatch({ type: "prf_unavailable" });
+          return;
+        }
+        const words = joinWords(caught);
+        dispatch(words === null ? { type: "prompt_closed" } : { type: "failed", error: words });
+      } finally {
+        if (picked === "mera") {
+          meraFlight.current = false;
+        }
+      }
+    },
+    [hold, keep, signInKeeping],
+  );
+
   const profileClaimed = useCallback(() => {
     know(true);
     setHolding(null);
@@ -585,9 +692,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
   }, [mounted]);
 
+  /**
+   * The wallets an account already had can be signed with from the join step. A second account of
+   * the same browser wallet is not offered: selecting it there is the wallet changing under the
+   * page, which the page follows as a new connection.
+   */
+  const joinChoices = useMemo<WalletChoice[]>(
+    () =>
+      choices
+        .filter((choice) => choice.mode !== "create")
+        .map((choice) => ({
+          ...choice,
+          last: false,
+          unavailable:
+            choice.kind === "injected" && kind === "injected"
+              ? "You are connected with your browser wallet. A second account of the same wallet cannot sign here yet."
+              : choice.unavailable,
+        })),
+    [choices, kind],
+  );
+
   // The design harness's door: a step shown without the prompts that lead to it.
   const preview = mounted && !previewClosed && flow.step === "closed" ? previewStep() : null;
-  const shownFlow: ConnectFlowState = preview ? { step: preview, busy: false, error: null } : flow;
+  const shownFlow: ConnectFlowState = preview
+    ? {
+        step: preview,
+        busy: false,
+        error: null,
+        joining: preview === "join" || preview === "joined",
+      }
+    : flow;
 
   const value = useMemo<WalletState>(() => {
     const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
@@ -641,12 +775,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       <ConnectModal
         flow={shownFlow}
         choices={choices}
+        joinChoices={joinChoices}
+        joinedHandle={joinedHandle ?? (preview ? PREVIEW_HANDLE : null)}
         holding={holding}
         address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
         kind={kind}
         picking={picking}
         onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
         onSignIn={() => void signInFromChooser()}
+        onJoin={() => dispatch({ type: "join" })}
+        onJoinWith={(picked) => void joinWith(picked)}
         onBack={() => dispatch({ type: "back" })}
         onClose={closeChooser}
       />

@@ -88,27 +88,33 @@ export interface MeraKit {
   openKey(privateKey: Uint8Array): OpenedKey;
 }
 
-export interface MeraCeremony {
+export interface MeraCeremony<Answer = ConnectResult> {
   prf: PrfSource;
   kit: MeraKit;
   /** The server's sign-in message for this address. The one request the key waits for. */
   challenge: (address: string) => Promise<string>;
-  /** Presents the signed message. Called only after the key is wiped. */
-  present: (message: string, signature: string) => Promise<ConnectResult>;
+  /**
+   * Presents the signed message: to sign in, or to add the wallet to an account already signed
+   * in. Called only after the key is wiped.
+   */
+  present: (message: string, signature: string) => Promise<Answer>;
   /** The passkey prompt returned a credential, before anything else can fail. */
   onPasskey?: (credentialId: string) => void;
   /** The account already connected. A passkey that opens any other is refused. */
   expectedAddress?: string;
 }
 
-export interface MeraOpened {
+export interface MeraOpened<Answer = ConnectResult> {
   address: string;
   credentialId: string;
-  session: ConnectResult;
+  /** What presenting the signature answered: a session, for a sign-in. */
+  answer: Answer;
 }
 
 /** Null when the person closed the prompt. Throws what the prompt, the key or the server threw. */
-export async function runMeraCeremony(ceremony: MeraCeremony): Promise<MeraOpened | null> {
+export async function runMeraCeremony<Answer = ConnectResult>(
+  ceremony: MeraCeremony<Answer>,
+): Promise<MeraOpened<Answer> | null> {
   const passkey = await ceremony.prf();
   if (!passkey) {
     return null;
@@ -151,6 +157,6 @@ export async function runMeraCeremony(ceremony: MeraCeremony): Promise<MeraOpene
   }
 
   // The key is gone. What is left to send is a string and its signature.
-  const session = await ceremony.present(message, signature);
-  return { address, credentialId: passkey.credentialId, session };
+  const answer = await ceremony.present(message, signature);
+  return { address, credentialId: passkey.credentialId, answer };
 }

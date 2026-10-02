@@ -81,6 +81,35 @@ export async function present(
   );
 }
 
+/**
+ * Folds the signed-in account into the account of the wallet that signed `message`.
+ *
+ * For somebody who connected a wallet Pickler had not seen — which made it an account — and who
+ * already has one under another wallet. That other wallet signs the server's string, exactly as
+ * it would to sign in, and it is presented with the session of the account being given up. The
+ * answer is the session of the account that is kept: the caller's own stops existing.
+ *
+ * The API refuses when the wallet that signed has no account (`no_account`), when it is the
+ * caller's own (`same_account`), and when the caller's account has a username or is more than the
+ * bare account a first sign-in makes (`join_has_profile`, `join_not_wallet_account`).
+ */
+export async function join(
+  message: string,
+  signature: string,
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ConnectResult> {
+  return envelope(
+    await fetchImpl("/api/v1/auth/wallet/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ raw: message, signature }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    }),
+    "That account could not be joined",
+  );
+}
+
 /** Both halves, for a signer that can be asked to sign at any time: a browser wallet. */
 export async function signIn(
   signer: Signer,

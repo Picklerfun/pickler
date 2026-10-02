@@ -200,6 +200,20 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
     return { created: rowCount === 1 };
   }
 
+  /**
+   * One statement. The unique key is (namespace, address) and does not name the account, so
+   * moving a row to another account cannot collide with anything.
+   */
+  async reassign(fromUserId: string, toUserId: string): Promise<number> {
+    const { rowCount } = await this.pool.query(
+      `UPDATE identity.wallet_links
+          SET user_id = $2
+        WHERE user_id = $1`,
+      [fromUserId, toUserId],
+    );
+    return rowCount ?? 0;
+  }
+
   /** No catch. A failed read is a failure, never an account with no wallets. */
   async listForUser(userId: string): Promise<WalletLink[]> {
     const { rows } = await this.pool.query<WalletLinkRow>(

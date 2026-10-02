@@ -257,6 +257,7 @@ function walletAuthServices(
   }
 
   const store = new PostgresWalletIdentityStore(pool);
+  const profiles = new PostgresProfileRepository(pool);
   const supabase = {
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -281,6 +282,8 @@ function walletAuthServices(
         // it, and this isolate's admin client is shared across requests.
         sessionClient: () => createSupabaseAdmin(supabase),
       }),
+      // A username is what makes an account worth keeping: `join` gives up only one without.
+      hasProfile: async (userId) => (await profiles.findByUserId(userId)) !== null,
       // The hyphens must go. viem's builder enforces /^[a-zA-Z0-9]{8,}$/ on the nonce, but its
       // parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)` — so a hyphenated nonce does not fail on the
       // way back, it silently truncates at the first hyphen and stops matching what was issued.

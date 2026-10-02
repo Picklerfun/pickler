@@ -13,6 +13,26 @@ import { describeSignerFailure } from "./signer-adapters";
  * long, go again", the other is "that signature did not come from this wallet". Telling somebody
  * to try again when trying again cannot work is a loop with no exit.
  */
+/**
+ * The same for joining an account the person already has: the API's refusals, said as what the
+ * person should do next. Anything else is whatever a sign-in would have said.
+ */
+export function joinWords(caught: unknown): string | null {
+  if (caught instanceof ConnectError) {
+    switch (caught.code) {
+      case "no_account":
+        return "That wallet has no Pickler account yet. Pick a username for this one instead.";
+      case "same_account":
+        return "That is the wallet you are connected with. Use the one your account was made with.";
+      case "join_has_profile":
+        return "This wallet's account already has a username, so it cannot be moved into another.";
+      case "join_not_wallet_account":
+        return "This account cannot be moved into another. Pick a username for it instead.";
+    }
+  }
+  return signInWords(caught);
+}
+
 export function signInWords(caught: unknown): string | null {
   // 4001 is EIP-1193 for "the person closed the prompt". An answer, not a failure, and a red box
   // for it would be the site arguing with a decision somebody just made.

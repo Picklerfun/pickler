@@ -48,6 +48,11 @@ export interface WalletLinkRepository {
   link(link: Omit<WalletLink, "verifiedAt">): Promise<{ created: boolean }>;
   /** Errors propagate: "no wallets" and "could not read" are different facts. */
   listForUser(userId: string): Promise<WalletLink[]>;
+  /**
+   * Every wallet of `fromUserId` becomes a wallet of `toUserId`; answers how many moved. The only
+   * way an address changes account, and core calls it only from `join`.
+   */
+  reassign(fromUserId: string, toUserId: string): Promise<number>;
 }
 
 export interface SignatureVerifier {
@@ -95,4 +100,14 @@ export interface AccountProvisioner {
    * refuses anything that is not this address's own marked wallet account.
    */
   discardAccount(userId: string, namespace: Namespace, address: NormalizedAddress): Promise<void>;
+  /**
+   * Whether this account is the one wallet sign-in made for this address and marked: not an email
+   * or Google account that linked the wallet, and not one registered by hand at its synthetic
+   * email. The same test `discardAccount` applies before it deletes.
+   */
+  isOwnWalletAccount(
+    userId: string,
+    namespace: Namespace,
+    address: NormalizedAddress,
+  ): Promise<boolean>;
 }

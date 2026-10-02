@@ -1,8 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  AccountNotJoinableError,
   AddressTakenError,
   AuthenticationRequiredError,
+  NoAccountToJoinError,
+  SameAccountError,
   BadSignatureError,
   buildApiKeyPrincipal,
   buildUserPrincipal,
@@ -60,6 +63,10 @@ function harness(
     listLinks: async () => {
       calls.push("listLinks");
       return [];
+    },
+    join: async () => {
+      calls.push("join");
+      return { userId: ANA, session: { accessToken: "at-kept", refreshToken: "rt-kept" } };
     },
     ...over,
   };
@@ -416,5 +423,82 @@ test("a kind of wallet nobody offers answers 400 invalid_wallet_kind and reaches
     assert.equal(response.status, 400, String(kind));
     assert.equal(body.error, "invalid_wallet_kind", String(kind));
   }
+  assert.deepEqual(calls, []);
+});
+
+/* Joining: the caller's bare account is folded into the account of the wallet that signed. */
+
+test("joining needs the session of the account that is given up", async () => {
+  const { app, calls, authOptions } = harness({}, null);
+
+  const response = await post(app, "/v1/auth/wallet/join", { raw: RAW, signature: "0xsig" });
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(authOptions, [{ userOnly: true }]);
+});
+
+test("joining answers with the kept account's session, as the caller, with the other wallet's proof", async () => {
+  const seen: unknown[] = [];
+  const { app } = harness({
+    join: async (userId, presented) => {
+      seen.push(userId, presented);
+      return { userId: "kept", session: { accessToken: "at-kept", refreshToken: "rt-kept" } };
+    },
+  });
+
+  const response = await post(
+    app,
+    "/v1/auth/wallet/join",
+    { raw: RAW, signature: "0xsig" },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.equal(response.status, 200);
+  const { data } = (await response.json()) as { data: unknown };
+  assert.deepEqual(data, {
+    userId: "kept",
+    session: { accessToken: "at-kept", refreshToken: "rt-kept" },
+  });
+  assert.deepEqual(seen, [ANA, { raw: RAW, signature: "0xsig" }]);
+  assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+});
+
+test("each way a join is refused has a status and a code the browser can branch on", async () => {
+  const refusals: [Error, number, string | undefined][] = [
+    [new NoAccountToJoinError(), 404, "no_account"],
+    [new SameAccountError(), 409, "same_account"],
+    [new AccountNotJoinableError("has_profile"), 409, "join_has_profile"],
+    [new AccountNotJoinableError("not_wallet_account"), 409, "join_not_wallet_account"],
+    [new BadSignatureError(), 401, undefined],
+    [new UnknownNonceError(), 400, "nonce_invalid"],
+  ];
+  for (const [thrown, status, code] of refusals) {
+    const { app } = harness({ join: () => Promise.reject(thrown) });
+
+    const response = await post(
+      app,
+      "/v1/auth/wallet/join",
+      { raw: RAW, signature: "0xsig" },
+      { Authorization: `Bearer ${TOKEN}` },
+    );
+
+    assert.equal(response.status, status, thrown.name);
+    const body = (await response.json()) as { error?: string };
+    assert.equal(body.error, code, thrown.name);
+  }
+});
+
+test("a join with no signed message does not reach the service", async () => {
+  const { app, calls } = harness();
+
+  const response = await post(
+    app,
+    "/v1/auth/wallet/join",
+    { raw: RAW },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.equal(response.status, 400);
   assert.deepEqual(calls, []);
 });

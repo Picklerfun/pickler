@@ -1,7 +1,7 @@
 "use client";
 
 import { PRODUCT_HOSTS } from "@/server/hosts";
-import { challenge, present, type ConnectResult } from "./connect";
+import { challenge, join, present, type ConnectResult } from "./connect";
 import { MERA_RELYING_PARTY, meraAvailability, type MeraAvailability } from "./mera-availability";
 import {
   PrfUnavailableError,
@@ -127,7 +127,7 @@ async function balanceOf(address: string): Promise<bigint | null> {
  * A passkey that "Create one" made and whose sign-in then failed: the network dropped, the server
  * refused. It exists in the person's keychain, so pressing "Create one" again must open it rather
  * than make a second passkey with the same name and another address. A credential id is not a
- * secret. Kept for the page's life only, and for one retry: see `connect`.
+ * secret. Kept for the page's life only, and for one retry: see `picked`.
  */
 let unfinished: string | null = null;
 
@@ -138,7 +138,16 @@ interface Restriction {
   expectedAddress?: string;
 }
 
-async function ceremony(mode: ConnectMode, only: Restriction = {}) {
+type Present<Answer> = (message: string, signature: string) => Promise<Answer>;
+
+const signInWith: Present<ConnectResult> = (message, signature) =>
+  present(message, signature, "mera");
+
+async function ceremony<Answer>(
+  mode: ConnectMode,
+  presenting: Present<Answer>,
+  only: Restriction = {},
+) {
   const place = availability();
   if (!place.offered) {
     return null;
@@ -147,7 +156,7 @@ async function ceremony(mode: ConnectMode, only: Restriction = {}) {
     prf: source(place.rpId, mode, only.credentialId),
     kit: await loadMeraKit(),
     challenge: (address) => challenge(address, TARGET_CHAIN.chainId),
-    present: (message, signature) => present(message, signature, "mera"),
+    present: presenting,
     ...(mode === "create"
       ? {
           onPasskey: (credentialId: string) => {
@@ -157,6 +166,34 @@ async function ceremony(mode: ConnectMode, only: Restriction = {}) {
       : {}),
     ...(only.expectedAddress ? { expectedAddress: only.expectedAddress } : {}),
   });
+}
+
+/**
+ * A ceremony the person picked from the chooser. "Create one" after a create that made its passkey
+ * and then failed opens that passkey. One retry: if that prompt is closed too, the next press
+ * makes a new passkey, so a passkey the person has since deleted cannot leave the button doing
+ * nothing.
+ */
+async function picked<Answer>(mode: ConnectMode, presenting: Present<Answer>) {
+  const retried = mode === "create" ? unfinished : null;
+  if (retried) {
+    unfinished = null;
+  }
+  try {
+    const opened = retried
+      ? await ceremony("existing", presenting, { credentialId: retried })
+      : await ceremony(mode, presenting);
+    if (opened) {
+      unfinished = null;
+    }
+    return opened;
+  } catch (caught) {
+    // Still there and still not presented: the next press opens it again.
+    if (retried && !(caught instanceof PrfUnavailableError)) {
+      unfinished = retried;
+    }
+    throw caught;
+  }
 }
 
 export const meraSigner: SignerAdapter = {
@@ -192,49 +229,40 @@ export const meraSigner: SignerAdapter = {
 
   // One prompt: the passkey opens the account and signs in with it, in the same ceremony.
   connect: async (mode: ConnectMode = "existing"): Promise<SignerAccount | null> => {
-    // "Create one" after a create whose sign-in failed opens the passkey that create made. One
-    // retry: if that prompt is closed too, the next press makes a new passkey, so a passkey the
-    // person has since deleted cannot leave the button doing nothing.
-    const retried = mode === "create" ? unfinished : null;
-    if (retried) {
-      unfinished = null;
-    }
-    let opened: Awaited<ReturnType<typeof ceremony>>;
-    try {
-      opened = retried
-        ? await ceremony("existing", { credentialId: retried })
-        : await ceremony(mode);
-    } catch (caught) {
-      // Still there and still not signed in: the next press opens it again.
-      if (retried && !(caught instanceof PrfUnavailableError)) {
-        unfinished = retried;
-      }
-      throw caught;
-    }
+    const opened = await picked(mode, signInWith);
     if (!opened) {
       return null;
     }
-    unfinished = null;
     remember({ address: opened.address, credentialId: opened.credentialId });
     return {
       address: opened.address,
       chainId: null,
       balance: await balanceOf(opened.address),
-      session: opened.session,
+      session: opened.answer,
     };
   },
 
   signIn: async (expectedAddress: string): Promise<ConnectResult> => {
     const known = recall();
     const same = known && known.address.toLowerCase() === expectedAddress.toLowerCase();
-    const opened = await ceremony("existing", {
+    const opened = await ceremony("existing", signInWith, {
       expectedAddress,
       ...(same ? { credentialId: known.credentialId } : {}),
     });
     if (!opened) {
       throw promptClosed();
     }
-    return opened.session;
+    return opened.answer;
+  },
+
+  // The passkey of the account the person already has: the same ceremony, presented with the
+  // session of the account being given up. That passkey is not remembered as the connected
+  // wallet; the page keeps the one it had.
+  join: async (token: string) => {
+    const opened = await ceremony("existing", (message, signature) =>
+      join(message, signature, token),
+    );
+    return opened && { address: opened.address, session: opened.answer };
   },
 
   disconnect: async () => {

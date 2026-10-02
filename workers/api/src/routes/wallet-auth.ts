@@ -2,12 +2,15 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { createWalletSignIn, Presented, PresentedWalletKind } from "@pickler/core";
 import {
+  AccountNotJoinableError,
   AddressTakenError,
   BadSignatureError,
   ExpiredNonceError,
   InvalidAddressError,
   InvalidChainError,
+  NoAccountToJoinError,
   PRESENTED_WALLET_KINDS,
+  SameAccountError,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
@@ -24,7 +27,7 @@ export interface WalletAuthServices {
 }
 
 /**
- * Every refusal is a 400, 401 or 409 with something the browser can branch on, never a 500. A 500
+ * Every refusal is a 400, 401, 404 or 409 with something the browser can branch on, never a 500. A 500
  * tells a person to try again later when the truth is that their nonce is stale. Malformed input
  * is the same: an address that is not one, a chain that is not a positive whole number and a string
  * that is not a sign-in message are each a 400 with a code of their own.
@@ -59,6 +62,15 @@ function asHttp(caught: unknown): never {
   }
   if (caught instanceof AddressTakenError) {
     throw new HttpError(409, caught.message);
+  }
+  if (caught instanceof NoAccountToJoinError) {
+    throw new HttpError(404, caught.message, { error: "no_account" });
+  }
+  if (caught instanceof SameAccountError) {
+    throw new HttpError(409, caught.message, { error: "same_account" });
+  }
+  if (caught instanceof AccountNotJoinableError) {
+    throw new HttpError(409, caught.message, { error: `join_${caught.reason}` });
   }
   if (caught instanceof WalletAccountConflictError) {
     throw new HttpError(409, caught.message, { error: "wallet_account_conflict" });
@@ -131,6 +143,16 @@ export function walletAuthRoutes(services: WalletAuthServices) {
       .link(c.get("principal").id, presented(await c.req.json().catch(() => null)))
       .catch(asHttp);
     return c.json(successEnvelope(result, c.req.path, "Wallet linked"));
+  });
+
+  // The caller's bare account, made a moment ago by connecting a wallet with no account, is folded
+  // into the account of the wallet that signed this body. Answers with that account's session,
+  // because the caller's own stops existing.
+  api.post("/join", authenticated(services.authenticate, { userOnly: true }), async (c) => {
+    const result = await services.signIn
+      .join(c.get("principal").id, presented(await c.req.json().catch(() => null)))
+      .catch(asHttp);
+    return c.json(successEnvelope(result, c.req.path, "Joined"));
   });
 
   api.get("/links", authenticated(services.authenticate, { userOnly: true }), async (c) =>

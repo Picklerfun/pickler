@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ConnectError } from "../src/features/wallet/lib/connect";
-import { signInWords } from "../src/features/wallet/lib/sign-in-words";
+import { joinWords, signInWords } from "../src/features/wallet/lib/sign-in-words";
 
 test("a stale nonce asks for another go, because nothing is actually wrong", () => {
   const words = signInWords(new ConnectError("Ask for a new one", "nonce_invalid"));
@@ -33,4 +33,23 @@ test("a request that ran out of time is said in words, not as the browser words 
   const timedOut = Object.assign(new Error("signal timed out"), { name: "TimeoutError" });
 
   assert.equal(signInWords(timedOut), "That sign-in took too long to come back. Try again.");
+});
+
+test("each way a join is refused tells the person what to do instead", () => {
+  const refused = (code: string) => joinWords(new ConnectError("from the API", code));
+
+  assert.match(refused("no_account")!, /no Pickler account yet.*username/);
+  assert.match(refused("same_account")!, /the wallet you are connected with/);
+  assert.match(refused("join_has_profile")!, /already has a username/);
+  assert.match(refused("join_not_wallet_account")!, /cannot be moved/);
+});
+
+test("anything else that stops a join is said as a sign-in would say it", () => {
+  // The other wallet's prompt closed: an answer, with nothing to show.
+  assert.equal(joinWords({ code: 4001 }), null);
+  assert.equal(
+    joinWords(new ConnectError("Ask for a new one", "nonce_invalid")),
+    "That sign-in took too long to come back. Try again.",
+  );
+  assert.match(joinWords(new ConnectError("x", "401"))!, /did not match the wallet/);
 });

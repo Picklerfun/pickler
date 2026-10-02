@@ -13,7 +13,9 @@ import styles from "./connect-modal.module.css";
 /**
  * The chooser. Where the person picks one of the marketplace's two wallets — the passkey wallet,
  * or the browser wallet they brought — and then finishes arriving: one signature to sign in, and
- * a username if the account has none (docs/specs/mera-web-v1.md §3).
+ * a username if the account has none (docs/specs/mera-web-v1.md §3). Somebody whose account is
+ * under their other wallet says so on the username step, signs with that wallet, and the one they
+ * connected opens that account from then on (§9).
  *
  * It holds up what the person was about to do, the way the app's own sign-in screen does, so the
  * wallet is a step inside their action rather than a wall in front of it. A choice this browser
@@ -47,6 +49,10 @@ const WAITING: Record<SignerKind, string> = {
 interface ConnectModalProps {
   flow: ConnectFlowState;
   choices: WalletChoice[];
+  /** The wallets an existing account can be signed with, on the join step. */
+  joinChoices: WalletChoice[];
+  /** The username of the account that was just joined, when it is known. */
+  joinedHandle: string | null;
   /** What the person was about to do when the wallet got in the way. */
   holding: string | null;
   /** The connected address, once there is one. */
@@ -56,6 +62,10 @@ interface ConnectModalProps {
   picking: SignerKind | null;
   onPick: (kind: SignerKind, mode: ConnectMode | null) => void;
   onSignIn: () => void;
+  /** From the username step: "I already have an account". */
+  onJoin: () => void;
+  /** The wallet that account is under was picked. */
+  onJoinWith: (kind: SignerKind) => void;
   onBack: () => void;
   onClose: () => void;
 }
@@ -119,6 +129,8 @@ export function ConnectModal(props: ConnectModalProps) {
         {flow.step === "signin" && <SignIn {...props} />}
         {flow.step === "username" && <Username {...props} />}
         {flow.step === "prf" && <NoPrf {...props} />}
+        {flow.step === "join" && <Join {...props} />}
+        {flow.step === "joined" && <Joined {...props} />}
       </div>
     </dialog>
   );
@@ -135,36 +147,7 @@ function Choose({ flow, choices, kind, picking, onPick }: ConnectModalProps) {
         paying for a read, or buying a token.
       </p>
 
-      <ul className={styles.choices}>
-        {choices.map((choice) => {
-          const copy = COPY[choice.key]!;
-          return (
-            <li key={choice.key}>
-              <button
-                type="button"
-                className={styles.choice}
-                disabled={choice.unavailable !== null || flow.busy}
-                onClick={() => onPick(choice.kind, choice.mode)}
-              >
-                <span className={styles.choiceIcon} aria-hidden="true">
-                  <Icon name={copy.icon} size={18} />
-                </span>
-                <span className={styles.choiceText}>
-                  <span className={styles.choiceTitle}>
-                    {copy.title}
-                    {choice.last && <span className={styles.lastUsed}>LAST USED</span>}
-                  </span>
-                  <span className={styles.choiceSub}>{choice.unavailable ?? copy.sub}</span>
-                  {choice.unavailable === null && choice.note && (
-                    <span className={styles.choiceNote}>{choice.note}</span>
-                  )}
-                </span>
-                {choice.unavailable === null && <Icon name="arrow" size={16} />}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <Choices choices={choices} busy={flow.busy} onPick={onPick} />
 
       {flow.busy && <p className={styles.waiting}>{WAITING[picking ?? kind ?? "injected"]}</p>}
       <Failure flow={flow} />
@@ -174,6 +157,50 @@ function Choose({ flow, choices, kind, picking, onPick }: ConnectModalProps) {
         operation after that is confirmed on its own.
       </p>
     </>
+  );
+}
+
+/** The wallets to pick from, each with why it cannot be picked here when it cannot. */
+function Choices({
+  choices,
+  busy,
+  onPick,
+}: {
+  choices: WalletChoice[];
+  busy: boolean;
+  onPick: (kind: SignerKind, mode: ConnectMode | null) => void;
+}) {
+  return (
+    <ul className={styles.choices}>
+      {choices.map((choice) => {
+        const copy = COPY[choice.key]!;
+        return (
+          <li key={choice.key}>
+            <button
+              type="button"
+              className={styles.choice}
+              disabled={choice.unavailable !== null || busy}
+              onClick={() => onPick(choice.kind, choice.mode)}
+            >
+              <span className={styles.choiceIcon} aria-hidden="true">
+                <Icon name={copy.icon} size={18} />
+              </span>
+              <span className={styles.choiceText}>
+                <span className={styles.choiceTitle}>
+                  {copy.title}
+                  {choice.last && <span className={styles.lastUsed}>LAST USED</span>}
+                </span>
+                <span className={styles.choiceSub}>{choice.unavailable ?? copy.sub}</span>
+                {choice.unavailable === null && choice.note && (
+                  <span className={styles.choiceNote}>{choice.note}</span>
+                )}
+              </span>
+              {choice.unavailable === null && <Icon name="arrow" size={16} />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -205,7 +232,7 @@ function SignIn({ flow, address, onSignIn }: ConnectModalProps) {
 }
 
 /** The last step, for an account with no username yet, whichever wallet it came with. */
-function Username({ flow }: ConnectModalProps) {
+function Username({ flow, onJoin }: ConnectModalProps) {
   // The claim tells the wallet context, which closes the chooser: nothing to do here afterwards.
   const form = useHandleClaim();
   return (
@@ -254,9 +281,81 @@ function Username({ flow }: ConnectModalProps) {
       )}
       <Failure flow={flow} />
 
+      {/* The other way out: this wallet is new here, and the person is not. */}
+      <div className={styles.actions}>
+        <Button variant="ghost" block disabled={form.busy} onClick={onJoin}>
+          Already have a Pickler account? Link this wallet to it
+        </Button>
+      </div>
+
       <p className={styles.foot}>
         You are signed in. Close this to pick a username later; your portfolio will ask again.
       </p>
+    </>
+  );
+}
+
+/**
+ * "I already have an account": the person signs with the wallet it is under, and the wallet they
+ * connected opens that account from then on.
+ */
+function Join({
+  flow,
+  joinChoices,
+  address,
+  kind,
+  picking,
+  onJoinWith,
+  onBack,
+}: ConnectModalProps) {
+  return (
+    <>
+      <h2 id="connect-title" className={styles.title}>
+        LINK TO YOUR ACCOUNT.
+      </h2>
+      <p className={styles.lead}>
+        Sign with the wallet your Pickler account is under. After that{" "}
+        {address ? shortAddress(address) : "this wallet"} opens the same account: the same username,
+        the same reads.
+      </p>
+
+      <Choices choices={joinChoices} busy={flow.busy} onPick={(picked) => onJoinWith(picked)} />
+
+      {flow.busy && <p className={styles.waiting}>{WAITING[picking ?? kind ?? "injected"]}</p>}
+      <Failure flow={flow} />
+
+      <div className={styles.actions}>
+        <Button variant="secondary" block disabled={flow.busy} onClick={onBack}>
+          Back
+        </Button>
+      </div>
+
+      <p className={styles.foot}>
+        That wallet signs one line of text, the same as when it signs in. It costs nothing and moves
+        nothing, and nothing leaves either wallet.
+      </p>
+    </>
+  );
+}
+
+/** It happened: say which account this wallet opens now. */
+function Joined({ address, joinedHandle, onClose }: ConnectModalProps) {
+  return (
+    <>
+      <h2 id="connect-title" className={styles.title}>
+        LINKED.
+      </h2>
+      <p className={styles.lead}>
+        {address ? shortAddress(address) : "This wallet"} now opens{" "}
+        {joinedHandle ? `@${joinedHandle}` : "your account"}. Connect with either wallet and you are
+        in the same place.
+      </p>
+
+      <div className={styles.actions}>
+        <Button variant="primary" block onClick={onClose}>
+          Done
+        </Button>
+      </div>
     </>
   );
 }

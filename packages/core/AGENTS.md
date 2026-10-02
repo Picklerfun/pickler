@@ -157,6 +157,17 @@ refuse anything by it, because the caller states it and nothing proves it. The f
 kinds of `wallets.wallets` are another table and another product. Decision M7 of
 `docs/specs/mera-web-v1.md`; tests in `test/wallet-sign-in.test.ts`.
 
+`join(userId, presented)` in the same service is the only place an address changes account
+(decision M12, spec §9): the caller's account is folded into the account of the wallet that
+signed `presented`. Both sides agree — the kept account by its wallet's signature over a fresh
+nonce, the account given up by its session — and the account given up must be worth nothing: no
+profile (`hasProfile`, a dependency of the service), exactly one wallet, and
+`accounts.isOwnWalletAccount` true for it, so an email or Google account that linked a wallet is
+never given up. It throws `NoAccountToJoinError`, `SameAccountError` and
+`AccountNotJoinableError` (`has_profile`, `not_wallet_account`), and moves nothing in any of those
+cases or on a bad signature. `WalletLinkRepository.reassign` exists for it and for nothing else;
+`link` still throws `AddressTakenError` for an address owned elsewhere.
+
 `createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version

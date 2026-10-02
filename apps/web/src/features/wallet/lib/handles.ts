@@ -77,14 +77,14 @@ export async function claimHandle(
 }
 
 /**
- * Whether the signed-in account has a profile, and so a username: yes, no, or null when nobody
+ * The signed-in account's profile: its username, `false` when it has none, or null when nobody
  * could tell. Three answers for the reason `Availability` has three: a failed read is not "no",
  * and asking somebody for a username they already have is worse than not asking.
  */
-export async function hasProfile(
+export async function readProfile(
   token: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<boolean | null> {
+): Promise<{ handle: string | null } | false | null> {
   try {
     const response = await fetchImpl("/api/v1/profile", {
       headers: { Authorization: `Bearer ${token}` },
@@ -92,10 +92,22 @@ export async function hasProfile(
       signal: AbortSignal.timeout(10_000),
     });
     if (response.ok) {
-      return true;
+      const body = (await response.json().catch(() => null)) as {
+        data?: { handle?: unknown };
+      } | null;
+      return { handle: typeof body?.data?.handle === "string" ? body.data.handle : null };
     }
     return response.status === 404 ? false : null;
   } catch {
     return null;
   }
+}
+
+/** Whether the signed-in account has a username: yes, no, or null when nobody could tell. */
+export async function hasProfile(
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean | null> {
+  const profile = await readProfile(token, fetchImpl);
+  return profile === null ? null : profile !== false;
 }

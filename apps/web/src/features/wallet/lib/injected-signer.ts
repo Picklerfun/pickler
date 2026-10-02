@@ -8,8 +8,11 @@ import {
   requestAccounts,
   revokeAccess,
   switchToTarget,
+  TARGET_CHAIN,
   type Eip1193Provider,
 } from "./provider";
+import { challenge, join } from "./connect";
+import { fromInjectedProvider } from "./signer-adapters";
 import type { SignerAccount, SignerAdapter } from "./signer";
 
 /**
@@ -51,6 +54,24 @@ export const injectedSigner: SignerAdapter = {
       return null;
     }
     return read(provider, await requestAccounts(provider));
+  },
+
+  // The account the wallet has selected signs the server's message, as it would to sign in, and
+  // the signature goes with the session of the account being given up. Nothing here connects it:
+  // the page keeps the wallet it had.
+  join: async (token: string) => {
+    const provider = getProvider();
+    if (!provider) {
+      return null;
+    }
+    const [address] = await requestAccounts(provider);
+    if (!address) {
+      return null;
+    }
+    const chainId = (await readChainId(provider)) ?? TARGET_CHAIN.chainId;
+    const message = await challenge(address, chainId);
+    const signature = await fromInjectedProvider(provider, address, chainId).signMessage(message);
+    return { address, session: await join(message, signature, token) };
   },
 
   disconnect: async () => {

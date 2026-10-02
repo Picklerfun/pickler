@@ -353,3 +353,40 @@ test("a row that is not an address at all raises rather than becoming one", asyn
 
   await assert.rejects(wallets.listForUser(userA), InvalidAddressError);
 });
+
+test("reassigning moves every wallet of one account to another, and only those", async (t) => {
+  const { wallets } = await setup(t);
+  const given = randomUUID();
+  const kept = randomUUID();
+  const bystander = randomUUID();
+  await wallets.link(external(given));
+  await wallets.link({ ...external(kept, OTHER_ADDR), kind: "mera" });
+  await wallets.link({
+    userId: bystander,
+    namespace: "solana",
+    address: SOL_ADDR,
+    verifiedChain: SOLANA_CHAIN,
+    kind: "external",
+  });
+
+  const moved = await wallets.reassign(given, kept);
+
+  assert.equal(moved, 1);
+  assert.deepEqual(await wallets.listForUser(given), []);
+  // The kind each wallet was linked with is the wallet's, and moves with it.
+  assert.deepEqual(
+    (await wallets.listForUser(kept)).map((link) => [link.address, link.kind]).sort(),
+    [
+      [ADDR, "external"],
+      [OTHER_ADDR, "mera"],
+    ].sort(),
+  );
+  assert.equal((await wallets.findByAddress("eip155", ADDR))!.userId, kept);
+  assert.equal((await wallets.listForUser(bystander)).length, 1);
+});
+
+test("reassigning an account with no wallets moves nothing", async (t) => {
+  const { wallets } = await setup(t);
+
+  assert.equal(await wallets.reassign(randomUUID(), randomUUID()), 0);
+});

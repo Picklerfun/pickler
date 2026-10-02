@@ -293,7 +293,7 @@ const ALL = [
     task: "Gated",
     proves: "[data-connect-gate]",
   },
-  // The wallet chooser's four steps. Every step after the first is behind a wallet's prompt or a
+  // The wallet chooser's steps. Every step after the first is behind a wallet's prompt or a
   // session, which no headless browser has, so `?wallet=<step>` opens the chooser on that step
   // outside production only (apps/web/src/features/wallet/lib/wallet-context.tsx). Each proves the
   // card of its own step, so a parameter that fell back to the first step is not reported green.
@@ -328,6 +328,24 @@ const ALL = [
     surface: "light",
     task: "Wallet",
     proves: "dialog[open] #connect-step-prf",
+  },
+  // The username step's other way out: "I already have an account", and the step that says the
+  // wallet now opens it. Both sit behind a second wallet's signature.
+  {
+    path: "/markets?wallet=join",
+    name: "wallet-join",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-join",
+  },
+  {
+    path: "/markets?wallet=joined",
+    name: "wallet-joined",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-joined",
   },
   // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
   // for a request carrying the apply cookie, and without one the route answers with NoSeat — a

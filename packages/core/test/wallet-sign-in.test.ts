@@ -7,6 +7,9 @@ import {
   WrongDomainError,
   BadSignatureError,
   AddressTakenError,
+  AccountNotJoinableError,
+  NoAccountToJoinError,
+  SameAccountError,
   normalizeAddress,
   InvalidAddressError,
   InvalidChainError,
@@ -52,6 +55,13 @@ function links(rows: WalletLink[] = []): WalletLinkRepository & { rows: WalletLi
       return { created: true };
     },
     listForUser: async (userId) => rows.filter((r) => r.userId === userId),
+    reassign: async (from, to) => {
+      const moved = rows.filter((r) => r.userId === from);
+      for (const row of moved) {
+        row.userId = to;
+      }
+      return moved.length;
+    },
   };
 }
 
@@ -88,7 +98,9 @@ function service(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
       markWalletAccount: async () => {},
       discardAccount: async () => {},
+      isOwnWalletAccount: async () => true,
     },
+    hasProfile: async () => false,
     randomNonce: () => "nonce-1",
     buildMessage: build,
     parseMessage: parse,
@@ -620,4 +632,177 @@ test("linking to a signed-in account records the kind as well", async () => {
   });
 
   assert.equal(linked.rows[0]!.kind, "mera");
+});
+
+/* Joining: the account a wallet's first sign-in just made is folded into the account the person
+   already had, proved by a signature of that account's wallet. The one place an address moves. */
+
+const NEW_WALLET = normalizeAddress("eip155", "0xabc0000000000000000000000000000000000002");
+const linkOf = (userId: string, address: typeof ADDRESS, kind: WalletLink["kind"] = "external") =>
+  ({
+    userId,
+    namespace: "eip155",
+    address,
+    verifiedChain: "eip155:10143",
+    kind,
+    verifiedAt: NOW,
+  }) satisfies WalletLink;
+
+/** `kept` holds ADDRESS and a username; `fresh` was made a moment ago for NEW_WALLET. */
+function joining(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
+  const repo = links([linkOf("kept", ADDRESS, "mera"), linkOf("fresh", NEW_WALLET)]);
+  const calls: string[] = [];
+  const signIn = service({
+    nonces: issued(),
+    links: repo,
+    accounts: {
+      forAddress: async () => ({ userId: "unused", created: false }),
+      session: async (userId) => ({ accessToken: `at-${userId}`, refreshToken: `rt-${userId}` }),
+      markWalletAccount: async (userId) => void calls.push(`mark ${userId}`),
+      discardAccount: async (userId, _ns, address) =>
+        void calls.push(`discard ${userId} ${address}`),
+      isOwnWalletAccount: async () => true,
+    },
+    hasProfile: async (userId) => userId === "kept",
+    ...over,
+  });
+  return { signIn, repo, calls };
+}
+
+/** The other wallet's proof: the kept account's wallet signed the server's message. */
+const proof = (address = ADDRESS) => ({ raw: signed({ address }), signature: "0xsig" });
+
+test("a wallet with a bare account joins the account of the wallet that signed", async () => {
+  const { signIn, repo, calls } = joining();
+
+  const result = await signIn.join("fresh", proof());
+
+  assert.deepEqual(result, {
+    userId: "kept",
+    session: { accessToken: "at-kept", refreshToken: "rt-kept" },
+  });
+  // Both wallets now open the kept account; the kind each was linked with stands.
+  assert.deepEqual(
+    repo.rows.map((row) => [row.userId, row.address, row.kind]),
+    [
+      ["kept", ADDRESS, "mera"],
+      ["kept", NEW_WALLET, "external"],
+    ],
+  );
+  // The kept account passes the check every sign-in gets, and the bare one is removed.
+  assert.deepEqual(calls, ["mark kept", `discard fresh ${NEW_WALLET}`]);
+});
+
+test("joining needs the other wallet's signature: a bad one moves nothing", async () => {
+  const { signIn, repo } = joining({ verifier: { verify: async () => false } });
+
+  await assert.rejects(signIn.join("fresh", proof()), BadSignatureError);
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("a wallet that opens no account is nothing to join", async () => {
+  const stranger = normalizeAddress("eip155", "0xabc0000000000000000000000000000000000003");
+  const { signIn, repo } = joining();
+
+  await assert.rejects(signIn.join("fresh", proof(stranger)), NoAccountToJoinError);
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("signing with the account's own wallet is not joining another account", async () => {
+  const { signIn } = joining();
+
+  await assert.rejects(signIn.join("kept", proof()), SameAccountError);
+});
+
+test("an account with a username is never given up", async () => {
+  const { signIn, repo, calls } = joining({ hasProfile: async () => true });
+
+  await assert.rejects(
+    signIn.join("fresh", proof()),
+    (caught: unknown) =>
+      caught instanceof AccountNotJoinableError && caught.reason === "has_profile",
+  );
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+  assert.deepEqual(calls, []);
+});
+
+test("only the bare account wallet sign-in made is given up", async () => {
+  // An email or Google account that linked a wallet is opened by that wallet and is not its.
+  const studio = joining({
+    accounts: {
+      forAddress: async () => ({ userId: "unused", created: false }),
+      session: async () => ({ accessToken: "at", refreshToken: "rt" }),
+      markWalletAccount: async () => {},
+      discardAccount: async () => {},
+      isOwnWalletAccount: async () => false,
+    },
+  });
+  await assert.rejects(
+    studio.signIn.join("fresh", proof()),
+    (caught: unknown) =>
+      caught instanceof AccountNotJoinableError && caught.reason === "not_wallet_account",
+  );
+
+  // An account that already holds a second wallet is more than the one it was made for.
+  const two = joining();
+  two.repo.rows.push(
+    linkOf("fresh", normalizeAddress("eip155", "0xabc0000000000000000000000000000000000004")),
+  );
+  await assert.rejects(two.signIn.join("fresh", proof()), AccountNotJoinableError);
+
+  // And one with no wallet at all has nothing to bring.
+  const none = joining();
+  await assert.rejects(none.signIn.join("nobody", proof()), AccountNotJoinableError);
+
+  for (const { repo } of [studio, two]) {
+    assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+  }
+});
+
+test("a kept account that sign-in would refuse is refused before anything moves", async () => {
+  const { signIn, repo } = joining({
+    accounts: {
+      forAddress: async () => ({ userId: "unused", created: false }),
+      session: async () => ({ accessToken: "at", refreshToken: "rt" }),
+      markWalletAccount: async () => {
+        throw new WalletAccountConflictError();
+      },
+      discardAccount: async () => {},
+      isOwnWalletAccount: async () => true,
+    },
+  });
+
+  await assert.rejects(signIn.join("fresh", proof()), WalletAccountConflictError);
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("failing to remove the account given up does not refuse the join", async () => {
+  const { signIn, repo } = joining({
+    accounts: {
+      forAddress: async () => ({ userId: "unused", created: false }),
+      session: async (userId) => ({ accessToken: `at-${userId}`, refreshToken: "rt" }),
+      markWalletAccount: async () => {},
+      discardAccount: async () => {
+        throw new Error("the admin API is down");
+      },
+      isOwnWalletAccount: async () => true,
+    },
+  });
+
+  const result = await signIn.join("fresh", proof());
+
+  assert.equal(result.userId, "kept");
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "kept");
+});
+
+test("adding a wallet to an account still never takes it from another", async () => {
+  const { signIn, repo } = joining();
+
+  await assert.rejects(signIn.link("kept", proof(NEW_WALLET)), AddressTakenError);
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
 });

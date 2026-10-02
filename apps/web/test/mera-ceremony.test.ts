@@ -119,7 +119,7 @@ test("it signs the server's message exactly, as the account it opened, and says 
     await recoverMessageAddress({ message: MESSAGE, signature: verify!.body.signature as Hex }),
     first!.accounts[0]!.address,
   );
-  assert.deepEqual(opened!.session, {
+  assert.deepEqual(opened!.answer, {
     userId: "user-1",
     session: { accessToken: "at", refreshToken: "rt" },
   });
