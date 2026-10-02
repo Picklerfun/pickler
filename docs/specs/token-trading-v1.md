@@ -152,11 +152,11 @@ the account (`identity.wallet_links`); the trade's `recipient` is always `wallet
 
 Internal routes (service binding only; scheduled by `workers/jobs`, conventions decision 18):
 
-| Method | Path                               | Worker            | Caller                                                     | Response                                                                 |
-| ------ | ---------------------------------- | ----------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
-| POST   | `/v1/internal/tokens/trades/watch` | `workers/api`     | `workers/jobs`, every minute                               | `{ checked, included, confirmed, reverted, dropped, expired }` (§5 Jobs) |
-| POST   | `/v1/internal/graduation/keeper`   | `workers/api`     | `workers/jobs`, every minute                               | forwards to trading's keeper RPC; records the run in `ops.job_runs`       |
-| POST   | `/internal/graduation-keeper/run`  | `workers/trading` | the API over `TRADING_EXECUTOR` (never jobs directly)      | `{ ready, sent: [{ curve, txHash }], skippedPending }` (§6.3)            |
+| Method | Path                               | Worker            | Caller                                                | Response                                                                 |
+| ------ | ---------------------------------- | ----------------- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| POST   | `/v1/internal/tokens/trades/watch` | `workers/api`     | `workers/jobs`, every minute                          | `{ checked, included, confirmed, reverted, dropped, expired }` (§5 Jobs) |
+| POST   | `/v1/internal/graduation/keeper`   | `workers/api`     | `workers/jobs`, every minute                          | forwards to trading's keeper RPC; records the run in `ops.job_runs`      |
+| POST   | `/internal/graduation-keeper/run`  | `workers/trading` | the API over `TRADING_EXECUTOR` (never jobs directly) | `{ ready, sent: [{ curve, txHash }], skippedPending }` (§6.3)            |
 
 DTOs: `packages/api-schema/src/token-trading.ts` (new) — `TokenDetailDto`, `CandleDto`,
 `HolderDto`, `TokenQuoteDto`, `TradeQuoteRequest`, `TradeQuoteDto`, `TxRequestDto`, `TradeDto`,
