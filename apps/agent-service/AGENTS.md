@@ -187,3 +187,8 @@ and requires current ownership. It never supplies market data or changes a cycle
 Historical reports remain unchanged; no connection cause is inferred from a generic timeout.
 
 Read [PERPL-STREAM-ACQUISITION.md](PERPL-STREAM-ACQUISITION.md) for evaluate data-diagnostic and stability --acquisition-choice. Ten fixed comparison opportunities freeze transport selection before one thirty-slot acceptance. Parse only loopback DATABASE_URL; no models/accounts/paid calls. Reports include bounded public captures and an offline cadence analyzer. New comparison preparation may explicitly freeze a choice; never upgrade historical sessions or automatically retry acceptance.
+
+Read [PERPL-MODEL-DIAGNOSTIC.md](PERPL-MODEL-DIAGNOSTIC.md) for the explicit round-28 two-call
+replay and its limits. It did not restart the comparison or resolve original unknown consumption.
+JSONB context replay does not establish byte-identical request replay. Perpl deadlines now persist
+MODEL_TIMEOUT; diagnostics are separate from executable decisions and preserve historical errors.

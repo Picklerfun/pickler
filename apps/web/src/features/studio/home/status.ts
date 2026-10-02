@@ -8,11 +8,11 @@
  * events the runtime wrote, so the lines below are built from those events' types and fields.
  *
  * Only types cross from `../api` (and through it `@pickler/api-schema`), which cost nothing at
- * runtime; see the note in `create/draft.ts` on why a value import would break `node:test`.
+ * runtime; see the note in `new-agent/model.ts` on why a value import would break `node:test`.
  */
 import type { PaperOrder, Run, RunEvent } from "../api";
 import { decisionView, two } from "../decision";
-import { traceLines } from "../create/trace";
+import { traceLines } from "./trace";
 
 /** The schedule and next-up locks open at this balance. Core's `MIN_FUNDED_AUSD`, restated. */
 export const MIN_FUNDED_AUSD = 10;

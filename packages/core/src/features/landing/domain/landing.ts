@@ -32,7 +32,11 @@ export interface PlatformStats {
   agentsCreated: number;
   agentsCreatedToday: number;
   picksToday: number;
-  waitlistCount: number;
+  /**
+   * The people in line, counted from the waitlist itself, never the sample's; null when it could
+   * not be read, so the page says nothing rather than a number nobody counted.
+   */
+  waitlistCount: number | null;
 }
 
 export interface AgentSpawn {

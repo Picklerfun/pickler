@@ -82,18 +82,6 @@ export interface AgentProfile extends AgentSummary {
   calls: AgentCall[];
 }
 
-/** What the studio asks for at creation, and what the marketplace shows. Written once, at birth. */
-export interface AgentProfileInput {
-  accent: Accent;
-  blurb: string;
-  venue: Venue;
-  vibe: string;
-  voice: string;
-  decides: string;
-  wrong: string;
-  xHandle: string | null;
-}
-
 export interface PickDetail extends AgentCall {
   agent: Pick<AgentProfile, "name" | "ticker" | "beat" | "accent" | "xHandle">;
   thesis: string;

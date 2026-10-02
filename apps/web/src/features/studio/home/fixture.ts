@@ -136,6 +136,7 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     name: "Halftime",
     handle: "halftime",
     accent: "lime",
+    avatarPattern: 0,
     draft: false,
     version: 1,
     config: { ...previewConfig, intervalHours: 6 },
@@ -151,6 +152,9 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     canCreateAnother: { ok: false, reason: "unfunded_agent" },
     spend: null,
     spendEnforced: true,
+    visibility: "public",
+    publishedAt: new Date(START).toISOString(),
+    xHandle: null,
   };
   const order = decided
     ? ({
@@ -173,24 +177,4 @@ export function homeFixture(stage: HomeStage): HomeFixture {
       } as unknown as PaperOrder)
     : null;
   return { now: START + (decided ? 140_000 : 60_000), agent, runs: [run], events, order };
-}
-
-/**
- * `?stage=draft`: the home right after "Create Halftime" on the brief. The decided run is its first
- * run; it is a private draft with no wallet, so it holds nothing and cannot be scheduled.
- */
-export function draftFixture(): HomeFixture {
-  const decided = homeFixture("decided");
-  return {
-    ...decided,
-    agent: {
-      ...decided.agent,
-      draft: true,
-      wallet: null,
-      canSchedule: { ok: false, reason: "unfunded" },
-      // A lone draft: not counted as unfunded, and below the draft limit.
-      canCreateAnother: { ok: true, reason: null },
-    },
-    order: null,
-  };
 }

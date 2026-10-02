@@ -73,35 +73,25 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 
 `src/studio` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables (the file keeps its old name; the tables it declares are not renamed). Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
 
-`PostgresStudioDirectory.createAgent` links `wallets.agent_wallets (agent_id, wallet_id, policy_ids)`
-inside the same transaction as the agent and profile inserts, after them and before the handle is
-claimed: an agent is created with its wallet, or not at all. It locks the caller's own
-`wallets.wallets` row (`kind='agent'`) with `FOR UPDATE` before linking it, so a wallet that is not
-the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. The
-`policy_ids` it writes come from that same locked row's `approved_policy_ids` column, never from
-the request: `wallet` on the create input carries only `walletId`, and a wallet whose
-`approved_policy_ids` is null or has fewer than core's `MIN_AGENT_WALLET_POLICIES` (three: every
-wallet is written with at least its three DENYs) — nobody confirmed its rules yet — is
-`PilotError("CONFLICT", "Approve the wallet's rules first")`, with no agent row surviving either. A
-wallet already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
-through `CONFLICTS` to `PilotError("CONFLICT", "That wallet already belongs to an agent")`. The
-wallet travels inside the idempotency `request` JSON (its id only), so retrying the same key with a
-different wallet is "different terms", not the same creation.
-
 `wallets.wallets.approved_policy_ids` (migration 0014, nullable `text[]`) is written only by
 `PostgresCustodyStore.saveApprovedPolicies(userId, walletId, policyIds)`, called from core's
 `confirmPolicies` once Turnkey's count matches what was prepared. It `UPDATE`s only the caller's
 own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, so the ids one
 confirm produced can never land on someone else's wallet. This is the only path that sets the
-column — the studio's create-agent transaction only ever reads it.
+column — the studio's draft-create transaction only ever reads it.
 
-`PostgresStudioDirectory.createDraft` adopts a preview as a private draft in one transaction. It
-locks the workspace, then the preview row, and first looks for a replay: a preview already adopted
-by this caller in this workspace, with the submitted fingerprint, whose `pickler.product_agents`
-row (`request_key = 'preview:<previewRunId>'`) was created under the submitted handle, answers
-that draft again without calling `admit`; the same request under a different name is `CONFLICT`. Otherwise the checks run in the spec's order
-(`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`), then `admit` (the route's funding lock and draft
-limit), then the writes.
+`PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
+transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
+a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again
+without calling `admit` when its request (name, handle, wallet, config, profile) matches, and is `WALLET_ASSIGNED`
+when it does not. Otherwise it refuses `HANDLE_TAKEN`, locks the wallet row and refuses
+`WALLET_NOT_FOUND` (not this person's `kind='agent'` wallet), `WALLET_ASSIGNED` (linked) and
+`POLICIES_MISSING` (fewer than `MIN_AGENT_WALLET_POLICIES` approved ids), then runs `admit` (the
+route's funding lock, draft limit and balance check), then writes the agent, its profile (accent,
+avatar pattern, voice, venue `perps`), the wallet's link with its approved policy ids, the handle,
+the runtime row and the product row. It is the only create: `createAgent` (an agent with a wallet,
+for `/studio/new`) was removed with that screen, and so was the model drafter
+(`src/model/openai-compatible-drafter.ts`).
 
 ## Invocation database connections
 
@@ -158,7 +148,12 @@ behind the marketplace. It reads one join: `agents.agents` left-joined to `agent
 and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
-still resolves.
+still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,
+studio-draft-dashboard-v1 D7): `status` says whether an agent has a wallet and runs, `visibility`
+whether the marketplace shows it, and `published_at` is set exactly when it is public (CHECK
+`agents_published_consistent`). 0024 published every non-draft agent as of its `created_at`, and
+added `agents.x_challenges` and `agents.x_accounts` for Connect X; `PostgresStudioDirectory.list`
+returns `visibility`, `publishedAt` and the verified `xHandle`.
 
 No table records whether a pick was right, so no record is computed anywhere here: `resolved` and
 `net` are `0` because zero is the true count, `hitRate` and `calibrationGap` are null, and the
@@ -167,19 +162,6 @@ figures are `0` and the profile's `market` is null until the launchpad indexer (
 written `market.candles` and `market.holders`. Nothing in the class catches: a failed read is a
 failure, never an empty marketplace. See `docs/specs/marketplace-real-data-v1.md` §3 and §7 before
 filling any of these in.
-
-## Agent drafting model
-
-`src/model/openai-compatible-drafter.ts` exports `createOpenAiCompatibleDrafter`, core's
-`AgentDrafter` over the same OpenAI-compatible endpoint the research runtime uses. It posts one
-JSON-mode chat completion (temperature 0.2, 20-second timeout, `redirect: "manual"`) whose system
-prompt is built from core's `BEATS`, `SUGGESTED_SKILLS`, `STYLES`, `ACCENTS` and `VENUES_ON_MAP`, and
-sends `enable_thinking: false` only to DashScope hosts, as the runtime does. The prompt lists the
-suggested skills per beat. The base URL is parsed inside `draft`, so a malformed one is an
-unavailable draft rather than a construction error. This package cannot
-import api-schema, so the caller injects `validate`. Every failure — network, non-success status,
-empty content, invalid JSON, a refused answer — is `DraftUnavailableError`; nothing falls back to a
-guess.
 
 ## Chain balance reads
 
@@ -206,8 +188,7 @@ from `@pickler/chain`, defaulting to the network's first public endpoint and ref
 chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
 private query `schedule` uses. `PostgresStudioDirectory.list` left-joins `agents.agent_profiles` for each agent's `accent`, reading
 "lime" when there is no profile row or the stored value is outside `ACCENTS`.
-`PostgresStudioDirectory.createAgent` replays an earlier create by workspace and request key inside
-its transaction, before `admit`. `PostgresResearchStore.updateSpend`
+`PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
 `PostgresResearchStore.updateInterval(scope, hours, now)` sets only the `intervalHours` key the same
@@ -241,13 +222,20 @@ requires the node's hash to equal the locally computed one. A refusal is not bel
 looks the hash up with `eth_getTransactionByHash`. If the node holds this very transaction (a
 repeated confirm answered "already known" or "nonce too low"), it answers the hash. Otherwise,
 including when the lookup fails, the original refusal propagates.
-`createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these for AUSD from
-`@pickler/chain` and forgets through the studio's balance reader.
+`buildNativeTransferTx` builds a plain MON transfer (empty calldata, `value` wei) with the same
+nonce, fee and padded-estimate rules, the estimate taken over the value move; a failed estimate is
+`DepositNotSendableError`. `inspectNativeTransfer` answers null unless the input is an unsigned,
+canonically encoded EIP-1559 transaction with a recipient, empty calldata and no access list.
+`createAusdDepositChain({ chainId, rpcUrl?, fetch?, balances })` composes these for AUSD and MON
+from `@pickler/chain` and forgets through the studio's AUSD balance reader; the custody service's
+MON and AUSD reader caches nothing, so there is no MON reading to forget.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
 `DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
-`updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
-`updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
-at that same version would otherwise drop them.
+`updateConfig` keeps the stored `config.spend` and ignores any `spend` in its input, so
+`updateSpend` is its usual writer. Because saving limits does not bump the version, a config saved
+at that same version would otherwise drop them. The one exception is `{ writeSpend: true }`, which
+a draft's setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
+written in the same transaction as the rest of the config.
 
 ## Wallet sign-in nonces
 
@@ -269,7 +257,7 @@ migration.
 
 `src/turnkey/turnkey-activities.ts` exports `createActivityBuilders`: the unsigned
 `create_users` (one non-root user "Pickler" whose only credential is the delegated P-256 API key
-`pickler-delegated`), `create_wallet` (named after the handle, `MONAD_ACCOUNT`), `create_policies`
+`pickler-delegated`), `create_wallet` (`walletName` is the `name` core gives, "Agent wallet N"; `MONAD_ACCOUNT`), `create_policies`
 and `sign_transaction` bodies, each typed against @turnkey/http with its `type` taken from core's
 `AGENT_WALLET_ACTIVITY_TYPES`, so a version drift fails the build. Each builder takes an optional
 `timestampMs` so a confirm can rebuild the prepared body byte for byte. Nothing here is stamped by
@@ -280,8 +268,9 @@ Pickler. The same test file pins core's `DELEGATED_CREDENTIAL_ACTIVITY_TYPES` to
 `PostgresCustodyStore` implements `AgentWalletRepository`: `saveDelegatedUser` (idempotent for the
 same id; a different id, or no sub-organization, is `DelegatedUserExistsError`), `saveWallet`
 (wallets + wallet_accounts in one transaction; the same wallet again for its owner is a no-op,
-another person's wallet id is refused), `findOrphanWallet` (an agent wallet by name with
-no `agent_wallets` row, with its `approved_policy_ids` as `approvedPolicyIds`), `findOwnedAgentWallet`, `hasLinkedAgentWallet` (any of the person's wallets in
+another person's wallet id is refused), `findUnlinkedWallet` (the newest agent wallet
+with no `agent_wallets` row, with its `approved_policy_ids` as `approvedPolicyIds`), `findOwnedAgentWallet` (with `linked`, at the first account's address as
+the other reads use it), `hasLinkedAgentWallet` (any of the person's wallets in
 `agent_wallets`), `findAgentWallet`, `saveApprovedPolicies` (see "Unified studio persistence" above)
 and `saveDeposit` (lowercases the hash for the column check).
 

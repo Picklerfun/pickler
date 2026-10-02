@@ -12,7 +12,9 @@ import {
   errorCode,
   readPaperOrder,
   runEvents,
+  studioWallets,
   type Agent,
+  type StudioWallets,
   type PaperOrder,
   type Run,
   type RunEvent,
@@ -20,8 +22,9 @@ import {
 import { agentInitials } from "../lib/initials";
 import { startPolling } from "../lib/polling";
 import type { SectionKey } from "../sections/keys";
+import { CreditsModal } from "../new-agent/credits-modal";
+import { WalletsModal } from "../new-agent/wallets-modal";
 import { AgentCard } from "./agent-card";
-import { GoPublic } from "./go-public";
 import { HomeMenu } from "./menu";
 import { NextUp } from "./next-up";
 import { Picks } from "./picks";
@@ -73,6 +76,7 @@ export function Home({
   onSection,
   onPick,
   onSwitch,
+  onNew,
 }: {
   agent: Agent;
   /** The shell's one read of the account's passkeys, for the second-passkey suggestion. */
@@ -85,6 +89,8 @@ export function Home({
   onSection(key: SectionKey): void;
   onPick(runId: string): void;
   onSwitch(agentId: string): void;
+  /** "+ New agent": open the create screen. */
+  onNew(): void;
 }) {
   const agentId = agent.productId ?? agent.id;
   const wallClock = useNow();
@@ -98,6 +104,11 @@ export function Home({
   const [order, setOrder] = useState<{ runId: string; state: OrderState } | null>(null);
   const [depositOpen, setDepositOpen] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+  /* "Your wallets" and its "AI credits" tab, opened from its wallet: moves to and from master. */
+  const [modal, setModal] = useState<
+    null | { kind: "wallets"; toAgent: boolean | null } | { kind: "credits" }
+  >(null);
+  const [wallets, setWallets] = useState<StudioWallets | null>(null);
   const wasActive = useRef<string | null>(null);
   const refreshAgent = useRef(onRefreshAgent);
   useEffect(() => {
@@ -194,6 +205,22 @@ export function Home({
     };
   }, [tradeRunId, preview]);
 
+  /* The wallets are read each time the modal opens and after every move; a preview reads none. */
+  function readWallets() {
+    if (preview) {
+      return;
+    }
+    studioWallets().then(setWallets, (caught: unknown) =>
+      setRefreshError(caught instanceof Error ? caught.message : "Could not read your wallets."),
+    );
+  }
+
+  /** Open "Your wallets"; with a direction, its wallet's move form shows that way. */
+  function openWallets(toAgent: boolean | null) {
+    setModal({ kind: "wallets", toAgent });
+    readWallets();
+  }
+
   let orderState: OrderState;
   if (preview) {
     orderState = preview.order ? { state: "loaded", order: preview.order } : { state: "none" };
@@ -238,11 +265,6 @@ export function Home({
           <span className={styles.pillDot} data-live={status.working} />
           {status.pill}
         </span>
-        {agent.draft && (
-          <span className={styles.pill} data-tint="amber" id="home-draft-chip">
-            DRAFT · PRIVATE
-          </span>
-        )}
         <span className={styles.spacer} />
         <HomeMenu
           agent={agent}
@@ -252,6 +274,7 @@ export function Home({
           canManage={canManage}
           onSection={onSection}
           onSwitch={onSwitch}
+          onNew={onNew}
         />
         <Link href="/account" className={styles.account} aria-label="Account">
           <span className={shell.swatch} aria-hidden="true">
@@ -285,33 +308,22 @@ export function Home({
       <div className={styles.board}>
         <div className={styles.column}>
           <AgentCard name={name} accent={agent.accent} status={status} />
-          {agent.draft ? (
-            <section className={styles.wallet} id="home-wallet" aria-label="Its wallet">
-              <p className={styles.eyebrow}>ITS WALLET · MONAD</p>
-              <p className={styles.fine}>
-                A draft has no wallet yet. It comes with Go Public, with the brief&apos;s caps as
-                its rules, and then it can be funded and run on its own.
-              </p>
-            </section>
-          ) : (
-            <>
-              <WalletCard
-                agent={agent}
-                preview={preview !== null}
-                canManage={canManage}
-                open={depositOpen}
-                onOpen={setDepositOpen}
-                onRefresh={refresh}
-              />
-              <Schedule
-                agent={agent}
-                now={now}
-                preview={preview !== null}
-                canManage={canManage}
-                onRefresh={refresh}
-              />
-            </>
-          )}
+          <WalletCard
+            agent={agent}
+            preview={preview !== null}
+            canManage={canManage}
+            open={depositOpen}
+            onOpen={setDepositOpen}
+            onRefresh={refresh}
+            onPullBack={() => openWallets(false)}
+          />
+          <Schedule
+            agent={agent}
+            now={now}
+            preview={preview !== null}
+            canManage={canManage}
+            onRefresh={refresh}
+          />
         </div>
         {loaded ? (
           <Picks
@@ -330,19 +342,40 @@ export function Home({
             <p className={styles.empty}>Reading its runs…</p>
           </section>
         )}
-        {agent.draft ? (
-          <GoPublic />
-        ) : (
-          <NextUp
-            items={next.items}
-            count={next.count}
-            onDeposit={() => {
-              setDepositOpen(true);
-              document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
-            }}
-          />
-        )}
+        <NextUp
+          items={next.items}
+          count={next.count}
+          onDeposit={() => {
+            setDepositOpen(true);
+            document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
+          }}
+        />
       </div>
+      <WalletsModal
+        open={modal?.kind === "wallets"}
+        wallets={wallets}
+        openOn={
+          modal?.kind === "wallets" && modal.toAgent !== null
+            ? (agent.wallet?.walletId ?? null)
+            : null
+        }
+        openToAgent={modal?.kind === "wallets" ? (modal.toAgent ?? true) : true}
+        draft={null}
+        preview={preview !== null}
+        onClose={() => setModal(null)}
+        onCredits={() => setModal({ kind: "credits" })}
+        onMoved={() => {
+          readWallets();
+          void refresh().catch((caught: unknown) =>
+            setRefreshError(caught instanceof Error ? caught.message : "Could not read the agent."),
+          );
+        }}
+      />
+      <CreditsModal
+        open={modal?.kind === "credits"}
+        onClose={() => setModal(null)}
+        onWallets={() => openWallets(null)}
+      />
     </main>
   );
 }

@@ -1,5 +1,8 @@
 # Create an agent, watch it think, fund it
 
+> Status: superseded by [studio-create-simplified-v1.md](studio-create-simplified-v1.md). `/studio/new`,
+> the model drafter and `POST /v1/studio/agents` described here are gone; kept for history.
+
 The studio's job is to take a sentence — "Calls NFL games off injury news before the lines move" —
 and turn it into an agent with a wallet that has made its first call. This specification covers
 that journey end to end, as the three canvases draw it (`Pickler Studio Handoff`, `Pickler Create

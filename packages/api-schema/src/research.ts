@@ -1,5 +1,16 @@
 import { z } from "zod";
 import { perplConfigSchema } from "./perps.js";
+
+/** The six voices a created agent posts in; mirrors core's `VOICE_KEYS` (pinned by a test). */
+export const VOICE_KEYS = [
+  "analyst",
+  "contrarian",
+  "trash_talker",
+  "deadpan",
+  "hype",
+  "professor",
+] as const;
+
 export const toolNameSchema = z.enum([
   "listPerpMarkets",
   "getPerpSnapshot",
@@ -212,6 +223,8 @@ export const agentConfigSchema = z
     spend: spendLimitsSchema.optional(),
     brief: agentBriefSchema.optional(),
     maxLeverage: z.number().int().min(LEVERAGE_BOUNDS.min).max(LEVERAGE_BOUNDS.max).optional(),
+    /** How every post reads (studio-create-simplified-v1 D8); core's `VOICE_KEYS`. */
+    voice: z.enum(VOICE_KEYS).optional(),
   })
   .strict()
   .refine(

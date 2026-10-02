@@ -123,3 +123,19 @@ test("a refusal carries nothing of the request it refused", () => {
   assert.equal(refused.status, 404);
   assert.equal(refused.headers.get("x-middleware-rewrite"), "https://app.pickler.fun/not-found");
 });
+
+test("a callback on the marketplace reaches the studio with its code", () => {
+  const sent = middleware(
+    request("/auth/callback?code=abc123&next=%2Faccount", { host: "pickler.fun" }),
+  );
+  assert.equal(
+    sent.headers.get("location"),
+    "https://app.pickler.fun/auth/callback?code=abc123&next=%2Faccount",
+  );
+});
+
+test("the callback's move to the studio is temporary and not cacheable", () => {
+  const sent = middleware(request("/auth/callback?code=abc123", { host: "pickler.fun" }));
+  assert.equal(sent.status, 307);
+  assert.equal(sent.headers.get("cache-control"), "private, no-store");
+});

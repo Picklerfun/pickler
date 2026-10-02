@@ -1,0 +1,197 @@
+/* Identity & voice (canvas 443–477): the avatar and NAME card, VOICE, and X ACCOUNT.
+ *
+ * The same token mapping as `draft.module.css`: the canvas's #15182A cards are `--pk-panel`, its
+ * #0B0D1A wells `--pk-bg`, its #9AA0B8 labels `--pk-ink-muted`, its #5A5F78 the faint ink, its lime
+ * `--pk-lime-ink`, its pink hover `--pk-magenta-ink`. The cards, labels, voice chips, sample and
+ * avatar button are the create screen's (`new-agent.module.css`), composed so the two screens stay
+ * one drawing; this sheet holds no literal colour.
+ */
+
+.column {
+  composes: column from "./build.module.css";
+}
+
+/* ---------- Avatar and name ---------- */
+
+.identity {
+  composes: card from "../new-agent/new-agent.module.css";
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+}
+/* The canvas's 84 px avatar (the create screen's is 96 px). */
+.avatarButton {
+  composes: avatarButton from "../new-agent/new-agent.module.css";
+  width: 84px;
+  height: 84px;
+}
+.avatarButton:disabled {
+  cursor: not-allowed;
+}
+.avatarButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+}
+.identityText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nameLabel {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.nameInput {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: 700 34px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+  color: var(--pk-ink);
+}
+.nameInput:focus-visible {
+  outline: 2px solid var(--pk-lime-edge);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+.nameInput:disabled {
+  cursor: not-allowed;
+}
+.handleRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font: 600 12px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.fixed {
+  padding: 4px 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+/* SAVING… / SAVED / the reason, under the handle. */
+.nameState {
+  composes: hint from "./build.module.css";
+}
+.nameState[data-tone="good"] {
+  color: var(--pk-lime-ink);
+}
+
+/* ---------- Voice and X account ---------- */
+
+.card {
+  composes: card from "../new-agent/new-agent.module.css";
+  gap: 10px;
+  padding: 14px 16px;
+}
+.cardHead {
+  composes: cardHead from "../new-agent/new-agent.module.css";
+}
+.label {
+  composes: label from "../new-agent/new-agent.module.css";
+}
+.sub {
+  composes: sub from "../new-agent/new-agent.module.css";
+}
+.voices {
+  composes: voices from "../new-agent/new-agent.module.css";
+}
+/* A radio group here (one voice is always picked), so the chosen chip is `aria-checked`. */
+.voice {
+  composes: voice from "../new-agent/new-agent.module.css";
+}
+.voice[aria-checked="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.voice:disabled {
+  cursor: not-allowed;
+}
+.voice:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.swatch {
+  composes: swatch from "../new-agent/new-agent.module.css";
+}
+.sample {
+  composes: sample from "../new-agent/new-agent.module.css";
+}
+/* CONNECTED (lime) / NOT CONNECTED (faint). */
+.xTag {
+  composes: tag from "../new-agent/new-agent.module.css";
+}
+.xTag[data-on="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-lime-ink);
+}
+.xAccount {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.xDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-lime);
+}
+.xHandle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 13.5px/1 var(--pk-font);
+  color: var(--pk-ink);
+}
+.disconnect {
+  flex: none;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.disconnect:hover:not(:disabled) {
+  color: var(--pk-magenta-ink);
+}
+.disconnect:disabled {
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.disconnect:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.notice {
+  composes: notice from "./build.module.css";
+}
+.alert {
+  composes: alert from "./build.module.css";
+}
+
+@media (max-width: 480px) {
+  .nameInput {
+    font-size: 28px;
+  }
+}

@@ -22,6 +22,7 @@ export function Segmented<T extends string>({
   tone = "ink",
   className,
   optionClassName,
+  disabled = false,
 }: {
   options: readonly SegmentedOption<T>[];
   value: T;
@@ -31,6 +32,8 @@ export function Segmented<T extends string>({
   tone?: "ink" | "lime" | undefined;
   className?: string | undefined;
   optionClassName?: string | undefined;
+  /** Every option shut, while what the choice belongs to is busy. */
+  disabled?: boolean | undefined;
 }) {
   return (
     <span
@@ -48,6 +51,7 @@ export function Segmented<T extends string>({
           // violet and Trade is lime in the same track — without counting children in CSS.
           data-value={option.value}
           aria-pressed={option.value === value}
+          disabled={disabled}
           onClick={() => onChange(option.value)}
         >
           {option.label}

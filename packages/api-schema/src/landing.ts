@@ -44,7 +44,8 @@ export interface LandingResponse {
     agentsCreated: number;
     agentsCreatedToday: number;
     picksToday: number;
-    waitlistCount: number;
+    /** The real count of the waitlist; null when it could not be read. */
+    waitlistCount: number | null;
   };
   tape: {
     ticker: string;

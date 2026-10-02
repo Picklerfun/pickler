@@ -67,6 +67,8 @@ export {
   type PreviewExecutionRepository,
 } from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresXStore } from "./studio/x-store.js";
+export { listTransfers, tokenAmount } from "./studio/ledger.js";
 export { PostgresProfileRepository } from "./persistence/profile-repository.js";
 export {
   PostgresApiKeyDirectory,
@@ -131,8 +133,10 @@ export {
 } from "./chain/erc20.js";
 export {
   broadcastTransaction,
+  buildNativeTransferTx,
   buildTransferTx,
   createAusdDepositChain,
+  inspectNativeTransfer,
   inspectTransfer,
   pendingNonce,
   quoteFees,
@@ -150,11 +154,6 @@ export {
   parseSiweMessage,
   type SiweFields,
 } from "./chain/siwe.js";
-export {
-  createOpenAiCompatibleDrafter,
-  DraftUnavailableError,
-  type OpenAiCompatibleDrafterConfig,
-} from "./model/openai-compatible-drafter.js";
 
 export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
 export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
@@ -218,3 +217,4 @@ export {
 export { pause as pausePerplRead } from "./perpl/transport.js";
 
 export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
+export { createXClient, XUnavailableError, type XClient, type XUser } from "./x/x-client.js";

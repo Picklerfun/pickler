@@ -4,7 +4,6 @@ import {
   AuthenticationRequiredError,
   buildUserPrincipal,
   buildApiKeyPrincipal,
-  DEFAULT_CONFIG,
   PilotError,
   type StudioDirectory,
   type ResearchRepository,
@@ -22,10 +21,6 @@ function fixture({ enabled = true, owner = true, key = false } = {}) {
       role: "auditor",
       enabled,
     }),
-    createAgent: async () => {
-      calls++;
-      return { tenantId: "trusted", agentId: "agent" };
-    },
     agentScope: async (_access, id) => {
       if (id !== "agent") {
         throw new PilotError("NOT_FOUND", "Missing");
@@ -142,62 +137,15 @@ test("invalid shared-schema input returns 400 and cannot set tenant authority", 
   const { app, calls } = fixture();
   const invalid = await app.request("/agents/agent/runs", request({ tenantId: "victim" }));
   assert.equal(invalid.status, 400);
-  assert.deepEqual(await invalid.json(), { error: "INVALID_INPUT" });
+  assert.deepEqual(await invalid.json(), {
+    error: "INVALID_INPUT",
+    message: "The request is not valid",
+  });
   assert.equal(calls(), 0);
   const valid = await app.request("/agents/agent/runs", request({}));
   assert.equal(valid.status, 202);
   assert.deepEqual(await valid.json(), { runId: "run", status: "queued" });
 });
-test("new agent configuration cannot omit category and subcategories", async () => {
-  const { app, calls } = fixture();
-  const profile = {
-    accent: "lime",
-    blurb: "",
-    venue: "predictions",
-    vibe: "",
-    voice: "",
-    decides: "",
-    wrong: "",
-    xHandle: null,
-  };
-  const response = await app.request(
-    "/agents",
-    request({ name: "New", handle: "new_agent", config: DEFAULT_CONFIG, profile }),
-  );
-  assert.equal(response.status, 400);
-  assert.equal(calls(), 0);
-});
-test("a client-sent policyIds is refused before anything is created; the server is the only source of approved policies", async () => {
-  const { app, calls } = fixture();
-  const config = { ...DEFAULT_CONFIG };
-  delete config.categoryIds;
-  Object.assign(config, {
-    marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
-  });
-  const profile = {
-    accent: "lime",
-    blurb: "",
-    venue: "predictions",
-    vibe: "",
-    voice: "",
-    decides: "",
-    wrong: "",
-    xHandle: null,
-  };
-  const response = await app.request(
-    "/agents",
-    request({
-      name: "New",
-      handle: "new_agent",
-      config,
-      profile,
-      wallet: { walletId: "wallet-1", policyIds: ["p1", "p2"] },
-    }),
-  );
-  assert.equal(response.status, 400);
-  assert.equal(calls(), 0);
-});
-
 test("trading requires a user owner and rejects tenant or credential injection before the executor", async () => {
   for (const mode of [{ key: true }, { enabled: false }, { owner: false }]) {
     const { app, calls } = fixture(mode);

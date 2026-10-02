@@ -45,39 +45,14 @@ configuration.
 
 `src/studio.ts` validates agent identity and idempotency keys. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
-`createAgentSchema` also requires `profile` (`agentProfileInputSchema`): accent, blurb, venue, the
-four prose lines and an optional `@` X handle, all stored with the agent in one transaction. `ACCENTS`
-(`src/landing.ts`) and `VENUES` (`src/agents.ts`) are the lists their DTO unions derive from, the way
-`CATEGORY_OPTIONS` does; a workers/api test pins them to core's lists.
-
-`createAgentSchema` also requires `wallet` (`agentWalletLinkSchema`): the `walletId` of the agent
-wallet whose policies the person already approved with their passkey. An agent is created only
-with a wallet; the field is not optional. The schema is `.strict()` and carries only `walletId` —
-a request that also sends `policyIds` is refused (400) rather than having that field silently
-ignored: the policy ids a wallet links are read server-side, from what core's `confirmPolicies`
-already recorded, never from the client. The infrastructure layer links it inside the same
-transaction that creates the agent, so a wallet not owned by the creator, one whose rules were
-never approved, or one already linked to another agent, rejects the whole creation.
-
-Drafting from one line: `draftRequestSchema` (`line`, 3–280 characters), `agentDraftSchema` (the
-strict shape a model must answer with, also the validator the API injects into the drafter; every
-subcategory must be one of `BEAT_SUBS[beat]` and a draft proposes at most 6 sites, though a config
-still allows 20) and
-`draftResponseSchema` (`draft` plus `unsupported` reasons). `VENUES_ON_MAP`, `SOON_VENUES`,
-`BEAT_NAMES`, `SOON_BEATS` and `BEAT_SUBS` mirror core's `features/studio/draft.ts` and are pinned
-by the same workers/api test.
-
-`SPORT_SUB_IDS` (the runtime sport id behind each Sports subcategory label — `marketScope`'s
-`subcategories` takes ids, never the labels a beat is drawn with), `STYLE_POLICIES` (the
-`uncertaintyPolicy` numbers behind each `StyleDto`, mirroring core's `policyForStyle`) and
-`SUGGESTED_SKILLS` (the skills a draft or the creation form's skills step may offer, by beat, with
-`other` serving every beat without its own list) mirror the same core module and are pinned by the
-same workers/api test. The web's own creation flow (`apps/web/src/features/studio/create/draft.ts`)
-keeps a further literal copy of all five — `apps/web` is CommonJS to node's module resolver and
-this package publishes only an `"import"` condition, so a module there that reads these values at
-load time cannot be required by a test; only types cross that boundary statically. That file's test
-still pins its copies against this package's by reaching it with a dynamic `import()`, which
-resolves through node's ESM loader regardless of the importer's own module type.
+An agent is created one way: `draftCreateSchema`, the strict body of `POST /v1/studio/drafts` (name,
+handle, voice, avatar, sources, brief, caps and the `walletId` of the agent wallet already made,
+funded and policy-signed). `ACCENTS` (`src/landing.ts`) and `VENUES` (`src/agents.ts`) are the
+lists their DTO unions derive from, the way `CATEGORY_OPTIONS` does; a workers/api test pins them,
+and `draftCreateSchema`'s voices, to core's lists. `createAgentSchema`, `agentProfileInputSchema`,
+the model drafter's schemas and the draft vocabulary they mirrored (`BEAT_*`, `SOON_*`,
+`VENUES_ON_MAP`, `SPORT_SUB_IDS`, `STYLES`, `STYLE_POLICIES`, `SUGGESTED_SKILLS`) were removed with
+`/studio/new`.
 
 `studioAgentSchema` is the studio's agent DTO: the runtime `agentResponseSchema` plus optional
 `productId`/`name`/`handle`, `wallet` (`{ walletId, address, balanceAusd }` or null for an agent
