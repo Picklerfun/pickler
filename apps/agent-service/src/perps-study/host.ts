@@ -11,12 +11,16 @@ import {
   PostgresPerpsStudyStore,
 } from "@pickler/infrastructure";
 import {
-  PERPS_STUDY_STRATEGIES,
+  perpsStrategies,
+  type PerpsStudyMap,
+  type PerpsProposal,
+  type PerpsCallLane,
+  startLeaseHeartbeat,
   assertPerpsStudyConfig,
-  type PerpsStrategy,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
 import { validatePaperFrame, type PerpsPaperView } from "@pickler/trading/perps";
+import { z } from "zod";
 import { perpsStudyConfigSchema } from "@pickler/api-schema";
 import { createPerpsStudyModels } from "@pickler/agent-runtime/composition/perps-study-model";
 
@@ -46,14 +50,36 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   const action = positionals[0];
   if (
     positionals.length !== 1 ||
-    !["init", "preflight", "run", "resume", "stop", "settle", "report"].includes(action ?? "") ||
+    !["init", "validate", "preflight", "run", "resume", "stop", "settle", "report"].includes(
+      action ?? "",
+    ) ||
     !values.config
   ) {
     throw new PilotError("INVALID_INPUT", "Command and --config are required");
   }
-  const config = perpsStudyConfigSchema.parse(
-    JSON.parse(await readFile(resolve(values.config), "utf8")),
-  );
+  const v2 = perpsStudyConfigSchema
+    .extend({
+      version: z.literal(2),
+      protocol: z.literal("perps-four-way-v2"),
+      hours: z.literal(2),
+      acknowledgedUnknownCalls: z
+        .array(
+          z
+            .object({
+              sessionId: z.string(),
+              roundKey: z.string(),
+              lane: z.enum(["direct", "jev", "fallback", "review"]),
+              requestHash: z.string().regex(/^[a-f0-9]{64}$/),
+              reservationUsd: z.string().regex(/^\d+(?:\.\d+)?$/),
+            })
+            .strict(),
+        )
+        .max(2),
+    })
+    .strict();
+  const config = z
+    .union([perpsStudyConfigSchema, v2])
+    .parse(JSON.parse(await readFile(resolve(values.config), "utf8")));
   assertPerpsStudyConfig(config);
   loadEnv({
     path: values["env-file"]
@@ -71,12 +97,20 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     deepseek: process.env.MODEL_API_KEY ?? "",
     jev: process.env.TYPESAFE_API_KEY ?? "",
   });
-  const metadata = values["acquisition-choice"]
+  let metadata = values["acquisition-choice"]
     ? {
         models: models.metadata,
         acquisition: await readPerplTransportChoice(resolve(values["acquisition-choice"])),
       }
-    : models.metadata;
+    : config.version === 2
+      ? { models: models.metadata }
+      : models.metadata;
+  if (config.version === 2) {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const { stdout } = await promisify(execFile)("git", ["rev-parse", "HEAD"]);
+    metadata = { ...(metadata as Record<string, unknown>), commit: stdout.trim() };
+  }
   const data = createStudyData(paper, research);
   const controller = new AbortController();
   const interrupt = () => controller.abort(new Error("Operator interrupted"));
@@ -97,6 +131,181 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       );
       return;
     }
+    if (["validate", "run", "resume", "preflight"].includes(action!)) {
+      if (
+        !process.env.MODEL_API_KEY ||
+        !process.env.TYPESAFE_API_KEY ||
+        process.env.MODEL_ID !== config.deepseek.model ||
+        process.env.MODEL_BASE_URL?.replace(/\/$/, "") !==
+          config.deepseek.baseUrl.replace(/\/$/, "")
+      ) {
+        throw new PilotError(
+          "MODEL_CONFIG_MISMATCH",
+          "Both keys and matching model/base URL are required",
+        );
+      }
+      const pricingAge = Date.now() - Date.parse(config.pricingVerifiedAt);
+      if (pricingAge < 0 || pricingAge > 7 * 86400000) {
+        throw new PilotError(
+          "PRICING_REVIEW_REQUIRED",
+          "Verify current provider tariffs and pin a new unused session before starting",
+        );
+      }
+    }
+    if (action === "validate") {
+      if (config.version !== 2 || !values["allow-paid"]) {
+        throw new PilotError(
+          "PAID_OPT_IN_REQUIRED",
+          "Explicit v2 validation authorization required",
+        );
+      }
+      const probeConfig = { ...config, sessionId: `${config.sessionId}-probe` };
+      const probe = await study.initialize(probeConfig, {
+        ...(metadata as Record<string, unknown>),
+        purpose: "contracts-v2",
+      });
+      const releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
+      if (probe.record.startedAt !== null) {
+        throw new PilotError("CONFLICT", "Contract checks cannot be repeated");
+      }
+      const { contractContext } = await import("./contract-context.js");
+      const context = contractContext(Date.now());
+      const lease = await study.claim(probeConfig).catch((error) => {
+        releaseAwake();
+        throw error;
+      });
+      let probeRoundKey: string | undefined;
+      const heartbeat = startLeaseHeartbeat({
+        lease,
+        renew: () => study.renew(probeConfig, lease),
+      });
+      lease.assertActive = heartbeat.assertActive;
+      const signal = AbortSignal.any([controller.signal, heartbeat.signal]);
+      try {
+        const accounts = Object.fromEntries(
+          perpsStrategies(config).map((s) => [
+            s,
+            { ...context.account, scope: { ...probeConfig, agentId: probe.record.agentIds[s]! } },
+          ]),
+        ) as unknown as PerpsStudyMap<typeof context.account>;
+        const holds: PerpsProposal[] = (["BTC", "ETH"] as const).map((symbol) => ({
+          symbol,
+          action: "hold",
+          reason: "SYNTHETIC_FLAT_CONTEXT",
+          sourceIds: [`${symbol}:candles`],
+        }));
+        const round = await study.reserve(probeConfig, lease, 0, context.evidence, accounts, holds);
+        if (!round) {
+          throw new PilotError("BUDGET_EXHAUSTED", "Contract checks not admitted");
+        }
+        probeRoundKey = round.key;
+        const invoke = async (
+          lane: PerpsCallLane,
+          fn: (hooks: import("@pickler/trading/evaluation").PerpsModelHooks) => Promise<unknown>,
+        ) => {
+          let started = false;
+          try {
+            const result = await fn({
+              before: async (request) => {
+                await study.guard(probeConfig, lease, true);
+                await study.startCall(probeConfig, lease, round.key, lane, request);
+                started = true;
+              },
+              diagnostic: (value) =>
+                study.event(
+                  probeConfig,
+                  lease,
+                  `${round.key}:${lane}:diagnostic`,
+                  "model-diagnostic",
+                  value,
+                ),
+              usage: (input, output) =>
+                study.usage(probeConfig, lease, round.key, lane, input, output),
+            });
+            await study.finishCall(probeConfig, lease, round.key, lane, result, null);
+            return result;
+          } catch (error) {
+            if (started) {
+              await study.finishCall(
+                probeConfig,
+                lease,
+                round.key,
+                lane,
+                null,
+                error instanceof PilotError ? error.code : "MODEL_TRANSPORT_FAILURE",
+              );
+            }
+            throw error;
+          }
+        };
+        const direct = (await invoke("direct", (h) =>
+          models.direct(context, signal, h),
+        )) as PerpsProposal[];
+        if (direct.some((p) => p.action !== "hold")) {
+          throw new PilotError("CONTRACT_SCENARIO_FAILED", "Flat synthetic context expected hold");
+        }
+        const decision = (await invoke("jev", (h) => models.decide!(context, signal, h))) as {
+          proposals: PerpsProposal[];
+        };
+        if (decision.proposals.some((p) => p.action !== "hold")) {
+          throw new PilotError("CONTRACT_SCENARIO_FAILED", "Jev flat context expected hold");
+        }
+        const review = (await invoke("review", (h) =>
+          models.review!(context, holds, signal, h),
+        )) as {
+          proposals: PerpsProposal[];
+          answers: Record<
+            string,
+            { choice: string; confidence: number; probabilities: Record<string, number> }
+          >;
+        };
+        if (
+          Object.values(review.answers).some(
+            (a) =>
+              a.choice === "CONTRADICTED" &&
+              a.confidence >= 0.9 &&
+              a.probabilities.CONTRADICTED! >= 0.9,
+          )
+        ) {
+          throw new PilotError(
+            "CONTRACT_SCENARIO_FAILED",
+            "Unexpected material veto of coherent holds",
+          );
+        }
+        await study.finishRound(probeConfig, lease, round.key, {
+          rules: holds,
+          deepseek: direct,
+          jev: decision.proposals,
+          combined: review.proposals,
+        });
+        await study.finishExecution(probeConfig, lease, round.key, "complete");
+        await study.event(probeConfig, lease, "contract-passed", "contract-passed", {
+          checks: 3,
+          realOrders: 0,
+        });
+        await study.complete(probeConfig, lease);
+        console.log(
+          JSON.stringify({ status: "contracts-passed", session: probeConfig.sessionId, calls: 3 }),
+        );
+      } catch (error) {
+        await study.stopDecisions(
+          probeConfig,
+          lease,
+          error instanceof PilotError ? error.code : "CONTRACT_FAILED",
+        );
+        if (probeRoundKey) {
+          await study.finishRound(probeConfig, lease, probeRoundKey, {});
+          await study.finishExecution(probeConfig, lease, probeRoundKey, "incomplete");
+        }
+        await study.complete(probeConfig, lease);
+        throw error;
+      } finally {
+        await heartbeat.stop();
+        releaseAwake();
+        await study.release(probeConfig, lease);
+      }
+      return;
+    }
     let view = await study.view(config);
     // Initialization compares canonical pinned metadata; report/stop remain possible after a code upgrade.
     if (["run", "resume", "preflight"].includes(action!)) {
@@ -113,9 +322,9 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       const { createPerpsPaperRuntime } =
         await import("@pickler/agent-runtime/plugins/perps-paper");
       const runtime = createPerpsPaperRuntime(paper, research);
-      for (const strategy of PERPS_STUDY_STRATEGIES) {
+      for (const strategy of perpsStrategies(config)) {
         await runtime.service.tick(
-          { ...config, agentId: view.record.agentIds[strategy] },
+          { ...config, agentId: view.record.agentIds[strategy]! },
           `settle-${Date.now()}`,
           controller.signal,
         );
@@ -124,11 +333,11 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       return;
     }
     if (action === "report") {
-      const accounts = {} as Record<PerpsStrategy, PerpsPaperView>;
-      for (const strategy of PERPS_STUDY_STRATEGIES) {
+      const accounts = {} as PerpsStudyMap<PerpsPaperView>;
+      for (const strategy of perpsStrategies(config)) {
         accounts[strategy] = await paper.view({
           ...config,
-          agentId: view.record.agentIds[strategy],
+          agentId: view.record.agentIds[strategy]!,
         });
       }
       const report = perpsStudyReport(view, accounts);
@@ -142,6 +351,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         writeFile(join(output, "report.json"), JSON.stringify(report, null, 2) + "\n"),
         writeFile(join(output, "report.html"), rendered.html),
         writeFile(join(output, "report.csv"), rendered.csv),
+        writeFile(join(output, "rounds.csv"), rendered.roundsCsv),
       ]);
       console.log(
         JSON.stringify(
@@ -158,24 +368,6 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         ),
       );
       return;
-    }
-    if (
-      !process.env.MODEL_API_KEY ||
-      !process.env.TYPESAFE_API_KEY ||
-      process.env.MODEL_ID !== config.deepseek.model ||
-      process.env.MODEL_BASE_URL?.replace(/\/$/, "") !== config.deepseek.baseUrl.replace(/\/$/, "")
-    ) {
-      throw new PilotError(
-        "MODEL_CONFIG_MISMATCH",
-        "Both keys and matching model/base URL are required",
-      );
-    }
-    const pricingAge = Date.now() - Date.parse(config.pricingVerifiedAt);
-    if (pricingAge < 0 || pricingAge > 7 * 86400000) {
-      throw new PilotError(
-        "PRICING_REVIEW_REQUIRED",
-        "Verify current provider tariffs and pin a new unused session before starting",
-      );
     }
     if (action === "preflight") {
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]);
@@ -232,6 +424,25 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         ),
       );
       return;
+    }
+    if (config.version === 2 && action === "run") {
+      const probe = await study.view({ ...config, sessionId: `${config.sessionId}-probe` });
+      const { isDeepStrictEqual } = await import("node:util");
+      if (
+        probe.record.status !== "completed" ||
+        !probe.events.some((e) => e.kind === "contract-passed") ||
+        !isDeepStrictEqual(
+          (probe.record.metadata as { models: unknown }).models,
+          (metadata as { models: unknown }).models,
+        ) ||
+        (probe.record.metadata as { commit: string }).commit !==
+          (metadata as { commit: string }).commit
+      ) {
+        throw new PilotError(
+          "CONTRACT_VALIDATION_REQUIRED",
+          "Matching three-check probe must pass before run",
+        );
+      }
     }
     if (!values["allow-paid"]) {
       throw new PilotError(
