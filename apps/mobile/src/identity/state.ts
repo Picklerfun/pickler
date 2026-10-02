@@ -1,0 +1,37 @@
+// Qué se sabe de la cuenta de esta wallet. Puro.
+//
+// El username es obligatorio (decisión del owner, 2026-10-02; igual que en la web): una cuenta que se sabe sin username
+// no usa la app hasta elegirlo o cerrar sesión. «Se sabe» es la clave: sólo la respuesta del servidor (404 con sesión)
+// retiene a alguien. Si la API no está configurada, no responde o la wallet está bloqueada, nadie queda fuera.
+export type Identity =
+  | { status: "off" } // sin PICKLER_API_URL: la app se comporta como antes de tener cuenta
+  | { status: "unknown" } // aún no se pregunta: sin wallet, o bloqueada y sin username guardado
+  | { status: "checking" }
+  | { status: "none" } // con sesión y sin username: la pantalla obligatoria
+  | { status: "has"; handle: string }
+  | { status: "unreachable" }; // no se pudo saber: no retiene a nadie
+
+/** La pantalla de username tapa la app. */
+export const gateOpen = (identity: Identity): boolean => identity.status === "none";
+
+/** Lo guardado en el dispositivo: el username de una dirección. No es secreto. */
+export type StoredIdentity = { address: string; handle: string };
+
+export function serializeIdentity(s: StoredIdentity): string {
+  return JSON.stringify({ address: s.address.toLowerCase(), handle: s.handle });
+}
+
+export function parseIdentity(raw: string): StoredIdentity | undefined {
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { return undefined; }
+  if (value === null || typeof value !== "object") return undefined;
+  const { address, handle } = value as Record<string, unknown>;
+  if (typeof address !== "string" || !/^0x[0-9a-f]{40}$/.test(address)) return undefined;
+  if (typeof handle !== "string" || handle === "") return undefined;
+  return { address, handle };
+}
+
+/** El username guardado sólo vale para su dirección. */
+export function identityFor(s: StoredIdentity | undefined, address: string | null): StoredIdentity | undefined {
+  return s && address !== null && s.address === address.toLowerCase() ? s : undefined;
+}

@@ -35,6 +35,20 @@ code. Do not rely on what earlier SDKs did.
   `pickler-retomar` to pick up context, `pickler-overview-new` for a new sub-project and
   `pickler-dev-new` for a fix, a feature or a build.
 - The backend of Ask is [`services/reads/`](../../services/reads/AGENTS.md).
+- **The account is the web's, and its username is not optional**
+  ([spec](../../docs/mobile/superpowers/specs/2026-10-02-mobile-account-design.md)). With the wallet
+  unlocked, `useIdentity` signs in to the product API (`workers/api`, through the web host) with the
+  server's own message and `kind: "mera"`, at no extra prompt, and reads the profile. An account the
+  server says has no username gets `UsernameGate` (`src/screens/username.tsx`) over the whole app,
+  outside the navigation tree: the only ways out are claiming one or signing out. Only that answer
+  holds anybody: an API that is not configured, unreachable or failing holds nobody
+  (`src/identity/state.ts`). The access token stays in memory and is never stored; what is stored is
+  `{ address, handle }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
+  on the web, where that wallet can sign; the gate says so and checks again. The feature is **off
+  unless `PICKLER_API_URL` is set** (`src/config/api.ts`), e.g. `https://pickler.fun/api/v1`, and
+  the API needs `SIWE_DOMAIN` and `WALLET_EMAIL_DOMAIN` for the routes to exist. The handle rules in
+  `src/identity/handle.ts` are a copy of `@pickler/api-schema`'s, pinned by
+  `__tests__/identity-handle.test.ts`; importing the package would move the app's dependency tree.
 
 ## Install, check
 
@@ -45,7 +59,7 @@ versions the app shipped with; adding or bumping one goes through `npm install` 
 
 ```sh
 npm run typecheck --workspace=@pickler/mobile
-npm test --workspace=@pickler/mobile   # Jest, 44 suites
+npm test --workspace=@pickler/mobile   # Jest, 49 suites
 ```
 
 `dependency-tree.txt` records every dependency the app resolves from the shared lockfile, one line per edge (`who@version -> what@version`), and
