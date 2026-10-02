@@ -1,4 +1,4 @@
-import contextJson from "./fixtures/perpl/context.json";
+import contextJson from "@pickler/perpl-context/fixtures/context.json";
 import frames from "./fixtures/perpl/ws-frames.json";
 import { parseContext } from "../src/perpl/context";
 import {

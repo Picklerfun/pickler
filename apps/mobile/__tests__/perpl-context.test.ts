@@ -1,4 +1,4 @@
-import contextJson from "./fixtures/perpl/context.json";
+import contextJson from "@pickler/perpl-context/fixtures/context.json";
 import { fetchContext, parseContext, parseServerTime } from "../src/perpl/context";
 
 const realFetch = globalThis.fetch;

@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck --workspace=@pickler/mobile
       - run: npm test --workspace=@pickler/mobile
-      - run: node --import tsx --test packages/mera-account/test/*.test.ts
+      - run: node --import tsx --test packages/mera-account/test/*.test.ts packages/perpl-context/test/*.test.ts
 
   tooling:
     runs-on: ubuntu-latest

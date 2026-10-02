@@ -1,80 +1,8 @@
-import type { Address } from "viem";
+import { type Context, parseContext, parseServerTime } from "@pickler/perpl-context";
 import { CONTEXT_TIMEOUT_MS } from "./config";
 
-export type Market = {
-  id: number; symbol: string; name: string;
-  priceDecimals: number; sizeDecimals: number; ttlBlocks: number;
-  maxSlippageBps: number; maintenanceBps: number;
-  /** initial_margin / 100: el exchange recorta el apalancamiento a este máximo (ruling 1). */
-  maxLeverage: number;
-  takerFeeMicros: number; isOpen: boolean;
-  /** Precio de marca y precio de hace 24 h, escalados por priceDecimals. */
-  mark: number; prev: number;
-};
-export type Instance = { exchange: Address; minAccountOpen: bigint; minDeposit: bigint; minWithdraw: bigint };
-export type Context = { markets: Market[]; instance: Instance; geoBlock: string[]; serverTime: number | null };
-
-type Rec = Record<string, unknown>;
-const rec = (v: unknown, what: string): Rec => {
-  if (v === null || typeof v !== "object") throw new Error(`Perpl context: ${what} is not an object`);
-  return v as Rec;
-};
-const num = (r: Rec, k: string, what: string): number => {
-  const v = r[k];
-  if (typeof v !== "number") throw new Error(`Perpl context: ${what}.${k} is not a number`);
-  return v;
-};
-const str = (r: Rec, k: string, what: string): string => {
-  const v = r[k];
-  if (typeof v !== "string") throw new Error(`Perpl context: ${what}.${k} is not a string`);
-  return v;
-};
-const amount = (r: Rec, k: string, what: string): bigint => {
-  const v = r[k];
-  if (typeof v !== "string" || !/^\d+$/.test(v)) throw new Error(`Perpl context: ${what}.${k} is not an amount`);
-  return BigInt(v);
-};
-
-function parseMarket(v: unknown): Market {
-  const m = rec(v, "market");
-  const cfg = rec(m.config, "market.config");
-  const st = rec(m.state, "market.state");
-  return {
-    id: num(m, "id", "market"), symbol: str(m, "symbol", "market"), name: str(m, "name", "market"),
-    priceDecimals: num(cfg, "price_decimals", "config"), sizeDecimals: num(cfg, "size_decimals", "config"),
-    ttlBlocks: num(m, "order_ttl_blocks", "market"), maxSlippageBps: num(m, "order_max_market_slippage_bps", "market"),
-    maintenanceBps: num(cfg, "maintenance_margin", "config"), maxLeverage: num(cfg, "initial_margin", "config") / 100,
-    takerFeeMicros: num(cfg, "taker_fee", "config"), isOpen: cfg.is_open === true,
-    mark: num(st, "mrk", "state"), prev: num(st, "prv", "state"),
-  };
-}
-
-/** Lanza si el payload no tiene la forma verificada. Mercados abiertos, ordenados por id. */
-export function parseContext(body: unknown): Context {
-  const c = rec(body, "context");
-  if (!Array.isArray(c.instances) || c.instances.length === 0) throw new Error("Perpl context: no instances");
-  if (!Array.isArray(c.markets)) throw new Error("Perpl context: no markets");
-  const inst = rec(c.instances[0], "instance");
-  const instance: Instance = {
-    exchange: str(inst, "address", "instance") as Address,
-    minAccountOpen: amount(inst, "min_account_open_amount", "instance"),
-    minDeposit: amount(inst, "min_deposit_amount", "instance"),
-    minWithdraw: amount(inst, "min_withdraw_amount", "instance"),
-  };
-  const markets = c.markets.map(parseMarket).filter((m) => m.isOpen).sort((a, b) => a.id - b.id);
-  const geoBlock = Array.isArray(c.geo_block) ? c.geo_block.filter((g): g is string => typeof g === "string") : [];
-  return { markets, instance, geoBlock, serverTime: null };
-}
-
-/** Header `Date` (RFC 1123) → ms desde epoch; null si falta o no parsea (un CDN puede quitarlo).
- *  `age` (segundos que la respuesta pasó en caché) se suma: un hit de Cloudflare trae un Date de hasta 10 s de antigüedad. */
-export function parseServerTime(dateHeader: string | null, ageHeader: string | null = null): number | null {
-  if (!dateHeader) return null;
-  const ms = Date.parse(dateHeader);
-  if (Number.isNaN(ms)) return null;
-  const age = Number(ageHeader ?? 0);
-  return ms + (Number.isFinite(age) && age > 0 ? age * 1000 : 0);
-}
+// El parser vive en @pickler/perpl-context, compartido con el tablero de la web; aquí sólo queda la red.
+export { type Context, type Instance, type Market, parseContext, parseServerTime } from "@pickler/perpl-context";
 
 export async function fetchContext(rest: string): Promise<Context> {
   const controller = new AbortController();

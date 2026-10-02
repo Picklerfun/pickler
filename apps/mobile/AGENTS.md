@@ -25,6 +25,8 @@ code. Do not rely on what earlier SDKs did.
 - The account is derived by [`@pickler/mera-account`](../../packages/mera-account/AGENTS.md) and by
   nothing else. Its relying party is `pickler.fun` (`app.config.ts`, `rpId`). Neither changes: both
   move every person's address.
+- What Perpl publishes is parsed by [`@pickler/perpl-context`](../../packages/perpl-context/AGENTS.md),
+  shared with the web's market board. `src/perpl/context.ts` only adds the network call.
 - The app's own documentation — specs, plans, overviews, audits and the catalogue — lives in
   [`docs/mobile/`](../../docs/mobile/AGENTS.md) and follows that directory's contract. Read it
   before writing there. The product's state is in `docs/mobile/04-roadmap-bounty.md` and the
