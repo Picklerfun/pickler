@@ -344,6 +344,533 @@
   outline-offset: 2px;
 }
 
+/* ---------- Overview (canvas 339–441) ---------- */
+
+/* Three columns that fold to one: Go Public, the wallet and schedule, trades and activity. */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.cardLabel {
+  margin: 0;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  color: var(--pk-ink-muted);
+}
+.cardCount {
+  margin-left: auto;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.cardNote {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.lime {
+  color: var(--pk-lime);
+}
+
+/* The canvas's white pills: solid on the card, dark on a white. */
+.whiteButton,
+.darkButton {
+  flex: none;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.whiteButton {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.whiteButton:hover:not(:disabled) {
+  background: var(--pk-ink-soft);
+}
+.whiteButton[data-size="small"] {
+  align-self: flex-start;
+  padding: 9px 13px;
+  font-size: 12px;
+}
+.darkButton {
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+.darkButton:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.whiteButton:disabled,
+.darkButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.copyChip {
+  flex: none;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.copyChip:hover {
+  color: var(--pk-ink);
+}
+
+/* ---------- Go public ---------- */
+
+.goCard {
+  composes: card;
+  border: 1px solid var(--pk-lime-edge);
+}
+.goTitle {
+  margin: 0;
+  font: 700 20px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.02em;
+}
+.progress {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.progressFill {
+  display: block;
+  width: 0;
+  height: 4px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.progressFill[data-done="true"] {
+  width: 100%;
+}
+.task {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.taskRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.taskMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  box-shadow: inset 0 0 0 1px var(--pk-rule-strong);
+  font: 600 11px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.taskMark[data-done="true"] {
+  background: var(--pk-lime);
+  box-shadow: none;
+  color: var(--pk-on-lime);
+}
+.taskText {
+  flex: 1;
+  min-width: 0;
+}
+.taskTitle {
+  display: block;
+  font: 600 15px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.taskMeta {
+  display: block;
+  margin-top: 3px;
+  font: 600 10px/1.3 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+.taskMeta[data-done="true"] {
+  color: var(--pk-lime);
+}
+.goButton {
+  padding: 16px 22px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-2);
+  color: var(--pk-ink-faint);
+  font: 600 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: not-allowed;
+  transition: background var(--pk-duration);
+}
+.goButton[data-state="ready"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+  cursor: pointer;
+}
+.goButton[data-state="ready"]:hover:not(:disabled) {
+  background: var(--pk-lime-hover);
+}
+.goButton[data-state="ready"]:disabled {
+  cursor: progress;
+}
+.goButton[data-state="live"] {
+  background: var(--pk-panel);
+  color: var(--pk-lime);
+}
+.skipButton {
+  padding: 6px;
+  border: none;
+  background: transparent;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.skipButton:hover:not(:disabled) {
+  color: var(--pk-ink-muted);
+}
+.skipButton:disabled {
+  cursor: not-allowed;
+}
+/* A publish blocker: what stands in the way, and its fix when the screen has one. */
+.blocked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-state-loss-bg);
+  font: 600 13px/1.4 var(--pk-font);
+  color: var(--pk-state-loss-ink);
+}
+.blocked span {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+/* ---------- Connect X ---------- */
+
+.xConnect {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.xRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 5px 0 14px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+}
+.xRow svg {
+  flex: none;
+}
+.xInput {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  border: none;
+  background: transparent;
+  font: 600 14px/1.2 var(--pk-font);
+  color: var(--pk-ink);
+  outline: none;
+}
+.xInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.xRow:focus-within {
+  box-shadow: 0 0 0 2px var(--pk-focus);
+}
+.xVerify {
+  composes: whiteButton;
+  padding: 9px 13px;
+  font-size: 12.5px;
+  letter-spacing: 0;
+}
+.xMiss {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-state-loss-bg);
+  animation: pkIn 220ms ease-out;
+}
+.xMissTitle {
+  font: 600 13.5px/1.3 var(--pk-font);
+}
+.xPost {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--pk-bg);
+}
+.xPostText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.xPost .copyChip {
+  background: var(--pk-panel);
+}
+.xMissHint {
+  font: 600 10px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-state-loss-ink);
+}
+.xLine {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-state-loss-ink);
+  text-wrap: pretty;
+}
+.xNoteLine {
+  composes: xLine;
+  color: var(--pk-ink-muted);
+}
+
+/* ---------- Its wallet and the schedule ---------- */
+
+.readyTag {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-good-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-state-good-ink);
+}
+.walletRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.walletMark {
+  flex: none;
+  border-radius: 9px;
+}
+.walletText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.walletAddress {
+  font: 600 14.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.walletCaps {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+.balanceValue {
+  font: 700 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.balanceValue[data-funded="true"] {
+  color: var(--pk-lime);
+}
+.balanceLabel {
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.pair {
+  display: flex;
+  gap: 4px;
+}
+.pair > button {
+  flex: 1;
+  padding: 11px;
+}
+.schedule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--pk-radius-2xl);
+  border: 1px solid var(--pk-rule);
+}
+.scheduleText {
+  flex: 1;
+  min-width: 0;
+}
+.scheduleTitle {
+  display: block;
+  font: 600 14.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-faint);
+}
+.scheduleNote {
+  display: block;
+  margin-top: 4px;
+  font: 500 12px/1.35 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+/* Shut while private: drawn off, and it does nothing. */
+.switchOff {
+  flex: none;
+  display: flex;
+  align-items: center;
+  width: 44px;
+  height: 26px;
+  padding: 3px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-rule-strong);
+  cursor: not-allowed;
+}
+.switchKnob {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+}
+
+/* ---------- Trades and activity ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.listHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pk-rule-strong);
+}
+.listTitle {
+  margin: 0;
+  font: 700 18px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.02em;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: var(--pk-radius-xl);
+  border: 1px dashed var(--pk-rule-strong);
+  font: 500 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.event {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-panel);
+}
+/* The canvas's dots: made lime, its wallet violet, a transfer blue. */
+.eventDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: var(--pk-blue);
+}
+.eventDot[data-kind="created"] {
+  background: var(--pk-lime);
+}
+.eventDot[data-kind="wallet"] {
+  background: var(--pk-violet);
+}
+.eventText {
+  flex: 1;
+  min-width: 0;
+  font: 500 13px/1.35 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.eventAt {
+  flex: none;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.whiteButton:focus-visible,
+.darkButton:focus-visible,
+.copyChip:focus-visible,
+.goButton:focus-visible,
+.skipButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
 /* ---------- Locked ---------- */
 
 .locked {
@@ -432,7 +959,16 @@
   }
   .railItem,
   .chipButton,
-  .lightButton {
+  .lightButton,
+  .whiteButton,
+  .darkButton,
+  .copyChip,
+  .goButton,
+  .skipButton,
+  .progressFill {
     transition: none;
+  }
+  .xMiss {
+    animation: none;
   }
 }

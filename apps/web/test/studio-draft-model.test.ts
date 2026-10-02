@@ -6,6 +6,7 @@ import {
   DRAFT_SECTIONS,
   INTERVAL_OPTIONS,
   X_UNAVAILABLE_LINE,
+  activityView,
   addSite,
   briefTags,
   capsStepper,
@@ -16,8 +17,12 @@ import {
   lockedCopy,
   nextRuns,
   publishBlockedCopy,
+  publishProblem,
   runsPerDay,
   sectionLabel,
+  walletCardView,
+  xHandleInput,
+  xProblem,
   xView,
 } from "../src/features/studio/draft/model";
 import { draftStudioFixture } from "../src/features/studio/draft/fixture";
@@ -474,4 +479,123 @@ test("the staged wallets fill the header's two real tiles", () => {
     tiles.slice(0, 2).map((tile) => tile.value),
     [formatUnits(177_600_000n, "AUSD"), formatUnits(10_000_000n, "AUSD")],
   );
+});
+
+test("xHandleInput mirrors core's parseXHandle: an optional @, 1 to 15 letters, digits or _", () => {
+  assert.equal(xHandleInput("  @HalftimeBot "), "HalftimeBot");
+  assert.equal(xHandleInput("half_time_2"), "half_time_2");
+  assert.equal(xHandleInput(""), null);
+  assert.equal(xHandleInput("@"), null);
+  assert.equal(xHandleInput("half time"), null);
+  assert.equal(xHandleInput("a".repeat(16)), null);
+});
+
+test("xProblem maps the X routes' error codes to the card's words", () => {
+  assert.deepEqual(xProblem("X_UNAVAILABLE", "bot", "x"), { kind: "unavailable" });
+  assert.deepEqual(xProblem("X_HANDLE_TAKEN", "bot", "x"), { kind: "taken", handle: "bot" });
+  assert.deepEqual(xProblem("TOO_MANY_CHECKS", "bot", "x"), {
+    kind: "error",
+    text: "Wait a few seconds, then check again.",
+  });
+  assert.deepEqual(xProblem("INVALID_X_HANDLE", "bot", "x"), {
+    kind: "error",
+    text: "That isn't an X handle.",
+  });
+  assert.equal(xProblem("CHALLENGE_EXPIRED", "bot", "x").kind, "expired");
+  assert.equal(xProblem("CHALLENGE_NOT_FOUND", "bot", "x").kind, "expired");
+  assert.deepEqual(xProblem("PREVIEW", "bot", "x"), { kind: "preview" });
+  assert.deepEqual(xProblem("NETWORK", "bot", "Could not reach it."), {
+    kind: "error",
+    text: "Could not reach it.",
+  });
+});
+
+test("publishProblem names a 409's known blockers; FUNDS carries the fund action", () => {
+  const blocked = publishProblem(
+    "PUBLISH_BLOCKED",
+    { error: "PUBLISH_BLOCKED", detail: { blockers: ["FUNDS", "SOMETHING_NEW"] } },
+    "fallback",
+  );
+  assert.deepEqual(blocked, {
+    kind: "blocked",
+    lines: [
+      { blocker: "FUNDS", text: "Its wallet needs at least 10 AUSD to go public.", fund: true },
+    ],
+  });
+  assert.deepEqual(publishProblem("PUBLISH_BLOCKED", { detail: {} }, "fallback"), {
+    kind: "error",
+    text: "fallback",
+  });
+});
+
+test("publishProblem: a conflict asks again, an unread balance is never told as too little", () => {
+  assert.deepEqual(publishProblem("PUBLISH_CONFLICT", undefined, "f"), {
+    kind: "error",
+    text: "Something changed while it went public. Try again.",
+  });
+  for (const code of ["BALANCES_UNAVAILABLE", "WALLETS_UNAVAILABLE", "503"]) {
+    assert.deepEqual(publishProblem(code, undefined, "f"), {
+      kind: "error",
+      text: "Couldn't read its wallet. Try again.",
+    });
+  }
+  assert.deepEqual(publishProblem("PREVIEW", undefined, "f"), { kind: "preview" });
+  assert.deepEqual(publishProblem("FORBIDDEN", undefined, "f"), { kind: "error", text: "f" });
+});
+
+test("walletCardView: its AUSD from the agent, its MON from the wallets read, its caps", () => {
+  const caps = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 };
+  const wallet = {
+    walletId: "w",
+    address: "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07",
+    balanceAusd: 10,
+  };
+  assert.equal(walletCardView(null, caps, null), null);
+  const unread = walletCardView(wallet, caps, null);
+  assert.deepEqual(unread, {
+    address: wallet.address,
+    short: "0x91bE…4a07",
+    caps: "CAPS 5 / 20 / 1×",
+    ausd: formatUnits(10_000_000n, "AUSD"),
+    mon: "—",
+    ausdFunded: true,
+    monFunded: false,
+  });
+  const read = walletCardView(wallet, caps, {
+    ...wallets("0"),
+    agents: [{ ...agentWallet("10000000"), monWei: "500000000000000000" }],
+  });
+  assert.equal(read?.mon, formatUnits(500_000_000_000_000_000n, "MON"));
+  assert.equal(read?.monFunded, true);
+  const noCaps = { perTradeAusd: undefined, perDayAusd: 20, maxLeverage: undefined };
+  assert.equal(walletCardView(wallet, noCaps, null)?.caps, "CAPS — / 20 / —×");
+});
+
+test("activityView: today's events by the clock, older ones by the day, heading TODAY", () => {
+  const now = new Date(2026, 9, 2, 14, 30);
+  const view = activityView(
+    [
+      { kind: "created", text: "Halftime created", at: new Date(2026, 9, 2, 14, 21).toISOString() },
+      {
+        kind: "wallet",
+        text: "Agent wallet created",
+        at: new Date(2026, 9, 1, 9, 5).toISOString(),
+      },
+    ],
+    now,
+  );
+  assert.equal(view.label, "TODAY");
+  assert.deepEqual(
+    view.rows.map((row) => [row.kind, row.at]),
+    [
+      ["created", "14:21"],
+      ["wallet", "OCT 1"],
+    ],
+  );
+  const older = activityView(
+    [{ kind: "created", text: "x", at: new Date(2026, 8, 30, 8, 0).toISOString() }],
+    now,
+  );
+  assert.equal(older.label, "SEP 30");
+  assert.equal(activityView([], now).label, "TODAY");
 });

@@ -15,6 +15,7 @@ import {
   SPEND_BOUNDS,
   formatUnits,
   lines,
+  shortAddress,
   siteHost,
   unitsOf,
 } from "../new-agent/model";
@@ -445,4 +446,166 @@ export function nextRuns(intervalHours: number, now: Date): { label: string; at:
       at: `${clock(at)}${suffix}`,
     };
   });
+}
+
+/**
+ * The handle as typed, without its "@", or null when X would not take it: core's `parseXHandle`
+ * rule (1 to 15 letters, digits or _), mirrored so Verify can say so before anything is sent. The
+ * server parses it again and decides.
+ */
+export function xHandleInput(raw: string): string | null {
+  const handle = raw.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : null;
+}
+
+/** What Connect X shows for a failed challenge or check, by the API's error code. */
+export type XProblem =
+  /** 503 X_UNAVAILABLE: spec D5's line, in the card's own place for it. */
+  | { kind: "unavailable" }
+  /** 409 X_HANDLE_TAKEN: the card's taken line for this handle. */
+  | { kind: "taken"; handle: string }
+  /** The challenge lapsed or is gone: drop it, so the button reads Verify again, and say why. */
+  | { kind: "expired"; text: string }
+  /** A staged or preview studio: nothing is sent, the caller shows the preview note. */
+  | { kind: "preview" }
+  | { kind: "error"; text: string };
+
+export function xProblem(code: string, handle: string, fallback: string): XProblem {
+  switch (code) {
+    case "X_UNAVAILABLE":
+      return { kind: "unavailable" };
+    case "X_HANDLE_TAKEN":
+      return { kind: "taken", handle };
+    case "TOO_MANY_CHECKS":
+      return { kind: "error", text: "Wait a few seconds, then check again." };
+    case "INVALID_X_HANDLE":
+      return { kind: "error", text: "That isn't an X handle." };
+    case "CHALLENGE_EXPIRED":
+    case "CHALLENGE_NOT_FOUND":
+      return { kind: "expired", text: "That line has lapsed. Press Verify for a new one." };
+    case "X_ALREADY_CONNECTED":
+      return { kind: "error", text: "It already has an X account." };
+    case "PREVIEW":
+      return { kind: "preview" };
+    default:
+      return { kind: "error", text: fallback };
+  }
+}
+
+/** What Go Public shows when `POST /publish` fails. */
+export type PublishProblem =
+  | { kind: "blocked"; lines: ReturnType<typeof publishBlockedCopy> }
+  | { kind: "preview" }
+  | { kind: "error"; text: string };
+
+const PUBLISH_BLOCKER_SET: readonly string[] = ["KILLED", "WALLET", "FUNDS"];
+
+/**
+ * A failed Go Public in words: 409 PUBLISH_BLOCKED names its blockers (`detail.blockers`, the
+ * ones this screen knows; none known reads as the fallback), PUBLISH_CONFLICT asks for another
+ * try, and an unread wallet balance (503) is never told as too little money.
+ */
+export function publishProblem(
+  code: string,
+  details: Record<string, unknown> | undefined,
+  fallback: string,
+): PublishProblem {
+  if (code === "PREVIEW") {
+    return { kind: "preview" };
+  }
+  if (code === "PUBLISH_BLOCKED") {
+    const detail = details?.detail;
+    const raw =
+      detail && typeof detail === "object" ? (detail as { blockers?: unknown }).blockers : null;
+    const blockers = Array.isArray(raw)
+      ? raw.filter((blocker): blocker is PublishBlocker => PUBLISH_BLOCKER_SET.includes(blocker))
+      : [];
+    if (blockers.length > 0) {
+      return { kind: "blocked", lines: publishBlockedCopy(blockers) };
+    }
+    return { kind: "error", text: fallback };
+  }
+  if (code === "PUBLISH_CONFLICT") {
+    return { kind: "error", text: "Something changed while it went public. Try again." };
+  }
+  if (code === "BALANCES_UNAVAILABLE" || code === "WALLETS_UNAVAILABLE" || code === "503") {
+    return { kind: "error", text: "Couldn't read its wallet. Try again." };
+  }
+  return { kind: "error", text: fallback };
+}
+
+export interface WalletCardView {
+  address: string;
+  short: string;
+  caps: string;
+  ausd: string;
+  mon: string;
+  /** Lit when it holds any: the canvas draws a funded balance lime. */
+  ausdFunded: boolean;
+  monFunded: boolean;
+}
+
+/**
+ * Overview's wallet card: the agent's own AUSD (the studio agent's `wallet.balanceAusd`), its MON
+ * from `GET /wallets` (a dash until read, or when the chain did not answer), and its caps (a dash
+ * for one it has none of, never a default it was not given). Null
+ * for a draft without a wallet (spec §3.1).
+ */
+export function walletCardView(
+  wallet: { walletId: string; address: string; balanceAusd: number } | null,
+  caps: { [K in keyof Caps]: number | undefined },
+  wallets: WalletsDto | null,
+): WalletCardView | null {
+  if (!wallet) {
+    return null;
+  }
+  const ausdMicro = BigInt(Math.round(wallet.balanceAusd * 1_000_000));
+  const read = wallets?.agents.find((entry) => entry.walletId === wallet.walletId);
+  const monWei = read ? unitsOf(read.monWei) : null;
+  return {
+    address: wallet.address,
+    short: shortAddress(wallet.address),
+    caps: `CAPS ${caps.perTradeAusd ?? "—"} / ${caps.perDayAusd ?? "—"} / ${caps.maxLeverage ?? "—"}×`,
+    ausd: formatUnits(ausdMicro, "AUSD"),
+    mon: formatUnits(monWei, "MON"),
+    ausdFunded: ausdMicro > 0n,
+    monFunded: monWei !== null && monWei > 0n,
+  };
+}
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+const dayLabel = (date: Date): string => `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+
+export interface ActivityRow {
+  kind: "created" | "wallet" | "transfer";
+  text: string;
+  /** "hh:mm" today, the day ("OCT 1") before it, in local time. */
+  at: string;
+  iso: string;
+}
+
+/**
+ * Overview's Activity (spec D18): the API's events as they come, newest first, each with its time;
+ * the heading reads TODAY while the newest is from today, else that day.
+ */
+export function activityView(
+  events: readonly { kind: ActivityRow["kind"]; text: string; at: string }[],
+  now: Date,
+): { label: string; rows: ActivityRow[] } {
+  const today = dayNumber(now);
+  const rows = events.map((event) => {
+    const at = new Date(event.at);
+    return {
+      kind: event.kind,
+      text: event.text,
+      at: dayNumber(at) === today ? clock(at) : dayLabel(at),
+      iso: event.at,
+    };
+  });
+  const newest = events[0] ? new Date(events[0].at) : null;
+  return {
+    label: !newest || dayNumber(newest) === today ? "TODAY" : dayLabel(newest),
+    rows,
+  };
 }
