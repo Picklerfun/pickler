@@ -233,8 +233,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const accountRef = useRef<SignerAccount | null>(null);
   // Which connect is the current one: a later pick takes over from one still waiting on a wallet.
   const generation = useRef(0);
-  // A passkey ceremony is running. Unlike a browser wallet's prompt it always ends.
+  // A passkey ceremony is running. Unlike a browser wallet's prompt it always ends, so a pick made
+  // meanwhile waits for it. The flag belongs to the call that raised it: one that was superseded
+  // and finishes late must not lower a flag a newer ceremony has raised since.
   const meraFlight = useRef(false);
+  const flightOwner = useRef(0);
+  const passkeyRunning = useCallback((owner: number, running: boolean) => {
+    if (running) {
+      meraFlight.current = true;
+      flightOwner.current = owner;
+    } else if (flightOwner.current === owner) {
+      meraFlight.current = false;
+    }
+  }, []);
   // The wallet the chooser is waiting on, for its waiting line.
   const [picking, setPicking] = useState<SignerKind | null>(null);
   // Which signers exist is a question only the browser can answer. Read through an external store
@@ -382,12 +393,25 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     async (
       signer: Signer | null,
       issue: (signer: Signer) => Promise<ConnectResult>,
+      /**
+       * Whether this sign-in is still wanted once the wallet has answered. A wallet's prompt can
+       * be answered long after the person disconnected, and by then they may have signed in
+       * again: a session issued then is not put in the browser, where it would replace theirs.
+       */
+      wanted: () => boolean = () => true,
     ): Promise<Kept> => {
       const { result, session } = await signInAs({
         cached: heldRef.current,
         signer,
         supabase: getSupabase(),
-        signIn: issue,
+        signIn: async (asked) => {
+          const issued = await issue(asked);
+          if (!wanted()) {
+            // The shape of a closed prompt: an answer with nothing to say and nothing to keep.
+            throw Object.assign(new Error("That sign-in was abandoned"), { code: 4001 });
+          }
+          return issued;
+        },
         now: new Date(),
       });
       setSessionError("error" in result ? result.error : null);
@@ -426,7 +450,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // takes over rather than waiting, and whatever the earlier one says afterwards is dropped.
       const mine = ++generation.current;
       const current = () => mine === generation.current;
-      meraFlight.current = picked === "mera";
+      passkeyRunning(mine, picked === "mera");
       setPicking(picked);
       setConnecting(true);
       setError(null);
@@ -502,50 +526,60 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "failed", error: words });
       } finally {
         if (picked === "mera") {
-          meraFlight.current = false;
+          passkeyRunning(mine, false);
+          if (!current()) {
+            // Superseded while the ceremony was finishing: a chooser reopened meanwhile is shown
+            // waiting on it, and this is what tells it to stop.
+            dispatch({ type: "prompt_closed" });
+          }
         }
         if (current()) {
           setConnecting(false);
         }
       }
     },
-    [keep, release],
+    [keep, passkeyRunning, release],
   );
 
   /** Signs in with the connected wallet, and says whether the account has a username. */
-  const signInKeeping = useCallback(async (): Promise<Kept> => {
-    setSigning(true);
-    setSessionError(null);
-    try {
-      if (!account) {
-        return await keep(null, signIn);
-      }
-      // The passkey wallet signs with its own ceremony: one prompt, restricted to this account.
-      const own = adapter?.signIn;
-      if (own) {
-        return await keep(
-          {
-            address: account.address,
-            chainId: TARGET_CHAIN.chainId,
-            signMessage: async () => {
-              throw new Error("The passkey ceremony signs by itself");
+  const signInKeeping = useCallback(
+    async (wanted?: () => boolean): Promise<Kept> => {
+      setSigning(true);
+      setSessionError(null);
+      try {
+        if (!account) {
+          return await keep(null, signIn);
+        }
+        // The passkey wallet signs with its own ceremony: one prompt, restricted to this account.
+        const own = adapter?.signIn;
+        if (own) {
+          return await keep(
+            {
+              address: account.address,
+              chainId: TARGET_CHAIN.chainId,
+              signMessage: async () => {
+                throw new Error("The passkey ceremony signs by itself");
+              },
             },
-          },
-          () => own(account.address),
+            () => own(account.address),
+            wanted,
+          );
+        }
+        const provider = getProvider();
+        if (!provider) {
+          return await keep(null, signIn);
+        }
+        return await keep(
+          fromInjectedProvider(provider, account.address, account.chainId ?? TARGET_CHAIN.chainId),
+          (signer) => signIn(signer, fetch, "eoa"),
+          wanted,
         );
+      } finally {
+        setSigning(false);
       }
-      const provider = getProvider();
-      if (!provider) {
-        return await keep(null, signIn);
-      }
-      return await keep(
-        fromInjectedProvider(provider, account.address, account.chainId ?? TARGET_CHAIN.chainId),
-        (signer) => signIn(signer, fetch, "eoa"),
-      );
-    } finally {
-      setSigning(false);
-    }
-  }, [account, adapter, keep]);
+    },
+    [account, adapter, keep],
+  );
 
   const signInWithWallet = useCallback(
     async (): Promise<SignInResult> => (await signInKeeping()).result,
@@ -555,15 +589,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   /** The chooser's sign-in step: one signature, then on to the username or out. */
   const signInFromChooser = useCallback(async () => {
     const mine = ++generation.current;
+    const wanted = () => mine === generation.current;
     dispatch({ type: "working" });
-    const { result, profile: known } = await signInKeeping();
-    if (mine !== generation.current) {
-      // The person disconnected while the wallet was still being asked. Whatever it answered is
-      // for a wallet that is no longer here: the session it made is let go of.
-      const late = heldRef.current;
-      hold(null);
-      know(null);
-      void dropWalletSession(getSupabase(), late).catch(() => {});
+    const { result, profile: known } = await signInKeeping(wanted);
+    if (!wanted()) {
+      // The person disconnected while the wallet was still being asked. Its answer was not kept
+      // (`keep`), and there is no chooser left to tell.
       return;
     }
     if ("error" in result) {
@@ -576,7 +607,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (known !== false) {
       setHolding(null);
     }
-  }, [hold, know, signInKeeping]);
+  }, [signInKeeping]);
 
   /**
    * The join step: the person already has an account under another wallet. That wallet signs, the
@@ -592,10 +623,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       const mine = ++generation.current;
       const current = () => mine === generation.current;
-      // Either wallet may be the passkey wallet: the connected one, if it has to sign in again
-      // first, or the one that was picked. The flag is this call's from here to the end.
-      const passkey = picked === "mera" || adapter?.kind === "mera";
-      meraFlight.current = passkey;
+      // The flag means a passkey ceremony is running, which always ends. First the connected
+      // wallet's, if it is the passkey wallet and has to sign in again; then the picked one's. It
+      // is not held while a browser wallet is being asked, because that may never answer.
+      passkeyRunning(mine, adapter?.kind === "mera");
       setPicking(picked);
       dispatch({ type: "working" });
 
@@ -628,6 +659,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
 
         let kept: Awaited<ReturnType<typeof signer.join>>;
+        passkeyRunning(mine, picked === "mera");
         try {
           kept = await signer.join(own.result.token, connected.address);
         } catch (caught) {
@@ -698,12 +730,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const words = joinWords(caught);
         dispatch(words === null ? { type: "prompt_closed" } : { type: "failed", error: words });
       } finally {
-        if (passkey) {
-          meraFlight.current = false;
+        passkeyRunning(mine, false);
+        if (!current()) {
+          // Superseded — the person disconnected, and may have opened the chooser again while this
+          // was still finishing, which shows it waiting. Nothing else will tell it to stop.
+          dispatch({ type: "prompt_closed" });
         }
       }
     },
-    [adapter, hold, keep, know, signInKeeping],
+    [adapter, hold, keep, know, passkeyRunning, signInKeeping],
   );
 
   /**
