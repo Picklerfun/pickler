@@ -8,6 +8,11 @@ export const systemClock: Clock = {
 
 export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
+  createPerplMarketBoard,
+  PerplBoardMemory,
+  type PerplMarketBoardOptions,
+} from "./markets/perpl-market-board.js";
+export {
   createSampleLandingReadModel,
   SAMPLE_AGENT_TICKERS,
 } from "./landing/sample-landing-read-model.js";

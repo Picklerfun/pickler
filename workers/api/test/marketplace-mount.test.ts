@@ -15,7 +15,9 @@ import {
   createListDirectory,
   createListMarkets,
   createListReads,
+  MarketDataUnavailableError,
   type AgentDirectory,
+  type MarketBoard,
 } from "@pickler/core";
 import {
   createSampleLandingReadModel,
@@ -23,7 +25,7 @@ import {
   systemClock,
 } from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
-import type { createGrowthServices } from "../src/growth/services.js";
+import { marketBoardFor, type createGrowthServices } from "../src/growth/services.js";
 
 const env = { APP_ENV: "staging", ALLOWED_ORIGINS: "https://web.example" } as never;
 
@@ -49,8 +51,7 @@ const emptyDirectory: AgentDirectory = {
   getLeaderboard: async () => ({ entries: [], weights: [], calibration: [] }),
 };
 
-function app() {
-  const markets = createSampleMarketBoard();
+function app(markets: MarketBoard = createSampleMarketBoard()) {
   const growth = {
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
@@ -127,4 +128,33 @@ test("the workspace agent list stays authenticated", async () => {
   const response = await app().request("/v1/agents", {}, env);
 
   assert.equal(response.status, 401);
+});
+
+test("a venue that cannot be read answers 503 with a code, and the list is never empty instead", async () => {
+  const unreadable: MarketBoard = {
+    listMarkets: async () => {
+      throw new MarketDataUnavailableError("perpl testnet");
+    },
+    getMarket: async () => {
+      throw new MarketDataUnavailableError("perpl testnet");
+    },
+  };
+  const api = app(unreadable);
+
+  for (const path of ["/v1/marketplace/markets", "/v1/marketplace/markets/BTC-PERP"]) {
+    const response = await api.request(path, {}, env);
+    const body = (await response.json()) as { error?: string };
+
+    assert.equal(response.status, 503, path);
+    assert.equal(body.error, "MARKET_DATA_UNAVAILABLE", path);
+  }
+});
+
+test("without a network the board is the sample, and every market says so", async () => {
+  const sample = await marketBoardFor(undefined).listMarkets();
+  const unknown = await marketBoardFor("devnet").listMarkets();
+
+  assert.equal(sample.length, 6);
+  assert.ok(sample.every((market) => market.source.venue === "sample"));
+  assert.ok(unknown.every((market) => market.source.venue === "sample"));
 });

@@ -382,3 +382,24 @@ header latency and total duration. Generic deadlines do not establish a DNS/TLS 
 three-second public request, no redirects, body storage or retry, guarded before and after.
 
 Perpl public stream reconstruction lives in `src/perpl/stream.ts`. REST and WebSocket share ticker/book normalization. Only public fixed hosts are permitted; snapshots precede deltas, o:0 removes levels, disconnects discard state, and heartbeats never refresh data. Enforce 2 MiB messages, 32 queued messages and 10,000 levels per side. Reconnect at most twice per minute within active guarded acquisition. Public captures are bounded by the local host.
+
+## Market board
+
+`src/markets/perpl-market-board.ts` implements core's `MarketBoard` over Perpl
+(`docs/specs/perps-board-live-v1.md`). `createPerplMarketBoard({ network, memory })` lists every
+open market from one request to `/v1/pub/context`, parsed by `@pickler/perpl-context` — the parser
+the mobile app trades on, so the two surfaces cannot list different markets or limits — and sent
+through `PerplTransport` (no redirects, a ten-second timeout, one request a second per schedule).
+`PerplBoardMemory` holds the venue's last answer, each market's hourly history and that schedule;
+the caller owns it, because the API composes services per request. A board younger than ten seconds
+is served from memory; while the venue fails, the last answer is served as `stale` for five
+minutes and the venue is asked again at most every ten seconds; past that the board throws
+`MarketDataUnavailableError`. The detail adds one request for thirty days of hourly candles, cached
+five minutes, for the trail and `hourlyReach`; without it the market is still served. An answer for
+another chain is refused. `src/markets/sample-market-board.ts` remains for the design harness and
+for an API with no network configured, and labels itself `source: sample`.
+
+This adapter and the agents' client in `src/perpl/` both read the venue's context, with different
+contracts: the agents' client is two symbols with provenance on every value and raw provider
+fractions. Do not route one through the other. Tests: `test/perpl-market-board.test.ts`, over the
+capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.

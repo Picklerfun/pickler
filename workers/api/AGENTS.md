@@ -174,8 +174,14 @@ workspace agent list ported from Relayer; mounting the public list on the same p
 behind that route's credentials. The invented agents that used to answer here now live in
 `scripts/design/fixtures/` and are served only by the design harness's fixture API.
 
-`/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` still answer from
-`createSampleMarketBoard`: no venue is polled and private research never feeds them. The detail
+`/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` answer from the board
+`marketBoardFor(PERPL_BOARD_NETWORK)` composes in `growth/services.ts`: Perpl on `testnet` or
+`mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
+seconds), or the sample board for any other value and for none. What the board remembers lives in
+a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
+that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
+error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the
+answer to a failure. Private research never feeds these routes. The detail
 response includes `readQuestion` — core's `readQuestionAtLevel` with `{level}` left for the client —
 so the sentence a paid read answers is written once, here, and not in a page.
 
