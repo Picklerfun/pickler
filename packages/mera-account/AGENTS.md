@@ -22,7 +22,10 @@ Mera signer must use it too, or the same passkey opens a different address there
   development dependency of the test only). It must load in Metro, in a browser bundle and in Node.
 - Keep `@scure/bip32` and `@scure/bip39` pinned exactly. The app bundles this package's copies.
 - Callers own the key material: they zero the PRF output, the seed and the private key after use.
-  Nothing here stores or logs them.
+  Nothing here stores or logs them. `deriveEvmPrivateKey` hands back a copy of the key and wipes
+  every HD node it derived through — the master included — with its chain code, so the caller's
+  copy is the only one left (`test/derivation.test.ts` pins it). The mnemonic is a string and
+  cannot be wiped; do not add an API that returns or keeps it for longer than a derivation.
 
 From the root: `node --import tsx --test packages/mera-account/test/*.test.ts` (also part of
 `npm test`), `npm run typecheck --workspace=@pickler/mera-account`, and
