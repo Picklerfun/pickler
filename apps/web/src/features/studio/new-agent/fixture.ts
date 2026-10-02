@@ -14,7 +14,7 @@ export interface NewAgentStaged {
   modal: null | "wallets" | "credits" | "avatar";
   /** The Wallets modal opens with this agent wallet's transfer showing. */
   fundOn: string | null;
-  sheet: null | { kind: "create"; phase: SheetPhase };
+  sheet: null | { kind: "create" | "wallet"; phase: SheetPhase; step: 1 | 2 };
 }
 
 const ADDRESS = "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07";
@@ -29,6 +29,12 @@ const SHEET_PHASES: Partial<Record<CreateStage, SheetPhase>> = {
   "create-sheet-cancelled": "err",
 };
 
+/** The wallet sheet, a first wallet's two signatures: the wallet itself, then Pickler's user. */
+const WALLET_SHEET_STEPS: Partial<Record<CreateStage, 1 | 2>> = {
+  "create-wallet-sheet": 1,
+  "create-wallet-sheet-step2": 2,
+};
+
 const MODALS: Partial<Record<CreateStage, NonNullable<NewAgentStaged["modal"]>>> = {
   "create-wallets": "wallets",
   "create-credits": "credits",
@@ -39,10 +45,14 @@ const MODALS: Partial<Record<CreateStage, NonNullable<NewAgentStaged["modal"]>>>
  * The create screen at one `?stage=create-*` (`home/stage.ts`), as the "Pickler Studio Empty v5"
  * canvas draws it: Halftime, an analyst, with its wallet empty on `create-wallet` and holding
  * 25 AUSD and 0.5 MON from `create-funded` on. `create-empty` is a first visit with nothing typed.
+ * The wallet sheet is a first wallet's: no wallet on step 1, and on step 2 the wallet step 1 made,
+ * still empty, waiting for Pickler's delegated user.
  */
 export function newAgentFixture(stage: CreateStage): NewAgentStaged {
   const blank = stage === "create-empty";
-  const funded = !blank && stage !== "create-wallet";
+  const walletStep = WALLET_SHEET_STEPS[stage];
+  const noWallet = blank || walletStep === 1;
+  const funded = !noWallet && stage !== "create-wallet" && walletStep !== 2;
   const form: NewAgentForm = blank
     ? emptyForm()
     : {
@@ -53,7 +63,7 @@ export function newAgentFixture(stage: CreateStage): NewAgentStaged {
           ? { webOn: true, webMode: "prefer", sites: ["coindesk.com", "theblock.co", "x.com"] }
           : {}),
       };
-  const wallet: WalletView | null = blank
+  const wallet: WalletView | null = noWallet
     ? null
     : {
         walletId: WALLET_ID,
@@ -68,11 +78,15 @@ export function newAgentFixture(stage: CreateStage): NewAgentStaged {
     form,
     available: true,
     wallet,
-    firstTime: blank,
+    firstTime: blank || walletStep !== undefined,
     advancedOpen: stage === "create-advanced",
     modal,
     fundOn: modal === "wallets" ? WALLET_ID : null,
-    sheet: phase ? { kind: "create", phase } : null,
+    sheet: walletStep
+      ? { kind: "wallet", phase: "idle", step: walletStep }
+      : phase
+        ? { kind: "create", phase, step: 1 }
+        : null,
     wallets: {
       master: { address: MASTER, ausdMicro: "187600000", monWei: "4200000000000000000" },
       agents: wallet

@@ -21,7 +21,8 @@ export type HomeStage = (typeof STAGES)[number];
  * The create screen at each moment of the "Pickler Studio Empty v5" canvas
  * (studio-create-simplified-v1 §7): no wallet, a wallet not funded, funded, the advanced settings
  * open, the web on with sites, the create sheet in each phase (idle, busy, ok, cancelled), the
- * Wallets modal with a transfer open, the AI credits modal and the avatar picker.
+ * wallet sheet at each of its two steps, the Wallets modal with a transfer open, the AI credits
+ * modal and the avatar picker.
  */
 export const CREATE_STAGES = [
   "create-empty",
@@ -33,6 +34,8 @@ export const CREATE_STAGES = [
   "create-sheet-busy",
   "create-sheet-ok",
   "create-sheet-cancelled",
+  "create-wallet-sheet",
+  "create-wallet-sheet-step2",
   "create-wallets",
   "create-credits",
   "create-avatar",

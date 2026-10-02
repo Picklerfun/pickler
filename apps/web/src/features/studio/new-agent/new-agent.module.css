@@ -244,8 +244,16 @@
   font: 500 15.5px/1.5 var(--pk-font);
   letter-spacing: -0.015em;
   color: var(--pk-ink);
-  /* Grows with its lines, so a phone's narrower column wraps the defaults without hiding the last. */
+  /* Grows with its lines, so a phone's narrower column wraps the defaults without hiding the last.
+     Never shorter than two lines, which `rows` no longer sets once the field sizes to its content. */
   field-sizing: content;
+  min-height: 3em;
+}
+/* Where the field cannot size itself, `rows` holds it and four lines keep the defaults readable. */
+@supports not (field-sizing: content) {
+  .input {
+    min-height: 6em;
+  }
 }
 .input::placeholder {
   color: var(--pk-ink-faint);
@@ -385,6 +393,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+/* One line per option: a narrow card moves the whole track under the title instead. */
+.webMode {
+  white-space: nowrap;
 }
 .webTitle {
   font: 600 10px/1 var(--pk-font);
@@ -1311,6 +1323,12 @@
   height: 8px;
   border-radius: var(--pk-radius-mark);
   background: var(--pk-ink-faint);
+}
+/* A phone's top bar keeps the dot and "Soon": the label alone would push it onto a third row. */
+@media (max-width: 640px) {
+  .creditsLabel {
+    display: none;
+  }
 }
 .soon {
   composes: soon from "../home/home.module.css";

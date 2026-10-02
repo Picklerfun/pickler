@@ -61,6 +61,7 @@ export function PasskeySheet({
       id={id}
       className={styles.sheet}
       data-phase={phase}
+      data-step={step}
       // A dialog sits under the body, outside the screen's surface; it names the dark one.
       data-surface="dark"
       aria-labelledby={titleId}

@@ -78,6 +78,8 @@ export function WalletPanel({
     };
   }, []);
   const isFunded = funded(wallet);
+  /* What the harness proves: no wallet yet, one below either minimum, or one that can create. */
+  const walletState = !wallet ? "none" : isFunded ? "funded" : "empty";
   const step0 = step0Copy({ firstTime, pendingDelegate });
 
   function copy(address: string) {
@@ -103,7 +105,8 @@ export function WalletPanel({
         className={styles.walletCard}
         id="new-agent-wallet"
         data-outline={outlined}
-        data-ready={isFunded}
+        data-state={walletState}
+        data-funded={isFunded}
       >
         <div className={styles.walletHead}>
           <span className={styles.walletTitle}>ITS WALLET</span>

@@ -349,26 +349,27 @@ const ALL = [
   },
   // The create screen before the first agent (`?stage=empty`), the "Pickler Studio Empty v5"
   // canvas with nothing staged: the top bar, the disabled rail, the brief and the wallet panel.
+  // `data-staged="false"` is only on a screen no fixture drew, so a create stage is not this.
   {
     path: "/studio?stage=empty",
     name: "studio-home-empty",
     product: "studio",
     surface: "dark",
     task: "Create v5",
-    proves: "#home-empty",
+    proves: '#new-agent[data-staged="false"]',
   },
   // The create screen at each moment studio-create-simplified-v1 §7 lists (`?stage=create-*`): no
   // wallet, a wallet not funded, funded, advanced open, the web on with sites, the create sheet in
-  // each phase, the Wallets modal with a transfer open, AI credits and the avatar picker. Each
-  // proves the state it stages, so a stage that fell back to another is not reported green. The
-  // draft home after create is `?stage=draft`.
+  // each phase, the wallet sheet at each of its two steps, the Wallets modal with a transfer open,
+  // AI credits and the avatar picker. Each proves the state it stages, so a stage that fell back to
+  // another is not reported green. The draft home after create is `?stage=draft`.
   {
     path: "/studio?stage=create-empty",
     name: "studio-create-empty",
     product: "studio",
     surface: "dark",
     task: "Create v5",
-    proves: "#new-agent-wallet-step0",
+    proves: '#new-agent-wallet[data-state="none"] #new-agent-wallet-step0',
   },
   {
     path: "/studio?stage=create-wallet",
@@ -376,7 +377,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Create v5",
-    proves: '#new-agent-wallet[data-ready="false"]',
+    proves: '#new-agent-wallet[data-state="empty"]',
   },
   {
     path: "/studio?stage=create-funded",
@@ -384,7 +385,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Create v5",
-    proves: '#new-agent-wallet[data-ready="true"]',
+    proves: '#new-agent-wallet[data-state="funded"][data-funded="true"]',
   },
   {
     path: "/studio?stage=create-advanced",
@@ -433,6 +434,22 @@ const ALL = [
     surface: "dark",
     task: "Create v5",
     proves: '#new-agent-sheet[open][data-phase="err"]',
+  },
+  {
+    path: "/studio?stage=create-wallet-sheet",
+    name: "studio-create-wallet-sheet",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-step="1"] [aria-label="Step 1 of 2"]',
+  },
+  {
+    path: "/studio?stage=create-wallet-sheet-step2",
+    name: "studio-create-wallet-sheet-step2",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-step="2"] [aria-label="Step 2 of 2"]',
   },
   {
     path: "/studio?stage=create-wallets",

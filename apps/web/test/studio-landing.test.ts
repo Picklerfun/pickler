@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { studioLanding } from "../src/features/studio/lib/landing";
 import { menuAccess, NEEDS_AGENT, VIEW_ONLY } from "../src/features/studio/home/access";
@@ -6,7 +7,7 @@ import { CREATE_STAGES, isCreateStage, stageFromSearch } from "../src/features/s
 import { newAgentFixture } from "../src/features/studio/new-agent/fixture";
 import { emptyForm, funded } from "../src/features/studio/new-agent/model";
 
-/* What `/studio` shows: the home, a section, the empty home, or nothing yet while agents are read. */
+/* What `/studio` shows: the home, a section, the create screen, or nothing yet while agents are read. */
 
 test("with an agent, the home or the section asked for, read or not", () => {
   assert.equal(studioLanding(true, [{ id: "a" }], "home"), "home");
@@ -14,14 +15,19 @@ test("with an agent, the home or the section asked for, read or not", () => {
   assert.equal(studioLanding(true, [{ id: "a" }], "limits"), "section");
 });
 
-test("no agents, once read, is the empty home rather than a redirect", () => {
-  assert.equal(studioLanding(true, [], "home"), "empty");
+test("no agents, once read, is the create screen rather than a redirect", () => {
+  assert.equal(studioLanding(true, [], "home"), "new");
 });
 
-test("?section= with no agents is the empty home too", () => {
-  for (const section of ["overview", "limits", "context", "profile", "board"]) {
-    assert.equal(studioLanding(true, [], section), "empty");
+test("?section= with no agents is the create screen too", () => {
+  for (const section of ["overview", "limits", "context", "profile", "board", "new"]) {
+    assert.equal(studioLanding(true, [], section), "new");
   }
+});
+
+test('with agents, "+ New agent" (the section `new`) is the create screen, read or not', () => {
+  assert.equal(studioLanding(true, [{ id: "a" }], "new"), "new");
+  assert.equal(studioLanding(false, [{ id: "a" }], "new"), "new");
 });
 
 test("no agents before the read is still loading, not an empty studio", () => {
@@ -147,8 +153,15 @@ test("wallet, not funded: a named form and an empty wallet", () => {
   assert.equal(staged.firstTime, false);
 });
 
+const UNFUNDED: readonly string[] = [
+  "create-empty",
+  "create-wallet",
+  "create-wallet-sheet",
+  "create-wallet-sheet-step2",
+];
+
 test("every later stage has a funded wallet, listed among the agent wallets", () => {
-  for (const stage of CREATE_STAGES.filter((s) => s !== "create-empty" && s !== "create-wallet")) {
+  for (const stage of CREATE_STAGES.filter((s) => !UNFUNDED.includes(s))) {
     const staged = newAgentFixture(stage);
 
     assert.equal(funded(staged.wallet), true, stage);
@@ -188,7 +201,32 @@ test("each sheet stage opens the create sheet in its phase", () => {
   for (const [stage, phase] of Object.entries(phases)) {
     const staged = newAgentFixture(stage as keyof typeof phases);
 
-    assert.deepEqual(staged.sheet, { kind: "create", phase }, stage);
+    assert.deepEqual(staged.sheet, { kind: "create", phase, step: 1 }, stage);
   }
   assert.equal(newAgentFixture("create-funded").sheet, null);
+});
+
+test("the wallet sheet stages are a first wallet's two steps: none made yet, then step 1's", () => {
+  const first = newAgentFixture("create-wallet-sheet");
+  const second = newAgentFixture("create-wallet-sheet-step2");
+
+  assert.deepEqual(first.sheet, { kind: "wallet", phase: "idle", step: 1 });
+  assert.equal(first.wallet, null);
+  assert.equal(first.firstTime, true);
+  assert.deepEqual(second.sheet, { kind: "wallet", phase: "idle", step: 2 });
+  assert.notEqual(second.wallet, null);
+  assert.equal(funded(second.wallet), false);
+  assert.equal(second.firstTime, true);
+});
+
+/* The design harness measures each stage at its own URL; a stage without one is never checked. */
+
+const routes = readFileSync(new URL("../../../scripts/design/routes.mjs", import.meta.url), "utf8");
+
+test("every create stage has exactly one /studio?stage=<stage> route in the design harness", () => {
+  for (const stage of CREATE_STAGES) {
+    const paths = routes.split(`path: "/studio?stage=${stage}"`).length - 1;
+
+    assert.equal(paths, 1, stage);
+  }
 });

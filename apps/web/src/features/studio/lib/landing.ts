@@ -6,11 +6,12 @@
  * `loading` until the agents have been read: an empty list before the read is not an empty
  * studio, and saying "no agent yet" to someone who has three would be wrong for a moment.
  */
-type Landing = "loading" | "empty" | "home" | "section";
+type Landing = "loading" | "new" | "home" | "section";
 
 /**
  * With no agents any `section` — the home or a `?section=` deep link — is the create screen, because
- * every section needs an agent. With one, the home or the section asked for.
+ * every section needs an agent. With one, the home, the create screen ("+ New agent" sets the
+ * section `new`) or the section asked for.
  */
 export function studioLanding(
   loaded: boolean,
@@ -18,7 +19,10 @@ export function studioLanding(
   section: string,
 ): Landing {
   if (agents.length === 0) {
-    return loaded ? "empty" : "loading";
+    return loaded ? "new" : "loading";
+  }
+  if (section === "new") {
+    return "new";
   }
   return section === "home" ? "home" : "section";
 }

@@ -78,6 +78,7 @@ export function Reads({
             <Segmented
               label="Where the web may look"
               options={MODES}
+              optionClassName={styles.webMode}
               value={form.webMode}
               disabled={disabled}
               onChange={(webMode) => onChange({ ...form, webMode })}

@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Icon, Tag } from "@pickler/ui";
+import { Button, Icon, Tag } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { HomeMenu } from "../home/menu";
 import { RAIL } from "../sections/rail";
@@ -14,10 +14,13 @@ import styles from "./new-agent.module.css";
 
 /**
  * The create screen's frame, as the empty home drew it: the top bar (the new agent's chip once it
- * has a name, TESTNET, the master wallet's AUSD | MON, which opens "Your wallets", the Menu below
- * the rail's width, the account) and the studio rail with
- * every section disabled until an agent exists. The screen itself is `children`; its sheets and
- * modals are `overlays`, outside the main area's flow.
+ * has a name, or "Back to {agent}" for someone who opened it from "+ New agent", TESTNET, the
+ * master wallet's AUSD | MON, which opens "Your wallets", the Menu below the rail's width, the
+ * account) and the studio rail with every section disabled until an agent exists. The screen
+ * itself is `children`; its sheets and modals are `overlays`, outside the main area's flow.
+ *
+ * `#new-agent` is the screen's root on every stage; `data-staged="false"` only where no fixture
+ * drew it (the real screen, and `?stage=empty`), so the harness can tell that one apart.
  */
 export function Chrome({
   form,
@@ -27,6 +30,8 @@ export function Chrome({
   researchLock,
   sectionNote,
   master,
+  staged,
+  back,
   onWallets,
   onCredits,
   children,
@@ -41,6 +46,10 @@ export function Chrome({
   sectionNote: string;
   /** The master wallet's balances in base units, once the wallets are read. */
   master: { ausdMicro: bigint | null; monWei: bigint | null } | null;
+  /** A fixture drew the screen (`?stage=create-*`). */
+  staged: boolean;
+  /** The way back to the agent the person came from, or null on a first visit. */
+  back: { to: string; disabled: boolean; onBack(): void } | null;
   onWallets(): void;
   onCredits(): void;
   children: ReactNode;
@@ -48,13 +57,24 @@ export function Chrome({
 }) {
   const name = form.name.trim();
   return (
-    <main className={home.home} id="home-empty" data-surface="dark">
+    <main className={home.home} id="new-agent" data-staged={staged} data-surface="dark">
       <header className={home.top}>
         <Link href="/" className={home.brand}>
           <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
           <span>PICKLER</span>
         </Link>
-        {name ? (
+        {back ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            id="new-agent-back"
+            disabled={back.disabled}
+            onClick={back.onBack}
+          >
+            <Icon name="arrowLeft" size={14} />
+            Back to {back.to}
+          </Button>
+        ) : name ? (
           <span className={home.agentChip}>
             <span className={styles.chipAvatar} style={accentVars(form.accent)} aria-hidden="true">
               <AvatarGrid pattern={form.pattern} small />
@@ -98,11 +118,12 @@ export function Chrome({
           type="button"
           className={styles.topPill}
           title="AI credits"
+          aria-label="AI credits, soon"
           aria-haspopup="dialog"
           onClick={onCredits}
         >
           <i className={styles.creditsDot} aria-hidden="true" />
-          <small>AI CREDITS</small>
+          <small className={styles.creditsLabel}>AI CREDITS</small>
           <span>Soon</span>
         </button>
         <span className={home.emptyMenu}>

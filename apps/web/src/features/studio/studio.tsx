@@ -424,7 +424,7 @@ export function Studio({
   /* With no agent every section would be empty, so any section asked for lands on the create
      screen; its Menu lists them disabled. With agents, "+ New agent" opens the same screen. */
   const landing = studioLanding(loaded, agents, section);
-  if (landing === "empty" || (landing === "section" && section === "new")) {
+  if (landing === "new") {
     return (
       <NewAgent
         passkeys={passkeys}
@@ -434,6 +434,8 @@ export function Studio({
         error={error}
         staged={stagedCreate}
         hasAgents={agents.length > 0}
+        onBack={agent ? () => setSection("home") : undefined}
+        backTo={agent?.name ?? undefined}
         onCreated={async (productId) => {
           await loadAgents();
           setAgentId(productId);
@@ -477,7 +479,10 @@ export function Studio({
           setTrace(null);
           setError("");
         }}
-        onNew={() => setSection("new")}
+        onNew={() => {
+          setError("");
+          setSection("new");
+        }}
       />
     );
   }
@@ -553,6 +558,7 @@ export function Studio({
                 title={newAgentLock || undefined}
                 onClick={() => {
                   setMenu(null);
+                  setError("");
                   setSection("new");
                 }}
               >

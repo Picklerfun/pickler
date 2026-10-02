@@ -89,11 +89,13 @@ class StepTwoClosed extends Error {
 export function NewAgent({
   passkeys,
   canManage,
-  preview,
+  preview: previewProp,
   locked,
   error,
   staged,
   hasAgents,
+  onBack,
+  backTo,
   onCreated,
 }: {
   passkeys: PasskeysKnown;
@@ -106,9 +108,15 @@ export function NewAgent({
   staged: NewAgentStaged | null;
   /** The person has agents already: "+ New agent" opened this, not the first visit. */
   hasAgents: boolean;
+  /** Back to the agent the person came from; absent on a first visit, where there is none. */
+  onBack?: (() => void) | undefined;
+  /** That agent's name, for "Back to {name}". */
+  backTo?: string | undefined;
   /** The draft exists: reload the agents and open its home. */
   onCreated(productId: string): Promise<void>;
 }) {
+  /* A staged screen is a preview whatever the shell said: nothing drawn from a fixture is sent. */
+  const preview = previewProp || staged !== null;
   const researchLock = locked ? `${locked.title} ${locked.note}` : "";
   const access = menuAccess({
     hasAgent: hasAgents,
@@ -131,9 +139,7 @@ export function NewAgent({
   const [recheck, setRecheck] = useState(0);
   const [advancedOpen, setAdvancedOpen] = useState(staged?.advancedOpen ?? false);
   const reads = useAgentWallet(preview, staged);
-  const [sheet, setSheet] = useState<Sheet | null>(
-    staged?.sheet ? { kind: staged.sheet.kind, phase: staged.sheet.phase, step: 1 } : null,
-  );
+  const [sheet, setSheet] = useState<Sheet | null>(staged?.sheet ?? null);
   const [modal, setModal] = useState<Modal>(staged?.modal ?? null);
   const [fundOn, setFundOn] = useState<string | null>(staged?.fundOn ?? null);
   const [actionError, setActionError] = useState("");
@@ -387,6 +393,8 @@ export function NewAgent({
       canManage={canManage}
       researchLock={researchLock}
       sectionNote={access.sectionNote}
+      staged={staged !== null}
+      back={onBack ? { to: backTo ?? "your agent", disabled, onBack } : null}
       master={
         reads.wallets && {
           ausdMicro: unitsOf(reads.wallets.master.ausdMicro),
