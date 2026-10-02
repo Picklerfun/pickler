@@ -190,10 +190,20 @@ test("a join approved after going back still says the account was joined", () =>
 });
 
 test("the join step can be opened directly, and Back from it asks for the username", () => {
-  const join = connectFlow(CLOSED, { type: "open_join" });
+  const join = connectFlow(CLOSED, { type: "open_join", signedIn: true });
 
   assert.deepEqual(join, JOIN);
   assert.deepEqual(connectFlow(join, { type: "back" }), USERNAME);
+});
+
+test("opened to join without a session, the connected wallet confirms itself first", () => {
+  const first = connectFlow(CLOSED, { type: "open_join", signedIn: false });
+
+  assert.deepEqual(first, { step: "signin", busy: false, error: null, joining: true });
+  assert.deepEqual(connectFlow(first, { type: "signed_in", hasProfile: false }), JOIN);
+  // It turned out to have a username already: there is nothing to join from.
+  assert.equal(connectFlow(first, { type: "signed_in", hasProfile: true }).step, "closed");
+  assert.equal(connectFlow(first, { type: "signed_in", hasProfile: null }).step, "closed");
 });
 
 test("a closed prompt or a refusal keeps the join step, with its words", () => {

@@ -19,11 +19,12 @@ import { injectedSigner } from "./injected-signer";
 import { PrfUnavailableError } from "./mera-ceremony";
 import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
-import { ConnectError, signIn, type ConnectResult, type Signer } from "./connect";
-import { joinUncertain, joinWords, signInWords } from "./sign-in-words";
+import { JoinUnsettledError, signIn, type ConnectResult, type Signer } from "./connect";
+import { joinWords, signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
 import {
   adoptSession,
+  decideSession,
   dropWalletSession,
   heldBy,
   releases,
@@ -97,6 +98,10 @@ function remembered(): SignerKind | null {
 const subscribeToBrowser = () => () => {};
 const inBrowser = () => true;
 const onServer = () => false;
+
+/** The account a held session is of, when the page saw that session being made. */
+const sessionUser = (cached: HeldSession | null) =>
+  cached && !("adopted" in cached) ? cached.userId : null;
 
 /** What signing in answered, and whether that account has a username (null: not known). */
 interface Kept {
@@ -217,8 +222,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // The account that was just joined, for the step that says so: its username, and the wallet
   // that signed for it.
   const [joined, setJoined] = useState<{ handle: string | null; via: string | null } | null>(null);
-  // A join failed in a way that may have happened all the same: its answer never arrived.
-  const unsettled = useRef(false);
+  // A join was sent and never answered: the account that was being given up, so that the next
+  // sign-in can tell whether the wallet still opens it.
+  const unsettled = useRef<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -568,23 +574,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setPicking(picked);
       dispatch({ type: "working" });
 
-      /** The session of the account the connected wallet opens now, whichever that is. */
-      const take = (issued: ConnectResult) => {
-        // What is held is the account that no longer exists. Let go of it without signing the
-        // browser out, and keep the one the API answered with, for this same address.
-        hold(null);
-        return keep(
-          {
-            address: connected.address,
-            chainId: TARGET_CHAIN.chainId,
-            signMessage: async () => {
-              throw new Error("The other wallet already signed");
-            },
-          },
-          async () => issued,
-        );
-      };
-
       try {
         // The session of the account being given up. The chooser signed in a moment ago, so this
         // hands back the token it holds and asks nobody for anything.
@@ -601,27 +590,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // An earlier join was sent and never answered. Signing in again just said which account
+        // this wallet opens now: if it is no longer the one that was being given up, the join
+        // happened, and the other wallet is not asked to sign a second time.
+        const before = unsettled.current;
+        unsettled.current = null;
+        const user = sessionUser(heldRef.current);
+        if (before && user && user !== before) {
+          setJoined({ handle: own.handle, via: null });
+          dispatch({ type: "joined", hasProfile: own.profile });
+          return;
+        }
+
         let kept: Awaited<ReturnType<typeof signer.join>>;
         try {
           kept = await signer.join(own.result.token, connected.address);
         } catch (caught) {
-          // An earlier attempt whose answer was lost did join: the wallet that just signed and
-          // the connected one already open the same account, which is what was asked for.
-          const already =
-            unsettled.current && caught instanceof ConnectError && caught.code === "same_account";
-          if (already) {
-            unsettled.current = false;
-            setJoined({ handle: own.handle, via: null });
-            if (current()) {
-              dispatch({ type: "joined", hasProfile: own.profile });
-            }
-            return;
-          }
-          if (joinUncertain(caught)) {
-            // The wallet may have moved and the answer been lost. What the page holds may be an
-            // account that no longer exists, so it is let go of: the next thing that needs a
-            // session signs in as the connected wallet and learns which account it opens now.
-            unsettled.current = true;
+          if (caught instanceof JoinUnsettledError) {
+            // The request left and nobody knows what it did. What the page holds may be an
+            // account that no longer exists, so it is let go of: the next try signs in as the
+            // connected wallet and learns which account it opens now.
+            unsettled.current = user;
             hold(null);
             know(null);
           }
@@ -634,10 +623,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // It happened, whether or not this is still the pick the chooser is waiting on: the
-        // session is taken either way, and only what the chooser shows depends on that.
-        unsettled.current = false;
-        const { result, profile: known, handle } = await take(kept.session);
+        // It happened. The session is for the wallet that was connected when this began: if the
+        // person has since connected another, that one's session is not replaced, and it will
+        // find the account when it next signs in.
+        if (accountRef.current?.address.toLowerCase() !== connected.address.toLowerCase()) {
+          return;
+        }
+        // What is held is the account that no longer exists. Let go of it without signing the
+        // browser out, and keep the one the API answered with, for this same address — whether
+        // or not this is still the pick the chooser is waiting on.
+        hold(null);
+        const {
+          result,
+          profile: known,
+          handle,
+        } = await keep(
+          {
+            address: connected.address,
+            chainId: TARGET_CHAIN.chainId,
+            signMessage: async () => {
+              throw new Error("The other wallet already signed");
+            },
+          },
+          async () => kept.session,
+        );
         if (!current()) {
           return;
         }
@@ -661,9 +670,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "prf_unavailable" });
           return;
         }
-        const words = joinUncertain(caught)
-          ? "That did not finish, and the wallet may already be linked. Try again to find out."
-          : joinWords(caught);
+        const words = joinWords(caught);
         dispatch(words === null ? { type: "prompt_closed" } : { type: "failed", error: words });
       } finally {
         if (passkey) {
@@ -674,10 +681,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [adapter, hold, keep, know, signInKeeping],
   );
 
-  /** Opens the chooser on the join step, for somebody who closed it at the username. */
+  /**
+   * Opens the chooser for somebody who closed it at the username and is joining an account
+   * instead. After a reload the page holds no session it can use, and the connected wallet has to
+   * confirm itself before the other one signs: that is the sign-in step, which says so, rather
+   * than a prompt nobody was told about.
+   */
   const joinAccount = useCallback(() => {
+    const connected = accountRef.current;
+    const usable =
+      connected !== null &&
+      decideSession(
+        heldRef.current,
+        { address: connected.address, namespace: "eip155" },
+        new Date(),
+      ).action === "reuse";
     setError(null);
-    dispatch({ type: "open_join" });
+    dispatch({ type: "open_join", signedIn: usable });
     for (const signer of SIGNERS) {
       signer.prepare?.();
     }

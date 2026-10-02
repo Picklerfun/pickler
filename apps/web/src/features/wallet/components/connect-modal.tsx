@@ -125,8 +125,8 @@ export function ConnectModal(props: ConnectModalProps) {
   // Escape closes it without a keydown listener of our own.
   //
   // A step replaces the one before it, and with it whatever had focus. So focus then goes to the
-  // new step's title: a keyboard is not left on a control that is gone, and a screen reader says
-  // where it is now. In the same effect and after `showModal`, whose own first focus is the
+  // new step — its title, or its one field: a keyboard is not left on a control that is gone, and
+  // a screen reader says where it is now. In the same effect and after `showModal`, whose own first focus is the
   // close button.
   useEffect(() => {
     const element = dialog.current;
@@ -140,7 +140,12 @@ export function ConnectModal(props: ConnectModalProps) {
       element.close();
     }
     if (open) {
-      element.querySelector<HTMLElement>("#connect-title")?.focus();
+      // The username step is one field: focus goes to it. Every other step, to its title.
+      const field = flow.step === "username" ? "#connect-username" : null;
+      (
+        (field && element.querySelector<HTMLElement>(field)) ??
+        element.querySelector<HTMLElement>("#connect-title")
+      )?.focus();
     }
   }, [open, flow.step]);
 
@@ -325,25 +330,38 @@ function Choose({ flow, choices, picking, onPick }: ConnectModalProps) {
 
 /** A browser wallet's second step: the one signature that says the wallet is theirs. */
 function SignIn({ flow, address, kind, onSignIn }: ConnectModalProps) {
+  const wallet = address ? shortAddress(address) : "this wallet";
   return (
     <>
       <div className={styles.intro}>
-        <Title>SIGN IN</Title>
+        <Title>{flow.joining ? "FIRST, THIS WALLET" : "SIGN IN"}</Title>
         <p className={styles.lead}>
-          One signature tells Pickler that {address ? shortAddress(address) : "this wallet"} is
-          yours. It is a line of text: it costs nothing and moves nothing.
+          {flow.joining
+            ? `Before it is linked, ${wallet} confirms it is yours with one signature. Then you sign with the wallet that has your account.`
+            : `One signature tells Pickler that ${wallet} is yours. It is a line of text: it costs nothing and moves nothing.`}
         </p>
       </div>
 
-      <Button variant="primary" block disabled={flow.busy} onClick={onSignIn}>
-        {flow.busy ? "Check your wallet…" : "Sign in"}
+      {/* Not `disabled` while it waits: the button just pressed keeps its focus. */}
+      <Button
+        variant="primary"
+        block
+        aria-disabled={flow.busy || undefined}
+        onClick={() => {
+          if (!flow.busy) {
+            onSignIn();
+          }
+        }}
+      >
+        {flow.busy ? `Check your ${kind === "mera" ? "passkey" : "wallet"}…` : "Sign in"}
         {!flow.busy && <Icon name="arrow" size={16} />}
       </Button>
       <Failure flow={flow} />
 
       <p className={styles.fine}>
-        Your wallet will show the message before you sign it. Close this to stay connected without
-        an account.
+        {flow.joining
+          ? "It is a line of text: it costs nothing and moves nothing."
+          : "Your wallet will show the message before you sign it. Close this to stay connected without an account."}
       </p>
       <Connected address={address} kind={kind} />
     </>
@@ -451,7 +469,16 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
       <Failure flow={flow} />
 
       {/* The other way out: this wallet is new here, and the person is not. */}
-      <button type="button" className={styles.textLink} disabled={form.busy} onClick={onJoin}>
+      <button
+        type="button"
+        className={styles.textLink}
+        aria-disabled={form.busy || undefined}
+        onClick={() => {
+          if (!form.busy) {
+            onJoin();
+          }
+        }}
+      >
         Already have a Pickler account? <span>Link this wallet to it</span>
       </button>
 
@@ -486,7 +513,16 @@ function Join({ flow, joinChoices, address, picking, onJoinWith, onBack }: Conne
 
       <Foot
         left={
-          <button type="button" className={styles.back} disabled={flow.busy} onClick={onBack}>
+          <button
+            type="button"
+            className={styles.back}
+            aria-disabled={flow.busy || undefined}
+            onClick={() => {
+              if (!flow.busy) {
+                onBack();
+              }
+            }}
+          >
             <Icon name="arrowLeft" size={14} />
             Back
           </button>

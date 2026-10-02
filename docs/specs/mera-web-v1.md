@@ -199,14 +199,26 @@ has a username (`join_has_profile`) or a custody wallet (`join_has_custody`); it
 wallet account (`join_not_wallet_account`); it changed while it was being joined (`join_changed`).
 A closed prompt is not a refusal.
 
-**When the answer is lost.** The wallet moves and then the answer may not arrive: a timeout, or the
-server failing as it mints the session. The page then cannot know which account the connected
-wallet opens, so it lets go of the session it held, says the link may already have happened, and
-on the next try signs in as the connected wallet again. If the join did happen, that try is
-refused with `same_account`, which the page then reads as what it is: linked.
+**When the answer is lost.** The join request can leave and never be answered: a timeout, or the
+server failing after it moved the wallet. Only that — a request that was sent — counts; a wallet
+prompt or a challenge that failed moved nothing. The page then cannot know which account the
+connected wallet opens, so it lets go of the session it held, says the link may already have
+happened, and on the next try signs in as the connected wallet again. That sign-in says which
+account the wallet opens now: if it is no longer the one that was being given up, the join
+happened, and the page says so without asking the other wallet to sign again.
+
+**From the portfolio.** The username panel carries the same link. After a reload the page holds no
+session it can use, so the chooser opens on a step that says the connected wallet confirms itself
+first, and only then asks for the other wallet.
 
 **Limits.**
 
+- The conditions on the account given up are held in the statement that moves its wallet, which
+  closes two joins of one account at once. A username claimed for that account, or the kept
+  account being given up itself, in the very instant of that statement can still slip past: they
+  are writes to another table and another row. Each needs the same person in two requests at once
+  and none reaches another person's account. Closing them takes an advisory lock shared with
+  profile creation.
 - A second account of the same browser wallet cannot sign from the join step: selecting it in the
   extension is the wallet changing under the page, which the page follows as a new connection.
 - Two accounts that both have usernames are not merged.

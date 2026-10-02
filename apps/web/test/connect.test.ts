@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { challenge, join, signIn, ConnectError } from "../src/features/wallet/lib/connect";
+import {
+  challenge,
+  join,
+  JoinUnsettledError,
+  signIn,
+  ConnectError,
+} from "../src/features/wallet/lib/connect";
 
 // The trailing newline is load-bearing, not untidiness. This fixture exists to catch a client
 // that normalises the server's string, and the commonest way to do that — `.trim()` — is
@@ -145,4 +151,20 @@ test("the message asked for names the wallet to let in only when there is one", 
     { address: "0xA", chain_id: 10143 },
     { address: "0xA", chain_id: 10143, joining: "0xB" },
   ]);
+});
+
+test("a join that left and was not answered is unsettled; one the API refused is not", async () => {
+  const offline = (async () => {
+    throw new TypeError("Failed to fetch");
+  }) as typeof fetch;
+  const failing = (async () => Response.json({ message: "boom" }, { status: 500 })) as typeof fetch;
+  const refusing = (async () =>
+    Response.json({ message: "no", error: "same_account" }, { status: 409 })) as typeof fetch;
+
+  await assert.rejects(join("m", "0xsig", "t", offline), JoinUnsettledError);
+  await assert.rejects(join("m", "0xsig", "t", failing), JoinUnsettledError);
+  await assert.rejects(
+    join("m", "0xsig", "t", refusing),
+    (caught: unknown) => caught instanceof ConnectError && caught.code === "same_account",
+  );
 });

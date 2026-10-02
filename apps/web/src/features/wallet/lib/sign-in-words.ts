@@ -1,4 +1,4 @@
-import { ConnectError } from "./connect";
+import { ConnectError, JoinUnsettledError } from "./connect";
 import { describeSignerFailure } from "./signer-adapters";
 
 /**
@@ -18,6 +18,9 @@ import { describeSignerFailure } from "./signer-adapters";
  * person should do next. Anything else is whatever a sign-in would have said.
  */
 export function joinWords(caught: unknown): string | null {
+  if (caught instanceof JoinUnsettledError) {
+    return "That did not finish, and the wallet may already be linked. Try again to find out.";
+  }
   if (caught instanceof ConnectError) {
     switch (caught.code) {
       case "no_account":
@@ -37,18 +40,6 @@ export function joinWords(caught: unknown): string | null {
     }
   }
   return signInWords(caught);
-}
-
-/**
- * Whether a join that failed may have happened all the same. A refusal with a 4xx code moved
- * nothing. Anything else — the answer never arrived, the server failed after it moved the wallet
- * — leaves the page not knowing which account the connected wallet opens.
- */
-export function joinUncertain(caught: unknown): boolean {
-  if ((caught as { code?: unknown } | null)?.code === 4001) {
-    return false;
-  }
-  return !(caught instanceof ConnectError) || /^5\d\d$/.test(caught.code);
 }
 
 export function signInWords(caught: unknown): string | null {

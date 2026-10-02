@@ -54,7 +54,8 @@ export interface WalletLinkRepository {
    *
    * The adapter checks again, in the statement that moves it, what `join` checked a moment
    * before: `fromUserId` holds exactly one wallet and has no profile, and `toUserId` still holds
-   * a wallet. If any of that stopped being true in between, nothing moves and the answer is false.
+   * a wallet. Two joins of one account at once move it once. A change made in the very instant
+   * of the statement by another request of the same person may still slip past it.
    */
   reassignSole(fromUserId: string, toUserId: string): Promise<boolean>;
 }

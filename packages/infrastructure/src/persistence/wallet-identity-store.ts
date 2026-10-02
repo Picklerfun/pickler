@@ -201,10 +201,16 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
   }
 
   /**
-   * One statement, so what core checked before calling is held at the moment the row moves: the
-   * account given up holds exactly this one wallet and has no profile, and the account kept
-   * still holds a wallet. A second join racing this one, a username claimed in between, or the
-   * kept account being given up itself, each leave the row where it is.
+   * One statement, holding again what core checked before calling: the account given up has
+   * exactly this one wallet and no profile, and the account kept still has a wallet.
+   *
+   * What that closes: a second join of the same account racing this one. It waits on the row,
+   * finds it moved, and moves nothing. What it only narrows, to the instant of this statement: a
+   * username claimed for the account given up, or the kept account being given up itself, at the
+   * same moment. Under READ COMMITTED the conditions are read once, on the statement's snapshot,
+   * and those are writes to another table and another row, which no lock here waits for. Closing
+   * them takes an advisory lock on both accounts shared with profile creation. Each needs the
+   * same person in two requests at once, and none crosses to another person's account.
    *
    * The unique key is (namespace, address) and does not name the account, so moving a row to
    * another account cannot collide with anything.

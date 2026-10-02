@@ -28,8 +28,12 @@ export interface ConnectFlowState {
 
 export type ConnectFlowEvent =
   | { type: "open" }
-  /** Open on the join step: the portfolio's panel offers it to somebody who closed the chooser. */
-  | { type: "open_join" }
+  /**
+   * Open to join an account: the portfolio's panel offers it to somebody who closed the chooser.
+   * `signedIn` is whether the page still holds the connected wallet's session; after a reload it
+   * does not, and that wallet confirms itself first, on a step that says so.
+   */
+  | { type: "open_join"; signedIn: boolean }
   | { type: "working" }
   /** The wallet connected. `hasProfile` is null when nobody could tell, or nobody asked yet. */
   | { type: "connected"; signedIn: boolean; hasProfile: boolean | null }
@@ -78,7 +82,7 @@ export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): C
     case "open":
       return at("choose");
     case "open_join":
-      return at("join", true);
+      return at(event.signedIn ? "join" : "signin", true);
     case "back":
       if (state.step === "join") {
         return at("username");
@@ -89,7 +93,11 @@ export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): C
     case "connected":
       return event.signedIn ? afterSignIn(event.hasProfile) : at("signin");
     case "signed_in":
-      return afterSignIn(event.hasProfile);
+      // On the way to joining, and still without a username: the join step. An account that
+      // turns out to have one has nothing to join from.
+      return state.joining && event.hasProfile === false
+        ? at("join", true)
+        : afterSignIn(event.hasProfile);
     case "join":
       // Only where the question is asked: an account with a username has nothing to join from.
       return state.step === "username" ? at("join", true) : state;

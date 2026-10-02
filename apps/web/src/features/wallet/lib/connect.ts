@@ -88,6 +88,18 @@ export async function present(
 }
 
 /**
+ * The join was sent and nobody knows whether it happened: the answer never arrived, or the server
+ * failed after it may have moved the wallet. Only a request that left can be this; a failure
+ * before it — the wallet's prompt, the challenge — moved nothing and is whatever it was.
+ */
+export class JoinUnsettledError extends Error {
+  constructor(cause: unknown) {
+    super("That did not finish, and the wallet may already be linked", { cause });
+    this.name = "JoinUnsettledError";
+  }
+}
+
+/**
  * Folds the signed-in account into the account of the wallet that signed `message`.
  *
  * For somebody who connected a wallet Pickler had not seen — which made it an account — and who
@@ -106,15 +118,21 @@ export async function join(
   token: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ConnectResult> {
-  return envelope(
-    await fetchImpl("/api/v1/auth/wallet/join", {
+  let response: Response;
+  try {
+    response = await fetchImpl("/api/v1/auth/wallet/join", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ raw: message, signature }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    }),
-    "That account could not be joined",
-  );
+    });
+  } catch (cause) {
+    throw new JoinUnsettledError(cause);
+  }
+  if (response.status >= 500) {
+    throw new JoinUnsettledError(new Error(`The API answered ${response.status}`));
+  }
+  return envelope(response, "That account could not be joined");
 }
 
 /** Both halves, for a signer that can be asked to sign at any time: a browser wallet. */

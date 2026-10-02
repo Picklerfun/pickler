@@ -377,11 +377,11 @@
   text-underline-offset: 3px;
 }
 
-.textLink:hover:not(:disabled) {
+.textLink:hover:not([aria-disabled="true"]) {
   color: var(--pk-ink);
 }
 
-.textLink:disabled {
+.textLink[aria-disabled="true"] {
   cursor: default;
 }
 
@@ -448,11 +448,11 @@
   transition: color var(--pk-duration) ease;
 }
 
-.back:hover:not(:disabled) {
+.back:hover:not([aria-disabled="true"]) {
   color: var(--pk-ink);
 }
 
-.back:disabled {
+.back[aria-disabled="true"] {
   cursor: default;
 }
 
