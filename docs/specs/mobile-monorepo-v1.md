@@ -35,7 +35,7 @@ possible.
 | W5  | The app's source lives in this repository with its history. `pickler-expo` is frozen, not archived, until the bounty of 2026-10-13 closes, because it is the repository the submission names.           | yes                                            |
 | W6  | `apps/mobile` is an npm workspace, `@pickler/mobile`, under the root lockfile. One React for the whole repository, pinned by a root `overrides` to the version the app's React Native release requires. | yes (§8 names the fallback)                    |
 | W7  | The rule of W3 is one package, `@pickler/mera-account`, with frozen test vectors. The app imports it; the web's future Mera signer must.                                                                | the package: yes. The vectors: never rewritten |
-| W8  | The API refuses to compose custody with `TURNKEY_RPID` equal to Mera's relying party, with it missing while the Turnkey credentials are present, or with `localhost` outside local development.         | yes                                            |
+| W8  | Custody is not composed, and `/v1/signing` stays unmounted, when `TURNKEY_RPID` equals Mera's relying party or is `localhost` outside local development. The API logs why and serves everything else.   | yes                                            |
 
 W1 and W2 are the owner's, stated on 2026-10-01, and they replace the three-host plan of
 `product-hosts-v1.md` §3–§4 and of `product-hosts-cutover-v2.md` (PR #65). They match what
@@ -126,7 +126,6 @@ export, no build step. It is the app's `src/hd/hd.ts`, moved:
 export function prfOutputToMnemonic(prfOutput: Uint8Array): string;
 export function mnemonicToSeed(mnemonic: string): Uint8Array;
 export function deriveEvmPrivateKey(seed: Uint8Array, index: number): Uint8Array;
-export const MERA_RELYING_PARTY = "pickler.fun";
 ```
 
 It depends on `@scure/bip32` and `@scure/bip39` at the versions the app pins today and on nothing
@@ -140,11 +139,13 @@ file.
 
 ## 7. The Turnkey guard and the documents
 
-`packages/core` gains a pure rule, `turnkeyRelyingPartyProblem(rpId, appEnv)`, and
-`workers/api/src/container.ts` throws on what it returns: the relying party equal to
-`pickler.fun`, absent while the Turnkey API key pair and parent organisation are bound, or
-`localhost` when `APP_ENV` is neither `local` nor `development`. A deployment with no Turnkey
-bindings at all still serves the rest of the API, as today.
+`packages/core` gains `MERA_RELYING_PARTY` and a pure rule, `turnkeyRelyingPartyProblem(rpId, appEnv)`.
+`workers/api/src/container.ts` asks it before composing custody: with the relying party equal to
+`pickler.fun`, or `localhost` when `APP_ENV` is neither `local` nor `development`, custody is not
+composed, the reason is logged, and the rest of the API serves — the pattern an unsupported
+`CHAIN_ID` already follows. A missing `TURNKEY_RPID` keeps today's behaviour: custody is off.
+Failing the whole API was considered and refused: a mistaken value would take down the marketplace
+to protect a studio feature that is already off.
 
 Documents corrected in the same change, each with a dated pointer to this specification rather
 than a rewrite: `product-hosts-v1.md` (§3 and §4 superseded), `turnkey-passkey-custody-v1.md`
