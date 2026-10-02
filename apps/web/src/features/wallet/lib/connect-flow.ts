@@ -30,7 +30,7 @@ export interface ConnectFlowState {
 export type ConnectFlowEvent =
   | { type: "open" }
   /**
-   * Open to join an account: the portfolio's panel offers it to somebody who closed the chooser.
+   * Open to join an account, from the username step shown to an account found without one.
    * `signedIn` is whether the page still holds the connected wallet's session; after a reload it
    * does not, and that wallet confirms itself first, on a step that says so.
    */
@@ -56,7 +56,8 @@ export type ConnectFlowEvent =
  * Whether the step has to be finished. A wallet that connected arrives all the way — signed in,
  * and with a username — or it is disconnected: there is no connected wallet without an account
  * and no account without a username (docs/specs/mera-web-v1.md, M6). So from these steps the only
- * way out that is not forward is to disconnect, and the chooser draws that, not a close.
+ * way out that is not forward is to disconnect, and the chooser draws that, not a close. It works
+ * even while a wallet is being asked to sign: a wallet that never answers must not hold the page.
  */
 export function mustFinish(state: ConnectFlowState): boolean {
   switch (state.step) {
@@ -90,21 +91,18 @@ const at = (step: ConnectStep, joining = false): ConnectFlowState => ({
 
 /**
  * Where a signed-in account goes next. Only a profile known to be missing asks for a username:
- * one that could not be read may well exist, and the portfolio asks again when it can tell.
+ * one that could not be read may well exist, and the page asks as soon as it can tell.
  */
 const afterSignIn = (hasProfile: boolean | null) =>
   at(hasProfile === false ? "username" : "closed");
 
 export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): ConnectFlowState {
   // A closed chooser opens, and nothing else moves it — with one exception. A wallet whose prompt
-  // was still up when the person closed the chooser, and who then approved it, is connected: it
-  // finishes arriving like any other, so the step that follows comes up. Everything else that
-  // answers into a closed chooser — a failure, a closed prompt — answers into nothing.
-  const opens =
-    event.type === "open" ||
-    event.type === "open_join" ||
-    event.type === "connected" ||
-    event.type === "signed_in";
+  // was still up when the person closed the chooser on its first step, and who then approved it,
+  // is connected: it finishes arriving like any other, so the step that follows comes up.
+  // Everything else that answers into a closed chooser — a sign-in the person disconnected out
+  // of, a failure, a closed prompt — answers into nothing.
+  const opens = event.type === "open" || event.type === "open_join" || event.type === "connected";
   if (state.step === "closed" && !opens) {
     return state;
   }

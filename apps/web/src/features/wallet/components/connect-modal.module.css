@@ -78,13 +78,9 @@
     color var(--pk-duration) ease;
 }
 
-.leave:hover:not([aria-disabled="true"]) {
+.leave:hover {
   background: var(--pk-panel-2);
   color: var(--pk-ink);
-}
-
-.leave[aria-disabled="true"] {
-  cursor: default;
 }
 
 /* The dialog focuses its first control as it opens, so this ring is on screen from the start. */

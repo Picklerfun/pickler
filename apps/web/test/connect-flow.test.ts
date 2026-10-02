@@ -153,7 +153,8 @@ test("a closed chooser opens, and a wallet approved after closing still finishes
     connectFlow(CLOSED, { type: "connected", signedIn: true, hasProfile: false }).step,
     "username",
   );
-  assert.equal(connectFlow(CLOSED, { type: "signed_in", hasProfile: false }).step, "username");
+  // A sign-in that answers after the person disconnected out of it answers into nothing.
+  assert.deepEqual(connectFlow(CLOSED, { type: "signed_in", hasProfile: false }), CLOSED);
   // With a username already, there is nothing to bring up.
   assert.deepEqual(
     connectFlow(CLOSED, { type: "connected", signedIn: true, hasProfile: true }),
