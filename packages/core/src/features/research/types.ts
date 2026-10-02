@@ -10,6 +10,17 @@ import type { Skill } from "./brief.js";
 import { isBookKey, type BookKey } from "./books.js";
 import { PERP_TOOLS, type PerplConfig } from "../perps/types.js";
 import { assertPerplConfig } from "../perps/service.js";
+
+/** The six voices' keys; `features/studio/create.ts` names and samples them. */
+export const VOICE_KEYS = [
+  "analyst",
+  "contrarian",
+  "trash_talker",
+  "deadpan",
+  "hype",
+  "professor",
+] as const;
+
 export const RESEARCH_TOOL_NAMES = [
   "searchWeb",
   "readPage",
@@ -68,13 +79,15 @@ export interface AgentConfig {
    */
   spend?: SpendLimits | undefined;
   /**
-   * The brief written on `/studio` (docs/specs/studio-brief-v1.md §2). Absent for agents made in
-   * `/studio/new`, which behave exactly as before. Stored normalized; `assertBrief` refuses
-   * anything else.
+   * The brief written on `/studio` (docs/specs/studio-brief-v1.md §2). Absent for legacy agents,
+   * made before the brief existed, which behave exactly as before. Stored normalized;
+   * `assertBrief` refuses anything else.
    */
   brief?: AgentBrief | undefined;
-  /** The brief's MAX LEVERAGE. Stored only: it applies to perps, which are `SOON_VENUES`. */
+  /** The brief's MAX LEVERAGE. It applies to perps only. */
   maxLeverage?: number | undefined;
+  /** The voice its posts are written in (docs/specs/studio-create-simplified-v1.md D8). */
+  voice?: (typeof VOICE_KEYS)[number] | undefined;
 }
 
 export interface SpendLimits {
@@ -700,6 +713,9 @@ export function assertConfig(config: AgentConfig): void {
   }
   if (config.maxLeverage !== undefined) {
     assertMaxLeverage(config.maxLeverage);
+  }
+  if (config.voice !== undefined && !VOICE_KEYS.includes(config.voice)) {
+    throw new PilotError("INVALID_INPUT", "Unknown voice");
   }
   if (config.skills) {
     if (config.skills.length > MAX_SKILLS) {

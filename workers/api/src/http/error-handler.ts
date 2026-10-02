@@ -21,6 +21,9 @@ import {
   NoCustodyAccountError,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
+  WalletUnderfundedError,
+  AgentWalletLinkedError,
+  BalancesUnreadableError,
 } from "@pickler/core";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -96,6 +99,22 @@ function classify(
   }
   if (error instanceof AgentWalletNotFoundError) {
     return { status: 404, message: error.message, extras: { error: "agent_wallet_not_found" } };
+  }
+  if (error instanceof AgentWalletLinkedError) {
+    return { status: 409, message: error.message, extras: { error: "wallet_assigned" } };
+  }
+  if (error instanceof WalletUnderfundedError) {
+    // Base units as strings: the balances read on chain and the minimums. A balance that could not
+    // be read is BalancesUnreadableError (503), never underfunded.
+    return {
+      status: 409,
+      message: error.message,
+      extras: { error: "wallet_underfunded", detail: { ...error.detail } },
+    };
+  }
+  if (error instanceof BalancesUnreadableError) {
+    // The chain did not answer: an outage, never an underfunded wallet.
+    return { status: 503, message: error.message, extras: { error: "balances_unavailable" } };
   }
   if (error instanceof DelegatedKeyNotConfiguredError) {
     return {

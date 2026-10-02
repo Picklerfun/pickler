@@ -294,7 +294,7 @@ test("what the query string decodes to is what gets checked", () => {
 test("an ordinary path keeps its query and its fragment", () => {
   assert.equal(returnTo("/?agent=x&section=trading"), "/?agent=x&section=trading");
   assert.equal(returnTo("/account?next=%2F%2Fevil.example"), "/account?next=%2F%2Fevil.example");
-  assert.equal(returnTo("/studio/create?from=home#brief"), "/studio/create?from=home#brief");
+  assert.equal(returnTo("/account?tab=keys#security"), "/account?tab=keys#security");
   assert.equal(returnTo("/agents/half-time"), "/agents/half-time");
 });
 

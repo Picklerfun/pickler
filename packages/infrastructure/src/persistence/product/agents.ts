@@ -85,6 +85,8 @@ export const agentProfiles = agentsSchema
       blurb: text("blurb").notNull().default(""),
       beat: text("beat"),
       accent: accent("accent").notNull().default("lime"),
+      /** One of the six avatar patterns (core's `AVATAR_PATTERNS`), by index. */
+      avatarPattern: smallint("avatar_pattern").notNull().default(0),
       xHandle: text("x_handle"),
       /** Which venue the agent trades on. Public; the runtime's config is not. */
       venue: text("venue").notNull().default("predictions"),
@@ -110,6 +112,7 @@ export const agentProfiles = agentsSchema
       check("agent_profiles_voice_length", sql`char_length(${t.voice}) <= 120`),
       check("agent_profiles_decides_length", sql`char_length(${t.decides}) <= 280`),
       check("agent_profiles_wrong_length", sql`char_length(${t.wrong}) <= 280`),
+      check("agent_profiles_avatar_pattern", sql`${t.avatarPattern} between 0 and 5`),
     ],
   )
   .enableRLS();

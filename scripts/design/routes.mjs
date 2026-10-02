@@ -347,43 +347,133 @@ const ALL = [
     task: "Task 12",
     proves: "#home-schedule",
   },
-  // The home before the first agent (`?stage=empty`), the "Pickler Studio Empty v4" canvas: the top
-  // bar, the disabled rail and the blank brief instead of a redirect to /studio/new. It proves the
-  // brief, which no staged run has.
+  // The create screen before the first agent (`?stage=empty`), the "Pickler Studio Empty v5"
+  // canvas with nothing staged: the top bar, the disabled rail, the brief and the wallet panel.
+  // `data-staged="false"` is only on a screen no fixture drew, so a create stage is not this.
   {
     path: "/studio?stage=empty",
     name: "studio-home-empty",
     product: "studio",
     surface: "dark",
-    task: "Task 12",
-    proves: "#home-empty",
+    task: "Create v5",
+    proves: '#new-agent[data-staged="false"]',
   },
-  // The brief home with its paper run live, done and stale (`?stage=brief-*`), and the draft home
-  // after create (`?stage=draft`). Each proves the state it stages, so a stage that fell back to
-  // another is not reported green.
+  // The create screen at each moment studio-create-simplified-v1 §7 lists (`?stage=create-*`): no
+  // wallet, a wallet not funded, funded, advanced open, the web on with sites, the create sheet in
+  // each phase, the wallet sheet at each of its two steps, the Wallets modal with a transfer open,
+  // AI credits and the avatar picker. Each proves the state it stages, so a stage that fell back to
+  // another is not reported green. The draft home after create is `?stage=draft`.
   {
-    path: "/studio?stage=brief-running",
-    name: "studio-brief-running",
+    path: "/studio?stage=create-empty",
+    name: "studio-create-empty",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="LIVE"]',
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-state="none"] #new-agent-wallet-step0',
   },
   {
-    path: "/studio?stage=brief-done",
-    name: "studio-brief-done",
+    path: "/studio?stage=create-wallet",
+    name: "studio-create-wallet",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="DONE"]',
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-state="empty"]',
   },
   {
-    path: "/studio?stage=brief-stale",
-    name: "studio-brief-stale",
+    path: "/studio?stage=create-funded",
+    name: "studio-create-funded",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="STALE"]',
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-state="funded"][data-funded="true"]',
+  },
+  {
+    path: "/studio?stage=create-advanced",
+    name: "studio-create-advanced",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-risk",
+  },
+  {
+    path: "/studio?stage=create-web",
+    name: "studio-create-web",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-web",
+  },
+  {
+    path: "/studio?stage=create-sheet",
+    name: "studio-create-sheet",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="idle"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-busy",
+    name: "studio-create-sheet-busy",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="busy"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-ok",
+    name: "studio-create-sheet-ok",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="ok"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-cancelled",
+    name: "studio-create-sheet-cancelled",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="err"]',
+  },
+  {
+    path: "/studio?stage=create-wallet-sheet",
+    name: "studio-create-wallet-sheet",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-step="1"] [aria-label="Step 1 of 2"]',
+  },
+  {
+    path: "/studio?stage=create-wallet-sheet-step2",
+    name: "studio-create-wallet-sheet-step2",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-step="2"] [aria-label="Step 2 of 2"]',
+  },
+  {
+    path: "/studio?stage=create-wallets",
+    name: "studio-create-wallets",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-wallets[open] input[data-amount]",
+  },
+  {
+    path: "/studio?stage=create-credits",
+    name: "studio-create-credits",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-credits[open]",
+  },
+  {
+    path: "/studio?stage=create-avatar",
+    name: "studio-create-avatar",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-avatar[open]",
   },
   {
     path: "/studio?stage=draft",
@@ -516,93 +606,6 @@ const ALL = [
     surface: "dark",
     task: "Task 11",
     proves: "#studio-soon-board",
-  },
-  // A person with no agents is sent from /studio to the creation flow, and each of its screens is
-  // a URL of its own (`?step=`). Outside production a link past Describe opens on the canvas's
-  // example draft, so every screen has something to show without a model or a database. Each route
-  // proves its own screen's id rather than the flow's frame, so a step that failed to render is not
-  // reported green because the column around it did.
-  {
-    path: "/studio/new?step=describe",
-    name: "create-describe",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-describe",
-  },
-  {
-    path: "/studio/new?step=reading",
-    name: "create-reading",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-reading",
-  },
-  {
-    path: "/studio/new?step=name",
-    name: "create-name",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-name",
-    // The handle is checked 400ms after the step mounts, after `networkidle` has already fired.
-    settles: { gone: '#create-handle-hint:text-is("CHECKING")' },
-  },
-  {
-    path: "/studio/new?step=trades",
-    name: "create-trades",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-trades",
-  },
-  {
-    path: "/studio/new?step=looks",
-    name: "create-looks",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-looks",
-  },
-  {
-    path: "/studio/new?step=reads",
-    name: "create-reads",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-reads",
-  },
-  {
-    path: "/studio/new?step=skills",
-    name: "create-skills",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-skills",
-  },
-  {
-    path: "/studio/new?step=decides",
-    name: "create-decides",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-decides",
-  },
-  {
-    path: "/studio/new?step=review",
-    name: "create-review",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-review",
-  },
-  {
-    path: "/studio/new?step=run",
-    name: "create-run",
-    product: "studio",
-    surface: "dark",
-    task: "Task 11",
-    proves: "#create-run",
   },
   // The account sits behind the same auth gate the studio did, so it needs the same floor for the
   // same reason. These three selectors are a contract with Task 13 rather than an observation: the

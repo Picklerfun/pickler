@@ -55,13 +55,6 @@ export interface Env {
   SIWE_DOMAIN?: string;
   /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
   WALLET_EMAIL_DOMAIN?: string;
-  /**
-   * The OpenAI-compatible model the research worker uses. The studio drafts an agent from one
-   * line with it; without all three, drafting answers 503 and nothing else changes.
-   */
-  MODEL_BASE_URL?: string;
-  MODEL_ID?: string;
-  MODEL_API_KEY?: string;
 }
 
 export interface Variables {

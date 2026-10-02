@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import {
+  DEFAULT_BRIEF,
   DEFAULT_CONFIG,
-  PilotError,
+  STARTER_CAPS,
   createStudioAccess,
+  prepareDraft,
   type AgentConfig,
   type Principal,
 } from "@pickler/core";
@@ -13,48 +15,37 @@ import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { PostgresBudgetLedger } from "../src/studio/budget.js";
 import { createTestStore } from "./database.js";
 
+const { config, profile } = prepareDraft({
+  name: "Agent",
+  handle: "agent_one",
+  voice: "analyst",
+  avatar: { accent: "amber", pattern: 0 },
+  sources: { web: null },
+  brief: DEFAULT_BRIEF,
+  caps: STARTER_CAPS,
+  walletId: "unused",
+});
+const input = { name: "Agent", handle: "agent_one", config, profile };
 const base = { ...DEFAULT_CONFIG };
 delete base.categoryIds;
-const config: AgentConfig = {
+/** A Polymarket config, for the runtime tests below that queue a run on the agent. */
+const polymarket: AgentConfig = {
   ...base,
   marketScope: { version: 1, category: "sports", subcategories: ["soccer"] },
 };
-const profile = {
-  accent: "amber" as const,
-  blurb: "Bets on NBA injury news before the lines move.",
-  venue: "predictions" as const,
-  vibe: "",
-  voice: "",
-  decides: "",
-  wrong: "",
-  xHandle: null,
-};
-const input = { name: "Agent", handle: "agent_one", config, key: "create", profile };
 const hex = (length: number) =>
   `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
 
 /**
- * A `wallets.wallets` row (with its account) an `agent_wallets` link can reference. Approved with
- * three policy ids by default (the fewest any wallet is written with), the way a real
- * `confirmPolicies` would have left it; pass
- * `approvedPolicyIds: null` for a wallet whose rules were never confirmed.
+ * A `wallets.wallets` row (with its account) a draft can link. Approved with three policy ids (the
+ * fewest any wallet is written with), the way a real `confirmPolicies` would have left it.
  */
-async function seedWallet(
-  pool: Pool,
-  userId: string,
-  overrides: {
-    walletId?: string;
-    name?: string;
-    approvedPolicyIds?: string[] | null;
-  } = {},
-) {
-  const walletId = overrides.walletId ?? `wallet-${hex(12)}`;
-  const approvedPolicyIds =
-    overrides.approvedPolicyIds === undefined ? ["p1", "p2", "p3"] : overrides.approvedPolicyIds;
+async function seedWallet(pool: Pool, userId: string) {
+  const walletId = `wallet-${hex(12)}`;
   await pool.query(
     `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
-     VALUES ($1, $2, $3, 'agent', $4, $5)`,
-    [userId, walletId, `sub-${hex(12)}`, overrides.name ?? "halftime", approvedPolicyIds],
+     VALUES ($1, $2, $3, 'agent', 'Agent wallet 1', $4)`,
+    [userId, walletId, `sub-${hex(12)}`, ["p1", "p2", "p3"]],
   );
   await pool.query(
     `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
@@ -75,38 +66,47 @@ async function setup(t: Parameters<typeof createTestStore>[0]) {
   await Promise.all([directory.onboard(userId), directory.onboard(userId)]);
   const access = (await directory.access(userId, null))!;
   const walletId = await seedWallet(store.pool, userId);
-  const wallet = { walletId };
-  return { store, directory, userId, access, wallet };
+  const draft = async () =>
+    (await directory.createDraft(access, userId, { ...input, walletId })).scope;
+  /**
+   * The draft made an active Polymarket agent: drafts spend nothing and Perpl configs queue no
+   * runs yet, and these tests are about the runtime, not about creating.
+   */
+  const active = async () => {
+    const scope = await draft();
+    await store.pool.query("UPDATE agents.agents SET status='active' WHERE id=$1", [scope.agentId]);
+    await store.updateConfig(scope, (await store.agent(scope)).version, polymarket);
+    return scope;
+  };
+  return { store, directory, userId, access, walletId, draft, active };
 }
 
 test("onboarding is idempotent and account creation does not enable research", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, access, draft } = await setup(t);
   assert.equal(access.enabled, false);
   assert.equal(access.workspaceId, access.tenantId);
   assert.equal(
     (await store.pool.query("SELECT count(*)::int AS n FROM identity.workspaces")).rows[0].n,
     1,
   );
-  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet }));
+  await assert.rejects(draft());
   assert.equal((await store.agents(access.tenantId)).length, 0);
   assert.equal((await store.agents("alpha")).length, 1);
 });
 
 test("concurrent creation preserves one handle, config, mapping and disabled schedule", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, directory, userId, access, walletId, draft } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scopes = await Promise.all(
-    Array.from({ length: 5 }, () => directory.createAgent(access, userId, { ...input, wallet })),
-  );
+  const scopes = await Promise.all(Array.from({ length: 5 }, () => draft()));
   assert.equal(new Set(scopes.map((s) => s.agentId)).size, 1);
   const agent = await store.agent(scopes[0]!);
   assert.equal(agent.scheduleEnabled, false);
-  assert.deepEqual(agent.config.marketScope, config.marketScope);
+  assert.deepEqual(agent.config.voice, config.voice);
   await assert.rejects(
-    directory.createAgent(access, userId, { ...input, name: "Changed", wallet }),
-    { code: "CONFLICT" },
+    directory.createDraft(access, userId, { ...input, name: "Changed", walletId }),
+    { code: "WALLET_ASSIGNED" },
   );
   await assert.rejects(directory.agentScope({ ...access, tenantId: "beta" }, scopes[0]!.agentId), {
     code: "NOT_FOUND",
@@ -114,7 +114,7 @@ test("concurrent creation preserves one handle, config, mapping and disabled sch
   await store.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
     userId,
   ]);
-  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet }));
+  await assert.rejects(draft());
 });
 
 test("studio authorization checks current ownership and never accepts an API key", async (t) => {
@@ -131,11 +131,11 @@ test("studio authorization checks current ownership and never accepts an API key
 });
 
 test("PostgreSQL budget coordinates independent executors and preserves idempotency after restart", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, userId, active } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const { agentId } = await directory.createAgent(access, userId, { ...input, wallet });
+  const { agentId } = await active();
   const ledger = new PostgresBudgetLedger(store.pool);
   const peer = new PostgresBudgetLedger(store.connectPeer().pool);
   await ledger.configure(agentId, { tokens: "1000" });
@@ -164,11 +164,11 @@ test("PostgreSQL budget coordinates independent executors and preserves idempote
 });
 
 test("revoking operator access blocks claims and writes from an active execution", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, userId, active } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, { ...input, wallet });
+  const scope = await active();
   const queued = await store.enqueue(scope, "first", null, Date.now());
   const running = await store.claim(Date.now());
   assert.equal(running!.id, queued.id);
@@ -187,54 +187,25 @@ test("revoking operator access blocks claims and writes from an active execution
 });
 
 test("global lab connection validation never enables a managed agent's schedule", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, userId, active } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await directory.createAgent(access, userId, { ...input, wallet });
+  const scope = await active();
+  const { version } = await store.agent(scope);
   await store.setConnectionsChecked(true);
-  await assert.rejects(store.schedule(scope, true, Date.now()));
-  await store.setAgentConnectionsChecked(scope, 1, true);
+  await assert.rejects(store.schedule(scope, true, Date.now()), { code: "NOT_READY" });
+  await store.setAgentConnectionsChecked(scope, version, true);
   // A successful manual research is independently required.
-  await assert.rejects(store.schedule(scope, true, Date.now()));
-});
-
-test("creating an agent writes its profile in the same transaction", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-
-  const { agentId } = await directory.createAgent(access, userId, {
-    name: "Halftime",
-    handle: "halftime",
-    config,
-    key: "profile",
-    profile: { ...profile, vibe: "Reads the injury report before the tape.", xHandle: "@halftime" },
-    wallet,
-  });
-
-  const { rows } = await store.pool.query(
-    `SELECT beat, accent, blurb, venue, vibe, x_handle
-     FROM agents.agent_profiles WHERE agent_id = $1`,
-    [agentId],
-  );
-  assert.deepEqual(rows[0], {
-    beat: "sports",
-    accent: "amber",
-    blurb: "Bets on NBA injury news before the lines move.",
-    venue: "predictions",
-    vibe: "Reads the injury report before the tape.",
-    x_handle: "@halftime",
-  });
+  await assert.rejects(store.schedule(scope, true, Date.now()), { code: "NOT_READY" });
 });
 
 test("the agent list carries each agent's accent, and lime for an agent without a profile", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
+  const { store, directory, userId, access, draft } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const { agentId } = await directory.createAgent(access, userId, { ...input, wallet });
+  const { agentId } = await draft();
 
   const listed = await directory.list(access);
 
@@ -244,212 +215,4 @@ test("the agent list carries each agent's accent, and lime for an agent without 
   await store.pool.query("DELETE FROM agents.agent_profiles WHERE agent_id = $1", [agentId]);
 
   assert.equal((await directory.list(access))[0]!.accent, "lime");
-});
-
-test("a retry under the same key with a different profile is refused", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  await directory.createAgent(access, userId, { ...input, wallet });
-
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      ...input,
-      wallet,
-      profile: { ...profile, accent: "blue" },
-    }),
-    { code: "CONFLICT" },
-  );
-});
-
-test("a profile the database refuses rolls the agent back too", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-
-  await assert.rejects(() =>
-    directory.createAgent(access, userId, {
-      name: "Halftime",
-      handle: "halftime",
-      config,
-      key: "toolong",
-      // 281 characters: violates agent_profiles_blurb_length inside the transaction
-      profile: { ...profile, blurb: "x".repeat(281) },
-      wallet,
-    }),
-  );
-
-  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
-  assert.equal(rows[0].n, 0, "the agent row must not survive a failed profile insert");
-});
-
-test("a second agent with the same X handle is refused by name", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  await directory.createAgent(access, userId, {
-    ...input,
-    wallet,
-    profile: { ...profile, xHandle: "@Halftime" },
-  });
-
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      ...input,
-      wallet,
-      handle: "agent_two",
-      key: "second",
-      profile: { ...profile, xHandle: "@halftime" },
-    }),
-    { code: "CONFLICT", message: "X handle already used" },
-  );
-});
-
-test("creating an agent links the wallet whose policies were approved", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  const walletId = await seedWallet(store.pool, userId, {
-    walletId: "w1",
-    name: "halftime",
-    approvedPolicyIds: ["p1", "p2", "p3"],
-  });
-
-  const { agentId } = await directory.createAgent(access, userId, {
-    ...input,
-    wallet: { walletId },
-  });
-
-  const { rows } = await store.pool.query(
-    `SELECT wallet_id, policy_ids FROM wallets.agent_wallets WHERE agent_id = $1`,
-    [agentId],
-  );
-  assert.deepEqual(rows, [{ wallet_id: "w1", policy_ids: ["p1", "p2", "p3"] }]);
-});
-
-test("a wallet already linked to another agent is refused, and no second agent row survives", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-
-  await directory.createAgent(access, userId, { ...input, wallet, key: "first" });
-
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      ...input,
-      wallet,
-      handle: "agent_two",
-      key: "second",
-    }),
-    { code: "CONFLICT", message: "That wallet already belongs to an agent" },
-  );
-
-  const { rows } = await store.pool.query(
-    `SELECT count(*)::int AS n FROM agents.agents WHERE workspace_id = $1`,
-    [access.workspaceId],
-  );
-  assert.equal(rows[0].n, 1, "the second agent must not survive a wallet already linked");
-});
-
-test("a wallet that is not the creator's is refused", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  const strangerId = randomUUID();
-  const walletId = await seedWallet(store.pool, strangerId);
-
-  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }));
-
-  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
-  assert.equal(rows[0].n, 0, "no agent may be created against a wallet that is not the creator's");
-});
-
-test("a wallet with no approved policies is refused, and no agent row survives", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  const walletId = await seedWallet(store.pool, userId, { approvedPolicyIds: null });
-
-  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }), {
-    code: "CONFLICT",
-    message: "Approve the wallet's rules first",
-  });
-
-  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
-  assert.equal(rows[0].n, 0, "no agent may be created against a wallet with unapproved policies");
-});
-
-test("a wallet with fewer approved ids than every wallet is written with is refused", async (t) => {
-  const { store, directory, userId, access } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  const walletId = await seedWallet(store.pool, userId, { approvedPolicyIds: ["p1", "p2"] });
-
-  await assert.rejects(directory.createAgent(access, userId, { ...input, wallet: { walletId } }), {
-    code: "CONFLICT",
-    message: "Approve the wallet's rules first",
-  });
-
-  const { rows } = await store.pool.query(`SELECT count(*)::int AS n FROM agents.agents`);
-  assert.equal(rows[0].n, 0);
-});
-
-test("the idempotent retry with the same wallet returns the same agent; a retry with a different wallet is a different request", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-
-  const first = await directory.createAgent(access, userId, { ...input, wallet, key: "idem" });
-  const second = await directory.createAgent(access, userId, { ...input, wallet, key: "idem" });
-  assert.equal(second.agentId, first.agentId);
-
-  const otherWalletId = await seedWallet(store.pool, userId);
-  await assert.rejects(
-    directory.createAgent(access, userId, {
-      ...input,
-      key: "idem",
-      wallet: { walletId: otherWalletId },
-    }),
-    { code: "CONFLICT" },
-  );
-});
-
-test("a replay under the same key returns the original agent even once the funding lock closes", async (t) => {
-  const { store, directory, userId, access, wallet } = await setup(t);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
-  let admitted = 0;
-  const open = async () => {
-    admitted++;
-  };
-  const closed = async () => {
-    admitted++;
-    throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
-  };
-
-  const first = await directory.createAgent(access, userId, { ...input, wallet }, open);
-  const replay = await directory.createAgent(access, userId, { ...input, wallet }, closed);
-
-  assert.equal(replay.agentId, first.agentId);
-  assert.equal(admitted, 1);
-  await assert.rejects(
-    directory.createAgent(
-      access,
-      userId,
-      { ...input, handle: "agent_two", key: "another", wallet },
-      closed,
-    ),
-    { code: "UNFUNDED_AGENT" },
-  );
-  assert.equal(admitted, 2);
 });

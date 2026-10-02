@@ -1,9 +1,8 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import { newAgentLock } from "../create/gate";
+import { newAgentLock } from "./gate";
 import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
 import { RAIL } from "../sections/rail";
@@ -33,6 +32,7 @@ export function HomeMenu({
   researchLock = "",
   onSection,
   onSwitch,
+  onNew,
 }: {
   agent: Agent | null;
   agents: Agent[];
@@ -43,10 +43,13 @@ export function HomeMenu({
   researchLock?: string;
   onSection(key: SectionKey): void;
   onSwitch(agentId: string): void;
+  /** "+ New agent": the studio opens the create screen. */
+  onNew(): void;
 }) {
   const [open, setOpen] = useState(false);
   /* The lock is the workspace's, not the selected agent's: a selected draft is never the one to
-     fund. Funding only, because "+ New agent" leads to /studio/new, which creates no draft. */
+     fund. Funding only: "+ New agent" opens the create screen, which makes no draft until its own
+     "Create {name}". */
   const access = menuAccess({
     hasAgent: agent !== null,
     canManage,
@@ -111,9 +114,16 @@ export function HomeMenu({
       {open && (
         <div className={styles.menu} id="home-menu-panel">
           {access.create ? (
-            <Link href="/studio/new" className={styles.newAgent}>
+            <button
+              type="button"
+              className={styles.newAgent}
+              onClick={() => {
+                setOpen(false);
+                onNew();
+              }}
+            >
               + New agent
-            </Link>
+            </button>
           ) : (
             <div className={styles.newAgentLocked} title={access.createNote} aria-disabled="true">
               <span className={styles.newAgentLabel}>+ New agent</span>
