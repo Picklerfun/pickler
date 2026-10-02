@@ -15,6 +15,7 @@ import {
   SPEND_BOUNDS,
   formatUnits,
   lines,
+  parseAmount,
   shortAddress,
   siteHost,
   unitsOf,
@@ -608,4 +609,124 @@ export function activityView(
     label: !newest || dayNumber(newest) === today ? "TODAY" : dayLabel(newest),
     rows,
   };
+}
+
+export interface RunInput {
+  key: "perpl" | "web";
+  label: string;
+}
+
+/**
+ * The Console's "inputs it reads" chips (spec §3.4): Perpl always, and the web when it is on, with
+ * its mode, "ANYWHERE" or the sites it keeps to. The canvas's brief, caps and voice chips are left
+ * out: they say what it would do on a run, and runs are not open yet (D12).
+ */
+export function runInputs(
+  web: { mode: "anywhere" | "prefer" | "only"; sites: readonly string[] } | null | undefined,
+): RunInput[] {
+  const inputs: RunInput[] = [{ key: "perpl", label: "Perpl" }];
+  if (web) {
+    const count = web.sites.length;
+    const where =
+      web.mode === "anywhere" ? "ANYWHERE" : `${count} ${count === 1 ? "SITE" : "SITES"}`;
+    inputs.push({ key: "web", label: `Web · ${where}` });
+  }
+  return inputs;
+}
+
+export interface AllocationRow {
+  key: string;
+  label: string;
+  value: string;
+  /** The dot: master lime, an agent's wallet its own, positions blue, credits violet. */
+  kind: "master" | "agent" | "positions" | "credits";
+  /** Not built yet (spec D17): drawn as "Soon", never as a number. */
+  soon: boolean;
+}
+
+/**
+ * Master wallet's allocation (spec D17): what is free in master and what each agent wallet holds,
+ * read from `GET /wallets` (dashes until then, or for a balance the chain did not answer), then
+ * the person's positions and AI credits, both Soon.
+ */
+export function allocationRows(wallets: WalletsDto | null): AllocationRow[] {
+  const rows: AllocationRow[] = [
+    {
+      key: "master",
+      label: "Free in master",
+      value: wallets ? `${formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")} AUSD` : "—",
+      kind: "master",
+      soon: false,
+    },
+  ];
+  for (const wallet of wallets?.agents ?? []) {
+    rows.push({
+      key: wallet.walletId,
+      label: wallet.agentName
+        ? `${wallet.agentName}'s wallet`
+        : `Agent wallet · ${shortAddress(wallet.address)}`,
+      value: `${formatUnits(unitsOf(wallet.ausdMicro), "AUSD")} AUSD · ${formatUnits(unitsOf(wallet.monWei), "MON")} MON`,
+      kind: "agent",
+      soon: false,
+    });
+  }
+  rows.push(
+    {
+      key: "positions",
+      label: "Your open positions",
+      value: "Soon",
+      kind: "positions",
+      soon: true,
+    },
+    { key: "credits", label: "AI credits", value: "Soon", kind: "credits", soon: true },
+  );
+  return rows;
+}
+
+export interface LedgerRow {
+  key: string;
+  text: string;
+  sub: "MASTER → AGENT" | "AGENT → MASTER";
+  /** "+10 AUSD" back into master, "−10 AUSD" out of it. */
+  amount: string;
+  /** Money back into master: the canvas draws it lime. */
+  toMaster: boolean;
+  /** "hh:mm" today, the day ("OCT 1") before it, in local time. */
+  at: string;
+  iso: string;
+}
+
+/**
+ * Master wallet's ledger (spec D17): the person's transfers from `GET /wallets/ledger` as the
+ * canvas words them, from master's side, so a move to an agent is money out and one back is money
+ * in. An amount that is not a plain decimal is shown as the server sent it.
+ */
+export function ledgerRows(
+  entries: readonly {
+    direction: "to_agent" | "to_master";
+    token: "AUSD" | "MON";
+    amount: string;
+    agentName: string | null;
+    txHash: string;
+    at: string;
+  }[],
+  now: Date,
+): LedgerRow[] {
+  const today = dayNumber(now);
+  return entries.map((entry, index) => {
+    const toMaster = entry.direction === "to_master";
+    const name = entry.agentName ? `${entry.agentName}'s wallet` : "its wallet";
+    const units = parseAmount(entry.amount, entry.token);
+    const amount = units === null ? entry.amount : formatUnits(units, entry.token);
+    const at = new Date(entry.at);
+    return {
+      key: `${entry.txHash}-${index}`,
+      text: toMaster ? `Back from ${name}` : `To ${name}`,
+      sub: toMaster ? "AGENT → MASTER" : "MASTER → AGENT",
+      amount: `${toMaster ? "+" : "−"}${amount} ${entry.token}`,
+      toMaster,
+      at: dayNumber(at) === today ? clock(at) : dayLabel(at),
+      iso: entry.at,
+    };
+  });
 }

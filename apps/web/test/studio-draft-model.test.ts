@@ -599,3 +599,86 @@ test("activityView: today's events by the clock, older ones by the day, heading 
   assert.equal(older.label, "SEP 30");
   assert.equal(activityView([], now).label, "TODAY");
 });
+
+/* ---------- Console, Master wallet (Task 11) ---------- */
+
+test("runInputs: Perpl always, the web with its mode when it is on", async () => {
+  const { runInputs } = await import("../src/features/studio/draft/model");
+  assert.deepEqual(
+    runInputs(null).map((input) => input.label),
+    ["Perpl"],
+  );
+  assert.deepEqual(
+    runInputs({ mode: "anywhere", sites: ["coindesk.com"] }).map((input) => input.label),
+    ["Perpl", "Web · ANYWHERE"],
+  );
+  assert.deepEqual(
+    runInputs({ mode: "prefer", sites: ["coindesk.com", "theblock.co"] }).map((i) => i.label),
+    ["Perpl", "Web · 2 SITES"],
+  );
+  assert.equal(runInputs({ mode: "only", sites: ["coindesk.com"] })[1]?.label, "Web · 1 SITE");
+});
+
+test("allocationRows: master and each agent wallet read, positions and credits Soon", async () => {
+  const { allocationRows } = await import("../src/features/studio/draft/model");
+  const wallets: WalletsDto = {
+    master: { address: "0xmaster", ausdMicro: "177600000", monWei: "3700000000000000000" },
+    agents: [
+      { ...agentWallet("10000000"), agentName: "Halftime", monWei: "500000000000000000" },
+      { ...agentWallet(null), walletId: "w2", agentName: null, address: "0x91bE6f20A3c7D45e4a07" },
+    ],
+    readAt: 0,
+  };
+  assert.deepEqual(
+    allocationRows(wallets).map((row) => [row.label, row.value, row.soon]),
+    [
+      ["Free in master", "177.6 AUSD", false],
+      ["Halftime's wallet", "10 AUSD · 0.5 MON", false],
+      ["Agent wallet · 0x91bE…4a07", "— AUSD · 0 MON", false],
+      ["Your open positions", "Soon", true],
+      ["AI credits", "Soon", true],
+    ],
+  );
+  assert.deepEqual(
+    allocationRows(null).map((row) => [row.key, row.value]),
+    [
+      ["master", "—"],
+      ["positions", "Soon"],
+      ["credits", "Soon"],
+    ],
+  );
+});
+
+test("ledgerRows: from master's side, lime back in, local hh:mm today", async () => {
+  const { ledgerRows } = await import("../src/features/studio/draft/model");
+  const now = new Date(2026, 9, 2, 14, 30);
+  const rows = ledgerRows(
+    [
+      {
+        direction: "to_master",
+        token: "AUSD",
+        amount: "10",
+        agentName: "Halftime",
+        txHash: "0xa",
+        at: new Date(2026, 9, 2, 14, 5).toISOString(),
+      },
+      {
+        direction: "to_agent",
+        token: "MON",
+        amount: "0.500000",
+        agentName: null,
+        txHash: "0xb",
+        at: new Date(2026, 9, 1, 9, 0).toISOString(),
+      },
+    ],
+    now,
+  );
+  assert.deepEqual(
+    rows.map((row) => [row.text, row.sub, row.amount, row.toMaster, row.at]),
+    [
+      ["Back from Halftime's wallet", "AGENT → MASTER", "+10 AUSD", true, "14:05"],
+      ["To its wallet", "MASTER → AGENT", "−0.5 MON", false, "OCT 1"],
+    ],
+  );
+  assert.equal(ledgerRows([], now).length, 0);
+});

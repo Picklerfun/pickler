@@ -1,0 +1,508 @@
+/* Console, Trades, Trade and Master wallet (canvas 530–674, 769–833), on the draft studio's dark
+ * surface. The colour mapping is `draft.module.css`'s: #0B0D1A wells `--pk-bg`, #15182A cards
+ * `--pk-panel`, #9AA0B8 `--pk-ink-muted`, #5A5F78 and #3A3F58 `--pk-ink-faint`, #C7CAD8
+ * `--pk-ink-soft`, lime `--pk-lime`, the amber STARTS WHEN PUBLIC `--pk-state-caution-*`, the
+ * PASSKEY wash `--pk-state-good-*`, 12% and 16% rules `--pk-rule-strong`. The cards, lists and
+ * pills are composed from that sheet so the sections stay one drawing.
+ */
+
+/* Two columns that fold to one (the canvas's auto-fit 320px grid). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card {
+  composes: card from "./draft.module.css";
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cardLabel {
+  composes: cardLabel from "./draft.module.css";
+}
+.cardNote {
+  composes: cardNote from "./draft.module.css";
+}
+.meta {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: right;
+}
+
+/* The canvas's state tags: amber STARTS WHEN PUBLIC, the quiet SOON, the lime PASSKEY. */
+.tag {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.headTag {
+  composes: tag;
+  margin-left: auto;
+}
+.caution {
+  composes: headTag;
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.soon {
+  composes: tag;
+  background: var(--pk-bg);
+  color: var(--pk-ink-muted);
+}
+.headSoon {
+  composes: soon;
+  margin-left: auto;
+}
+.passkey {
+  composes: headTag;
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+/* ---------- Console ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.inputChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-soft);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.inputChip:hover {
+  color: var(--pk-ink);
+}
+.inputDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--pk-lime);
+}
+.inputDot[data-kind="web"] {
+  background: var(--pk-blue);
+}
+
+/* Shut until the Perpl runtime (spec D12): the canvas's run pill, drawn off. */
+.runButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 15px 22px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-2);
+  color: var(--pk-ink-muted);
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.every {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.everyLabel {
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.intervals {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.interval {
+  padding: 7px 11px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 600 11.5px/1 var(--pk-font);
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+.interval:hover:not(:disabled) {
+  color: var(--pk-ink);
+}
+.interval[aria-pressed="true"] {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.interval:disabled {
+  cursor: not-allowed;
+}
+.interval:disabled:not([aria-pressed="true"]) {
+  opacity: 0.5;
+}
+.perDay {
+  margin-left: auto;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.error {
+  margin: 0;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-loss);
+}
+.runs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.run {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--pk-bg);
+}
+.runDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+  border: 1px solid var(--pk-rule-strong);
+}
+.runLabel {
+  flex: 1;
+  min-width: 0;
+  font: 500 12.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.runAt {
+  flex: none;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.idle {
+  display: grid;
+  place-items: center;
+  padding: 30px 12px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+  font: 600 10.5px/1.6 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+  text-align: center;
+  text-wrap: pretty;
+}
+.link {
+  padding: 9px 12px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink-soft);
+  font: 600 11px/1 var(--pk-font);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.link:hover {
+  color: var(--pk-ink);
+}
+
+.talk {
+  composes: card;
+  min-height: 320px;
+}
+.thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.starter {
+  padding: 9px 12px;
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 500 12.5px/1 var(--pk-font);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.ask {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.askInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 500 14px/1.2 var(--pk-font);
+  outline: none;
+  cursor: not-allowed;
+}
+.askInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.send {
+  flex: none;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  font: 600 12.5px/1 var(--pk-font);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- Trades ---------- */
+
+.trades {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.listHead {
+  composes: listHead from "./draft.module.css";
+}
+.listTitle {
+  composes: listTitle from "./draft.module.css";
+}
+.listMeta {
+  margin-left: auto;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.empty {
+  composes: empty from "./draft.module.css";
+  gap: 12px;
+  padding: 22px 18px;
+  font-size: 13.5px;
+}
+.whiteButton {
+  composes: whiteButton from "./draft.module.css";
+  align-self: flex-start;
+  padding: 11px 16px;
+}
+.darkButton {
+  composes: darkButton from "./draft.module.css";
+}
+
+/* ---------- Trade (you) ---------- */
+
+.tradeSoon {
+  composes: card;
+  max-width: 520px;
+}
+
+/* ---------- Master wallet ---------- */
+
+.master {
+  composes: card;
+  border: 1px solid var(--pk-lime-edge);
+}
+.address {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.addressText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 12px/1.3 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-ink-soft);
+}
+.copyChip {
+  composes: copyChip from "./draft.module.css";
+}
+.balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.balanceValue {
+  font: 700 24px/1 var(--pk-font);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.balanceLabel {
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.allocation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--pk-bg);
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-lime);
+}
+/* This agent's wallet in its accent; another agent's, whose accent the wallets list does not
+   carry, in the quiet ink. */
+.dot[data-kind="agent"] {
+  background: var(--accent, var(--pk-ink-soft));
+}
+.dot[data-kind="positions"] {
+  background: var(--pk-blue);
+}
+.dot[data-kind="credits"] {
+  background: var(--pk-violet);
+}
+/* The ledger: money back into master lime, money out the quiet ink. */
+.dot[data-kind="out"] {
+  background: var(--pk-ink-soft);
+}
+.allocationLabel {
+  flex: 1;
+  min-width: 0;
+  font: 600 12.5px/1.2 var(--pk-font);
+}
+.allocationValue {
+  flex: none;
+  font: 700 12.5px/1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.allocationValue[data-soon="true"] {
+  color: var(--pk-ink-muted);
+  font-weight: 600;
+}
+.pair {
+  display: flex;
+  gap: 4px;
+}
+.pair > button {
+  flex: 1;
+  padding: 11px;
+}
+
+.ledgerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--pk-panel);
+}
+.ledgerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ledgerTitle {
+  font: 600 13px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.ledgerSub {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.ledgerAmount {
+  flex: none;
+  font: 700 13.5px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--pk-ink);
+}
+.ledgerAmount[data-in="true"] {
+  color: var(--pk-lime);
+}
+.ledgerAt {
+  flex: none;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.quiet {
+  composes: empty from "./draft.module.css";
+}
+
+.inputChip:focus-visible,
+.interval:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inputChip,
+  .interval,
+  .link {
+    transition: none;
+  }
+}
