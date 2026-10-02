@@ -1,5 +1,9 @@
 // What the mobile app resolves, from the root lockfile: every package reachable from apps/mobile,
-// walked the way Node resolves, as `name@version` lines.
+// walked the way Node resolves, as one line per dependency: `who@version -> what@version`.
+//
+// Edges rather than a list of packages, because the lockfile holds several versions of the same
+// library (three of @noble/curves) and a dependency re-pointed from one to another that is already
+// there changes what a wallet library computes with while the list of packages stays the same.
 //
 //   node scripts/mobile/app-tree.mjs --check   fail when it differs from apps/mobile/dependency-tree.txt
 //   node scripts/mobile/app-tree.mjs --write   record the tree as it is now
@@ -16,7 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const APP = "apps/mobile";
 const SNAPSHOT = join(ROOT, APP, "dependency-tree.txt");
 
-/** Every `name@version` reachable from the app in this lockfile, sorted. */
+/** Every dependency edge reachable from the app in this lockfile, sorted. */
 export function appTree(lock, app = APP) {
   const packages = lock.packages;
   const resolve = (from, name) => {
@@ -35,6 +39,11 @@ export function appTree(lock, app = APP) {
     }
   };
 
+  // A lockfile entry says its name only when the folder does not: a workspace, an alias.
+  const named = (key) => {
+    const name = packages[key].name ?? key.slice(key.lastIndexOf("node_modules/") + 13);
+    return `${name}@${packages[key].version ?? "0.0.0"}`;
+  };
   const seen = new Set();
   const reached = new Set();
   const queue = [app];
@@ -56,19 +65,24 @@ export function appTree(lock, app = APP) {
       if (!target) {
         continue;
       }
-      reached.add(`${packages[target].name ?? name}@${packages[target].version}`);
+      reached.add(`${named(key)} -> ${packages[target].name ?? name}@${packages[target].version}`);
       queue.push(target);
     }
   }
   return [...reached].sort();
 }
 
+/** How many distinct packages those edges reach. */
+export const packageCount = (edges) => new Set(edges.map((edge) => edge.split(" -> ")[1])).size;
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const lock = JSON.parse(readFileSync(join(ROOT, "package-lock.json"), "utf8"));
   const now = appTree(lock);
   if (process.argv.includes("--write")) {
     writeFileSync(SNAPSHOT, `${now.join("\n")}\n`);
-    console.log(`recorded ${now.length} packages in ${APP}/dependency-tree.txt`);
+    console.log(
+      `recorded ${packageCount(now)} packages, ${now.length} dependencies, in ${APP}/dependency-tree.txt`,
+    );
   } else {
     const recorded = new Set(readFileSync(SNAPSHOT, "utf8").split("\n").filter(Boolean));
     const current = new Set(now);
@@ -88,6 +102,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       );
       process.exit(1);
     }
-    console.log(`${now.length} packages, as recorded.`);
+    console.log(`${packageCount(now)} packages, ${now.length} dependencies, as recorded.`);
   }
 }

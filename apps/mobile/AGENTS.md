@@ -48,7 +48,7 @@ npm run typecheck --workspace=@pickler/mobile
 npm test --workspace=@pickler/mobile   # Jest, 44 suites
 ```
 
-`dependency-tree.txt` records every package the app resolves from the shared lockfile, and
+`dependency-tree.txt` records every dependency the app resolves from the shared lockfile, one line per edge (`who@version -> what@version`), and
 `npm run app:tree --prefix scripts/mobile` (run in CI) fails when that changes. It exists because
 the web shares the lockfile: a dependency the web adds can be hoisted to the root and replace the
 copy the app was built with, as `@category-labs/mera` once was, taking the app's `viem` with it. A
