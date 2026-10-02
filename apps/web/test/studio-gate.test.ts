@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  MAX_DRAFTS,
   createGate,
-  gateHref,
+  draftLimitLock,
   gateNote,
   newAgentLock,
-  startIfOpen,
 } from "../src/features/studio/home/gate";
 
 /* "+ New agent" is locked before any passkey prompt while an agent is unfunded. */
@@ -57,52 +57,13 @@ test("a closed lock with no agent below the minimum still names one", () => {
   assert.deepEqual(createGate([first]), { open: false, agent: first });
 });
 
-test("the note and the link name the agent to fund", () => {
+test("the note names the agent to fund", () => {
   const unfunded = agent("b", 0, locked);
 
   assert.deepEqual(gateNote(unfunded), {
     title: "Fund Agent b first.",
     note: "One unfunded agent at a time.",
   });
-  assert.equal(gateHref(unfunded, "/studio"), "/studio?agent=b");
-});
-
-test('"Fund it" goes to the studio\'s home on the host it is rendered for', () => {
-  // `/studio` is a 404 on the studio host, where the studio is `/`.
-  const unfunded = agent("b", 0, locked);
-  assert.equal(gateHref(unfunded, "/"), "/?agent=b");
-  assert.equal(gateHref(unfunded, "https://app.pickler.fun/"), "https://app.pickler.fun/?agent=b");
-});
-
-test("a closed gate never starts the ceremony", async () => {
-  const unfunded = agent("b", 0, locked);
-  let started = 0;
-
-  const outcome = await startIfOpen(
-    async () => [unfunded],
-    async () => {
-      started += 1;
-      return "ceremony";
-    },
-  );
-
-  assert.equal(started, 0);
-  assert.deepEqual(outcome, { started: false, agent: unfunded });
-});
-
-test("an open gate starts it once and answers what it returned", async () => {
-  let started = 0;
-
-  const outcome = await startIfOpen(
-    async () => [agent("a", 10, open)],
-    async () => {
-      started += 1;
-      return "ceremony";
-    },
-  );
-
-  assert.equal(started, 1);
-  assert.deepEqual(outcome, { started: true, value: "ceremony" });
 });
 
 /* Drafts (studio-brief-v1 §6): no wallet, never the agent to fund, capped at three. */
@@ -113,9 +74,9 @@ const draft = (id: string, canCreateAnother: Lock) => ({
   draft: true,
 });
 
-test('three drafts and every wallet funded: "+ New agent" is open, and nobody is asked to fund a draft', () => {
-  // Input A. The entries read the funding lock only; the draft limit is said where a draft is
-  // refused (409 DRAFT_LIMIT).
+test('three drafts and every wallet funded: "+ New agent" closes on the limit, and nobody is asked to fund a draft', () => {
+  // Input A. Every agent is created as a draft, so the entries close here, before a wallet is made
+  // or funded, rather than after, at the 409 DRAFT_LIMIT.
   const agents = [
     draft("d1", draftLimit),
     draft("d2", draftLimit),
@@ -124,7 +85,7 @@ test('three drafts and every wallet funded: "+ New agent" is open, and nobody is
   ];
 
   assert.deepEqual(createGate(agents), { open: true });
-  assert.equal(newAgentLock(agents), "");
+  assert.equal(newAgentLock(agents), "At most 3 drafts at a time.");
 });
 
 test("a draft beside an unfunded agent: the one to fund is the agent with the wallet", () => {
@@ -154,21 +115,25 @@ test("an open lock has no note", () => {
   assert.equal(newAgentLock([draft("d1", open), agent("a", 10, open)]), "");
 });
 
-test("three drafts do not close the create screen: the gate reads the funding lock only", async () => {
-  const agents = [draft("d1", draftLimit), draft("d2", draftLimit), draft("d3", draftLimit)];
-  let started = 0;
+test("the draft limit counts the drafts as the API does, and also reads the API's own answer", () => {
+  const two = [draft("d1", open), draft("d2", open), agent("a", 25, open)];
+  const three = [...two, draft("d3", open)];
 
-  assert.deepEqual(createGate(agents), { open: true });
-  const outcome = await startIfOpen(
-    async () => agents,
-    async () => {
-      started += 1;
-      return "ceremony";
-    },
+  assert.equal(draftLimitLock(two), "");
+  assert.equal(draftLimitLock(three), "At most 3 drafts at a time.");
+  // A list whose lock already says draft_limit is closed even if this count lags behind it.
+  assert.equal(draftLimitLock([draft("d1", draftLimit)]), "At most 3 drafts at a time.");
+  // Funding is said first: the one to fund is named, not the limit.
+  assert.equal(
+    newAgentLock([...three, agent("b", 0, locked)]),
+    "Fund Agent b first. One unfunded agent at a time.",
   );
+});
 
-  assert.equal(started, 1);
-  assert.deepEqual(outcome, { started: true, value: "ceremony" });
+test("the web's draft limit is core's", async () => {
+  const core = await import("@pickler/core");
+
+  assert.equal(MAX_DRAFTS, core.MAX_DRAFTS_PER_WORKSPACE);
 });
 
 test("the staged draft home models the lock the API gives a lone draft: open", async () => {

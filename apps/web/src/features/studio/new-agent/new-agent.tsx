@@ -94,6 +94,7 @@ export function NewAgent({
   error,
   staged,
   hasAgents,
+  draftLock = "",
   onBack,
   backTo,
   onCreated,
@@ -108,6 +109,11 @@ export function NewAgent({
   staged: NewAgentStaged | null;
   /** The person has agents already: "+ New agent" opened this, not the first visit. */
   hasAgents: boolean;
+  /**
+   * The draft limit's note (`draftLimitLock` in `home/gate.ts`), or "". At the limit the wallet
+   * step and Create are shut before any money moves: the API would refuse the draft at the end.
+   */
+  draftLock?: string | undefined;
   /** Back to the agent the person came from; absent on a first visit, where there is none. */
   onBack?: (() => void) | undefined;
   /** That agent's name, for "Back to {name}". */
@@ -123,7 +129,7 @@ export function NewAgent({
     canManage,
     researchLock,
     fundLock: "",
-    draftLock: "",
+    draftLock,
   });
 
   const [form, setForm] = useState<NewAgentForm>(staged?.form ?? emptyForm());
@@ -195,7 +201,8 @@ export function NewAgent({
   const busy = sheet?.phase === "busy";
   /* Whether the button reads as open. A preview draws it as the person would see it, and
      `creatable` still refuses the press there. */
-  const drawnOpen = access.create && created === null && canCreate(form, nameState, ready);
+  const drawnOpen =
+    access.create && created === null && canCreate(form, nameState, ready, draftLock);
   const creatable = !preview && drawnOpen;
   const disabled = busy || created !== null;
 
@@ -507,7 +514,7 @@ export function NewAgent({
             aria-disabled={created ? busy : !drawnOpen}
             onClick={press}
           >
-            {created ? `Open ${name}` : createLabel(form, nameState, ready)}
+            {created ? `Open ${name}` : createLabel(form, nameState, ready, draftLock)}
           </Button>
         </div>
         <p className={styles.foot}>{footNote(ready)}</p>
@@ -536,10 +543,11 @@ export function NewAgent({
         arrivals={reads.arrivals}
         busy={busy}
         preview={preview}
+        lockNote={draftLock}
         onCreateWallet={startWallet}
         onRefresh={() => void reads.refresh()}
         onFund={() => {
-          if (ready) {
+          if (ready && !draftLock) {
             setFundOn(ready.walletId);
             setModal("wallets");
           }

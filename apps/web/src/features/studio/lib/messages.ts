@@ -4,6 +4,8 @@
  */
 const UNDERFUNDED = "Fund its wallet with at least 10 AUSD and 0.5 MON first.";
 const WALLETS_UNREADABLE = "We can't read the wallets right now. Try again in a moment.";
+/** The draft limit in words, said by the 409 and by the "+ New agent" entries it closes. */
+export const DRAFT_LIMIT_NOTE = "At most 3 drafts at a time.";
 
 const messages: Record<string, string> = {
   NOT_READY:
@@ -20,7 +22,7 @@ const messages: Record<string, string> = {
   UNAUTHORIZED: "Your session has expired. Sign in again.",
   NOT_FUNDED: "Fund its wallet first · min. 10 AUSD.",
   UNFUNDED_AGENT: "Fund your other agent first. One unfunded agent at a time.",
-  DRAFT_LIMIT: "At most 3 drafts at a time.",
+  DRAFT_LIMIT: DRAFT_LIMIT_NOTE,
   // Not the same as balances_unavailable: this one says the deposit feature is switched off.
   BALANCES_UNAVAILABLE: "Balances and deposits are not available here yet.",
   INVALID_INPUT: "Check the fields. Select at least one sport and valid limits.",

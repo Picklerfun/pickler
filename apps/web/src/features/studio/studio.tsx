@@ -25,7 +25,7 @@ import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
-import { newAgentLock as lockFor } from "./home/gate";
+import { draftLimitLock, newAgentLock as lockFor } from "./home/gate";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";
@@ -434,6 +434,7 @@ export function Studio({
         error={error}
         staged={stagedCreate}
         hasAgents={agents.length > 0}
+        draftLock={draftLimitLock(agents)}
         onBack={agent ? () => setSection("home") : undefined}
         backTo={agent?.name ?? undefined}
         onCreated={async (productId) => {

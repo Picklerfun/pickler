@@ -5,13 +5,20 @@
  * the shell's "+ New agent" items ask here first.
  *
  * The API's lock has two reasons and they are not the same lock (docs/specs/studio-brief-v1.md §6).
- * `unfunded_agent` is about agents with a wallet and closes every way of making an agent. A private
- * draft has no wallet, is never the agent to fund, and counts only toward `draft_limit`, which
- * closes the making of drafts and nothing else. Pure, and pinned in `studio-gate.test.ts`.
+ * `unfunded_agent` is about agents with a wallet: a private draft has no wallet and is never the
+ * agent to fund. `draft_limit` counts the drafts. Every agent is now created as a draft, so both
+ * close "+ New agent", before any wallet is made or funded. Pure, and pinned in
+ * `studio-gate.test.ts`.
  */
 import type { Agent } from "../api";
+import { DRAFT_LIMIT_NOTE } from "../lib/messages";
 import { MIN_FUNDED_AUSD } from "./status";
-import { studioAgentHref } from "../lib/select";
+
+/**
+ * Core's `MAX_DRAFTS_PER_WORKSPACE`, restated: this module is required by node:test from CommonJS
+ * (see `new-agent/model.ts`). `studio-gate.test.ts` pins it against core.
+ */
+export const MAX_DRAFTS = 3;
 
 type GateAgent = Pick<Agent, "id" | "productId" | "name" | "wallet" | "canCreateAnother" | "draft">;
 
@@ -42,14 +49,25 @@ export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGat
 }
 
 /**
- * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open. Both
- * entries open the create screen, so they read the funding lock and nothing else: at three drafts
- * they stay open. The draft limit is said where a draft is refused (409 `DRAFT_LIMIT`).
+ * The draft limit's note, or "" below it. The API's rule: the workspace's drafts counted against
+ * `MAX_DRAFTS`, which its `canCreateAnother` also answers as `draft_limit` once nothing is
+ * unfunded. Either one closes it, so a list read before the count changed still says so.
+ */
+export function draftLimitLock(agents: readonly GateAgent[]): string {
+  const drafts = agents.filter((agent) => agent.draft).length;
+  const told = agents.some((agent) => agent.canCreateAnother.reason === "draft_limit");
+  return drafts >= MAX_DRAFTS || told ? DRAFT_LIMIT_NOTE : "";
+}
+
+/**
+ * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open: the
+ * funding lock first, naming the agent to fund, then the draft limit. Every agent is created as a
+ * draft, so at three drafts the create screen would refuse at the end, after the money moved.
  */
 export function newAgentLock(agents: readonly GateAgent[]): string {
   const gate = createGate(agents);
   if (gate.open) {
-    return "";
+    return draftLimitLock(agents);
   }
   const { title, note } = gateNote(gate.agent);
   return `${title} ${note}`;
@@ -61,25 +79,4 @@ export function gateNote(agent: GateAgent): { title: string; note: string } {
     title: `Fund ${agent.name ?? "your agent"} first.`,
     note: "One unfunded agent at a time.",
   };
-}
-
-/** Where "Fund it" goes: the studio's home as this host addresses it, opened on that agent. */
-export function gateHref(agent: GateAgent, home: string): string {
-  return studioAgentHref(home, agent.productId ?? agent.id);
-}
-
-/**
- * Reads the person's agents again and starts the ceremony only through an open gate, so a lock
- * that closed after the screen loaded (another tab created an agent) still stops before the first
- * passkey prompt. A closed gate answers the agent to fund and never calls `start`.
- */
-export async function startIfOpen<A extends GateAgent, T>(
-  readAgents: () => Promise<readonly A[]>,
-  start: () => Promise<T>,
-): Promise<{ started: true; value: T } | { started: false; agent: A }> {
-  const gate = createGate(await readAgents());
-  if (!gate.open) {
-    return { started: false, agent: gate.agent };
-  }
-  return { started: true, value: await start() };
 }

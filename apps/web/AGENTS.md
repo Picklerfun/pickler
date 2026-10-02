@@ -248,13 +248,15 @@ routes answer Relayer's envelope (`{ success, message, data, ... }`); `envelopeA
 the same `StudioError` the plain-JSON studio routes throw through `studioApi`, so a caller branches
 on `errorCode` the same way for either family.
 
-`home/gate.ts` is the funding lock the "+ New agent" entries read before opening the screen
-(`newAgentLock` over `createGate`; pinned in `studio-gate.test.ts`): one unfunded agent at a time,
-never naming a draft. `startIfOpen` (read the agents again before a ceremony) and `gateHref` are
-kept and tested, but the create screen does not call them yet. The draft limit (three) is said
-where a draft is refused, a 409 `DRAFT_LIMIT` from `POST /drafts` ("At most 3 drafts at a time.",
-`lib/messages.ts`); the gate does not close for it, so at three drafts the screen opens and Create
-is refused after the wallet was made and funded.
+`home/gate.ts` is the lock the "+ New agent" entries read before opening the screen (pinned in
+`studio-gate.test.ts`). `newAgentLock` says the funding lock first (one unfunded agent at a time,
+naming a wallet agent, never a draft), then the draft limit: `draftLimitLock` counts the drafts
+against `MAX_DRAFTS` (core's `MAX_DRAFTS_PER_WORKSPACE`, restated and pinned) and also closes when
+the API's `canCreateAnother` already answers `draft_limit`. Every agent is created as a draft, so
+the limit closes the entries before any wallet is made or funded. The create screen gets the same
+note (`draftLock`): the wallet step's button and "Fund from master wallet" are shut with it, and
+`createBlock` answers "Three drafts is the limit" before anything else. A 409 `DRAFT_LIMIT` from
+`POST /drafts` still reads "At most 3 drafts at a time." (`DRAFT_LIMIT_NOTE` in `lib/messages.ts`).
 `home/trace.ts` turns a run's events into the lines the home's status reads (`studio-trace.test.ts`).
 
 `?stage=create-*` (`CREATE_STAGES` in `home/stage.ts`, outside production only) draws the screen

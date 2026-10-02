@@ -38,6 +38,8 @@ export interface WalletPanelProps {
   /** A passkey is up: the panel's buttons are disabled. */
   busy: boolean;
   preview: boolean;
+  /** Why no wallet may be made or funded now (the draft limit), or "": its buttons shut, saying so. */
+  lockNote: string;
   onCreateWallet(): void;
   onRefresh(): void;
   onFund(): void;
@@ -61,6 +63,7 @@ export function WalletPanel({
   arrivals,
   busy,
   preview,
+  lockNote,
   onCreateWallet,
   onRefresh,
   onFund,
@@ -141,7 +144,8 @@ export function WalletPanel({
             )}
             <Button
               block
-              disabled={busy || preview}
+              disabled={busy || preview || lockNote !== ""}
+              title={lockNote || undefined}
               aria-disabled={refreshing || undefined}
               onClick={() => {
                 if (!refreshing) {
@@ -152,6 +156,11 @@ export function WalletPanel({
               <Icon name="key" size={15} />
               {step0.cta}
             </Button>
+            {lockNote && (
+              <p className={styles.step0Note} role="status">
+                {lockNote}
+              </p>
+            )}
           </div>
         ) : (
           <div className={styles.walletBody}>
@@ -231,7 +240,13 @@ export function WalletPanel({
             ))}
             {!isFunded && (
               <>
-                <Button variant="secondary" block disabled={preview} onClick={onFund}>
+                <Button
+                  variant="secondary"
+                  block
+                  disabled={preview || lockNote !== ""}
+                  title={lockNote || undefined}
+                  onClick={onFund}
+                >
                   <Icon name="wallet" size={14} />
                   Fund from master wallet
                 </Button>

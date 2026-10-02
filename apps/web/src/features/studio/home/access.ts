@@ -36,8 +36,9 @@ export function menuAccess({
   /** The unfunded-agent lock's note, or "" when another agent may be created. */
   fundLock: string;
   /**
-   * The draft limit's note where the entry would create a draft, or "". Last: funding closes more
-   * than drafts do. The menus' "+ New agent" opens the create screen and passes "".
+   * The draft limit's note, or "". Last: funding closes more than drafts do. The menus pass "",
+   * because their `fundLock` is `newAgentLock`, which already ends with the draft limit; the create
+   * screen passes `draftLimitLock`.
    */
   draftLock: string;
 }): MenuAccess {
