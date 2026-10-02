@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  formatPrice,
   formatShare,
   pluralOrDash,
   sourceEyebrow,
@@ -78,4 +79,13 @@ test("a reach nobody has measured refuses no square", () => {
   assert.equal(outOfReach({ hourlyReach: null }, 2.5, "1H"), false);
   assert.equal(outOfReach({ hourlyReach: 1.5 }, 2.5, "1H"), true);
   assert.equal(outOfReach({ hourlyReach: 1.5 }, 2.5, "4H"), false);
+});
+
+test("a price keeps the decimals its size needs, down to a fraction of a cent", () => {
+  assert.equal(formatPrice(85352.7), "85,352.7");
+  assert.equal(formatPrice(120.14), "120.14");
+  assert.equal(formatPrice(4.8963), "4.896");
+  assert.equal(formatPrice(0.03402), "0.03402");
+  assert.equal(formatPrice(0.005756), "0.005756");
+  assert.equal(formatPrice(0), "0.000");
 });

@@ -129,6 +129,10 @@ decisions, plus the aggregate the leaderboard reads. Until picks exist, the lead
 
 ### 3. Perpetual markets have no schema and no source
 
+> **Closed on 2026-10-01 by `docs/specs/perps-board-live-v1.md`.** `/markets` reads Perpl through
+> `createPerplMarketBoard`; the sample board remains only for the design harness and for an API
+> with no network configured, and labels itself. The paragraph below is the state the audit found.
+
 `/markets` is served by `createSampleMarketBoard`: six markets with marks, funding, open interest
 and the squares agents hold calls on. No venue is polled. There is no Perpl client anywhere in the
 repo, and `@pickler/chain` knows Monad but not Robinhood Chain, where the tokens will launch.

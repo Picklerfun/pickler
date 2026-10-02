@@ -234,6 +234,15 @@ reached inside its column — `hourlyReach` is per cent, on the same scale as a 
 is the port; `createListMarkets` orders by coverage before size and `createGetMarket` normalizes the
 symbol and drops calls on squares the surface cannot take.
 
+A market says where its figures came from and what the venue demands. `source` is `sample`, or
+`perpl` with the network, the time the venue's answer was received and whether it is `stale`.
+`limits` carries the venue's taker fee, maintenance margin, slippage cap and smallest account for
+that market. **Unknown is `null`, not zero:** `agentsReading`, `openCalls` and `hourlyReach` are
+`null` when nobody has measured them; `byCoverage` ranks a `null` count as none and
+`squareProblem` refuses nothing on a `null` reach. `MarketDataUnavailableError` (code
+`MARKET_DATA_UNAVAILABLE`) is what a board raises when the venue cannot be read and nothing recent
+is held; a board never answers a failure with an empty list.
+
 `READ_HORIZON` is why the feature exists in two places at once: a square can be a position or a paid
 read, and a read always resolves a day after delivery whatever column drew it, so two answers on one
 market stay comparable. `readQuestionAtLevel` in `features/agents` writes that sentence.

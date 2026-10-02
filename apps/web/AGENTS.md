@@ -32,7 +32,7 @@ src/server/
 
 Landing, signup, applications, token pages, paid reads, wallet and ranking designs are retained.
 The marketplace reads `/api/v1/marketplace/*`: agents come from the database, the perpetuals board
-is still sample content, and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
+is read from Perpl (or is the sample board, labelled, where the API has no network configured), and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
 Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in URLs or JSON.
 
 ## Three-layer implementation example
@@ -99,7 +99,13 @@ The apply flow and the auth screens keep their own bar on purpose — a flow tha
 
 ## Markets
 
-`/markets` lists every perpetual market on Perpl and `/markets/[symbol]` is one of them: a grid of
+`/markets` lists every perpetual market Perpl has open and `/markets/[symbol]` is one of them. The
+API reads them from the venue through the parser the mobile app trades on
+(`docs/specs/perps-board-live-v1.md`), and every market carries its `source`: the line over the
+title names the venue, the network and the time of the read, adds `STALE` when the venue has not
+answered since, and says `SAMPLE DATA` for the sample board (`sourceEyebrow` and `sourceFootnote`
+in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
+wire and a dash on the page, never a zero; a `null` reach refuses no square. Each market is a grid of
 price levels crossed with how long you give a position. One square, two meanings. Under **Trade**
 it is a position of your own money — above the mark a long, below a short — and under **Ask** the
 same square is a paid read. The tab is the only thing that changes; the surface is shared, which is
@@ -112,14 +118,17 @@ DTO (`readQuestion`, written by core) with the level filled in — a page never 
 
 The ticket is built in full and then stops. Connecting a wallet is live, switching to Monad testnet
 is live, Review costs nothing and is ours — and **Sign and send** is disabled with the reason on
-it, because Perpl's contracts are not deployed and this site's wallet never signs. What a sent
+it, because this site's wallet connection never signs. Perpl's contracts are deployed, and the
+mobile app trades on them; sending from here waits for a signer. What a sent
 order would look like afterwards (no Perpl account, sent, filled, not filled) lives behind an
 explicit **design preview**, and every one of those panels carries `DESIGN PREVIEW · NO ORDER
 EXISTS` on its face. Never let one of them read as a position: nothing here has touched a chain.
 
-`features/markets/lib/ticket.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
-— against the mirrored limits in `@pickler/api-schema`. It moves to trading when an order is really
-sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
+`features/markets/lib/quote.ts` holds the preview arithmetic — size, liquidation, fee, the phrase
+— against the venue's own limits for that market (`market.limits`: taker fee, maintenance margin,
+slippage cap, smallest account), not constants of ours. It reads no value from another package, so
+`apps/web/test/markets-format.test.ts` can load it; `lib/ticket.ts` re-exports it and adds
+`leverageChoices`, which does. It moves to trading when an order is really sent. `lib/format.ts` owns every number the surface and the ticket print, so a price is written the
 same way in both.
 
 The phone gets the same two screens, not a reduced pair: the grid keeps its nine levels and four

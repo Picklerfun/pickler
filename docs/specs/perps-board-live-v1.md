@@ -110,6 +110,9 @@ Each field, and where it comes from:
 A context whose `chain_id` is not the configured network's is refused like a failed fetch. Closed
 markets are not listed, as in the app.
 
+After a failed read the venue is not asked again for ten seconds, whoever is asking, so a venue
+that is down costs one slow request and not every one.
+
 `squareProblem` and the page's `outOfReach` treat a `null` reach as "no known limit": a square is
 refused only on evidence.
 
@@ -127,15 +130,18 @@ fixture API keeps the sample board, so the rendered checks stay deterministic.
 
 ## 6. The pages
 
-- **Board.** A line under the title names the source: `PERPL · TESTNET · 14:03:11 UTC`, with a
-  `STALE` tag when the data is, or a `SAMPLE` tag for the sample board. Counts that are `null` read
+- **Board.** The line over the title names the source: `MARKETS · PERPL · MONAD TESTNET ·
+14:03:11 UTC`, with `· STALE` when the data is, or `MARKETS · SAMPLE DATA` for the sample board;
+  the footnote says the same in a sentence. Counts that are `null` read
   "—"; the "with agents" and "open calls" filters match only known, positive counts.
 - **Market.** The same source line. The coverage sentence says nothing is known rather than "no
   agent covers this market" when the count is `null`, and Ask keeps its way to the agents directory.
 - **Ticket.** Fee, maintenance margin, slippage cap and smallest account come from `market.limits`.
   The explanation of why nothing is sent no longer claims the contracts are missing.
 
-Controls are the existing `Tag` from `@pickler/ui`; no new token, colour or component.
+The source is written in the line that already sits over each title, so there is no new token,
+colour, class or component. Prices below one keep four significant figures: the venue lists
+markets at fractions of a cent, which three fixed decimals printed as the same number.
 
 ## 7. Acceptance
 

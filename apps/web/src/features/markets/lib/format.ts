@@ -3,12 +3,29 @@ import type { MarketSourceDto } from "@pickler/api-schema";
 const MINUS = "−";
 
 /**
+ * Below one, a price keeps four significant figures: the venue lists markets at fractions of a
+ * cent, and three fixed decimals would print two of them as the same number.
+ */
+function priceDecimals(value: number): number {
+  if (value >= 1000) {
+    return 1;
+  }
+  if (value >= 10) {
+    return 2;
+  }
+  if (value >= 1 || !(value > 0)) {
+    return 3;
+  }
+  return Math.min(8, 3 - Math.floor(Math.log10(value)));
+}
+
+/**
  * A price carries the decimals its size needs: a mark in the tens of thousands does not want three
  * of them, and MON at 4.41 is unreadable without them. One function so the board, the surface and
  * the ticket never disagree about the same number.
  */
 export function formatPrice(value: number): string {
-  const decimals = value >= 1000 ? 1 : value >= 10 ? 2 : 3;
+  const decimals = priceDecimals(value);
   return value.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
