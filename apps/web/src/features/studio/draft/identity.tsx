@@ -152,6 +152,20 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
   const xHandle = draft.x ? (draft.x.account?.handle ?? null) : (agent.xHandle ?? null);
   const [xState, setXState] = useState<WriteState>(IDLE);
 
+  /* A verified post unmounts Connect X and its Verify button, which held the focus: the
+     connected handle takes it, so the focus never drops to the page. */
+  const xHandleRef = useRef<HTMLSpanElement>(null);
+  const wasConnected = useRef(xHandle !== null);
+  useEffect(() => {
+    if (xHandle !== null && !wasConnected.current) {
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        xHandleRef.current?.focus();
+      }
+    }
+    wasConnected.current = xHandle !== null;
+  }, [xHandle]);
+
   async function disconnect() {
     if (!canManage || xState.kind === "saving") {
       return;
@@ -288,7 +302,9 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
           {xHandle ? (
             <div className={styles.xAccount}>
               <span className={styles.xDot} aria-hidden="true" />
-              <span className={styles.xHandle}>@{xHandle}</span>
+              <span className={styles.xHandle} ref={xHandleRef} tabIndex={-1}>
+                @{xHandle}
+              </span>
               <button
                 type="button"
                 className={styles.disconnect}

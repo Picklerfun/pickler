@@ -1,13 +1,13 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { capsOf, starterCaps } from "./build-model";
 import type { DraftGoPublicStage } from "./fixture";
 import { GoPublic } from "./go-public";
 import { activityView, walletCardView } from "./model";
 import { DraftSection, type DraftSectionProps } from "./section";
+import { useCopied } from "./use-copied";
 import styles from "./draft.module.css";
-
-const COPIED_MS = 1400;
 
 export interface OverviewProps extends DraftSectionProps {
   /** Go Public's screen state on a `?stage=draft-x-*`, or null: the card starts closed. */
@@ -16,45 +16,37 @@ export interface OverviewProps extends DraftSectionProps {
 
 /**
  * Overview (canvas 339–441, spec §3.1): Go Public with Connect X (`go-public.tsx`,
- * `x-connect.tsx`); its wallet and the schedule that opens once it is public; its trades, none
- * yet, and its activity (D18), read from the API, never made up.
+ * `x-connect.tsx`); its wallet, read as Limits reads it, and the schedule, which unlocks with the
+ * Perpl runtime (D19); its trades, none yet, and its activity (D18), read from the API, never
+ * made up, with Retry when the read failed.
  */
 export function Overview({ goPublic, ...props }: OverviewProps) {
   const { agent, draft, canManage, now, onSection, onWallets } = props;
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (copiedTimer.current) {
-        clearTimeout(copiedTimer.current);
-      }
-    },
-    [],
-  );
+  const [copied, copy] = useCopied();
+  const [retrying, setRetrying] = useState(false);
 
-  const spend = agent.spend ?? agent.config.spend;
+  const capsSource = {
+    spend: agent.spend,
+    configSpend: agent.config.spend,
+    maxLeverage: agent.config.maxLeverage,
+  };
   const wallet = walletCardView(
     agent.wallet,
-    {
-      perTradeAusd: spend?.perCallAusd,
-      perDayAusd: spend?.perDayAusd,
-      maxLeverage: agent.config.maxLeverage,
-    },
+    { caps: capsOf(capsSource), starter: starterCaps(capsSource) },
     draft.wallets,
   );
   const activity = draft.activity ? activityView(draft.activity, new Date(now)) : null;
 
-  function copy(address: string) {
-    navigator.clipboard?.writeText(address).then(
-      () => {
-        setCopied(true);
-        if (copiedTimer.current) {
-          clearTimeout(copiedTimer.current);
-        }
-        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-      },
-      () => undefined,
-    );
+  async function retryActivity() {
+    if (retrying) {
+      return;
+    }
+    setRetrying(true);
+    try {
+      await draft.readActivity();
+    } finally {
+      setRetrying(false);
+    }
   }
 
   return (
@@ -144,14 +136,14 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
               <span className={styles.scheduleTitle}>
                 Run on its own · every {agent.config.intervalHours}h
               </span>
-              <span className={styles.scheduleNote}>Unlocks once it&apos;s public.</span>
+              <span className={styles.scheduleNote}>Unlocks with the Perpl runtime.</span>
             </span>
             <span
               className={styles.switchOff}
               role="switch"
               aria-checked="false"
               aria-disabled="true"
-              aria-label="Run on its own, unlocks once it's public"
+              aria-label="Run on its own, unlocks with the Perpl runtime"
             >
               <span className={styles.switchKnob} />
             </span>
@@ -184,7 +176,21 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
                 {activity?.label ?? ""}
               </span>
             </div>
-            {activity === null && (
+            {activity === null && draft.activityFailed && (
+              <div className={styles.readFailed} role="alert">
+                <span>Couldn&apos;t read its activity.</span>
+                <button
+                  type="button"
+                  className={styles.whiteButton}
+                  data-size="small"
+                  aria-disabled={retrying || undefined}
+                  onClick={() => void retryActivity()}
+                >
+                  {retrying ? "Retrying…" : "Retry"}
+                </button>
+              </div>
+            )}
+            {activity === null && !draft.activityFailed && (
               <p className={styles.cardNote}>
                 {draft.preview ? "Nothing yet." : "Reading its activity…"}
               </p>

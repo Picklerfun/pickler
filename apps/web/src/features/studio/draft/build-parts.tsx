@@ -1,5 +1,5 @@
 "use client";
-import type { Caps, CapsView } from "./model";
+import type { Caps, CapsView } from "./build-model";
 import styles from "./build.module.css";
 
 /**

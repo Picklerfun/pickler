@@ -1,13 +1,12 @@
 "use client";
-import { DraftSection, type DraftSectionProps } from "./section";
+import { DraftSection } from "./section";
 import styles from "./run.module.css";
 
 /**
  * Trade (spec D16): the canvas's YOU TRADE · PERPL card as a Soon panel. Trading from the master
  * wallet needs live Perpl (`perpl-live-v1.md`), so no market, size or button is drawn.
  */
-export function TradeSoon(props: DraftSectionProps) {
-  void props;
+export function TradeSoon() {
   return (
     <DraftSection section="trade">
       <div className={styles.tradeSoon} id="draft-trade-soon">

@@ -210,9 +210,9 @@ export function DraftStudio({
       case "identity":
         return <Identity {...props} />;
       case "trade":
-        return <TradeSoon {...props} />;
+        return <TradeSoon />;
       case "master":
-        return <Master {...props} />;
+        return <Master {...props} accountHandle={accountHandle} />;
       default:
         return null;
     }

@@ -1,33 +1,40 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { arrived, formatUnits, shortAddress } from "../new-agent/model";
 import { CapSteppers } from "./build-parts";
-import { agentWalletRead, capsOf, checkedLabel, readClock } from "./build-model";
-import { capsStepper } from "./model";
+import {
+  agentWalletRead,
+  capsOf,
+  capsStepper,
+  checkedLabel,
+  readClock,
+  starterCaps,
+} from "./build-model";
 import { DraftSection, type DraftSectionProps } from "./section";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
+import { useCopied } from "./use-copied";
 import styles from "./build.module.css";
-
-const COPIED_MS = 1400;
 
 /**
  * Limits & funding (canvas 479–526, spec §3.3, D11). Left, its wallet: the address, Refresh
  * (re-reads `GET /wallets`), AUSD and MON, when it was last read, what arrived between two reads,
  * and "Fund from master wallet". Right, the hard caps, saved through `draft.saveSetup`: Pickler
- * holds each trade to them, so the copy says so and nothing is signed (D11).
+ * holds each trade to them, so the copy says so and nothing is signed (D11). Caps it was never
+ * given read STARTER CAPS, as the canvas tags them, and Save writes them as they are.
  */
 export function Limits({ agent, draft, canManage, onWallets }: DraftSectionProps) {
-  const savedCaps = capsOf({
+  const capsSource = {
     spend: agent.spend,
     configSpend: agent.config.spend,
     maxLeverage: agent.config.maxLeverage,
-  });
+  };
+  const savedCaps = capsOf(capsSource);
   const [caps, setCaps] = useSavedForm(agent.version, savedCaps);
   const { state, save, touch, saving } = useSetupSave(draft);
-  const view = capsStepper(caps, savedCaps);
+  const view = capsStepper(caps, savedCaps, starterCaps(capsSource));
   const canSave = canManage && view.canSave && !saving;
 
   return (
@@ -58,13 +65,18 @@ export function Limits({ agent, draft, canManage, onWallets }: DraftSectionProps
               <Icon name="alert" size={12} />A day&apos;s cap can&apos;t be below one trade&apos;s.
             </p>
           )}
-          {(view.dirty || state.kind !== "idle") && (
+          {(view.dirty || view.starter || state.kind !== "idle") && (
             <button
               type="button"
               className={styles.saveButton}
               data-wide="true"
-              disabled={!canSave}
-              onClick={() => void save({ caps })}
+              disabled={!canManage}
+              aria-disabled={!canSave || undefined}
+              onClick={() => {
+                if (canSave) {
+                  void save({ caps });
+                }
+              }}
             >
               {saveLabel(state, view.dirty, "Save caps")}
             </button>
@@ -98,17 +110,8 @@ function WalletCard({
   onWallets,
 }: Pick<DraftSectionProps, "agent" | "draft" | "canManage" | "onWallets">) {
   const wallet = agent.wallet;
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopied();
   const [refreshing, setRefreshing] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (copiedTimer.current) {
-        clearTimeout(copiedTimer.current);
-      }
-    },
-    [],
-  );
 
   /* Every new read of the wallets, Refresh's or a transfer's, is compared with the one before it
      (`arrived`): a balance that grew is news, stamped with the read's time. */
@@ -140,19 +143,6 @@ function WalletCard({
   const read = agentWalletRead(draft.wallets, wallet.walletId);
   const ausdMicro = read?.ausdMicro ?? BigInt(Math.round(wallet.balanceAusd * 1_000_000));
   const monWei = read?.monWei ?? null;
-
-  function copy(address: string) {
-    navigator.clipboard?.writeText(address).then(
-      () => {
-        setCopied(true);
-        if (copiedTimer.current) {
-          clearTimeout(copiedTimer.current);
-        }
-        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-      },
-      () => undefined,
-    );
-  }
 
   async function refresh() {
     if (refreshing) {
@@ -211,7 +201,7 @@ function WalletCard({
       </div>
       {/* Local time: the server's zone may differ from the browser's. */}
       <span className={styles.hint} data-tone="muted" suppressHydrationWarning>
-        {checkedLabel(draft.wallets?.readAt ?? null)}
+        {checkedLabel(draft.wallets?.readAt ?? null, read)}
       </span>
       {arrivals.list.length > 0 && (
         <ol className={styles.arrivals} aria-label="Arrived">

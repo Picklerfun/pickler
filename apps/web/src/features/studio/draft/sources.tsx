@@ -3,8 +3,7 @@ import { useState } from "react";
 import { Icon, Segmented } from "@pickler/ui";
 import type { WebMode } from "../new-agent/model";
 import { RunNote } from "./build-parts";
-import { sourcesView, webForm, type WebForm } from "./build-model";
-import { addSite } from "./model";
+import { addSite, sourcesView, webForm, type WebForm } from "./build-model";
 import { DraftSection, type DraftSectionProps } from "./section";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
 import styles from "./build.module.css";
@@ -18,7 +17,8 @@ const MODES: { value: WebMode; label: string }[] = [
 /**
  * Sources & rules (canvas 712–766, spec §3.5): IT READS, Perpl always and the web through Exa
  * when switched on, where the web may look and its sites; "Save sources" is one
- * `draft.saveSetup` with `sources.web` (null when the web is off).
+ * `draft.saveSetup` with `sources.web` (null when the web is off). A site the box refused stays
+ * in it with the reason, and Save waits until it is fixed or cleared.
  */
 export function Sources({ agent, draft, canManage, onSection }: DraftSectionProps) {
   const saved = webForm(agent.config.sources?.web);
@@ -28,7 +28,9 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
   const { state, save, touch, saving } = useSetupSave(draft);
 
   const view = sourcesView(form, saved, siteError);
-  const canSave = canManage && view.dirty && !view.needsSite && !saving;
+  /* A rejected site still in the box: saving now would quietly leave it out. */
+  const refusedSite = Boolean(typed.trim() && siteError);
+  const canSave = canManage && view.dirty && !view.needsSite && !refusedSite && !saving;
   const shut = !canManage || saving;
 
   function edit(next: Partial<WebForm>) {
@@ -166,8 +168,13 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
         <button
           type="button"
           className={styles.saveButton}
-          disabled={!canSave}
-          onClick={() => void save({ sources: view.sources })}
+          disabled={!canManage}
+          aria-disabled={!canSave || undefined}
+          onClick={() => {
+            if (canSave) {
+              void save({ sources: view.sources });
+            }
+          }}
         >
           {saveLabel(state, view.dirty, "Save sources")}
         </button>

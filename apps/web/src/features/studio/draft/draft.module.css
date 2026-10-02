@@ -390,7 +390,14 @@
   border-radius: var(--pk-radius-2xl);
   background: var(--pk-panel);
 }
+/* A card's head, as the canvas draws it: the label, then its tag, centred. */
 .cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Go public's head: the title and its count share a baseline. */
+.goHead {
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -482,6 +489,10 @@
   font-variation-settings: var(--pk-display-wdth);
   letter-spacing: -0.02em;
 }
+/* It takes the focus once live (tabindex -1) to be read out, not to be operated. */
+.goTitle:focus {
+  outline: none;
+}
 .progress {
   display: block;
   height: 4px;
@@ -565,10 +576,11 @@
   color: var(--pk-on-lime);
   cursor: pointer;
 }
-.goButton[data-state="ready"]:hover:not(:disabled) {
+.goButton[data-state="ready"]:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--pk-lime-hover);
 }
-.goButton[data-state="ready"]:disabled {
+/* Going public: still focusable (aria-disabled), so the focus stays on it. */
+.goButton[data-state="ready"][aria-disabled="true"] {
   cursor: progress;
 }
 .goButton[data-state="live"] {
@@ -687,6 +699,11 @@
   font: 600 10px/1.3 var(--pk-font);
   letter-spacing: 0.08em;
   color: var(--pk-state-loss-ink);
+}
+/* The last check's answer: the post was not there yet. */
+.xMissed {
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-soft);
 }
 .xLine {
   margin: 0;
@@ -843,6 +860,14 @@
   font: 500 13px/1.5 var(--pk-font);
   color: var(--pk-ink-muted);
   text-wrap: pretty;
+}
+/* A read that failed: what could not be read, and Retry. */
+.readFailed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 .events {
   display: flex;

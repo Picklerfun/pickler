@@ -23,7 +23,7 @@ import {
   type XVerify,
 } from "../api";
 import type { DraftStaged } from "./fixture";
-import type { INTERVAL_OPTIONS } from "./model";
+import type { INTERVAL_OPTIONS } from "./run-model";
 
 /** What a staged or preview studio says when anything on it tries to write. */
 export const PREVIEW_NOTE = "Preview · fixture data, nothing is saved.";
@@ -42,6 +42,8 @@ export interface DraftData {
   wallets: StudioWallets | null;
   /** `GET /agents/:id/activity`, newest first; null until read. */
   activity: ActivityEvent[] | null;
+  /** The last activity read failed (Overview says so, with Retry). */
+  activityFailed: boolean;
   /** `GET /agents/:id/x`: the verified account, the live challenge, whether X is open; null until read. */
   x: XState | null;
   /** `GET /wallets/ledger`, read the first time Master wallet asks (`readLedger`); null until then. */
@@ -61,6 +63,8 @@ export interface UseDraft extends DraftData {
   refresh(): Promise<void>;
   /** The wallets alone; answers them, or null when the read failed. */
   readWallets(): Promise<StudioWallets | null>;
+  /** The activity alone (Overview's Retry). */
+  readActivity(): Promise<void>;
   /** The ledger, for Master wallet. */
   readLedger(): Promise<void>;
   /** The agent again in the shell: after a save refused as stale (409 STALE_CONFIG). Rejects. */
@@ -119,6 +123,7 @@ export function useDraft({
   const agentId = agent.productId ?? agent.id;
   const [wallets, setWallets] = useState<StudioWallets | null>(staged?.wallets ?? null);
   const [activity, setActivity] = useState<ActivityEvent[] | null>(staged?.activity ?? null);
+  const [activityFailed, setActivityFailed] = useState(false);
   const [x, setX] = useState<XState | null>(staged?.x ?? null);
   const [ledger, setLedger] = useState<LedgerEntry[] | null>(staged?.ledger ?? null);
   const [error, setError] = useState("");
@@ -182,9 +187,11 @@ export function useDraft({
       const read = await agentActivity(agentId);
       if (alive.current) {
         setActivity(read.events);
+        setActivityFailed(false);
       }
     } catch (caught) {
       if (alive.current) {
+        setActivityFailed(true);
         setError(message(caught, "Could not read its activity."));
       }
     }
@@ -341,12 +348,14 @@ export function useDraft({
   return {
     wallets,
     activity,
+    activityFailed,
     x,
     ledger,
     error,
     preview: offline,
     refresh,
     readWallets,
+    readActivity,
     readLedger,
     refreshAgent: reloadAgent,
     saveSetup,

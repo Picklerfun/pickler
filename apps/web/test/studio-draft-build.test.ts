@@ -13,6 +13,7 @@ import {
   readClock,
   setupProblem,
   sourcesView,
+  starterCaps,
   webForm,
 } from "../src/features/studio/draft/build-model";
 import { arrived } from "../src/features/studio/new-agent/model";
@@ -75,6 +76,15 @@ test("capsOf: the agent's spend before the config's, starter caps for what it la
     maxLeverage: 1,
   });
   assert.deepEqual(capsOf({}), { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 });
+});
+
+test("starterCaps: true only when capsOf had to fill in what the agent was never given", () => {
+  const spend = { perCallAusd: 10, perDayAusd: 50 };
+  assert.equal(starterCaps({ spend, maxLeverage: 3 }), false);
+  assert.equal(starterCaps({ spend: null, configSpend: spend, maxLeverage: 3 }), false);
+  assert.equal(starterCaps({ spend: null, configSpend: null, maxLeverage: 3 }), true);
+  assert.equal(starterCaps({ spend, maxLeverage: null }), true);
+  assert.equal(starterCaps({}), true);
 });
 
 test("webForm: the config's web source, off as Anywhere with no sites", () => {
@@ -175,4 +185,22 @@ test("between two reads, what grew arrived, stamped with the later read's time",
 test("checkedLabel: LAST CHECKED hh:mm in local time, or not checked yet", () => {
   assert.equal(checkedLabel(new Date(2026, 9, 2, 9, 5).getTime()), "LAST CHECKED 09:05");
   assert.equal(checkedLabel(null), "NOT CHECKED YET");
+});
+
+test("checkedLabel: what is still below the minimums, as the canvas says it", () => {
+  const at = new Date(2026, 9, 2, 14, 23).getTime();
+  const funded = { ausdMicro: 10_000_000n, monWei: 500_000_000_000_000_000n };
+  assert.equal(checkedLabel(at, funded), "LAST CHECKED 14:23");
+  assert.equal(
+    checkedLabel(at, { ausdMicro: 0n, monWei: 0n }),
+    "LAST CHECKED 14:23 · WAITING FOR AUSD AND MON",
+  );
+  assert.equal(checkedLabel(at, { ...funded, monWei: 0n }), "LAST CHECKED 14:23 · WAITING FOR MON");
+  assert.equal(
+    checkedLabel(at, { ...funded, ausdMicro: 9_999_999n }),
+    "LAST CHECKED 14:23 · WAITING FOR AUSD",
+  );
+  /* A balance the chain did not answer for claims nothing. */
+  assert.equal(checkedLabel(at, { ausdMicro: null, monWei: 0n }), "LAST CHECKED 14:23");
+  assert.equal(checkedLabel(at, null), "LAST CHECKED 14:23");
 });

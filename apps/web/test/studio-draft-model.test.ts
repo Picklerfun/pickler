@@ -4,12 +4,9 @@ import { test } from "node:test";
 import type { WalletsDto } from "@pickler/api-schema";
 import {
   DRAFT_SECTIONS,
-  INTERVAL_OPTIONS,
+  X_NOT_FOUND_LINE,
   X_UNAVAILABLE_LINE,
   activityView,
-  addSite,
-  briefTags,
-  capsStepper,
   disconnectProblem,
   draftRail,
   goPublicView,
@@ -17,10 +14,8 @@ import {
   isLockedSection,
   lockedCopy,
   nameChange,
-  nextRuns,
   publishBlockedCopy,
   publishProblem,
-  runsPerDay,
   sectionLabel,
   voiceOf,
   walletCardView,
@@ -29,6 +24,9 @@ import {
   xProblem,
   xView,
 } from "../src/features/studio/draft/model";
+import { addSite, briefTags, capsStepper } from "../src/features/studio/draft/build-model";
+import { clock, dayLabel, stamp } from "../src/features/studio/draft/clock";
+import { INTERVAL_OPTIONS, nextRuns, runsPerDay } from "../src/features/studio/draft/run-model";
 import { draftStudioFixture } from "../src/features/studio/draft/fixture";
 import { DRAFT_STAGES, isDraftStage, stageFromSearch } from "../src/features/studio/home/stage";
 import {
@@ -56,7 +54,13 @@ const wallets = (master: string | null, agents: (string | null)[] = []): Wallets
   readAt: 0,
 });
 const caps = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 };
-const noX = { challenge: null, checking: false, unavailable: false, taken: null } as const;
+const noX = {
+  challenge: null,
+  checking: false,
+  unavailable: false,
+  taken: null,
+  missed: false,
+} as const;
 
 test("the rail has the four groups of the canvas, in order", () => {
   const rail = draftRail("overview");
@@ -161,7 +165,7 @@ test("no agent wallets is zero in them", () => {
 });
 
 test("Go Public starts at 0 of 1 with Connect X and a shut button", () => {
-  const view = goPublicView({ xHandle: null, skipped: false, publishing: false, error: null });
+  const view = goPublicView({ xHandle: null, skipped: false, publishing: false });
   assert.equal(view.title, "GO PUBLIC");
   assert.deepEqual([view.done, view.of], [0, 1]);
   assert.deepEqual(view.task, { title: "Connect X", meta: "WHERE IT POSTS", done: false });
@@ -176,7 +180,6 @@ test("a verified X account completes the task and adds X to the line", () => {
     xHandle: "halftimebot",
     skipped: false,
     publishing: false,
-    error: null,
   });
   assert.deepEqual([view.done, view.of], [1, 1]);
   assert.deepEqual(view.task, { title: "Connect X", meta: "@HALFTIMEBOT", done: true });
@@ -187,7 +190,7 @@ test("a verified X account completes the task and adds X to the line", () => {
 });
 
 test("skipping X opens the button without completing the task, and offers undo", () => {
-  const view = goPublicView({ xHandle: null, skipped: true, publishing: false, error: null });
+  const view = goPublicView({ xHandle: null, skipped: true, publishing: false });
   assert.equal(view.done, 0);
   assert.equal(view.canPublish, true);
   assert.equal(view.label, "Go public");
@@ -196,14 +199,9 @@ test("skipping X opens the button without completing the task, and offers undo",
 });
 
 test("while publishing the button is shut and says so", () => {
-  const view = goPublicView({ xHandle: null, skipped: true, publishing: true, error: null });
+  const view = goPublicView({ xHandle: null, skipped: true, publishing: true });
   assert.equal(view.canPublish, false);
   assert.equal(view.label, "Going public…");
-});
-
-test("an error passes through for the card to show", () => {
-  const view = goPublicView({ xHandle: null, skipped: true, publishing: false, error: "Nope" });
-  assert.equal(view.error, "Nope");
 });
 
 test("Verify becomes Check again once a challenge exists, and Checking… while it runs", () => {
@@ -225,8 +223,23 @@ test("with a challenge the miss block shows the line to post and where from", ()
     title: "We couldn't find the post yet.",
     line: "Verifying Halftime on @pickler · pk-7f3a",
     hint: "POST THIS FROM @HALFTIMEBOT · THEN CHECK AGAIN",
+    missed: null,
   });
   assert.equal(xView(noX).miss, null);
+});
+
+test("a check that did not find the post says so inside the miss block", () => {
+  const challenge = { handle: "halftimebot", text: "Verifying Halftime on @pickler · pk-7f3a" };
+  assert.equal(xView({ ...noX, challenge, missed: true }).miss?.missed, X_NOT_FOUND_LINE);
+  assert.equal(X_NOT_FOUND_LINE, "Not found yet. Post the line, then check again.");
+  assert.equal(xView({ ...noX, challenge, missed: true }, "other").miss?.missed, null);
+});
+
+test("a handle edited away from the challenge's reads Verify: it gets a new line", () => {
+  const challenge = { handle: "HalftimeBot", text: "Verifying Halftime on @pickler · pk-7f3a" };
+  assert.equal(xView({ ...noX, challenge }, "halftimebot").button, "Check again");
+  assert.equal(xView({ ...noX, challenge }, "halftime").button, "Verify");
+  assert.equal(xView({ ...noX, challenge }, null).button, "Check again");
 });
 
 test("without X credentials the card says so and shows no miss block", () => {
@@ -309,6 +322,16 @@ test("a day's cap below one trade's cannot be saved", () => {
   assert.equal(capsStepper(caps, caps).canSave, false);
 });
 
+test("starter caps it was never given read STARTER CAPS, never SAVED, and can be saved", () => {
+  const view = capsStepper(caps, caps, true);
+  assert.equal(view.tag, "STARTER CAPS");
+  assert.equal(view.starter, true);
+  assert.equal(view.dirty, false);
+  assert.equal(view.canSave, true);
+  assert.equal(capsStepper({ ...caps, maxLeverage: 2 }, caps, true).tag, "UNSAVED CHANGES");
+  assert.equal(capsStepper({ ...caps, perTradeAusd: 50 }, caps, true).canSave, false);
+});
+
 const brief = { thesis: "BTC first", enters: "a\nb", exits: "c", never: "" };
 
 test("an unchanged brief tags DEFAULT, with counts on the three lists", () => {
@@ -377,10 +400,10 @@ test("runs per day follows the interval, at least one", () => {
   assert.equal(runsPerDay(48), 1);
 });
 
-test("the next three runs are an interval apart, the first labelled for go public", () => {
+test("the next three runs are an interval apart, the first waiting for runs to open", () => {
   const runs = nextRuns(6, new Date(2026, 9, 2, 9, 5));
   assert.deepEqual(runs, [
-    { label: "First run after go public", at: "15:05" },
+    { label: "First run once runs open", at: "15:05" },
     { label: "Then · reads sources, decides, posts", at: "21:05" },
     { label: "Then · reads sources, decides, posts", at: "03:05 · TMRW" },
   ]);
@@ -438,7 +461,6 @@ test("a draft made by the create screen has only Connect X left", () => {
     xHandle: agent.xHandle,
     skipped: false,
     publishing: false,
-    error: null,
   });
 
   assert.equal(agent.config.voice, "analyst");
@@ -464,15 +486,13 @@ test("the X stages are the row open, the post not found, verified, and skipped",
   assert.equal(ok.agent.xHandle, "HalftimeBot");
   assert.equal(ok.x.account?.handle, "HalftimeBot");
   assert.equal(
-    goPublicView({ xHandle: ok.agent.xHandle, skipped: false, publishing: false, error: null })
-      .label,
+    goPublicView({ xHandle: ok.agent.xHandle, skipped: false, publishing: false }).label,
     "Go public",
   );
 
   const skipped = draftStudioFixture("draft-x-skipped").goPublic;
   assert.equal(
-    goPublicView({ xHandle: null, skipped: skipped.skipped, publishing: false, error: null })
-      .canPublish,
+    goPublicView({ xHandle: null, skipped: skipped.skipped, publishing: false }).canPublish,
     true,
   );
 });
@@ -547,8 +567,8 @@ test("publishProblem: a conflict asks again, an unread balance is never told as 
   assert.deepEqual(publishProblem("FORBIDDEN", undefined, "f"), { kind: "error", text: "f" });
 });
 
-test("walletCardView: its AUSD from the agent, its MON from the wallets read, its caps", () => {
-  const caps = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 };
+test("walletCardView: AUSD and MON as read (the agent's AUSD until then), and its caps", () => {
+  const caps = { caps: { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 }, starter: false };
   const wallet = {
     walletId: "w",
     address: "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07",
@@ -571,8 +591,19 @@ test("walletCardView: its AUSD from the agent, its MON from the wallets read, it
   });
   assert.equal(read?.mon, formatUnits(500_000_000_000_000_000n, "MON"));
   assert.equal(read?.monFunded, true);
-  const noCaps = { perTradeAusd: undefined, perDayAusd: 20, maxLeverage: undefined };
-  assert.equal(walletCardView(wallet, noCaps, null)?.caps, "CAPS — / 20 / —×");
+  /* The live read wins over the agent's stored balance, as on Limits. */
+  const moved = walletCardView(wallet, caps, {
+    ...wallets("0"),
+    agents: [agentWallet("25000000")],
+  });
+  assert.equal(moved?.ausd, formatUnits(25_000_000n, "AUSD"));
+  /* A wallet the chain did not answer for keeps the agent's balance. */
+  const silent = walletCardView(wallet, caps, { ...wallets("0"), agents: [agentWallet(null)] });
+  assert.equal(silent?.ausd, formatUnits(10_000_000n, "AUSD"));
+  assert.equal(
+    walletCardView(wallet, { ...caps, starter: true }, null)?.caps,
+    "STARTER CAPS 5 / 20 / 1×",
+  );
 });
 
 test("activityView: today's events by the clock, older ones by the day, heading TODAY", () => {
@@ -607,7 +638,7 @@ test("activityView: today's events by the clock, older ones by the day, heading 
 /* ---------- Console, Master wallet (Task 11) ---------- */
 
 test("runInputs: Perpl always, the web with its mode when it is on", async () => {
-  const { runInputs } = await import("../src/features/studio/draft/model");
+  const { runInputs } = await import("../src/features/studio/draft/run-model");
   assert.deepEqual(
     runInputs(null).map((input) => input.label),
     ["Perpl"],
@@ -624,7 +655,7 @@ test("runInputs: Perpl always, the web with its mode when it is on", async () =>
 });
 
 test("allocationRows: master and each agent wallet read, positions and credits Soon", async () => {
-  const { allocationRows } = await import("../src/features/studio/draft/model");
+  const { allocationRows } = await import("../src/features/studio/draft/run-model");
   const wallets: WalletsDto = {
     master: { address: "0xmaster", ausdMicro: "177600000", monWei: "3700000000000000000" },
     agents: [
@@ -638,7 +669,7 @@ test("allocationRows: master and each agent wallet read, positions and credits S
     [
       ["Free in master", "177.6 AUSD", false],
       ["Halftime's wallet", "10 AUSD · 0.5 MON", false],
-      ["Agent wallet · 0x91bE…4a07", "— AUSD · 0 MON", false],
+      ["Agent wallet · 0x91bE…4a07", "—", false],
       ["Your open positions", "Soon", true],
       ["AI credits", "Soon", true],
     ],
@@ -654,7 +685,7 @@ test("allocationRows: master and each agent wallet read, positions and credits S
 });
 
 test("ledgerRows: from master's side, lime back in, local hh:mm today", async () => {
-  const { ledgerRows } = await import("../src/features/studio/draft/model");
+  const { ledgerRows } = await import("../src/features/studio/draft/run-model");
   const now = new Date(2026, 9, 2, 14, 30);
   const rows = ledgerRows(
     [
@@ -684,7 +715,20 @@ test("ledgerRows: from master's side, lime back in, local hh:mm today", async ()
       ["To its wallet", "MASTER → AGENT", "−0.5 MON", false, "OCT 1"],
     ],
   );
+  /* The agent each transfer was for, so its dot takes that agent's accent either way. */
+  assert.deepEqual(
+    rows.map((row) => row.agentName),
+    ["Halftime", null],
+  );
   assert.equal(ledgerRows([], now).length, 0);
+});
+
+test("the one clock: hh:mm today, the day before it, in local time", () => {
+  const now = new Date(2026, 9, 2, 14, 30);
+  assert.equal(clock(new Date(2026, 9, 2, 9, 5)), "09:05");
+  assert.equal(dayLabel(new Date(2026, 0, 31, 23, 59)), "JAN 31");
+  assert.equal(stamp(new Date(2026, 9, 2, 0, 1), now), "00:01");
+  assert.equal(stamp(new Date(2026, 9, 1, 23, 59), now), "OCT 1");
 });
 
 test("NAME saves a trimmed 1–40 name, and sends nothing when it is unchanged", () => {

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
 import { StudioError, errorCode } from "../api";
 import type { DraftGoPublicStage } from "./fixture";
@@ -20,8 +20,12 @@ export interface GoPublicProps extends Pick<
 /**
  * Go Public (spec D3, §3.1; canvas 343–382): one task, Connect X, which can be skipped for this
  * screen only, then `POST /publish`. The server re-checks everything (D8) and the 409 names what
- * stands in the way; FUNDS has its fix right there, "Fund from master". Once public the title says
- * so and `useDraft` reloads the agent, which swaps this studio for the live one.
+ * stands in the way; FUNDS has its fix right there, "Fund from master", and the line goes once the
+ * wallets are read again. Once public the title says so, the button says where it shows (D19),
+ * and `useDraft` reloads the agent, which swaps this studio for the live one.
+ *
+ * Focus never drops to the page: the button stays focusable while it publishes, the title takes
+ * the focus once it is live, and the button takes it when a verified X account closes the X row.
  */
 export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublicProps) {
   const [xOpen, setXOpen] = useState(stage?.xOpen ?? false);
@@ -29,11 +33,35 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
   const [publishing, setPublishing] = useState(false);
   const [live, setLive] = useState(false);
   const [problem, setProblem] = useState<PublishProblem | null>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const xHandle = agent.xHandle ?? draft.x?.account?.handle ?? null;
-  const view = goPublicView({ xHandle, skipped, publishing, error: null });
+  const view = goPublicView({ xHandle, skipped, publishing });
   const name = (agent.name ?? "Your agent").toUpperCase();
   const task = view.task;
+
+  /* "Fund from master" moved money (or anything re-read the wallets): the blocked lines were the
+     answer to the last try, so they go, and the next try asks the server again. */
+  const [seenWallets, setSeenWallets] = useState(draft.wallets);
+  if (draft.wallets !== seenWallets) {
+    setSeenWallets(draft.wallets);
+    if (problem?.kind === "blocked") {
+      setProblem(null);
+    }
+  }
+
+  /* A verified X account unmounts the X row and its Verify button, which held the focus. */
+  const wasDone = useRef(task.done);
+  useEffect(() => {
+    if (task.done && !wasDone.current) {
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        buttonRef.current?.focus();
+      }
+    }
+    wasDone.current = task.done;
+  }, [task.done]);
 
   async function goPublic() {
     if (!view.canPublish || !canManage || live) {
@@ -44,6 +72,8 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
     try {
       await draft.publish();
       setLive(true);
+      /* The button is shut once live: the title, which says so, takes the focus. */
+      requestAnimationFrame(() => titleRef.current?.focus());
     } catch (caught) {
       setProblem(
         publishProblem(
@@ -59,13 +89,21 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
 
   let label = view.label;
   if (live) {
-    label = "Live · first trade on its rules";
+    label = `Public · on Pickler${view.xNote}`;
+  }
+  /* Blocked by X: shut. Publishing or live: shut but focusable, so the focus stays on it. */
+  const blocked = !view.canPublish && !publishing && !live;
+  let state = "ready";
+  if (live) {
+    state = "live";
+  } else if (blocked) {
+    state = "blocked";
   }
 
   return (
     <div className={styles.goCard} id="draft-go-public">
-      <div className={styles.cardHead}>
-        <h3 className={styles.goTitle} aria-live="polite">
+      <div className={styles.goHead}>
+        <h3 className={styles.goTitle} aria-live="polite" ref={titleRef} tabIndex={-1}>
           {live ? `${name} IS LIVE` : view.title}
           <span className={styles.lime}>.</span>
         </h3>
@@ -84,8 +122,7 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
         <span className={styles.progressFill} data-done={view.done === view.of} />
       </span>
       <p className={styles.cardNote}>
-        Private until you flip it. Once public its calls post on Pickler{view.xNote}, and it starts
-        trading on its rules.
+        Private until you flip it. Once public it shows on Pickler{view.xNote}.
       </p>
 
       <div className={styles.task}>
@@ -127,8 +164,10 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
         type="button"
         className={styles.goButton}
         id="draft-go-public-button"
-        data-state={live ? "live" : view.canPublish ? "ready" : "blocked"}
-        disabled={!view.canPublish || !canManage || live}
+        ref={buttonRef}
+        data-state={state}
+        disabled={!canManage || blocked}
+        aria-disabled={publishing || live || undefined}
         onClick={() => void goPublic()}
       >
         {label}

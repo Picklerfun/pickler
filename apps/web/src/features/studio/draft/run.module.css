@@ -1,9 +1,10 @@
 /* Console, Trades, Trade and Master wallet (canvas 530–674, 769–833), on the draft studio's dark
  * surface. The colour mapping is `draft.module.css`'s: #0B0D1A wells `--pk-bg`, #15182A cards
  * `--pk-panel`, #9AA0B8 `--pk-ink-muted`, #5A5F78 and #3A3F58 `--pk-ink-faint`, #C7CAD8
- * `--pk-ink-soft`, lime `--pk-lime`, the amber STARTS WHEN PUBLIC `--pk-state-caution-*`, the
- * PASSKEY wash `--pk-state-good-*`, 12% and 16% rules `--pk-rule-strong`. The cards, lists and
- * pills are composed from that sheet so the sections stay one drawing.
+ * `--pk-ink-soft`, lime `--pk-lime`, the amber STARTS WITH THE PERPL RUNTIME
+ * `--pk-state-caution-*`, the PASSKEY wash `--pk-state-good-*`, 12% and 16% rules
+ * `--pk-rule-strong`. The cards, lists and pills are composed from that sheet so the sections stay
+ * one drawing.
  */
 
 /* Two columns that fold to one (the canvas's auto-fit 320px grid). */
@@ -24,9 +25,7 @@
   composes: card from "./draft.module.css";
 }
 .cardHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  composes: cardHead from "./draft.module.css";
 }
 .cardLabel {
   composes: cardLabel from "./draft.module.css";
@@ -42,7 +41,7 @@
   text-align: right;
 }
 
-/* The canvas's state tags: amber STARTS WHEN PUBLIC, the quiet SOON, the lime PASSKEY. */
+/* The canvas's tags: amber STARTS WITH THE PERPL RUNTIME, quiet SOON, lime PASSKEY. */
 .tag {
   flex: none;
   padding: 5px 8px;
@@ -156,17 +155,21 @@
     background var(--pk-duration),
     color var(--pk-duration);
 }
-.interval:hover:not(:disabled) {
+.interval:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--pk-ink);
 }
 .interval[aria-pressed="true"] {
   background: var(--pk-ink);
   color: var(--pk-bg);
 }
-.interval:disabled {
+/* Shut for a view-only member (disabled), or while a choice saves (aria-disabled, so the focus a
+   click left on it stays). */
+.interval:disabled,
+.interval[aria-disabled="true"] {
   cursor: not-allowed;
 }
-.interval:disabled:not([aria-pressed="true"]) {
+.interval:disabled:not([aria-pressed="true"]),
+.interval[aria-disabled="true"]:not([aria-pressed="true"]) {
   opacity: 0.5;
 }
 .perDay {
@@ -419,9 +422,10 @@
 .dot[data-kind="credits"] {
   background: var(--pk-violet);
 }
-/* The ledger: money back into master lime, money out the quiet ink. */
-.dot[data-kind="out"] {
-  background: var(--pk-ink-soft);
+/* The ledger: a transfer either way in the agent's accent, as the canvas draws it (this agent's;
+   another agent's in the quiet ink). */
+.dot[data-kind="transfer"] {
+  background: var(--accent, var(--pk-ink-soft));
 }
 .allocationLabel {
   flex: 1;

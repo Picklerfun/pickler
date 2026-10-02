@@ -2,30 +2,35 @@
 import { useEffect, useRef, useState } from "react";
 import { accentVars } from "@/lib/accent";
 import { formatUnits, unitsOf } from "../new-agent/model";
-import { allocationRows, ledgerRows } from "./model";
+import { allocationRows, ledgerRows } from "./run-model";
 import { DraftSection, type DraftSectionProps } from "./section";
+import { useCopied } from "./use-copied";
 import styles from "./run.module.css";
 
-const COPIED_MS = 1400;
+export interface MasterProps extends DraftSectionProps {
+  /** The signed-in account's handle, which the head names ("MASTER WALLET · @nightowl"). */
+  accountHandle: string | null;
+}
 
 /**
  * Master wallet (canvas 806–833, spec D17): its address and Copy, its AUSD and MON, the allocation
  * (free in master, each agent wallet, positions and AI credits Soon), "Move to an agent" (the
  * Wallets modal's list), "Buy AI credits" (the credits modal), and the ledger of the person's
- * transfers, read the first time this section opens (`draft.readLedger`).
+ * transfers, read the first time this section opens (`draft.readLedger`) and again with every
+ * `draft.refresh`, which a transfer from the Wallets modal runs. A transfer's dot is this agent's
+ * accent when it moved this agent's money, as the canvas draws it.
  */
-export function Master({ agent, draft, canManage, now, onWallets, onCredits }: DraftSectionProps) {
+export function Master({
+  agent,
+  draft,
+  canManage,
+  now,
+  onWallets,
+  onCredits,
+  accountHandle,
+}: MasterProps) {
   const { wallets, ledger, preview, readLedger } = draft;
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (copiedTimer.current) {
-        clearTimeout(copiedTimer.current);
-      }
-    },
-    [],
-  );
+  const [copied, copy] = useCopied();
 
   /* The ledger is read once, when Master wallet first opens; a stage already holds its own. */
   const asked = useRef(false);
@@ -48,25 +53,16 @@ export function Master({ agent, draft, canManage, now, onWallets, onCredits }: D
     unread = "Couldn't read your transfers.";
   }
 
-  function copy(address: string) {
-    navigator.clipboard?.writeText(address).then(
-      () => {
-        setCopied(true);
-        if (copiedTimer.current) {
-          clearTimeout(copiedTimer.current);
-        }
-        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-      },
-      () => undefined,
-    );
-  }
+  const mineAccent = accentVars(agent.accent);
 
   return (
     <DraftSection section="master">
       <div className={styles.grid}>
         <div className={styles.master} id="draft-master-wallet">
           <div className={styles.cardHead}>
-            <h3 className={styles.cardLabel}>MASTER WALLET</h3>
+            <h3 className={styles.cardLabel}>
+              MASTER WALLET{accountHandle ? ` · @${accountHandle}` : ""}
+            </h3>
             <span className={styles.passkey}>PASSKEY</span>
           </div>
           <div className={styles.address}>
@@ -101,8 +97,7 @@ export function Master({ agent, draft, canManage, now, onWallets, onCredits }: D
           <ul className={styles.rows} aria-label="Allocation">
             {allocation.map((row) => {
               const mine = wallets?.agents.find((entry) => entry.walletId === row.key);
-              const accent =
-                mine && mine.walletId === agent.wallet?.walletId ? accentVars(agent.accent) : {};
+              const accent = mine && mine.walletId === agent.wallet?.walletId ? mineAccent : {};
               return (
                 <li key={row.key} className={styles.allocation} style={accent}>
                   <span className={styles.dot} data-kind={row.kind} aria-hidden="true" />
@@ -139,12 +134,12 @@ export function Master({ agent, draft, canManage, now, onWallets, onCredits }: D
           {rows && rows.length > 0 && (
             <ol className={styles.rows}>
               {rows.map((row) => (
-                <li key={row.key} className={styles.ledgerRow}>
-                  <span
-                    className={styles.dot}
-                    data-kind={row.toMaster ? "in" : "out"}
-                    aria-hidden="true"
-                  />
+                <li
+                  key={row.key}
+                  className={styles.ledgerRow}
+                  style={row.agentName !== null && row.agentName === agent.name ? mineAccent : {}}
+                >
+                  <span className={styles.dot} data-kind="transfer" aria-hidden="true" />
                   <span className={styles.ledgerText}>
                     <span className={styles.ledgerTitle}>{row.text}</span>
                     <span className={styles.ledgerSub}>{row.sub}</span>

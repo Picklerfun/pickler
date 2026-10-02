@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { StudioError } from "../api";
-import { INTERVAL_OPTIONS, nextRuns, runInputs, runsPerDay } from "./model";
+import { INTERVAL_OPTIONS, nextRuns, runInputs, runsPerDay } from "./run-model";
 import { DraftSection, type DraftSectionProps } from "./section";
 import { PREVIEW_NOTE, type IntervalHours } from "./use-draft";
 import styles from "./run.module.css";
@@ -16,9 +16,10 @@ const STARTERS = [
 ];
 
 /**
- * Console (canvas 530–636, spec §3.4, D12, D13): the inputs a paper run would read, the run button
- * shut until the Perpl runtime, the schedule's interval (it saves) and its next runs, What it did
- * idle, and Talk to it drawn shut with a Soon tag. Nothing here pretends a run happened.
+ * Console (canvas 530–636, spec §3.4, D12, D13, D19): the inputs a paper run would read, the run
+ * button shut until the Perpl runtime, the schedule's interval (it saves) and its next runs, which
+ * start with the runtime, What it did idle, and Talk to it drawn shut with a Soon tag. Nothing here
+ * pretends a run happened or promises when one will.
  */
 export function Console({ agent, draft, canManage, now, onSection }: DraftSectionProps) {
   /* The interval being saved: drawn chosen while the call is out, so the click shows at once. */
@@ -29,7 +30,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
   const runs = nextRuns(current, new Date(now));
 
   async function choose(hours: IntervalHours) {
-    if (saving !== null || hours === agent.config.intervalHours) {
+    if (!canManage || saving !== null || hours === agent.config.intervalHours) {
       return;
     }
     setSaving(hours);
@@ -82,11 +83,10 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
           <div className={styles.card} id="draft-console-schedule">
             <div className={styles.cardHead}>
               <h3 className={styles.cardLabel}>ON ITS OWN</h3>
-              <span className={styles.caution}>STARTS WHEN PUBLIC</span>
+              <span className={styles.caution}>STARTS WITH THE PERPL RUNTIME</span>
             </div>
             <p className={styles.cardNote}>
-              Once public it wakes up on this schedule, reads its sources, and decides alone. Every
-              run lands in Trades.
+              It runs on this schedule once the Perpl runtime opens.
             </p>
             <div className={styles.every}>
               <span className={styles.everyLabel} id="draft-console-every">
@@ -99,7 +99,8 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
                     type="button"
                     className={styles.interval}
                     aria-pressed={current === hours}
-                    disabled={!canManage || saving !== null}
+                    disabled={!canManage}
+                    aria-disabled={saving !== null || undefined}
                     onClick={() => void choose(hours)}
                   >
                     {hours}h
@@ -159,7 +160,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
           </div>
           <p className={styles.cardNote}>
             It explains its calls, and it changes its own setup when you ask: sources, sites, caps,
-            schedule. Caps still need your passkey.
+            schedule.
           </p>
           <div className={styles.thread}>
             <div className={styles.chips}>

@@ -1,8 +1,16 @@
 "use client";
 import { Icon } from "@pickler/ui";
-import { briefLists, briefText, briefView, capsOf } from "./build-model";
+import {
+  briefLists,
+  briefText,
+  briefView,
+  capsOf,
+  capsStepper,
+  starterCaps,
+  type BriefKey,
+  type Caps,
+} from "./build-model";
 import { CapSteppers, RunNote } from "./build-parts";
-import { capsStepper, type BriefKey, type Caps } from "./model";
 import { DraftSection, type DraftSectionProps } from "./section";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
 import styles from "./build.module.css";
@@ -52,18 +60,20 @@ const SECTIONS: readonly {
  */
 export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps) {
   const savedText = briefText(agent.config.brief);
-  const savedCaps = capsOf({
+  const capsSource = {
     spend: agent.spend,
     configSpend: agent.config.spend,
     maxLeverage: agent.config.maxLeverage,
-  });
+  };
+  const savedCaps = capsOf(capsSource);
   const [form, setForm] = useSavedForm(agent.version, { text: savedText, caps: savedCaps });
   const { state, save, touch, saving } = useSetupSave(draft);
 
   const view = briefView(form.text, savedText);
-  const caps = capsStepper(form.caps, savedCaps);
+  const caps = capsStepper(form.caps, savedCaps, starterCaps(capsSource));
   const dirty = view.dirty || caps.dirty;
   const canSave = canManage && dirty && !view.needsEntry && !caps.inverted && !saving;
+  /* The steppers shut while saving; the textareas only go read-only, so a focused one keeps it. */
   const shut = !canManage || saving;
 
   function edit(next: { text?: Partial<typeof form.text>; caps?: Caps }) {
@@ -99,7 +109,8 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
                 rows={section.rows}
                 placeholder={section.placeholder}
                 value={form.text[section.key]}
-                disabled={shut}
+                disabled={!canManage}
+                readOnly={saving}
                 onChange={(event) => edit({ text: { [section.key]: event.target.value } })}
               />
             </div>
@@ -133,8 +144,13 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
         <button
           type="button"
           className={styles.saveButton}
-          disabled={!canSave}
-          onClick={() => void save({ brief: briefLists(form.text), caps: form.caps })}
+          disabled={!canManage}
+          aria-disabled={!canSave || undefined}
+          onClick={() => {
+            if (canSave) {
+              void save({ brief: briefLists(form.text), caps: form.caps });
+            }
+          }}
         >
           {saveLabel(state, dirty, "Save brief")}
         </button>

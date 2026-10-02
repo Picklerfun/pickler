@@ -191,7 +191,13 @@ const ledger: LedgerEntry[] = [
   },
 ];
 
-const idleCard: XCardState = { challenge: null, checking: false, unavailable: false, taken: null };
+const idleCard: XCardState = {
+  challenge: null,
+  checking: false,
+  unavailable: false,
+  taken: null,
+  missed: false,
+};
 
 /**
  * The draft studio at one `?stage=draft*`. `draft` is the Overview right after "Create Halftime";
@@ -221,7 +227,12 @@ export function draftStudioFixture(stage: DraftStage): DraftStaged {
       xOpen: stage === "draft-x-open" || miss,
       skipped: stage === "draft-x-skipped",
       handle: miss ? X_HANDLE : "",
-      card: { ...idleCard, challenge: challenge && { handle: X_HANDLE, text: CHALLENGE } },
+      /* The miss stage is after a "Check again" that did not find the post. */
+      card: {
+        ...idleCard,
+        challenge: challenge && { handle: X_HANDLE, text: CHALLENGE },
+        missed: miss,
+      },
     },
     accountHandle: "nightowl",
   };

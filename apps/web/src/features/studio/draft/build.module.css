@@ -136,10 +136,13 @@ p.hint {
   cursor: pointer;
   transition: background var(--pk-duration);
 }
-.saveButton:hover:not(:disabled) {
+.saveButton:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--pk-lime-hover);
 }
-.saveButton:disabled {
+/* Shut while saving or with nothing to save, but focusable (aria-disabled), so the focus a click
+   left on it stays there; only a view-only member gets a real disabled button. */
+.saveButton:disabled,
+.saveButton[aria-disabled="true"] {
   background: var(--pk-panel-3);
   color: var(--pk-ink-faint);
   cursor: not-allowed;
@@ -268,9 +271,7 @@ p.hint {
   composes: card from "./draft.module.css";
 }
 .cardHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  composes: cardHead from "./draft.module.css";
 }
 .cardLabel {
   composes: cardLabel from "./draft.module.css";

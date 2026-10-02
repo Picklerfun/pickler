@@ -3,12 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { BrandMark } from "@pickler/ui";
 import { errorCode, type XChallenge, type XState, type XVerify } from "../api";
 import { xHandleInput, xProblem, xView, type XCardState } from "./model";
+import { useCopied } from "./use-copied";
 import { PREVIEW_NOTE } from "./use-draft";
 import styles from "./draft.module.css";
 
-const COPIED_MS = 1400;
-
-const idle: XCardState = { challenge: null, checking: false, unavailable: false, taken: null };
+const idle: XCardState = {
+  challenge: null,
+  checking: false,
+  unavailable: false,
+  taken: null,
+  missed: false,
+};
 
 /** The card as the X state read from the API leaves it: its live challenge, and D5 when shut. */
 const cardFrom = (x: XState | null): XCardState => ({
@@ -37,9 +42,10 @@ export interface XConnectProps {
 /**
  * Connect X by a post (spec D4, §3.1), shared by Go Public and Identity & voice: the handle with
  * the X mark and Verify; Verify issues the line to post and the miss block shows it with a Copy
- * chip; "Check again" looks for it. The server decides every answer; the handle rule is mirrored
- * only so a typo is said before anything is sent. A found post reloads the agent, whose `xHandle`
- * then closes this card in the parent.
+ * chip; "Check again" looks for it, and says so when the post is not there yet. A handle edited
+ * since the line was issued reads Verify again, because it gets a new line. The server decides
+ * every answer; the handle rule is mirrored only so a typo is said before anything is sent. A
+ * found post reloads the agent, whose `xHandle` then closes this card in the parent.
  */
 export function XConnect({
   x,
@@ -54,16 +60,12 @@ export function XConnect({
   const [card, setCard] = useState<XCardState>(staged?.card ?? cardFrom(x));
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copied, copy] = useCopied();
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
-      if (copiedTimer.current) {
-        clearTimeout(copiedTimer.current);
-      }
     };
   }, []);
 
@@ -80,8 +82,8 @@ export function XConnect({
     }
   }
 
-  const view = xView(card);
   const typed = xHandleInput(handle);
+  const view = xView(card, typed);
   const shut = !canManage || card.unavailable;
 
   function fail(caught: unknown, forHandle: string) {
@@ -121,7 +123,7 @@ export function XConnect({
       setError("That isn't an X handle.");
       return;
     }
-    setCard((current) => ({ ...current, checking: true, taken: null }));
+    setCard((current) => ({ ...current, checking: true, taken: null, missed: false }));
     /* The same handle with a line out: look for the post. A new handle: a new line for it. */
     const sameHandle = card.challenge?.handle.toLowerCase() === typed.toLowerCase();
     try {
@@ -132,6 +134,7 @@ export function XConnect({
             ...current,
             checking: false,
             challenge: result.verified ? null : current.challenge,
+            missed: !result.verified,
           }));
         }
       } else {
@@ -149,22 +152,6 @@ export function XConnect({
         fail(caught, typed);
       }
     }
-  }
-
-  function copy(text: string) {
-    navigator.clipboard?.writeText(text).then(
-      () => {
-        if (!mounted.current) {
-          return;
-        }
-        setCopied(true);
-        if (copiedTimer.current) {
-          clearTimeout(copiedTimer.current);
-        }
-        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-      },
-      () => undefined,
-    );
   }
 
   const inputId = `${idPrefix}-x-handle`;
@@ -194,6 +181,12 @@ export function XConnect({
           onChange={(event) => {
             setHandle(event.target.value);
             setError("");
+            /* A taken handle or a missed check is about what was sent, not what is typed now. */
+            setCard((current) =>
+              current.taken || current.missed
+                ? { ...current, taken: null, missed: false }
+                : current,
+            );
           }}
         />
         <button
@@ -218,6 +211,7 @@ export function XConnect({
             </button>
           </span>
           <span className={styles.xMissHint}>{view.miss.hint}</span>
+          {view.miss.missed && <span className={styles.xMissed}>{view.miss.missed}</span>}
         </div>
       )}
       {view.unavailable && (

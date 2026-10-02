@@ -1,27 +1,18 @@
 // apps/web/src/features/studio/draft/model.ts
 /**
- * The draft studio's rules (docs/specs/studio-draft-dashboard-v1.md, the "Pickler Studio Draft"
- * canvas): the rail and its locks, the header tiles, Go Public's state, Connect X's card, the
- * publish blockers' words, the caps steppers, the brief's tags, the sources list, the schedule's
- * next runs and Identity & voice's name, voice and X account. Pure, no React and no transport, so each rule is pinned in
- * `apps/web/test/studio-draft-model.test.ts`.
+ * The draft studio's shell and Overview rules (docs/specs/studio-draft-dashboard-v1.md, the
+ * "Pickler Studio Draft" canvas): the rail and its locks, the header tiles, Go Public's state,
+ * Connect X's card, the publish blockers' words, Overview's wallet card and activity, and Identity
+ * & voice's name, voice and X account. The Build sections' rules are `build-model.ts`'s, the Run
+ * and YOU sections' `run-model.ts`'s, and every clock is `clock.ts`'s. Pure, no React and no
+ * transport, so each rule is pinned in `apps/web/test/studio-draft-model.test.ts`.
  *
  * Section keys are the canvas's (`picks` is Trades, `skills` is Sources & rules).
  */
 import type { WalletsDto } from "@pickler/api-schema";
-import {
-  LEVERAGE_BOUNDS,
-  MAX_SITES,
-  SPEND_BOUNDS,
-  formatUnits,
-  lines,
-  parseAmount,
-  shortAddress,
-  siteHost,
-  unitsOf,
-  VOICES,
-  type VoiceKey,
-} from "../new-agent/model";
+import { formatUnits, shortAddress, unitsOf, VOICES, type VoiceKey } from "../new-agent/model";
+import { agentWalletRead, type Caps } from "./build-model";
+import { dayLabel, dayNumber, stamp } from "./clock";
 
 export type DraftSectionKey =
   | "overview"
@@ -167,9 +158,8 @@ export interface GoPublicView {
   canPublish: boolean;
   label: string;
   skipLabel: string;
-  /** Spliced into "its calls post on Pickler{xNote}". */
+  /** Spliced into "it shows on Pickler{xNote}" and the live button (D19). */
   xNote: string;
-  error: string | null;
 }
 
 /**
@@ -180,7 +170,6 @@ export function goPublicView(input: {
   xHandle: string | null;
   skipped: boolean;
   publishing: boolean;
-  error: string | null;
 }): GoPublicView {
   const done = input.xHandle !== null;
   const open = done || input.skipped;
@@ -210,7 +199,6 @@ export function goPublicView(input: {
     label,
     skipLabel,
     xNote: done ? " and X" : "",
-    error: input.error,
   };
 }
 
@@ -226,26 +214,37 @@ export interface XCardState {
   unavailable: boolean;
   /** The handle the API said is another agent's (409 `X_HANDLE_TAKEN`). */
   taken: string | null;
+  /** The last "Check again" did not find the post. */
+  missed: boolean;
 }
 
 export interface XView {
   button: "Verify" | "Checking…" | "Check again";
   disabled: boolean;
-  miss: { title: string; line: string; hint: string } | null;
+  /** `missed` is the last check's answer, said inside the block so it is announced. */
+  miss: { title: string; line: string; hint: string; missed: string | null } | null;
   unavailable: string | null;
   taken: string | null;
 }
 
+/** The last check's answer when the post was not there. */
+export const X_NOT_FOUND_LINE = "Not found yet. Post the line, then check again.";
+
 /**
  * Connect X's card: "Verify" asks for a challenge and shows the line to post (spec §3.1); with one
- * issued the button reads "Check again" and the miss block stays until the post is found.
+ * issued the button reads "Check again" and the miss block stays until the post is found. A handle
+ * typed since (`typed`, as `xHandleInput` reads it) that is not the challenge's gets a new line, so
+ * the button says Verify again.
  */
-export function xView(state: XCardState): XView {
+export function xView(state: XCardState, typed: string | null = null): XView {
   const { challenge } = state;
+  const sameHandle =
+    challenge !== null &&
+    (typed === null || typed.toLowerCase() === challenge.handle.toLowerCase());
   let button: XView["button"] = "Verify";
   if (state.checking) {
     button = "Checking…";
-  } else if (challenge) {
+  } else if (challenge && sameHandle) {
     button = "Check again";
   }
   return {
@@ -257,6 +256,7 @@ export function xView(state: XCardState): XView {
             title: "We couldn't find the post yet.",
             line: challenge.text,
             hint: `POST THIS FROM @${challenge.handle.toUpperCase()} · THEN CHECK AGAIN`,
+            missed: state.missed && sameHandle ? X_NOT_FOUND_LINE : null,
           }
         : null,
     unavailable: state.unavailable ? X_UNAVAILABLE_LINE : null,
@@ -276,182 +276,6 @@ export function publishBlockedCopy(
     FUNDS: "Its wallet needs at least 10 AUSD to go public.",
   };
   return blockers.map((blocker) => ({ blocker, text: text[blocker], fund: blocker === "FUNDS" }));
-}
-
-export interface Caps {
-  perTradeAusd: number;
-  perDayAusd: number;
-  maxLeverage: number;
-}
-
-/* The canvas's steps and floors; the ceilings are core's bounds, so + and − never reach a value
-   the API would refuse. */
-const CAP_ROWS = [
-  {
-    key: "perTradeAusd",
-    title: "PER TRADE",
-    unit: " AUSD",
-    step: 5,
-    min: 5,
-    max: SPEND_BOUNDS.perCallAusd.max,
-  },
-  {
-    key: "perDayAusd",
-    title: "PER DAY",
-    unit: " AUSD",
-    step: 10,
-    min: 10,
-    max: SPEND_BOUNDS.perDayAusd.max,
-  },
-  {
-    key: "maxLeverage",
-    title: "MAX LEVERAGE",
-    unit: "×",
-    step: 1,
-    min: LEVERAGE_BOUNDS.min,
-    max: LEVERAGE_BOUNDS.max,
-  },
-] as const;
-
-export interface CapRow {
-  key: keyof Caps;
-  title: string;
-  value: number;
-  display: string;
-  /** The value one step down or up, or null at the floor or ceiling. */
-  prev: number | null;
-  next: number | null;
-}
-
-export interface CapsView {
-  rows: CapRow[];
-  dirty: boolean;
-  tag: "SAVED" | "UNSAVED CHANGES";
-  /** A day's cap below one trade's: the caps contradict each other (core refuses it). */
-  inverted: boolean;
-  canSave: boolean;
-}
-
-export function capsStepper(current: Caps, saved: Caps): CapsView {
-  const rows = CAP_ROWS.map((row) => {
-    const value = current[row.key];
-    return {
-      key: row.key,
-      title: row.title,
-      value,
-      display: `${value}${row.unit}`,
-      prev: value > row.min ? Math.max(row.min, value - row.step) : null,
-      next: value < row.max ? Math.min(row.max, value + row.step) : null,
-    };
-  });
-  const dirty = CAP_ROWS.some((row) => current[row.key] !== saved[row.key]);
-  const inverted = current.perDayAusd < current.perTradeAusd;
-  return {
-    rows,
-    dirty,
-    tag: dirty ? "UNSAVED CHANGES" : "SAVED",
-    inverted,
-    canSave: dirty && !inverted,
-  };
-}
-
-export interface BriefText {
-  thesis: string;
-  enters: string;
-  exits: string;
-  never: string;
-}
-
-export type BriefKey = keyof BriefText;
-
-/**
- * Each section's tag (the canvas's `sections`): EMPTY, or the line count of the three lists, then
- * EDITED against the saved text or DEFAULT when it matches. The thesis has no count. `edited`
- * lights the tag.
- */
-export function briefTags(
-  brief: BriefText,
-  saved: BriefText,
-): Record<BriefKey, { text: string; edited: boolean }> {
-  const tag = (key: BriefKey) => {
-    const value = brief[key];
-    if (!value.trim()) {
-      return { text: "EMPTY", edited: false };
-    }
-    const edited = value.trim() !== saved[key].trim();
-    const state = edited ? "EDITED" : "DEFAULT";
-    if (key === "thesis") {
-      return { text: state, edited };
-    }
-    const count = lines(value).length;
-    return { text: `${count} ${count === 1 ? "LINE" : "LINES"} · ${state}`, edited };
-  };
-  return { thesis: tag("thesis"), enters: tag("enters"), exits: tag("exits"), never: tag("never") };
-}
-
-/**
- * Adding a typed site (the canvas's `addSite`): the bare host is added; anything else stays in the
- * box, as the host it would be, with the reason. An empty box does nothing. Unlike the canvas,
- * text that is no host at all stays as typed (there is no host to put back), so it can be fixed.
- */
-export function addSite(
-  sites: readonly string[],
-  draft: string,
-): { sites: string[]; draft: string; error: string | null } {
-  const unchanged = (error: string | null, next = draft) => ({
-    sites: [...sites],
-    draft: next,
-    error,
-  });
-  if (!draft.trim()) {
-    return unchanged(null);
-  }
-  const host = siteHost(draft);
-  if (!host) {
-    return unchanged("BARE HOSTNAMES ONLY · NO HTTPS, NO PATHS");
-  }
-  if (sites.includes(host)) {
-    return unchanged("ALREADY LISTED", host);
-  }
-  if (sites.length >= MAX_SITES) {
-    return unchanged(`${MAX_SITES} SITES IS THE LIMIT`, host);
-  }
-  return { sites: [...sites, host], draft: "", error: null };
-}
-
-/** The schedule's choices (spec D13), not the canvas's 1 / 6 / 12 / 24. */
-export const INTERVAL_OPTIONS = [3, 6, 12, 24] as const;
-
-export const runsPerDay = (intervalHours: number): number =>
-  Math.max(1, Math.round(24 / intervalHours));
-
-const clock = (date: Date): string =>
-  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-
-const dayNumber = (date: Date): number =>
-  Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000);
-
-/**
- * The next three runs, an interval apart from `now`, in local time: "TMRW" the next calendar day,
- * "+nD" beyond it (the canvas says TMRW for any other day). Like every clock in the draft studio,
- * the server (UTC) and the browser may disagree, so the view marks both the label and the time
- * `suppressHydrationWarning`.
- */
-export function nextRuns(intervalHours: number, now: Date): { label: string; at: string }[] {
-  return [1, 2, 3].map((n) => {
-    const at = new Date(now.getTime() + n * intervalHours * 3_600_000);
-    const days = dayNumber(at) - dayNumber(now);
-    let suffix = "";
-    if (days === 1) {
-      suffix = " · TMRW";
-    } else if (days > 1) {
-      suffix = ` · +${days}D`;
-    }
-    return {
-      label: n === 1 ? "First run after go public" : "Then · reads sources, decides, posts",
-      at: `${clock(at)}${suffix}`,
-    };
-  });
 }
 
 /**
@@ -552,36 +376,34 @@ export interface WalletCardView {
 }
 
 /**
- * Overview's wallet card: the agent's own AUSD (the studio agent's `wallet.balanceAusd`), its MON
- * from `GET /wallets` (a dash until read, or when the chain did not answer), and its caps (a dash
- * for one it has none of, never a default it was not given). Null
- * for a draft without a wallet (spec §3.1).
+ * Overview's wallet card, read as Limits reads it: AUSD and MON from `GET /wallets` once read,
+ * the AUSD from the studio agent's `wallet.balanceAusd` until then (MON a dash until read, or when
+ * the chain did not answer), and its caps as `capsOf` gives them, "STARTER CAPS" for the starter
+ * caps it was never given. Null for a draft without a wallet (spec §3.1).
  */
 export function walletCardView(
   wallet: { walletId: string; address: string; balanceAusd: number } | null,
-  caps: { [K in keyof Caps]: number | undefined },
+  caps: { caps: Caps; starter: boolean },
   wallets: WalletsDto | null,
 ): WalletCardView | null {
   if (!wallet) {
     return null;
   }
-  const ausdMicro = BigInt(Math.round(wallet.balanceAusd * 1_000_000));
-  const read = wallets?.agents.find((entry) => entry.walletId === wallet.walletId);
-  const monWei = read ? unitsOf(read.monWei) : null;
+  const read = agentWalletRead(wallets, wallet.walletId);
+  const ausdMicro = read?.ausdMicro ?? BigInt(Math.round(wallet.balanceAusd * 1_000_000));
+  const monWei = read?.monWei ?? null;
+  const { perTradeAusd, perDayAusd, maxLeverage } = caps.caps;
+  const capsLabel = caps.starter ? "STARTER CAPS" : "CAPS";
   return {
     address: wallet.address,
     short: shortAddress(wallet.address),
-    caps: `CAPS ${caps.perTradeAusd ?? "—"} / ${caps.perDayAusd ?? "—"} / ${caps.maxLeverage ?? "—"}×`,
+    caps: `${capsLabel} ${perTradeAusd} / ${perDayAusd} / ${maxLeverage}×`,
     ausd: formatUnits(ausdMicro, "AUSD"),
     mon: formatUnits(monWei, "MON"),
     ausdFunded: ausdMicro > 0n,
     monFunded: monWei !== null && monWei > 0n,
   };
 }
-
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-const dayLabel = (date: Date): string => `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 
 export interface ActivityRow {
   kind: "created" | "wallet" | "transfer";
@@ -600,140 +422,17 @@ export function activityView(
   now: Date,
 ): { label: string; rows: ActivityRow[] } {
   const today = dayNumber(now);
-  const rows = events.map((event) => {
-    const at = new Date(event.at);
-    return {
-      kind: event.kind,
-      text: event.text,
-      at: dayNumber(at) === today ? clock(at) : dayLabel(at),
-      iso: event.at,
-    };
-  });
+  const rows = events.map((event) => ({
+    kind: event.kind,
+    text: event.text,
+    at: stamp(new Date(event.at), now),
+    iso: event.at,
+  }));
   const newest = events[0] ? new Date(events[0].at) : null;
   return {
     label: !newest || dayNumber(newest) === today ? "TODAY" : dayLabel(newest),
     rows,
   };
-}
-
-export interface RunInput {
-  key: "perpl" | "web";
-  label: string;
-}
-
-/**
- * The Console's "inputs it reads" chips (spec §3.4): Perpl always, and the web when it is on, with
- * its mode, "ANYWHERE" or the sites it keeps to. The canvas's brief, caps and voice chips are left
- * out: they say what it would do on a run, and runs are not open yet (D12).
- */
-export function runInputs(
-  web: { mode: "anywhere" | "prefer" | "only"; sites: readonly string[] } | null | undefined,
-): RunInput[] {
-  const inputs: RunInput[] = [{ key: "perpl", label: "Perpl" }];
-  if (web) {
-    const count = web.sites.length;
-    const where =
-      web.mode === "anywhere" ? "ANYWHERE" : `${count} ${count === 1 ? "SITE" : "SITES"}`;
-    inputs.push({ key: "web", label: `Web · ${where}` });
-  }
-  return inputs;
-}
-
-export interface AllocationRow {
-  key: string;
-  label: string;
-  value: string;
-  /** The dot: master lime, an agent's wallet its own, positions blue, credits violet. */
-  kind: "master" | "agent" | "positions" | "credits";
-  /** Not built yet (spec D17): drawn as "Soon", never as a number. */
-  soon: boolean;
-}
-
-/**
- * Master wallet's allocation (spec D17): what is free in master and what each agent wallet holds,
- * read from `GET /wallets` (dashes until then, or for a balance the chain did not answer), then
- * the person's positions and AI credits, both Soon.
- */
-export function allocationRows(wallets: WalletsDto | null): AllocationRow[] {
-  const rows: AllocationRow[] = [
-    {
-      key: "master",
-      label: "Free in master",
-      value: wallets ? `${formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")} AUSD` : "—",
-      kind: "master",
-      soon: false,
-    },
-  ];
-  for (const wallet of wallets?.agents ?? []) {
-    rows.push({
-      key: wallet.walletId,
-      label: wallet.agentName
-        ? `${wallet.agentName}'s wallet`
-        : `Agent wallet · ${shortAddress(wallet.address)}`,
-      value: `${formatUnits(unitsOf(wallet.ausdMicro), "AUSD")} AUSD · ${formatUnits(unitsOf(wallet.monWei), "MON")} MON`,
-      kind: "agent",
-      soon: false,
-    });
-  }
-  rows.push(
-    {
-      key: "positions",
-      label: "Your open positions",
-      value: "Soon",
-      kind: "positions",
-      soon: true,
-    },
-    { key: "credits", label: "AI credits", value: "Soon", kind: "credits", soon: true },
-  );
-  return rows;
-}
-
-export interface LedgerRow {
-  key: string;
-  text: string;
-  sub: "MASTER → AGENT" | "AGENT → MASTER";
-  /** "+10 AUSD" back into master, "−10 AUSD" out of it. */
-  amount: string;
-  /** Money back into master: the canvas draws it lime. */
-  toMaster: boolean;
-  /** "hh:mm" today, the day ("OCT 1") before it, in local time. */
-  at: string;
-  iso: string;
-}
-
-/**
- * Master wallet's ledger (spec D17): the person's transfers from `GET /wallets/ledger` as the
- * canvas words them, from master's side, so a move to an agent is money out and one back is money
- * in. An amount that is not a plain decimal is shown as the server sent it.
- */
-export function ledgerRows(
-  entries: readonly {
-    direction: "to_agent" | "to_master";
-    token: "AUSD" | "MON";
-    amount: string;
-    agentName: string | null;
-    txHash: string;
-    at: string;
-  }[],
-  now: Date,
-): LedgerRow[] {
-  const today = dayNumber(now);
-  return entries.map((entry, index) => {
-    const toMaster = entry.direction === "to_master";
-    const name = entry.agentName ? `${entry.agentName}'s wallet` : "its wallet";
-    const units = parseAmount(entry.amount, entry.token);
-    const amount = units === null ? entry.amount : formatUnits(units, entry.token);
-    const at = new Date(entry.at);
-    return {
-      key: `${entry.txHash}-${index}`,
-      text: toMaster ? `Back from ${name}` : `To ${name}`,
-      sub: toMaster ? "AGENT → MASTER" : "MASTER → AGENT",
-      amount: `${toMaster ? "+" : "−"}${amount} ${entry.token}`,
-      toMaster,
-      at: dayNumber(at) === today ? clock(at) : dayLabel(at),
-      iso: entry.at,
-    };
-  });
 }
 
 /* ---------- Identity & voice (spec D14, §3.2) ---------- */
