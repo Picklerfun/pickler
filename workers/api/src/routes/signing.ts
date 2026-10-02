@@ -1,3 +1,6 @@
+import * as dto from "@pickler/api-schema";
+import { z } from "zod";
+import { operation } from "../openapi/operation";
 // The HTTP surface of the passkey custody flow in @pickler/core. Replaces Relayer
 // apps/api/src/kits/signing/passkeys/passkey.controller.ts (commit bb6bb1226e92).
 // Behaviour changes:
@@ -273,84 +276,127 @@ export function signingRoutes(services: SigningRouteServices) {
 
   // The options go to navigator.credentials.create() as they are; this is the WebAuthn shape,
   // not an envelope of our own invention.
-  api.post("/passkeys/challenge", async (c) => {
-    const user = person(c);
-    const custody = services.custody(c.get("requestId"));
-    const options = await custody.issueChallenge(user.id, (await identity(services, user)).passkey);
-    return c.json(successEnvelope(options, c.req.path, "Challenge issued"));
-  });
+  api.post(
+    "/passkeys/challenge",
+    operation("signingChallenge", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.passkeyChallengeSchema),
+    }),
+    async (c) => {
+      const user = person(c);
+      const custody = services.custody(c.get("requestId"));
+      const options = await custody.issueChallenge(
+        user.id,
+        (await identity(services, user)).passkey,
+      );
+      return c.json(successEnvelope(options, c.req.path, "Challenge issued"));
+    },
+  );
 
   // 200 rather than 201: registering is idempotent, and half the time the account it answers
   // with is one an earlier request created.
-  api.post("/passkeys/register", async (c) => {
-    const user = person(c);
-    const body = await jsonBody(c);
-    const input = {
-      ownerLabel: (await identity(services, user)).ownerLabel,
-      label: text(body, "label", MAX.label),
-      challenge: base64url(body, "challenge", MAX.challenge),
-      attestation: attestation(body),
-    };
-    const account = await services.custody(c.get("requestId")).register(user.id, input);
-    return c.json(
-      successEnvelope(
-        {
-          sub_organization_id: account.subOrganizationId,
-          master_wallet_id: account.masterWalletId,
-          address: account.address,
-          // Deliberately not account.rootUserId: the browser never needs it, and it is the
-          // parameter of the activity that adds a device to this person's wallet.
-        },
-        c.req.path,
-        "Wallet ready",
-      ),
-    );
-  });
+  api.post(
+    "/passkeys/register",
+    operation("signingRegister", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.custodyAccountSchema),
+      body: dto.registerPasskeySchema,
+    }),
+    async (c) => {
+      const user = person(c);
+      const body = await jsonBody(c);
+      const input = {
+        ownerLabel: (await identity(services, user)).ownerLabel,
+        label: text(body, "label", MAX.label),
+        challenge: base64url(body, "challenge", MAX.challenge),
+        attestation: attestation(body),
+      };
+      const account = await services.custody(c.get("requestId")).register(user.id, input);
+      return c.json(
+        successEnvelope(
+          {
+            sub_organization_id: account.subOrganizationId,
+            master_wallet_id: account.masterWalletId,
+            address: account.address,
+            // Deliberately not account.rootUserId: the browser never needs it, and it is the
+            // parameter of the activity that adds a device to this person's wallet.
+          },
+          c.req.path,
+          "Wallet ready",
+        ),
+      );
+    },
+  );
 
   // Answered as the Turnkey stamper consumes it, so the browser passes it straight through.
-  api.post("/passkeys/add/prepare", async (c) => {
-    const user = person(c);
-    const body = await jsonBody(c);
-    const input = {
-      label: text(body, "label", MAX.label),
-      challenge: base64url(body, "challenge", MAX.challenge),
-      attestation: attestation(body),
-    };
-    const unsigned = await services.custody(c.get("requestId")).prepareAddPasskey(user.id, input);
-    return c.json(
-      successEnvelope(
-        {
-          url: unsigned.url,
-          body: unsigned.body,
-          timestampMs: unsigned.timestampMs,
-          organizationId: unsigned.organizationId,
-        },
-        c.req.path,
-        "Activity prepared",
-      ),
-    );
-  });
+  api.post(
+    "/passkeys/add/prepare",
+    operation("signingAddPrepare", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.unsignedActivitySchema),
+      body: dto.registerPasskeySchema,
+    }),
+    async (c) => {
+      const user = person(c);
+      const body = await jsonBody(c);
+      const input = {
+        label: text(body, "label", MAX.label),
+        challenge: base64url(body, "challenge", MAX.challenge),
+        attestation: attestation(body),
+      };
+      const unsigned = await services.custody(c.get("requestId")).prepareAddPasskey(user.id, input);
+      return c.json(
+        successEnvelope(
+          {
+            url: unsigned.url,
+            body: unsigned.body,
+            timestampMs: unsigned.timestampMs,
+            organizationId: unsigned.organizationId,
+          },
+          c.req.path,
+          "Activity prepared",
+        ),
+      );
+    },
+  );
 
-  api.post("/passkeys/add/confirm", async (c) => {
-    const user = person(c);
-    const body = await jsonBody(c);
-    const input = {
-      label: text(body, "label", MAX.label),
-      credentialId: base64url(body, "credential_id", MAX.credentialId),
-      transports: transports(body, "transports"),
-      signed: signedActivity(body),
-    };
-    const activity = await services.custody(c.get("requestId")).confirmAddPasskey(user.id, input);
-    // The id and the status, not the activity: it also carries the organisation, the votes and
-    // a result whose shape changes per intent.
-    return c.json(
-      successEnvelope(
-        { activity_id: activity.id, status: activity.status },
-        c.req.path,
-        "Device added",
-      ),
-    );
-  });
+  api.post(
+    "/passkeys/add/confirm",
+    operation("signingAddConfirm", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(z.object({ activity_id: z.string(), status: z.string() })),
+      body: z.object({
+        label: z.string(),
+        credential_id: z.string(),
+        transports: z.array(z.string()),
+        signed: dto.signedActivitySchema,
+      }),
+    }),
+    async (c) => {
+      const user = person(c);
+      const body = await jsonBody(c);
+      const input = {
+        label: text(body, "label", MAX.label),
+        credentialId: base64url(body, "credential_id", MAX.credentialId),
+        transports: transports(body, "transports"),
+        signed: signedActivity(body),
+      };
+      const activity = await services.custody(c.get("requestId")).confirmAddPasskey(user.id, input);
+      // The id and the status, not the activity: it also carries the organisation, the votes and
+      // a result whose shape changes per intent.
+      return c.json(
+        successEnvelope(
+          { activity_id: activity.id, status: activity.status },
+          c.req.path,
+          "Device added",
+        ),
+      );
+    },
+  );
 
   /**
    * This person's passkeys, oldest first, and nothing about anyone else's: the user id comes from
@@ -365,38 +411,54 @@ export function signingRoutes(services: SigningRouteServices) {
    * `device_type` and `last_used_at` go out null when they are null. A passkey that has never
    * signed anything has no last-used date, and saying so is the point of the column.
    */
-  api.get("/passkeys", async (c) => {
-    const user = person(c);
-    const passkeys = await services.custody(c.get("requestId")).listPasskeys(user.id);
-    return c.json(
-      successEnvelope(
-        passkeys.map((passkey) => ({
-          id: passkey.id,
-          credential_id: passkey.credentialId,
-          label: passkey.label,
-          transports: passkey.transports,
-          device_type: passkey.deviceType,
-          created_at: passkey.createdAt.toISOString(),
-          last_used_at: passkey.lastUsedAt === null ? null : passkey.lastUsedAt.toISOString(),
-        })),
-        c.req.path,
-        "Passkeys retrieved",
-      ),
-    );
-  });
+  api.get(
+    "/passkeys",
+    operation("signingPasskeys", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.passkeySchema.array()),
+    }),
+    async (c) => {
+      const user = person(c);
+      const passkeys = await services.custody(c.get("requestId")).listPasskeys(user.id);
+      return c.json(
+        successEnvelope(
+          passkeys.map((passkey) => ({
+            id: passkey.id,
+            credential_id: passkey.credentialId,
+            label: passkey.label,
+            transports: passkey.transports,
+            device_type: passkey.deviceType,
+            created_at: passkey.createdAt.toISOString(),
+            last_used_at: passkey.lastUsedAt === null ? null : passkey.lastUsedAt.toISOString(),
+          })),
+          c.req.path,
+          "Passkeys retrieved",
+        ),
+      );
+    },
+  );
 
-  api.get("/wallets/me", async (c) => {
-    const user = person(c);
-    const account = await services.custody(c.get("requestId")).getAccount(user.id);
-    if (!account) {
-      throw notFound("Wallet");
-    }
-    // A balance that could not be read comes back null rather than zero; the reader decides.
-    const balances = await services.balances.read(account.address);
-    return c.json(
-      successEnvelope({ address: account.address, balances }, c.req.path, "Wallet retrieved"),
-    );
-  });
+  api.get(
+    "/wallets/me",
+    operation("signingMasterWallet", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.walletBalanceSchema),
+    }),
+    async (c) => {
+      const user = person(c);
+      const account = await services.custody(c.get("requestId")).getAccount(user.id);
+      if (!account) {
+        throw notFound("Wallet");
+      }
+      // A balance that could not be read comes back null rather than zero; the reader decides.
+      const balances = await services.balances.read(account.address);
+      return c.json(
+        successEnvelope({ address: account.address, balances }, c.req.path, "Wallet retrieved"),
+      );
+    },
+  );
 
   // ─── The agent wallet ceremony ────────────────────────────────────────────────────────────
   // Three steps, each prepared here, stamped by the person's passkey and confirmed here: Pickler's
@@ -405,102 +467,184 @@ export function signingRoutes(services: SigningRouteServices) {
   // written by the drafts route's transaction, not by these routes.
 
   /** Which steps the browser still has to run. */
-  api.get("/agents/state", async (c) => {
-    const user = person(c);
-    const state = await services.custody(c.get("requestId")).agentWalletState(user.id);
-    return c.json(
-      successEnvelope(
-        {
-          has_sub_organization: state.hasSubOrganization,
-          has_delegated_user: state.hasDelegatedUser,
-        },
-        c.req.path,
-        "Agent wallet state",
+  api.get(
+    "/agents/state",
+    operation("signingAgentState", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(
+        z.object({ has_sub_organization: z.boolean(), has_delegated_user: z.boolean() }),
       ),
-    );
-  });
+    }),
+    async (c) => {
+      const user = person(c);
+      const state = await services.custody(c.get("requestId")).agentWalletState(user.id);
+      return c.json(
+        successEnvelope(
+          {
+            has_sub_organization: state.hasSubOrganization,
+            has_delegated_user: state.hasDelegatedUser,
+          },
+          c.req.path,
+          "Agent wallet state",
+        ),
+      );
+    },
+  );
 
-  api.post("/agents/delegated/prepare", async (c) => {
-    const user = person(c);
-    const unsigned = await services.custody(c.get("requestId")).prepareDelegatedUser(user.id);
-    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
-  });
+  api.post(
+    "/agents/delegated/prepare",
+    operation("signingDelegatedPrepare", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.unsignedActivitySchema),
+    }),
+    async (c) => {
+      const user = person(c);
+      const unsigned = await services.custody(c.get("requestId")).prepareDelegatedUser(user.id);
+      return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+    },
+  );
 
-  api.post("/agents/delegated/confirm", async (c) => {
-    const user = person(c);
-    const signed = signedActivity(await jsonBody(c));
-    const saved = await services.custody(c.get("requestId")).confirmDelegatedUser(user.id, signed);
-    return c.json(
-      successEnvelope(
-        { delegated_user_id: saved.delegatedUserId },
-        c.req.path,
-        "Pickler has its seat",
-      ),
-    );
-  });
+  api.post(
+    "/agents/delegated/confirm",
+    operation("signingDelegatedConfirm", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(z.object({ delegated_user_id: z.string() })),
+      body: z.object({ signed: dto.signedActivitySchema }),
+    }),
+    async (c) => {
+      const user = person(c);
+      const signed = signedActivity(await jsonBody(c));
+      const saved = await services
+        .custody(c.get("requestId"))
+        .confirmDelegatedUser(user.id, signed);
+      return c.json(
+        successEnvelope(
+          { delegated_user_id: saved.delegatedUserId },
+          c.req.path,
+          "Pickler has its seat",
+        ),
+      );
+    },
+  );
 
   // A new wallet is named "Agent wallet N", never after a handle: the wallet exists before the
   // agent does. The body must be empty or `{}`. A wallet already minted and never linked is
   // answered as `existing`, and the browser skips the stamp: a retry never leaves a second wallet
   // behind. `policies_approved` says its rules were approved too, so the browser skips that prompt
   // as well.
-  api.post("/agents/wallet/prepare", async (c) => {
-    const user = person(c);
-    await emptyBody(c);
-    const prepared = await services.custody(c.get("requestId")).prepareAgentWallet(user.id);
-    if ("existing" in prepared) {
+  api.post(
+    "/agents/wallet/prepare",
+    operation("signingWalletPrepare", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(
+        z.union([
+          dto.unsignedActivitySchema,
+          z.object({
+            existing: z.object({
+              wallet_id: z.string(),
+              address: z.string(),
+              policies_approved: z.boolean(),
+            }),
+          }),
+        ]),
+      ),
+      body: dto.emptyRequestSchema,
+      optionalBody: true,
+    }),
+    async (c) => {
+      const user = person(c);
+      await emptyBody(c);
+      const prepared = await services.custody(c.get("requestId")).prepareAgentWallet(user.id);
+      if ("existing" in prepared) {
+        return c.json(
+          successEnvelope(
+            {
+              existing: {
+                wallet_id: prepared.existing.walletId,
+                address: prepared.existing.address,
+                policies_approved: prepared.existing.policiesApproved,
+              },
+            },
+            c.req.path,
+            "Wallet already exists",
+          ),
+        );
+      }
+      return c.json(
+        successEnvelope(unsignedDto(prepared.unsigned), c.req.path, "Activity prepared"),
+      );
+    },
+  );
+
+  api.post(
+    "/agents/wallet/confirm",
+    operation("signingWalletConfirm", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(z.object({ wallet_id: z.string(), address: z.string() })),
+      body: z.object({ signed: dto.signedActivitySchema }),
+    }),
+    async (c) => {
+      const user = person(c);
+      const signed = signedActivity(await jsonBody(c));
+      const wallet = await services.custody(c.get("requestId")).confirmAgentWallet(user.id, signed);
       return c.json(
         successEnvelope(
-          {
-            existing: {
-              wallet_id: prepared.existing.walletId,
-              address: prepared.existing.address,
-              policies_approved: prepared.existing.policiesApproved,
-            },
-          },
+          { wallet_id: wallet.walletId, address: wallet.address },
           c.req.path,
-          "Wallet already exists",
+          "Wallet created",
         ),
       );
-    }
-    return c.json(successEnvelope(unsignedDto(prepared.unsigned), c.req.path, "Activity prepared"));
-  });
-
-  api.post("/agents/wallet/confirm", async (c) => {
-    const user = person(c);
-    const signed = signedActivity(await jsonBody(c));
-    const wallet = await services.custody(c.get("requestId")).confirmAgentWallet(user.id, signed);
-    return c.json(
-      successEnvelope(
-        { wallet_id: wallet.walletId, address: wallet.address },
-        c.req.path,
-        "Wallet created",
-      ),
-    );
-  });
+    },
+  );
 
   // Whether this is the person's first agent — and so whether Pickler's self-delete policy rides
   // along — is decided by core from what is linked, never by the caller. The body must be empty
   // or `{}`: a field here (the old `first_agent` included) is refused rather than ignored.
-  api.post("/agents/wallet/:walletId/policies/prepare", async (c) => {
-    const user = person(c);
-    const walletId = walletIdParam(c.req.param("walletId"));
-    await emptyBody(c);
-    const unsigned = await services.custody(c.get("requestId")).preparePolicies(user.id, walletId);
-    return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
-  });
+  api.post(
+    "/agents/wallet/:walletId/policies/prepare",
+    operation("signingPoliciesPrepare", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(dto.unsignedActivitySchema),
+      body: dto.emptyRequestSchema,
+      optionalBody: true,
+    }),
+    async (c) => {
+      const user = person(c);
+      const walletId = walletIdParam(c.req.param("walletId"));
+      await emptyBody(c);
+      const unsigned = await services
+        .custody(c.get("requestId"))
+        .preparePolicies(user.id, walletId);
+      return c.json(successEnvelope(unsignedDto(unsigned), c.req.path, "Activity prepared"));
+    },
+  );
 
-  api.post("/agents/wallet/:walletId/policies/confirm", async (c) => {
-    const user = person(c);
-    const walletId = walletIdParam(c.req.param("walletId"));
-    const signed = signedActivity(await jsonBody(c));
-    const confirmed = await services
-      .custody(c.get("requestId"))
-      .confirmPolicies(user.id, walletId, signed);
-    return c.json(
-      successEnvelope({ policy_ids: confirmed.policyIds }, c.req.path, "Policies approved"),
-    );
-  });
+  api.post(
+    "/agents/wallet/:walletId/policies/confirm",
+    operation("signingPoliciesConfirm", {
+      security: "user",
+      errorStatuses: [400, 401, 403, 404, 409, 413, 500, 502, 503],
+      response: dto.envelopeSchema(z.object({ policy_ids: z.array(z.string()) })),
+      body: z.object({ signed: dto.signedActivitySchema }),
+    }),
+    async (c) => {
+      const user = person(c);
+      const walletId = walletIdParam(c.req.param("walletId"));
+      const signed = signedActivity(await jsonBody(c));
+      const confirmed = await services
+        .custody(c.get("requestId"))
+        .confirmPolicies(user.id, walletId, signed);
+      return c.json(
+        successEnvelope({ policy_ids: confirmed.policyIds }, c.req.path, "Policies approved"),
+      );
+    },
+  );
 
   return api;
 }

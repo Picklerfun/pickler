@@ -1,3 +1,6 @@
+import * as dto from "@pickler/api-schema";
+import { z } from "zod";
+import { operation } from "../openapi/operation";
 // The studio's wallets modal (docs/specs/studio-create-simplified-v1.md §4.2): the master and every
 // agent wallet with their balances read on chain, and transfers of AUSD or MON between the master
 // and one of the person's agent wallets, either way. Mounted at /wallets by `studioRoutes`, behind
@@ -181,93 +184,136 @@ export function studioWalletRoutes(deps: {
   const api = new Hono<AppEnv>();
   const { access } = deps;
 
-  api.get("/", async (c) => {
-    const principal = c.get("principal");
-    await access.authorize(principal);
-    const requestId = c.get("requestId");
-    const listed = await walletWork(requestId, async () =>
-      deps.custody(requestId).listWallets(principal.id),
-    );
-    return c.json(
-      walletsResponseSchema.parse({
-        master: { address: listed.master.address, ...baseUnitStrings(listed.master) },
-        agents: listed.agents.map((wallet) => ({
-          walletId: wallet.walletId,
-          address: wallet.address,
-          ...baseUnitStrings(wallet),
-          agentId: wallet.agentId,
-          agentName: wallet.agentName,
-          caps: wallet.caps,
-          policiesApproved: wallet.policiesApproved,
-        })),
-        readAt: listed.readAt,
-      }),
-    );
-  });
+  api.get(
+    "/",
+    operation("studioWallets", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 500, 502, 503],
+      description:
+        "Verified user and workspace ownership required. Transfers require manage rights and an approved passkey activity.",
+      response: dto.walletsResponseSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal);
+      const requestId = c.get("requestId");
+      const listed = await walletWork(requestId, async () =>
+        deps.custody(requestId).listWallets(principal.id),
+      );
+      return c.json(
+        walletsResponseSchema.parse({
+          master: { address: listed.master.address, ...baseUnitStrings(listed.master) },
+          agents: listed.agents.map((wallet) => ({
+            walletId: wallet.walletId,
+            address: wallet.address,
+            ...baseUnitStrings(wallet),
+            agentId: wallet.agentId,
+            agentName: wallet.agentName,
+            caps: wallet.caps,
+            policiesApproved: wallet.policiesApproved,
+          })),
+          readAt: listed.readAt,
+        }),
+      );
+    },
+  );
 
   // The Master wallet's ledger (studio-draft-dashboard-v1 D17): the caller's own transfers only,
   // read by their user id, newest first, at most 100. It reads the database, never the chain.
-  api.get("/ledger", async (c) => {
-    const principal = c.get("principal");
-    await access.authorize(principal);
-    if (!deps.transfers) {
-      throw new WalletRefusal(
-        "WALLETS_UNAVAILABLE",
-        503,
-        "Wallets are not available on this deployment",
+  api.get(
+    "/ledger",
+    operation("studioWalletLedger", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      response: dto.ledgerResponseSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal);
+      if (!deps.transfers) {
+        throw new WalletRefusal(
+          "WALLETS_UNAVAILABLE",
+          503,
+          "Wallets are not available on this deployment",
+        );
+      }
+      const entries = await deps.transfers.list(principal.id);
+      return c.json(
+        ledgerResponseSchema.parse({
+          entries: entries.map((entry) => ({ ...entry, at: entry.at.toISOString() })),
+        }),
       );
-    }
-    const entries = await deps.transfers.list(principal.id);
-    return c.json(
-      ledgerResponseSchema.parse({
-        entries: entries.map((entry) => ({ ...entry, at: entry.at.toISOString() })),
-      }),
-    );
-  });
+    },
+  );
 
   // prepare → passkey stamp in the browser → confirm, which forwards, broadcasts and records.
-  api.post("/transfers/prepare", async (c) => {
-    const principal = c.get("principal");
-    await access.authorize(principal, true);
-    const body = transferRequestSchema.parse(await c.req.json());
-    const requestId = c.get("requestId");
-    return walletWork(requestId, async () => {
-      const amount = baseUnitsOf(body.token, body.amount);
-      const unsigned = await deps.custody(requestId).prepareTransfer(principal.id, {
-        from: body.from,
-        to: body.to,
-        token: body.token,
-        amount,
-      });
-      return c.json({
-        url: unsigned.url,
-        body: unsigned.body,
-        timestampMs: unsigned.timestampMs,
-        organizationId: unsigned.organizationId,
-        baseUnits: amount.toString(),
-      });
-    });
-  });
-
-  api.post("/transfers/confirm", async (c) => {
-    const principal = c.get("principal");
-    await access.authorize(principal, true);
-    const body = transferConfirmSchema.parse(await c.req.json());
-    const requestId = c.get("requestId");
-    return walletWork(requestId, async () => {
-      const { txHash } = await deps.custody(requestId).confirmTransfer(
-        principal.id,
-        {
+  api.post(
+    "/transfers/prepare",
+    operation("studioTransferPrepare", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 500, 502, 503],
+      description:
+        "Verified user and workspace ownership required. Transfers require manage rights and an approved passkey activity.",
+      response: dto.unsignedActivitySchema.extend({ baseUnits: z.string() }),
+      body: dto.transferRequestSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal, true);
+      const body = transferRequestSchema.parse(await c.req.json());
+      const requestId = c.get("requestId");
+      return walletWork(requestId, async () => {
+        const amount = baseUnitsOf(body.token, body.amount);
+        const unsigned = await deps.custody(requestId).prepareTransfer(principal.id, {
           from: body.from,
           to: body.to,
           token: body.token,
-          amount: baseUnitsOf(body.token, body.amount),
-        },
-        body.signed,
-      );
-      return c.json({ txHash });
-    });
-  });
+          amount,
+        });
+        return c.json({
+          url: unsigned.url,
+          body: unsigned.body,
+          timestampMs: unsigned.timestampMs,
+          organizationId: unsigned.organizationId,
+          baseUnits: amount.toString(),
+        });
+      });
+    },
+  );
+
+  api.post(
+    "/transfers/confirm",
+    operation("studioTransferConfirm", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 500, 502, 503],
+      description:
+        "Verified user and workspace ownership required. Transfers require manage rights and an approved passkey activity.",
+      response: dto.txHashSchema,
+      body: dto.transferConfirmSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal, true);
+      const body = transferConfirmSchema.parse(await c.req.json());
+      const requestId = c.get("requestId");
+      return walletWork(requestId, async () => {
+        const { txHash } = await deps.custody(requestId).confirmTransfer(
+          principal.id,
+          {
+            from: body.from,
+            to: body.to,
+            token: body.token,
+            amount: baseUnitsOf(body.token, body.amount),
+          },
+          body.signed,
+        );
+        return c.json({ txHash });
+      });
+    },
+  );
 
   return api;
 }

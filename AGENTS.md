@@ -146,3 +146,11 @@ runtime composes adapters and models. Hosts must not duplicate risk, fills or ac
 
 The canonical trading boundaries and plugin extension rules are in [Trading architecture](docs/trading-architecture.md).
 Run `npm run check:architecture` to reject retired commands, imports and broken documentation links.
+
+## API contract
+
+The API Worker owns generated OpenAPI at `/v1/openapi.json`, served through the web at
+`/api/v1/openapi.json`. Route metadata and api-schema wire schemas are authoritative, not a static
+JSON file. `npm run api:openapi -- --output /tmp/pickler-openapi.json` validates and exports all
+route groups without executing services. Read [API contract](docs/api-contract.md) before adding
+or changing endpoints; CI rejects undocumented operations.
