@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
 import {
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
   DelegatedUserMissingError,
@@ -15,6 +16,13 @@ import {
   type TurnkeyPolicy,
 } from "../src/features/wallets/domain/agent-wallet-policies.js";
 import type { UnsignedActivity } from "../src/features/wallets/ports/custody.js";
+import {
+  MIN_START_MICRO_AUSD,
+  MIN_START_MON_WEI,
+  WalletUnderfundedError,
+  BalancesUnreadableError,
+} from "../src/features/studio/create.js";
+import { DepositsUnavailableError } from "../src/features/wallets/domain/deposit.js";
 import type {
   AgentWalletActivityBuilders,
   AgentWalletRepository,
@@ -61,8 +69,18 @@ function tampered(
 
 type Saved = Parameters<AgentWalletRepository["saveWallet"]>[0];
 
-function fakes(options: { account?: CustodyAccount | null; delegated?: string | null } = {}) {
+function fakes(
+  options: {
+    account?: CustodyAccount | null;
+    delegated?: string | null;
+    agentWallets?: number;
+  } = {},
+) {
   const state = {
+    /** Agent wallets recorded before this test's, which `countAgentWallets` adds to its own. */
+    earlierWallets: options.agentWallets ?? 0,
+    /** Chain balances by address; a wallet not listed holds exactly the minimums to start. */
+    balances: {} as Record<string, { monWei: bigint | null; ausdMicro: bigint | null }>,
     account: options.account === undefined ? ACCOUNT : options.account,
     delegated: options.delegated ?? null,
     wallets: [] as Saved[],
@@ -103,10 +121,10 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
     async saveWallet(input) {
       state.wallets.push(input);
     },
-    async findOrphanWallet(userId, name) {
-      const found = state.wallets.find(
-        (w) => w.userId === userId && w.name === name && !state.linked.has(w.walletId),
-      );
+    async findUnlinkedWallet(userId) {
+      const found = [...state.wallets]
+        .reverse()
+        .find((w) => w.userId === userId && !state.linked.has(w.walletId));
       return found
         ? {
             walletId: found.walletId,
@@ -115,9 +133,25 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
           }
         : null;
     },
+    async countAgentWallets(userId) {
+      return state.earlierWallets + state.wallets.filter((w) => w.userId === userId).length;
+    },
+    async listAgentWallets() {
+      return [];
+    },
+    async saveTransfer() {},
+    async transferRecorded() {
+      return false;
+    },
     async findOwnedAgentWallet(userId, walletId) {
       const found = state.wallets.find((w) => w.userId === userId && w.walletId === walletId);
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            linked: state.linked.has(found.walletId),
+          }
+        : null;
     },
     async hasLinkedAgentWallet() {
       return state.hasLinked;
@@ -129,6 +163,9 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
       state.approved.push({ userId, walletId, policyIds });
     },
     async saveDeposit() {},
+    async depositRecorded() {
+      return false;
+    },
   };
 
   const builds: { kind: string; input: unknown }[] = [];
@@ -174,7 +211,13 @@ function fakes(options: { account?: CustodyAccount | null; delegated?: string | 
 
 function service(
   f: ReturnType<typeof fakes>,
-  extra: { delegatedPublicKey?: string | null; venueContracts?: string[] } = {},
+  extra: {
+    delegatedPublicKey?: string | null;
+    venueContracts?: string[];
+    balances?: boolean;
+    /** Makes every balance read throw, as an RPC outage would. */
+    balancesFail?: Error;
+  } = {},
 ) {
   return createCustodyService({
     challenges: { put: async () => {}, consume: async () => null },
@@ -192,6 +235,23 @@ function service(
     forwarder: f.forwarder,
     agentActivities: f.agentActivities,
     agentWallets: f.agentWallets,
+    ...(extra.balances === false
+      ? {}
+      : {
+          balances: {
+            read: async (address: string) => {
+              if (extra.balancesFail) {
+                throw extra.balancesFail;
+              }
+              return (
+                f.state.balances[address] ?? {
+                  monWei: MIN_START_MON_WEI,
+                  ausdMicro: MIN_START_MICRO_AUSD,
+                }
+              );
+            },
+          },
+        }),
     delegatedPublicKey: extra.delegatedPublicKey === undefined ? "02abc" : extra.delegatedPublicKey,
     venueContracts: extra.venueContracts ?? [],
     rpId: "pickler.fun",
@@ -337,17 +397,17 @@ test("a delegated user that did not complete is not saved", async () => {
   assert.equal(f.state.delegated, null);
 });
 
-test("a wallet is built under the handle, confirmed with create_wallet only, and saved as an agent's", async () => {
+test("a wallet is built as Agent wallet 1, confirmed with create_wallet only, and saved as an agent's", async () => {
   const f = fakes();
 
-  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  const prepared = await service(f).prepareAgentWallet(USER);
   assert.ok("unsigned" in prepared);
   assert.deepEqual(f.builds, [
-    { kind: "create_wallet", input: { subOrganizationId: "sub-ana", handle: "halftime" } },
+    { kind: "create_wallet", input: { subOrganizationId: "sub-ana", name: "Agent wallet 1" } },
   ]);
 
   f.state.activity = completed({ createWalletResult: { walletId: "w-1", addresses: [ADDRESS] } });
-  const wallet = await service(f).confirmAgentWallet(USER, "halftime", stamped(prepared.unsigned));
+  const wallet = await service(f).confirmAgentWallet(USER, stamped(prepared.unsigned));
 
   assert.deepEqual(wallet, { walletId: "w-1", address: ADDRESS });
   assert.deepEqual(f.forwards, [
@@ -359,31 +419,59 @@ test("a wallet is built under the handle, confirmed with create_wallet only, and
       walletId: "w-1",
       subOrganizationId: "sub-ana",
       kind: "agent",
-      name: "halftime",
+      name: "Agent wallet 1",
       address: ADDRESS,
       path: MONAD_ACCOUNT_PATH,
     },
   ]);
 });
 
-test("a wallet stamped under another name than the handle confirmed is refused unforwarded", async () => {
+test("the second agent wallet is named Agent wallet 2", async () => {
+  const f = fakes({ agentWallets: 1 });
+
+  const prepared = await service(f).prepareAgentWallet(USER);
+
+  assert.ok("unsigned" in prepared);
+  assert.equal(JSON.parse(prepared.unsigned.body).parameters.name, "Agent wallet 2");
+});
+
+test("a wallet stamped under another name is refused unforwarded", async () => {
   const f = fakes();
-  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  const prepared = await service(f).prepareAgentWallet(USER);
   assert.ok("unsigned" in prepared);
 
   await assert.rejects(
-    service(f).confirmAgentWallet(USER, "otherbot", stamped(prepared.unsigned)),
+    service(f).confirmAgentWallet(
+      USER,
+      tampered(prepared.unsigned, (p) => {
+        p.name = "Mallory's wallet";
+      }),
+    ),
     InvalidSignedActivityError,
   );
   assert.deepEqual(f.forwards, []);
   assert.deepEqual(f.state.wallets, []);
 });
 
-test("a retry finds the orphan wallet and builds nothing", async () => {
+test("a ceremony prepared before another wallet was recorded no longer confirms, and mints nothing", async () => {
+  const f = fakes();
+  const stale = await service(f).prepareAgentWallet(USER);
+  assert.ok("unsigned" in stale);
+  // Another tab's ceremony recorded "Agent wallet 1" in between.
+  f.state.earlierWallets = 1;
+
+  await assert.rejects(
+    service(f).confirmAgentWallet(USER, stamped(stale.unsigned)),
+    InvalidSignedActivityError,
+  );
+  assert.deepEqual(f.forwards, []);
+});
+
+test("a retry finds the unlinked wallet, whatever its name, and builds nothing", async () => {
   const f = fakes();
   orphan(f);
 
-  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  const prepared = await service(f).prepareAgentWallet(USER);
 
   assert.deepEqual(prepared, {
     existing: {
@@ -414,7 +502,7 @@ test("an orphan wallet whose rules were approved says so, so a retry skips that 
   const f = fakes();
   orphan(f, ["p1", "p2", "p3"]);
 
-  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  const prepared = await service(f).prepareAgentWallet(USER);
 
   assert.deepEqual(prepared, {
     existing: { walletId: "w-orphan", address: ADDRESS, policiesApproved: true },
@@ -426,7 +514,7 @@ test("an orphan wallet with fewer approved ids than the floor is not approved", 
   const f = fakes();
   orphan(f, ["p1", "p2"]);
 
-  const prepared = await service(f).prepareAgentWallet(USER, "halftime");
+  const prepared = await service(f).prepareAgentWallet(USER);
 
   assert.ok("existing" in prepared);
   assert.equal(prepared.existing.policiesApproved, false);
@@ -506,6 +594,77 @@ test("policies need the delegated user and a wallet of the caller's", async () =
     service(f).confirmPolicies(USER, "someone-elses", stamped(unsigned)),
     AgentWalletNotFoundError,
   );
+});
+
+test("a linked wallet gets no second policy set: prepare and confirm refuse it", async () => {
+  const f = withWallet();
+  f.state.balances[ADDRESS] = { monWei: MIN_START_MON_WEI, ausdMicro: MIN_START_MICRO_AUSD };
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+  f.state.linked.add("w-1");
+
+  await assert.rejects(service(f).preparePolicies(USER, "w-1"), AgentWalletLinkedError);
+  await assert.rejects(
+    service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
+    AgentWalletLinkedError,
+  );
+  assert.equal(f.builds.length, 1);
+});
+
+test("policies are not prepared for a wallet below the minimums", async () => {
+  for (const balances of [
+    { monWei: 0n, ausdMicro: 25_000_000n },
+    { monWei: MIN_START_MON_WEI, ausdMicro: MIN_START_MICRO_AUSD - 1n },
+    { monWei: null, ausdMicro: 25_000_000n },
+  ]) {
+    const f = withWallet();
+    f.state.balances[ADDRESS] = balances;
+
+    await assert.rejects(service(f).preparePolicies(USER, "w-1"), WalletUnderfundedError);
+    assert.deepEqual(f.builds, []);
+  }
+});
+
+test("policies are prepared once both minimums are met", async () => {
+  const f = withWallet();
+  f.state.balances[ADDRESS] = { monWei: MIN_START_MON_WEI, ausdMicro: MIN_START_MICRO_AUSD };
+
+  await service(f).preparePolicies(USER, "w-1");
+
+  assert.equal(f.builds.length, 1);
+});
+
+test("policies over a chain that answers nothing are BalancesUnreadableError, never underfunded", async () => {
+  const silent = withWallet();
+  silent.state.balances[ADDRESS] = { monWei: null, ausdMicro: null };
+  await assert.rejects(service(silent).preparePolicies(USER, "w-1"), BalancesUnreadableError);
+  assert.deepEqual(silent.builds, []);
+
+  const down = withWallet();
+  await assert.rejects(
+    service(down, { balancesFail: new Error("timeout") }).preparePolicies(USER, "w-1"),
+    BalancesUnreadableError,
+  );
+  assert.deepEqual(down.builds, []);
+});
+
+test("without a balance reader, policies cannot be prepared", async () => {
+  await assert.rejects(
+    service(withWallet(), { balances: false }).preparePolicies(USER, "w-1"),
+    DepositsUnavailableError,
+  );
+});
+
+test("confirmPolicies does not check balances: the stamp is already made", async () => {
+  const f = withWallet();
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+  f.state.balances[ADDRESS] = { monWei: 0n, ausdMicro: 0n };
+  f.state.activity = completed({
+    createPoliciesResult: { policyIds: ["p1", "p2", "p3", "p4"] },
+  });
+
+  assert.deepEqual(await service(f).confirmPolicies(USER, "w-1", stamped(unsigned)), {
+    policyIds: ["p1", "p2", "p3", "p4"],
+  });
 });
 
 test("confirmPolicies forwards only create_policies and returns the ids", async () => {

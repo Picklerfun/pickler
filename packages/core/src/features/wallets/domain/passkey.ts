@@ -171,3 +171,14 @@ export class AgentWalletNotFoundError extends Error {
     this.name = "AgentWalletNotFoundError";
   }
 }
+
+/**
+ * The wallet is already an agent's. Its policies were approved and linked at create; a second set
+ * would leave `approved_policy_ids` and the link's `policy_ids` apart, and duplicate them in Turnkey.
+ */
+export class AgentWalletLinkedError extends Error {
+  constructor() {
+    super("That wallet already belongs to an agent");
+    this.name = "AgentWalletLinkedError";
+  }
+}

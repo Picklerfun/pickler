@@ -143,3 +143,9 @@ atomic exchange snapshot: the trading engine still rejects excessive skew withou
 The Perpl paper plugin exports `createCoherentPerplReader`, a read-only BTC/ETH acquisition factory with a shared twenty-second deadline and live permission checks. It constructs no model or signing client. Hosts inject study ownership checks and a shared provider schedule. Existing unversioned study snapshots retain their historical interpretation.
 
 `createPerplAcquisitionReader` exposes guarded read/latest/close lifecycle with a pinned transport. Observation and execution share it; buffers require current permissions, configuration and ownership. Idle streams recheck permissions every second. Parent cancellation closes active transport; per-acquisition deadline does not terminate the next scheduled slot. Hosts must close readers before releasing leases/connections.
+
+Perpl model POST requests keep their twenty-second deadline. Deadline cancellation returns
+`MODEL_TIMEOUT`; operator cancellation returns `MODEL_CANCELLED`; lease errors retain their
+business code. Non-HTTP transport errors return `MODEL_TRANSPORT_FAILURE`. Errors never include
+provider bodies or credentials. `createPerpsStudyModels` accepts an optional timeout-signal factory
+for controlled tests; hosts use the production default and never widen deadlines implicitly.

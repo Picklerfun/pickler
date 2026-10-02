@@ -5,26 +5,68 @@ import {
   AccessDeniedError,
   MIN_AGENT_WALLET_POLICIES,
   PilotError,
-  assertPreviewAdoptable,
-  type AdoptablePreview,
+  PublishBlockedError,
   type Accent,
+  type AgentActivityEvent,
+  type PublishCheck,
   type StudioAccess,
   type StudioDirectory,
   type AgentConfig,
-  type AgentProfileInput,
-  type AgentWalletLink,
   type CreateAdmission,
+  type DraftProfile,
   type Scope,
 } from "@pickler/core";
+import { tokenAmount } from "./ledger.js";
 
 /** Which unique index a duplicate hit, so the refusal names the field a person can change. */
+const WALLET_ASSIGNED = "That wallet already belongs to an agent";
 const CONFLICTS: Record<string, string> = {
   agent_profiles_x_handle_key: "X handle already used",
-  agent_wallets_wallet_key: "That wallet already belongs to an agent",
+  agent_wallets_wallet_key: WALLET_ASSIGNED,
 };
 
-/** A retried draft create that names the draft differently from the one it made. */
-const DIFFERENT_TERMS = "This run already became a draft under another name";
+/** What publish re-reads under the lock to know its check still holds. */
+interface PublishState {
+  visibility: "private" | "public";
+  publishedAt: Date | null;
+  killed: boolean;
+  walletAddress: string | null;
+}
+
+/** The agent's state for publish, `FOR UPDATE` of the agent row when `lock`; null outside the workspace. */
+async function publishState(
+  db: Pool | PoolClient,
+  access: StudioAccess,
+  productAgentId: string,
+  lock: boolean,
+): Promise<PublishState | null> {
+  const { rows } = await db.query<PublishState>(
+    `SELECT a.visibility::text AS visibility, a.published_at AS "publishedAt",
+       a.killed_at IS NOT NULL AS killed, acct.address AS "walletAddress"
+     FROM agents.agents a
+     JOIN pickler.product_agents p ON p.product_agent_id = a.id
+     LEFT JOIN wallets.agent_wallets l ON l.agent_id = a.id
+     LEFT JOIN LATERAL (
+       SELECT address FROM wallets.wallet_accounts
+        WHERE wallet_id = l.wallet_id ORDER BY created_at LIMIT 1
+     ) acct ON true
+     WHERE a.id::text = $3 AND p.workspace_id = $1 AND p.tenant_id = $2
+     ${lock ? "FOR UPDATE OF a" : ""}`,
+    [access.workspaceId, access.tenantId, productAgentId],
+  );
+  return rows[0] ?? null;
+}
+
+/** "0x91be…4a07": the first four and last four hex digits, as the studio shows a wallet. */
+const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+
+/** A profile's avatar pattern (0–5); an agent without a profile row draws the first. */
+const avatarPatternOf = (value: unknown): number => {
+  const pattern = Number(value ?? 0);
+  return Number.isInteger(pattern) && pattern >= 0 && pattern <= 5 ? pattern : 0;
+};
+
+const notFound = () => new PilotError("NOT_FOUND", "Agent not found");
 
 export class PostgresStudioDirectory implements StudioDirectory {
   constructor(private readonly pool: Pool) {}
@@ -88,146 +130,35 @@ export class PostgresStudioDirectory implements StudioDirectory {
     );
     return result.rows[0] ?? null;
   }
-  async createAgent(
+  /**
+   * The private draft with its wallet (studio-create-simplified-v1 §4.1), the studio's only create.
+   * One transaction: lock the person's workspace, and answer the draft this wallet already became
+   * when this is the same create retried (same wallet, handle, name, config and profile), without
+   * meeting the lock; under any other terms the wallet is WALLET_ASSIGNED. Otherwise check the
+   * handle, lock the wallet and check it (this person's agent wallet, unlinked, with its rules
+   * approved), run the create lock (funding, the draft limit and the wallet's balances), then write
+   * the agent as a draft, its profile and handle, its runtime row, its product row, and the
+   * wallet's link with the policy ids `confirmPolicies` recorded — never ids from the caller. Any
+   * failure rolls all of it back.
+   */
+  async createDraft(
     access: StudioAccess,
     userId: string,
     input: {
       name: string;
       handle: string;
       config: AgentConfig;
-      key: string;
-      profile: AgentProfileInput;
-      wallet: AgentWalletLink;
+      profile: DraftProfile;
+      walletId: string;
     },
-    admit?: CreateAdmission,
-  ) {
-    // The beat the profile shows is the category the runtime is scoped to. Core has already
-    // required it; narrowing here keeps the profile from ever being written without one.
-    const scope = input.config.marketScope;
-    if (!scope) {
-      throw new PilotError("INVALID_INPUT", "A category selection is required");
-    }
-    return this.transaction(async (client) => {
-      // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
-      // with revoking research access or deactivating the workspace (both non-key updates), but not
-      // with the KEY SHARE locks foreign-key inserts take, so paper runs and other rows for this
-      // workspace are not held up while the funding lock reads balances over the network.
-      const allowed = await client.query(
-        `SELECT w.id FROM identity.workspaces w
-        JOIN pickler.research_access a ON a.user_id=w.owner_user_id
-        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
-        [access.workspaceId, userId],
-      );
-      if (!allowed.rows.length) {
-        throw new AccessDeniedError("Research access revoked");
-      }
-      const request = JSON.stringify({
-        name: input.name,
-        handle: input.handle,
-        config: input.config,
-        profile: input.profile,
-        wallet: input.wallet,
-      });
-      const existing = await client.query(
-        `SELECT runtime_agent_id, request=$3::jsonb AS matches FROM pickler.product_agents
-        WHERE workspace_id=$1 AND request_key=$2`,
-        [access.workspaceId, input.key, request],
-      );
-      if (existing.rows[0]) {
-        if (!existing.rows[0].matches) {
-          throw new PilotError("CONFLICT", "Idempotency key has different terms");
-        }
-        return { tenantId: access.tenantId, agentId: existing.rows[0].runtime_agent_id as string };
-      }
-      // Only a genuinely new agent meets the funding lock; a replay above does not.
-      await admit?.();
-      const available = await client.query("SELECT identity.handle_available($1) AS available", [
-        input.handle,
-      ]);
-      if (!available.rows[0].available) {
-        throw new PilotError("CONFLICT", "Handle unavailable");
-      }
-      const id = randomUUID();
-      await client.query(
-        "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'active',$5)",
-        [id, access.workspaceId, input.name, input.handle, userId],
-      );
-      await client.query(
-        `INSERT INTO agents.agent_profiles
-           (agent_id, beat, accent, blurb, venue, vibe, voice, decides, wrong, x_handle)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          id,
-          scope.category,
-          input.profile.accent,
-          input.profile.blurb,
-          input.profile.venue,
-          input.profile.vibe,
-          input.profile.voice,
-          input.profile.decides,
-          input.profile.wrong,
-          input.profile.xHandle,
-        ],
-      );
-      // The wallet must be this person's own agent wallet, locked so a concurrent creation
-      // cannot race the check. Its policy ids come from this row, never from the caller: the
-      // server is the only source of which rules a wallet carries, because `confirmPolicies` is
-      // the only writer of `approved_policy_ids`. An agent is created with its wallet, or not at
-      // all: this rejects (rolling the agent and its profile back) before anything else is
-      // written.
-      const owned = await client.query<{ approvedPolicyIds: string[] | null }>(
-        `SELECT approved_policy_ids AS "approvedPolicyIds"
-        FROM wallets.wallets WHERE wallet_id=$1 AND user_id=$2 AND kind='agent' FOR UPDATE`,
-        [input.wallet.walletId, userId],
-      );
-      if (!owned.rows.length) {
-        throw new PilotError("NOT_FOUND", "Wallet not found");
-      }
-      const approvedPolicyIds = owned.rows[0]!.approvedPolicyIds;
-      // Every wallet is written with at least the three DENYs, and `confirmPolicies` records
-      // exactly what was prepared, so fewer ids than that means the rules were never approved.
-      if (!approvedPolicyIds || approvedPolicyIds.length < MIN_AGENT_WALLET_POLICIES) {
-        throw new PilotError("CONFLICT", "Approve the wallet's rules first");
-      }
-      await client.query(
-        "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,$3)",
-        [id, input.wallet.walletId, approvedPolicyIds],
-      );
-      await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
-        input.handle,
-        id,
-      ]);
-      await client.query(
-        "INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3::jsonb)",
-        [access.tenantId, id, JSON.stringify(input.config)],
-      );
-      await client.query(
-        `INSERT INTO pickler.product_agents (product_agent_id,workspace_id,tenant_id,runtime_agent_id,request_key,request)
-        VALUES ($1::uuid,$2,$3,$1::text,$4,$5::jsonb)`,
-        [id, access.workspaceId, access.tenantId, input.key, request],
-      );
-      return { tenantId: access.tenantId, agentId: id };
-    });
-  }
-  /**
-   * The private draft (studio-brief-v1 §6). One transaction: lock the person's workspace, lock the
-   * preview, and answer the draft it already became when this is the same create retried (same
-   * caller, brief and handle), without meeting the lock. Otherwise check the run
-   * (PREVIEW_UNUSABLE, then RUN_STALE, then HANDLE_TAKEN), run the create lock, then write the
-   * agent as a draft with no wallet, its profile and handle, its runtime row with the run's config
-   * snapshot, the preview as its first run with its trace, and the preview's adoption. Any failure
-   * rolls all of it back.
-   */
-  async createDraft(
-    access: StudioAccess,
-    userId: string,
-    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
-    now: number,
     admit?: CreateAdmission,
   ): Promise<{ productId: string; scope: Scope }> {
     try {
       return await this.transaction(async (client) => {
-        // NO KEY UPDATE, as in `createAgent`: creates serialize, foreign-key inserts do not wait.
+        // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
+        // with revoking research access or deactivating the workspace (both non-key updates), but
+        // not with the KEY SHARE locks foreign-key inserts take, so other rows for this workspace
+        // are not held up while the funding lock reads balances over the network.
         const allowed = await client.query(
           `SELECT w.id FROM identity.workspaces w
           JOIN pickler.research_access a ON a.user_id=w.owner_user_id
@@ -237,48 +168,74 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!allowed.rows.length) {
           throw new AccessDeniedError("Research access revoked");
         }
-        const found = await client.query<
-          AdoptablePreview & {
-            config: AgentConfig;
-            decision: unknown;
-            error: string | null;
-            createdAt: number;
-            startedAt: number | null;
-            finishedAt: number | null;
-          }
-        >(
-          `SELECT user_id AS "userId", workspace_id AS "workspaceId", status,
-            expires_at::double precision AS "expiresAt", adopted_at IS NOT NULL AS adopted,
-            fingerprint, config, decision, error, created_at::double precision AS "createdAt",
-            started_at::double precision AS "startedAt", finished_at::double precision AS "finishedAt"
-          FROM pickler.preview_runs WHERE id=$1 FOR UPDATE`,
-          [input.previewRunId],
+        // A wallet becomes one agent, so the wallet is the create's key. The terms are everything
+        // the draft is made of: a retry that changes the voice, brief, caps or sites is not a replay.
+        const key = `draft:${input.walletId}`;
+        const request = JSON.stringify({
+          name: input.name,
+          handle: input.handle,
+          walletId: input.walletId,
+          config: input.config,
+          profile: input.profile,
+        });
+        const replay = await client.query<{ productId: string; agentId: string; matches: boolean }>(
+          `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId",
+            request=$3::jsonb AS matches
+          FROM pickler.product_agents WHERE workspace_id=$1 AND tenant_id=$2 AND request_key=$4`,
+          [access.workspaceId, access.tenantId, request, key],
         );
-        const preview = found.rows[0] ?? null;
-        const caller = { userId, workspaceId: access.workspaceId };
-        const replayed = await this.adoptedDraft(client, access, preview, caller, input);
+        const replayed = replay.rows[0];
         if (replayed) {
-          return replayed;
+          // The same wallet under another name or handle: it already belongs to that draft.
+          if (!replayed.matches) {
+            throw new PilotError("WALLET_ASSIGNED", WALLET_ASSIGNED);
+          }
+          return {
+            productId: replayed.productId,
+            scope: { tenantId: access.tenantId, agentId: replayed.agentId },
+          };
         }
-        assertPreviewAdoptable(preview, caller, input.fingerprint, now);
-        const run = preview!;
         const available = await client.query("SELECT identity.handle_available($1) AS available", [
           input.handle,
         ]);
         if (!available.rows[0].available) {
           throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
         }
-        // Only a genuinely new draft meets the lock, and only once its run and handle are good.
+        // Locked so a concurrent create cannot race the checks. Fewer ids than the three DENYs
+        // every wallet is written with means its rules were never approved.
+        const owned = await client.query<{ approvedPolicyIds: string[] | null; linked: boolean }>(
+          `SELECT w.approved_policy_ids AS "approvedPolicyIds",
+            EXISTS (SELECT 1 FROM wallets.agent_wallets l WHERE l.wallet_id=w.wallet_id) AS linked
+          FROM wallets.wallets w WHERE w.wallet_id=$1 AND w.user_id=$2 AND w.kind='agent' FOR UPDATE`,
+          [input.walletId, userId],
+        );
+        const wallet = owned.rows[0];
+        if (!wallet) {
+          throw new PilotError("WALLET_NOT_FOUND", "Wallet not found");
+        }
+        if (wallet.linked) {
+          throw new PilotError("WALLET_ASSIGNED", WALLET_ASSIGNED);
+        }
+        const approvedPolicyIds = wallet.approvedPolicyIds;
+        if (!approvedPolicyIds || approvedPolicyIds.length < MIN_AGENT_WALLET_POLICIES) {
+          throw new PilotError("POLICIES_MISSING", "Sign its caps first");
+        }
+        // Only a genuinely new draft meets the lock, and only once its handle and wallet are good.
         await admit?.();
         const id = randomUUID();
         await client.query(
           "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'draft',$5)",
           [id, access.workspaceId, input.name, input.handle, userId],
         );
-        // The public face comes in Go Public; the beat is the scope the brief runs on.
+        // A draft trades BTC and ETH perpetuals on Perpl: its beat is crypto, its venue perps.
         await client.query(
-          "INSERT INTO agents.agent_profiles (agent_id, beat, accent) VALUES ($1, 'sports', 'lime')",
-          [id],
+          `INSERT INTO agents.agent_profiles (agent_id, beat, accent, avatar_pattern, venue, voice)
+          VALUES ($1, 'crypto', $2, $3, 'perps', $4)`,
+          [id, input.profile.accent, input.profile.avatarPattern, input.profile.voice],
+        );
+        await client.query(
+          "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,$3)",
+          [id, input.walletId, approvedPolicyIds],
         );
         await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
           input.handle,
@@ -286,109 +243,26 @@ export class PostgresStudioDirectory implements StudioDirectory {
         ]);
         await client.query(
           "INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3::jsonb)",
-          [access.tenantId, id, JSON.stringify(run.config)],
+          [access.tenantId, id, JSON.stringify(input.config)],
         );
-        const request = JSON.stringify({
-          name: input.name,
-          handle: input.handle,
-          previewRunId: input.previewRunId,
-        });
         await client.query(
           `INSERT INTO pickler.product_agents (product_agent_id,workspace_id,tenant_id,runtime_agent_id,request_key,request)
           VALUES ($1::uuid,$2,$3,$1::text,$4,$5::jsonb)`,
-          [id, access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, request],
-        );
-        // The preview becomes its first run: a completed manual run at version 1, which is what
-        // readiness counts (§6: "its first run counts as done").
-        await client.query(
-          `INSERT INTO pickler.runs
-            (id, tenant_id, agent_id, request_key, market_id, trigger, status, created_at, started_at,
-             finished_at, config_version, config, decision, error)
-          VALUES ($1,$2,$3,$4,NULL,'manual','completed',$5,$6,$7,1,$8::jsonb,$9::jsonb,$10)`,
-          [
-            input.previewRunId,
-            access.tenantId,
-            id,
-            `preview:${input.previewRunId}`,
-            run.createdAt,
-            run.startedAt,
-            run.finishedAt,
-            JSON.stringify(run.config),
-            run.decision === null ? null : JSON.stringify(run.decision),
-            run.error,
-          ],
-        );
-        await client.query(
-          `INSERT INTO pickler.events (run_id, type, data, created_at)
-          SELECT $1, type, data, created_at FROM pickler.preview_events
-          WHERE preview_run_id=$1 ORDER BY id`,
-          [input.previewRunId],
-        );
-        // The trace was copied above and the run is now the agent's; the preview keeps only its
-        // row, which a retried create replays from until recovery deletes it.
-        await client.query("DELETE FROM pickler.preview_events WHERE preview_run_id=$1", [
-          input.previewRunId,
-        ]);
-        await client.query(
-          "UPDATE pickler.preview_runs SET adopted_at=$2, adopted_agent_id=$3 WHERE id=$1",
-          [input.previewRunId, now, id],
+          [id, access.workspaceId, access.tenantId, key, request],
         );
         return { productId: id, scope: { tenantId: access.tenantId, agentId: id } };
       });
     } catch (error) {
-      // A handle claimed between the check and the insert hits the unique index instead. A
-      // replay under different terms is a conflict of its own and stays one.
-      if (
-        error instanceof PilotError &&
-        error.code === "CONFLICT" &&
-        error.message !== DIFFERENT_TERMS
-      ) {
+      // A unique index hit between the checks and the inserts: the wallet's link, or else the
+      // handle.
+      if (error instanceof PilotError && error.code === "CONFLICT") {
+        if (error.message === WALLET_ASSIGNED) {
+          throw new PilotError("WALLET_ASSIGNED", WALLET_ASSIGNED);
+        }
         throw new PilotError("HANDLE_TAKEN", "Handle unavailable");
       }
       throw error;
     }
-  }
-  /**
-   * The draft this preview already became, when the create is the same one retried: adopted by
-   * this caller in this workspace, from the same brief, under the same handle. Null otherwise, and
-   * the caller's checks then refuse an adopted preview as PREVIEW_UNUSABLE. A different name for
-   * that same draft is CONFLICT.
-   */
-  private async adoptedDraft(
-    client: PoolClient,
-    access: StudioAccess,
-    preview: AdoptablePreview | null,
-    caller: { userId: string; workspaceId: string },
-    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
-  ): Promise<{ productId: string; scope: Scope } | null> {
-    if (
-      !preview?.adopted ||
-      preview.userId !== caller.userId ||
-      preview.workspaceId !== caller.workspaceId ||
-      preview.fingerprint !== input.fingerprint
-    ) {
-      return null;
-    }
-    const created = await client.query<{ productId: string; agentId: string; name: string }>(
-      `SELECT product_agent_id::text AS "productId", runtime_agent_id AS "agentId",
-        request->>'name' AS name
-      FROM pickler.product_agents
-      WHERE workspace_id=$1 AND tenant_id=$2 AND request_key=$3 AND request->>'handle'=$4`,
-      [access.workspaceId, access.tenantId, `preview:${input.previewRunId}`, input.handle],
-    );
-    const draft = created.rows[0];
-    if (!draft) {
-      return null;
-    }
-    // The same run and handle under another name is the same create with different terms, as
-    // `createAgent` answers a reused key.
-    if (draft.name !== input.name) {
-      throw new PilotError("CONFLICT", DIFFERENT_TERMS);
-    }
-    return {
-      productId: draft.productId,
-      scope: { tenantId: access.tenantId, agentId: draft.agentId },
-    };
   }
   async agentScope(access: StudioAccess, productAgentId: string) {
     const result = await this.pool.query(
@@ -412,10 +286,12 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,pr.accent,p.tenant_id,p.runtime_agent_id
+      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,a.visibility::text AS visibility,
+        a.published_at,xa.handle AS x_handle,pr.accent,pr.avatar_pattern,p.tenant_id,p.runtime_agent_id
       FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
+      LEFT JOIN agents.x_accounts xa ON xa.agent_id=a.id
       WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
       [access.workspaceId, access.tenantId],
     );
@@ -427,8 +303,203 @@ export class PostgresStudioDirectory implements StudioDirectory {
       accent: (ACCENTS as readonly string[]).includes(row.accent)
         ? (row.accent as Accent)
         : ("lime" as const),
+      avatarPattern: avatarPatternOf(row.avatar_pattern),
       draft: row.draft === true,
+      visibility: row.visibility === "public" ? ("public" as const) : ("private" as const),
+      publishedAt: (row.published_at as Date | null) ?? null,
+      xHandle: (row.x_handle as string | null) ?? null,
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
+  }
+  /**
+   * Go Public (studio-draft-dashboard-v1 D8). The check may read the chain, so no lock or
+   * transaction is held across it: read killed and the wallet, run the check, then lock the agent
+   * row in a short transaction and publish only if killed and the wallet are what the check saw.
+   * Changed in between (killed, unlinked, relinked): check again once, then PUBLISH_CONFLICT. The
+   * balance itself can still move after the read; that is the same window the drafts route accepts
+   * for its funding read just before its transaction, and the chain is the truth afterwards.
+   *
+   * The transaction holds the wallet link `FOR SHARE` before it locks and re-reads the agent, so
+   * the link cannot change unseen before COMMIT. A killed agent is refused here too, whatever the
+   * check answered: D8 does not rest on the callback alone.
+   */
+  async publish(access: StudioAccess, productAgentId: string, check: PublishCheck) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const seen = await publishState(this.pool, access, productAgentId, false);
+      if (!seen) {
+        throw notFound();
+      }
+      if (seen.visibility === "public" && seen.publishedAt) {
+        return { visibility: "public" as const, publishedAt: seen.publishedAt };
+      }
+      const blockers = await check({ killed: seen.killed, walletAddress: seen.walletAddress });
+      if (blockers.length) {
+        throw new PublishBlockedError(blockers);
+      }
+      const published = await this.transaction(async (client) => {
+        // A separate statement: Postgres refuses FOR SHARE on the nullable side of an outer join.
+        await client.query(
+          "SELECT 1 FROM wallets.agent_wallets WHERE agent_id::text = $1 FOR SHARE",
+          [productAgentId],
+        );
+        const now = await publishState(client, access, productAgentId, true);
+        if (!now) {
+          throw notFound();
+        }
+        // Published by a concurrent request meanwhile: the same answer as an already public agent.
+        if (now.visibility === "public" && now.publishedAt) {
+          return now.publishedAt;
+        }
+        if (now.killed !== seen.killed || now.walletAddress !== seen.walletAddress) {
+          return null;
+        }
+        if (now.killed) {
+          throw new PublishBlockedError(["KILLED"]);
+        }
+        const { rows } = await client.query<{ publishedAt: Date }>(
+          `UPDATE agents.agents SET visibility = 'public', published_at = now(),
+             status = CASE WHEN status = 'draft' THEN 'active' ELSE status END
+           WHERE id = $1 RETURNING published_at AS "publishedAt"`,
+          [productAgentId],
+        );
+        return rows[0]!.publishedAt;
+      });
+      if (published) {
+        return { visibility: "public" as const, publishedAt: published };
+      }
+    }
+    throw new PilotError("PUBLISH_CONFLICT", "The agent changed while publishing; try again");
+  }
+  /**
+   * Name, accent, avatar pattern and voice name (D14), each only when given. The bounds are the
+   * database's checks and enum; a violation is INVALID_INPUT, as the person's input was out of range.
+   */
+  async updateIdentity(
+    access: StudioAccess,
+    productAgentId: string,
+    identity: { name?: string; accent?: Accent; avatarPattern?: number; voice?: string },
+  ): Promise<void> {
+    try {
+      await this.transaction(async (client) => {
+        const agent = await client.query(
+          `UPDATE agents.agents a SET name = coalesce($4, a.name)
+           FROM pickler.product_agents p
+           WHERE p.product_agent_id = a.id AND p.workspace_id = $1 AND p.tenant_id = $2
+             AND a.id::text = $3
+           RETURNING a.id`,
+          [access.workspaceId, access.tenantId, productAgentId, identity.name ?? null],
+        );
+        if (!agent.rows.length) {
+          throw notFound();
+        }
+        if (
+          identity.accent === undefined &&
+          identity.avatarPattern === undefined &&
+          identity.voice === undefined
+        ) {
+          return;
+        }
+        // Studio drafts are created with a profile; an older agent may have none (readers join
+        // it with LEFT JOIN). Every profile column has a default, so give it one and then edit it.
+        await client.query(
+          `INSERT INTO agents.agent_profiles (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING`,
+          [agent.rows[0].id],
+        );
+        const profile = await client.query(
+          `UPDATE agents.agent_profiles SET accent = coalesce($2::agents.accent, accent),
+             avatar_pattern = coalesce($3, avatar_pattern), voice = coalesce($4, voice)
+           WHERE agent_id = $1`,
+          [
+            agent.rows[0].id,
+            identity.accent ?? null,
+            identity.avatarPattern ?? null,
+            identity.voice ?? null,
+          ],
+        );
+        if (profile.rowCount !== 1) {
+          throw new PilotError("NOT_FOUND", "Agent profile not found");
+        }
+      });
+    } catch (error) {
+      // 23514: a check (name length, avatar pattern, voice length); 22P02: not an accent;
+      // 22003: a number past the column's range (an avatar pattern of 70000).
+      const { code } = error as { code?: string };
+      if (code === "23514" || code === "22P02" || code === "22003") {
+        throw new PilotError("INVALID_INPUT", "Name or avatar out of range");
+      }
+      throw error;
+    }
+  }
+  /**
+   * The Overview's activity (D18): the agent created, its linked wallet created, and each transfer
+   * into or out of that wallet, newest first, at most 50. Only what the database recorded; nothing
+   * is invented. On equal times the later step of the story comes first. Transfers are the wallet
+   * owner's own rows only. History follows the wallet: a transfer is shown on the agent that holds
+   * the wallet now, which is the agent it was made for while wallets are never relinked.
+   */
+  async activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]> {
+    const agent = await this.pool.query<{
+      name: string;
+      createdAt: Date;
+      walletId: string | null;
+      walletOwner: string | null;
+      walletCreatedAt: Date | null;
+      address: string | null;
+    }>(
+      `SELECT a.name, a.created_at AS "createdAt", w.wallet_id AS "walletId",
+         w.user_id AS "walletOwner", w.created_at AS "walletCreatedAt", acct.address
+       FROM agents.agents a
+       JOIN pickler.product_agents p ON p.product_agent_id = a.id
+       LEFT JOIN wallets.agent_wallets l ON l.agent_id = a.id
+       LEFT JOIN wallets.wallets w ON w.wallet_id = l.wallet_id
+       LEFT JOIN LATERAL (
+         SELECT address FROM wallets.wallet_accounts
+          WHERE wallet_id = l.wallet_id ORDER BY created_at LIMIT 1
+       ) acct ON true
+       WHERE a.id::text = $3 AND p.workspace_id = $1 AND p.tenant_id = $2`,
+      [access.workspaceId, access.tenantId, productAgentId],
+    );
+    const row = agent.rows[0];
+    if (!row) {
+      throw notFound();
+    }
+    const events: (AgentActivityEvent & { rank: number })[] = [
+      { kind: "created", text: `${row.name} created`, at: row.createdAt, rank: 0 },
+    ];
+    if (row.walletId && row.walletCreatedAt) {
+      events.push({
+        kind: "wallet",
+        text: row.address
+          ? `Agent wallet created · ${shortAddress(row.address)}`
+          : "Agent wallet created",
+        at: row.walletCreatedAt,
+        rank: 1,
+      });
+      const transfers = await this.pool.query<{
+        inbound: boolean;
+        token: "ausd" | "mon";
+        amount: string;
+        at: Date;
+      }>(
+        `SELECT to_wallet_id = $1 AS inbound, token, amount::text AS amount, created_at AS at
+         FROM wallets.transfers
+         WHERE (to_wallet_id = $1 OR from_wallet_id = $1) AND user_id = $2
+         ORDER BY created_at DESC, id DESC LIMIT 50`,
+        [row.walletId, row.walletOwner],
+      );
+      for (const move of transfers.rows) {
+        const amount = `${tokenAmount(move.token, move.amount)} ${move.token === "mon" ? "MON" : "AUSD"}`;
+        events.push({
+          kind: "transfer",
+          text: move.inbound ? `To ${row.name}'s wallet · ${amount}` : `Back to master · ${amount}`,
+          at: move.at,
+          rank: 2,
+        });
+      }
+    }
+    return events
+      .sort((a, b) => b.at.getTime() - a.at.getTime() || b.rank - a.rank)
+      .slice(0, 50)
+      .map(({ kind, text, at }) => ({ kind, text, at }));
   }
 }

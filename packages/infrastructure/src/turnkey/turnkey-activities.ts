@@ -73,7 +73,7 @@ export function createActivityBuilders(
         type: AGENT_WALLET_ACTIVITY_TYPES.createAgentWallet,
         timestampMs,
         organizationId: input.subOrganizationId,
-        parameters: { walletName: input.handle, accounts: [MONAD_ACCOUNT] },
+        parameters: { walletName: input.name, accounts: [MONAD_ACCOUNT] },
       };
       return unsigned("create_wallet", input.subOrganizationId, request, timestampMs);
     },

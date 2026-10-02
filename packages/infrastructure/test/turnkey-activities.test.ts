@@ -73,14 +73,17 @@ test("the delegated user is one non-root user whose only credential is Pickler's
   });
 });
 
-test("the agent wallet is named after the handle and has the one Monad account", () => {
-  const unsigned = builders.createAgentWallet({ subOrganizationId: "sub-1", handle: "halftime" });
+test("the agent wallet is named as core names it and has the one Monad account", () => {
+  const unsigned = builders.createAgentWallet({
+    subOrganizationId: "sub-1",
+    name: "Agent wallet 1",
+  });
   const body = parsed(unsigned.body);
 
   assert.equal(unsigned.url, "https://tk.test/public/v1/submit/create_wallet");
   assert.equal(body.type, "ACTIVITY_TYPE_CREATE_WALLET");
   assert.equal(body.organizationId, "sub-1");
-  assert.deepEqual(body.parameters, { walletName: "halftime", accounts: [MONAD_ACCOUNT] });
+  assert.deepEqual(body.parameters, { walletName: "Agent wallet 1", accounts: [MONAD_ACCOUNT] });
 });
 
 test("policies are sent as core wrote them, with no consensus where core gave none", () => {
@@ -118,12 +121,15 @@ test("a transaction is signed as Ethereum by the named account", () => {
 });
 
 test("a builder given a timestamp rebuilds the prepared body byte for byte", () => {
-  const prepared = builders.createAgentWallet({ subOrganizationId: "sub-1", handle: "halftime" });
+  const prepared = builders.createAgentWallet({
+    subOrganizationId: "sub-1",
+    name: "Agent wallet 1",
+  });
   const later = createActivityBuilders({ baseUrl: "https://tk.test", now: () => 1 });
 
   const rebuilt = later.createAgentWallet({
     subOrganizationId: "sub-1",
-    handle: "halftime",
+    name: "Agent wallet 1",
     timestampMs: prepared.timestampMs,
   });
 

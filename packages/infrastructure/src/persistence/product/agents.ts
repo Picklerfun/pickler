@@ -30,6 +30,11 @@ export const agentStatus = agentsSchema.enum("agent_status", [
   // A private draft from the brief (studio-brief-v1 §6): no wallet, off the marketplace.
   "draft",
 ]);
+/**
+ * Whether the marketplace shows the agent (studio-draft-dashboard-v1 D7). Apart from `status`,
+ * which says whether it has a wallet and runs: an agent can run and still be private.
+ */
+export const agentVisibility = agentsSchema.enum("agent_visibility", ["private", "public"]);
 export const accent = agentsSchema.enum("accent", [
   "lime",
   "cyan",
@@ -56,6 +61,9 @@ export const agents = agentsSchema
       activeConfigVersion: integer("active_config_version"),
       createdBy: uuid("created_by"),
       killedAt: timestamp("killed_at", { withTimezone: true }),
+      visibility: agentVisibility("visibility").notNull().default("private"),
+      /** When Go Public made it public; set exactly when `visibility` is `public`. */
+      publishedAt: timestamp("published_at", { withTimezone: true }),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     },
@@ -65,11 +73,18 @@ export const agents = agentsSchema
       index("agents_created_by_idx").on(t.createdBy),
       index("agents_handle_owner_idx").on(t.handle, t.id),
       index("agents_active_config_idx").on(t.id, t.activeConfigVersion),
+      index("agents_public_idx")
+        .on(t.publishedAt.desc())
+        .where(sql`${t.visibility} = 'public'`),
       check("agents_name_length", sql`char_length(${t.name}) between 1 and 40`),
       check("agents_chain_id_check", sql`${t.chainId} > 0`),
       check(
         "agents_killed_consistent",
         sql`(${t.status} = 'killed') = (${t.killedAt} is not null)`,
+      ),
+      check(
+        "agents_published_consistent",
+        sql`(${t.visibility} = 'public') = (${t.publishedAt} is not null)`,
       ),
     ],
   )
@@ -85,6 +100,8 @@ export const agentProfiles = agentsSchema
       blurb: text("blurb").notNull().default(""),
       beat: text("beat"),
       accent: accent("accent").notNull().default("lime"),
+      /** One of the six avatar patterns (core's `AVATAR_PATTERNS`), by index. */
+      avatarPattern: smallint("avatar_pattern").notNull().default(0),
       xHandle: text("x_handle"),
       /** Which venue the agent trades on. Public; the runtime's config is not. */
       venue: text("venue").notNull().default("predictions"),
@@ -110,6 +127,7 @@ export const agentProfiles = agentsSchema
       check("agent_profiles_voice_length", sql`char_length(${t.voice}) <= 120`),
       check("agent_profiles_decides_length", sql`char_length(${t.decides}) <= 280`),
       check("agent_profiles_wrong_length", sql`char_length(${t.wrong}) <= 280`),
+      check("agent_profiles_avatar_pattern", sql`${t.avatarPattern} between 0 and 5`),
     ],
   )
   .enableRLS();
@@ -179,5 +197,47 @@ export const agentEvents = agentsSchema
       index("agent_events_workspace_idx").on(t.workspaceId, t.createdAt.desc()),
       check("agent_events_type_length", sql`char_length(${t.eventType}) between 1 and 100`),
     ],
+  )
+  .enableRLS();
+
+/**
+ * The one live Connect X challenge per agent (studio-draft-dashboard-v1 D4): the owner posts the
+ * code from the handle, and a check finds it in a post made after `created_at`.
+ */
+export const xChallenges = agentsSchema
+  .table(
+    "x_challenges",
+    {
+      agentId: uuid("agent_id")
+        .primaryKey()
+        .references(() => agents.id, { onDelete: "cascade" }),
+      handle: text("handle").notNull(),
+      /** "pk-" and eight base32 characters. */
+      code: text("code").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    },
+    (t) => [check("x_challenges_handle_format", sql`${t.handle} ~ '^[A-Za-z0-9_]{1,15}$'`)],
+  )
+  .enableRLS();
+
+/**
+ * The verified X account (D6): one per agent, and an X account (by id and by handle, whatever its
+ * case) verifies one agent.
+ */
+export const xAccounts = agentsSchema
+  .table(
+    "x_accounts",
+    {
+      agentId: uuid("agent_id")
+        .primaryKey()
+        .references(() => agents.id, { onDelete: "cascade" }),
+      xUserId: text("x_user_id").notNull().unique("x_accounts_x_user_id_key"),
+      handle: text("handle").notNull(),
+      verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull(),
+      verificationPostId: text("verification_post_id").notNull(),
+    },
+    (t) => [uniqueIndex("x_accounts_handle_key").on(sql`lower(${t.handle})`)],
   )
   .enableRLS();

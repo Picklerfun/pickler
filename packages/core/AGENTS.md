@@ -68,23 +68,18 @@ appends them to the edge as numbered rules at run time.
 
 `features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
 
-Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.ts`) beside the name,
-handle and configuration: the public profile is authored at birth and the directory adapter writes
-it in the same transaction as the agent, with the beat taken from `marketScope.category`.
+There is one way to create an agent: `StudioDirectory.createDraft`, a private draft created with
+the agent wallet its owner already made, funded and approved the policies of (`walletId` only — the
+policy ids are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
+`features/wallets` recorded on the wallet's row, never from the caller). The draft is created with
+its wallet, or not at all. The model drafter, its vocabulary (`features/studio/draft.ts`) and
+`createAgent` were removed with `/studio/new`.
 
-Creating an agent also takes a required `wallet: AgentWalletLink` (`{ walletId }` — no policy ids:
-those are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
-`features/wallets` already recorded on the wallet's row, never from the caller). An agent is
-created with its wallet, or not at all.
-
-`features/studio/draft.ts` owns the vocabulary of drafting an agent from one line: `VENUES_ON_MAP`
-and `BEATS` (each beat's accent and subcategory labels, with the runtime `SportId` a label maps to,
-or `null`), `SOON_VENUES`/`SOON_BEATS` for what is drawn but cannot run yet (Perpl; every beat but
-Sports), `SUGGESTED_SKILLS`, the `AgentDraft` shape and the `AgentDrafter` port. `unsupported`
-lists what a draft names that cannot run (`venue:<x>`, `beat:<x>`) so nothing is silently dropped;
-`draftToConfig` refuses such a draft, refuses an unknown subcategory label, keeps only the beat's
-suggested skills and builds a scoped config that passes `assertConfig` (no legacy `categoryIds`,
-web on, style policy, six-hour interval). api-schema mirrors these lists; a workers/api test pins them.
+`features/studio/create.ts` owns one-screen creation: `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`,
+`MIN_START_MICRO_AUSD` and `MIN_START_MON_WEI`, `DEFAULT_BRIEF`, `prepareDraft` (the one path from
+the screen's input to the draft's config and profile), `fundingShortfall` and
+`WalletUnderfundedError`. `AgentConfig.voice` is a `VOICE_KEYS` key checked in `assertConfig`; it
+lives beside `brief`, not in it, because `normalizeBrief` rebuilds the brief from its five fields.
 
 `features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
 §6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
@@ -110,9 +105,8 @@ per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
 checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
 person picks it right before turning the schedule on. With the schedule on, the next run moves to
 `nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
-A retried create is recognised inside `StudioDirectory.createAgent` (by workspace and
-idempotency key) and `createDraft` (by the adopted preview), before `admit` runs; the port has no
-separate lookup.
+A retried create is recognised inside `StudioDirectory.createDraft` (by the wallet it links),
+before `admit` runs; the port has no separate lookup.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
@@ -196,9 +190,19 @@ approval for rules nobody confirmed. `confirmDelegatedUser` refuses (`DelegatedU
 before forwarding when a delegated user is already recorded.
 Whether a ceremony is the person's first agent (which adds the self-delete policy) is decided
 from `hasLinkedAgentWallet`, never by the caller; policies prepared for a first agent stop
-confirming once another wallet is linked. `prepareAgentWallet` answers `{ existing }` (`ExistingAgentWallet`) for an unlinked
-wallet already named after the handle, so a retry never mints a second one; its
-`policiesApproved` is true when the store's `approvedPolicyIds` (`OrphanAgentWallet`) hold at least
+confirming once another wallet is linked. `prepareAgentWallet(userId)` and
+`confirmAgentWallet(userId, signed)` take no handle: a new wallet is "Agent wallet N", N one more
+than `countAgentWallets`, derived at prepare and again at confirm. A wallet recorded in between
+moves N and the stale stamp is refused before forwarding, which is wanted (a fresh prepare resumes
+the unlinked wallet instead of minting another); two confirms racing together may share a label.
+`preparePolicies` refuses with studio's `WalletUnderfundedError` until the wallet's balances (the
+optional `balances: WalletBalanceReader` dep; absent is `DepositsUnavailableError`) meet
+`fundingShortfall`'s minimums; `confirmPolicies` does not check them again. Both refuse a wallet
+already linked to an agent (`AgentWalletLinkedError`, the signing family's 409 `wallet_assigned`):
+its rules were approved and linked at create, and a second set would leave them apart. `prepareAgentWallet`
+answers `{ existing }` (`ExistingAgentWallet`) for the person's newest unlinked agent wallet
+(`findUnlinkedWallet`), whatever its name, so a retry never mints a second one; its
+`policiesApproved` is true when the store's `approvedPolicyIds` (`UnlinkedAgentWallet`) hold at least
 `MIN_AGENT_WALLET_POLICIES` (3, the DENYs every wallet is written with, exported from
 `domain/agent-wallet-policies.ts` and also the link floor the studio directory requires), so a retry
 skips the rules prompt too. The link to an agent
@@ -255,6 +259,27 @@ a broadcast for any reason other than a duplicate, confirm calls the optional
 `reportUnrecordedDeposit` dep with the agent id, hash and amount, then rethrows. The API logs that
 with `console.error`. `DepositNotSendableError` (a failed gas estimate) and
 `DepositAlreadyRecordedError` (a hash recorded twice) also come from adapters.
+
+The stamped-transaction checks above live in one `checkStampedTransfer` inside the service, used by
+deposits and transfers alike. `prepareTransfer(userId, request)` and `confirmTransfer(userId,
+request, signed)` move AUSD or MON (`TransferRequest`: `from`/`to` are `"master"` or an agent
+wallet id, exactly one side the master; `amount` in base units, positive; else
+`InvalidTransferError`). The master is the account's `masterWalletId` and address; the other side
+must be the caller's own `kind='agent'` wallet through `findOwnedAgentWallet` (else
+`AgentWalletNotFoundError`), checked before anything is built or forwarded, at prepare and again
+at confirm. A chain whose token is not six decimals is `DepositsUnavailableError`. Only prepare
+reads balances: the source must hold the amount (else `InsufficientFundsError`, also for an
+unreadable balance), and its MON must cover the built transaction's gas limit × max fee, plus the
+amount for MON (else `InsufficientGasError`). Confirm does not re-read them, so a repeat reaches its
+recorded-hash check and a retry after a failed save records the row; the chain refuses an
+overdraft. The source signs; for MON the port's `prepareNativeTransfer` /
+`inspectNativeTransfer` replace the token pair, the stamped transaction must be a plain transfer to
+the target of exactly the amount with gas at most `MAX_NATIVE_TRANSFER_GAS`, and the fee and
+nonce checks are the deposit's against the source's nonce. Confirm refuses a recorded hash
+(`TransferAlreadyRecordedError`), broadcasts, forgets both addresses' balances and calls
+`saveTransfer`; a failed save after a broadcast, other than a duplicate, calls the optional
+`reportUnrecordedTransfer`. `listWallets(userId)` answers the master and `listAgentWallets` with
+each wallet's balances and `readAt`.
 
 ## Markets
 

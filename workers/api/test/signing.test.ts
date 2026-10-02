@@ -19,6 +19,9 @@ import {
   type StoredChallenge,
   type SubOrganizationCreator,
   createProfileService,
+  MIN_START_MICRO_AUSD,
+  MIN_START_MON_WEI,
+  type WalletBalanceReader,
 } from "@pickler/core";
 import { createActivityBuilders } from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
@@ -170,6 +173,8 @@ function harness(
     wallets: [] as Parameters<AgentWalletRepository["saveWallet"]>[0][],
     builds: [] as { kind: string; input: unknown }[],
     hasLinked: false,
+    /** Wallet ids already an agent's. */
+    linked: new Set<string>(),
     approved: [] as { userId: string; walletId: string; policyIds: string[] }[],
   };
   const agentWallets: AgentWalletRepository = {
@@ -182,8 +187,9 @@ function harness(
     async saveWallet(input) {
       ceremony.wallets.push(input);
     },
-    async findOrphanWallet(userId, name) {
-      const found = ceremony.wallets.find((w) => w.userId === userId && w.name === name);
+    async findUnlinkedWallet(userId) {
+      // The fake links nothing: the newest wallet of this person's is the one a retry resumes.
+      const found = ceremony.wallets.findLast((w) => w.userId === userId);
       const approved = ceremony.approved.findLast((a) => a.walletId === found?.walletId);
       return found
         ? {
@@ -193,9 +199,25 @@ function harness(
           }
         : null;
     },
+    async countAgentWallets(userId) {
+      return ceremony.wallets.filter((w) => w.userId === userId).length;
+    },
+    async listAgentWallets() {
+      return [];
+    },
+    async saveTransfer() {},
+    async transferRecorded() {
+      return false;
+    },
     async findOwnedAgentWallet(userId, walletId) {
       const found = ceremony.wallets.find((w) => w.userId === userId && w.walletId === walletId);
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            linked: ceremony.linked.has(found.walletId),
+          }
+        : null;
     },
     async hasLinkedAgentWallet() {
       return ceremony.hasLinked;
@@ -207,6 +229,9 @@ function harness(
       ceremony.approved.push({ userId, walletId, policyIds });
     },
     async saveDeposit() {},
+    async depositRecorded() {
+      return false;
+    },
   };
   // The real Turnkey builders, recorded: the confirm routes compare what was stamped against a
   // rebuild, so the tamper tests below have to edit the bodies Turnkey would really receive.
@@ -237,6 +262,20 @@ function harness(
     },
   };
 
+  /** What the agent wallet holds on chain, as the custody service reads it; the minimums by default. */
+  const funds: { monWei: bigint | null; ausdMicro: bigint | null; fail?: Error } = {
+    monWei: MIN_START_MON_WEI,
+    ausdMicro: MIN_START_MICRO_AUSD,
+  };
+  const walletBalances: WalletBalanceReader = {
+    async read() {
+      if (funds.fail) {
+        throw funds.fail;
+      }
+      return { monWei: funds.monWei, ausdMicro: funds.ausdMicro };
+    },
+  };
+
   const orphans: { userId: string; subOrganizationId: string; requestId: string }[] = [];
   const requestIds: string[] = [];
   let seed = 0;
@@ -250,6 +289,7 @@ function harness(
       forwarder,
       agentActivities,
       agentWallets,
+      balances: walletBalances,
       delegatedPublicKey: delegatedKey.value,
       venueContracts: [],
       rpId: "pickler.fun",
@@ -332,6 +372,7 @@ function harness(
     ceremony,
     nextActivity,
     delegatedKey,
+    funds,
   };
 }
 
@@ -1199,24 +1240,20 @@ test("without Pickler's delegated key the ceremony answers 503 and builds nothin
   assert.deepEqual(h.ceremony.builds, []);
 });
 
-test("a wallet is prepared under a valid handle, confirmed, and a retry answers the existing one", async () => {
+test("a wallet is prepared as Agent wallet N, confirmed, and a retry answers the existing one", async () => {
   const h = harness();
   await registered(h);
 
-  const bad = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "Half Time" });
-  assert.equal(bad.status, 400);
-
-  const res = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  const res = await post(h, "/v1/signing/agents/wallet/prepare", {});
   assert.equal(res.status, 200);
   const prepared = (await data(res)) as unknown as Prepared;
   assert.equal(prepared.url, "https://api.turnkey.com/public/v1/submit/create_wallet");
   assert.equal(prepared.organizationId, "sub-1");
-  assert.equal(JSON.parse(prepared.body).parameters.walletName, "halftime");
+  assert.equal(JSON.parse(prepared.body).parameters.walletName, "Agent wallet 1");
 
-  // Stamped as prepared but confirmed under another handle: not the activity Pickler built.
+  // Stamped over an edited body: not the activity Pickler built.
   const renamed = await post(h, "/v1/signing/agents/wallet/confirm", {
-    handle: "otherbot",
-    signed: stamp(prepared),
+    signed: stamp(prepared, prepared.body.replace("Agent wallet 1", "Agent wallet 9")),
   });
   assert.equal(renamed.status, 400);
   assert.deepEqual(h.forwards, []);
@@ -1225,7 +1262,6 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
     createWalletResult: { walletId: "w-1", addresses: [ADDRESS] },
   });
   const confirmed = await post(h, "/v1/signing/agents/wallet/confirm", {
-    handle: "halftime",
     signed: stamp(prepared),
   });
   assert.equal(confirmed.status, 200);
@@ -1237,7 +1273,7 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
 
   // The retry answers the unlinked wallet and builds no second create_wallet.
   const builtBefore = h.ceremony.builds.length;
-  const retry = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  const retry = await post(h, "/v1/signing/agents/wallet/prepare");
   assert.deepEqual(await data(retry), {
     existing: { wallet_id: "w-1", address: ADDRESS, policies_approved: false },
   });
@@ -1245,16 +1281,86 @@ test("a wallet is prepared under a valid handle, confirmed, and a retry answers 
 
   // Once its rules were approved, the retry says so, and the browser skips that prompt too.
   h.ceremony.approved.push({ userId: "u", walletId: "w-1", policyIds: ["p1", "p2", "p3"] });
-  const approved = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+  const approved = await post(h, "/v1/signing/agents/wallet/prepare", {});
   assert.deepEqual(await data(approved), {
     existing: { wallet_id: "w-1", address: ADDRESS, policies_approved: true },
   });
+});
+
+test("a handle in the wallet prepare body is refused", async () => {
+  const h = harness();
+  await registered(h);
+
+  const res = await post(h, "/v1/signing/agents/wallet/prepare", { handle: "halftime" });
+
+  assert.equal(res.status, 400);
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("WalletUnderfundedError on policies prepare is 409 wallet_underfunded with detail", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.funds.monWei = 0n;
+  h.funds.ausdMicro = null;
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 409);
+  const body = await json(res);
+  assert.equal(body["error"], "wallet_underfunded");
+  assert.deepEqual(body["detail"], {
+    ausdMicro: null,
+    monWei: "0",
+    minAusdMicro: "10000000",
+    minMonWei: "500000000000000000",
+  });
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("policies for a wallet already linked to an agent are 409 wallet_assigned", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.ceremony.linked.add("w-1");
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 409);
+  assert.equal((await json(res))["error"], "wallet_assigned");
+  assert.deepEqual(h.ceremony.builds, []);
 });
 
 const policyNames = (prepared: Prepared) =>
   (JSON.parse(prepared.body).parameters.policies as { policyName: string }[]).map(
     (p) => p.policyName,
   );
+
+test("a chain that answers neither balance on policies prepare is 503 balances_unavailable", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.funds.monWei = null;
+  h.funds.ausdMicro = null;
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 503);
+  assert.equal((await json(res))["error"], "balances_unavailable");
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("a balance read that throws on policies prepare is 503 balances_unavailable", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.funds.fail = new Error("timeout");
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 503);
+  assert.equal((await json(res))["error"], "balances_unavailable");
+});
 
 test("the first agent's policies carry the self-delete policy; a later agent's do not", async () => {
   const h = harness();

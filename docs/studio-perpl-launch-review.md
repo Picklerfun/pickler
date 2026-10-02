@@ -122,19 +122,20 @@ No component may infer this binding from ticker, display name or unsigned metada
 
 ### Agent lifecycle
 
-Main contains two creation journeys, both persisted:
+Main contains one creation journey, persisted:
 
-| UI entry               | Current behavior                                                                                          | Wallet/token outcome                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/studio` empty home   | Edit a brief, run a preview, then adopt it as a private draft                                             | No agent wallet or token                                            |
-| `/studio/new`          | Describe or configure step by step, approve Turnkey wallet/policies, create agent and start its first run | Linked agent wallet; no token or completed public-launch transition |
-| Draft home “Go public” | Visual panel whose steps are marked SOON and whose button is disabled                                     | No publication operation                                            |
+| UI entry                | Current behavior                                                                             | Wallet/token outcome                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `/studio` create screen | Create and fund the agent wallet, then "Create" signs its policies and saves a private draft | Linked, funded agent wallet; no token or completed public-launch transition |
+| Draft home “Go public”  | Visual panel whose steps are marked SOON and whose button is disabled                        | No publication operation                                                    |
 
-The first flow tests before saving the draft; the second provisions before its first run.
-Creating a wallet-backed agent does not prove public deployment, token creation or Perpl
-execution. Evidence: [brief creation](../apps/web/src/features/studio/home/empty.tsx),
-[wallet-backed ceremony](../apps/web/src/features/studio/create/ceremony.ts) and
-[disabled publication panel](../apps/web/src/features/studio/home/go-public.tsx).
+There is one creation flow (`/studio/new` and the brief's paper run are gone): the wallet is
+made and funded first, then the draft is created with it. Creating a wallet-backed draft does not
+prove public deployment, token creation or Perpl execution. Evidence:
+[create screen](../apps/web/src/features/studio/new-agent/new-agent.tsx),
+[wallet-first ceremony](../apps/web/src/features/studio/new-agent/ceremony.ts) and
+[Go Public panel](../apps/web/src/features/studio/draft/go-public.tsx)
+(disabled at the time of this review; studio-draft-dashboard-v1 makes it publish the draft).
 
 Proposed unification: use one persisted agent identity from draft through publication. Keep
 step-by-step configuration only as another editor for that same draft, then prepare/reconcile
@@ -192,8 +193,7 @@ Existence in source does not prove a route is mounted/configured in a deployed e
 | Additional passkey      | `GET /v1/signing/passkeys`, `POST /v1/signing/passkeys/add/{prepare,confirm}`                                                                              | User passkey ceremony                                       |
 | Agent delegation/wallet | `GET /v1/signing/agents/state`, `POST /v1/signing/agents/{delegated,wallet}/{prepare,confirm}`                                                             | JWT and exact stamped activities                            |
 | Agent policies          | `POST /v1/signing/agents/wallet/:walletId/policies/{prepare,confirm}`                                                                                      | Own wallet, server-owned policy terms                       |
-| Agent creation/read     | `GET/POST /v1/studio/agents`, `GET /v1/studio/agents/:id`                                                                                                  | Scoped identity and approved wallet                         |
-| Model drafting          | `POST /v1/studio/agents/draft`                                                                                                                             | Model-based drafting; not a saved private draft             |
+| Agent creation/read     | `GET /v1/studio/agents`, `POST /v1/studio/drafts`, `GET /v1/studio/agents/:id`                                                                             | Scoped identity and approved, funded wallet                 |
 | Funding wallet          | `POST /v1/studio/agents/:id/deposit/{prepare,confirm}`                                                                                                     | AUSD wallet transfer, not exchange collateral               |
 | Controls                | `PUT /v1/studio/agents/:id/{config,limits,interval,pause,schedule}`                                                                                        | Research controls; stored spend limits not live enforcement |
 | Research                | `GET/POST /v1/studio/agents/:id/runs`, `GET /v1/studio/runs/:id`, `GET /v1/studio/runs/:id/events`                                                         | Shared research runner                                      |

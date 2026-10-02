@@ -55,7 +55,7 @@ export type FlowEvent =
   /** The sign-up / sign-in toggle on the account screen. `recover` is never chosen, only entered. */
   | { type: "mode_chosen"; mode: "up" | "in" }
   | { type: "code_sent"; email: string }
-  /** Typing in the six cells. The machine holds the code so `change_email` can forget it. */
+  /** Typing in the eight cells. The machine holds the code so `change_email` can forget it. */
   | { type: "code_changed"; code: string }
   | { type: "handle_claimed"; handle: string }
   /**

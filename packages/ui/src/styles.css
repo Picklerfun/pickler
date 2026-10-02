@@ -617,7 +617,7 @@ h2 {
     color var(--pk-duration);
 }
 
-.pk-segment:hover:not([aria-pressed="true"]) {
+.pk-segment:hover:not([aria-pressed="true"]):not(:disabled) {
   color: var(--pk-ink);
 }
 
@@ -629,6 +629,10 @@ h2 {
 .pk-segment[aria-pressed="true"] {
   background: var(--pk-panel-2);
   color: var(--pk-ink);
+}
+
+.pk-segment:disabled {
+  cursor: not-allowed;
 }
 
 /* Taking a side reads as loud as the money it moves. */

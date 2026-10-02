@@ -66,7 +66,8 @@ export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: 
   return {
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
-    getLanding: createGetLanding(adapters.landing),
+    // The sample landing, with the waitlist's real count under its form.
+    getLanding: createGetLanding(adapters.landing, () => adapters.waitlist.count()),
     joinWaitlist: createJoinWaitlist(adapters.waitlist, adapters.applicants),
     getApplicant: createGetApplicant(adapters.applicants),
     submitApplication: createSubmitApplication(adapters.applicants),
