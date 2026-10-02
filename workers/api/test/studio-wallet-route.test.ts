@@ -227,7 +227,10 @@ test("an agent holding 3 AUSD cannot run alone, and the schedule is refused as N
   const refused = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
 
   assert.equal(refused.status, 409);
-  assert.deepEqual(await refused.json(), { error: "NOT_FUNDED" });
+  assert.deepEqual(await refused.json(), {
+    error: "NOT_FUNDED",
+    message: "Fund its wallet · min. 10 AUSD",
+  });
   assert.deepEqual(scheduled, []);
 });
 
@@ -255,7 +258,7 @@ test("the first run comes before funding; the schedule keeps answering NOT_READY
   const refused = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
 
   assert.equal(refused.status, 409);
-  assert.deepEqual(await refused.json(), { error: "NOT_READY" });
+  assert.deepEqual(await refused.json(), { error: "NOT_READY", message: "Run once by hand" });
   assert.deepEqual(scheduled, []);
 });
 
@@ -337,7 +340,10 @@ test("balances that are not composed answer 503 BALANCES_UNAVAILABLE", async () 
   const response = await app.request(`/agents/${FIRST}`);
 
   assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { error: "BALANCES_UNAVAILABLE" });
+  assert.deepEqual(await response.json(), {
+    error: "BALANCES_UNAVAILABLE",
+    message: "Balances are not available",
+  });
 });
 
 test("a balance that cannot be read fails the request instead of reading as zero", async () => {
@@ -348,7 +354,10 @@ test("a balance that cannot be read fails the request instead of reading as zero
 
   assert.equal(one.status, 500);
   assert.equal(all.status, 500);
-  assert.deepEqual(await one.json(), { error: "INTERNAL_OR_PROVIDER_FAILURE" });
+  assert.deepEqual(await one.json(), {
+    error: "INTERNAL_OR_PROVIDER_FAILURE",
+    message: "Something went wrong; try again",
+  });
 });
 
 test("an agent without a wallet reads as unfunded and does not block creation", async () => {

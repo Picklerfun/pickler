@@ -42,7 +42,7 @@ async function setup(t: TestContext) {
   const studio = new PostgresStudioDirectory(store.pool);
   const directory: AgentDirectory = new PostgresAgentDirectory(store.pool);
   const owner = await draftOwner(store.pool, studio, { profile: "owner_one", handle: "halftime" });
-  return { pool: store.pool, studio, directory, ...owner };
+  return { pool: store.pool, store, studio, directory, ...owner };
 }
 
 /** A person with their own profile, workspace, agent wallet and a draft named Halftime. */
@@ -319,6 +319,14 @@ async function otherAgent(f: Fixture, handle = "other_one"): Promise<string> {
   return id;
 }
 
+/** Moves an agent's challenge 11 s into the past, as if issued before the 10 s limit. */
+async function backdate(pool: Pool, agentId: string) {
+  await pool.query(
+    "UPDATE agents.x_challenges SET created_at = created_at - interval '11 seconds' WHERE agent_id = $1",
+    [agentId],
+  );
+}
+
 const isCode = (code: string) => (error: unknown) =>
   error instanceof PilotError && error.code === code;
 
@@ -328,12 +336,13 @@ test("an agent keeps one live X challenge, and its checks", async (t) => {
   const expiresAt = new Date(Date.now() + 86_400_000);
 
   assert.equal(await x.challenge(f.agentId), null);
-  await x.saveChallenge(f.agentId, { handle: "OldBot", code: "pk-aaaaaaaa", expiresAt });
-  const saved = await x.saveChallenge(f.agentId, {
-    handle: "HalftimeBot",
-    code: "pk-bbbbbbbb",
-    expiresAt,
-  });
+  await x.saveChallenge(f.agentId, { handle: "OldBot", code: "pk-aaaaaaaa", expiresAt }, 10_000);
+  await backdate(f.pool, f.agentId);
+  const saved = await x.saveChallenge(
+    f.agentId,
+    { handle: "HalftimeBot", code: "pk-bbbbbbbb", expiresAt },
+    10_000,
+  );
 
   const challenge = await x.challenge(f.agentId);
   assert.deepEqual(challenge, saved);
@@ -353,19 +362,62 @@ test("an agent keeps one live X challenge, and its checks", async (t) => {
   assert.equal(await x.claimCheck(f.agentId, later, 10_000), true);
   assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, later);
 
-  // A new challenge starts its checks over.
-  await x.saveChallenge(f.agentId, { handle: "HalftimeBot", code: "pk-cccccccc", expiresAt });
-  assert.equal((await x.challenge(f.agentId))?.lastCheckedAt, null);
+  // A new challenge within 10 s of the last is refused and writes nothing.
+  assert.equal(
+    await x.saveChallenge(
+      f.agentId,
+      { handle: "HalftimeBot", code: "pk-cccccccc", expiresAt },
+      10_000,
+    ),
+    null,
+  );
+  assert.equal((await x.challenge(f.agentId))?.code, "pk-bbbbbbbb");
+
+  // One after it replaces the code and the start, but keeps the agent's last check, so re-issuing
+  // never resets the check limit.
+  await backdate(f.pool, f.agentId);
+  const renewed = await x.saveChallenge(
+    f.agentId,
+    { handle: "HalftimeBot", code: "pk-dddddddd", expiresAt },
+    10_000,
+  );
+  assert.equal(renewed?.code, "pk-dddddddd");
+  assert.deepEqual(renewed?.lastCheckedAt, later);
+  assert.equal(await x.claimCheck(f.agentId, new Date(later.getTime() + 9_999), 10_000), false);
+});
+
+test("concurrent new challenges: exactly one is issued", async (t) => {
+  const f = await setup(t);
+  const x = new PostgresXStore(f.pool);
+  const expiresAt = new Date(Date.now() + 86_400_000);
+  await x.saveChallenge(f.agentId, { handle: "HalftimeBot", code: "pk-aaaaaaaa", expiresAt }, 0);
+  await backdate(f.pool, f.agentId);
+
+  const issued = await Promise.all(
+    Array.from({ length: 5 }, (_, index) =>
+      x.saveChallenge(
+        f.agentId,
+        { handle: "HalftimeBot", code: `pk-bbbbbbb${index + 2}`, expiresAt },
+        10_000,
+      ),
+    ),
+  );
+
+  assert.equal(issued.filter(Boolean).length, 1);
 });
 
 test("concurrent checks of one challenge: exactly one claims the slot", async (t) => {
   const f = await setup(t);
   const x = new PostgresXStore(f.pool);
-  await x.saveChallenge(f.agentId, {
-    handle: "HalftimeBot",
-    code: "pk-aaaaaaaa",
-    expiresAt: new Date(Date.now() + 86_400_000),
-  });
+  await x.saveChallenge(
+    f.agentId,
+    {
+      handle: "HalftimeBot",
+      code: "pk-aaaaaaaa",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    },
+    0,
+  );
   const at = new Date();
 
   const claims = await Promise.all(
@@ -386,11 +438,15 @@ test("connecting X writes the account and the profile handle, and spends the cha
   const f = await setup(t);
   const x = new PostgresXStore(f.pool);
   const at = new Date("2026-10-02T12:00:00Z");
-  await x.saveChallenge(f.agentId, {
-    handle: "HalftimeBot",
-    code: "pk-aaaaaaaa",
-    expiresAt: new Date(Date.now() + 86_400_000),
-  });
+  await x.saveChallenge(
+    f.agentId,
+    {
+      handle: "HalftimeBot",
+      code: "pk-aaaaaaaa",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    },
+    0,
+  );
 
   await x.connect(f.agentId, { xUserId: "42", handle: "HalftimeBot", postId: "1001", at });
 
@@ -503,6 +559,56 @@ test("publish checks the agent's state, then makes a draft public and active", a
     throw new Error("an already public agent is not checked");
   });
   assert.deepEqual(again, result);
+});
+
+test("a draft-only config write is refused once the agent is published", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+
+  const saved = await f.store.updateConfig(scope, first.version, first.config, {
+    requireDraft: true,
+  });
+  assert.equal(saved.version, first.version + 1);
+
+  await f.studio.publish(f.access, f.agentId, async () => []);
+  // Publish leaves the config version, so only the draft condition stops this write.
+  await assert.rejects(
+    f.store.updateConfig(scope, saved.version, saved.config, { requireDraft: true }),
+    isCode("NOT_A_DRAFT"),
+  );
+  assert.equal((await f.store.agent(scope)).version, saved.version);
+});
+
+test("a draft-only config write that waits on a publish sees it and writes nothing", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const before = await f.store.agent(scope);
+  // A publish holds the agent row, as the directory's publish transaction does.
+  const publisher = await f.pool.connect();
+  let outcome: Promise<unknown>;
+  try {
+    await publisher.query("BEGIN");
+    await publisher.query("SELECT 1 FROM agents.agents WHERE id = $1 FOR UPDATE", [f.agentId]);
+    outcome = f.store
+      .updateConfig(scope, before.version, before.config, { requireDraft: true })
+      .then(
+        () => "written",
+        (error: unknown) => error,
+      );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await publisher.query(
+      `UPDATE agents.agents SET visibility = 'public', published_at = now(), status = 'active'
+       WHERE id = $1`,
+      [f.agentId],
+    );
+    await publisher.query("COMMIT");
+  } finally {
+    publisher.release();
+  }
+
+  assert.ok(isCode("NOT_A_DRAFT")(await outcome));
+  assert.equal((await f.store.agent(scope)).version, before.version);
 });
 
 test("publish refuses with the check's blockers and writes nothing", async (t) => {

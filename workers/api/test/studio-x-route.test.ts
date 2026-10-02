@@ -30,8 +30,18 @@ function memoryStore(options: { taken?: string[]; public?: boolean } = {}) {
   const accounts = new Map<string, XAccount>();
   const claims: Date[] = [];
   const store: XStore = {
-    async saveChallenge(agentId, challenge) {
-      const saved = { ...challenge, createdAt: new Date(), lastCheckedAt: null };
+    async saveChallenge(agentId, challenge, intervalMs) {
+      const previous = challenges.get(agentId);
+      const now = new Date();
+      if (previous && now.getTime() - previous.createdAt.getTime() < intervalMs) {
+        return null;
+      }
+      // The check clock is the agent's: it carries over to the new challenge.
+      const saved = {
+        ...challenge,
+        createdAt: now,
+        lastCheckedAt: previous?.lastCheckedAt ?? null,
+      };
       challenges.set(agentId, saved);
       return saved;
     },
@@ -115,10 +125,13 @@ function app({
   store = memoryStore(),
   x = fakeClient(),
   composed = true,
+  owner = true,
 }: {
   store?: ReturnType<typeof memoryStore>;
   x?: ReturnType<typeof fakeClient>;
   composed?: boolean;
+  /** False: a read-only member of the workspace, not its owner. */
+  owner?: boolean;
 } = {}) {
   const record = (id: string): AgentRecord => ({
     id,
@@ -133,7 +146,7 @@ function app({
     access: async () => ({
       workspaceId: "workspace",
       tenantId: "trusted",
-      ownerUserId: "user",
+      ownerUserId: owner ? "user" : "someone-else",
       role: "admin",
       enabled: true,
     }),
@@ -165,7 +178,7 @@ function app({
     } as unknown as ResearchRepository,
     notifyQueued: async () => {},
     wallets: { findAgentWallet: async () => null },
-    balances: { read: async () => 50 },
+    balances: { read: async () => 50, forget: () => {} },
     ...(composed ? { x: { store: store.store, client: x.client } } : {}),
     authenticate: async () => ({
       principal: buildUserPrincipal({
@@ -478,11 +491,70 @@ test("another owner's agent is 404 on every X route and its store is never touch
   assert.equal(store.challenges.size, 0);
 });
 
-test("where X is not composed every X route is 503 X_UNAVAILABLE", async () => {
+test("where X is not composed the state says not available, and the other X routes are 503", async () => {
   const root = app({ composed: false });
 
   const state = await root.request(`/agents/${AGENT}/x`, get());
+  const challenge = await root.request(
+    `/agents/${AGENT}/x/challenge`,
+    send("POST", { handle: "HalftimeBot" }),
+  );
 
-  assert.equal(state.status, 503);
-  assert.equal((await state.json()).error, "X_UNAVAILABLE");
+  assert.equal(state.status, 200);
+  assert.deepEqual(await state.json(), { account: null, challenge: null, available: false });
+  assert.equal(challenge.status, 503);
+  assert.deepEqual(await challenge.json(), {
+    error: "X_UNAVAILABLE",
+    message: "X verification is not composed here",
+  });
+});
+
+test("X state is the owner's: a read-only member is 403 and sees no code", async () => {
+  const store = memoryStore();
+  await challenged(store);
+  const root = app({ store, owner: false });
+
+  const response = await root.request(`/agents/${AGENT}/x`, get());
+
+  assert.equal(response.status, 403);
+  const text = await response.text();
+  assert.equal(JSON.parse(text).error, "RESEARCH_ACCESS_DENIED");
+  assert.ok(!text.includes("pk-abcdefgh"));
+});
+
+test("alternating challenge and verify spends no more X reads than verify alone", async () => {
+  const store = memoryStore();
+  const x = fakeClient({ posts: [] });
+  const root = app({ store, x });
+
+  const first = await root.request(
+    `/agents/${AGENT}/x/challenge`,
+    send("POST", { handle: "HalftimeBot" }),
+  );
+  const checked = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
+  // Within 10 s of the first: no new challenge.
+  const again = await root.request(
+    `/agents/${AGENT}/x/challenge`,
+    send("POST", { handle: "HalftimeBot" }),
+  );
+  // Even a challenge issued later keeps the agent's last check time.
+  store.challenges.get(AGENT)!.createdAt = new Date(Date.now() - X_CHECK_INTERVAL_MS);
+  const later = await root.request(
+    `/agents/${AGENT}/x/challenge`,
+    send("POST", { handle: "HalftimeBot" }),
+  );
+  const rechecked = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
+
+  assert.equal(first.status, 200);
+  assert.deepEqual(await checked.json(), { verified: false, reason: "NOT_FOUND" });
+  assert.equal(again.status, 429);
+  assert.deepEqual(await again.json(), {
+    error: "TOO_MANY_CHECKS",
+    message: "Wait a few seconds before starting again",
+  });
+  assert.equal(later.status, 200);
+  assert.equal(rechecked.status, 429);
+  assert.equal((await rechecked.json()).error, "TOO_MANY_CHECKS");
+  assert.equal(x.reads.length, 1);
+  assert.equal(store.claims.length, 1);
 });

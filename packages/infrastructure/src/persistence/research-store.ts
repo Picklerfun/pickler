@@ -218,6 +218,7 @@ export class PostgresResearchStore implements ResearchRepository {
     scope: Scope,
     expectedVersion: number,
     config: AgentConfig,
+    options: { requireDraft?: boolean } = {},
   ): Promise<AgentRecord> {
     // `spend` is not this method's to write: `updateSpend` is its only writer, and it does not
     // bump the version, so a config saved at that same version must not drop or replace it.
@@ -229,6 +230,18 @@ export class PostgresResearchStore implements ResearchRepository {
       const agent = await this.getAgent(scope, tx, true);
       if (agent.version !== expectedVersion) {
         throw new PilotError("CONFLICT", "Configuration version changed");
+      }
+      if (options.requireDraft) {
+        // FOR SHARE on the product row: publish takes it FOR UPDATE, so a publish either commits
+        // first (and this sees it) or waits for this write. It never locks the runtime row, so the
+        // order cannot deadlock.
+        const product = await tx.execute(sql`select a.status = 'draft' as draft
+          from agents.agents a join pickler.product_agents p on p.product_agent_id = a.id
+          where p.tenant_id = ${scope.tenantId} and p.runtime_agent_id = ${scope.agentId}
+          for share of a`);
+        if (product.rows[0]?.draft !== true) {
+          throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
+        }
       }
       const stored = agent.config.spend;
       const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;

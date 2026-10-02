@@ -55,7 +55,8 @@ export function verificationText(name: string, code: string): string {
 
 /**
  * The post that proves control: by the verified user, made at or after the challenge, carrying the
- * code as a whole token. Case is ignored, as people retype what they copy.
+ * code as a whole token. Case is ignored, as people retype what they copy. A retweet ("RT @…")
+ * carries someone else's words under the user's id, so it never counts.
  */
 export function findVerificationPost(
   posts: readonly XPost[],
@@ -68,6 +69,7 @@ export function findVerificationPost(
       (post) =>
         post.authorId === want.userId &&
         post.createdAt.getTime() >= want.since.getTime() &&
+        !/^\s*RT @/.test(post.text) &&
         token.test(post.text),
     ) ?? null
   );
@@ -104,11 +106,17 @@ export class XHandleTakenError extends Error {
  * throws `XHandleTakenError` when another agent holds the X user id or the handle in any case.
  */
 export interface XStore {
-  /** Replaces any previous challenge: one live challenge per agent. */
+  /**
+   * Replaces any previous challenge: one live challenge per agent. Null, and nothing written, when
+   * the previous challenge was made less than `intervalMs` ago. Atomic, like `claimCheck`. The
+   * agent's last check time carries over to the new challenge, so re-issuing never resets the
+   * one-check-per-10-s limit (spec §8).
+   */
   saveChallenge(
     agentId: string,
     challenge: { handle: string; code: string; expiresAt: Date },
-  ): Promise<XChallenge>;
+    intervalMs: number,
+  ): Promise<XChallenge | null>;
   challenge(agentId: string): Promise<XChallenge | null>;
   /**
    * Claims a "Check again" read at `at`: true and recorded when the challenge exists and was not

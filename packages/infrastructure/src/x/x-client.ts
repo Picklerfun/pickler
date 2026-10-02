@@ -88,6 +88,8 @@ export function createXClient(options: {
         // X takes RFC 3339 to the second (YYYY-MM-DDTHH:mm:ssZ); toISOString adds milliseconds.
         start_time: since.toISOString().replace(/\.\d{3}Z$/, "Z"),
         "tweet.fields": "created_at,author_id",
+        // A retweet is the user's timeline entry for someone else's words: never proof (D4).
+        exclude: "retweets",
       });
       const reply = await get(`/users/${encodeURIComponent(userId)}/tweets?${query}`, postsReply);
       return (reply.data ?? []).map((post) => ({

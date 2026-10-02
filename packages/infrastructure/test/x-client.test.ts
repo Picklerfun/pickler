@@ -86,6 +86,7 @@ test("recentPosts reads the timeline since the challenge and maps to XPost", asy
   // To the second, as X requires: no milliseconds.
   assert.equal(url.searchParams.get("start_time"), "2026-10-02T10:00:00Z");
   assert.equal(url.searchParams.get("tweet.fields"), "created_at,author_id");
+  assert.equal(url.searchParams.get("exclude"), "retweets");
 });
 
 test("recentPosts is empty when X returns no data", async () => {

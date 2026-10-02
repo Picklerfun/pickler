@@ -362,6 +362,7 @@ const noBalances = {
   read: async (): Promise<number> => {
     throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
   },
+  forget: (): void => {},
 };
 
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */

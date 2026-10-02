@@ -37,17 +37,22 @@ export class PostgresXStore implements XStore {
   async saveChallenge(
     agentId: string,
     challenge: { handle: string; code: string; expiresAt: Date },
-  ): Promise<XChallenge> {
-    // A new challenge is a new start: its creation time bounds which posts count, and its checks
-    // begin again.
+    intervalMs: number,
+  ): Promise<XChallenge | null> {
+    // A new challenge is a new start for which posts count (its creation time bounds them), but
+    // not for the check limit: `last_checked_at` is the agent's and stays. One statement: the
+    // conflict's row lock serializes concurrent issues, and one made within the interval of the
+    // previous matches nothing and writes nothing.
     const { rows } = await this.pool.query<XChallenge>(
       `INSERT INTO agents.x_challenges (agent_id, handle, code, expires_at) VALUES ($1, $2, $3, $4)
        ON CONFLICT (agent_id) DO UPDATE SET handle = excluded.handle, code = excluded.code,
-         created_at = now(), expires_at = excluded.expires_at, last_checked_at = NULL
+         created_at = now(), expires_at = excluded.expires_at
+       WHERE agents.x_challenges.created_at
+         <= now() - $5::double precision * interval '1 millisecond'
        RETURNING ${CHALLENGE_COLUMNS}`,
-      [agentId, challenge.handle, challenge.code, challenge.expiresAt],
+      [agentId, challenge.handle, challenge.code, challenge.expiresAt, intervalMs],
     );
-    return rows[0]!;
+    return rows[0] ?? null;
   }
   async challenge(agentId: string): Promise<XChallenge | null> {
     const { rows } = await this.pool.query<XChallenge>(

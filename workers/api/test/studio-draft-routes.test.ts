@@ -52,6 +52,7 @@ function app({
   killed = false,
   wallet = true,
   publishConflict = false,
+  publishesDuringSetup = false,
   ledger = [] as TransferLedgerEntry[],
 }: {
   balance?: number;
@@ -59,6 +60,8 @@ function app({
   killed?: boolean;
   wallet?: boolean;
   publishConflict?: boolean;
+  /** A publish lands after setup's draft check and before its write. */
+  publishesDuringSetup?: boolean;
   ledger?: TransferLedgerEntry[];
 } = {}) {
   const agents: Agent[] = [
@@ -90,6 +93,8 @@ function app({
   const identities: { id: string; identity: Record<string, unknown> }[] = [];
   const ledgerReads: string[] = [];
   const checks: unknown[] = [];
+  const chain = { balance };
+  const balanceCache = new Map<string, number>();
   const record = (id: string): AgentRecord => ({
     id,
     tenantId: "trusted",
@@ -164,12 +169,25 @@ function app({
   const studio = studioRoutes({
     directory,
     repository: {
-      agent: async (scope: { agentId: string }) => record(scope.agentId),
+      agent: async (scope: { agentId: string }) => {
+        if (publishesDuringSetup) {
+          find(scope.agentId).draft = false;
+        }
+        return record(scope.agentId);
+      },
       readiness: async () => ({ connectionsChecked: false, manualSucceeded: true }),
-      updateConfig: async (scope: { agentId: string }, expected: number, config: AgentConfig) => {
+      updateConfig: async (
+        scope: { agentId: string },
+        expected: number,
+        config: AgentConfig,
+        options: { requireDraft?: boolean } = {},
+      ) => {
         const stored = configs.get(scope.agentId)!;
         if (stored.version !== expected) {
           throw new PilotError("CONFLICT", "Configuration version changed");
+        }
+        if (options.requireDraft && !find(scope.agentId).draft) {
+          throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
         }
         configs.set(scope.agentId, { version: expected + 1, config });
         return record(scope.agentId);
@@ -182,12 +200,21 @@ function app({
           ? { walletId: `w-${id}`, address: ADDRESS }
           : null,
     },
+    // Cached per address like the real reader, until `forget`.
     balances: {
-      read: async () => {
+      read: async (address) => {
         if (balanceFails) {
           throw new Error("JSON-RPC eth_call failed: 502");
         }
-        return balance;
+        const cached = balanceCache.get(address);
+        if (cached !== undefined) {
+          return cached;
+        }
+        balanceCache.set(address, chain.balance);
+        return chain.balance;
+      },
+      forget: (address) => {
+        balanceCache.delete(address);
       },
     },
     transfers: {
@@ -211,7 +238,7 @@ function app({
     await next();
   });
   root.route("/", studio);
-  return { root, agents, configs, identities, ledgerReads, checks };
+  return { root, agents, configs, identities, ledgerReads, checks, chain };
 }
 
 const send = (method: string, payload?: unknown) => ({
@@ -310,6 +337,20 @@ test("setup on an agent that is not a draft is 409 NOT_A_DRAFT and writes nothin
   assert.equal(response.status, 409);
   assert.equal((await response.json()).error, "NOT_A_DRAFT");
   assert.equal(f.configs.get(LIVE)!.version, 4);
+});
+
+test("setup that a publish overtakes is 409 NOT_A_DRAFT, refused by the write itself", async () => {
+  const f = app({ publishesDuringSetup: true });
+
+  const response = await f.root.request(
+    `/agents/${DRAFT}/setup`,
+    send("PUT", { expectedVersion: 1, voice: "deadpan" }),
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error, "NOT_A_DRAFT");
+  assert.equal(f.configs.get(DRAFT)!.version, 1);
+  assert.deepEqual(f.identities, []);
 });
 
 test("setup at a stale version is 409 CONFLICT, the config store's own code", async () => {
@@ -427,6 +468,19 @@ test("publish makes a funded draft public, and the studio agent says so", async 
   );
   assert.equal(agent.visibility, "public");
   assert.equal(agent.publishedAt, PUBLISHED_AT.toISOString());
+});
+
+test("publish reads the balance fresh, not the cached one", async () => {
+  const f = app({ balance: 50 });
+  // The studio agent's read caches 50 AUSD; then the owner pulls it back to master.
+  await f.root.request(`/agents/${DRAFT}`, get());
+  f.chain.balance = 3;
+
+  const response = await f.root.request(`/agents/${DRAFT}/publish`, send("POST", {}));
+
+  assert.equal(response.status, 409);
+  assert.deepEqual((await response.json()).detail, { blockers: ["FUNDS"] });
+  assert.equal(f.agents[0]!.visibility, "private");
 });
 
 test("publish on a public agent answers its state without a check", async () => {

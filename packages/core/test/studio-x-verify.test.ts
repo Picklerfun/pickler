@@ -55,3 +55,23 @@ test("a post matches only from the user, after the challenge, with the code", ()
   // Case-insensitive on the code, as X may not change case but people retype it.
   assert.equal(findVerificationPost([{ ...post, text: "PK-ABCDEFGH" }], want)?.id, "1");
 });
+
+test("a retweet carrying the code is not the user's own post", () => {
+  const post = {
+    id: "1",
+    authorId: "u1",
+    text: "RT @attacker: Verifying Halftime on @pickler · pk-abcdefgh",
+    createdAt: new Date("2026-10-02T10:05:00Z"),
+  };
+  const want = { userId: "u1", code: "pk-abcdefgh", since: new Date("2026-10-02T10:00:00Z") };
+  assert.equal(findVerificationPost([post], want), null);
+  assert.equal(
+    findVerificationPost([{ ...post, text: "  RT @attacker: pk-abcdefgh" }], want),
+    null,
+  );
+  // A post that only mentions "RT @" later is still the user's own.
+  assert.equal(
+    findVerificationPost([{ ...post, text: "pk-abcdefgh, RT @pickler if you like" }], want)?.id,
+    "1",
+  );
+});
