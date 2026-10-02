@@ -3,16 +3,23 @@ import assert from "node:assert/strict";
 import {
   challengeCode,
   findVerificationPost,
-  normalizeXHandle,
+  parseXHandle,
   verificationText,
 } from "../src/features/studio/x-verify.js";
+import * as core from "../src/index.js";
 
 test("handles: @ optional, 1-15 of [A-Za-z0-9_]", () => {
-  assert.equal(normalizeXHandle("@HalftimeBot"), "HalftimeBot");
-  assert.equal(normalizeXHandle(" halftime_bot "), "halftime_bot");
-  assert.equal(normalizeXHandle("half time"), null);
-  assert.equal(normalizeXHandle("a".repeat(16)), null);
-  assert.equal(normalizeXHandle("@"), null);
+  assert.equal(parseXHandle("@HalftimeBot"), "HalftimeBot");
+  assert.equal(parseXHandle(" halftime_bot "), "halftime_bot");
+  assert.equal(parseXHandle("half time"), null);
+  assert.equal(parseXHandle("a".repeat(16)), null);
+  assert.equal(parseXHandle("@"), null);
+});
+
+test("the package exports the verification parser, not the applications' @-form normalizer", () => {
+  // applications' `normalizeXHandle` answers "@handle"; this one answers the bare handle X takes.
+  assert.equal(core.parseXHandle("@HalftimeBot"), "HalftimeBot");
+  assert.equal(core.normalizeXHandle("HalftimeBot"), "@HalftimeBot");
 });
 
 test("a challenge code is pk- and 8 base32 characters, from the given random bytes", () => {

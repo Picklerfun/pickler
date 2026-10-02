@@ -311,6 +311,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
    * Changed in between (killed, unlinked, relinked): check again once, then PUBLISH_CONFLICT. The
    * balance itself can still move after the read; that is the same window the drafts route accepts
    * for its funding read just before its transaction, and the chain is the truth afterwards.
+   *
+   * The transaction holds the wallet link `FOR SHARE` before it locks and re-reads the agent, so
+   * the link cannot change unseen before COMMIT. A killed agent is refused here too, whatever the
+   * check answered: D8 does not rest on the callback alone.
    */
   async publish(access: StudioAccess, productAgentId: string, check: PublishCheck) {
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -326,6 +330,11 @@ export class PostgresStudioDirectory implements StudioDirectory {
         throw new PublishBlockedError(blockers);
       }
       const published = await this.transaction(async (client) => {
+        // A separate statement: Postgres refuses FOR SHARE on the nullable side of an outer join.
+        await client.query(
+          "SELECT 1 FROM wallets.agent_wallets WHERE agent_id::text = $1 FOR SHARE",
+          [productAgentId],
+        );
         const now = await publishState(client, access, productAgentId, true);
         if (!now) {
           throw notFound();
@@ -336,6 +345,9 @@ export class PostgresStudioDirectory implements StudioDirectory {
         }
         if (now.killed !== seen.killed || now.walletAddress !== seen.walletAddress) {
           return null;
+        }
+        if (now.killed) {
+          throw new PublishBlockedError(["KILLED"]);
         }
         const { rows } = await client.query<{ publishedAt: Date }>(
           `UPDATE agents.agents SET visibility = 'public', published_at = now(),
@@ -386,9 +398,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
         );
       });
     } catch (error) {
-      // 23514: a check (name length, avatar pattern, voice length); 22P02: not an accent.
+      // 23514: a check (name length, avatar pattern, voice length); 22P02: not an accent;
+      // 22003: a number past the column's range (an avatar pattern of 70000).
       const { code } = error as { code?: string };
-      if (code === "23514" || code === "22P02") {
+      if (code === "23514" || code === "22P02" || code === "22003") {
         throw new PilotError("INVALID_INPUT", "Name or avatar out of range");
       }
       throw error;
@@ -397,18 +410,21 @@ export class PostgresStudioDirectory implements StudioDirectory {
   /**
    * The Overview's activity (D18): the agent created, its linked wallet created, and each transfer
    * into or out of that wallet, newest first, at most 50. Only what the database recorded; nothing
-   * is invented. On equal times the later step of the story comes first.
+   * is invented. On equal times the later step of the story comes first. Transfers are the wallet
+   * owner's own rows only. History follows the wallet: a transfer is shown on the agent that holds
+   * the wallet now, which is the agent it was made for while wallets are never relinked.
    */
   async activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]> {
     const agent = await this.pool.query<{
       name: string;
       createdAt: Date;
       walletId: string | null;
+      walletOwner: string | null;
       walletCreatedAt: Date | null;
       address: string | null;
     }>(
       `SELECT a.name, a.created_at AS "createdAt", w.wallet_id AS "walletId",
-         w.created_at AS "walletCreatedAt", acct.address
+         w.user_id AS "walletOwner", w.created_at AS "walletCreatedAt", acct.address
        FROM agents.agents a
        JOIN pickler.product_agents p ON p.product_agent_id = a.id
        LEFT JOIN wallets.agent_wallets l ON l.agent_id = a.id
@@ -443,9 +459,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
         at: Date;
       }>(
         `SELECT to_wallet_id = $1 AS inbound, token, amount::text AS amount, created_at AS at
-         FROM wallets.transfers WHERE to_wallet_id = $1 OR from_wallet_id = $1
+         FROM wallets.transfers
+         WHERE (to_wallet_id = $1 OR from_wallet_id = $1) AND user_id = $2
          ORDER BY created_at DESC, id DESC LIMIT 50`,
-        [row.walletId],
+        [row.walletId, row.walletOwner],
       );
       for (const move of transfers.rows) {
         const amount = `${tokenAmount(move.token, move.amount)} ${move.token === "mon" ? "MON" : "AUSD"}`;

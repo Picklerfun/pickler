@@ -41,45 +41,44 @@ async function setup(t: TestContext) {
   const store = await createTestStore(t);
   const studio = new PostgresStudioDirectory(store.pool);
   const directory: AgentDirectory = new PostgresAgentDirectory(store.pool);
+  const owner = await draftOwner(store.pool, studio, { profile: "owner_one", handle: "halftime" });
+  return { pool: store.pool, studio, directory, ...owner };
+}
+
+/** A person with their own profile, workspace, agent wallet and a draft named Halftime. */
+async function draftOwner(
+  pool: Pool,
+  studio: PostgresStudioDirectory,
+  names: { profile: string; handle: string },
+) {
   const userId = randomUUID();
-  if ((await store.pool.query("SELECT to_regclass('auth.users') AS name")).rows[0].name) {
-    await store.pool.query("INSERT INTO auth.users (id) VALUES ($1)", [userId]);
+  if ((await pool.query("SELECT to_regclass('auth.users') AS name")).rows[0].name) {
+    await pool.query("INSERT INTO auth.users (id) VALUES ($1)", [userId]);
   }
-  await store.pool.query("SELECT identity.create_profile($1,'Maker',$2)", [userId, "owner_one"]);
+  await pool.query("SELECT identity.create_profile($1,'Maker',$2)", [userId, names.profile]);
   await studio.onboard(userId);
-  await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
-    userId,
-  ]);
+  await pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [userId]);
   const access = (await studio.access(userId, null))!;
   const walletId = `wallet-${hex(12)}`;
-  await store.pool.query(
+  await pool.query(
     `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
      VALUES ($1, $2, $3, 'agent', 'Agent wallet 1', ARRAY['p1','p2','p3'])`,
     [userId, walletId, `sub-${hex(12)}`],
   );
   const walletAddress = `0x${hex(40)}`;
-  await store.pool.query(
+  await pool.query(
     `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
      VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', 'm/44')`,
     [walletId, walletAddress],
   );
   const created = await studio.createDraft(access, userId, {
     name: "Halftime",
-    handle: "halftime",
+    handle: names.handle,
     config,
     profile,
     walletId,
   });
-  return {
-    pool: store.pool,
-    studio,
-    directory,
-    access,
-    userId,
-    walletId,
-    walletAddress,
-    agentId: created.productId,
-  };
+  return { access, userId, walletId, walletAddress, agentId: created.productId };
 }
 
 test("a draft is private and unpublished", async (t) => {
@@ -342,16 +341,45 @@ test("an agent keeps one live X challenge, and its checks", async (t) => {
   assert.equal(challenge?.code, "pk-bbbbbbbb");
   assert.deepEqual(challenge?.expiresAt, expiresAt);
   assert.ok(challenge?.createdAt instanceof Date);
-  assert.equal(await x.lastChecked(f.agentId), null);
+  assert.equal(challenge?.lastCheckedAt, null);
 
+  // A check claims the slot; a second within the interval does not, one after it does.
   const at = new Date("2026-10-02T12:00:00Z");
-  await x.markChecked(f.agentId, at);
-  assert.deepEqual(await x.lastChecked(f.agentId), at);
+  assert.equal(await x.claimCheck(f.agentId, at, 10_000), true);
   assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, at);
+  assert.equal(await x.claimCheck(f.agentId, new Date(at.getTime() + 9_999), 10_000), false);
+  assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, at);
+  const later = new Date(at.getTime() + 10_000);
+  assert.equal(await x.claimCheck(f.agentId, later, 10_000), true);
+  assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, later);
 
   // A new challenge starts its checks over.
   await x.saveChallenge(f.agentId, { handle: "HalftimeBot", code: "pk-cccccccc", expiresAt });
-  assert.equal(await x.lastChecked(f.agentId), null);
+  assert.equal((await x.challenge(f.agentId))?.lastCheckedAt, null);
+});
+
+test("concurrent checks of one challenge: exactly one claims the slot", async (t) => {
+  const f = await setup(t);
+  const x = new PostgresXStore(f.pool);
+  await x.saveChallenge(f.agentId, {
+    handle: "HalftimeBot",
+    code: "pk-aaaaaaaa",
+    expiresAt: new Date(Date.now() + 86_400_000),
+  });
+  const at = new Date();
+
+  const claims = await Promise.all(
+    Array.from({ length: 5 }, () => x.claimCheck(f.agentId, at, 10_000)),
+  );
+
+  assert.equal(claims.filter(Boolean).length, 1);
+});
+
+test("an agent with no challenge claims no check", async (t) => {
+  const f = await setup(t);
+  const x = new PostgresXStore(f.pool);
+
+  assert.equal(await x.claimCheck(f.agentId, new Date(), 10_000), false);
 });
 
 test("connecting X writes the account and the profile handle, and spends the challenge", async (t) => {
@@ -416,6 +444,22 @@ test("one X account and one handle, whatever its case, belong to one agent", asy
   ]);
   assert.equal(await x.handleTaken("legacybot", f.agentId), true);
   assert.equal(await x.handleTaken("legacybot", other), false);
+});
+
+test("connecting a handle another agent holds on its profile alone is taken", async (t) => {
+  const f = await setup(t);
+  const x = new PostgresXStore(f.pool);
+  const other = await otherAgent(f);
+  await f.pool.query("UPDATE agents.agent_profiles SET x_handle='@LegacyBot' WHERE agent_id=$1", [
+    other,
+  ]);
+
+  await assert.rejects(
+    x.connect(f.agentId, { xUserId: "44", handle: "legacybot", postId: "1", at: new Date() }),
+    XHandleTakenError,
+  );
+
+  assert.equal(await x.account(f.agentId), null);
 });
 
 test("a public agent keeps its X handle", async (t) => {
@@ -536,19 +580,88 @@ test("publish re-checks when the agent changes during the check, and gives up on
   assert.equal(rows[0].visibility, "private");
 });
 
-test("publish and identity refuse an agent outside the workspace", async (t) => {
+test("publish, identity and activity refuse another person's agent and leave it as it was", async (t) => {
   const f = await setup(t);
-  const stranger = randomUUID();
+  const theirs = await draftOwner(f.pool, f.studio, { profile: "owner_two", handle: "theirs" });
+  const before = await f.pool.query(
+    `SELECT a.name, a.status::text, a.visibility::text, a.published_at, p.accent::text, p.avatar_pattern
+     FROM agents.agents a JOIN agents.agent_profiles p ON p.agent_id=a.id WHERE a.id=$1`,
+    [theirs.agentId],
+  );
+  let checked = false;
 
   await assert.rejects(
-    f.studio.publish(f.access, stranger, async () => []),
+    f.studio.publish(f.access, theirs.agentId, async () => {
+      checked = true;
+      return [];
+    }),
     isCode("NOT_FOUND"),
   );
   await assert.rejects(
-    f.studio.updateIdentity(f.access, stranger, { name: "X" }),
+    f.studio.updateIdentity(f.access, theirs.agentId, { name: "Mine now", avatarPattern: 5 }),
     isCode("NOT_FOUND"),
   );
-  await assert.rejects(f.studio.activity(f.access, stranger), isCode("NOT_FOUND"));
+  await assert.rejects(f.studio.activity(f.access, theirs.agentId), isCode("NOT_FOUND"));
+
+  assert.equal(checked, false);
+  const after = await f.pool.query(
+    `SELECT a.name, a.status::text, a.visibility::text, a.published_at, p.accent::text, p.avatar_pattern
+     FROM agents.agents a JOIN agents.agent_profiles p ON p.agent_id=a.id WHERE a.id=$1`,
+    [theirs.agentId],
+  );
+  assert.deepEqual(after.rows, before.rows);
+  assert.equal(after.rows[0].visibility, "private");
+  // Their own access still reaches it.
+  const theirEvents = await f.studio.activity(theirs.access, theirs.agentId);
+  assert.ok(theirEvents.some((event) => event.kind === "created"));
+});
+
+test("publish refuses a killed agent itself, whatever the check answered", async (t) => {
+  const f = await setup(t);
+
+  await assert.rejects(
+    f.studio.publish(f.access, f.agentId, async () => {
+      // Killed while the check reads the chain; this check (wrongly) ignores it on the retry too.
+      await f.pool.query("UPDATE agents.agents SET status='killed', killed_at=now() WHERE id=$1", [
+        f.agentId,
+      ]);
+      return [];
+    }),
+    (error) => error instanceof PublishBlockedError && error.blockers.join() === "KILLED",
+  );
+
+  const { rows } = await f.pool.query("SELECT visibility::text FROM agents.agents WHERE id=$1", [
+    f.agentId,
+  ]);
+  assert.equal(rows[0].visibility, "private");
+});
+
+test("publishing a private agent that is not a draft leaves its status alone", async (t) => {
+  const f = await setup(t);
+  await f.pool.query("UPDATE agents.agents SET status='paused' WHERE id=$1", [f.agentId]);
+
+  await f.studio.publish(f.access, f.agentId, async () => []);
+
+  const { rows } = await f.pool.query(
+    "SELECT status::text, visibility::text FROM agents.agents WHERE id=$1",
+    [f.agentId],
+  );
+  assert.deepEqual(rows[0], { status: "paused", visibility: "public" });
+});
+
+test("two concurrent publishes answer the same publishedAt", async (t) => {
+  const f = await setup(t);
+
+  const [one, two] = await Promise.all([
+    f.studio.publish(f.access, f.agentId, async () => []),
+    f.studio.publish(f.access, f.agentId, async () => []),
+  ]);
+
+  assert.deepEqual(one, two);
+  const { rows } = await f.pool.query("SELECT published_at FROM agents.agents WHERE id=$1", [
+    f.agentId,
+  ]);
+  assert.deepEqual(rows[0].published_at, one.publishedAt);
 });
 
 test("identity edits the name, avatar and voice, and the database bounds them", async (t) => {
@@ -574,7 +687,12 @@ test("identity edits the name, avatar and voice, and the database bounds them", 
     voice: "Analyst",
   });
 
-  for (const bad of [{ name: "" }, { name: "x".repeat(41) }, { avatarPattern: 6 }]) {
+  for (const bad of [
+    { name: "" },
+    { name: "x".repeat(41) },
+    { avatarPattern: 6 },
+    { avatarPattern: 70_000 },
+  ]) {
     await assert.rejects(
       f.studio.updateIdentity(f.access, f.agentId, bad),
       isCode("INVALID_INPUT"),
@@ -646,6 +764,13 @@ test("activity: created, its wallet, and each transfer, newest first", async (t)
     amount: 10n ** 18n,
     at: "2026-10-01T13:00:00Z",
   });
+
+  // A row recorded under another person that names this wallet is not this person's activity.
+  await f.pool.query(
+    `INSERT INTO wallets.transfers (user_id, from_wallet_id, to_wallet_id, token, amount, tx_hash, created_at)
+     VALUES ($1, 'someone-else', $2, 'ausd', 7000000, $3, '2026-10-01T14:00:00Z')`,
+    [randomUUID(), f.walletId, `0x${hex(64)}`],
+  );
 
   const events = await f.studio.activity(f.access, f.agentId);
 

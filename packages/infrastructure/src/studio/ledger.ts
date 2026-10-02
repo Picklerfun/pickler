@@ -18,6 +18,8 @@ export function tokenAmount(token: "ausd" | "mon", raw: string | bigint): string
  * The person's master ↔ agent transfers for the Master wallet's ledger (studio-draft-dashboard-v1
  * D17), newest first, at most 100. A move into an agent wallet is `to_agent`, anything else
  * `to_master`; the agent is whichever side is an agent wallet, null once no agent holds it.
+ * History follows the wallet: an entry names the agent that holds the wallet now, which is the
+ * agent it was made for while wallets are never relinked.
  */
 export async function listTransfers(pool: Pool, userId: string): Promise<TransferLedgerEntry[]> {
   const { rows } = await pool.query<{

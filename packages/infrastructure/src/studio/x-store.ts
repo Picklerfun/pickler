@@ -56,14 +56,20 @@ export class PostgresXStore implements XStore {
     );
     return rows[0] ?? null;
   }
-  async markChecked(agentId: string, at: Date): Promise<void> {
-    await this.pool.query(
-      "UPDATE agents.x_challenges SET last_checked_at = $2 WHERE agent_id = $1",
-      [agentId, at],
+  async claimCheck(agentId: string, at: Date, intervalMs: number): Promise<boolean> {
+    // One statement: the row lock the UPDATE takes serializes concurrent checks, and the second
+    // sees the first's time and matches nothing.
+    const { rowCount } = await this.pool.query(
+      `UPDATE agents.x_challenges SET last_checked_at = $2
+       WHERE agent_id = $1
+         AND (
+           last_checked_at IS NULL
+           OR last_checked_at <= $2::timestamptz - $3::double precision * interval '1 millisecond'
+         )
+       RETURNING 1`,
+      [agentId, at, intervalMs],
     );
-  }
-  async lastChecked(agentId: string): Promise<Date | null> {
-    return (await this.challenge(agentId))?.lastCheckedAt ?? null;
+    return rowCount === 1;
   }
   async connect(
     agentId: string,

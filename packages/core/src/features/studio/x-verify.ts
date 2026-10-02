@@ -18,7 +18,7 @@ export interface XPost {
 }
 
 /** The handle without its "@", or null when X would not accept it (1 to 15 of letters, digits, _). */
-export function normalizeXHandle(raw: string): string | null {
+export function parseXHandle(raw: string): string | null {
   const handle = raw.trim().replace(/^@/, "");
   return /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : null;
 }
@@ -110,9 +110,12 @@ export interface XStore {
     challenge: { handle: string; code: string; expiresAt: Date },
   ): Promise<XChallenge>;
   challenge(agentId: string): Promise<XChallenge | null>;
-  /** Records a "Check again" read, for the one-per-10-s limit. */
-  markChecked(agentId: string, at: Date): Promise<void>;
-  lastChecked(agentId: string): Promise<Date | null>;
+  /**
+   * Claims a "Check again" read at `at`: true and recorded when the challenge exists and was not
+   * checked in the last `intervalMs`, false otherwise. Atomic, so concurrent checks of one
+   * challenge let exactly one through (the one-per-10-s limit, spec §8).
+   */
+  claimCheck(agentId: string, at: Date, intervalMs: number): Promise<boolean>;
   /**
    * In one transaction: writes the verified account, sets the profile's X handle ("@handle") and
    * deletes the challenge. `XHandleTakenError` when the account or handle is another agent's.
