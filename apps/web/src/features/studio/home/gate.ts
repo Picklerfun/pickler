@@ -63,8 +63,9 @@ export function draftLimitLock(agents: readonly GateAgent[]): string {
 
 /**
  * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open: the
- * funding lock first, naming the agent (or draft) to fund, then the draft limit. Every agent is created as a
- * draft, so at three drafts the create screen would refuse at the end, after the money moved.
+ * funding lock first, naming the agent (or draft) to fund, then the draft limit. Every agent is
+ * created as a draft, so at three drafts the create screen would refuse at the end, after the
+ * money moved.
  */
 export function newAgentLock(agents: readonly GateAgent[]): string {
   const gate = createGate(agents);
