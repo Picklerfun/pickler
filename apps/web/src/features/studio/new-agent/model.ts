@@ -196,12 +196,10 @@ export const walletSheetStep = (wallet: WalletView | null, delegated: boolean | 
 /** Why "Create" is closed, or that it is open. One rule feeds both the label and the button. */
 export type CreateBlock = { ok: true } | { ok: false; label: string };
 
-/** The button's words at the draft limit: the API would refuse a fourth draft (409 DRAFT_LIMIT). */
-export const DRAFT_LIMIT_LABEL = "Three drafts is the limit";
-
 /**
- * `draftLock` is the gate's draft-limit note (`home/gate.ts`), or "". It comes first: nothing on
- * the form can lift it, and the wallet step is shut for the same reason.
+ * `draftLock` is the gate's draft-limit note (`home/gate.ts`, the 409 DRAFT_LIMIT's own words), or
+ * "". It comes first, as the button's words: nothing on the form can lift it, and the wallet step
+ * is shut for the same reason.
  */
 export function createBlock(
   form: NewAgentForm,
@@ -212,7 +210,7 @@ export function createBlock(
   const derived = deriveHandle(form.name, form.handle);
   const blocked = (label: string): CreateBlock => ({ ok: false, label });
   if (draftLock) {
-    return blocked(DRAFT_LIMIT_LABEL);
+    return blocked(draftLock);
   }
   if (!form.name.trim()) {
     return blocked("Name it to create");

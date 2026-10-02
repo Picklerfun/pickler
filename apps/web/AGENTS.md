@@ -255,7 +255,7 @@ against `MAX_DRAFTS` (core's `MAX_DRAFTS_PER_WORKSPACE`, restated and pinned) an
 the API's `canCreateAnother` already answers `draft_limit`. Every agent is created as a draft, so
 the limit closes the entries before any wallet is made or funded. The create screen gets the same
 note (`draftLock`): the wallet step's button and "Fund from master wallet" are shut with it, and
-`createBlock` answers "Three drafts is the limit" before anything else. A 409 `DRAFT_LIMIT` from
+`createBlock` answers that note before anything else. A 409 `DRAFT_LIMIT` from
 `POST /drafts` still reads "At most 3 drafts at a time." (`DRAFT_LIMIT_NOTE` in `lib/messages.ts`).
 `home/trace.ts` turns a run's events into the lines the home's status reads (`studio-trace.test.ts`).
 

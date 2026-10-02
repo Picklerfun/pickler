@@ -33,7 +33,6 @@ import {
   toTransferBody,
   walletOutlined,
   walletTag,
-  DRAFT_LIMIT_LABEL,
   type NewAgentForm,
   type WalletView,
 } from "../src/features/studio/new-agent/model";
@@ -92,13 +91,23 @@ test("create opens only with a free handle, a voice and a funded wallet", () => 
   assert.equal(canCreate(filled(), "free", wallet({ ausdMicro: 9_999_999n })), false);
 });
 
-test("at the draft limit Create is shut before anything else, with the limit as its words", () => {
-  const note = "At most 3 drafts at a time.";
+test("at the draft limit Create is shut before anything else, with the limit as its words", async () => {
+  const { DRAFT_LIMIT_NOTE } = await import("../src/features/studio/lib/messages");
+  const { draftLimitLock } = await import("../src/features/studio/home/gate");
+  const drafts = [1, 2, 3].map((n) => ({
+    id: `d${n}`,
+    productId: `d${n}`,
+    name: `Draft ${n}`,
+    draft: true,
+    wallet: null,
+    canCreateAnother: { ok: true, reason: null },
+  }));
+  const note = draftLimitLock(drafts);
 
-  assert.equal(createLabel(filled(), "free", wallet(), note), DRAFT_LIMIT_LABEL);
-  assert.equal(DRAFT_LIMIT_LABEL, "Three drafts is the limit");
+  assert.equal(note, DRAFT_LIMIT_NOTE);
+  assert.equal(createLabel(filled(), "free", wallet(), note), "At most 3 drafts at a time.");
   assert.equal(canCreate(filled(), "free", wallet(), note), false);
-  assert.equal(createLabel(emptyForm(), handleState("", null), null, note), DRAFT_LIMIT_LABEL);
+  assert.equal(createLabel(emptyForm(), handleState("", null), null, note), note);
   assert.equal(canCreate(filled(), "free", wallet(), ""), true);
 });
 
