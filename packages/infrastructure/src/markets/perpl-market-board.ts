@@ -86,7 +86,7 @@ function accentFor(base: string): Accent {
 }
 
 /** What the last day and the funding say, in a sentence. No model writes it. */
-function noteFor(change24h: number, funding1h: number): string {
+function noteFor(change24h: number, fundingRate: number | null): string {
   const moved = `${(Math.abs(change24h) * 100).toFixed(1)}%`;
   let move = "Flat over 24 hours.";
   if (change24h >= 0.001) {
@@ -95,10 +95,12 @@ function noteFor(change24h: number, funding1h: number): string {
     move = `Down ${moved} in 24 hours.`;
   }
 
-  let funding = "No funding is published.";
-  if (funding1h > 0) {
+  let funding = "Funding is flat.";
+  if (fundingRate === null) {
+    funding = "No funding is published.";
+  } else if (fundingRate > 0) {
     funding = "Funding is positive.";
-  } else if (funding1h < 0) {
+  } else if (fundingRate < 0) {
     funding = "Funding is negative.";
   }
   return `${move} ${funding}`;
@@ -139,7 +141,7 @@ function toPerpMarket(
     agentsReading: null,
     openCalls: null,
     lastCall: null,
-    note: noteFor(change24h, funding1h),
+    note: noteFor(change24h, market.fundingRate),
     hourlyReach: null,
     limits: {
       takerFee: market.takerFeeMicros / 1e6,

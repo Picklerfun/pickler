@@ -74,6 +74,19 @@ test("the board lists every open market of the capture, with the venue's own fig
   assert.equal(btc.limits.minimumAccountOpen, 100);
 });
 
+test("the note says what the day and the funding did, and tells a zero from nothing published", async () => {
+  const silent = JSON.parse(JSON.stringify(capture)) as typeof capture;
+  delete (silent.markets[1] as { funding?: unknown }).funding;
+  const { board } = harness({ context: silent });
+
+  const markets = await board.listMarkets();
+  const note = (symbol: string) => markets.find((market) => market.symbol === symbol)!.note;
+
+  assert.equal(note("BTC-PERP"), "Up 0.7% in 24 hours. Funding is positive.");
+  assert.equal(note("ETH-PERP").endsWith("No funding is published."), true);
+  assert.equal(note("SOL-PERP").endsWith("Funding is flat."), true);
+});
+
 test("what nobody has measured is null, and the source is named", async () => {
   const { board } = harness();
 
