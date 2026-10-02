@@ -119,6 +119,7 @@ export function createPerpsStudyModels(
   config: PerpsStudyConfig,
   credentials: { deepseek: string; jev: string },
   transport: typeof fetch = fetch,
+  timeoutSignal: (milliseconds: number) => AbortSignal = AbortSignal.timeout,
 ): PerpsModels {
   const post = async (
     url: string,
@@ -131,56 +132,81 @@ export function createPerpsStudyModels(
     if (new TextEncoder().encode(body).length > 30000) {
       throw new PilotError("MODEL_INPUT_TOO_LARGE", "Request exceeds its reservation");
     }
-    const signal = AbortSignal.any([parent, AbortSignal.timeout(20000)]);
-    signal.throwIfAborted();
+    const signal = AbortSignal.any([parent, timeoutSignal(20000)]);
+    const classify = (error: unknown): Error => {
+      if (error instanceof PilotError) {
+        return error;
+      }
+      if (signal.aborted) {
+        const reason: unknown = signal.reason;
+        if (reason instanceof PilotError) {
+          return reason;
+        }
+        if (reason instanceof Error && reason.name === "TimeoutError") {
+          return new PilotError("MODEL_TIMEOUT", "Model request exceeded its deadline");
+        }
+        return new PilotError("MODEL_CANCELLED", "Model request was cancelled");
+      }
+      return new PilotError("MODEL_TRANSPORT_FAILURE", "Model request transport failed");
+    };
+    const assertNotAborted = () => {
+      if (signal.aborted) {
+        throw classify(signal.reason);
+      }
+    };
+    assertNotAborted();
     await hooks.before({
       sha256: createHash("sha256").update(body).digest("hex"),
       bytes: new TextEncoder().encode(body).length,
     });
-    signal.throwIfAborted();
-    const response = await bounded(
-      transport(url, {
-        method: "POST",
-        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body,
+    assertNotAborted();
+    try {
+      const response = await bounded(
+        transport(url, {
+          method: "POST",
+          headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+          body,
+          signal,
+          redirect: "manual",
+        }),
         signal,
-        redirect: "manual",
-      }),
-      signal,
-    );
-    if (!response.ok) {
-      void response.body?.cancel();
-      throw new PilotError("MODEL_HTTP_FAILURE", "Model request failed");
-    }
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new PilotError("MODEL_RESPONSE_INVALID", "Missing response");
-    }
-    let text = "",
-      size = 0;
-    const decoder = new TextDecoder();
-    try {
-      for (;;) {
-        const chunk = await bounded(reader.read(), signal);
-        if (chunk.done) {
-          break;
-        }
-        size += chunk.value.byteLength;
-        if (size > 1024 * 1024) {
-          throw new PilotError("MODEL_RESPONSE_LIMIT", "Response exceeds limit");
-        }
-        text += decoder.decode(chunk.value, { stream: true });
+      );
+      if (!response.ok) {
+        void response.body?.cancel();
+        throw new PilotError("MODEL_HTTP_FAILURE", "Model request failed");
       }
-      text += decoder.decode();
-    } finally {
-      void reader.cancel().catch(() => {});
-      reader.releaseLock();
-    }
-    signal.throwIfAborted();
-    try {
-      return JSON.parse(text) as unknown;
-    } catch {
-      throw new PilotError("MODEL_RESPONSE_INVALID", "Invalid JSON envelope");
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new PilotError("MODEL_RESPONSE_INVALID", "Missing response");
+      }
+      let text = "",
+        size = 0;
+      const decoder = new TextDecoder();
+      try {
+        for (;;) {
+          const chunk = await bounded(reader.read(), signal);
+          if (chunk.done) {
+            break;
+          }
+          size += chunk.value.byteLength;
+          if (size > 1024 * 1024) {
+            throw new PilotError("MODEL_RESPONSE_LIMIT", "Response exceeds limit");
+          }
+          text += decoder.decode(chunk.value, { stream: true });
+        }
+        text += decoder.decode();
+      } finally {
+        void reader.cancel().catch(() => {});
+        reader.releaseLock();
+      }
+      assertNotAborted();
+      try {
+        return JSON.parse(text) as unknown;
+      } catch {
+        throw new PilotError("MODEL_RESPONSE_INVALID", "Invalid JSON envelope");
+      }
+    } catch (error) {
+      throw classify(error);
     }
   };
   return {
