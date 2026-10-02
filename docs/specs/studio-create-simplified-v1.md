@@ -81,22 +81,22 @@ ID (the delegated user exists). The rest is identical.
 - Wallets: the master wallet (address, AUSD, MON, copy) and each agent wallet (name, address,
   AUSD, MON, caps if linked, tag NO WALLET / CREATING / DRAFT / LIVE, "Fund from master", "Pull
   back to master"). A transfer is one token, one amount, one passkey sheet. "MAX" fills what the
-  source holds.
+  source holds; on MON it keeps 0.01 MON back for the network fee.
 - AI credits: what credits will be; the button disabled.
 
 ## 4. API
 
-Bodies follow their route family as it is today: `/v1/studio/*` answers bare JSON and errors as `{ error, message, detail? }`; `/v1/signing/*` keeps its envelope (conventions: known envelope exceptions). Money in JSON: AUSD as
-micro-AUSD integers (`*MicroAusd`), MON as wei decimal strings (`*Wei`).
+Bodies follow their route family as it is today: `/v1/studio/*` answers bare JSON and errors as `{ error, message, detail? }`; `/v1/signing/*` keeps its envelope (conventions: known envelope exceptions). Money in JSON: base units as
+decimal strings, `ausdMicro` (micro-AUSD) and `monWei` (wei).
 
 ### 4.1 Changed
 
-| Method | Path                                                   | Change                                                                                                                                                                      |
-| ------ | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/v1/signing/agents/wallet/prepare`                    | Body `{}`; no handle. Wallet name `Agent wallet N` (N = the person's agent wallets + 1). An unlinked wallet from an earlier attempt answers `existing`, as today.           |
-| POST   | `/v1/signing/agents/wallet/confirm`                    | Body `{ signed }`; no handle.                                                                                                                                               |
-| POST   | `/v1/signing/agents/wallet/:walletId/policies/prepare` | Before building anything, reads the wallet's balances; below either minimum answers `409 WALLET_UNDERFUNDED` with `detail: { ausdMicro, monWei, minAusdMicro, minMonWei }`. |
-| POST   | `/v1/studio/drafts`                                    | New body (below). No `previewRunId`.                                                                                                                                        |
+| Method | Path                                                   | Change                                                                                                                                                                                                                                                                                                                                          |
+| ------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/v1/signing/agents/wallet/prepare`                    | Body `{}`; no handle. Wallet name `Agent wallet N` (N = the person's agent wallets + 1). An unlinked wallet from an earlier attempt answers `existing`, as today.                                                                                                                                                                               |
+| POST   | `/v1/signing/agents/wallet/confirm`                    | Body `{ signed }`; no handle.                                                                                                                                                                                                                                                                                                                   |
+| POST   | `/v1/signing/agents/wallet/:walletId/policies/prepare` | Before building anything, reads the wallet's balances; below either minimum answers `409 wallet_underfunded` (the signing envelope's lowercase code) with `detail: { ausdMicro, monWei, minAusdMicro, minMonWei }`, and `503 balances_unavailable` when the chain cannot be read. A wallet already linked to an agent is `409 wallet_assigned`. |
+| POST   | `/v1/studio/drafts`                                    | New body (below). No `previewRunId`.                                                                                                                                                                                                                                                                                                            |
 
 `POST /v1/studio/drafts` body:
 
@@ -124,8 +124,11 @@ agent }`.
 
 Errors: `400 INVALID_BRIEF` (`{ error, field, reason }`, the shape the brief UI already reads), `404 WALLET_NOT_FOUND` (absent or another
 person's), `409 WALLET_ASSIGNED`, `409 POLICIES_MISSING`, `409 WALLET_UNDERFUNDED`,
-`409 HANDLE_TAKEN`, `409 DRAFT_LIMIT` (as today), `503 WALLETS_UNAVAILABLE` when Turnkey or the RPC is
-not configured or the chain cannot be read (an unreadable balance is never reported as underfunded).
+`409 HANDLE_TAKEN`, `409 UNFUNDED_AGENT` (another agent or draft's wallet is below the minimum),
+`409 DRAFT_LIMIT` (as today), `400 INVALID_INPUT` (an unknown voice or avatar, caps or leverage out
+of bounds, or a body the schema refuses), and `503 WALLETS_UNAVAILABLE` when Turnkey or the RPC is
+not configured or the chain cannot be read, this wallet's or any other agent's the lock reads (an
+unreadable balance is never reported as underfunded).
 
 ### 4.2 New
 
@@ -251,3 +254,9 @@ Known leftovers after the build:
   in a separate cleanup.
 - Perpl-shaped drafts depend on `perpl-agent-runtime-v1` to run.
 - The deposit routes were not rewrapped as transfers (they share `checkStampedTransfer`).
+- The balances are read just before the create's transaction, not inside it, so a pull-back
+  between the read and the insert can leave a new draft below the minimums. Accepted (§4.1): it is
+  the owner's own money on a paper draft, and the schedule's own funding lock still applies.
+- Core's `assertPreviewAdoptable` (the only source of `RUN_STALE` and `PREVIEW_UNUSABLE`) is used
+  only by its test; it goes with the preview-runs cleanup. The web no longer has messages for
+  those codes or for `PREVIEW_RATE_LIMITED` and `PREVIEW_UNAVAILABLE`.
