@@ -9,7 +9,7 @@
  *
  * Section keys are the canvas's (`picks` is Trades, `skills` is Sources & rules).
  */
-import type { WalletsDto } from "@pickler/api-schema";
+import type { PublishBlockerDto, WalletsDto } from "@pickler/api-schema";
 import { formatUnits, shortAddress, unitsOf, VOICES, type VoiceKey } from "../new-agent/model";
 import { agentWalletRead, type Caps } from "./build-model";
 import { dayLabel, dayNumber, stamp } from "./clock";
@@ -264,18 +264,28 @@ export function xView(state: XCardState, typed: string | null = null): XView {
   };
 }
 
-export type PublishBlocker = "KILLED" | "WALLET" | "FUNDS";
+/** api-schema's `PUBLISH_BLOCKERS`, as a type: the web keeps no list of its own. */
+export type PublishBlocker = PublishBlockerDto;
+
+/**
+ * Each blocker's words. A `Record` over api-schema's type, so a blocker added there fails the
+ * build here until it has words; it is also the set `publishProblem` accepts.
+ */
+const PUBLISH_BLOCKER_TEXT: Record<PublishBlocker, string> = {
+  KILLED: "It has been shut down, so it can't go public.",
+  WALLET: "It needs its own wallet to go public.",
+  FUNDS: "Its wallet needs at least 10 AUSD to go public.",
+};
 
 /** The 409 `PUBLISH_BLOCKED` blockers in words (spec §3.1); only FUNDS has a fix on the screen. */
 export function publishBlockedCopy(
   blockers: readonly PublishBlocker[],
 ): { blocker: PublishBlocker; text: string; fund: boolean }[] {
-  const text: Record<PublishBlocker, string> = {
-    KILLED: "It has been shut down, so it can't go public.",
-    WALLET: "It needs its own wallet to go public.",
-    FUNDS: "Its wallet needs at least 10 AUSD to go public.",
-  };
-  return blockers.map((blocker) => ({ blocker, text: text[blocker], fund: blocker === "FUNDS" }));
+  return blockers.map((blocker) => ({
+    blocker,
+    text: PUBLISH_BLOCKER_TEXT[blocker],
+    fund: blocker === "FUNDS",
+  }));
 }
 
 /**
@@ -328,8 +338,6 @@ export type PublishProblem =
   | { kind: "preview" }
   | { kind: "error"; text: string };
 
-const PUBLISH_BLOCKER_SET: readonly string[] = ["KILLED", "WALLET", "FUNDS"];
-
 /**
  * A failed Go Public in words: 409 PUBLISH_BLOCKED names its blockers (`detail.blockers`, the
  * ones this screen knows; none known reads as the fallback), PUBLISH_CONFLICT asks for another
@@ -348,7 +356,10 @@ export function publishProblem(
     const raw =
       detail && typeof detail === "object" ? (detail as { blockers?: unknown }).blockers : null;
     const blockers = Array.isArray(raw)
-      ? raw.filter((blocker): blocker is PublishBlocker => PUBLISH_BLOCKER_SET.includes(blocker))
+      ? raw.filter(
+          (blocker): blocker is PublishBlocker =>
+            typeof blocker === "string" && Object.hasOwn(PUBLISH_BLOCKER_TEXT, blocker),
+        )
       : [];
     if (blockers.length > 0) {
       return { kind: "blocked", lines: publishBlockedCopy(blockers) };

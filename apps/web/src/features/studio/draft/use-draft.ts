@@ -67,11 +67,11 @@ export interface UseDraft extends DraftData {
   readActivity(): Promise<void>;
   /** The ledger, for Master wallet. */
   readLedger(): Promise<void>;
-  /** The agent again in the shell: after a save refused as stale (409 STALE_CONFIG). Rejects. */
+  /** The agent again in the shell: after a save refused as stale (409 CONFLICT). Rejects. */
   refreshAgent(): Promise<void>;
   /**
    * `PUT /setup` at the agent's current version: brief, sources, caps and/or voice. Answers the
-   * agent and reloads it in the shell. A 409 STALE_CONFIG throws before any reload: the caller
+   * agent and reloads it in the shell. A 409 CONFLICT throws before any reload: the caller
    * reloads (`refreshAgent`) and says so.
    *
    * Every write below resolves once the write itself landed: a reload that fails after it does

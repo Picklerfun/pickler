@@ -132,7 +132,6 @@ test("sourcesView: an add's error comes first; Only without a site can't save; 2
 
 test("setupProblem: a stale version reloads, a preview says so, anything else in its words", () => {
   assert.deepEqual(setupProblem("CONFLICT", "x"), { kind: "conflict" });
-  assert.deepEqual(setupProblem("STALE_CONFIG", "x"), { kind: "conflict" });
   assert.deepEqual(setupProblem("PREVIEW", "x"), { kind: "preview" });
   assert.deepEqual(setupProblem("INVALID_BRIEF", "Check the brief."), {
     kind: "error",

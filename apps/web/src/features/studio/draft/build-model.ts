@@ -303,7 +303,7 @@ export type SetupProblem =
   { kind: "conflict" } | { kind: "preview" } | { kind: "error"; text: string };
 
 export function setupProblem(code: string, fallback: string): SetupProblem {
-  if (code === "CONFLICT" || code === "STALE_CONFIG") {
+  if (code === "CONFLICT") {
     return { kind: "conflict" };
   }
   if (code === "PREVIEW") {

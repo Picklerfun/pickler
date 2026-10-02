@@ -19,6 +19,7 @@ import type {
   TransferRequestDto,
   WalletsDto,
   XChallengeDto,
+  XChallengeRequestDto,
   XStateDto,
   XVerifyDto,
 } from "@pickler/api-schema";
@@ -176,7 +177,7 @@ export const xState = (agentId: string, signal?: AbortSignal) =>
 export const xChallenge = (agentId: string, handle: string) =>
   studioApi<XChallenge>(`/agents/${agentId}/x/challenge`, {
     method: "POST",
-    body: JSON.stringify({ handle }),
+    body: JSON.stringify({ handle } satisfies XChallengeRequestDto),
   });
 
 /**

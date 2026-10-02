@@ -110,7 +110,8 @@ Soon. Trades: "Paper trades", count 0, the canvas's empty state with "Open Conso
 Brief: a note bar ("EDIT FREELY · THEN RUN IT ON PAPER" and "Run it" → Console), four textareas
 (THESIS, ENTERS WHEN, EXITS WHEN, NEVER) with their tags (EMPTY / n LINES / EDITED), and RISK with
 the three caps steppers. Changes save with "Save brief" (one `PUT .../setup` with `brief` and
-`caps`); a 409 `STALE_CONFIG` reloads and says "It changed somewhere else. Reloaded."
+`caps`); a 409 `CONFLICT` (a stale version, the code `PUT /config` answers) reloads and says "It
+changed somewhere else. Reloaded."
 Sources & rules: IT READS with Perpl (fixed) and Web (switch); WEB · WHERE EXA MAY LOOK with
 Anywhere / Prefer these / Only these, sites as chips with ×, the input (Enter or blur adds; at most
 20; host format checked). Saving is "Save sources".
@@ -121,40 +122,52 @@ Trade: D16's Soon panel. Master wallet: D17.
 
 ## 4. API
 
-`/v1/studio/*` routes answer bare JSON; errors `{ error, message, detail? }`. All require the
-owner's studio JWT; another owner's agent is 404 `AGENT_NOT_FOUND`.
+`/v1/studio/*` routes answer bare JSON; errors `{ error, message, detail? }`, except 400
+`INVALID_BRIEF`, which is `{ error, message, field, reason }` (`field` the brief section, `reason`
+one of `required`, `too_long`, `too_many`, `not_trimmed`). All require the owner's studio JWT;
+another owner's agent, or none, is 404 `NOT_FOUND` on every `/agents/:id/*` route. A malformed body
+is 400 `INVALID_INPUT`.
 
-| Method | Path                      | Request                                                                                                                                   | Response                                                                                                            | Errors                                                                                                                                                                                                 |
-| ------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PUT    | `/agents/:id/setup`       | `{ expectedVersion, brief?: {thesis,entersWhen,exitsWhen,never}, sources?: {web}, caps?: {perTradeAusd,perDayAusd,maxLeverage}, voice? }` | the studio agent                                                                                                    | 400 `INVALID_BRIEF` / `INVALID_INPUT`; 409 `STALE_CONFIG`, `NOT_A_DRAFT`                                                                                                                               |
-| PUT    | `/agents/:id/identity`    | `{ name?, avatar?: { accent, pattern } }`                                                                                                 | the studio agent                                                                                                    | 400 `INVALID_INPUT`                                                                                                                                                                                    |
-| GET    | `/agents/:id/activity`    | —                                                                                                                                         | `{ events: [{ kind: "created" \| "wallet" \| "transfer", text, at }] }`, newest first, ≤ 50                         | —                                                                                                                                                                                                      |
-| GET    | `/agents/:id/x`           | —                                                                                                                                         | `{ account: { handle, verifiedAt } \| null, challenge: { handle, text, expiresAt } \| null, available }`            | —                                                                                                                                                                                                      |
-| POST   | `/agents/:id/x/challenge` | `{ handle }` (`@` optional, 1–15 of `[A-Za-z0-9_]`)                                                                                       | `{ handle, text, expiresAt }` (24 h; a new one replaces the old)                                                    | 400 `INVALID_X_HANDLE`; 409 `X_HANDLE_TAKEN`, `X_ALREADY_CONNECTED`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                         |
-| POST   | `/agents/:id/x/verify`    | `{}`                                                                                                                                      | `{ verified: true, handle }` or `{ verified: false, reason: "NOT_FOUND" }`                                          | 404 `CHALLENGE_NOT_FOUND`; 409 `CHALLENGE_EXPIRED`, `X_HANDLE_TAKEN`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                        |
-| DELETE | `/agents/:id/x`           | —                                                                                                                                         | `{ disconnected: true }`                                                                                            | 409 `X_ON_PUBLIC_AGENT`                                                                                                                                                                                |
-| POST   | `/agents/:id/publish`     | `{}`                                                                                                                                      | `{ visibility: "public", publishedAt }`                                                                             | 409 `PUBLISH_BLOCKED` with `detail.blockers` ⊆ `WALLET`, `FUNDS`, `KILLED`; 503 `BALANCES_UNAVAILABLE`; 409 `PUBLISH_CONFLICT` (the agent's wallet or state changed twice while publishing; try again) |
-| GET    | `/wallets/ledger`         | —                                                                                                                                         | `{ entries: [{ direction: "to_agent" \| "to_master", token, amount, agentName, txHash, at }] }` newest first, ≤ 100 | —                                                                                                                                                                                                      |
+| Method | Path                      | Request                                                                                                                                   | Response                                                                                                            | Errors                                                                                                                                                                                                                                                                                            |
+| ------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PUT    | `/agents/:id/setup`       | `{ expectedVersion, brief?: {thesis,entersWhen,exitsWhen,never}, sources?: {web}, caps?: {perTradeAusd,perDayAusd,maxLeverage}, voice? }` | the studio agent                                                                                                    | 400 `INVALID_BRIEF` / `INVALID_INPUT`; 404 `NOT_FOUND`; 409 `CONFLICT` (stale `expectedVersion`), `NOT_A_DRAFT`                                                                                                                                                                                   |
+| PUT    | `/agents/:id/identity`    | `{ name?, avatar?: { accent, pattern } }`                                                                                                 | the studio agent                                                                                                    | 400 `INVALID_INPUT`; 404 `NOT_FOUND`                                                                                                                                                                                                                                                              |
+| GET    | `/agents/:id/activity`    | —                                                                                                                                         | `{ events: [{ kind: "created" \| "wallet" \| "transfer", text, at }] }`, newest first, ≤ 50                         | 404 `NOT_FOUND`                                                                                                                                                                                                                                                                                   |
+| GET    | `/agents/:id/x`           | —                                                                                                                                         | `{ account: { handle, verifiedAt } \| null, challenge: { handle, text, expiresAt } \| null, available }`            | 403 `RESEARCH_ACCESS_DENIED` for a workspace member who is not the owner (it carries the live code); 404 `NOT_FOUND`                                                                                                                                                                              |
+| POST   | `/agents/:id/x/challenge` | `{ handle }` (`@` optional, 1–15 of `[A-Za-z0-9_]`)                                                                                       | `{ handle, text, expiresAt }` (24 h; a new one replaces the old)                                                    | 400 `INVALID_X_HANDLE`; 404 `NOT_FOUND`; 409 `X_HANDLE_TAKEN`, `X_ALREADY_CONNECTED`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                                                                                                   |
+| POST   | `/agents/:id/x/verify`    | `{}`                                                                                                                                      | `{ verified: true, handle }` or `{ verified: false, reason: "NOT_FOUND" }`                                          | 404 `NOT_FOUND`, `CHALLENGE_NOT_FOUND`; 409 `CHALLENGE_EXPIRED`, `X_HANDLE_TAKEN`, `X_ALREADY_CONNECTED`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                                                                               |
+| DELETE | `/agents/:id/x`           | —                                                                                                                                         | `{ disconnected: true }`                                                                                            | 404 `NOT_FOUND`; 409 `X_ON_PUBLIC_AGENT`                                                                                                                                                                                                                                                          |
+| POST   | `/agents/:id/publish`     | `{}`                                                                                                                                      | `{ visibility: "public", publishedAt }`                                                                             | 400 `INVALID_INPUT` (a non-empty body); 404 `NOT_FOUND`; 409 `PUBLISH_BLOCKED` with `detail.blockers` ⊆ `WALLET`, `FUNDS`, `KILLED` (api-schema's `PUBLISH_BLOCKERS`); 503 `BALANCES_UNAVAILABLE`; 409 `PUBLISH_CONFLICT` (the agent's wallet or state changed twice while publishing; try again) |
+| GET    | `/wallets/ledger`         | —                                                                                                                                         | `{ entries: [{ direction: "to_agent" \| "to_master", token, amount, agentName, txHash, at }] }` newest first, ≤ 100 | 503 `WALLETS_UNAVAILABLE` where the ledger is not composed                                                                                                                                                                                                                                        |
 
 The studio agent DTO gains `visibility`, `publishedAt` and `xHandle` (verified handle or null).
+`PUT /setup` with `caps` writes the new per-trade and per-day caps to the config's `spend` in the
+same transaction as the rest (`updateConfig`'s `writeSpend`); without `caps` the stored `spend` is
+kept.
 `POST /publish` on an already public agent answers its current state (idempotent).
 
 ## 5. Data model and migration
 
-Migration `0024_go_public`:
+Migration `0024_go_public` (see `packages/infrastructure/drizzle/0024_go_public.sql` for the exact
+DDL; this is its shape):
 
 ```sql
 CREATE TYPE agents.agent_visibility AS ENUM ('private', 'public');
 ALTER TABLE agents.agents
   ADD COLUMN visibility agents.agent_visibility NOT NULL DEFAULT 'private',
-  ADD COLUMN published_at timestamptz,
-  ADD CONSTRAINT agents_published_consistent CHECK ((visibility = 'public') = (published_at IS NOT NULL));
-UPDATE agents.agents SET visibility = 'public', published_at = created_at WHERE status <> 'draft';
-CREATE INDEX agents_public_idx ON agents.agents (published_at DESC) WHERE visibility = 'public';
+  ADD COLUMN published_at timestamptz;
+-- The backfill runs with the agents_updated_at trigger disabled, so updated_at is unchanged. The
+-- status is compared as text: 0022 added 'draft' and may run in the same transaction.
+ALTER TABLE agents.agents DISABLE TRIGGER agents_updated_at;
+UPDATE agents.agents SET visibility = 'public', published_at = created_at WHERE status::text <> 'draft';
+ALTER TABLE agents.agents ENABLE TRIGGER agents_updated_at;
+ALTER TABLE agents.agents ADD CONSTRAINT agents_published_consistent
+  CHECK ((visibility = 'public') = (published_at IS NOT NULL));
+CREATE INDEX agents_public_idx ON agents.agents (published_at DESC NULLS LAST) WHERE visibility = 'public';
 
 CREATE TABLE agents.x_challenges (
   agent_id uuid PRIMARY KEY REFERENCES agents.agents(id) ON DELETE CASCADE, -- one live challenge
-  handle text NOT NULL CHECK (handle ~ '^[A-Za-z0-9_]{1,15}$'),
+  handle text NOT NULL CONSTRAINT x_challenges_handle_format CHECK (handle ~ '^[A-Za-z0-9_]{1,15}$'),
   code text NOT NULL,                     -- 'pk-' + 8 base32 chars
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
@@ -162,12 +175,14 @@ CREATE TABLE agents.x_challenges (
 );
 CREATE TABLE agents.x_accounts (
   agent_id uuid PRIMARY KEY REFERENCES agents.agents(id) ON DELETE CASCADE,
-  x_user_id text NOT NULL UNIQUE,
+  x_user_id text NOT NULL CONSTRAINT x_accounts_x_user_id_key UNIQUE,
   handle text NOT NULL,
   verified_at timestamptz NOT NULL,
   verification_post_id text NOT NULL
 );
 CREATE UNIQUE INDEX x_accounts_handle_key ON agents.x_accounts (lower(handle));
+-- Both X tables have RLS enabled; the service role (where it exists) gets
+-- SELECT, INSERT, UPDATE, DELETE on them.
 ```
 
 On verify, `agent_profiles.x_handle` is set to the handle too (its unique index already exists);
@@ -177,10 +192,10 @@ disconnect clears both. Readers that change: the three `status <> 'draft'` filte
 
 ## 6. Integrations
 
-| System    | Use                                                                                                   | Config                                               |
-| --------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| X API v2  | `GET /2/users/by/username/:u` (id), `GET /2/users/:id/tweets?start_time=&max_results=20` (match code) | `X_BEARER_TOKEN` (API secret, optional; absent → D5) |
-| Monad RPC | the publish funding check (existing balance reader)                                                   | existing                                             |
+| System    | Use                                                                                                                                                                                                                                | Config                                               |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| X API v2  | `GET /2/users/by/username/:u` (id), `GET /2/users/:id/tweets?max_results=20&start_time=&tweet.fields=created_at,author_id&exclude=retweets` (match code; `start_time` is the challenge's creation floored to the second, RFC 3339) | `X_BEARER_TOKEN` (API secret, optional; absent → D5) |
+| Monad RPC | the publish funding check (existing balance reader)                                                                                                                                                                                | existing                                             |
 
 ## 7. Design work
 
@@ -192,8 +207,8 @@ production): `draft` (Overview), `draft-x-open`, `draft-x-miss`, `draft-x-ok`, `
 ## 8. Security and abuse
 
 - Verification: single live challenge per agent, 24 h, code bound to agent and handle; only posts
-  created after the challenge count; the post's author id must be the looked-up user id; checks
-  limited to one per 10 s per agent.
+  created at or after the challenge count (retweets never); the post's author id must be the
+  looked-up user id; checks limited to one per 10 s per agent.
 - `x_user_id` and `lower(handle)` unique: one X account, one agent.
 - The bearer token never leaves the API; X errors map to 503 without echoing X's body.
 - Publish re-checks on the server; the client's skip is not trusted for anything.
