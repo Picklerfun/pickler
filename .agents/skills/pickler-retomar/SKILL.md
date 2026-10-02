@@ -14,7 +14,7 @@ que vuelva a elegir. El inventario completo aplica al primer modo; no obliga a f
 tarea elegida.
 
 El usuario limpió el contexto o abrió una sesión nueva. **Nada de lo que importa vive en el
-chat** — vive en `docs/overview/data/manifest.js`, en los specs, en los audits y en git.
+chat** — vive en `docs/mobile/overview/data/manifest.js`, en los specs, en los audits y en git.
 Reconstruyes el estado desde ahí, sin memoria del asistente ni rutas fuera del repo: todo lo
 que esta skill lee está en el checkout o en `git`.
 
@@ -54,11 +54,11 @@ for (const d of vivos) {
   const alerta = cerradoS(d.status) ? '  [!] status global dice ' + d.status : '';
   console.log(' · ' + d.title + alerta);
   console.log('     ' + d.phases.map(p => 'F'+p.num+':'+p.status).join(' '));
-  console.log('     siguiente: F' + sig.num + ' (' + sig.status + ')  ·  docs/overview/' + d.file);
+  console.log('     siguiente: F' + sig.num + ' (' + sig.status + ')  ·  docs/mobile/overview/' + d.file);
 }
 console.log('');
 console.log('SIN FASES DECLARADAS (' + sinFases.length + ') — one-pagers dev; su estado no se deduce del manifest');
-for (const d of sinFases) console.log(' · [' + d.status + '] ' + d.title + '  ·  docs/overview/' + d.file);
+for (const d of sinFases) console.log(' · [' + d.status + '] ' + d.title + '  ·  docs/mobile/overview/' + d.file);
 console.log('');
 console.log('TERMINADOS SIN CERRAR (' + porCerrar.length + ') — todas las fases completed, status sin actualizar:');
 console.log('  ' + porCerrar.map(d => d.title).join(' · '));
@@ -73,7 +73,7 @@ Los **en vuelo** van completos al reporte. Las entradas **sin `phases` son dev t
 **incluidos los `shipped`**: el último build distribuido es parte del estado.
 
 ```bash
-node -e "global.window={};require('./docs/overview/data/manifest.js');for(const d of window.DOCS.filter(d=>!d.phases))console.log(d.date,d.status.padEnd(9),d.title,' · docs/overview/'+d.file)"
+node -e "global.window={};require('./docs/overview/data/manifest.js');for(const d of window.DOCS.filter(d=>!d.phases))console.log(d.date,d.status.padEnd(9),d.title,' · docs/mobile/overview/'+d.file)"
 ```
 
 Los *terminados sin cerrar* van en una línea al final: son limpieza de manifest, no trabajo.
@@ -97,7 +97,7 @@ Un worktree es apenas una de las cinco formas en que el trabajo se queda fuera d
 stashes). Desde la raíz del checkout:
 
 ```bash
-node scripts/agent-infra/branches.mjs origin/main
+node scripts/mobile/agent-infra/branches.mjs origin/main
 ```
 
 Imprime JSON: `branches` (locales y remotas, con `status`, `headSha`,
@@ -127,7 +127,7 @@ exige revalidar SHA, cambios ignorados y sesiones vivas.
 ## 3. Las decisiones que no están en los commits
 
 ```bash
-ls docs/superpowers/audits/*.md 2>/dev/null | sort -r | head -5
+ls docs/mobile/superpowers/audits/*.md 2>/dev/null | sort -r | head -5
 ```
 
 Los audits (`<fecha>-<topic>-f<N>-rulings.md`, uno por fase ejecutada) guardan lo que se
@@ -183,12 +183,12 @@ Tres cosas que no están en git: cuánto falta para el bounty, qué build está 
 cómo quedaron las cuentas.
 
 ```bash
-# Deadline del bounty (docs/04-roadmap-bounty.md §1): 13 oct 2026 21:59 CST
+# Deadline del bounty (docs/mobile/04-roadmap-bounty.md §1): 13 oct 2026 21:59 CST
 node -e "const d=(new Date('2026-10-13T21:59:00-06:00')-Date.now())/864e5;console.log('Bounty: faltan '+Math.floor(d)+' días')"
 # Build de TestFlight: el tracker testflight-* más reciente del manifest (no el contador del index, que cuenta pending)
 node -e "global.window={};require('./docs/overview/data/manifest.js');const t=window.DOCS.filter(d=>/testflight/.test(d.file)).sort((a,b)=>b.date.localeCompare(a.date));for(const d of t)console.log(d.date,d.status.padEnd(9),d.title)"
 # Cuentas de testnet: el audit más reciente con esa sección (sólo la sección)
-node -e "const fs=require('fs');const d='docs/superpowers/audits/';const f=fs.readdirSync(d).filter(n=>n.endsWith('.md')&&fs.readFileSync(d+n,'utf8').includes('## Estado de las cuentas')).sort().pop();if(!f){console.log('(ningún audit con sección de cuentas)');process.exit()}const s=fs.readFileSync(d+f,'utf8');const m=s.match(/## Estado de las cuentas[^\n]*\n[\s\S]*?(?=\n## |$)/);console.log(f);console.log(m?m[0]:'(sección no encontrada)')"
+node -e "const fs=require('fs');const d='docs/mobile/superpowers/audits/';const f=fs.readdirSync(d).filter(n=>n.endsWith('.md')&&fs.readFileSync(d+n,'utf8').includes('## Estado de las cuentas')).sort().pop();if(!f){console.log('(ningún audit con sección de cuentas)');process.exit()}const s=fs.readFileSync(d+f,'utf8');const m=s.match(/## Estado de las cuentas[^\n]*\n[\s\S]*?(?=\n## |$)/);console.log(f);console.log(m?m[0]:'(sección no encontrada)')"
 ```
 
 Reglas de lectura:
@@ -201,26 +201,26 @@ Reglas de lectura:
 - Las cuentas del audit son **"al cierre de esa sesión"**, no verdad viva: saldos de AUSD/MON,
   IDs de cuenta de Perpl y forwarding pudieron cambiar desde otro dispositivo. Antes de operar,
   re-mide con RPC (balances, `readAccountId`) y reporta la diferencia.
-- `docs/00–04*.md` son **producto y decisiones**, no estado de ejecución. El estado vivo está en
-  el manifest, los trackers de `docs/overview/dev/` y los audits.
-- "En implementación" en `docs/overview/index.html` cuenta `active` + `in_progress` +
+- `docs/mobile/00–04*.md` son **producto y decisiones**, no estado de ejecución. El estado vivo está en
+  el manifest, los trackers de `docs/mobile/overview/dev/` y los audits.
+- "En implementación" en `docs/mobile/overview/index.html` cuenta `active` + `in_progress` +
   `pending`: un tracker propuesto y sin decidir suma igual que uno a medias. No lo leas como
   trabajo en curso.
 - Para contar fases en un overview usa `grep -c '^ *<article class="phase-card"'`: el script
   del template repite la cadena en literales y un `grep` a secas da 3 donde hay 1.
 - El proyecto que construye el catálogo (spec `docs-manifest`) también tiene entrada y overview;
   si una rama con commits `unknown_review` no aparece en el manifest, busca su spec en
-  `docs/superpowers/specs/` y su plan más reciente en `docs/superpowers/plans/` antes de
+  `docs/mobile/superpowers/specs/` y su plan más reciente en `docs/mobile/superpowers/plans/` antes de
   llamarla caja negra.
 
 ## 5. Cuando ya eligió
 
 Sólo entonces:
 
-1. Lee `docs/superpowers/specs/<fecha>-<topic>-design.md` — las decisiones numeradas (D1, D2…)
-   son el contrato; el plan (`docs/superpowers/plans/<fecha>-<topic>[-fN].md`) argumenta desde ahí.
+1. Lee `docs/mobile/superpowers/specs/<fecha>-<topic>-design.md` — las decisiones numeradas (D1, D2…)
+   son el contrato; el plan (`docs/mobile/superpowers/plans/<fecha>-<topic>[-fN].md`) argumenta desde ahí.
 2. Lee el audit del proyecto si existe.
-3. Abre `docs/overview/<fecha>-<topic>.html` sólo si necesitas el detalle de una fase.
+3. Abre `docs/mobile/overview/<fecha>-<topic>.html` sólo si necesitas el detalle de una fase.
 4. **Vuelve a medir contra la base viva** cualquier número que vayas a usar. Specs y audits
    fechan sus mediciones a propósito: punto de partida, no verdad vigente. El caso que lo
    motivó: el `3401` que Perpl devolvió dos veces en un iPhone real se reportó como

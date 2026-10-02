@@ -1,7 +1,7 @@
 # services/reads — backend de Ask (esquema `mobile`)
 
 Proyecto Supabase **compartido** `pickler` (`yvdipvcrpbqvofayteqf`, Sherry Labs) con `Relayerfi/pickler` de Gilbert.
-Todo lo nuestro vive en el esquema `mobile`. Spec: `docs/superpowers/specs/2026-09-19-mobile-ask-design.md`.
+Todo lo nuestro vive en el esquema `mobile`. Spec: `docs/mobile/superpowers/specs/2026-09-19-mobile-ask-design.md`.
 
 ## Prohibido en este proyecto
 - `supabase db push`, `supabase db reset`, `supabase migration repair`, `supabase link` + comandos de base.

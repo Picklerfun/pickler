@@ -345,7 +345,7 @@ git commit -m "docs: vistas HTML autogeneradas de specs y planes"
 
 - [ ] **Step 1: `CLAUDE.md` de raíz (≤ 2 KB)**
 
-Contenido: título "Pickler (repo `predict`)"; párrafo: monorepo del producto Pickler, app móvil en `apps/mobile` (Expo, npm, ver su README), tooling de docs/agentes en la raíz (`npm run agents:check|agents:test|agents:inventory|docs:html|docs:check`); reglas: español, worktree por tarea en `.claude/worktrees/`, commits por nombre, sin push/merge/TestFlight sin autorización, contrato de documentación en [`docs/CLAUDE.md`](docs/CLAUDE.md), estado del producto en [`docs/04-roadmap-bounty.md`](docs/04-roadmap-bounty.md) y en el catálogo `docs/overview/index.html`; deadline del bounty 13 oct 2026 21:59 CST. Nada de lo que ya dice `~/.agents/global.md`.
+Contenido: título "Pickler (repo `predict`)"; párrafo: monorepo del producto Pickler, app móvil en `apps/mobile` (Expo, npm, ver su README), tooling de docs/agentes en la raíz (`npm run agents:check|agents:test|agents:inventory|docs:html|docs:check`); reglas: español, worktree por tarea en `.claude/worktrees/`, commits por nombre, sin push/merge/TestFlight sin autorización, contrato de documentación en [`docs/CLAUDE.md`](../../AGENTS.md), estado del producto en [`docs/04-roadmap-bounty.md`](../../04-roadmap-bounty.md) y en el catálogo `docs/overview/index.html`; deadline del bounty 13 oct 2026 21:59 CST. Nada de lo que ya dice `~/.agents/global.md`.
 
 ```bash
 ln -s CLAUDE.md AGENTS.md

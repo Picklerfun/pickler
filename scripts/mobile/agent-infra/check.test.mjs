@@ -62,36 +62,48 @@ test('repository audit detects broken links, oversize chains and missing generat
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, value);
   }
-  put('CLAUDE.md', '# Root');
-  symlinkSync('CLAUDE.md', join(root, 'AGENTS.md'));
+  put('AGENTS.md', '# Root, outside the audited tree');
+  put('docs/mobile/AGENTS.md', '# Docs');
+  put('docs/mobile/CLAUDE.md', '@AGENTS.md\n');
   put(
     '.agents/skills/demo/SKILL.md',
     '---\nname: demo\ndescription: Valid example\n---\n',
   );
   put(
-    'docs/overview/data/manifest.js',
+    'docs/mobile/overview/data/manifest.js',
     'window.DOCS=[{file:"demo.html",phases:[{num:0,status:"pending"}]}];',
   );
   put(
-    'docs/overview/demo.html',
+    'docs/mobile/overview/demo.html',
     '<article class="phase-card" data-phase="0" data-status="pending"></article>',
   );
-  put('docs/superpowers/specs/example.md', '# Example');
-  put('docs/superpowers/specs/example.html', '<h1>Example</h1>');
+  put('docs/mobile/superpowers/specs/example.md', '# Example');
+  put('docs/mobile/superpowers/specs/example.html', '<h1>Example</h1>');
   assert.deepEqual(check(root).errors, []);
-  put('docs/overview/demo.html', '<p>Cards accidentally removed</p>');
+  put('docs/mobile/overview/demo.html', '<p>Cards accidentally removed</p>');
   assert.ok(check(root).errors.some((e) => e.includes('phase IDs/status')));
   put(
-    'docs/overview/demo.html',
+    'docs/mobile/overview/demo.html',
     '<article class="phase-card" data-phase="0" data-status="pending"></article>',
   );
-  put('CLAUDE.md', 'x'.repeat(24577));
+  put('docs/mobile/AGENTS.md', 'x'.repeat(24577));
   assert.ok(check(root).errors.some((e) => e.includes('exceeds 24576')));
-  put('CLAUDE.md', '# Root');
-  unlinkSync(join(root, 'docs/superpowers/specs/example.html'));
+  put('docs/mobile/AGENTS.md', '# Docs');
+  unlinkSync(join(root, 'docs/mobile/superpowers/specs/example.html'));
   assert.ok(check(root).errors.some((e) => e.includes('HTML missing')));
-  unlinkSync(join(root, 'CLAUDE.md'));
+  put('docs/mobile/superpowers/specs/example.html', '<h1>Example</h1>');
+  put('docs/mobile/CLAUDE.md', '# A second copy of the rules');
+  assert.ok(check(root).errors.some((e) => e.includes('one-line adapter')));
+  put('docs/mobile/CLAUDE.md', '@AGENTS.md\n');
+  put('apps/mobile/CLAUDE.md', '@AGENTS.md\n');
+  assert.ok(check(root).errors.some((e) => e.includes('missing AGENTS twin')));
+  symlinkSync('CLAUDE.md', join(root, 'apps/mobile/AGENTS.md'));
+  assert.ok(check(root).errors.some((e) => e.includes('must be the real file')));
+  unlinkSync(join(root, 'apps/mobile/CLAUDE.md'));
   assert.ok(
     check(root).errors.some((e) => e.includes('broken instruction link')),
   );
+  unlinkSync(join(root, 'apps/mobile/AGENTS.md'));
+  put('apps/web/CLAUDE.md', '# Outside the audited tree: not this check\'s business');
+  assert.deepEqual(check(root).errors, []);
 });

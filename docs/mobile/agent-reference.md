@@ -2,16 +2,16 @@
 > históricos: revalidar contra código/configuración antes de actuar. El contrato activo
 > y el índice de lectura están en `CLAUDE.md`; no importar esta referencia automáticamente.
 
-# docs/ — Convenciones para specs, plans y dashboards de proyecto
+# docs/mobile/ — Convenciones para specs, plans y dashboards de proyecto
 
-Este archivo manda en todo lo que vive bajo `docs/`. Si choca con el root `CLAUDE.md`, este gana para temas de documentación; el root manda para todo lo demás (app, tooling, bounty).
+Este archivo manda en todo lo que vive bajo `docs/mobile/`. Si choca con el root `CLAUDE.md`, este gana para temas de documentación; el root manda para todo lo demás (app, tooling, bounty).
 
-El sistema está inspirado en ["The Unreasonable Effectiveness of HTML"](https://x.com/trq212/status/2052809885763747935) (Thariq Shihipar, Anthropic, 2026-05-17). El CSS compartido, el conversor MD→HTML y los sub-catálogos se adoptaron completos de Proflores el 2026-09-18 (spec `docs/superpowers/specs/2026-09-18-docs-manifest-design.md`).
+El sistema está inspirado en ["The Unreasonable Effectiveness of HTML"](https://x.com/trq212/status/2052809885763747935) (Thariq Shihipar, Anthropic, 2026-05-17). El CSS compartido, el conversor MD→HTML y los sub-catálogos se adoptaron completos de Proflores el 2026-09-18 (spec `docs/mobile/superpowers/specs/2026-09-18-docs-manifest-design.md`).
 
 ## Estructura
 
 ```
-docs/
+docs/mobile/
   00-historia.md … 04-roadmap-bounty.md   ← documentos de producto (vista humana; el roadmap enlaza a los overviews)
   superpowers/
     specs/                  YYYY-MM-DD-<topic>-design.md         ← spec del proyecto
@@ -38,11 +38,11 @@ docs/
     playgrounds/            ← sliders/knobs interactivos → JSON live → Copy as JSON
     reports/                ← snapshots fechados (actividad, builds, incidentes)
     assets/<slug>/          ← screenshots y mockups por slug
-scripts/
-  docs-md-to-html.mjs       ← regenera HTML autogenerado de specs/plans (`npm run docs:html` / `docs:check`)
+scripts/mobile/
+  docs-md-to-html.mjs       ← regenera HTML autogenerado de specs/plans (`npm run docs:html --prefix scripts/mobile` / `docs:check`)
   lib/md-parser.mjs         ← parser MD standalone sin deps
-  agent-infra/              ← check.mjs (`npm run agents:check`), branches.mjs (`agents:inventory`), render-check.mjs
-  test-lock.sh              ← lock global de tests (`npm run agents:test`)
+  agent-infra/              ← check.mjs (`npm run agents:check --prefix scripts/mobile`), branches.mjs (`agents:inventory`), render-check.mjs
+  test-lock.sh              ← lock global de tests (`npm run agents:test --prefix scripts/mobile`)
 .agents/skills/
   pickler-overview-new/     ← crea nuevo project overview
   pickler-dev-new/          ← crea dev one-pager
@@ -55,10 +55,10 @@ Las skills viven en `.agents/skills/` y se descubren por symlink desde `.claude/
 
 | Artefacto | Vive en | Rol |
 |---|---|---|
-| **Spec** (`.md`) | `docs/superpowers/specs/` | Visión, decisiones, modelo, fuera de scope, roadmap por fases. Inmutable después de aprobado (excepto correcciones de errores). El humano lo lee a través del HTML autogenerado al lado. |
-| **Plan** (`.md`) | `docs/superpowers/plans/` | UN archivo por fase. Tasks TDD bite-sized (2-5 min cada step), con código completo y comandos exactos. Spec dice **qué**; plan dice **cómo**. HTML autogenerado al lado con checkboxes interactivos. |
-| **HTML overview** | `docs/overview/` | **UNO solo por proyecto** (no uno por plan). Dashboard vivo: status board + roadmap + decisiones + glosario. Se actualiza cuando avanzan las fases. **Escrito a mano** (no autogenerado). |
-| **Audit** (`.md`) | `docs/superpowers/audits/` | UNO por fase ejecutada. Lo que se decidió **sin el humano**, las correcciones a afirmaciones previas, la evidencia que costó trabajo, los residuales abiertos y el rollback. Es lo único que responde "¿por qué está así?" dentro de seis meses. |
+| **Spec** (`.md`) | `docs/mobile/superpowers/specs/` | Visión, decisiones, modelo, fuera de scope, roadmap por fases. Inmutable después de aprobado (excepto correcciones de errores). El humano lo lee a través del HTML autogenerado al lado. |
+| **Plan** (`.md`) | `docs/mobile/superpowers/plans/` | UN archivo por fase. Tasks TDD bite-sized (2-5 min cada step), con código completo y comandos exactos. Spec dice **qué**; plan dice **cómo**. HTML autogenerado al lado con checkboxes interactivos. |
+| **HTML overview** | `docs/mobile/overview/` | **UNO solo por proyecto** (no uno por plan). Dashboard vivo: status board + roadmap + decisiones + glosario. Se actualiza cuando avanzan las fases. **Escrito a mano** (no autogenerado). |
+| **Audit** (`.md`) | `docs/mobile/superpowers/audits/` | UNO por fase ejecutada. Lo que se decidió **sin el humano**, las correcciones a afirmaciones previas, la evidencia que costó trabajo, los residuales abiertos y el rollback. Es lo único que responde "¿por qué está así?" dentro de seis meses. |
 
 ## Reglas obligatorias
 
@@ -66,9 +66,9 @@ Las skills viven en `.agents/skills/` y se descubren por symlink desde `.claude/
 
 Cuando arranque un proyecto nuevo, lo más rápido es invocar la skill **`pickler-overview-new`** (pide "crea overview para X" y ella hace todo). Manualmente:
 
-1. Crear `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
-2. Clonar `docs/overview/_project-template.html` → `docs/overview/YYYY-MM-DD-<topic>.html`, cambiar `<body data-slug="...">` y rellenar placeholders `[[…]]`.
-3. Abrir `docs/overview/index.html`, presionar `n` (o click "+ Nueva entrada"), llenar el form y copiar el JS. Pegarlo al array de `docs/overview/data/manifest.js`.
+1. Crear `docs/mobile/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
+2. Clonar `docs/mobile/overview/_project-template.html` → `docs/mobile/overview/YYYY-MM-DD-<topic>.html`, cambiar `<body data-slug="...">` y rellenar placeholders `[[…]]`.
+3. Abrir `docs/mobile/overview/index.html`, presionar `n` (o click "+ Nueva entrada"), llenar el form y copiar el JS. Pegarlo al array de `docs/mobile/overview/data/manifest.js`.
 
 Si el proyecto tiene varias fases (F0, F1, F2…), **no creas un HTML nuevo por fase**. Editas el existente.
 
@@ -99,7 +99,7 @@ Cuando completes la implementación de una fase:
 
 ### 4. Entrada en el manifest
 
-`docs/overview/data/manifest.js` tiene `window.DOCS = [...]` que el index carga via `<script src>`. Cada entrada:
+`docs/mobile/overview/data/manifest.js` tiene `window.DOCS = [...]` que el index carga via `<script src>`. Cada entrada:
 
 ```js
 {
@@ -123,12 +123,12 @@ Cuando completes la implementación de una fase:
 - Cuando una fase avance, actualiza solo el `status` de ese item en `phases` y, si el proyecto cierra, el `status` global. **No borres entradas** al completar — el índice es histórico.
 - El index muestra una mini-barra de progreso automática si el `phases` array está presente.
 - El index **construye DOM con `createElement`** — nunca `innerHTML` con contenido dinámico (XSS).
-- `npm run agents:check` compara `phases` del manifest contra los `data-status` del HTML y falla si difieren.
+- `npm run agents:check --prefix scripts/mobile` compara `phases` del manifest contra los `data-status` del HTML y falla si difieren.
 
 ### 5. Un audit por fase ejecutada
 
 Cuando cierres una fase que se ejecutó con subagentes, escribe
-`docs/superpowers/audits/YYYY-MM-DD-<topic>-f<N>-rulings.md` y déjalo listo para que Jesús pida el commit.
+`docs/mobile/superpowers/audits/YYYY-MM-DD-<topic>-f<N>-rulings.md` y déjalo listo para que Jesús pida el commit.
 
 **Por qué es obligatorio y no opcional:** el ledger de la corrida vive en `.superpowers/`, que
 está **git-ignored**. Todo lo que el controller decidió sin preguntar, la evidencia que costó
@@ -147,12 +147,12 @@ Qué lleva, en este orden:
 
 El commit message no alcanza para esto: explica *qué* cambió, no *qué se descartó y por qué*.
 
-Los cuatro handoffs anteriores a este sistema (`docs/05` a `docs/08`) se conservan tal cual como audits de fase 1 de cada sub-proyecto; el formato de arriba aplica a los audits nuevos.
+Los cuatro handoffs anteriores a este sistema (`docs/mobile/05` a `docs/mobile/08`) se conservan tal cual como audits de fase 1 de cada sub-proyecto; el formato de arriba aplica a los audits nuevos.
 
 ### 6. Reglas del HTML
 
 - **Standalone**: cero deps externas, abre con `file://` offline. (Google Fonts via `@import` / `<link>` es progressive enhancement; el HTML debe ser legible sin red.)
-- **Paleta canónica** (marca Pickler, **dark por defecto**; tokens en `docs/overview/_styles.css`, fuente única — no los dupliques localmente):
+- **Paleta canónica** (marca Pickler, **dark por defecto**; tokens en `docs/mobile/overview/_styles.css`, fuente única — no los dupliques localmente):
   - Brand: lima `#C8F03A`, soft `rgba(200,240,58,.14)`, dark `#E2F98A`.
   - Accent (in-progress / violeta): `#7A5CFF`, soft `rgba(122,92,255,.18)`.
   - Status semantics: pass `#7BE38A` (completed), warn `#F5C35B` (plan_ready), fail `#F2777A`, info `#5AD8FF`, pending neutro `#8C8C88` (`--ink-3`).
@@ -170,7 +170,7 @@ Los cuatro handoffs anteriores a este sistema (`docs/05` a `docs/08`) se conserv
   6. Resto del spec en secciones cortas (decisiones, modelo, pantallas, contratos, etc.).
   7. **Glosario** al final (sólo si el spec lo tiene).
   8. **Footer** con paths a `.md` fuente (spec, plan, audit) y nota de "dashboard vivo".
-- **Mirar el render** (desktop y 390 px) antes de afirmar calidad visual; `node scripts/agent-infra/render-check.mjs <scratch>` captura con el Chrome local, pero la captura hay que abrirla.
+- **Mirar el render** (desktop y 390 px) antes de afirmar calidad visual; `node scripts/mobile/agent-infra/render-check.mjs <scratch>` captura con el Chrome local, pero la captura hay que abrirla.
 - `<title>` = h1 completo (título + acento) + " · Pickler".
 - `data-done` en `[data-sb="next"]`: texto que el script usa cuando todas las fases están `completed`, en vez de "— todo completo".
 - Subtítulos dentro de una sección (p. ej. "Rulings en ejecución"): `<h3 class="section-sub">`, regla compartida en `_styles.css` — no estilos inline.
@@ -195,18 +195,18 @@ Los cuatro handoffs anteriores a este sistema (`docs/05` a `docs/08`) se conserv
 
 La fecha es la del primer escrito del artefacto. No la cambias después; refleja el día que arrancó. Ejemplo: el spec `2026-09-16-mobile-perpl-design.md` tiene plan `2026-09-16-mobile-perpl.md`, overview `2026-09-16-mobile-perpl.html` y audit `…-mobile-perpl-f1-rulings.md`.
 
-Para explorations / PRs / playgrounds / reports no hay skill: clona `docs/overview/<carpeta>/_template.html`, usa `body data-slug="…"` para que las llaves de `localStorage` sean per-artefacto y agrega la entrada al manifest con su `types`. Un report **no se actualiza** después de publicado; para info fresca escribes otro.
+Para explorations / PRs / playgrounds / reports no hay skill: clona `docs/mobile/overview/<carpeta>/_template.html`, usa `body data-slug="…"` para que las llaves de `localStorage` sean per-artefacto y agrega la entrada al manifest con su `types`. Un report **no se actualiza** después de publicado; para info fresca escribes otro.
 
 ## Spec → plan → ejecución
 
 El flujo canónico con `superpowers`:
 
-1. `superpowers:brainstorming` → ronda de aclaraciones, presenta diseño, escribe spec en `docs/superpowers/specs/`, crea HTML overview en `docs/overview/` (clonado del `_project-template.html` — o usa la skill `pickler-overview-new` que lo hace en un paso). **Parar** y esperar aprobación de Jesús.
-2. `superpowers:writing-plans` → escribe el plan de **una** fase en `docs/superpowers/plans/`. Cada vez que se escribe un plan, **se actualiza** el HTML overview agregando el `<details class="tasks">` a la `.phase-card` correspondiente y subiendo el status a `plan_ready`. El HTML autogenerado del plan aparece al lado del `.md` (`npm run docs:html`). **Parar.**
+1. `superpowers:brainstorming` → ronda de aclaraciones, presenta diseño, escribe spec en `docs/mobile/superpowers/specs/`, crea HTML overview en `docs/mobile/overview/` (clonado del `_project-template.html` — o usa la skill `pickler-overview-new` que lo hace en un paso). **Parar** y esperar aprobación de Jesús.
+2. `superpowers:writing-plans` → escribe el plan de **una** fase en `docs/mobile/superpowers/plans/`. Cada vez que se escribe un plan, **se actualiza** el HTML overview agregando el `<details class="tasks">` a la `.phase-card` correspondiente y subiendo el status a `plan_ready`. El HTML autogenerado del plan aparece al lado del `.md` (`npm run docs:html --prefix scripts/mobile`). **Parar.**
 3. `superpowers:subagent-driven-development` (o `executing-plans`) → ejecuta el plan task por task. Al terminar la fase, **se actualiza** el HTML overview marcando la fase como `completed` y los items del `<details>` con checkbox checked.
-4. **Audit de la fase** → `docs/superpowers/audits/` con los rulings y los residuales (regla 5). Es el paso que más se olvida y el único que no se puede reconstruir después. Checkpoint antes de la siguiente fase.
+4. **Audit de la fase** → `docs/mobile/superpowers/audits/` con los rulings y los residuales (regla 5). Es el paso que más se olvida y el único que no se puede reconstruir después. Checkpoint antes de la siguiente fase.
 
-Cierre de cada etapa: `npm run agents:check` (manifest ↔ HTML ↔ symlinks ↔ enlaces) y `npm run docs:check` (HTML autogenerado al día) en verde, con la salida pegada como evidencia.
+Cierre de cada etapa: `npm run agents:check --prefix scripts/mobile` (manifest ↔ HTML ↔ symlinks ↔ enlaces) y `npm run docs:check --prefix scripts/mobile` (HTML autogenerado al día) en verde, con la salida pegada como evidencia.
 
 ## Dev tracker — fixes y features chiquitos también van al index
 
@@ -232,7 +232,7 @@ Misma paleta y reglas del overview (standalone, marca Pickler dark por defecto, 
 7. **Follow-ups** (opcional) — `<details class="followups">` si quedan known issues no-blockers.
 8. **Footer** con commit SHA / PR # / número de build cuando exista.
 
-Plantilla canónica: **`docs/overview/dev/_template.html`** (editable con `contenteditable` + botón "⬇ Descargar HTML"). Skill `pickler-dev-new` automatiza el flow.
+Plantilla canónica: **`docs/mobile/overview/dev/_template.html`** (editable con `contenteditable` + botón "⬇ Descargar HTML"). Skill `pickler-dev-new` automatiza el flow.
 
 ### Entry en manifest para modo "dev"
 
@@ -254,14 +254,14 @@ El index renderiza los tipos `fix` / `feature` / `refactor` con su propio chip d
 ### Cuándo NO hacer dev tracker
 
 - Typos en docs, renombrar variables internas, ajustar logs. Si la diff es <20 líneas y no afecta nada visible, no necesita HTML.
-- Commits de "wip" o "limpia tests". El registro vive en git log, no en docs/.
+- Commits de "wip" o "limpia tests". El registro vive en git log, no en docs/mobile/.
 
 La meta es: **abriendo `index.html` se ve qué se ha estado moviendo en el dashboard**, no solo proyectos grandes.
 
 ## Research — expedientes de investigación
 
-No todo lo que vive en `docs/` es código. Venues, protocolos, contratos de terceros y mercado
-van a `docs/investigacion/<topic>.md` (hoy: `polymarket.md`, `perpl.md`), con la misma
+No todo lo que vive en `docs/mobile/` es código. Venues, protocolos, contratos de terceros y mercado
+van a `docs/mobile/investigacion/<topic>.md` (hoy: `polymarket.md`, `perpl.md`), con la misma
 disciplina que un spec:
 
 | Archivo | Rol |
@@ -301,7 +301,7 @@ Aprendidos al construir el sistema. Consolidados aquí — si reconoces que est�
 - ❌ Cerrar una fase ejecutada por subagentes sin su audit. El ledger es git-ignored: lo que no se commitea, se borra con el worktree.
 - ❌ Completar una fase sin marcar los checkboxes del `<details>` y bajar la fase a `data-status="completed"`.
 - ❌ Specs y planes desincronizados con la realidad del código. Si la implementación se desvió, actualiza el plan/spec o agrega una nota; no dejes la doc en estado fantasma.
-- ❌ Editar el HTML autogenerado en `docs/superpowers/{specs,plans}/*.html`. El próximo Write al `.md` lo sobrescribe — siempre edita el `.md` y regenera con `npm run docs:html`.
+- ❌ Editar el HTML autogenerado en `docs/mobile/superpowers/{specs,plans}/*.html`. El próximo Write al `.md` lo sobrescribe — siempre edita el `.md` y regenera con `npm run docs:html --prefix scripts/mobile`.
 
 ### Estilo y seguridad
 
@@ -314,4 +314,4 @@ Aprendidos al construir el sistema. Consolidados aquí — si reconoces que est�
 
 ## AGENTS.md
 
-`docs/AGENTS.md` es un **symlink** a `docs/CLAUDE.md` (para herramientas que leen ese nombre en vez de `CLAUDE.md`). Edita solo `docs/CLAUDE.md`; `npm run agents:check` valida el symlink y mide la cadena de instrucciones (≤ 24 KiB).
+`docs/mobile/AGENTS.md` es un **symlink** a `docs/mobile/AGENTS.md` (para herramientas que leen ese nombre en vez de `CLAUDE.md`). Edita solo `docs/mobile/AGENTS.md`; `npm run agents:check --prefix scripts/mobile` valida el symlink y mide la cadena de instrucciones (≤ 24 KiB).

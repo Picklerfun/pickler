@@ -1,15 +1,17 @@
 {
-  "name": "predict",
+  "name": "pickler-mobile-tooling",
   "private": true,
-  "description": "Monorepo de Pickler. Este package.json sólo trae el tooling de documentación y agentes; apps/mobile es independiente.",
+  "description": "Docs and agent tooling of the mobile app's imported record (docs/mobile). Not a workspace: install with npm ci --prefix scripts/mobile.",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "agents:check": "node scripts/agent-infra/check.mjs",
-    "agents:test": "bash scripts/test-lock.sh node --test --test-concurrency=1 scripts/agent-infra/*.test.mjs",
-    "agents:inventory": "node scripts/agent-infra/branches.mjs",
-    "docs:html": "node scripts/docs-md-to-html.mjs --all",
-    "docs:check": "node scripts/docs-md-to-html.mjs --all --check"
+    "agents:check": "node agent-infra/check.mjs",
+    "agents:test": "bash test-lock.sh node --test --test-concurrency=1 agent-infra/*.test.mjs",
+    "agents:inventory": "node agent-infra/branches.mjs",
+    "docs:html": "node docs-md-to-html.mjs --all",
+    "docs:check": "node docs-md-to-html.mjs --all --check"
   },
   "devDependencies": {
     "puppeteer-core": "^24.24.1",

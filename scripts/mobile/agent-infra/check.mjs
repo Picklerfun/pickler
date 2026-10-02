@@ -3,7 +3,6 @@ import {
   readdirSync,
   existsSync,
   lstatSync,
-  readlinkSync,
 } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -11,6 +10,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 import YAML from 'yaml';
 const HERE = dirname(fileURLToPath(import.meta.url));
+const SCOPE =
+  /^(?:apps\/mobile|docs\/mobile|services\/reads|infra|scripts\/mobile|packages\/mera-account)\//;
 export function skillMetadata(source) {
   const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) throw new Error('Missing YAML frontmatter');
@@ -83,8 +84,11 @@ export function check(root) {
   )
     .split('\0')
     .filter(Boolean);
-  const instructions = [...new Set(files)].filter((f) =>
-    /(^|\/)AGENTS\.md$/.test(f),
+  // The tree imported with the mobile app. The rest of the repository keeps its own instruction
+  // files to its own rules (docs/specs/mobile-monorepo-v1.md §5).
+  const inScope = (f) => SCOPE.test(f);
+  const instructions = [...new Set(files)].filter(
+    (f) => inScope(f) && /(^|\/)AGENTS\.md$/.test(f),
   );
   let maxChain = { bytes: 0, path: '' };
   for (const f of instructions) {
@@ -93,11 +97,8 @@ export function check(root) {
       fail(p, 'broken instruction link');
       continue;
     }
-    if (
-      f !== 'apps/mobile/AGENTS.md' &&
-      (!lstatSync(p).isSymbolicLink() || readlinkSync(p) !== 'CLAUDE.md')
-    )
-      fail(p, 'AGENTS must link to sibling CLAUDE.md');
+    if (lstatSync(p).isSymbolicLink())
+      fail(p, 'AGENTS.md must be the real file; CLAUDE.md is its adapter');
     let dir = dirname(p),
       bytes = 0;
     while (dir.startsWith(root)) {
@@ -110,16 +111,15 @@ export function check(root) {
     if (bytes > 24 * 1024)
       fail(p, `instruction chain ${bytes} exceeds 24576 bytes`);
   }
-  for (const f of files.filter((f) => /(^|\/)CLAUDE\.md$/.test(f))) {
+  for (const f of files.filter(
+    (f) => inScope(f) && /(^|\/)CLAUDE\.md$/.test(f),
+  )) {
+    const p = join(root, f);
     if (!existsSync(join(root, dirname(f), 'AGENTS.md')))
-      fail(join(root, f), 'missing AGENTS twin');
+      fail(p, 'missing AGENTS twin');
+    else if (!existsSync(p) || readFileSync(p, 'utf8').trim() !== '@AGENTS.md')
+      fail(p, 'CLAUDE.md must be the one-line adapter @AGENTS.md');
   }
-  const mobileAdapter = join(root, 'apps/mobile/CLAUDE.md');
-  if (
-    existsSync(mobileAdapter) &&
-    readFileSync(mobileAdapter, 'utf8').trim() !== '@AGENTS.md'
-  )
-    fail(mobileAdapter, 'mobile adapter must import its real AGENTS.md');
   for (const f of files.filter((f) => /^\.claude\/skills\/[^/]+$/.test(f))) {
     if (!existsSync(join(root, f)))
       fail(join(root, f), 'missing skill discovery entry');
@@ -167,7 +167,7 @@ export function check(root) {
       fail(p, e.message);
     }
   }
-  const overview = join(root, 'docs/overview'),
+  const overview = join(root, 'docs/mobile/overview'),
     docs = manifest(readFileSync(join(overview, 'data/manifest.js'), 'utf8'));
   const existing = docs.filter((d) => existsSync(join(overview, d.file)));
   for (const d of docs)
@@ -186,10 +186,10 @@ export function check(root) {
   });
   let mdCount = 0;
   for (const area of ['specs', 'plans'])
-    for (const p of walk(join(root, 'docs/superpowers', area)).filter(
+    for (const p of walk(join(root, 'docs/mobile/superpowers', area)).filter(
       (p) =>
         p.endsWith('.md') &&
-        dirname(p) === join(root, 'docs/superpowers', area),
+        dirname(p) === join(root, 'docs/mobile/superpowers', area),
     )) {
       mdCount++;
       if (!existsSync(p.slice(0, -3) + '.html'))
@@ -212,7 +212,7 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const result = check(resolve(process.argv[2] || join(HERE, '../..')));
+    const result = check(resolve(process.argv[2] || join(HERE, '../../..')));
     console.log(JSON.stringify(result, null, 2));
     if (result.errors.length) process.exitCode = 1;
   } catch (e) {

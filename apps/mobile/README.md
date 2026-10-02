@@ -3,7 +3,7 @@
 App Expo/iOS de Pickler. UI del sistema **light** del Handoff de Claude Design, en
 [`jjesusaf/pickler-mobile`](https://github.com/jjesusaf/pickler-mobile) commit `1808d5b`, carpeta `design/`
 (`Pickler Mobile Handoff.dc.html` y las pantallas `* Mobile Light.dc.html`; se ven con
-`python3 -m http.server 8765 --directory design`). Spec: `docs/superpowers/specs/2026-09-28-mobile-light-design.md`.
+`python3 -m http.server 8765 --directory design`). Spec: `docs/mobile/superpowers/specs/2026-09-28-mobile-light-design.md`.
 Tab bar de 4 botones fijos: MARKETS · AGENTS · PORTFOLIO · WALLET, cada uno con su tinte (`TAB_TINT`).
 Reales: Wallet (passkey, AUSD/MON, deposit con QR, withdraw, movimientos), Markets (Perpl, búsqueda local),
 Market (Trade it / Ask an agent, con el **board nivel × tiempo** del Handoff — mismo componente en los dos
@@ -197,7 +197,7 @@ Positions manda a abrir un mercado.
   (Perpl rechaza firmas a ±30 s; fue la causa real de los `3401` del iPhone), descontando el header
   `Age` del CDN.
 - Fees se muestran con 4 decimales; saldos y montos con 2.
-- Trampas medidas: `docs/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
+- Trampas medidas: `docs/mobile/investigacion/perpl.md` (`rq = lfr + 1`, `lb = head + ttl`, nonce vivo).
 - Order book L2 en Trade: `wss://testnet.perpl.xyz/ws/v1/market-data` (override `PICKLER_PERPL_MARKET_DATA_WS`,
   mismas reglas de `run:ios` que las otras URLs), un socket por ticket visible con una sola suscripción
   `order-book@<id>`, sin pings (10 requests/min por conexión; el `mt: 5` es el único). `mt: 15` reemplaza el

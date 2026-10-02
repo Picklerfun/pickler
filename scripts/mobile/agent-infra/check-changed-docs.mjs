@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+// Run from the repository root: the paths below are relative to it.
 const base = process.env.DOCS_BASE_SHA;
 let files;
 if (base && !/^0+$/.test(base)) {
@@ -23,7 +24,7 @@ const docs = [
   ...new Set(
     files
       .filter((f) =>
-        /^docs\/superpowers\/(specs|plans)\/[^/]+\.(md|html)$/.test(f),
+        /^docs\/mobile\/superpowers\/(specs|plans)\/[^/]+\.(md|html)$/.test(f),
       )
       .map((f) => f.replace(/\.html$/, '.md'))
       .filter((f) => existsSync(f)),
@@ -32,7 +33,7 @@ const docs = [
 if (docs.length)
   execFileSync(
     process.execPath,
-    ['scripts/docs-md-to-html.mjs', '--check', ...docs],
+    ['scripts/mobile/docs-md-to-html.mjs', '--check', ...docs],
     { stdio: 'inherit' },
   );
 console.log(

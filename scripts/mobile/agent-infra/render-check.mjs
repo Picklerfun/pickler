@@ -1,5 +1,5 @@
-import { resolve, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 // Usa el Chrome ya instalado (spec D5); override con PICKLER_CHROME.
@@ -8,11 +8,12 @@ const executablePath =
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 if (!existsSync(executablePath))
   throw new Error(`Chrome no encontrado en ${executablePath}; define PICKLER_CHROME`);
+const OVERVIEW = fileURLToPath(new URL('../../../docs/mobile/overview', import.meta.url));
 const out = process.argv[2] || '/tmp/pickler-agent-render';
 mkdirSync(out, { recursive: true });
 // Sin argumento: index más todos los overviews del manifest (Pickler tiene pocos).
 globalThis.window = {}; // el manifest asigna window.DOCS
-const manifest = await import(pathToFileURL(resolve('docs/overview/data/manifest.js')).href)
+const manifest = await import(pathToFileURL(join(OVERVIEW, 'data/manifest.js')).href)
   .then(() => globalThis.window.DOCS)
   .catch(() => []);
 const files = process.argv[3]
@@ -30,7 +31,7 @@ try {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
       await page.goto(
-        pathToFileURL(resolve('docs/overview', file + '.html')).href,
+        pathToFileURL(join(OVERVIEW, file + '.html')).href,
         { waitUntil: 'networkidle0', timeout: 30000 },
       );
       const state = await page.evaluate(() => ({
