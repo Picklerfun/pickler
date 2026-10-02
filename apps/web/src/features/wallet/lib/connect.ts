@@ -46,12 +46,18 @@ export async function challenge(
   address: string,
   chainId: number,
   fetchImpl: typeof fetch = fetch,
+  /**
+   * Asks for the message that lets this other wallet into `address`'s account, instead of a
+   * sign-in message. The server writes it into the sentence that is signed, and `join` accepts the
+   * signature for that wallet only.
+   */
+  joining?: string,
 ): Promise<string> {
   const issued = await envelope(
     await fetchImpl("/api/v1/auth/wallet/nonce", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address, chain_id: chainId }),
+      body: JSON.stringify({ address, chain_id: chainId, ...(joining ? { joining } : {}) }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     }),
     "Could not start a sign-in",
@@ -85,8 +91,9 @@ export async function present(
  * Folds the signed-in account into the account of the wallet that signed `message`.
  *
  * For somebody who connected a wallet Pickler had not seen — which made it an account — and who
- * already has one under another wallet. That other wallet signs the server's string, exactly as
- * it would to sign in, and it is presented with the session of the account being given up. The
+ * already has one under another wallet. That other wallet signs the server's string — not the
+ * sign-in message, but one that names the wallet it lets in (`challenge` with `joining`) — and it
+ * is presented with the session of the account being given up. The
  * answer is the session of the account that is kept: the caller's own stops existing.
  *
  * The API refuses when the wallet that signed has no account (`no_account`), when it is the

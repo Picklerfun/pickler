@@ -14,6 +14,7 @@ import {
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
+  WrongPurposeError,
 } from "@pickler/core";
 import { MalformedMessageError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
@@ -57,6 +58,9 @@ function asHttp(caught: unknown): never {
   if (caught instanceof WrongDomainError) {
     throw badRequest(caught.message, { error: "wrong_domain" });
   }
+  if (caught instanceof WrongPurposeError) {
+    throw badRequest(caught.message, { error: "wrong_purpose" });
+  }
   if (caught instanceof BadSignatureError) {
     throw new HttpError(401, caught.message);
   }
@@ -91,6 +95,7 @@ export function walletAuthRoutes(services: WalletAuthServices) {
     const body = (await c.req.json().catch(() => null)) as {
       address?: unknown;
       chain_id?: unknown;
+      joining?: unknown;
     } | null;
     if (typeof body?.address !== "string" || !body.address || typeof body.chain_id !== "number") {
       throw badRequest("An address and a chain id are required to build the message");
@@ -99,11 +104,19 @@ export function walletAuthRoutes(services: WalletAuthServices) {
     if (!Number.isSafeInteger(body.chain_id) || body.chain_id <= 0) {
       throw badRequest("The chain id must be a positive whole number", { error: "invalid_chain" });
     }
+    // `joining` asks for the message that lets another wallet into this wallet's account: the
+    // wallet named is written into the sentence that is signed. Absent, it is a sign-in message.
+    if (body.joining !== undefined && (typeof body.joining !== "string" || !body.joining)) {
+      throw badRequest("The wallet to link must be an address", { error: "invalid_address" });
+    }
     const issued = await services.signIn
       .issueNonce({
         address: body.address,
         namespace: "eip155",
         chainReference: body.chain_id,
+        ...(body.joining
+          ? { joining: { namespace: "eip155" as const, address: body.joining } }
+          : {}),
       })
       .catch(asHttp);
     return c.json(successEnvelope(issued, c.req.path));

@@ -64,13 +64,16 @@ export interface SignerAdapter {
    */
   signIn?: (expectedAddress: string) => Promise<ConnectResult>;
   /**
-   * The person already has an account under a wallet of this kind. That wallet signs, and the
-   * account `token` is the session of — the bare one the connected wallet was just given — is
-   * folded into it. Answers with the wallet that signed and the kept account's session; the
+   * The person already has an account under a wallet of this kind. That wallet signs a message
+   * naming `joining`, the connected wallet, and the account `token` is the session of — the bare
+   * one the connected wallet was just given — is folded into it. Answers with the wallet that signed and the kept account's session; the
    * connection does not change. Null when the person closed the prompt; throws what the wallet or
    * the API threw.
    */
-  join: (token: string) => Promise<{ address: string; session: ConnectResult } | null>;
+  join: (
+    token: string,
+    joining: string,
+  ) => Promise<{ address: string; session: ConnectResult } | null>;
   disconnect: () => Promise<void>;
   /** Follow changes made outside the page. Only an injected wallet has them. */
   subscribe?: (onChange: (account: SignerAccount | null) => void) => () => void;

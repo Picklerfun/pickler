@@ -6,6 +6,7 @@ import {
   AuthenticationRequiredError,
   NoAccountToJoinError,
   SameAccountError,
+  WrongPurposeError,
   BadSignatureError,
   buildApiKeyPrincipal,
   buildUserPrincipal,
@@ -139,6 +140,7 @@ function realSignIn() {
       findByAddress: async () => null,
       link: async () => ({ created: true }),
       listForUser: async () => [],
+      reassignSole: async () => false,
     },
     verifier: { verify: async () => true },
     accounts: {
@@ -146,13 +148,16 @@ function realSignIn() {
       session: async () => ({ accessToken: "at", refreshToken: "rt" }),
       markWalletAccount: async () => {},
       discardAccount: async () => {},
+      isOwnWalletAccount: async () => true,
     },
+    hasProfile: async () => false,
+    hasCustodyAccount: async () => false,
     randomNonce: () => "b1c93a5f4e2d47a8b0c6e9f1a2d3b4c5",
     buildMessage: (fields) =>
       buildSiweMessage({
         domain: fields.domain,
         address: fields.address as `0x${string}`,
-        statement: "Sign in to Pickler",
+        statement: fields.statement,
         uri: `https://${fields.domain}`,
         chainId: fields.chainReference,
         nonce: fields.nonce,
@@ -474,6 +479,7 @@ test("each way a join is refused has a status and a code the browser can branch 
     [new AccountNotJoinableError("changed"), 409, "join_changed"],
     [new BadSignatureError(), 401, undefined],
     [new UnknownNonceError(), 400, "nonce_invalid"],
+    [new WrongPurposeError(), 400, "wrong_purpose"],
   ];
   for (const [thrown, status, code] of refusals) {
     const { app } = harness({ join: () => Promise.reject(thrown) });
@@ -503,4 +509,60 @@ test("a join with no signed message does not reach the service", async () => {
 
   assert.equal(response.status, 400);
   assert.deepEqual(calls, []);
+});
+
+/* What a signature is for is in the message the nonce route hands out. */
+
+const OTHER = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc";
+
+test("the nonce route writes a sign-in message, or one that names the wallet being let in", async () => {
+  const { signIn } = realSignIn();
+  const { app } = harness(signIn);
+
+  const plain = await post(app, "/v1/auth/wallet/nonce", { address: ADDRESS, chain_id: 10143 });
+  const joining = await post(app, "/v1/auth/wallet/nonce", {
+    address: ADDRESS,
+    chain_id: 10143,
+    joining: OTHER,
+  });
+
+  const message = async (response: Response) =>
+    ((await response.json()) as { data: { message: string } }).data.message;
+  assert.equal(parseSiweMessage(await message(plain)).statement, "Sign in to Pickler");
+  assert.equal(
+    parseSiweMessage(await message(joining)).statement,
+    // In the one spelling the store keeps, whatever the wallet sent: the sentence `join` compares.
+    `Link wallet ${OTHER.toLowerCase()} to this wallet's Pickler account`,
+  );
+});
+
+test("a wallet to let in that is not an address answers 400 and stores no nonce", async () => {
+  for (const joining of ["nope", 7, ""]) {
+    const { signIn, stored } = realSignIn();
+    const { app } = harness(signIn);
+
+    const response = await post(app, "/v1/auth/wallet/nonce", {
+      address: ADDRESS,
+      chain_id: 10143,
+      joining,
+    });
+
+    assert.deepEqual(await refusal(response), { status: 400, error: "invalid_address" });
+    assert.deepEqual(stored, [], String(joining));
+  }
+});
+
+test("a message signed for something else answers 400 wrong_purpose on every route that takes one", async () => {
+  for (const path of ["verify", "link", "join"] as const) {
+    const { app } = harness({ [path]: () => Promise.reject(new WrongPurposeError()) });
+
+    const response = await post(
+      app,
+      `/v1/auth/wallet/${path}`,
+      { raw: RAW, signature: "0xsig" },
+      { Authorization: `Bearer ${TOKEN}` },
+    );
+
+    assert.deepEqual(await refusal(response), { status: 400, error: "wrong_purpose" });
+  }
 });

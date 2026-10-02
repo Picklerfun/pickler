@@ -160,7 +160,8 @@ kinds of `wallets.wallets` are another table and another product. Decision M7 of
 `join(userId, presented)` in the same service is the only place an address changes account
 (decision M12, spec §9): the caller's account is folded into the account of the wallet that
 signed `presented`. Both sides agree — the kept account by its wallet's signature over a fresh
-nonce, the account given up by its session — and the account given up must be worth nothing: no
+nonce in a message whose sentence is `joinStatement(<the wallet let in>)`, the account given up by
+its session — and the account given up must be worth nothing: no
 profile and no custody account (`hasProfile` and `hasCustodyAccount`, dependencies of the
 service), exactly one wallet, and `accounts.isOwnWalletAccount` true for it, so an email or Google
 account that linked a wallet is never given up. It throws `NoAccountToJoinError`,
@@ -171,6 +172,12 @@ one-wallet and no-profile conditions in the statement that moves the row: when i
 `join` throws `changed` and hands out no session. The emptied account is removed only if it still
 has no profile. Any new thing an account can own must be added to these checks before it ships;
 `link` still throws `AddressTakenError` for an address owned elsewhere.
+
+What a signature is for is part of the string it covers. `issueNonce` writes the sentence —
+`SIGN_IN_STATEMENT`, or `joinStatement` when `joining` is given — and hands it to `buildMessage`
+in `MessageFields.statement`; `verify` and `link` accept only the first, `join` only the second
+and only for the caller's own wallet. Anything else is `WrongPurposeError`, after the nonce is
+spent. A new use of a wallet signature gets a sentence of its own, never one of these two.
 
 `createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from

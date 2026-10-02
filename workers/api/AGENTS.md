@@ -117,7 +117,11 @@ column `identity.siwe_nonces` does not have.
 `POST /v1/auth/wallet/join` is the one route through which an address changes account
 (`docs/specs/mera-web-v1.md` §9). It is for a person who connected a wallet with no account — which
 made it one — and already has an account under another wallet. The caller's session is the account
-given up; the body is the other wallet's signed sign-in message, the account kept. Core's `join`
+given up; the body is a message signed by the other wallet, the account kept — not the sign-in
+message but the one `POST /v1/auth/wallet/nonce` writes when its body carries `joining`, whose
+sentence names the wallet being let in (`joinStatement` in core). `/join` accepts it only for the
+caller's own wallet, `/verify` and `/link` accept only the sign-in sentence, and a message
+presented to the wrong one is 400 `wrong_purpose` with its nonce spent. Core's `join`
 moves the caller's wallet with `links.reassignSole` — one statement that holds again that the
 caller has exactly one wallet and no profile and that the kept account still has a wallet — and
 then removes the emptied account through `discardAccount`, unless it gained a profile in that

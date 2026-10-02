@@ -147,6 +147,8 @@ async function ceremony<Answer>(
   mode: ConnectMode,
   presenting: Present<Answer>,
   only: Restriction = {},
+  /** The wallet this passkey's account is to let in: asks for that message, not a sign-in. */
+  joining?: string,
 ) {
   const place = availability();
   if (!place.offered) {
@@ -155,7 +157,7 @@ async function ceremony<Answer>(
   return runMeraCeremony({
     prf: source(place.rpId, mode, only.credentialId),
     kit: await loadMeraKit(),
-    challenge: (address) => challenge(address, TARGET_CHAIN.chainId),
+    challenge: (address) => challenge(address, TARGET_CHAIN.chainId, fetch, joining),
     present: presenting,
     ...(mode === "create"
       ? {
@@ -258,9 +260,12 @@ export const meraSigner: SignerAdapter = {
   // The passkey of the account the person already has: the same ceremony, presented with the
   // session of the account being given up. That passkey is not remembered as the connected
   // wallet; the page keeps the one it had.
-  join: async (token: string) => {
-    const opened = await ceremony("existing", (message, signature) =>
-      join(message, signature, token),
+  join: async (token: string, joining: string) => {
+    const opened = await ceremony(
+      "existing",
+      (message, signature) => join(message, signature, token),
+      {},
+      joining,
     );
     return opened && { address: opened.address, session: opened.answer };
   },

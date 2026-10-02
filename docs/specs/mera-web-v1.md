@@ -185,10 +185,10 @@ username ──► join ──► joined ──► closed
 
 **What the server requires**, because this is the one place an address changes account:
 
-| Side                 | Proof                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The account kept     | A signature of its wallet over a fresh nonce: the proof a sign-in takes. Without it anybody could attach their wallet to somebody else's account.                                                                                                                                                                                                                                                                                                    |
-| The account given up | Its session, which is the caller's. It must have **no username**, **no custody (Turnkey) wallet**, hold **exactly one wallet**, and be the bare account wallet sign-in made for that wallet — never an email or Google account that linked one. Anything else: 409. The statement that moves the wallet holds the one-wallet and no-username conditions again, so a second join or a username claimed in between moves nothing (409 `join_changed`). |
+| Side                 | Proof                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The account kept     | A signature of its wallet over a fresh nonce, in a message that is not the sign-in message: its sentence is `Link wallet <address> to this wallet's Pickler account`, naming the wallet being let in (`POST /v1/auth/wallet/nonce` with `joining`). `join` accepts it only for that wallet, and `/verify` and `/link` refuse it (400 `wrong_purpose`), as `join` refuses a sign-in message. A browser wallet shows the sentence before it signs. Without this proof anybody could attach their wallet to somebody else's account. |
+| The account given up | Its session, which is the caller's. It must have **no username**, **no custody (Turnkey) wallet**, hold **exactly one wallet**, and be the bare account wallet sign-in made for that wallet — never an email or Google account that linked one. Anything else: 409. The statement that moves the wallet holds the one-wallet and no-username conditions again, so a second join or a username claimed in between moves nothing (409 `join_changed`).                                                                              |
 
 `POST /v1/auth/wallet/link`, which adds a wallet to the signed-in account, still refuses an address
 that belongs to another account. Joining gives an account up; linking never takes one.
@@ -210,12 +210,11 @@ refused with `same_account`, which the page then reads as what it is: linked.
 - A second account of the same browser wallet cannot sign from the join step: selecting it in the
   extension is the wallet changing under the page, which the page follows as a new connection.
 - Two accounts that both have usernames are not merged.
-- The account given up agrees with its session, a bearer token, and the account kept signs the
-  ordinary sign-in message, which does not say a wallet is being attached. Somebody holding a
-  stolen session of a bare account could move that wallet into an account of their own — the same
-  class as `/link`, which lets a stolen session add a wallet for good. Before mainnet funds the
-  join should take a signature of the moving wallet too, over a message that names the purpose,
-  with a nonce `/verify` and `/link` refuse.
+- The account given up agrees with its session, a bearer token. Somebody holding a stolen session
+  of a bare account could move that wallet into an account of their own — the same class as
+  `/link`, which lets a stolen session add a wallet for good. Before mainnet funds the join should
+  take a signature of the moving wallet too. The kept side's consent is already bound to its
+  purpose and to the one wallet it lets in.
 - The token of the account given up is accepted by the API until it expires, as a JWT is. On
   Supabase the foreign keys to `auth.users` refuse what it would write. This page stops using it
   when the join answers; another tab holding it does not know.
@@ -224,8 +223,9 @@ refused with `same_account`, which the page then reads as what it is: linked.
 
 **Acceptance.** Core: a bare account joins; a bad signature, a wallet with no account, the same
 account, an account with a username or a custody wallet, a studio account and an account with two
-wallets each move nothing; a move the store refuses hands out no session; `link` still refuses a
-taken address. Store: `reassignSole` moves an account's one wallet and no other, moves nothing for
+wallets each move nothing; a move the store refuses hands out no session; a sign-in signature does
+not join, a join signature neither signs in nor links nor lets another wallet in; `link` still
+refuses a taken address. Store: `reassignSole` moves an account's one wallet and no other, moves nothing for
 an account with a profile, with two wallets or with none, and moves once under four at once. Route: 401 without a session, the kept account's session on success, a code per refusal.
 Web: the reducer's `join`, `joined` and `back`; the words for each refusal. In a browser, both
 directions (new passkey wallet joins a browser wallet's account, and the reverse), two refusals,

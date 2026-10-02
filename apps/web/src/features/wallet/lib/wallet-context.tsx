@@ -603,7 +603,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         let kept: Awaited<ReturnType<typeof signer.join>>;
         try {
-          kept = await signer.join(own.result.token);
+          kept = await signer.join(own.result.token, connected.address);
         } catch (caught) {
           // An earlier attempt whose answer was lost did join: the wallet that just signed and
           // the connected one already open the same account, which is what was asked for.

@@ -38,6 +38,16 @@ export class BadSignatureError extends Error {
     this.name = "BadSignatureError";
   }
 }
+/**
+ * The signed message was written for something else: a sign-in message presented to join an
+ * account, or a join message presented to sign in.
+ */
+export class WrongPurposeError extends Error {
+  constructor() {
+    super("That signature was made for something else");
+    this.name = "WrongPurposeError";
+  }
+}
 export class AddressTakenError extends Error {
   constructor() {
     super("That wallet is already linked to another Pickler account");
@@ -151,8 +161,21 @@ export interface WalletSignInDependencies {
   parseMessage: (raw: string) => SignedMessage;
 }
 
+/** What a wallet reads, and signs, to sign in. */
+export const SIGN_IN_STATEMENT = "Sign in to Pickler";
+
+/**
+ * What the wallet of an account reads, and signs, to let another wallet open that account. It
+ * names the wallet being let in, so the signature is good for that wallet and for nothing else:
+ * not for signing in, and not for attaching any other address.
+ */
+export const joinStatement = (joining: string) =>
+  `Link wallet ${joining} to this wallet's Pickler account`;
+
 export interface MessageFields {
   domain: string;
+  /** The sentence of the message: what the signature is for. */
+  statement: string;
   address: string;
   chainReference: number;
   nonce: string;
@@ -203,7 +226,22 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     if (!ok) {
       throw new BadSignatureError();
     }
-    return { address, namespace: parsed.namespace, chainReference: parsed.chainReference };
+    return {
+      address,
+      namespace: parsed.namespace,
+      chainReference: parsed.chainReference,
+      // Covered by the signature, like the rest of the string: what the wallet agreed to.
+      statement: parsed.statement,
+    };
+  }
+
+  /** A sign-in or a link takes a sign-in message, and no other. The nonce is spent either way. */
+  async function provenToSignIn(presented: Presented) {
+    const proof = await proven(presented);
+    if (proof.statement !== SIGN_IN_STATEMENT) {
+      throw new WrongPurposeError();
+    }
+    return proof;
   }
 
   /**
@@ -244,16 +282,30 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * signature is what proves it. It is checked for shape, though, and so is the chain: a
      * malformed one is `InvalidAddressError` or `InvalidChainError` and stores nothing.
      */
-    async issueNonce(input: { address: string; namespace: Namespace; chainReference: number }) {
+    async issueNonce(input: {
+      address: string;
+      namespace: Namespace;
+      chainReference: number;
+      /**
+       * Set when the message is for `join`: the wallet that is to be let into this wallet's
+       * account. Unverified here, like the address — it goes into the sentence the wallet signs,
+       * and `join` holds the signature to the wallet that actually asks.
+       */
+      joining?: { namespace: Namespace; address: string };
+    }) {
       // Everything that can refuse the request runs before the nonce is stored. This route is
       // public, and a nonce stored ahead of a refusal is a row anyone can make for free.
       const address = normalizeAddress(input.namespace, input.address);
       if (!Number.isSafeInteger(input.chainReference) || input.chainReference <= 0) {
         throw new InvalidChainError(String(input.chainReference));
       }
+      const statement = input.joining
+        ? joinStatement(normalizeAddress(input.joining.namespace, input.joining.address))
+        : SIGN_IN_STATEMENT;
       const nonce = deps.randomNonce();
       const message = deps.buildMessage({
         domain: deps.domain,
+        statement,
         address,
         chainReference: input.chainReference,
         nonce,
@@ -268,7 +320,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
 
     /** Sign in: an address already linked returns its account; a new one gets an account made. */
     async verify(presented: Presented) {
-      const { address, namespace, chainReference } = await proven(presented);
+      const { address, namespace, chainReference } = await provenToSignIn(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing) {
         await deps.accounts.markWalletAccount(existing.userId, namespace, address);
@@ -289,7 +341,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
 
     /** Link to the signed-in account. An address owned elsewhere is refused, never moved. */
     async link(userId: string, presented: Presented) {
-      const { address, namespace, chainReference } = await proven(presented);
+      const { address, namespace, chainReference } = await provenToSignIn(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing && existing.userId !== userId) {
         throw new AddressTakenError();
@@ -318,8 +370,9 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * It is the only place an address changes account, so both sides have to agree and the side
      * given up has to be worth nothing:
      *
-     * - the account that is kept agrees with a signature of its wallet over a fresh nonce, the
-     *   same proof a sign-in takes;
+     * - the account that is kept agrees with a signature of its wallet over a fresh nonce, in a
+     *   message that says what it is for and names the wallet being let in (`joinStatement`), so
+     *   a signature given to sign in cannot be presented here, nor one given for another wallet;
      * - the account given up agrees with its session, which is the caller's;
      * - it has no username and no custody wallet, and it is the bare account wallet sign-in made
      *   for its one wallet — never an email or Google account that linked a wallet, never one
@@ -332,7 +385,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * it from another.
      */
     async join(userId: string, presented: Presented) {
-      const { address, namespace } = await proven(presented);
+      const { address, namespace, statement } = await proven(presented);
       const kept = await deps.links.findByAddress(namespace, address);
       if (!kept) {
         throw new NoAccountToJoinError();
@@ -348,6 +401,10 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         (await deps.accounts.isOwnWalletAccount(userId, own.namespace, own.address));
       if (!bare) {
         throw new AccountNotJoinableError("not_wallet_account");
+      }
+      // The kept wallet agreed to let this wallet in, and no other.
+      if (statement !== joinStatement(own.address)) {
+        throw new WrongPurposeError();
       }
       if (await deps.hasProfile(userId)) {
         throw new AccountNotJoinableError("has_profile");

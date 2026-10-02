@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { join, signIn, ConnectError } from "../src/features/wallet/lib/connect";
+import { challenge, join, signIn, ConnectError } from "../src/features/wallet/lib/connect";
 
 // The trailing newline is load-bearing, not untidiness. This fixture exists to catch a client
 // that normalises the server's string, and the commonest way to do that — `.trim()` — is
@@ -129,4 +129,20 @@ test("a refused join surfaces the API's code, so the screen can say what to do i
     join("m", "0xsig", "t", fetchImpl),
     (caught: unknown) => caught instanceof ConnectError && caught.code === "no_account",
   );
+});
+
+test("the message asked for names the wallet to let in only when there is one", async () => {
+  const bodies: unknown[] = [];
+  const fetchImpl = (async (_url: string | URL | Request, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ data: { nonce: "n1", message: "the server's message" } });
+  }) as typeof fetch;
+
+  assert.equal(await challenge("0xA", 10143, fetchImpl), "the server's message");
+  await challenge("0xA", 10143, fetchImpl, "0xB");
+
+  assert.deepEqual(bodies, [
+    { address: "0xA", chain_id: 10143 },
+    { address: "0xA", chain_id: 10143, joining: "0xB" },
+  ]);
 });

@@ -298,7 +298,8 @@ function walletAuthServices(
         buildSiweMessage({
           domain: fields.domain,
           address: fields.address as `0x${string}`,
-          statement: "Sign in to Pickler",
+          // Core writes the sentence: it is what the signature is for, and core checks it.
+          statement: fields.statement,
           uri: `https://${fields.domain}`,
           chainId: fields.chainReference,
           nonce: fields.nonce,

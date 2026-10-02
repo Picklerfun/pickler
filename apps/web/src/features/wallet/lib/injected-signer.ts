@@ -59,7 +59,7 @@ export const injectedSigner: SignerAdapter = {
   // The account the wallet has selected signs the server's message, as it would to sign in, and
   // the signature goes with the session of the account being given up. Nothing here connects it:
   // the page keeps the wallet it had.
-  join: async (token: string) => {
+  join: async (token: string, joining: string) => {
     const provider = getProvider();
     if (!provider) {
       return null;
@@ -69,7 +69,8 @@ export const injectedSigner: SignerAdapter = {
       return null;
     }
     const chainId = (await readChainId(provider)) ?? TARGET_CHAIN.chainId;
-    const message = await challenge(address, chainId);
+    // Not the sign-in message: the wallet shows, and signs, that it lets `joining` in.
+    const message = await challenge(address, chainId, fetch, joining);
     const signature = await fromInjectedProvider(provider, address, chainId).signMessage(message);
     return { address, session: await join(message, signature, token) };
   },

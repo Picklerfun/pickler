@@ -8,6 +8,9 @@ import {
   BadSignatureError,
   AddressTakenError,
   AccountNotJoinableError,
+  joinStatement,
+  SIGN_IN_STATEMENT,
+  WrongPurposeError,
   NoAccountToJoinError,
   SameAccountError,
   normalizeAddress,
@@ -73,18 +76,23 @@ function links(rows: WalletLink[] = []): WalletLinkRepository & { rows: WalletLi
  * SIWE message and parses it back. A fake that passed an object straight through would not be
  * exercising the thing the service actually depends on.
  */
-const build = (f: { domain: string; address: string; chainReference: number; nonce: string }) =>
-  `${f.domain}|${f.address}|${f.chainReference}|${f.nonce}`;
+const build = (f: {
+  domain: string;
+  address: string;
+  chainReference: number;
+  nonce: string;
+  statement: string;
+}) => `${f.domain}|${f.address}|${f.chainReference}|${f.nonce}|${f.statement}`;
 
 const parse = (raw: string) => {
-  const [domain, address, chainReference, nonce] = raw.split("|");
+  const [domain, address, chainReference, nonce, statement] = raw.split("|");
   return {
     domain: domain!,
     address: address!,
     namespace: "eip155" as const,
     chainReference: Number(chainReference),
     nonce: nonce!,
-    statement: "Sign in to Pickler",
+    statement: statement!,
     issuedAt: NOW.toISOString(),
   };
 };
@@ -113,12 +121,15 @@ function service(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
 }
 
 /** A string of the shape the service hands out, with one field overridable per test. */
-const signed = (over: { domain?: string; nonce?: string; address?: string } = {}) =>
+const signed = (
+  over: { domain?: string; nonce?: string; address?: string; statement?: string } = {},
+) =>
   build({
     domain: over.domain ?? DOMAIN,
     address: over.address ?? ADDRESS,
     chainReference: 10143,
     nonce: over.nonce ?? "nonce-1",
+    statement: over.statement ?? SIGN_IN_STATEMENT,
   });
 
 test("a nonce is issued with a five-minute expiry, and the string to sign comes with it", async () => {
@@ -132,7 +143,7 @@ test("a nonce is issued with a five-minute expiry, and the string to sign comes 
   assert.equal(nonce, "nonce-1");
   assert.deepEqual(store.rows.get("nonce-1"), new Date("2026-09-23T12:05:00Z"));
   // The browser signs this and sends it back; it never builds one of its own.
-  assert.equal(message, `${DOMAIN}|${ADDRESS}|10143|nonce-1`);
+  assert.equal(message, `${DOMAIN}|${ADDRESS}|10143|nonce-1|Sign in to Pickler`);
 });
 
 test("the address in the message is normalised, so one wallet is one link", async () => {
@@ -673,8 +684,14 @@ function joining(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
   return { signIn, repo, calls };
 }
 
-/** The other wallet's proof: the kept account's wallet signed the server's message. */
-const proof = (address = ADDRESS) => ({ raw: signed({ address }), signature: "0xsig" });
+/**
+ * The other wallet's proof: the kept account's wallet signed the server's message, which says it
+ * lets `joining` in.
+ */
+const proof = (address = ADDRESS, joining: string = NEW_WALLET) => ({
+  raw: signed({ address, statement: joinStatement(joining) }),
+  signature: "0xsig",
+});
 
 test("a wallet with a bare account joins the account of the wallet that signed", async () => {
   const { signIn, repo, calls } = joining();
@@ -806,7 +823,10 @@ test("failing to remove the account given up does not refuse the join", async ()
 test("adding a wallet to an account still never takes it from another", async () => {
   const { signIn, repo } = joining();
 
-  await assert.rejects(signIn.link("kept", proof(NEW_WALLET)), AddressTakenError);
+  await assert.rejects(
+    signIn.link("kept", { raw: signed({ address: NEW_WALLET }), signature: "0xsig" }),
+    AddressTakenError,
+  );
 
   assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
 });
@@ -851,4 +871,83 @@ test("an account that claimed a username while its wallet moved is not removed",
 
   assert.equal(result.userId, "kept");
   assert.deepEqual(calls, ["mark kept"]);
+});
+
+/* What the signature is for is part of what was signed. */
+
+test("the message to sign in says so, and the one to join names the wallet being let in", async () => {
+  const signIn = service();
+
+  const plain = await signIn.issueNonce({
+    address: ADDRESS,
+    namespace: "eip155",
+    chainReference: 10143,
+  });
+  const joining = await signIn.issueNonce({
+    address: ADDRESS,
+    namespace: "eip155",
+    chainReference: 10143,
+    // However it is spelled: the sentence carries the one spelling the store keeps.
+    joining: { namespace: "eip155", address: NEW_WALLET.toLowerCase() },
+  });
+
+  assert.equal(parse(plain.message).statement, "Sign in to Pickler");
+  assert.equal(
+    parse(joining.message).statement,
+    `Link wallet ${NEW_WALLET} to this wallet's Pickler account`,
+  );
+});
+
+test("a wallet to let in that is not an address is refused before a nonce is stored", async () => {
+  const store = nonces();
+  const signIn = service({ nonces: store });
+
+  await assert.rejects(
+    signIn.issueNonce({
+      address: ADDRESS,
+      namespace: "eip155",
+      chainReference: 10143,
+      joining: { namespace: "eip155", address: "not-an-address" },
+    }),
+    InvalidAddressError,
+  );
+
+  assert.equal(store.rows.size, 0);
+});
+
+test("a signature given to sign in does not join an account", async () => {
+  const { signIn, repo } = joining();
+
+  await assert.rejects(
+    signIn.join("fresh", { raw: signed({ address: ADDRESS }), signature: "0xsig" }),
+    WrongPurposeError,
+  );
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("a signature that lets one wallet in does not let another in", async () => {
+  const other = normalizeAddress("eip155", "0xabc0000000000000000000000000000000000005");
+  const { signIn, repo } = joining();
+
+  await assert.rejects(signIn.join("fresh", proof(ADDRESS, other)), WrongPurposeError);
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("a signature given to join an account neither signs in nor links", async () => {
+  const signIn = service({ nonces: issued() });
+  await assert.rejects(signIn.verify(proof()), WrongPurposeError);
+
+  const linking = service({ nonces: issued() });
+  await assert.rejects(linking.link("user-1", proof()), WrongPurposeError);
+});
+
+test("a message refused for its purpose has spent its nonce all the same", async () => {
+  const store = issued();
+  const signIn = service({ nonces: store });
+
+  await assert.rejects(signIn.verify(proof()), WrongPurposeError);
+
+  assert.equal(store.rows.size, 0);
 });

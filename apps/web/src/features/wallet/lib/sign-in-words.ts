@@ -32,6 +32,8 @@ export function joinWords(caught: unknown): string | null {
         return "This account cannot be moved into another. Pick a username for it instead.";
       case "join_changed":
         return "That account changed while it was being linked. Try again.";
+      case "wrong_purpose":
+        return "That signature was for something else. Try again.";
     }
   }
   return signInWords(caught);
