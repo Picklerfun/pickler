@@ -17,6 +17,7 @@ import type {
   SetupUpdateDto,
   SignedActivityDto,
   TransferRequestDto,
+  VersionsDto,
   WalletsDto,
   XChallengeDto,
   XChallengeRequestDto,
@@ -40,6 +41,8 @@ export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 export type { SignedActivityDto };
 export type StudioWallets = WalletsDto;
 export type ActivityEvent = ActivityDto["events"][number];
+/** One saved setup: its config version, the server's line for what changed, and when. */
+export type SetupVersion = VersionsDto["versions"][number];
 export type LedgerEntry = LedgerDto["entries"][number];
 export type XState = XStateDto;
 export type XChallenge = XChallengeDto;
@@ -151,9 +154,9 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
 // ─── The draft's studio (studio-draft-dashboard-v1 §4) ──────────────────────────────────────────
 
 /**
- * `PUT /agents/:id/setup`: a draft's brief, sources, caps and voice, at `expectedVersion`. Answers
- * the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) / INVALID_INPUT; 409 CONFLICT (the
- * config moved on: reload), NOT_A_DRAFT.
+ * `PUT /agents/:id/setup`: a Perpl agent's brief, sources, caps, voice and entry, draft or public,
+ * at `expectedVersion`. Answers the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) /
+ * INVALID_INPUT; 409 CONFLICT (the config moved on: reload), NOT_A_PERPL_AGENT.
  */
 export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
   studioApi<Agent>(`/agents/${agentId}/setup`, { method: "PUT", body: JSON.stringify(body) });
@@ -165,6 +168,13 @@ export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
 /** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
 export const agentActivity = (agentId: string, signal?: AbortSignal) =>
   studioApi<ActivityDto>(`/agents/${agentId}/activity`, signal ? { signal } : {});
+
+/**
+ * `GET /agents/:id/versions`: the saved setups the server recorded, newest first, at most 20. The
+ * owner's alone (403 for a member); 404 NOT_FOUND for an agent that is not the caller's.
+ */
+export const agentVersions = (agentId: string, signal?: AbortSignal) =>
+  studioApi<VersionsDto>(`/agents/${agentId}/versions`, signal ? { signal } : {});
 
 /** `GET /agents/:id/x`: the verified account, the live challenge, and whether X is open yet. */
 export const xState = (agentId: string, signal?: AbortSignal) =>

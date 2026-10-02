@@ -23,6 +23,7 @@ import {
   type Decision,
   type RunEvent,
   type ResearchRepository,
+  type UpdateConfigOptions,
 } from "@pickler/core";
 import * as schema from "./schema.js";
 
@@ -218,11 +219,11 @@ export class PostgresResearchStore implements ResearchRepository {
     scope: Scope,
     expectedVersion: number,
     config: AgentConfig,
-    options: { requireDraft?: boolean; writeSpend?: boolean } = {},
+    options: UpdateConfigOptions = {},
   ): Promise<AgentRecord> {
     // `spend` is not this method's to write by default: `updateSpend` is its usual writer, and it
     // does not bump the version, so a config saved at that same version must not drop or replace
-    // it. Only `writeSpend` (a draft's setup, whose caps are part of the revision) writes it here.
+    // it. Only `writeSpend` (a setup, whose caps are part of the revision) writes it here.
     const written = options.writeSpend ? config.spend : undefined;
     if (written) {
       assertSpendLimits(written);
@@ -236,17 +237,9 @@ export class PostgresResearchStore implements ResearchRepository {
       if (agent.version !== expectedVersion) {
         throw new PilotError("CONFLICT", "Configuration version changed");
       }
-      if (options.requireDraft) {
-        // FOR SHARE on the product row: publish takes it FOR UPDATE, so a publish either commits
-        // first (and this sees it) or waits for this write. It never locks the runtime row, so the
-        // order cannot deadlock.
-        const product = await tx.execute(sql`select a.status = 'draft' as draft
-          from agents.agents a join pickler.product_agents p on p.product_agent_id = a.id
-          where p.tenant_id = ${scope.tenantId} and p.runtime_agent_id = ${scope.agentId}
-          for share of a`);
-        if (product.rows[0]?.draft !== true) {
-          throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
-        }
+      // The stored config, under this row's lock: what the setup route read may be older.
+      if (options.perplOnly && !agent.config.perpl) {
+        throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
       }
       const spend = written ?? agent.config.spend;
       const next: AgentConfig = spend ? { ...incoming, spend } : incoming;
@@ -273,6 +266,19 @@ export class PostgresResearchStore implements ResearchRepository {
         })
         .where(agentScope(scope))
         .returning();
+      if (options.versionSummary) {
+        // The same transaction as the config: the version and its row are saved together or not
+        // at all. The summary is of the two stored configs, so a spend this write did not take is
+        // not reported as changed. The insert's foreign key takes KEY SHARE on the product agent
+        // after the runtime row's lock; publish locks only the product agent, so the order cannot
+        // deadlock. A studio agent always has its product row; a runtime agent without one has
+        // no product agent to record a version under, and records none.
+        const summary = options.versionSummary(agent.config, updated!.config);
+        await tx.execute(sql`insert into agents.setup_versions (agent_id, version, summary)
+          select p.product_agent_id, ${updated!.version}::integer, ${summary}::text
+          from pickler.product_agents p
+          where p.tenant_id = ${scope.tenantId} and p.runtime_agent_id = ${scope.agentId}`);
+      }
       return updated!;
     });
   }

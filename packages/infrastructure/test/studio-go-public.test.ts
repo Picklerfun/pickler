@@ -13,6 +13,7 @@ import {
   XHandleTakenError,
   prepareDraft,
   reviseSetup,
+  setupChangeSummary,
   type AgentDirectory,
   type PublishCheck,
 } from "@pickler/core";
@@ -571,7 +572,7 @@ test("publish checks the agent's state, then makes a draft public and active", a
   assert.deepEqual(again, result);
 });
 
-test("a draft's setup saves new caps with writeSpend, and keeps the stored spend without it", async (t) => {
+test("a setup saves new caps with writeSpend, and keeps the stored spend without it", async (t) => {
   const f = await setup(t);
   const scope = await f.studio.agentScope(f.access, f.agentId);
   const first = await f.store.agent(scope);
@@ -583,7 +584,7 @@ test("a draft's setup saves new caps with writeSpend, and keeps the stored spend
     scope,
     first.version,
     reviseSetup(first.config, { caps }),
-    { requireDraft: true, writeSpend: true },
+    { perplOnly: true, writeSpend: true },
   );
   assert.equal(saved.version, first.version + 1);
   const read = await f.store.agent(scope);
@@ -595,59 +596,195 @@ test("a draft's setup saves new caps with writeSpend, and keeps the stored spend
     scope,
     read.version,
     reviseSetup(read.config, { caps: { perTradeAusd: 9, perDayAusd: 50, maxLeverage: 3 } }),
-    { requireDraft: true },
+    { perplOnly: true },
   );
   assert.deepEqual((await f.store.agent(scope)).config.spend, { perCallAusd: 7, perDayAusd: 30 });
 });
 
-test("a draft-only config write is refused once the agent is published", async (t) => {
+/** The agent's recorded versions as the table holds them, oldest first. */
+async function versionRows(pool: Pool, agentId: string) {
+  const { rows } = await pool.query<{ version: number; summary: string }>(
+    "SELECT version, summary FROM agents.setup_versions WHERE agent_id = $1 ORDER BY version",
+    [agentId],
+  );
+  return rows;
+}
+
+const setupOptions = { perplOnly: true, versionSummary: setupChangeSummary };
+
+test("a brief saved on a public Perpl agent is a new version with one recorded row", async (t) => {
+  const f = await setup(t);
+  await f.studio.publish(f.access, f.agentId, async () => []);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), []);
+
+  const saved = await f.store.updateConfig(
+    scope,
+    first.version,
+    reviseSetup(first.config, { brief: { ...DEFAULT_BRIEF, thesis: "Funding leads price." } }),
+    setupOptions,
+  );
+
+  assert.equal(saved.version, first.version + 1);
+  assert.equal(saved.config.brief?.thesis, "Funding leads price.");
+  assert.deepEqual(await versionRows(f.pool, f.agentId), [
+    { version: saved.version, summary: "Thesis changed" },
+  ]);
+});
+
+test("a save without a summary records no version", async (t) => {
   const f = await setup(t);
   const scope = await f.studio.agentScope(f.access, f.agentId);
   const first = await f.store.agent(scope);
 
-  const saved = await f.store.updateConfig(scope, first.version, first.config, {
-    requireDraft: true,
-  });
-  assert.equal(saved.version, first.version + 1);
+  const saved = await f.store.updateConfig(scope, first.version, first.config);
 
-  await f.studio.publish(f.access, f.agentId, async () => []);
-  // Publish leaves the config version, so only the draft condition stops this write.
-  await assert.rejects(
-    f.store.updateConfig(scope, saved.version, saved.config, { requireDraft: true }),
-    isCode("NOT_A_DRAFT"),
-  );
-  assert.equal((await f.store.agent(scope)).version, saved.version);
+  assert.equal(saved.version, first.version + 1);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), []);
 });
 
-test("a draft-only config write that waits on a publish sees it and writes nothing", async (t) => {
+test("the summary compares the stored configs, so caps not written are not a change", async (t) => {
   const f = await setup(t);
   const scope = await f.studio.agentScope(f.access, f.agentId);
-  const before = await f.store.agent(scope);
-  // A publish holds the agent row, as the directory's publish transaction does.
-  const publisher = await f.pool.connect();
-  let outcome: Promise<unknown>;
-  try {
-    await publisher.query("BEGIN");
-    await publisher.query("SELECT 1 FROM agents.agents WHERE id = $1 FOR UPDATE", [f.agentId]);
-    outcome = f.store
-      .updateConfig(scope, before.version, before.config, { requireDraft: true })
-      .then(
-        () => "written",
-        (error: unknown) => error,
-      );
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    await publisher.query(
-      `UPDATE agents.agents SET visibility = 'public', published_at = now(), status = 'active'
-       WHERE id = $1`,
-      [f.agentId],
-    );
-    await publisher.query("COMMIT");
-  } finally {
-    publisher.release();
-  }
+  const first = await f.store.agent(scope);
 
-  assert.ok(isCode("NOT_A_DRAFT")(await outcome));
-  assert.equal((await f.store.agent(scope)).version, before.version);
+  // Without `writeSpend` the stored spend stays, and only the leverage is new.
+  const saved = await f.store.updateConfig(
+    scope,
+    first.version,
+    reviseSetup(first.config, {
+      caps: { perTradeAusd: 9, perDayAusd: 50, maxLeverage: first.config.maxLeverage! },
+    }),
+    setupOptions,
+  );
+
+  assert.deepEqual(saved.config.spend, first.config.spend);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), [
+    { version: saved.version, summary: "No change" },
+  ]);
+});
+
+test("versions lists an agent's saved setups newest first, at most 20", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  assert.deepEqual(await f.studio.versions(f.access, f.agentId), []);
+  const first = await f.store.agent(scope);
+
+  const second = await f.store.updateConfig(
+    scope,
+    first.version,
+    reviseSetup(first.config, { brief: { ...DEFAULT_BRIEF, thesis: "Funding leads price." } }),
+    setupOptions,
+  );
+  const third = await f.store.updateConfig(
+    scope,
+    second.version,
+    reviseSetup(second.config, { voice: "hype" }),
+    setupOptions,
+  );
+
+  const listed = await f.studio.versions(f.access, f.agentId);
+  assert.deepEqual(
+    listed.map(({ version, summary }) => ({ version, summary })),
+    [
+      { version: third.version, summary: "Voice · Hype" },
+      { version: second.version, summary: "Thesis changed" },
+    ],
+  );
+  assert.ok(listed.every((row) => row.at instanceof Date));
+
+  let latest = third;
+  for (let save = 0; save < 20; save += 1) {
+    latest = await f.store.updateConfig(
+      scope,
+      latest.version,
+      reviseSetup(latest.config, { voice: save % 2 ? "hype" : "analyst" }),
+      setupOptions,
+    );
+  }
+  const capped = await f.studio.versions(f.access, f.agentId);
+  assert.equal(capped.length, 20);
+  assert.equal(capped[0]!.version, latest.version);
+  assert.equal(capped[19]!.version, latest.version - 19);
+});
+
+test("a config without perpl is refused NOT_A_PERPL_AGENT, with no version and no row", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+  // A legacy agent: its stored config has no `perpl`.
+  await f.pool.query("UPDATE pickler.agents SET config = config - 'perpl' WHERE id = $1", [
+    scope.agentId,
+  ]);
+
+  await assert.rejects(
+    f.store.updateConfig(scope, first.version, first.config, setupOptions),
+    isCode("NOT_A_PERPL_AGENT"),
+  );
+
+  const after = await f.store.agent(scope);
+  assert.equal(after.version, first.version);
+  assert.equal(after.config.perpl, undefined);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), []);
+});
+
+test("a stale expectedVersion writes no version row", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+
+  await assert.rejects(
+    f.store.updateConfig(
+      scope,
+      first.version + 3,
+      reviseSetup(first.config, { voice: "hype" }),
+      setupOptions,
+    ),
+    isCode("CONFLICT"),
+  );
+
+  assert.equal((await f.store.agent(scope)).version, first.version);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), []);
+});
+
+test("a version that cannot be recorded leaves the config as it was", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+
+  // The table bounds a summary to 200 characters; the config and its version share the fate.
+  await assert.rejects(
+    f.store.updateConfig(scope, first.version, reviseSetup(first.config, { voice: "hype" }), {
+      perplOnly: true,
+      versionSummary: () => "x".repeat(201),
+    }),
+    (error: unknown) =>
+      (error as { cause?: { constraint?: string } }).cause?.constraint ===
+      "setup_versions_summary_length",
+  );
+
+  const after = await f.store.agent(scope);
+  assert.equal(after.version, first.version);
+  assert.equal(after.config.voice, first.config.voice);
+  assert.deepEqual(await versionRows(f.pool, f.agentId), []);
+});
+
+test("versions refuses another workspace's agent", async (t) => {
+  const f = await setup(t);
+  const theirs = await draftOwner(f.pool, f.studio, { profile: "owner_two", handle: "theirs" });
+  const scope = await f.studio.agentScope(theirs.access, theirs.agentId);
+  const first = await f.store.agent(scope);
+  await f.store.updateConfig(
+    scope,
+    first.version,
+    reviseSetup(first.config, { voice: "hype" }),
+    setupOptions,
+  );
+
+  await assert.rejects(f.studio.versions(f.access, theirs.agentId), isCode("NOT_FOUND"));
+
+  assert.equal((await f.studio.versions(theirs.access, theirs.agentId)).length, 1);
 });
 
 test("publish refuses with the check's blockers and writes nothing", async (t) => {

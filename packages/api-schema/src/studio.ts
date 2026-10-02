@@ -304,6 +304,21 @@ export const activityResponseSchema = z.object({
 });
 export type ActivityDto = z.infer<typeof activityResponseSchema>;
 
+/**
+ * `GET /v1/studio/agents/:id/versions` (studio-live-v1 L9): the agent's recorded setup versions,
+ * newest first, at most 20. `summary` is the server's line for what that save changed.
+ */
+export const versionsResponseSchema = z.object({
+  versions: z.array(
+    z.object({
+      version: z.number().int().positive(),
+      summary: z.string().min(1).max(200),
+      at: z.string().datetime(),
+    }),
+  ),
+});
+export type VersionsDto = z.infer<typeof versionsResponseSchema>;
+
 /** `POST /v1/studio/agents/:id/x/challenge`'s body: the handle, "@" optional. */
 export const xChallengeRequestSchema = z.object({ handle: z.string().max(64) }).strict();
 export type XChallengeRequestDto = z.infer<typeof xChallengeRequestSchema>;

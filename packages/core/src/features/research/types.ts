@@ -508,20 +508,29 @@ export interface ResearchObserver {
   failed?(): void | Promise<void>;
 }
 
+/** What a config save may ask of `updateConfig` beyond the write itself. */
+export interface UpdateConfigOptions {
+  perplOnly?: boolean;
+  writeSpend?: boolean;
+  versionSummary?: (prev: AgentConfig, next: AgentConfig) => string;
+}
+
 export interface ResearchRepository {
   agents(tenantId: string): Promise<AgentRecord[]>;
   agent(scope: Scope): Promise<AgentRecord>;
   /**
-   * A new configuration version (stale `expectedVersion`: CONFLICT). With `requireDraft`, refused
-   * with NOT_A_DRAFT unless the agent is still a studio draft, checked in the same transaction as
-   * the write, so a concurrent publish cannot slip between them. `config.spend` is ignored (the
-   * stored one is kept) unless `writeSpend` is set, which writes it in the same transaction.
+   * A new configuration version (stale `expectedVersion`: CONFLICT). With `perplOnly`, refused with
+   * NOT_A_PERPL_AGENT unless the stored config has `perpl`, checked in the same transaction as the
+   * write. `config.spend` is ignored (the stored one is kept) unless `writeSpend` is set, which
+   * writes it in the same transaction. With `versionSummary`, the new version is recorded in that
+   * transaction too (studio-live-v1 L9), under the line it answers for the stored config before
+   * and after; a write that fails records nothing, and a record that fails writes nothing.
    */
   updateConfig(
     scope: Scope,
     expectedVersion: number,
     config: AgentConfig,
-    options?: { requireDraft?: boolean; writeSpend?: boolean },
+    options?: UpdateConfigOptions,
   ): Promise<AgentRecord>;
   /**
    * Writes only `config.spend`. Unlike `updateConfig` it keeps the version, the schedule and so

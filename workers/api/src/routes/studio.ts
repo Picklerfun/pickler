@@ -46,6 +46,7 @@ import {
   parseXHandle,
   publishBlockers,
   reviseSetup,
+  setupChangeSummary,
   verificationText,
   type createCustodyService,
   type Accent,
@@ -84,6 +85,7 @@ import {
   setupUpdateSchema,
   identityUpdateSchema,
   activityResponseSchema,
+  versionsResponseSchema,
   xChallengeRequestSchema,
   xChallengeSchema,
   xStateResponseSchema,
@@ -655,19 +657,17 @@ export function studioRoutes(services: StudioServices) {
     const current = await access.authorize(c.get("principal"));
     return c.json(await oneAgent(current, c.req.param("id")));
   });
-  // A draft's brief, sources, caps and voice (studio-draft-dashboard-v1 D10), versioned like
-  // `PUT /config`, whose stale-version refusal (409 CONFLICT) it shares. Core's `reviseSetup`
-  // applies create's rules and never touches `marketScope`. A voice also renames the profile's
-  // voice: a second write after the config's, as the two live in different stores; a failure
-  // between them leaves the config saved and the old voice name, which the next save repairs.
+  // A Perpl agent's brief, sources, caps, voice and entry, draft or public
+  // (studio-draft-dashboard-v1 D10, studio-live-v1 L10), versioned like `PUT /config`, whose
+  // stale-version refusal (409 CONFLICT) it shares. Core's `reviseSetup` applies create's rules
+  // and never touches `marketScope`. A voice also renames the profile's voice: a second write
+  // after the config's, as the two live in different stores; a failure between them leaves the
+  // config saved and the old voice name, which the next save repairs.
   api.put("/agents/:id/setup", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
     const productId = c.req.param("id");
-    const agent = await ownAgent(current, productId);
+    const scope = await services.directory.agentScope(current, productId);
     const body = setupUpdateSchema.parse(await c.req.json());
-    if (!agent.draft) {
-      throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
-    }
     const patch: SetupPatch = {
       ...(body.brief ? { brief: body.brief } : {}),
       ...(body.sources ? { sources: bareSites(body.sources) } : {}),
@@ -675,12 +675,18 @@ export function studioRoutes(services: StudioServices) {
       ...(body.voice ? { voice: body.voice } : {}),
       ...(body.entry ? { entry: body.entry } : {}),
     };
-    const record = await repo.agent(agent.scope);
-    // The draft check above answers early; the write checks again under its own lock, as a
-    // publish may land in between. New caps write `spend` in that same transaction.
-    await repo.updateConfig(agent.scope, body.expectedVersion, reviseSetup(record.config, patch), {
-      requireDraft: true,
+    const record = await repo.agent(scope);
+    // `reviseSetup` gives a config a Perpl agent's tools and plugins, so a config without `perpl`
+    // never reaches it. The write checks again under its own lock.
+    if (!record.config.perpl) {
+      throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
+    }
+    // New caps write `spend` in the write's transaction, and so is the version recorded (L9): its
+    // summary is core's, from the two stored configs, never the client's words.
+    await repo.updateConfig(scope, body.expectedVersion, reviseSetup(record.config, patch), {
+      perplOnly: true,
       ...(body.caps ? { writeSpend: true } : {}),
+      versionSummary: setupChangeSummary,
     });
     const voice = VOICES.find((candidate) => candidate.key === body.voice);
     if (voice) {
@@ -706,6 +712,17 @@ export function studioRoutes(services: StudioServices) {
     return c.json(
       activityResponseSchema.parse({
         events: events.map((event) => ({ ...event, at: event.at.toISOString() })),
+      }),
+    );
+  });
+  // The saved setups (studio-live-v1 L9), the owner's alone: a member who cannot save a setup
+  // does not read its history. The directory refuses another workspace's agent (404 NOT_FOUND).
+  api.get("/agents/:id/versions", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const versions = await services.directory.versions(current, c.req.param("id"));
+    return c.json(
+      versionsResponseSchema.parse({
+        versions: versions.map((row) => ({ ...row, at: row.at.toISOString() })),
       }),
     );
   });

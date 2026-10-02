@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import {
   DEFAULT_BRIEF,
+  DEFAULT_CONFIG,
   PilotError,
   PublishBlockedError,
   STARTER_CAPS,
@@ -15,12 +16,14 @@ import {
   type StudioDirectory,
   type TransferLedgerEntry,
 } from "@pickler/core";
-import { PUBLISH_BLOCKERS, studioAgentSchema } from "@pickler/api-schema";
+import { PUBLISH_BLOCKERS, studioAgentSchema, versionsResponseSchema } from "@pickler/api-schema";
 import type { AppEnv } from "../src/env.js";
 import { studioRoutes } from "../src/routes/studio.js";
 
 const DRAFT = "33333333-3333-4333-8333-333333333333";
 const LIVE = "44444444-4444-4444-8444-444444444444";
+/** A public agent from before the simplified flow: its config has no `perpl`. */
+const LEGACY = "55555555-5555-4555-8555-555555555555";
 const ADDRESS = "0x1111111111111111111111111111111111111111";
 const PUBLISHED_AT = new Date("2026-10-02T12:00:00.000Z");
 
@@ -52,7 +55,7 @@ function app({
   killed = false,
   wallet = true,
   publishConflict = false,
-  publishesDuringSetup = false,
+  readOnly = false,
   ledger = [] as TransferLedgerEntry[],
 }: {
   balance?: number;
@@ -60,8 +63,8 @@ function app({
   killed?: boolean;
   wallet?: boolean;
   publishConflict?: boolean;
-  /** A publish lands after setup's draft check and before its write. */
-  publishesDuringSetup?: boolean;
+  /** The caller is a member of someone else's workspace: it reads, and writes nothing. */
+  readOnly?: boolean;
   ledger?: TransferLedgerEntry[];
 } = {}) {
   const agents: Agent[] = [
@@ -85,11 +88,24 @@ function app({
       killed: false,
       wallet: true,
     },
+    {
+      id: LEGACY,
+      draft: false,
+      visibility: "public",
+      publishedAt: PUBLISHED_AT,
+      xHandle: null,
+      name: "Legacy",
+      killed: false,
+      wallet: true,
+    },
   ];
   const configs = new Map<string, { version: number; config: AgentConfig }>([
     [DRAFT, { version: 1, config: draftConfig }],
     [LIVE, { version: 4, config: draftConfig }],
+    [LEGACY, { version: 2, config: DEFAULT_CONFIG }],
   ]);
+  /** `agents.setup_versions`, in the order written; the clock moves a minute a row. */
+  const versions: { id: string; version: number; summary: string; at: Date }[] = [];
   const identities: { id: string; identity: Record<string, unknown> }[] = [];
   const ledgerReads: string[] = [];
   const checks: unknown[] = [];
@@ -115,8 +131,8 @@ function app({
     access: async () => ({
       workspaceId: "workspace",
       tenantId: "trusted",
-      ownerUserId: "user",
-      role: "admin",
+      ownerUserId: readOnly ? "someone-else" : "user",
+      role: readOnly ? "auditor" : "admin",
       enabled: true,
     }),
     list: async () =>
@@ -147,6 +163,15 @@ function app({
         { kind: "created", text: "Halftime created", at: new Date("2026-10-01T00:00:00Z") },
       ];
     },
+    // As the real directory: the agent must be the workspace's; newest first, at most 20.
+    versions: async (_access, id) => {
+      find(id);
+      return versions
+        .filter((row) => row.id === id)
+        .sort((a, b) => b.version - a.version)
+        .slice(0, 20)
+        .map(({ version, summary, at }) => ({ version, summary, at }));
+    },
     publish: async (_access, id, check: PublishCheck) => {
       const agent = find(id);
       if (agent.visibility === "public") {
@@ -170,33 +195,39 @@ function app({
   const studio = studioRoutes({
     directory,
     repository: {
-      agent: async (scope: { agentId: string }) => {
-        if (publishesDuringSetup) {
-          find(scope.agentId).draft = false;
-        }
-        return record(scope.agentId);
-      },
+      agent: async (scope: { agentId: string }) => record(scope.agentId),
       readiness: async () => ({ connectionsChecked: false, manualSucceeded: true }),
       updateConfig: async (
         scope: { agentId: string },
         expected: number,
         config: AgentConfig,
-        options: { requireDraft?: boolean; writeSpend?: boolean } = {},
+        options: {
+          perplOnly?: boolean;
+          writeSpend?: boolean;
+          versionSummary?: (prev: AgentConfig, next: AgentConfig) => string;
+        } = {},
       ) => {
         const stored = configs.get(scope.agentId)!;
         if (stored.version !== expected) {
           throw new PilotError("CONFLICT", "Configuration version changed");
         }
-        if (options.requireDraft && !find(scope.agentId).draft) {
-          throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
+        if (options.perplOnly && !stored.config.perpl) {
+          throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
         }
         // As the real store: the stored spend stays unless `writeSpend` writes the incoming one.
         const { spend: incoming, ...rest } = config;
         const spend = (options.writeSpend ? incoming : undefined) ?? stored.config.spend;
-        configs.set(scope.agentId, {
-          version: expected + 1,
-          config: spend ? { ...rest, spend } : rest,
-        });
+        const next = spend ? { ...rest, spend } : rest;
+        configs.set(scope.agentId, { version: expected + 1, config: next });
+        // And the version is recorded with the write, from the two stored configs.
+        if (options.versionSummary) {
+          versions.push({
+            id: scope.agentId,
+            version: expected + 1,
+            summary: options.versionSummary(stored.config, next),
+            at: new Date(PUBLISHED_AT.getTime() + versions.length * 60_000),
+          });
+        }
         return record(scope.agentId);
       },
     } as unknown as ResearchRepository,
@@ -245,7 +276,7 @@ function app({
     await next();
   });
   root.route("/", studio);
-  return { root, agents, configs, identities, ledgerReads, checks, chain };
+  return { root, agents, configs, versions, identities, ledgerReads, checks, chain };
 }
 
 const send = (method: string, payload?: unknown) => ({
@@ -289,6 +320,7 @@ test("the agents list carries the same visibility, publishedAt and xHandle", asy
     [
       ["private", null, null],
       ["public", PUBLISHED_AT.toISOString(), "LiveBot"],
+      ["public", PUBLISHED_AT.toISOString(), null],
     ],
   );
 });
@@ -333,31 +365,146 @@ test("setup without a voice leaves the profile alone", async () => {
   assert.deepEqual(f.identities, []);
 });
 
-test("setup on an agent that is not a draft is 409 NOT_A_DRAFT and writes nothing", async () => {
+test("setup on a public Perpl agent saves caps, risk and entry as a new recorded version", async () => {
   const f = app();
 
   const response = await f.root.request(
     `/agents/${LIVE}/setup`,
-    send("PUT", { expectedVersion: 4, voice: "deadpan" }),
+    send("PUT", {
+      expectedVersion: 4,
+      caps: {
+        perTradeAusd: 25,
+        perDayAusd: 100,
+        maxLeverage: 3,
+        maxOpenPositions: 3,
+        dayLossStopAusd: 20,
+      },
+      entry: { mode: "approve", meanwhile: "small", smallAusd: 10 },
+    }),
   );
 
-  assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "NOT_A_DRAFT");
-  assert.equal(f.configs.get(LIVE)!.version, 4);
+  assert.equal(response.status, 200);
+  const agent = studioAgentSchema.parse(await response.json());
+  assert.equal(agent.version, 5);
+  assert.equal(agent.visibility, "public");
+  // Read back, as the studio does after a save.
+  const read = studioAgentSchema.parse(
+    await (await f.root.request(`/agents/${LIVE}`, get())).json(),
+  );
+  assert.deepEqual(read.spend, { perCallAusd: 25, perDayAusd: 100 });
+  assert.equal(read.config.maxLeverage, 3);
+  assert.deepEqual(read.config.risk, { maxOpenPositions: 3, dayLossStopAusd: 20 });
+  assert.deepEqual(read.config.entry, { mode: "approve", meanwhile: "small", smallAusd: 10 });
+  assert.deepEqual(
+    f.versions.map(({ id, version, summary }) => ({ id, version, summary })),
+    [
+      {
+        id: LIVE,
+        version: 5,
+        summary: "Caps 25 / 100 / 3× · 3 open · −20 day-loss · goes in at 10 while you decide",
+      },
+    ],
+  );
 });
 
-test("setup that a publish overtakes is 409 NOT_A_DRAFT, refused by the write itself", async () => {
-  const f = app({ publishesDuringSetup: true });
+test("setup on a draft records its version too", async () => {
+  const f = app();
 
   const response = await f.root.request(
     `/agents/${DRAFT}/setup`,
     send("PUT", { expectedVersion: 1, voice: "deadpan" }),
   );
 
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    f.versions.map(({ id, version, summary }) => ({ id, version, summary })),
+    [{ id: DRAFT, version: 2, summary: "Voice · Deadpan" }],
+  );
+});
+
+test("setup on an agent without perpl is 409 NOT_A_PERPL_AGENT and writes nothing", async () => {
+  const f = app();
+
+  const response = await f.root.request(
+    `/agents/${LEGACY}/setup`,
+    send("PUT", { expectedVersion: 2, voice: "deadpan" }),
+  );
+
   assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "NOT_A_DRAFT");
-  assert.equal(f.configs.get(DRAFT)!.version, 1);
+  assert.equal((await response.json()).error, "NOT_A_PERPL_AGENT");
+  assert.deepEqual(f.configs.get(LEGACY), { version: 2, config: DEFAULT_CONFIG });
+  assert.deepEqual(f.versions, []);
   assert.deepEqual(f.identities, []);
+});
+
+test("setup by a member who does not own the workspace is 403 and writes nothing", async () => {
+  const f = app({ readOnly: true });
+
+  const response = await f.root.request(
+    `/agents/${LIVE}/setup`,
+    send("PUT", { expectedVersion: 4, voice: "deadpan" }),
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(f.configs.get(LIVE)!.version, 4);
+  assert.deepEqual(f.versions, []);
+});
+
+test("versions lists the agent's saved setups, newest first, with ISO times", async () => {
+  const f = app();
+  assert.deepEqual(await (await f.root.request(`/agents/${LIVE}/versions`, get())).json(), {
+    versions: [],
+  });
+  await f.root.request(
+    `/agents/${LIVE}/setup`,
+    send("PUT", {
+      expectedVersion: 4,
+      brief: { ...DEFAULT_BRIEF, thesis: "Funding leads price." },
+    }),
+  );
+  await f.root.request(`/agents/${LIVE}/setup`, send("PUT", { expectedVersion: 5, voice: "hype" }));
+  // Another agent's version is not this one's.
+  await f.root.request(
+    `/agents/${DRAFT}/setup`,
+    send("PUT", { expectedVersion: 1, voice: "deadpan" }),
+  );
+
+  const response = await f.root.request(`/agents/${LIVE}/versions`, get());
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(versionsResponseSchema.parse(body), body);
+  assert.deepEqual(body, {
+    versions: [
+      {
+        version: 6,
+        summary: "Voice · Hype",
+        at: new Date(PUBLISHED_AT.getTime() + 60_000).toISOString(),
+      },
+      { version: 5, summary: "Thesis changed", at: PUBLISHED_AT.toISOString() },
+    ],
+  });
+});
+
+test("versions of another owner's agent is 404 NOT_FOUND", async () => {
+  const f = app();
+
+  const response = await f.root.request(
+    "/agents/99999999-9999-4999-8999-999999999999/versions",
+    get(),
+  );
+
+  assert.equal(response.status, 404);
+  assert.equal((await response.json()).error, "NOT_FOUND");
+});
+
+test("versions is the owner's: a read-only member is 403", async () => {
+  const f = app({ readOnly: true });
+
+  const response = await f.root.request(`/agents/${LIVE}/versions`, get());
+
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "RESEARCH_ACCESS_DENIED");
 });
 
 test("setup at a stale version is 409 CONFLICT, the config store's own code", async () => {
