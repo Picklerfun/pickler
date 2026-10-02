@@ -1,4 +1,7 @@
-/** Anything that can sign a string for an address — MetaMask, WalletConnect. */
+/** The two wallets the marketplace offers: the Mera passkey wallet and a browser wallet. */
+export type WalletKind = "mera" | "eoa";
+
+/** Anything that can sign a string for an address: a browser wallet, or a Mera key just opened. */
 export interface Signer {
   address: string;
   chainId: number;
@@ -36,6 +39,8 @@ async function envelope(response: Response, fallback: string) {
 export async function signIn(
   signer: Signer,
   fetchImpl: typeof fetch = fetch,
+  /** Which wallet is signing, for the link the server keeps. It describes; it decides nothing. */
+  kind: WalletKind = "eoa",
 ): Promise<ConnectResult> {
   const issued = await envelope(
     await fetchImpl("/api/v1/auth/wallet/nonce", {
@@ -50,7 +55,7 @@ export async function signIn(
     await fetchImpl("/api/v1/auth/wallet/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ raw: issued.message, signature }),
+      body: JSON.stringify({ raw: issued.message, signature, kind }),
     }),
     "That sign-in did not go through",
   );
