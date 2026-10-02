@@ -31,3 +31,10 @@ scripts/design/shots/
 # rewrite tools of the cleanup plan. Kept inside the repository because the system's temporary
 # folder is wiped; never committed.
 scripts/design/.shots/
+
+# The mobile app (apps/mobile has its own .gitignore for native folders)
+apps/mobile/build/
+docs/mobile/fuentes/*.mp4
+.claude/worktrees/
+.claude/settings.local.json
+.superpowers/

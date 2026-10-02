@@ -28,3 +28,13 @@ supabase/.branches/
 **/.dev.vars*
 
 **/.open-next/
+
+# Imported with the mobile app: its own style, and a Spanish record
+# (docs/specs/mobile-monorepo-v1.md §5).
+apps/mobile/
+services/reads/
+infra/
+docs/mobile/
+scripts/mobile/
+.agents/
+.claude/

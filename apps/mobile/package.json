@@ -1,6 +1,6 @@
 {
-  "name": "mobile",
-  "version": "1.0.0",
+  "name": "@pickler/mobile",
+  "version": "0.0.0",
   "main": "index.ts",
   "dependencies": {
     "@category-labs/mera": "0.2.0",
@@ -51,7 +51,8 @@
     "web": "expo start --web",
     "test": "jest",
     "ios:archive": "scripts/ios-archive.sh",
-    "ios:upload": "scripts/ios-upload.sh"
+    "ios:upload": "scripts/ios-upload.sh",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }
