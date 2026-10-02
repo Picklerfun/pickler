@@ -46,12 +46,21 @@ export interface StudioDirectory {
   runs(scope: Scope, before: number | null): Promise<string[]>;
   /**
    * The person's agents, oldest first, with the accent their profile was created with ("lime"
-   * without one), and whether each is a private draft.
+   * without one), whether each is a private draft, whether the marketplace shows it and since
+   * when (studio-draft-dashboard-v1 D7), and its verified X handle (D6), null until verified.
    */
-  list(
-    access: StudioAccess,
-  ): Promise<
-    { id: string; name: string; handle: string; accent: Accent; draft: boolean; scope: Scope }[]
+  list(access: StudioAccess): Promise<
+    {
+      id: string;
+      name: string;
+      handle: string;
+      accent: Accent;
+      draft: boolean;
+      visibility: "private" | "public";
+      publishedAt: Date | null;
+      xHandle: string | null;
+      scope: Scope;
+    }[]
   >;
 }
 

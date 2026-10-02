@@ -239,10 +239,12 @@ export class PostgresStudioDirectory implements StudioDirectory {
   }
   async list(access: StudioAccess) {
     const result = await this.pool.query(
-      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,pr.accent,p.tenant_id,p.runtime_agent_id
+      `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,a.visibility::text AS visibility,
+        a.published_at,xa.handle AS x_handle,pr.accent,p.tenant_id,p.runtime_agent_id
       FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
+      LEFT JOIN agents.x_accounts xa ON xa.agent_id=a.id
       WHERE p.workspace_id=$1 AND p.tenant_id=$2 ORDER BY a.created_at`,
       [access.workspaceId, access.tenantId],
     );
@@ -255,6 +257,9 @@ export class PostgresStudioDirectory implements StudioDirectory {
         ? (row.accent as Accent)
         : ("lime" as const),
       draft: row.draft === true,
+      visibility: row.visibility === "public" ? ("public" as const) : ("private" as const),
+      publishedAt: (row.published_at as Date | null) ?? null,
+      xHandle: (row.x_handle as string | null) ?? null,
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
   }

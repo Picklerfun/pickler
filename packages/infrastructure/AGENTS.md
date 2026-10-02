@@ -148,7 +148,12 @@ behind the marketplace. It reads one join: `agents.agents` left-joined to `agent
 and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
-still resolves.
+still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,
+studio-draft-dashboard-v1 D7): `status` says whether an agent has a wallet and runs, `visibility`
+whether the marketplace shows it, and `published_at` is set exactly when it is public (CHECK
+`agents_published_consistent`). 0024 published every non-draft agent as of its `created_at`, and
+added `agents.x_challenges` and `agents.x_accounts` for Connect X; `PostgresStudioDirectory.list`
+returns `visibility`, `publishedAt` and the verified `xHandle`.
 
 No table records whether a pick was right, so no record is computed anywhere here: `resolved` and
 `net` are `0` because zero is the true count, `hitRate` and `calibrationGap` are null, and the
