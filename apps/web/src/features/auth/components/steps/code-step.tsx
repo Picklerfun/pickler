@@ -22,7 +22,7 @@ import { getSupabase } from "../../lib/supabase-browser";
  * The caret, the keyboard and the autofill of a code out of an email stay the operating system's;
  * only the boxes are ours. The usual failures of this pattern are handled rather than inherited:
  * the input is the single focusable thing and carries the label, the boxes are `aria-hidden` so a
- * screen reader hears one field instead of six empty ones, and the focus ring an invisible input
+ * screen reader hears one field instead of eight empty ones, and the focus ring an invisible input
  * cannot show is drawn on the boxes by `.codeInput:focus-visible ~` in auth.module.css.
  */
 export function CodeStep({
@@ -43,7 +43,7 @@ export function CodeStep({
   const [rejected, setRejected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitFor, setWaitFor] = useState(RESEND_SECONDS);
-  // Guards against verifying the same six digits twice: React may run an effect again, and a
+  // Guards against verifying the same code twice: React may run an effect again, and a
   // second verify of a code the first one already spent would look like a wrong code.
   const tried = useRef<string | null>(null);
 
