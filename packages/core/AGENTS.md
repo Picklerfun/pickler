@@ -142,6 +142,12 @@ else. Every id and address is checked against a strict alphabet before it is int
 malformed one throws. Turnkey has no policy order: the root quorum (the passkey) bypasses policies,
 and otherwise any matching DENY beats every ALLOW.
 
+`domain/relying-party.ts` holds `MERA_RELYING_PARTY` (`pickler.fun`, the relying party of the
+marketplace's Mera passkey on the web and in the app) and `turnkeyRelyingPartyProblem(rpId,
+appEnv)`, the pure rule the API asks before composing custody: Turnkey is never composed on
+Mera's relying party, and never on `localhost` outside `local` and `development`. Tests:
+`test/relying-party.test.ts`. The decision is `docs/specs/mobile-monorepo-v1.md`, W1, W2 and W8.
+
 `createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version

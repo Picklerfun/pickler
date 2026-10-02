@@ -52,7 +52,10 @@ Agent HMAC follows `@relayerfi/agent-sdk`: headers `x-agent-id`, `x-agent-auth`,
 
 `/v1/signing` is mounted only when `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`,
 `TURNKEY_PARENT_ORG_ID`, `TURNKEY_RPID` and `TURNKEY_APP_NAME` are all bound; without them the
-rest of the API serves unchanged. The decisions are `createCustodyService` in `@pickler/core`;
+rest of the API serves unchanged. It is also left unmounted, with the reason logged, when
+`turnkeyRelyingPartyProblem` in `@pickler/core` refuses the relying party: `pickler.fun` is
+Mera's on every surface, and `localhost` is refused unless `APP_ENV` is `local` or `development`.
+The deployed value is `app.pickler.fun` (`docs/specs/mobile-monorepo-v1.md`, W2 and W8). The decisions are `createCustodyService` in `@pickler/core`;
 the routes validate and map. Nothing that names a passkey comes from the body, and an
 attestation is refused at the door unless it is three base64url strings and transports Turnkey
 has a name for (`SUPPORTED_TRANSPORTS`).
